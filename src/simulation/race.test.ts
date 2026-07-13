@@ -37,6 +37,7 @@ import {
 import {
   decidePitStop,
   estimatePitOpportunity,
+  pitTuning,
   strategyOutlookFor,
 } from './strategy'
 import {
@@ -808,6 +809,36 @@ describe('weather and wet strategy', () => {
     )
 
     expect(outcomes.some((outcome) => outcome?.reason === 'undercut')).toBe(true)
+  })
+
+  it('defers a routine green-flag stop when the pit lane is already busy', () => {
+    const driver = { ...initialDrivers[0], overtaking: 0.95 }
+    const cliff = effectiveCliffLaps('M', driver.tireManagement)
+    const car = {
+      tire: 'M' as const,
+      tireAgeLaps: Math.ceil(cliff - 2),
+      tireWearPercent: 64,
+      brakeTemperatureC: 780,
+      compoundsUsed: ['M'] as TireCompound[],
+      damage: 0,
+      pitStops: 0,
+    }
+    const decision = decidePitStop({
+      seed: 'pit-lane-congestion',
+      driver,
+      car,
+      lap: 22,
+      raceLaps: 52,
+      underSafetyCar: false,
+      weather: 'clear',
+      trackGrip: 1,
+      gapToAheadSeconds: 0.82,
+      gapBehindSeconds: 2.8,
+      position: 5,
+      pitLaneOccupancy: pitTuning.normalPitLaneCapacity,
+    })
+
+    expect(decision).toBeNull()
   })
 
   it('boxes for measured tire wear or dangerous brake temperature', () => {

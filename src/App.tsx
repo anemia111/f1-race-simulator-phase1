@@ -1551,6 +1551,7 @@ export default function App() {
     isRaceProgressSession || selectedSessionDurationSeconds === null
       ? `${snapshot.leaderLap} / ${snapshot.raceLaps}`
       : `${snapshot.elapsedLabel} / ${formatShortDuration(selectedSessionDurationSeconds)}`
+  const activePitCars = snapshot.cars.filter((car) => car.status === 'pit').length
   const liveTimingProgressLabel =
     isRaceProgressSession || selectedSessionDurationSeconds === null
       ? `Lap ${snapshot.leaderLap}/${snapshot.raceLaps} | ${snapshot.elapsedLabel}`
@@ -2296,6 +2297,10 @@ export default function App() {
           <span>Pit lane</span>
           <strong className={snapshot.pitLaneOpen ? 'flag-clear' : 'flag-red'}>
             {snapshot.pitLaneOpen ? 'OPEN' : 'CLOSED'}
+          </strong>
+          <span>Pit activity</span>
+          <strong title="Routine green-flag stops are staggered when the lane is busy">
+            {activePitCars} active
           </strong>
           <span>OpenF1</span>
           <strong>

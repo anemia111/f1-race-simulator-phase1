@@ -74,6 +74,8 @@ export const pitTuning = {
   damagePitThreshold: 0.25,
   /** Don't pit with fewer laps than this remaining. */
   minRemainingLaps: 4,
+  /** Normal green-flag pit-lane capacity used to stagger routine stops. */
+  normalPitLaneCapacity: 5,
 } as const
 
 /**
@@ -176,6 +178,7 @@ export function decidePitStop(options: {
   pitLaneOpen?: boolean
   projectedRejoinPosition?: number | null
   teammateInPit?: boolean
+  pitLaneOccupancy?: number
   tireNomination?: TireNomination
   mandatoryTwoDryCompounds?: boolean
 }): PitDecision | null {
@@ -196,6 +199,7 @@ export function decidePitStop(options: {
     pitLaneOpen = true,
     projectedRejoinPosition,
     teammateInPit = false,
+    pitLaneOccupancy = 0,
     tireNomination,
     mandatoryTwoDryCompounds = true,
   } = options
@@ -277,6 +281,17 @@ export function decidePitStop(options: {
     !compoundMatchesWeather(car.tire, weather, trackGrip)
 
   if (teammateInPit && !emergencyStop && !underSafetyCar) {
+    return null
+  }
+
+  // A green-flag pit lane can physically take more cars, but routine stops
+  // are normally staggered to avoid release risk and a compressed pit queue.
+  // Safety-car opportunities and genuinely urgent stops remain unrestricted.
+  if (
+    !underSafetyCar &&
+    pitLaneOccupancy >= pitTuning.normalPitLaneCapacity &&
+    !emergencyStop
+  ) {
     return null
   }
 

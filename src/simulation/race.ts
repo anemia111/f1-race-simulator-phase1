@@ -3231,6 +3231,9 @@ export function advanceRace(
           candidate.driverId !== next.driverId &&
           candidate.status === 'pit',
       ) || teamsPittingThisFrame.has(next.teamId)
+      const pitLaneOccupancy =
+        snapshot.cars.filter((candidate) => candidate.status === 'pit').length +
+        teamsPittingThisFrame.size
       const proceduralPenalty = next.penalties.find(
         (penalty) =>
           !penalty.served &&
@@ -3284,6 +3287,7 @@ export function advanceRace(
               pitLaneOpen,
               projectedRejoinPosition,
               teammateInPit,
+              pitLaneOccupancy,
               tireNomination: config.track.tireNomination,
               mandatoryTwoDryCompounds: weekendStage === 'race',
             })
