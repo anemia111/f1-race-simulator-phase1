@@ -31,8 +31,11 @@ driving game or a broadcast-video renderer.
   queues, 107% checks, and steward exemptions.
 - Historical OpenF1 timeline scrubbing and observed sector, pit-transit,
   maximum-speed, and tire-degradation calibration.
+- Date-bounded 2026 OpenF1 standings snapshots through the British Grand Prix
+  keep the offline field prior factual without leaking later results into an
+  earlier weekend. Fresh API standings replace the bundled snapshot online.
 - Overview-mode vehicle LOD plus instanced kerbs, runoff, grid boxes, pit
-  boxes, and marshal equipment for lower draw-call pressure.
+  boxes, paved pit lane, and marshal equipment for lower draw-call pressure.
 
 ## Run
 
@@ -77,6 +80,7 @@ threshold run.
 
 - The race engine always remains `SIM`.
 - OpenF1 samples are separately labelled `LIVE`, `HIST`, or `SIM` fallback.
+- Bundled standings are labelled `SNAP`; API standings are labelled `CAL`.
 - Layouts are labelled `Real` or `Fallback`.
 - Missing API values never silently become official values; the local model is
   shown as an estimate.

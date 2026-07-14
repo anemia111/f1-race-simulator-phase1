@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { bundledOpenF1StandingsFor } from '../data/openF1Standings2026'
 import {
   fetchOpenF1SeasonStandings,
   type OpenF1StandingsSnapshot,
@@ -23,14 +24,20 @@ export function useOpenF1SeasonStandings(
   const cutoffKey = asOfIso ? asOfIso.slice(0, 10) : 'latest'
   const cacheKey = `${year}:${cutoffKey}`
   const [state, setState] = useState<StandingsState>(() => {
-    const data = cache.get(cacheKey)?.data ?? null
+    const data =
+      cache.get(cacheKey)?.data ??
+      (year === 2026 ? bundledOpenF1StandingsFor(asOfIso) : null)
     return { data, status: data ? 'ready' : 'idle' }
   })
 
   useEffect(() => {
     const controller = new AbortController()
+    const bundledFallback =
+      year === 2026 ? bundledOpenF1StandingsFor(asOfIso) : null
+    const dataForRequest = () =>
+      cache.get(cacheKey)?.data ?? bundledFallback
     const load = () => {
-      setState((current) => ({ data: current.data, status: 'loading' }))
+      setState({ data: dataForRequest(), status: 'loading' })
       fetchOpenF1SeasonStandings(year, controller.signal, asOfIso)
         .then((data) => {
           cache.set(cacheKey, { data, fetchedAt: Date.now() })
@@ -38,14 +45,19 @@ export function useOpenF1SeasonStandings(
         })
         .catch(() => {
           if (!controller.signal.aborted) {
-            setState((current) => ({ data: current.data, status: 'error' }))
+            setState((current) => ({
+              data: current.data ?? dataForRequest(),
+              status: 'error',
+            }))
           }
         })
     }
 
     const cached = cache.get(cacheKey)
 
-    if (!cached || Date.now() - cached.fetchedAt > refreshMs) {
+    if (cached && Date.now() - cached.fetchedAt <= refreshMs) {
+      setState({ data: cached.data, status: 'ready' })
+    } else {
       load()
     }
 

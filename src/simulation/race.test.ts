@@ -5,7 +5,7 @@ import { flagFromRaceControl } from '../services/openF1Derived'
 import { calibrateFieldFromOpenF1 } from '../services/openF1Performance'
 import type { RaceConfig, RaceSnapshot, TireCompound } from '../types'
 import { incidentForLap } from './incidents'
-import { overtakeForLap } from './overtaking'
+import { battleDynamicsFor, overtakeForLap } from './overtaking'
 import {
   applyPracticeSetup,
   buildPracticeSetupSummary,
@@ -208,7 +208,9 @@ describe('starting grid', () => {
     const config = { ...makeConfig('fp-clock'), weekendStage: 'fp2' as const }
     let snapshot = createInitialRace(config)
 
-    for (let step = 0; step < 73; step += 1) {
+    // The clock stops new laps at 60 minutes, while a lap started before the
+    // chequered flag may still be completed.
+    for (let step = 0; step < 78 && snapshot.sessionStatus !== 'finished'; step += 1) {
       snapshot = advanceRace(snapshot, 50, config)
     }
 
@@ -1272,7 +1274,7 @@ describe('overtaking', () => {
     expect(outcomes.some((outcome) => outcome?.kind === 'pass')).toBe(true)
   })
 
-  it('uses the mapped 2026 active-aero zone and current sector', () => {
+  it('uses the mapped 2026 straight zone and current sector', () => {
     const fixture = closeBattleFixture()
     const track = {
       ...tracks[0],
@@ -1303,8 +1305,105 @@ describe('overtaking', () => {
     ).filter((outcome) => outcome !== null)
 
     expect(inZoneOutcomes.length).toBeGreaterThan(0)
-    expect(inZoneOutcomes.every((outcome) => outcome.zone === 'overtake')).toBe(true)
+    expect(inZoneOutcomes.every((outcome) => outcome.zone === 'straight')).toBe(true)
     expect(inZoneOutcomes.every((outcome) => outcome.sector === 1)).toBe(true)
+  })
+
+  it('only credits Overtake when the detection result is active', () => {
+    const fixture = closeBattleFixture()
+    const track = {
+      ...tracks[0],
+      aeroActivationZones: [
+        {
+          start: 0.2,
+          end: 0.3,
+          label: 'AERO test',
+          lowGripMode: 'partial' as const,
+          source: 'derived' as const,
+        },
+      ],
+    }
+    const context = {
+      ...fixture,
+      seed: 'overtake-latch-truth',
+      lap: 18,
+      gapToAheadSeconds: 0.7,
+      weather: 'clear' as const,
+      trackGrip: 1,
+      track,
+      trackProgress: 0.25,
+    }
+    const withoutEligibility = battleDynamicsFor({
+      ...context,
+      attackerCar: {
+        ...fixture.attackerCar,
+        overtakeStatus: 'available',
+        ersPowerKw: 250,
+      },
+      defenderCar: { ...fixture.defenderCar, ersPowerKw: 250 },
+    })
+    const withEligibility = battleDynamicsFor({
+      ...context,
+      attackerCar: {
+        ...fixture.attackerCar,
+        overtakeStatus: 'active',
+        ersPowerKw: 350,
+      },
+      defenderCar: { ...fixture.defenderCar, ersPowerKw: 250 },
+    })
+
+    expect(withoutEligibility.assistance).toBe('tow')
+    expect(withoutEligibility.electricalPerformanceEdge).toBe(0)
+    expect(withEligibility.assistance).toBe('overtake')
+    expect(withEligibility.ersPowerDeltaKw).toBe(100)
+    expect(withEligibility.electricalPerformanceEdge).toBeGreaterThan(0)
+  })
+
+  it('uses live tire wear and temperature in close-battle grip', () => {
+    const fixture = closeBattleFixture()
+    const baseContext = {
+      ...fixture,
+      seed: 'battle-tire-state',
+      lap: 21,
+      gapToAheadSeconds: 0.45,
+      weather: 'clear' as const,
+      trackGrip: 1,
+      track: tracks[0],
+      trackProgress: 0.5,
+    }
+    const healthyTires = battleDynamicsFor({
+      ...baseContext,
+      attackerCar: {
+        ...fixture.attackerCar,
+        tireAgeLaps: 2,
+        tireTemperatureC: 98,
+        tireWearPercent: 8,
+      },
+      defenderCar: {
+        ...fixture.defenderCar,
+        tireAgeLaps: 25,
+        tireTemperatureC: 122,
+        tireWearPercent: 88,
+      },
+    })
+    const reversedTires = battleDynamicsFor({
+      ...baseContext,
+      attackerCar: {
+        ...fixture.attackerCar,
+        tireAgeLaps: 25,
+        tireTemperatureC: 122,
+        tireWearPercent: 88,
+      },
+      defenderCar: {
+        ...fixture.defenderCar,
+        tireAgeLaps: 2,
+        tireTemperatureC: 98,
+        tireWearPercent: 8,
+      },
+    })
+
+    expect(healthyTires.tirePerformanceEdge).toBeGreaterThan(0)
+    expect(reversedTires.tirePerformanceEdge).toBeLessThan(0)
   })
 
   it('evaluates battle segments before a racing lap is complete', () => {

@@ -421,6 +421,28 @@ export function calibrateFieldFromOpenF1(
   const driverStandings = new Map(
     bundle.championshipDrivers.map((standing) => [standing.driver_number, standing]),
   )
+  const maximumTeamPoints = Math.max(
+    0,
+    ...bundle.championshipTeams.map((standing) => standing.points_current),
+  )
+  const maximumDriverPoints = Math.max(
+    0,
+    ...bundle.championshipDrivers.map((standing) => standing.points_current),
+  )
+  const teamStandingEvidence = clamp(maximumTeamPoints / 320, 0.15, 0.85)
+  const driverStandingEvidence = clamp(maximumDriverPoints / 180, 0.15, 0.85)
+  const driverPointsByTeam = new Map<string, number[]>()
+
+  for (const standing of bundle.championshipDrivers) {
+    const team = teamByDriverNumber.get(standing.driver_number)
+
+    if (team) {
+      driverPointsByTeam.set(team, [
+        ...(driverPointsByTeam.get(team) ?? []),
+        standing.points_current,
+      ])
+    }
+  }
   const paceByDriver = cleanLapPaceByDriver(observed)
   const paceByTeam = new Map<string, number[]>()
 
@@ -458,6 +480,11 @@ export function calibrateFieldFromOpenF1(
     }
 
     const rankStrength = clamp((12 - standing.position_current) / 11, 0, 1)
+    const pointsStrength =
+      maximumTeamPoints > 0
+        ? Math.sqrt(standing.points_current / maximumTeamPoints)
+        : rankStrength
+    const standingStrength = rankStrength * 0.35 + pointsStrength * 0.65
     const paceStrength = normalizedStrength(
       medianPaceByTeam.get(normalize(team.name)) ?? null,
       minimumPace,
@@ -474,14 +501,30 @@ export function calibrateFieldFromOpenF1(
       fastestPit,
       slowestPit,
     )
-    const overall = paceStrength === null ? rankStrength : rankStrength * 0.35 + paceStrength * 0.65
+    const overall =
+      paceStrength === null
+        ? standingStrength
+        : standingStrength * 0.28 + paceStrength * 0.72
+    const performancePriorWeight =
+      paceStrength === null ? 0.62 - teamStandingEvidence * 0.42 : 0.28
+    const performanceTarget = 0.68 + overall * 0.27
 
     return {
       ...team,
-      cornering: clamp(team.cornering * 0.45 + (0.68 + overall * 0.27) * 0.55, 0.67, 0.96),
+      cornering: clamp(
+        team.cornering * performancePriorWeight +
+          performanceTarget * (1 - performancePriorWeight),
+        0.67,
+        0.96,
+      ),
       straightLine:
         straightStrength === null
-          ? clamp(team.straightLine * 0.6 + (0.68 + overall * 0.25) * 0.4, 0.67, 0.95)
+          ? clamp(
+              team.straightLine * performancePriorWeight +
+                performanceTarget * (1 - performancePriorWeight),
+              0.67,
+              0.95,
+            )
           : clamp(team.straightLine * 0.42 + (0.68 + straightStrength * 0.27) * 0.58, 0.67, 0.96),
       // A points table is not a mechanical-failure model. Keep reliability
       // near the configured prior until multi-event DNF exposure is available.
@@ -502,22 +545,58 @@ export function calibrateFieldFromOpenF1(
     }
 
     const standingStrength = clamp((24 - standing.position_current) / 23, 0, 1)
+    const pointsStrength =
+      maximumDriverPoints > 0
+        ? Math.sqrt(standing.points_current / maximumDriverPoints)
+        : standingStrength
     const driverPace = paceByDriver.get(number) ?? null
     const driverTeam = teamByDriverNumber.get(number)
     const teamPace = driverTeam ? medianPaceByTeam.get(driverTeam) ?? null : null
-    const withinTeamStrength =
+    const teammatePoints = driverTeam
+      ? (driverPointsByTeam.get(driverTeam) ?? []).find(
+          (points) => points !== standing.points_current,
+        ) ?? standing.points_current
+      : standing.points_current
+    const pointsWithinTeamStrength = clamp(
+      0.5 +
+        (standing.points_current - teammatePoints) /
+          Math.max(40, standing.points_current + teammatePoints),
+      0,
+      1,
+    )
+    const lapWithinTeamStrength =
       driverPace === null || teamPace === null
         ? null
         : clamp(0.5 + (teamPace - driverPace) / 1.6, 0, 1)
+    const withinTeamStrength =
+      lapWithinTeamStrength ?? pointsWithinTeamStrength
     const observedStrength =
-      withinTeamStrength === null
-        ? standingStrength
-        : standingStrength * 0.35 + withinTeamStrength * 0.65
+      lapWithinTeamStrength === null
+        ? standingStrength * 0.35 +
+          pointsStrength * 0.35 +
+          withinTeamStrength * 0.3
+        : standingStrength * 0.2 +
+          pointsStrength * 0.15 +
+          withinTeamStrength * 0.65
+    const speedPriorWeight =
+      lapWithinTeamStrength === null
+        ? 0.62 - driverStandingEvidence * 0.38
+        : 0.28
+    const speedTarget = 0.7 + observedStrength * 0.27
 
     return {
       ...driver,
-      consistency: clamp(driver.consistency * 0.55 + (0.68 + observedStrength * 0.27) * 0.45, 0.68, 0.96),
-      speed: clamp(driver.speed * 0.4 + (0.7 + observedStrength * 0.27) * 0.6, 0.7, 0.97),
+      consistency: clamp(
+        driver.consistency * 0.68 + (0.68 + observedStrength * 0.27) * 0.32,
+        0.68,
+        0.96,
+      ),
+      speed: clamp(
+        driver.speed * speedPriorWeight +
+          speedTarget * (1 - speedPriorWeight),
+        0.7,
+        0.97,
+      ),
     }
   })
   const sampleCount =
@@ -529,6 +608,8 @@ export function calibrateFieldFromOpenF1(
   )
   const asOfDate = 'asOfDate' in bundle ? bundle.asOfDate : null
   const sourceYear = 'sourceYear' in bundle ? bundle.sourceYear : 2026
+  const snapshotSource =
+    'snapshotSource' in bundle ? bundle.snapshotSource : 'api'
 
   return {
     confidence,
@@ -538,7 +619,9 @@ export function calibrateFieldFromOpenF1(
       provider: 'OpenF1',
       sampledAt: asOfDate,
       sourceYear,
-      note: `${paceByDriver.size} clean driver pace samples; standings used as a shrinkage prior`,
+      note: `${paceByDriver.size} clean driver pace samples; ${
+        snapshotSource === 'bundled' ? 'bundled OpenF1' : 'live OpenF1'
+      } standings used as a shrinkage prior`,
     },
     referenceLapTimeSeconds,
     sampleCount,

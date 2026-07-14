@@ -25,6 +25,7 @@ import {
   weakestComponent,
 } from './components'
 import { overtakeForLap } from './overtaking'
+import { pitBoxProgressForTeam } from './pitLane'
 import {
   dirtyAirDeltaSeconds,
   flagLabelFor,
@@ -988,7 +989,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     }
     initialTireSets[startingTire] = Math.max(0, initialTireSets[startingTire] - 1)
     const totalDistance = startsFromPitLane
-      ? 1 + (config.track.pitLane?.boxStartProgress ?? 0.018)
+      ? 1 + pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
       : isRaceDistance
         ? startingGridDistance(gridIndex)
       : (config.track.pitLane?.exitProgress ?? 0.13)
@@ -1066,7 +1067,9 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       pitPhase:
         pitReleaseAtSeconds === null && !startsFromPitLane ? 'none' : 'box',
       pitServiceKind: null,
-      pitLaneProgress: startsFromPitLane ? totalDistance : null,
+      pitLaneProgress: startsFromPitLane
+        ? pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
+        : null,
       pitStartedAtSeconds: null,
       pitUntilSeconds: pitReleaseAtSeconds,
       pitExitUntilSeconds: null,
@@ -1363,9 +1366,11 @@ export function advanceRace(
           ...car,
           status: 'pit' as const,
           pitPhase: 'box' as const,
-          pitLaneProgress:
-            config.track.pitLane?.boxStartProgress ??
-            (car.pitLaneProgress === null ? 0.018 : car.pitLaneProgress % 1),
+          pitLaneProgress: pitBoxProgressForTeam(
+            config.track,
+            config.teams,
+            car.teamId,
+          ),
           pitUntilSeconds: lightsOut
             ? elapsedSeconds + Math.max(6, baseLapTime * 0.14)
             : null,
@@ -1739,11 +1744,11 @@ export function advanceRace(
         return car
       }
 
-      const boxCount = config.track.pitLane?.boxCount ?? 12
-      const pitBox =
-        ((config.track.pitLane?.boxStartProgress ?? 0.018) +
-          (index % boxCount) * 0.009) %
-        1
+      const pitBox = pitBoxProgressForTeam(
+        config.track,
+        config.teams,
+        car.teamId,
+      )
       const isEligible = segment ? participantIds.has(car.driverId) : false
       const mayCompleteChequeredLap =
         !segment &&
@@ -2118,11 +2123,11 @@ export function advanceRace(
       const pitSpeedLimit = config.track.pitLane?.speedLimitKph ?? 80
       const pitEntry = config.track.pitLane?.entryProgress ?? 0.965
       const pitExit = config.track.pitLane?.exitProgress ?? 0.13
-      const boxCount = config.track.pitLane?.boxCount ?? 12
-      const pitBox =
-        ((config.track.pitLane?.boxStartProgress ?? 0.018) +
-          (index % boxCount) * 0.009) %
-        1
+      const pitBox = pitBoxProgressForTeam(
+        config.track,
+        config.teams,
+        car.teamId,
+      )
       const pitDuration = Math.max(
         1,
         (car.pitUntilSeconds ?? elapsedSeconds + 1) -
@@ -2908,11 +2913,11 @@ export function advanceRace(
             ) &&
             (next.tireSetsRemaining[plannedCompound] ?? 0) > 0
           const nextCompound = useFreshSet ? plannedCompound : next.tire
-          const boxCount = config.track.pitLane?.boxCount ?? 12
-          const pitBox =
-            ((config.track.pitLane?.boxStartProgress ?? 0.018) +
-              (index % boxCount) * 0.009) %
-            1
+          const pitBox = pitBoxProgressForTeam(
+            config.track,
+            config.teams,
+            car.teamId,
+          )
 
           next = {
             ...next,

@@ -7,11 +7,10 @@ import type {
   Driver,
   FlagState,
   TrackDefinition,
-  TireCompound,
   WeatherState,
 } from '../types'
 import { hashChance } from './random'
-import { effectiveCliffLaps, isWetCompound } from './tires'
+import { tireDeltaSeconds } from './tires'
 
 export type OvertakeOutcomeKind = 'pass' | 'defended' | 'contact' | 'crash'
 
@@ -27,11 +26,12 @@ export type OvertakeOutcome = {
   flagResponse: Exclude<FlagState, 'clear'> | null
   flagDurationSeconds: number
   sector: number
-  zone: 'overtake' | 'corner'
+  zone: 'straight' | 'corner'
+  assistance: 'overtake' | 'tow' | 'none'
   message: string
 }
 
-type OvertakeContext = {
+export type OvertakeContext = {
   seed: string
   attacker: Driver
   defender: Driver
@@ -48,17 +48,17 @@ type OvertakeContext = {
   sector?: number
 }
 
+export type BattleDynamics = {
+  zone: OvertakeOutcome['zone']
+  assistance: OvertakeOutcome['assistance']
+  tirePerformanceEdge: number
+  electricalPerformanceEdge: number
+  ersPowerDeltaKw: number
+}
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-
-const dryTireAttackBias: Record<TireCompound, number> = {
-  S: 0.09,
-  M: 0.03,
-  H: -0.04,
-  I: -0.07,
-  W: -0.12,
-}
 
 function driverOvertaking(driver: Driver): number {
   return clamp01(driver.overtaking ?? driver.speed)
@@ -82,25 +82,98 @@ function progressIsInZone(progress: number, start: number, end: number): boolean
     : progress >= start || progress <= end
 }
 
-function tireBattleBias(
-  attackerCompound: TireCompound,
-  defenderCompound: TireCompound,
-  weather: WeatherState,
-): number {
-  if (weather !== 'clear') {
-    const attackerWet = isWetCompound(attackerCompound)
-    const defenderWet = isWetCompound(defenderCompound)
+export function battleDynamicsFor(
+  context: Pick<
+    OvertakeContext,
+    | 'attacker'
+    | 'attackerCar'
+    | 'defender'
+    | 'defenderCar'
+    | 'gapToAheadSeconds'
+    | 'lap'
+    | 'seed'
+    | 'track'
+    | 'trackGrip'
+    | 'trackProgress'
+    | 'weather'
+  >,
+): BattleDynamics {
+  const {
+    attacker,
+    attackerCar,
+    defender,
+    defenderCar,
+    gapToAheadSeconds,
+    lap,
+    seed,
+    track,
+    trackGrip,
+    trackProgress,
+    weather,
+  } = context
+  const key = `${seed}:battle:${attacker.id}:${defender.id}:${lap}`
+  const aeroZones = track?.aeroActivationZones ?? []
+  const inMappedStraight =
+    trackProgress !== undefined &&
+    aeroZones.some((aeroZone) =>
+      progressIsInZone(trackProgress, aeroZone.start, aeroZone.end),
+    )
+  const zone: BattleDynamics['zone'] =
+    trackProgress === undefined
+      ? aeroZones.length > 0 && hashChance(`${key}:zone`) < 0.62
+        ? 'straight'
+        : 'corner'
+      : inMappedStraight
+        ? 'straight'
+        : 'corner'
+  const hasActiveOvertake =
+    zone === 'straight' && attackerCar.overtakeStatus === 'active'
+  const assistance: BattleDynamics['assistance'] = hasActiveOvertake
+    ? 'overtake'
+    : zone === 'straight' && gapToAheadSeconds <= 1.2
+      ? 'tow'
+      : 'none'
+  const attackerTireDelta = tireDeltaSeconds(
+    attackerCar.tire,
+    attackerCar.tireAgeLaps,
+    attacker.tireManagement,
+    weather,
+    trackGrip,
+    attackerCar.tireTemperatureC,
+    attackerCar.tireWearPercent,
+    track?.tireNomination,
+  )
+  const defenderTireDelta = tireDeltaSeconds(
+    defenderCar.tire,
+    defenderCar.tireAgeLaps,
+    defender.tireManagement,
+    weather,
+    trackGrip,
+    defenderCar.tireTemperatureC,
+    defenderCar.tireWearPercent,
+    track?.tireNomination,
+  )
+  const tirePerformanceEdge = clamp(
+    (defenderTireDelta - attackerTireDelta) * 0.085,
+    -0.18,
+    0.18,
+  )
+  const ersPowerDeltaKw =
+    zone === 'straight'
+      ? attackerCar.ersPowerKw - defenderCar.ersPowerKw
+      : 0
+  const electricalPerformanceEdge =
+    zone === 'straight'
+      ? clamp((ersPowerDeltaKw / 150) * 0.075, -0.075, 0.075)
+      : 0
 
-    if (attackerWet && !defenderWet) {
-      return 0.18
-    }
-
-    if (!attackerWet && defenderWet) {
-      return -0.2
-    }
+  return {
+    assistance,
+    electricalPerformanceEdge,
+    ersPowerDeltaKw,
+    tirePerformanceEdge,
+    zone,
   }
-
-  return dryTireAttackBias[attackerCompound] - dryTireAttackBias[defenderCompound]
 }
 
 export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null {
@@ -115,8 +188,6 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     lap,
     seed,
     trackGrip,
-    track,
-    trackProgress,
     weather,
     sector: currentSector,
   } = context
@@ -132,34 +203,28 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   }
 
   const key = `${seed}:battle:${attacker.id}:${defender.id}:${lap}`
-  const aeroZones = track?.aeroActivationZones ?? []
-  const inMappedOvertakeZone =
-    trackProgress !== undefined &&
-    aeroZones.some((aeroZone) =>
-      progressIsInZone(trackProgress, aeroZone.start, aeroZone.end),
-    )
-  const zone: OvertakeOutcome['zone'] =
-    trackProgress === undefined
-      ? aeroZones.length > 0 && hashChance(`${key}:zone`) < 0.62
-        ? 'overtake'
-        : 'corner'
-      : inMappedOvertakeZone
-        ? 'overtake'
-        : 'corner'
-  const overtakeEdge =
-    zone === 'overtake' ? 0.12 + Math.min(0.08, aeroZones.length * 0.02) : 0
+  const battleDynamics = battleDynamicsFor(context)
+  const {
+    assistance,
+    electricalPerformanceEdge,
+    tirePerformanceEdge,
+    zone,
+  } = battleDynamics
   const gapPressure = clamp01(1 - gapToAheadSeconds / attackWindow)
   const skillEdge = driverOvertaking(attacker) - driverDefense(defender)
   const wetEdge =
     weather === 'clear' ? 0 : driverWetSkill(attacker) - driverWetSkill(defender)
-  const tireEdge = tireBattleBias(attackerCar.tire, defenderCar.tire, weather)
-  const attackerWear = attackerCar.tireAgeLaps / effectiveCliffLaps(attackerCar.tire, attacker.tireManagement)
-  const defenderWear = defenderCar.tireAgeLaps / effectiveCliffLaps(defenderCar.tire, defender.tireManagement)
-  const tireAgeEdge = clamp((defenderWear - attackerWear) * 0.16, -0.14, 0.14)
   const chaos =
     (isOpeningLap ? 0.18 : 0) + (inRestartWindow ? 0.12 : 0) + (1 - trackGrip) * 0.18
   const attemptChance = clamp(
-    0.14 + gapPressure * 0.48 + skillEdge * 0.22 + tireEdge * 0.4 + tireAgeEdge + wetEdge * 0.12 + chaos + overtakeEdge,
+    0.14 +
+      gapPressure * 0.48 +
+      skillEdge * 0.22 +
+      tirePerformanceEdge +
+      wetEdge * 0.12 +
+      chaos +
+      electricalPerformanceEdge +
+      (zone === 'straight' ? 0.025 : 0),
     0.05,
     0.82,
   )
@@ -186,12 +251,12 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     0.22 +
       gapPressure * 0.5 +
       skillEdge * 0.36 +
-      tireEdge * 0.5 +
-      tireAgeEdge +
+      tirePerformanceEdge * 1.12 +
       wetEdge * 0.18 -
       (1 - trackGrip) * 0.1 -
       (isOpeningLap ? 0.05 : 0) +
-      overtakeEdge * 0.22,
+      electricalPerformanceEdge * 1.2 +
+      (zone === 'straight' ? 0.03 : 0),
     0.08,
     0.86,
   )
@@ -230,6 +295,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
               : 28 + detail * 26,
         sector,
         zone,
+        assistance,
         message: `${attacker.code} and ${defender.code} collide in sector ${sector + 1}.`,
       }
     }
@@ -249,6 +315,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       flagDurationSeconds: needsYellow ? 12 + detail * 18 : 0,
       sector,
       zone,
+      assistance,
       message: `${attacker.code} tags ${defender.code} in sector ${sector + 1}; both lose time.`,
     }
   }
@@ -268,9 +335,12 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       flagDurationSeconds: 0,
       sector,
       zone,
+      assistance,
       message:
-        zone === 'overtake'
-          ? `${attacker.code} completes the pass with Overtake on the straight.`
+        assistance === 'overtake'
+          ? `${attacker.code} passes ${defender.code} with Overtake on the straight.`
+          : assistance === 'tow'
+            ? `${attacker.code} uses the tow and passes ${defender.code} on the straight.`
           : `${attacker.code} passes ${defender.code} under braking after a close fight.`,
     }
   }
@@ -289,6 +359,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     flagDurationSeconds: 0,
     sector,
     zone,
+    assistance,
     message: `${defender.code} defends hard from ${attacker.code}.`,
   }
 }

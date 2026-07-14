@@ -2340,7 +2340,11 @@ export default function App() {
           <span>Field data</span>
           <strong title="Team and driver performance source">
             {fieldCalibration.source === 'openf1-calibrated'
-              ? `Cal ${seasonStandings.data?.sourceYear ?? ''} ${Math.round(fieldCalibration.confidence * 100)}%`
+              ? `${
+                  seasonStandings.data?.snapshotSource === 'bundled'
+                    ? 'Snap'
+                    : 'Cal'
+                } ${seasonStandings.data?.sourceYear ?? ''} ${Math.round(fieldCalibration.confidence * 100)}%`
               : seasonStandings.status === 'loading'
                 ? 'Loading'
                 : 'Model'}
@@ -2723,7 +2727,11 @@ export default function App() {
               <span>Field model</span>
               <strong title={fieldCalibration.provenance.note ?? undefined}>
                 {fieldCalibration.source === 'openf1-calibrated'
-                  ? `CAL ${Math.round(fieldCalibration.confidence * 100)}%`
+                  ? `${
+                      seasonStandings.data?.snapshotSource === 'bundled'
+                        ? 'SNAP'
+                        : 'CAL'
+                    } ${Math.round(fieldCalibration.confidence * 100)}%`
                   : 'SIM'}
               </strong>
               <span>Track model</span>

@@ -827,9 +827,10 @@ const deriveAeroActivationZones = (
 
 const derivePitLane = (track: Pick<TrackDefinition, 'id'>) => ({
   boxCount: 12,
-  boxStartProgress: 0.018,
-  entryProgress: 0.965,
-  exitProgress: 0.13,
+  boxSpacingProgress: 0.0017,
+  boxStartProgress: 0.976,
+  entryProgress: 0.94,
+  exitProgress: 0.055,
   // FIA B1.6.3 defaults to 80 km/h. Monaco's 2026 event notes set 60 km/h.
   speedLimitKph: track.id === 'monaco-approx' ? 60 : 80,
   geometrySource: 'derived' as const,

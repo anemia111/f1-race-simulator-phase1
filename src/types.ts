@@ -275,6 +275,7 @@ export type TrackDefinition = {
   }
   pitLane?: {
     boxCount: number
+    boxSpacingProgress?: number
     boxStartProgress: number
     entryProgress: number
     exitProgress: number

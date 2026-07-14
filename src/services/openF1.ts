@@ -252,6 +252,9 @@ export type OpenF1StandingsSnapshot = {
   sourceYear: number
   /** Upper bound used to prevent future-round standings leaking backwards. */
   asOfDate?: string | null
+  snapshotMeetingKey?: number | null
+  snapshotSessionKey?: number | null
+  snapshotSource?: 'api' | 'bundled'
 }
 
 const trackMatchers: Record<string, string[]> = {
@@ -1104,6 +1107,9 @@ export async function fetchOpenF1SeasonStandings(
         raceSession,
         sourceYear: year,
         asOfDate: new Date(now).toISOString(),
+        snapshotMeetingKey: meeting.meeting_key,
+        snapshotSessionKey: sessionKey,
+        snapshotSource: 'api',
       }
     }
   }
@@ -1115,5 +1121,8 @@ export async function fetchOpenF1SeasonStandings(
     raceSession: null,
     sourceYear: year,
     asOfDate: new Date(now).toISOString(),
+    snapshotMeetingKey: null,
+    snapshotSessionKey: null,
+    snapshotSource: 'api',
   }
 }

@@ -2,6 +2,7 @@ import { Line, OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type {
   CameraMode,
@@ -11,6 +12,10 @@ import type {
   TrackDefinition,
 } from '../types'
 import { racingLineAt } from '../simulation/trackDynamics'
+import {
+  pitBoxProgress,
+  pitBoxSlotForTeam,
+} from '../simulation/pitLane'
 import {
   progressAtTime,
   type OpenF1TrackProgress,
@@ -45,6 +50,76 @@ const PIT_ENTRY_VISUAL_SECONDS = 3.2
 const STARTING_GRID_SLOT_GAP = 0.0022
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+function transformedGeometry(
+  geometry: THREE.BufferGeometry,
+  position: [number, number, number],
+  rotation: [number, number, number] = [0, 0, 0],
+) {
+  geometry.rotateX(rotation[0])
+  geometry.rotateY(rotation[1])
+  geometry.rotateZ(rotation[2])
+  geometry.translate(...position)
+
+  return geometry
+}
+
+function mergedCarGeometry(parts: THREE.BufferGeometry[]) {
+  const geometry = mergeGeometries(parts, false)
+
+  parts.forEach((part) => part.dispose())
+
+  if (!geometry) {
+    throw new Error('Unable to merge lightweight car geometry')
+  }
+
+  return geometry
+}
+
+const carBodyGeometry = mergedCarGeometry([
+  transformedGeometry(
+    new THREE.CapsuleGeometry(0.225, 0.88, 4, 10),
+    [0, 0.015, 0.02],
+    [Math.PI / 2, 0, 0],
+  ),
+  transformedGeometry(new THREE.BoxGeometry(0.2, 0.13, 0.76), [0, 0.015, -0.73]),
+  transformedGeometry(new THREE.BoxGeometry(0.12, 0.085, 0.28), [0, -0.005, -1.12]),
+  transformedGeometry(new THREE.BoxGeometry(0.3, 0.18, 0.7), [-0.34, 0.005, 0.16], [0, 0.08, 0]),
+  transformedGeometry(new THREE.BoxGeometry(0.3, 0.18, 0.7), [0.34, 0.005, 0.16], [0, -0.08, 0]),
+  transformedGeometry(
+    new THREE.ConeGeometry(0.2, 0.48, 8),
+    [0, 0.13, 0.43],
+    [Math.PI / 2, 0, 0],
+  ),
+  transformedGeometry(new THREE.BoxGeometry(0.045, 0.32, 0.24), [-0.52, 0.17, 0.94]),
+  transformedGeometry(new THREE.BoxGeometry(0.045, 0.32, 0.24), [0.52, 0.17, 0.94]),
+])
+
+const carCarbonGeometry = mergedCarGeometry([
+  transformedGeometry(new THREE.BoxGeometry(0.92, 0.055, 1.76), [0, -0.1, 0.04]),
+  transformedGeometry(new THREE.CapsuleGeometry(0.17, 0.22, 3, 8), [0, 0.13, 0.02]),
+  transformedGeometry(new THREE.BoxGeometry(1.16, 0.035, 0.1), [0, 0.075, -1.15]),
+  transformedGeometry(new THREE.BoxGeometry(0.04, 0.16, 0.3), [-0.68, 0.07, -1.22]),
+  transformedGeometry(new THREE.BoxGeometry(0.04, 0.16, 0.3), [0.68, 0.07, -1.22]),
+  transformedGeometry(new THREE.BoxGeometry(0.82, 0.05, 0.12), [0, 0.1, 0.89]),
+  ...[
+    [-0.53, -0.49],
+    [0.53, -0.49],
+    [-0.53, 0.58],
+    [0.53, 0.58],
+  ].map(([x, z]) =>
+    transformedGeometry(
+      new THREE.CylinderGeometry(0.185, 0.185, 0.17, 14),
+      [x, -0.035, z],
+      [0, 0, Math.PI / 2],
+    ),
+  ),
+])
+
+const carWingGeometry = mergedCarGeometry([
+  transformedGeometry(new THREE.BoxGeometry(1.36, 0.055, 0.16), [0, 0.015, -1.27]),
+  transformedGeometry(new THREE.BoxGeometry(1.06, 0.095, 0.16), [0, 0.25, 0.94]),
+])
 
 function SpriteLabel({
   color,
@@ -97,16 +172,8 @@ function SpriteLabel({
   )
 }
 
-function pitLaneProgress(track: TrackDefinition, slot: number) {
-  const lane = track.pitLane
-  const boxCount = lane?.boxCount ?? 12
-  const boxStart = lane?.boxStartProgress ?? 0.012
-
-  return (boxStart + (slot % boxCount) * 0.009) % 1
-}
-
 function pitLaneOffset(track: TrackDefinition) {
-  return -(track.width / 2 + 2.35)
+  return -(track.width / 2 + 0.95)
 }
 
 type PosedInstance = {
@@ -211,13 +278,23 @@ function displayPoseForCar(
   laneOffset: number,
   track: TrackDefinition,
   pitSlot: number,
+  garageBayIndex: number,
   elapsedSeconds: number,
 ) {
   const trackPose = poseOnTrack(curve, car.progress, laneOffset)
-  const pitPose = poseOnTrack(curve, pitLaneProgress(track, pitSlot), pitLaneOffset(track))
+  const garagePose = poseOnTrack(
+    curve,
+    pitBoxProgress(track, pitSlot),
+    pitLaneOffset(track) - 0.56,
+  )
+  garagePose.position.add(
+    garagePose.tangent
+      .clone()
+      .multiplyScalar(garageBayIndex === 0 ? -0.46 : 0.46),
+  )
   const movingPitPose =
-    car.pitLaneProgress === null
-      ? pitPose
+    car.pitLaneProgress === null || car.pitPhase === 'box'
+      ? garagePose
       : poseOnTrack(curve, car.pitLaneProgress, pitLaneOffset(track))
 
   if (car.status === 'pit') {
@@ -276,7 +353,7 @@ function PitLane({
   )
   const labelPose = poseOnTrack(
     curve,
-    track.pitLane?.boxStartProgress ?? 0.075,
+    track.pitLane?.boxStartProgress ?? 0.976,
     pitLaneOffset(track) - 0.5,
   )
   const pitBoxes = useMemo(
@@ -285,15 +362,30 @@ function PitLane({
         index,
         pose: poseOnTrack(
           curve,
-          pitLaneProgress(track, index),
+          pitBoxProgress(track, index),
           pitLaneOffset(track) - 0.72,
         ),
       })),
     [curve, track],
   )
+  const pitRoadGeometry = useMemo(() => {
+    const pitCurve = new THREE.CatmullRomCurve3(
+      points.map((point) => point.clone()),
+      false,
+      'catmullrom',
+      0.48,
+    )
+
+    return createTrackRibbonGeometry(pitCurve, 1.85, 64)
+  }, [points])
+
+  useEffect(() => () => pitRoadGeometry.dispose(), [pitRoadGeometry])
 
   return (
     <group>
+      <mesh geometry={pitRoadGeometry} receiveShadow>
+        <meshStandardMaterial color="#1b1e21" roughness={0.78} />
+      </mesh>
       <Line points={points} color="#111419" lineWidth={5} />
       <Line points={points} color="#4bd8ff" lineWidth={1.2} />
       <InstancedPitBoxes boxes={pitBoxes} />
@@ -701,6 +793,7 @@ function TrackSurface({
 function CarMarker({
   car,
   curve,
+  garageBayIndex,
   index,
   isSelected,
   onSelectDriver,
@@ -710,6 +803,7 @@ function CarMarker({
 }: {
   car: CarSnapshot
   curve: THREE.CatmullRomCurve3
+  garageBayIndex: number
   index: number
   isSelected: boolean
   onSelectDriver: (driverId: string) => void
@@ -723,13 +817,14 @@ function CarMarker({
     car.status === 'disqualified' ||
     car.status === 'dns'
       ? '#5a5f63'
-      : car.status === 'pit'
-        ? '#4bd8ff'
-        : car.teamColor
+      : car.teamColor
   const showLabel =
     isSelected ||
     (snapshotElapsedSeconds > 8 && car.position <= 6) ||
-    car.status !== 'running' ||
+    car.status === 'retired' ||
+    car.status === 'disqualified' ||
+    car.status === 'dns' ||
+    (car.status === 'pit' && car.pitPhase !== 'box') ||
     car.timedRunPhase === 'attack-lap'
   const warningLightOn =
     car.warningLightsUntilSeconds !== null &&
@@ -744,6 +839,7 @@ function CarMarker({
       laneOffset,
       track,
       index,
+      garageBayIndex,
       snapshotElapsedSeconds,
     )
     const group = groupRef.current
@@ -765,89 +861,19 @@ function CarMarker({
           onSelectDriver(car.driverId)
         }}
       >
-        <mesh position={[0, -0.1, 0.04]} receiveShadow>
-          <boxGeometry args={[0.92, 0.055, 1.76]} />
-          <meshStandardMaterial color="#080a0c" roughness={0.64} metalness={0.18} />
-        </mesh>
-        <mesh castShadow position={[0, 0.015, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
-          <capsuleGeometry args={[0.225, 0.88, 4, 10]} />
+        <mesh geometry={carBodyGeometry}>
           <meshStandardMaterial color={markerColor} roughness={0.38} metalness={0.24} />
         </mesh>
-        <mesh castShadow position={[0, 0.015, -0.73]}>
-          <boxGeometry args={[0.2, 0.13, 0.76]} />
-          <meshStandardMaterial color={markerColor} roughness={0.4} metalness={0.2} />
+        <mesh geometry={carCarbonGeometry} receiveShadow>
+          <meshStandardMaterial color="#080a0c" roughness={0.64} metalness={0.18} />
         </mesh>
-        <mesh position={[0, -0.005, -1.12]}>
-          <boxGeometry args={[0.12, 0.085, 0.28]} />
-          <meshStandardMaterial color="#eef1f2" roughness={0.44} metalness={0.12} />
-        </mesh>
-        {[-1, 1].map((side) => (
-          <mesh
-            castShadow
-            key={`sidepod-${side}`}
-            position={[side * 0.34, 0.005, 0.16]}
-            rotation={[0, side * -0.08, 0]}
-          >
-            <boxGeometry args={[0.3, 0.18, 0.7]} />
-            <meshStandardMaterial color={markerColor} roughness={0.43} metalness={0.2} />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.13, 0.02]}>
-          <capsuleGeometry args={[0.17, 0.22, 3, 8]} />
-          <meshStandardMaterial color="#101418" roughness={0.3} metalness={0.18} />
-        </mesh>
-        <mesh position={[0, 0.13, 0.43]} rotation={[Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.2, 0.48, 8]} />
-          <meshStandardMaterial color={markerColor} roughness={0.4} metalness={0.2} />
-        </mesh>
-
-        <mesh position={[0, 0.015, -1.27]}>
-          <boxGeometry args={[1.36, 0.055, 0.16]} />
+        <mesh geometry={carWingGeometry}>
           <meshStandardMaterial
-            color={car.activeAeroMode !== 'corner' ? '#46d880' : '#e8ecef'}
-            roughness={0.42}
+            color={car.activeAeroMode !== 'corner' ? '#46d880' : markerColor}
+            roughness={0.4}
+            metalness={0.18}
           />
         </mesh>
-        <mesh position={[0, 0.075, -1.15]}>
-          <boxGeometry args={[1.16, 0.035, 0.1]} />
-          <meshStandardMaterial color="#111419" roughness={0.48} />
-        </mesh>
-        {[-1, 1].map((side) => (
-          <mesh key={`front-endplate-${side}`} position={[side * 0.68, 0.07, -1.22]}>
-            <boxGeometry args={[0.04, 0.16, 0.3]} />
-            <meshStandardMaterial color="#0b0e11" roughness={0.5} />
-          </mesh>
-        ))}
-
-        <mesh position={[0, 0.25, 0.94]}>
-          <boxGeometry args={[1.06, 0.095, 0.16]} />
-          <meshStandardMaterial
-            color={car.activeAeroMode !== 'corner' ? '#46d880' : '#111419'}
-            roughness={0.36}
-          />
-        </mesh>
-        <mesh position={[0, 0.1, 0.89]}>
-          <boxGeometry args={[0.82, 0.05, 0.12]} />
-          <meshStandardMaterial color="#080a0c" roughness={0.52} />
-        </mesh>
-        {[-1, 1].map((side) => (
-          <mesh key={`rear-endplate-${side}`} position={[side * 0.52, 0.17, 0.94]}>
-            <boxGeometry args={[0.045, 0.32, 0.24]} />
-            <meshStandardMaterial color={markerColor} roughness={0.42} metalness={0.16} />
-          </mesh>
-        ))}
-
-        {[
-          [-0.53, -0.49],
-          [0.53, -0.49],
-          [-0.53, 0.58],
-          [0.53, 0.58],
-        ].map(([x, z]) => (
-          <mesh castShadow key={`wheel-${x}-${z}`} position={[x, -0.035, z]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.185, 0.185, 0.17, 14]} />
-            <meshStandardMaterial color="#030405" roughness={0.72} metalness={0.08} />
-          </mesh>
-        ))}
 
         {showDetails ? (
           <>
@@ -994,14 +1020,16 @@ function CameraRig({
   cameraMode,
   curve,
   selectedCar,
-  selectedIndex,
+  selectedGarageBayIndex,
+  selectedPitSlot,
   snapshotElapsedSeconds,
   track,
 }: {
   cameraMode: CameraMode
   curve: THREE.CatmullRomCurve3
   selectedCar: CarSnapshot
-  selectedIndex: number
+  selectedGarageBayIndex: number
+  selectedPitSlot: number
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
@@ -1015,7 +1043,8 @@ function CameraRig({
       selectedCar,
       0,
       track,
-      selectedIndex,
+      selectedPitSlot,
+      selectedGarageBayIndex,
       snapshotElapsedSeconds,
     )
     const target = pose.position.clone().setY(0.5)
@@ -1071,10 +1100,30 @@ function SceneContents({
 }: SceneContentsProps) {
   const selectedCar =
     snapshot.cars.find((car) => car.driverId === selectedDriverId) ?? snapshot.cars[0]
-  const selectedIndex = Math.max(
-    0,
-    snapshot.cars.findIndex((car) => car.driverId === selectedCar.driverId),
+  const pitSlotByTeam = useMemo(
+    () =>
+      new Map(
+        config.teams.map((team) => [
+          team.id,
+          pitBoxSlotForTeam(config.teams, team.id),
+        ]),
+      ),
+    [config.teams],
   )
+  const garageBayByDriver = useMemo(() => {
+    const result = new Map<string, number>()
+
+    for (const team of config.teams) {
+      config.drivers
+        .filter((driver) => driver.teamId === team.id)
+        .forEach((driver, index) => result.set(driver.id, index % 2))
+    }
+
+    return result
+  }, [config.drivers, config.teams])
+  const selectedPitSlot = pitSlotByTeam.get(selectedCar.teamId) ?? 0
+  const selectedGarageBayIndex =
+    garageBayByDriver.get(selectedCar.driverId) ?? 0
 
   return (
     <>
@@ -1097,13 +1146,14 @@ function SceneContents({
         edgeRight={edgeRight}
         roadGeometry={roadGeometry}
       />
-      {snapshot.cars.map((car, index) =>
+      {snapshot.cars.map((car) =>
         // Retired cars stay on track (grayed out) until marshals clear them.
         car.hiddenFromTrack ? null : (
           <CarMarker
             car={car}
             curve={curve}
-            index={index}
+            garageBayIndex={garageBayByDriver.get(car.driverId) ?? 0}
+            index={pitSlotByTeam.get(car.teamId) ?? 0}
             isSelected={car.driverId === selectedDriverId}
             key={car.driverId}
             onSelectDriver={onSelectDriver}
@@ -1128,7 +1178,8 @@ function SceneContents({
         cameraMode={cameraMode}
         curve={curve}
         selectedCar={selectedCar}
-        selectedIndex={selectedIndex}
+        selectedGarageBayIndex={selectedGarageBayIndex}
+        selectedPitSlot={selectedPitSlot}
         snapshotElapsedSeconds={snapshot.elapsedSeconds}
         track={config.track}
       />
