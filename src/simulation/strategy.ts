@@ -75,7 +75,9 @@ export const pitTuning = {
   /** Don't pit with fewer laps than this remaining. */
   minRemainingLaps: 4,
   /** Normal green-flag pit-lane capacity used to stagger routine stops. */
-  normalPitLaneCapacity: 5,
+  normalPitLaneCapacity: 2,
+  /** A peak brake temperature is normal; only sustained heat triggers a stop. */
+  brakeOverheatPitSeconds: 35,
 } as const
 
 /**
@@ -164,7 +166,7 @@ export function decidePitStop(options: {
     | 'compoundsUsed'
     | 'damage'
     | 'pitStops'
-  >
+  > & { brakeOverheatSeconds?: number }
   lap: number
   raceLaps: number
   underSafetyCar: boolean
@@ -254,10 +256,10 @@ export function decidePitStop(options: {
     gapBehindSeconds < 1.25
   const frontRunner = (position ?? 99) <= 6
   const inPitWindow = age >= cliff - 4
-
-  if (!compoundMatchesWeather(car.tire, weather, trackGrip)) {
-    return { compound, reason: 'weather' }
-  }
+  const weatherMismatch = !compoundMatchesWeather(car.tire, weather, trackGrip)
+  const criticalWeatherMismatch =
+    (weather === 'heavy-rain' && isDryCompound(car.tire)) ||
+    (weather === 'clear' && trackGrip >= 0.98 && car.tire === 'W')
 
   // Damage repair takes priority.
   if (car.damage >= pitTuning.damagePitThreshold) {
@@ -266,7 +268,11 @@ export function decidePitStop(options: {
 
   // Sensor state is authoritative over the age-only tire model. A badly
   // overheated brake assembly also needs a safety stop before fade escalates.
-  if (car.brakeTemperatureC >= 1100) {
+  const sustainedBrakeOverheat =
+    car.brakeTemperatureC >= 1090 &&
+    (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
+
+  if (sustainedBrakeOverheat) {
     return { compound, reason: 'brake-cooling' }
   }
 
@@ -276,9 +282,9 @@ export function decidePitStop(options: {
 
   const emergencyStop =
     car.damage >= pitTuning.damagePitThreshold ||
-    car.brakeTemperatureC >= 1100 ||
+    sustainedBrakeOverheat ||
     car.tireWearPercent >= 88 ||
-    !compoundMatchesWeather(car.tire, weather, trackGrip)
+    criticalWeatherMismatch
 
   if (teammateInPit && !emergencyStop && !underSafetyCar) {
     return null
@@ -293,6 +299,26 @@ export function decidePitStop(options: {
     !emergencyStop
   ) {
     return null
+  }
+
+  if (weatherMismatch) {
+    const responseCycle = 3
+    const responseSlot = Math.floor(
+      hashChance(`${seed}:weather-response:${driver.id}`) * responseCycle,
+    )
+
+    // Non-critical crossover calls are deliberately split across several
+    // laps. Teams still react immediately to slicks in heavy rain, while an
+    // inter-to-slick transition leaves room for traffic and crossover judgement.
+    if (
+      !criticalWeatherMismatch &&
+      !underSafetyCar &&
+      lap % responseCycle !== responseSlot
+    ) {
+      return null
+    }
+
+    return { compound, reason: 'weather' }
   }
 
   const rejoinLoss =
@@ -393,7 +419,7 @@ export function decidePitStop(options: {
   }
 
   // Inside the pit window: staggered entries via a per-lap roll.
-  if (age >= cliff - 3 && hashChance(`${seed}:pit:${driver.id}:${lap}`) < 0.45) {
+  if (age >= cliff - 3 && hashChance(`${seed}:pit:${driver.id}:${lap}`) < 0.3) {
     return { compound, reason: 'wear' }
   }
 
@@ -415,7 +441,7 @@ export function strategyOutlookFor(options: {
     | 'brakeTemperatureC'
     | 'damage'
     | 'tireSetsRemaining'
-  >
+  > & { brakeOverheatSeconds?: number }
   lap: number
   raceLaps: number
   underSafetyCar: boolean
@@ -495,11 +521,15 @@ export function strategyOutlookFor(options: {
     }
   }
 
-  if (car.brakeTemperatureC >= 1100 || car.tireWearPercent >= 88) {
+  const sustainedBrakeOverheat =
+    car.brakeTemperatureC >= 1090 &&
+    (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
+
+  if (sustainedBrakeOverheat || car.tireWearPercent >= 88) {
     return {
       compound,
       estimatedStopLap: lap,
-      reason: car.brakeTemperatureC >= 1100 ? 'brake cooling' : 'measured tire wear',
+      reason: sustainedBrakeOverheat ? 'sustained brake overheating' : 'measured tire wear',
       urgency: 'box',
       ...shared,
     }

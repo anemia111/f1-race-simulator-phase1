@@ -46,6 +46,8 @@ export type OvertakeContext = {
   track?: TrackDefinition
   trackProgress?: number
   sector?: number
+  /** Number of battle checks made per lap; scales a lap-level attempt chance. */
+  evaluationsPerLap?: number
 }
 
 export type BattleDynamics = {
@@ -190,6 +192,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     trackGrip,
     weather,
     sector: currentSector,
+    evaluationsPerLap = 1,
   } = context
   const attackWindow = isOpeningLap ? 1.65 : inRestartWindow ? 1.25 : 1.05
 
@@ -216,7 +219,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     weather === 'clear' ? 0 : driverWetSkill(attacker) - driverWetSkill(defender)
   const chaos =
     (isOpeningLap ? 0.18 : 0) + (inRestartWindow ? 0.12 : 0) + (1 - trackGrip) * 0.18
-  const attemptChance = clamp(
+  const lapAttemptChance = clamp(
     0.14 +
       gapPressure * 0.48 +
       skillEdge * 0.22 +
@@ -228,6 +231,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     0.05,
     0.82,
   )
+  const attemptChance =
+    1 - Math.pow(1 - lapAttemptChance, 1 / Math.max(1, evaluationsPerLap))
 
   if (hashChance(`${key}:attempt`) > attemptChance) {
     return null

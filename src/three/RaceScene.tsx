@@ -2,7 +2,6 @@ import { Line, OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type {
   CameraMode,
@@ -36,6 +35,8 @@ type RaceSceneProps = {
   /** Truthful source tag for the overlay ('LIVE' or 'HIST'). */
   openF1OverlayMode: string
   selectedDriverId: string
+  /** Hides simulator markers when a synchronized observed frame is active. */
+  showSimulationCars?: boolean
   snapshot: RaceSnapshot
 }
 
@@ -51,75 +52,10 @@ const STARTING_GRID_SLOT_GAP = 0.0022
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-function transformedGeometry(
-  geometry: THREE.BufferGeometry,
-  position: [number, number, number],
-  rotation: [number, number, number] = [0, 0, 0],
-) {
-  geometry.rotateX(rotation[0])
-  geometry.rotateY(rotation[1])
-  geometry.rotateZ(rotation[2])
-  geometry.translate(...position)
-
-  return geometry
+/** Broadcast maps show a timing trace, not a scale model of the asphalt. */
+function presentationTrackWidth(track: TrackDefinition) {
+  return clamp(track.width * 0.27, 0.58, 0.92)
 }
-
-function mergedCarGeometry(parts: THREE.BufferGeometry[]) {
-  const geometry = mergeGeometries(parts, false)
-
-  parts.forEach((part) => part.dispose())
-
-  if (!geometry) {
-    throw new Error('Unable to merge lightweight car geometry')
-  }
-
-  return geometry
-}
-
-const carBodyGeometry = mergedCarGeometry([
-  transformedGeometry(
-    new THREE.CapsuleGeometry(0.225, 0.88, 4, 10),
-    [0, 0.015, 0.02],
-    [Math.PI / 2, 0, 0],
-  ),
-  transformedGeometry(new THREE.BoxGeometry(0.2, 0.13, 0.76), [0, 0.015, -0.73]),
-  transformedGeometry(new THREE.BoxGeometry(0.12, 0.085, 0.28), [0, -0.005, -1.12]),
-  transformedGeometry(new THREE.BoxGeometry(0.3, 0.18, 0.7), [-0.34, 0.005, 0.16], [0, 0.08, 0]),
-  transformedGeometry(new THREE.BoxGeometry(0.3, 0.18, 0.7), [0.34, 0.005, 0.16], [0, -0.08, 0]),
-  transformedGeometry(
-    new THREE.ConeGeometry(0.2, 0.48, 8),
-    [0, 0.13, 0.43],
-    [Math.PI / 2, 0, 0],
-  ),
-  transformedGeometry(new THREE.BoxGeometry(0.045, 0.32, 0.24), [-0.52, 0.17, 0.94]),
-  transformedGeometry(new THREE.BoxGeometry(0.045, 0.32, 0.24), [0.52, 0.17, 0.94]),
-])
-
-const carCarbonGeometry = mergedCarGeometry([
-  transformedGeometry(new THREE.BoxGeometry(0.92, 0.055, 1.76), [0, -0.1, 0.04]),
-  transformedGeometry(new THREE.CapsuleGeometry(0.17, 0.22, 3, 8), [0, 0.13, 0.02]),
-  transformedGeometry(new THREE.BoxGeometry(1.16, 0.035, 0.1), [0, 0.075, -1.15]),
-  transformedGeometry(new THREE.BoxGeometry(0.04, 0.16, 0.3), [-0.68, 0.07, -1.22]),
-  transformedGeometry(new THREE.BoxGeometry(0.04, 0.16, 0.3), [0.68, 0.07, -1.22]),
-  transformedGeometry(new THREE.BoxGeometry(0.82, 0.05, 0.12), [0, 0.1, 0.89]),
-  ...[
-    [-0.53, -0.49],
-    [0.53, -0.49],
-    [-0.53, 0.58],
-    [0.53, 0.58],
-  ].map(([x, z]) =>
-    transformedGeometry(
-      new THREE.CylinderGeometry(0.185, 0.185, 0.17, 14),
-      [x, -0.035, z],
-      [0, 0, Math.PI / 2],
-    ),
-  ),
-])
-
-const carWingGeometry = mergedCarGeometry([
-  transformedGeometry(new THREE.BoxGeometry(1.36, 0.055, 0.16), [0, 0.015, -1.27]),
-  transformedGeometry(new THREE.BoxGeometry(1.06, 0.095, 0.16), [0, 0.25, 0.94]),
-])
 
 function SpriteLabel({
   color,
@@ -173,7 +109,7 @@ function SpriteLabel({
 }
 
 function pitLaneOffset(track: TrackDefinition) {
-  return -(track.width / 2 + 0.95)
+  return -(presentationTrackWidth(track) / 2 + 0.62)
 }
 
 type PosedInstance = {
@@ -220,11 +156,11 @@ function InstancedPitBoxes({ boxes }: { boxes: PosedInstance[] }) {
   return (
     <group>
       <instancedMesh args={[undefined, undefined, boxes.length]} ref={baseRef}>
-        <boxGeometry args={[0.72, 0.08, 1.18]} />
-        <meshStandardMaterial color="#16191c" roughness={0.7} />
+        <boxGeometry args={[0.28, 0.035, 0.54]} />
+        <meshBasicMaterial color="#16191c" />
       </instancedMesh>
       <instancedMesh args={[undefined, undefined, boxes.length]} ref={markerRef}>
-        <boxGeometry args={[0.66, 0.05, 0.9]} />
+        <boxGeometry args={[0.23, 0.018, 0.4]} />
         <meshBasicMaterial vertexColors />
       </instancedMesh>
     </group>
@@ -241,7 +177,7 @@ function racingLineOffset(
 function startingGridSlotOffset(track: TrackDefinition, position: number) {
   const side = position % 2 === 1 ? -1 : 1
 
-  return side * Math.min(0.74, track.width * 0.26)
+  return side * presentationTrackWidth(track) * 0.28
 }
 
 function shouldUseStartingGridSlot(car: CarSnapshot, elapsedSeconds: number) {
@@ -263,12 +199,20 @@ function displayLaneOffset(
     return startingGridSlotOffset(track, car.position)
   }
 
-  // The race loop owns this state so the visual offset corresponds to the
-  // same attack/defence condition that affects the live classification.
+  const battleOffset =
+    car.battlePhase === 'attacking' ||
+    car.battlePhase === 'defending' ||
+    car.battlePhase === 'side-by-side'
+      ? car.trackLateralOffset
+      : 0
+  const presentationScale = presentationTrackWidth(track) / track.width
+
+  // Cars use one racing line until the race engine explicitly enters a
+  // passing battle. The scale changes presentation only, never simulation.
   return clamp(
-    racingLineOffset(track, car) + car.trackLateralOffset,
-    -track.width * 0.38,
-    track.width * 0.38,
+    (racingLineOffset(track, car) + battleOffset) * presentationScale,
+    -presentationTrackWidth(track) * 0.42,
+    presentationTrackWidth(track) * 0.42,
   )
 }
 
@@ -376,28 +320,27 @@ function PitLane({
       0.48,
     )
 
-    return createTrackRibbonGeometry(pitCurve, 1.85, 64)
+    return createTrackRibbonGeometry(pitCurve, 0.44, 64)
   }, [points])
 
   useEffect(() => () => pitRoadGeometry.dispose(), [pitRoadGeometry])
 
   return (
     <group>
-      <mesh geometry={pitRoadGeometry} receiveShadow>
-        <meshStandardMaterial color="#1b1e21" roughness={0.78} />
+      <mesh geometry={pitRoadGeometry}>
+        <meshBasicMaterial color="#171d24" transparent opacity={0.94} />
       </mesh>
-      <Line points={points} color="#111419" lineWidth={5} />
-      <Line points={points} color="#4bd8ff" lineWidth={1.2} />
+      <Line points={points} color="#8794a3" lineWidth={1.1} />
       <InstancedPitBoxes boxes={pitBoxes} />
       <SpriteLabel
         color="#4bd8ff"
-        fontSize={0.48}
+        fontSize={0.46}
         position={labelPose.position.setY(0.45)}
         text="PIT"
       />
       <SpriteLabel
         color="#f4c430"
-        fontSize={0.32}
+        fontSize={0.34}
         position={labelPose.position.clone().setY(0.86).add(new THREE.Vector3(0, 0, 0.62))}
         text={`${track.pitLane?.speedLimitKph ?? 80} KPH`}
       />
@@ -419,14 +362,18 @@ function ActiveAeroZoneLines({
         const span = Math.max(0.01, zone.end - zone.start)
         const points = Array.from({ length: steps + 1 }, (_, index) => {
           const progress = (zone.start + (index / steps) * span) % 1
-          const pose = poseOnTrack(curve, progress, track.width / 2 + 0.42)
+          const pose = poseOnTrack(
+            curve,
+            progress,
+            presentationTrackWidth(track) / 2 + 0.16,
+          )
 
           return pose.position.setY(0.14)
         })
         const labelPose = poseOnTrack(
           curve,
           zone.start + span * 0.5,
-          track.width / 2 + 0.95,
+          presentationTrackWidth(track) / 2 + 0.58,
         )
 
         return { ...zone, labelPose, points }
@@ -438,10 +385,10 @@ function ActiveAeroZoneLines({
     <group>
       {zones.map((zone) => (
         <group key={`${zone.label}-${zone.start}`}>
-          <Line points={zone.points} color="#46d880" lineWidth={2.8} />
+          <Line points={zone.points} color="#43e76f" lineWidth={1.8} />
           <SpriteLabel
             color="#46d880"
-            fontSize={0.3}
+            fontSize={0.42}
             position={zone.labelPose.position.setY(0.48)}
             text={zone.label}
           />
@@ -493,13 +440,15 @@ function RaceControlLines({
           rotation={[0, Math.atan2(marker.pose.tangent.x, marker.pose.tangent.z), 0]}
         >
           <mesh>
-            <boxGeometry args={[0.08, 0.025, track.width * 0.92]} />
+            <boxGeometry
+              args={[0.05, 0.018, presentationTrackWidth(track) * 0.95]}
+            />
             <meshBasicMaterial color={marker.color} />
           </mesh>
           <SpriteLabel
             color={marker.color}
-            fontSize={0.27}
-            position={[0, 0.38, track.width * 0.55]}
+            fontSize={0.34}
+            position={[0, 0.3, presentationTrackWidth(track) * 0.72]}
             text={marker.label}
           />
         </group>
@@ -571,11 +520,11 @@ function StartingGridSlots({
   return (
     <group>
       <instancedMesh args={[undefined, undefined, slots.length]} ref={slotRef}>
-        <boxGeometry args={[0.84, 0.018, 1.42]} />
+        <boxGeometry args={[0.26, 0.012, 0.48]} />
         <meshBasicMaterial opacity={0.34} transparent vertexColors />
       </instancedMesh>
       <instancedMesh args={[undefined, undefined, slots.length]} ref={lineRef}>
-        <boxGeometry args={[0.9, 0.02, 0.08]} />
+        <boxGeometry args={[0.3, 0.014, 0.04]} />
         <meshBasicMaterial color="#f2f5f0" opacity={0.58} transparent />
       </instancedMesh>
     </group>
@@ -699,23 +648,27 @@ function TrackFurniture({
   curve: THREE.CatmullRomCurve3
 }) {
   const barrierLeft = useMemo(
-    () => edgePoints(curve, config.track.width + 4.2, 1, 144),
-    [curve, config.track.width],
+    () => edgePoints(curve, presentationTrackWidth(config.track) + 3.2, 1, 144),
+    [curve, config.track],
   )
   const barrierRight = useMemo(
-    () => edgePoints(curve, config.track.width + 4.2, -1, 144),
-    [curve, config.track.width],
+    () => edgePoints(curve, presentationTrackWidth(config.track) + 3.2, -1, 144),
+    [curve, config.track],
   )
   const kerbs = useMemo(
     () =>
       Array.from({ length: 56 }, (_, index) => {
         const side = index % 2 === 0 ? 1 : -1
         const progress = (index / 56 + (side === 1 ? 0.012 : 0.022)) % 1
-        const pose = poseOnTrack(curve, progress, (config.track.width / 2 + 0.16) * side)
+        const pose = poseOnTrack(
+          curve,
+          progress,
+          (presentationTrackWidth(config.track) / 2 + 0.12) * side,
+        )
 
         return { index, pose, side }
       }),
-    [curve, config.track.width],
+    [curve, config.track],
   )
   const marshalPosts = useMemo(
     () => (config.track.marshalPosts ?? []).filter((_, index) => index % 2 === 0),
@@ -747,7 +700,57 @@ function TrackFurniture({
   )
 }
 
+function SectorPathLines({
+  curve,
+  track,
+}: {
+  curve: THREE.CatmullRomCurve3
+  track: TrackDefinition
+}) {
+  const sectors = useMemo(() => {
+    const starts = track.sectorMarks.length >= 3
+      ? track.sectorMarks.slice(0, 3)
+      : [0, 1 / 3, 2 / 3]
+
+    return starts.map((start, index) => {
+      const end = index === 2 ? 1 : (starts[index + 1] ?? 1)
+      const span = end > start ? end - start : end + 1 - start
+      const points = Array.from({ length: 45 }, (_, pointIndex) => {
+        const progress = (start + (pointIndex / 44) * span) % 1
+
+        return poseOnTrack(curve, progress, 0).position.setY(0.13)
+      })
+      const labelProgress = (start + span * 0.5) % 1
+      const labelPose = poseOnTrack(
+        curve,
+        labelProgress,
+        presentationTrackWidth(track) / 2 + 0.82,
+      )
+
+      return { labelPose, points }
+    })
+  }, [curve, track])
+  const colors = ['#00d8ff', '#ffd21f', '#ff344d']
+
+  return (
+    <group>
+      {sectors.map((sector, index) => (
+        <group key={index}>
+          <Line points={sector.points} color={colors[index]} lineWidth={2.1} />
+          <SpriteLabel
+            color={colors[index]}
+            fontSize={0.56}
+            position={sector.labelPose.position.setY(0.5)}
+            text={`SECTOR ${index + 1}`}
+          />
+        </group>
+      ))}
+    </group>
+  )
+}
+
 function TrackSurface({
+  cameraMode,
   config,
   curve,
   edgeLeft,
@@ -755,31 +758,45 @@ function TrackSurface({
   roadGeometry,
 }: Pick<
   SceneContentsProps,
-  'config' | 'curve' | 'edgeLeft' | 'edgeRight' | 'roadGeometry'
+  'cameraMode' | 'config' | 'curve' | 'edgeLeft' | 'edgeRight' | 'roadGeometry'
 >) {
   return (
     <group>
-      <mesh geometry={roadGeometry} receiveShadow>
-        <meshStandardMaterial color="#252528" roughness={0.72} metalness={0.08} />
+      <mesh geometry={roadGeometry}>
+        <meshBasicMaterial color="#222a34" transparent opacity={0.98} />
       </mesh>
-      <Line points={edgeLeft} color="#f2f5f0" lineWidth={1.5} />
-      <Line points={edgeRight} color="#c9272e" lineWidth={1.5} />
+      <Line points={edgeLeft} color="#eef4fb" lineWidth={1.15} />
+      <Line points={edgeRight} color="#eef4fb" lineWidth={1.15} />
+      <SectorPathLines curve={curve} track={config.track} />
       <ActiveAeroZoneLines curve={curve} track={config.track} />
       <RaceControlLines curve={curve} track={config.track} />
       <PitLane curve={curve} track={config.track} />
       <StartingGridSlots curve={curve} track={config.track} />
-      <TrackFurniture config={config} curve={curve} />
+      {cameraMode === 'overview' ? (
+        (config.track.corners ?? []).map((corner) => (
+          <SpriteLabel
+            color="#dce7f2"
+            fontSize={0.82}
+            key={corner.number}
+            outlineColor="#071019"
+            position={[corner.position[0], 0.46, corner.position[2]]}
+            text={`${corner.number}`}
+          />
+        ))
+      ) : (
+        <TrackFurniture config={config} curve={curve} />
+      )}
       {config.track.sectorMarks.map((mark, index) => {
         const pose = poseOnTrack(curve, mark)
 
         return (
           <group key={mark} position={pose.position} rotation={[0, 0, 0]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[1.45, 1.58, 48]} />
+              <ringGeometry args={[0.24, 0.31, 32]} />
               <meshBasicMaterial
-                color={index === 0 ? '#f4c430' : index === 1 ? '#4bd8ff' : '#ff73b8'}
+                color={index === 0 ? '#00d8ff' : index === 1 ? '#ffd21f' : '#ff344d'}
                 transparent
-                opacity={0.6}
+                opacity={0.92}
                 side={THREE.DoubleSide}
               />
             </mesh>
@@ -797,7 +814,6 @@ function CarMarker({
   index,
   isSelected,
   onSelectDriver,
-  showDetails,
   snapshotElapsedSeconds,
   track,
 }: {
@@ -807,29 +823,80 @@ function CarMarker({
   index: number
   isSelected: boolean
   onSelectDriver: (driverId: string) => void
-  showDetails: boolean
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
   const groupRef = useRef<THREE.Group>(null)
+  const invalidate = useThree((state) => state.invalidate)
   const markerColor =
     car.status === 'retired' ||
     car.status === 'disqualified' ||
     car.status === 'dns'
       ? '#5a5f63'
       : car.teamColor
-  const showLabel =
-    isSelected ||
-    (snapshotElapsedSeconds > 8 && car.position <= 6) ||
-    car.status === 'retired' ||
-    car.status === 'disqualified' ||
-    car.status === 'dns' ||
-    (car.status === 'pit' && car.pitPhase !== 'box') ||
-    car.timedRunPhase === 'attack-lap'
-  const warningLightOn =
-    car.warningLightsUntilSeconds !== null &&
-    snapshotElapsedSeconds < car.warningLightsUntilSeconds &&
-    Math.floor(snapshotElapsedSeconds * 8) % 2 === 0
+  const markerTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+    canvas.width = 320
+    canvas.height = 112
+
+    if (context) {
+      const borderColor =
+        isSelected
+          ? '#ffffff'
+          : car.overtakeStatus === 'active'
+            ? '#4cff79'
+            : '#071018'
+      const statusLabel =
+        car.status === 'pit'
+          ? 'PIT'
+          : car.status === 'retired'
+            ? 'OUT'
+            : car.status === 'disqualified'
+              ? 'DSQ'
+              : car.status === 'dns'
+                ? 'DNS'
+                : ''
+
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.beginPath()
+      context.arc(54, 56, isSelected ? 39 : 35, 0, Math.PI * 2)
+      context.fillStyle = markerColor
+      context.fill()
+      context.lineWidth = isSelected ? 8 : 6
+      context.strokeStyle = borderColor
+      context.stroke()
+
+      context.font = '900 30px Arial, sans-serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillStyle = '#ffffff'
+      context.fillText(`${car.position}`, 54, 57)
+
+      context.font = '900 44px Arial, sans-serif'
+      context.textAlign = 'left'
+      context.lineWidth = 9
+      context.lineJoin = 'round'
+      context.strokeStyle = '#05090e'
+      context.strokeText(car.code, 101, statusLabel ? 46 : 57)
+      context.fillStyle = '#ffffff'
+      context.fillText(car.code, 101, statusLabel ? 46 : 57)
+
+      if (statusLabel) {
+        context.font = '800 20px Arial, sans-serif'
+        context.fillStyle = statusLabel === 'PIT' ? '#47ddff' : '#aab4bf'
+        context.fillText(statusLabel, 102, 82)
+      }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.minFilter = THREE.LinearFilter
+
+    return texture
+  }, [car.code, car.overtakeStatus, car.position, car.status, isSelected, markerColor])
+
+  useEffect(() => () => markerTexture.dispose(), [markerTexture])
 
   useFrame(() => {
     const laneOffset = displayLaneOffset(track, car, snapshotElapsedSeconds)
@@ -848,101 +915,57 @@ function CarMarker({
       return
     }
 
-    group.position.lerp(pose.position.setY(0.38), 0.2)
-    group.lookAt(group.position.clone().add(pose.tangent))
+    const target = pose.position.setY(0.54)
+
+    if (group.position.distanceToSquared(target) > 0.0004) {
+      group.position.lerp(target, 0.28)
+      invalidate()
+    } else {
+      group.position.copy(target)
+    }
   })
 
   return (
     <group ref={groupRef}>
-      <group
-        scale={0.76}
+      <sprite
         onClick={(event) => {
           event.stopPropagation()
           onSelectDriver(car.driverId)
         }}
+        renderOrder={isSelected ? 20 : 10}
+        scale={isSelected ? [4.15, 1.45, 1] : [3.6, 1.26, 1]}
       >
-        <mesh geometry={carBodyGeometry}>
-          <meshStandardMaterial color={markerColor} roughness={0.38} metalness={0.24} />
-        </mesh>
-        <mesh geometry={carCarbonGeometry} receiveShadow>
-          <meshStandardMaterial color="#080a0c" roughness={0.64} metalness={0.18} />
-        </mesh>
-        <mesh geometry={carWingGeometry}>
-          <meshStandardMaterial
-            color={car.activeAeroMode !== 'corner' ? '#46d880' : markerColor}
-            roughness={0.4}
-            metalness={0.18}
-          />
-        </mesh>
-
-        {showDetails ? (
-          <>
-            <mesh position={[0, 0.19, -0.03]}>
-              <sphereGeometry args={[0.115, 12, 8]} />
-              <meshStandardMaterial color="#f2d14d" roughness={0.35} metalness={0.16} />
-            </mesh>
-            <mesh position={[0, 0.31, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.205, 0.032, 8, 18, Math.PI * 1.55]} />
-              <meshStandardMaterial color="#d7dce0" roughness={0.32} metalness={0.3} />
-            </mesh>
-            <mesh position={[0, 0.235, -0.21]} rotation={[-0.18, 0, 0]}>
-              <boxGeometry args={[0.045, 0.24, 0.045]} />
-              <meshStandardMaterial color="#d7dce0" roughness={0.32} metalness={0.3} />
-            </mesh>
-            {[-1, 1].map((side) => (
-              <group key={`mirror-${side}`}>
-                <mesh position={[side * 0.34, 0.2, -0.2]} rotation={[0, side * 0.2, 0]}>
-                  <boxGeometry args={[0.13, 0.065, 0.08]} />
-                  <meshStandardMaterial color={markerColor} roughness={0.38} metalness={0.2} />
-                </mesh>
-                <mesh position={[side * 0.265, 0.15, -0.15]} rotation={[0, 0, side * 0.5]}>
-                  <boxGeometry args={[0.025, 0.16, 0.025]} />
-                  <meshStandardMaterial color="#15191c" roughness={0.46} metalness={0.22} />
-                </mesh>
-              </group>
-            ))}
-          </>
-        ) : null}
-        <mesh position={[0, 0.13, 1.045]}>
-          <boxGeometry args={[0.18, 0.095, 0.055]} />
-          <meshStandardMaterial
-            color={warningLightOn ? '#ff1f32' : '#2c080c'}
-            emissive={warningLightOn ? '#ff1f32' : '#000000'}
-            emissiveIntensity={warningLightOn ? 3.2 : 0}
-          />
-        </mesh>
-      </group>
-      {isSelected ? (
-        <mesh position={[0, -0.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.78, 0.9, 40]} />
-          <meshBasicMaterial color="#f4c430" transparent opacity={0.86} />
-        </mesh>
-      ) : null}
-      {showLabel ? (
-        <SpriteLabel
-          color="#ffffff"
-          fontSize={0.7}
-          position={[0, 1.12, 0]}
-          text={car.code}
+        <spriteMaterial
+          depthTest={false}
+          depthWrite={false}
+          map={markerTexture}
+          transparent
         />
-      ) : null}
+      </sprite>
     </group>
   )
 }
 
 function OpenF1CarOverlay({
   curve,
+  driverIdByCode,
   mode,
+  onSelectDriver,
   overlay,
+  selectedDriverId,
   track,
 }: {
   curve: THREE.CatmullRomCurve3
+  driverIdByCode: Map<string, string>
   mode: string
+  onSelectDriver: (driverId: string) => void
   overlay: OpenF1TrackProgress
+  selectedDriverId: string
   track: TrackDefinition
 }) {
   const groupsRef = useRef(new Map<number, THREE.Group>())
   const playbackStartRef = useRef<number | null>(null)
+  const invalidate = useThree((state) => state.invalidate)
   const tagPose = useMemo(
     () => poseOnTrack(curve, 0, track.width / 2 + 1.5),
     [curve, track.width],
@@ -974,6 +997,8 @@ function OpenF1CarOverlay({
       group.position.copy(pose.position.setY(0.46))
       group.lookAt(group.position.clone().add(pose.tangent))
     }
+
+    invalidate()
   })
 
   return (
@@ -987,6 +1012,11 @@ function OpenF1CarOverlay({
       {overlay.cars.map((car) => (
         <group
           key={car.driverNumber}
+          onClick={(event) => {
+            event.stopPropagation()
+            const driverId = driverIdByCode.get(car.code)
+            if (driverId) onSelectDriver(driverId)
+          }}
           ref={(node) => {
             if (node) {
               groupsRef.current.set(car.driverNumber, node)
@@ -995,19 +1025,25 @@ function OpenF1CarOverlay({
             }
           }}
         >
-          <mesh>
-            <boxGeometry args={[0.68, 0.24, 1.34]} />
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry
+              args={[
+                driverIdByCode.get(car.code) === selectedDriverId ? 0.36 : 0.27,
+                24,
+              ]}
+            />
             <meshBasicMaterial
               color={car.teamColor}
-              opacity={0.44}
               transparent
-              wireframe
+              opacity={
+                driverIdByCode.get(car.code) === selectedDriverId ? 1 : 0.78
+              }
             />
           </mesh>
           <SpriteLabel
             color={car.teamColor}
-            fontSize={0.5}
-            position={[0, 0.78, 0]}
+            fontSize={0.68}
+            position={[0, 0.52, 0]}
             text={car.code}
           />
         </group>
@@ -1033,7 +1069,7 @@ function CameraRig({
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
-  const { camera } = useThree()
+  const { camera, invalidate } = useThree()
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   const targetRef = useRef(new THREE.Vector3(0, 0, 0))
 
@@ -1050,9 +1086,18 @@ function CameraRig({
     const target = pose.position.clone().setY(0.5)
 
     if (cameraMode === 'overview') {
-      camera.position.lerp(new THREE.Vector3(0, 34, 31), 0.06)
-      targetRef.current.lerp(new THREE.Vector3(0, 0, 0), 0.08)
+      const overviewPosition = new THREE.Vector3(0, 47, 0.01)
+      const overviewTarget = new THREE.Vector3(0, 0, 0)
+      camera.position.lerp(overviewPosition, 0.12)
+      targetRef.current.lerp(overviewTarget, 0.08)
       camera.lookAt(targetRef.current)
+
+      if (
+        camera.position.distanceToSquared(overviewPosition) > 0.0004 ||
+        targetRef.current.distanceToSquared(overviewTarget) > 0.0004
+      ) {
+        invalidate()
+      }
     }
 
     if (cameraMode === 'chase') {
@@ -1064,11 +1109,19 @@ function CameraRig({
       camera.position.lerp(chasePosition, 0.28)
       targetRef.current.lerp(target, 0.4)
       camera.lookAt(targetRef.current)
+
+      if (
+        camera.position.distanceToSquared(chasePosition) > 0.0004 ||
+        targetRef.current.distanceToSquared(target) > 0.0004
+      ) {
+        invalidate()
+      }
     }
 
     if (cameraMode === 'orbit' && controlsRef.current) {
       controlsRef.current.target.lerp(target, 0.1)
       controlsRef.current.update()
+      invalidate()
     }
   })
 
@@ -1080,6 +1133,7 @@ function CameraRig({
       maxDistance={58}
       maxPolarAngle={Math.PI * 0.47}
       minDistance={8}
+      onChange={() => invalidate()}
       target={[0, 0, 0]}
     />
   )
@@ -1096,6 +1150,7 @@ function SceneContents({
   openF1OverlayMode,
   roadGeometry,
   selectedDriverId,
+  showSimulationCars = true,
   snapshot,
 }: SceneContentsProps) {
   const selectedCar =
@@ -1124,29 +1179,28 @@ function SceneContents({
   const selectedPitSlot = pitSlotByTeam.get(selectedCar.teamId) ?? 0
   const selectedGarageBayIndex =
     garageBayByDriver.get(selectedCar.driverId) ?? 0
+  const driverIdByCode = useMemo(
+    () => new Map(config.drivers.map((driver) => [driver.code, driver.id])),
+    [config.drivers],
+  )
 
   return (
     <>
-      <color attach="background" args={['#141512']} />
-      <fog attach="fog" args={['#141512', 38, 92]} />
-      <ambientLight intensity={0.8} />
+      <ambientLight intensity={1.1} />
       <directionalLight
-        intensity={2.4}
+        intensity={0.8}
         position={[16, 27, 14]}
       />
-      <hemisphereLight args={['#d9f4ff', '#2a1f16', 1.0]} />
-      <mesh position={[0, -0.04, 0]} receiveShadow>
-        <boxGeometry args={[88, 0.05, 68]} />
-        <meshStandardMaterial color="#23301f" roughness={0.95} />
-      </mesh>
       <TrackSurface
+        cameraMode={cameraMode}
         config={config}
         curve={curve}
         edgeLeft={edgeLeft}
         edgeRight={edgeRight}
         roadGeometry={roadGeometry}
       />
-      {snapshot.cars.map((car) =>
+      {showSimulationCars
+        ? snapshot.cars.map((car) =>
         // Retired cars stay on track (grayed out) until marshals clear them.
         car.hiddenFromTrack ? null : (
           <CarMarker
@@ -1157,20 +1211,20 @@ function SceneContents({
             isSelected={car.driverId === selectedDriverId}
             key={car.driverId}
             onSelectDriver={onSelectDriver}
-            showDetails={
-              car.driverId === selectedDriverId ||
-              (cameraMode === 'orbit' && car.position <= 6)
-            }
             snapshotElapsedSeconds={snapshot.elapsedSeconds}
             track={config.track}
           />
         ),
-      )}
+      )
+        : null}
       {openF1Overlay && openF1Overlay.cars.length > 0 ? (
         <OpenF1CarOverlay
           curve={curve}
+          driverIdByCode={driverIdByCode}
           mode={openF1OverlayMode}
+          onSelectDriver={onSelectDriver}
           overlay={openF1Overlay}
+          selectedDriverId={selectedDriverId}
           track={config.track}
         />
       ) : null}
@@ -1189,25 +1243,28 @@ function SceneContents({
 
 export function RaceScene(props: RaceSceneProps) {
   const curve = useMemo(() => createTrackCurve(props.config.track), [props.config.track])
+  const trackWidth = presentationTrackWidth(props.config.track)
   const roadGeometry = useMemo(
-    () => createTrackRibbonGeometry(curve, props.config.track.width),
-    [curve, props.config.track.width],
+    () => createTrackRibbonGeometry(curve, trackWidth),
+    [curve, trackWidth],
   )
   const edgeLeft = useMemo(
-    () => edgePoints(curve, props.config.track.width, 1),
-    [curve, props.config.track.width],
+    () => edgePoints(curve, trackWidth, 1),
+    [curve, trackWidth],
   )
   const edgeRight = useMemo(
-    () => edgePoints(curve, props.config.track.width, -1),
-    [curve, props.config.track.width],
+    () => edgePoints(curve, trackWidth, -1),
+    [curve, trackWidth],
   )
 
   return (
     <Canvas
-      camera={{ fov: 48, near: 0.1, far: 220, position: [0, 34, 31] }}
+      camera={{ fov: 48, near: 0.1, far: 220, position: [0, 47, 0.01] }}
       className="race-canvas"
       dpr={[1, 1.35]}
+      frameloop="demand"
       gl={{
+        alpha: true,
         antialias: true,
         powerPreference: 'high-performance',
       }}

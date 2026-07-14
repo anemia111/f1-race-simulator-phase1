@@ -449,6 +449,8 @@ export type CarSnapshot = {
   /** Accumulated stint wear independent from integer lap age. */
   tireWearPercent: number
   brakeTemperatureC: number
+  /** Time spent continuously above the brake system's safe thermal range. */
+  brakeOverheatSeconds: number
   stewardStatus: StewardStatus
   stewardNote: string | null
   timedRunStartedAtSeconds: number | null

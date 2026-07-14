@@ -9,7 +9,7 @@
     "generate:tracks": "node scripts/generate-real-track-layouts.mjs",
     "lint": "oxlint",
     "test": "vitest run",
-    "playtest": "node scripts/playtest.mjs",
+    "playtest": "node scripts/broadcast-playtest.mjs",
     "benchmark": "node scripts/benchmark.mjs",
     "preview": "vite preview"
   },

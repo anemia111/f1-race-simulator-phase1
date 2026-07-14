@@ -187,6 +187,27 @@ export function progressForSpeed(
   return Math.max(0, speedKph) * (deltaSeconds / 3600) / track.lengthKm
 }
 
+/**
+ * Advances against the circuit's normalized speed profile. Unlike raw
+ * distance/speed conversion, this stays calibrated to `baseLapTime` even
+ * when source coordinates are sampled at uneven spatial intervals.
+ */
+export function progressForProfileSpeed(
+  track: TrackDefinition,
+  progress: number,
+  speedKph: number,
+  deltaSeconds: number,
+) {
+  const referenceSpeedKph = trackDynamicsAt(track, progress).referenceSpeedKph
+  const localPaceRatio = clamp(
+    Math.max(0, speedKph) / Math.max(1, referenceSpeedKph),
+    0,
+    1.6,
+  )
+
+  return (deltaSeconds / Math.max(1, track.baseLapTime)) * localPaceRatio
+}
+
 export function approachSpeed(
   currentKph: number,
   targetKph: number,

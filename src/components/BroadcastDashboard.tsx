@@ -1,0 +1,963 @@
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  CircleGauge,
+  CloudRain,
+  Database,
+  Droplets,
+  Flag,
+  Gauge,
+  LayoutDashboard,
+  Map as MapIcon,
+  MessageSquare,
+  Pause,
+  Play,
+  Radio,
+  Route,
+  Settings2,
+  ShieldAlert,
+  Thermometer,
+  Timer,
+  Trophy,
+  Users,
+  Wind,
+  Wrench,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import type {
+  CameraMode,
+  CarSnapshot,
+  RaceSnapshot,
+  SpeedMultiplier,
+  TrackDefinition,
+  WeekendStage,
+} from '../types'
+
+type DataMode = 'SIM' | 'HIST' | 'LIVE'
+type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
+type DashboardView =
+  | 'overview'
+  | 'timing'
+  | 'telemetry'
+  | 'track'
+  | 'weather'
+  | 'tyres'
+  | 'messages'
+  | 'alerts'
+  | 'drivers'
+  | 'data'
+
+export type BroadcastTimingRow = {
+  aeroOvertakeLabel: string
+  batteryPercent: number
+  brakePercent: number
+  car: CarSnapshot
+  displayGapToLeaderLabel: string
+  displayIntervalLabel: string
+  displayPosition: number
+  gear: number
+  lapTimeSeconds: number
+  lapDataLabel: string
+  microSectors: MiniSectorState[][]
+  rpm: number
+  source: 'openf1' | 'simulation'
+  sectors: [number, number, number]
+  speedKph: number
+  telemetrySource: 'openf1' | 'simulation' | 'unavailable'
+  throttlePercent: number
+  tireTemperatureC: number
+}
+
+export type BroadcastRaceControlEntry = {
+  id: string
+  message: string
+  source: string
+  timeLabel: string
+}
+
+export type BroadcastDataDetail = {
+  label: string
+  source: 'OBS' | 'CAL' | 'SIM' | 'FIA' | 'UNAVAILABLE'
+  value: string
+}
+
+type EnvironmentReadout = {
+  airLabel: string
+  humidityLabel: string
+  pressureLabel: string
+  rainLabel: string
+  source: string
+  trackLabel: string
+  windLabel: string
+}
+
+type BroadcastDashboardProps = {
+  cameraMode: CameraMode
+  dataControl: ReactNode
+  dataDetails: BroadcastDataDetail[]
+  dataMode: DataMode
+  dataModeAvailability: Record<DataMode, boolean>
+  engineLabel: string
+  environment: EnvironmentReadout
+  eventName: string
+  isPaused: boolean
+  onCameraModeChange: (mode: CameraMode) => void
+  onDataModeChange: (mode: DataMode) => void
+  onFocusDriver: (driverId: string) => void
+  onOpenClassification: () => void
+  onOpenInsights: () => void
+  onOpenSetup: () => void
+  onPauseChange: () => void
+  onSpeedChange: (speed: SpeedMultiplier) => void
+  raceControlLog: BroadcastRaceControlEntry[]
+  selectedCar: CarSnapshot
+  sessionProgressLabel: string
+  snapshot: RaceSnapshot
+  speed: SpeedMultiplier
+  stage: WeekendStage
+  timingRows: BroadcastTimingRow[]
+  track: TrackDefinition
+  trackScene: ReactNode
+}
+
+const dashboardViews: Array<{
+  Icon: typeof LayoutDashboard
+  id: DashboardView
+  label: string
+}> = [
+  { Icon: LayoutDashboard, id: 'overview', label: 'Overview' },
+  { Icon: Timer, id: 'timing', label: 'Timing' },
+  { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
+  { Icon: Route, id: 'track', label: 'Track' },
+  { Icon: CloudRain, id: 'weather', label: 'Weather' },
+  { Icon: CircleGauge, id: 'tyres', label: 'Tyres' },
+  { Icon: MessageSquare, id: 'messages', label: 'Messages' },
+  { Icon: ShieldAlert, id: 'alerts', label: 'Alerts' },
+  { Icon: Users, id: 'drivers', label: 'Drivers' },
+  { Icon: Database, id: 'data', label: 'Data' },
+]
+
+const tireLabels: Record<CarSnapshot['tire'], string> = {
+  H: 'Hard',
+  I: 'Intermediate',
+  M: 'Medium',
+  S: 'Soft',
+  W: 'Wet',
+}
+
+const tireColors: Record<CarSnapshot['tire'], string> = {
+  H: '#eef2f5',
+  I: '#35d66f',
+  M: '#ffd21f',
+  S: '#ff344d',
+  W: '#36a4ff',
+}
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+const formatLapTime = (seconds: number | null | undefined) => {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+    return '--:--.---'
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remaining = (seconds - minutes * 60).toFixed(3).padStart(6, '0')
+
+  return `${minutes}:${remaining}`
+}
+
+const formatClock = (seconds: number) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remaining = Math.floor(seconds % 60)
+
+  return [hours, minutes, remaining]
+    .map((value) => value.toString().padStart(2, '0'))
+    .join(':')
+}
+
+const compactSource = (source: BroadcastTimingRow['source']) =>
+  source === 'openf1' ? 'OBS' : 'SIM'
+
+const cleanEnvironmentValue = (value: string) =>
+  value.replace(/\s+(?:OBS|S)$/, '')
+
+const terminalLabel = (car: CarSnapshot) => {
+  if (car.status === 'retired') return 'OUT'
+  if (car.status === 'disqualified') return 'DSQ'
+  if (car.status === 'dns') return 'DNS'
+  if (car.status === 'pit') return 'PIT'
+
+  return null
+}
+
+const latestPitLap = (car: CarSnapshot) =>
+  car.lapHistory
+    .slice()
+    .reverse()
+    .find((lap) => lap.pitStop)?.lap ?? null
+
+function PanelHeader({
+  action,
+  eyebrow,
+  title,
+}: {
+  action?: ReactNode
+  eyebrow?: string
+  title: string
+}) {
+  return (
+    <header className="broadcast-panel-header">
+      <div>
+        <strong>{title}</strong>
+        {eyebrow ? <span>{eyebrow}</span> : null}
+      </div>
+      {action}
+    </header>
+  )
+}
+
+function SourceTag({ source }: { source: BroadcastDataDetail['source'] }) {
+  return <span className={`broadcast-source source-${source.toLowerCase()}`}>{source}</span>
+}
+
+function MiniSectorStrip({ states }: { states: MiniSectorState[] }) {
+  return (
+    <span className="broadcast-mini-sectors" aria-label="mini sector status">
+      {states.map((state, index) => (
+        <span aria-hidden="true" className={`mini-${state}`} key={`${state}-${index}`} />
+      ))}
+    </span>
+  )
+}
+
+function Sparkline({
+  color = '#ffd21f',
+  values,
+}: {
+  color?: string
+  values: number[]
+}) {
+  const normalized = useMemo(() => {
+    const finite = values.filter(Number.isFinite)
+    const minimum = finite.length > 0 ? Math.min(...finite) : 0
+    const maximum = finite.length > 0 ? Math.max(...finite) : 1
+    const spread = Math.max(0.001, maximum - minimum)
+
+    return values.map((value, index) => ({
+      x: values.length <= 1 ? 0 : (index / (values.length - 1)) * 100,
+      y: 30 - ((value - minimum) / spread) * 24,
+    }))
+  }, [values])
+
+  return (
+    <svg aria-hidden="true" className="broadcast-sparkline" preserveAspectRatio="none" viewBox="0 0 100 32">
+      <line className="sparkline-grid" x1="0" x2="100" y1="16" y2="16" />
+      <polyline
+        fill="none"
+        points={normalized.map((point) => `${point.x},${point.y}`).join(' ')}
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  )
+}
+
+function TireUsage({ cars }: { cars: CarSnapshot[] }) {
+  const usage = useMemo(() => {
+    const counts = new Map<CarSnapshot['tire'], number>()
+
+    cars.forEach((car) => counts.set(car.tire, (counts.get(car.tire) ?? 0) + 1))
+
+    return Array.from(counts.entries()).sort((left, right) => right[1] - left[1])
+  }, [cars])
+  const total = Math.max(1, cars.length)
+  let offset = 0
+
+  return (
+    <div className="tyre-usage-content">
+      <svg aria-label="tyre compound usage" className="tyre-donut" viewBox="0 0 42 42">
+        <circle className="tyre-donut-base" cx="21" cy="21" fill="none" r="15.9" strokeWidth="6" />
+        {usage.map(([compound, count]) => {
+          const share = (count / total) * 100
+          const dashOffset = -offset
+          offset += share
+
+          return (
+            <circle
+              cx="21"
+              cy="21"
+              fill="none"
+              key={compound}
+              r="15.9"
+              stroke={tireColors[compound]}
+              strokeDasharray={`${share} ${100 - share}`}
+              strokeDashoffset={dashOffset}
+              strokeWidth="6"
+              transform="rotate(-90 21 21)"
+            />
+          )
+        })}
+      </svg>
+      <div className="tyre-usage-legend">
+        {usage.map(([compound, count]) => (
+          <div key={compound}>
+            <span className={`broadcast-tire tire-${compound}`}>{compound}</span>
+            <span>{tireLabels[compound]}</span>
+            <strong>{count}</strong>
+            <small>{Math.round((count / total) * 100)}%</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function GapHistory({ rows }: { rows: BroadcastTimingRow[] }) {
+  const series = useMemo(() => {
+    const leader = rows[0]?.car
+
+    if (!leader) return []
+
+    const leaderLaps = new Map(
+      leader.lapHistory.map((lap) => [lap.lap, lap.lapTimeSeconds]),
+    )
+
+    return rows.slice(0, 8).map((row) => {
+      const completed = row.car.lapHistory.slice(-12)
+      const currentGap = Math.max(0, row.car.gapToLeader)
+      const reverseValues = [currentGap]
+
+      for (const lap of completed.slice().reverse()) {
+        const leaderTime = leaderLaps.get(lap.lap)
+        const previous = reverseValues.at(-1) ?? currentGap
+        reverseValues.push(
+          Math.max(0, previous - (leaderTime === undefined ? 0 : lap.lapTimeSeconds - leaderTime)),
+        )
+      }
+
+      const values = reverseValues.reverse()
+
+      return {
+        code: row.car.code,
+        color: row.car.teamColor,
+        values: values.length > 1 ? values : [currentGap, currentGap],
+      }
+    })
+  }, [rows])
+
+  return (
+    <div className="gap-history-chart">
+      <div className="gap-history-axis"><span>+0s</span><span>+15s</span><span>+30s</span></div>
+      <div className="gap-history-lines">
+        {series.map((entry) => (
+          <div className="gap-history-line" key={entry.code} title={`${entry.code} gap history`}>
+            <span style={{ color: entry.color }}>{entry.code}</span>
+            <Sparkline color={entry.color} values={entry.values} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LeftLeaderboard({
+  mode,
+  onFocusDriver,
+  onModeChange,
+  rows,
+  selectedDriverId,
+}: {
+  mode: 'live' | 'gap'
+  onFocusDriver: (driverId: string) => void
+  onModeChange: (mode: 'live' | 'gap') => void
+  rows: BroadcastTimingRow[]
+  selectedDriverId: string
+}) {
+  return (
+    <section className="broadcast-panel broadcast-leaderboard">
+      <PanelHeader
+        action={
+          <div className="broadcast-tabs" role="tablist">
+            {(['live', 'gap'] as const).map((option) => (
+              <button
+                aria-selected={mode === option}
+                key={option}
+                onClick={() => onModeChange(option)}
+                role="tab"
+                type="button"
+              >
+                {option.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        }
+        title="Race Leaderboard"
+      />
+      <div className="leaderboard-column-head" aria-hidden="true">
+        <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
+        <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span><span>PIT</span>
+      </div>
+      <ol className="leaderboard-rows">
+        {rows.map((row) => {
+          const status = terminalLabel(row.car)
+
+          return (
+            <li className={row.car.driverId === selectedDriverId ? 'selected' : undefined} key={row.car.driverId}>
+              <button onClick={() => onFocusDriver(row.car.driverId)} type="button">
+                <span className="leaderboard-position" style={{ backgroundColor: row.car.teamColor }}>
+                  {row.displayPosition}
+                </span>
+                <span className="leaderboard-driver">
+                  <i style={{ backgroundColor: row.car.teamColor }} />
+                  <strong>{row.car.code}</strong>
+                  <small>{compactSource(row.source)}</small>
+                </span>
+                <span className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</span>
+                <span className={status ? 'status-value' : undefined}>
+                  {status ?? (mode === 'gap' ? row.displayGapToLeaderLabel : row.displayIntervalLabel)}
+                </span>
+                <span>{formatLapTime(row.lapTimeSeconds)}</span>
+                <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
+                {row.sectors.map((sector, index) => (
+                  <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>
+                ))}
+                <span>{row.car.pitStops}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+function TimingOverview({
+  onFocusDriver,
+  rows,
+  selectedDriverId,
+}: {
+  onFocusDriver: (driverId: string) => void
+  rows: BroadcastTimingRow[]
+  selectedDriverId: string
+}) {
+  return (
+    <div className="center-table timing-overview-table">
+      <div className="center-table-head">
+        <span>POS</span><span>DRIVER</span><span>S1</span><span>S2</span><span>S3</span>
+        <span>LAST LAP</span><span>BEST LAP</span><span>GAP</span><span>INT</span>
+      </div>
+      <ol>
+        {rows.slice(0, 10).map((row) => (
+          <li className={row.car.driverId === selectedDriverId ? 'selected' : undefined} key={row.car.driverId}>
+            <button onClick={() => onFocusDriver(row.car.driverId)} type="button">
+              <span>{row.displayPosition}</span>
+              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
+              {row.sectors.map((sector, index) => (
+                <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>
+              ))}
+              <span>{formatLapTime(row.lapTimeSeconds)}</span>
+              <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
+              <span>{row.displayGapToLeaderLabel}</span>
+              <span>{row.displayIntervalLabel}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
+  return (
+    <div className="center-table telemetry-table">
+      <div className="center-table-head">
+        <span>DRIVER</span><span>SPD</span><span>THR</span><span>BRK</span><span>GEAR</span>
+        <span>RPM</span><span>ERS</span><span>AERO / OVT</span><span>SOURCE</span>
+      </div>
+      <ol>
+        {rows.slice(0, 10).map((row) => (
+          <li key={row.car.driverId}>
+            <div>
+              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
+              <span>{row.speedKph}</span><span>{row.throttlePercent}%</span><span>{row.brakePercent}%</span>
+              <span>{row.gear}</span><span>{row.rpm}</span><span>{row.batteryPercent}%</span>
+              <span>{row.aeroOvertakeLabel}</span>
+              <SourceTag
+                source={
+                  row.telemetrySource === 'openf1'
+                    ? 'OBS'
+                    : row.telemetrySource === 'simulation'
+                      ? 'SIM'
+                      : 'UNAVAILABLE'
+                }
+              />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
+  return (
+    <div className="timing-detail-list">
+      {rows.slice(0, 10).map((row) => (
+        <div key={row.car.driverId}>
+          <strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong>
+          {[0, 1, 2].map((sectorIndex) => (
+            <span className="timing-detail-sector" key={sectorIndex}>
+              <small>S{sectorIndex + 1}</small>
+              <b>{row.sectors[sectorIndex].toFixed(3)}</b>
+              <MiniSectorStrip states={row.microSectors[sectorIndex]} />
+            </span>
+          ))}
+          <SourceTag source={row.source === 'openf1' ? 'OBS' : 'SIM'} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CenterView({
+  dataControl,
+  dataDetails,
+  environment,
+  onFocusDriver,
+  raceControlLog,
+  rows,
+  selectedDriverId,
+  snapshot,
+  track,
+  view,
+}: {
+  dataControl: ReactNode
+  dataDetails: BroadcastDataDetail[]
+  environment: EnvironmentReadout
+  onFocusDriver: (driverId: string) => void
+  raceControlLog: BroadcastRaceControlEntry[]
+  rows: BroadcastTimingRow[]
+  selectedDriverId: string
+  snapshot: RaceSnapshot
+  track: TrackDefinition
+  view: DashboardView
+}) {
+  if (view === 'overview') {
+    return <TimingOverview onFocusDriver={onFocusDriver} rows={rows} selectedDriverId={selectedDriverId} />
+  }
+
+  if (view === 'timing') return <TimingDetail rows={rows} />
+  if (view === 'telemetry') return <TelemetryView rows={rows} />
+
+  if (view === 'track') {
+    const aeroSource = track.aeroActivationZones?.every(
+      (zone) => zone.source === 'official',
+    )
+      ? 'FIA'
+      : track.aeroActivationZones?.some((zone) => zone.source === 'openf1')
+        ? 'OBS'
+        : 'CAL'
+
+    return (
+      <div className="detail-grid track-detail-grid">
+        <span>Track length</span><strong>{track.lengthKm.toFixed(3)} km</strong><SourceTag source={track.lengthSource === 'official' ? 'FIA' : 'SIM'} />
+        <span>Layout</span><strong>{track.layoutSource?.detail === 'real' ? 'Observed geometry' : 'Fallback geometry'}</strong><SourceTag source={track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM'} />
+        <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? 'OBS' : 'UNAVAILABLE'} />
+        <span>Active aero zones</span><strong>{track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={aeroSource} />
+        <span>Overtake detection lines</span><strong>{track.overtakeControlLines?.length ?? 0}</strong><SourceTag source="CAL" />
+        <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
+        <span>Track evolution</span><strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong><SourceTag source="SIM" />
+        <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
+      </div>
+    )
+  }
+
+  if (view === 'weather') {
+    const wetness = snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
+
+    return (
+      <div className="detail-grid weather-detail-grid">
+        <span><Thermometer size={13} /> Air temperature</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span><Thermometer size={13} /> Track temperature</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span><Droplets size={13} /> Rainfall</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span><Wind size={13} /> Wind</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span>Humidity</span><strong>{cleanEnvironmentValue(environment.humidityLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span>Pressure</span><strong>{cleanEnvironmentValue(environment.pressureLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span>Surface water</span><strong>{wetness.toFixed(2)} mm</strong><SourceTag source="SIM" />
+        <span>Forecast</span><strong>{snapshot.weatherForecastLabel}</strong><SourceTag source="SIM" />
+      </div>
+    )
+  }
+
+  if (view === 'tyres') {
+    return (
+      <div className="center-table tyre-detail-table">
+        <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>WEAR</span><span>TEMP</span><span>SETS LEFT</span><span>STOPS</span></div>
+        <ol>
+          {rows.slice(0, 10).map((row) => (
+            <li key={row.car.driverId}><div>
+              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
+              <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {tireLabels[row.car.tire]}</span>
+              <span>{row.car.tireAgeLaps} L</span><span>{Math.round(row.car.tireWearPercent)}%</span>
+              <span>{row.tireTemperatureC} C</span><span>{row.car.tireSetsRemaining[row.car.tire] ?? 0}</span><span>{row.car.pitStops}</span>
+            </div></li>
+          ))}
+        </ol>
+      </div>
+    )
+  }
+
+  if (view === 'messages') {
+    return (
+      <ol className="detail-message-list">
+        {raceControlLog.slice(0, 12).map((event) => (
+          <li key={event.id}><time>{event.timeLabel}</time><SourceTag source={event.source === 'OPENF1' ? 'OBS' : 'SIM'} /><span>{event.message}</span></li>
+        ))}
+      </ol>
+    )
+  }
+
+  if (view === 'alerts') {
+    const alerts = [
+      ...rows
+        .filter((row) => row.car.stewardStatus !== 'clear' || row.car.damage > 0.02)
+        .map((row) => ({ id: row.car.driverId, label: row.car.code, message: row.car.stewardNote ?? `Car damage ${Math.round(row.car.damage * 100)}%` })),
+      ...snapshot.events
+        .filter((event) => ['incident', 'penalty', 'investigation', 'track-limit'].includes(event.kind))
+        .slice(0, 8)
+        .map((event) => ({ id: event.id, label: event.timeLabel, message: event.message })),
+    ]
+
+    return alerts.length > 0 ? (
+      <ol className="alert-list">
+        {alerts.slice(0, 12).map((alert) => <li key={alert.id}><AlertTriangle size={13} /><strong>{alert.label}</strong><span>{alert.message}</span></li>)}
+      </ol>
+    ) : <div className="empty-detail"><ShieldAlert size={22} /><strong>No active investigations</strong><span>Race control is monitoring the session.</span></div>
+  }
+
+  if (view === 'drivers') {
+    return (
+      <div className="center-table driver-detail-table">
+        <div className="center-table-head"><span>DRIVER</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>PACE</span><span>BATTLE</span><span>STATUS</span></div>
+        <ol>{rows.slice(0, 10).map((row) => (
+          <li key={row.car.driverId}><div>
+            <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.teamName}</span>
+            <span>{row.car.gridPosition}</span><span>{row.displayPosition}</span><span>{row.car.gridPosition - row.displayPosition >= 0 ? '+' : ''}{row.car.gridPosition - row.displayPosition}</span>
+            <span>{row.car.racePaceMode}</span><span>{row.car.battlePhase}</span><span>{terminalLabel(row.car) ?? 'RUN'}</span>
+          </div></li>
+        ))}</ol>
+      </div>
+    )
+  }
+
+  return (
+    <div className="data-view">
+      <div className="data-detail-grid">
+        {dataDetails.map((detail) => (
+          <div key={detail.label}><span>{detail.label}</span><strong>{detail.value}</strong><SourceTag source={detail.source} /></div>
+        ))}
+      </div>
+      {dataControl}
+    </div>
+  )
+}
+
+function BottomAnalytics({
+  rows,
+  showSectors,
+  snapshot,
+}: {
+  rows: BroadcastTimingRow[]
+  showSectors: boolean
+  snapshot: RaceSnapshot
+}) {
+  const topRows = rows.slice(0, 6)
+  const nextPitCandidate = useMemo(
+    () =>
+      rows
+        .filter((row) => row.car.status === 'running')
+        .map((row) => {
+          const fallbackWearPerLap = {
+            H: 3.2,
+            I: 4.5,
+            M: 4.8,
+            S: 7.5,
+            W: 3.5,
+          }[row.car.tire]
+          const observedWearPerLap =
+            row.car.tireAgeLaps > 0
+              ? row.car.tireWearPercent / row.car.tireAgeLaps
+              : fallbackWearPerLap
+          const lapsToWindow = Math.max(
+            1,
+            Math.ceil(
+              (82 - row.car.tireWearPercent) /
+                Math.max(1, observedWearPerLap),
+            ),
+          )
+
+          return {
+            code: row.car.code,
+            lap: Math.min(
+              snapshot.raceLaps,
+              Math.max(snapshot.leaderLap + 1, row.car.lap + lapsToWindow),
+            ),
+          }
+        })
+        .sort((left, right) => left.lap - right.lap)[0] ?? null,
+    [rows, snapshot.leaderLap, snapshot.raceLaps],
+  )
+
+  if (!showSectors) {
+    return <div className="analytics-hidden">Sector and strategy tables hidden</div>
+  }
+
+  return (
+    <div className="broadcast-bottom-analytics">
+      <section className="broadcast-panel lap-comparison-panel">
+        <PanelHeader title="Lap Time Comparison" />
+        <div className="analysis-table analysis-laps">
+          <div><span>DRIVER</span><span>LAST</span><span>BEST</span><span>DELTA</span></div>
+          {topRows.map((row) => {
+            const best = row.car.bestLapTimeSeconds ?? row.lapTimeSeconds
+            const delta = row.lapTimeSeconds - best
+            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{formatLapTime(row.lapTimeSeconds)}</span><span>{formatLapTime(best)}</span><b>+{Math.max(0, delta).toFixed(3)}</b></div>
+          })}
+        </div>
+      </section>
+      <section className="broadcast-panel sector-live-panel">
+        <PanelHeader title="Sector Times (Live)" />
+        <div className="analysis-table analysis-sectors">
+          <div><span>DRIVER</span><span>S1</span><span>S2</span><span>S3</span></div>
+          {topRows.map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>{row.sectors.map((sector, index) => <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>)}</div>)}
+        </div>
+      </section>
+      <section className="broadcast-panel fuel-panel">
+        <PanelHeader eyebrow="SIM EST" title="Fuel Load" />
+        <div className="analysis-table fuel-table">
+          <div><span>DRIVER</span><span>FUEL</span><span>LAPS</span><span>RANGE</span></div>
+          {topRows.map((row) => {
+            const lapsRemaining = Math.max(0, snapshot.raceLaps - row.car.lap)
+            const fuelKg = Math.max(1.5, lapsRemaining * 1.52 + 2.1)
+            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{fuelKg.toFixed(1)} kg</span><span>{lapsRemaining}</span><span>{Math.max(0, lapsRemaining - 2)}-{lapsRemaining + 2}</span></div>
+          })}
+        </div>
+      </section>
+      <section className="broadcast-panel next-events-panel">
+        <PanelHeader eyebrow="SIM EST" title="Next Events" />
+        <ol className="next-event-list">
+          <li><Timer size={12} /><span>Lap {nextPitCandidate?.lap ?? snapshot.raceLaps}</span><strong>{nextPitCandidate ? `${nextPitCandidate.code} pit window` : 'No stop forecast'}</strong></li>
+          <li><CloudRain size={12} /><span>{snapshot.weatherForecastLabel}</span><strong>Forecast update</strong></li>
+          <li><Flag size={12} /><span>Lap {snapshot.raceLaps}</span><strong>Race finish</strong></li>
+        </ol>
+      </section>
+    </div>
+  )
+}
+
+export function BroadcastDashboard({
+  cameraMode,
+  dataControl,
+  dataDetails,
+  dataMode,
+  dataModeAvailability,
+  engineLabel,
+  environment,
+  eventName,
+  isPaused,
+  onCameraModeChange,
+  onDataModeChange,
+  onFocusDriver,
+  onOpenClassification,
+  onOpenInsights,
+  onOpenSetup,
+  onPauseChange,
+  onSpeedChange,
+  raceControlLog,
+  selectedCar,
+  sessionProgressLabel,
+  snapshot,
+  speed,
+  stage,
+  timingRows,
+  track,
+  trackScene,
+}: BroadcastDashboardProps) {
+  const [activeView, setActiveView] = useState<DashboardView>('overview')
+  const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
+  const [feedMode, setFeedMode] = useState<'control' | 'events'>('control')
+  const [showLiveTiming, setShowLiveTiming] = useState(true)
+  const [showRaceFeed, setShowRaceFeed] = useState(true)
+  const [showSectorTables, setShowSectorTables] = useState(true)
+
+  useEffect(() => {
+    if (dataMode !== 'SIM' && cameraMode !== 'overview') {
+      onCameraModeChange('overview')
+    }
+  }, [cameraMode, dataMode, onCameraModeChange])
+  const fastestRow = useMemo(
+    () => timingRows
+      .filter((row) => row.car.bestLapTimeSeconds !== null)
+      .slice()
+      .sort((left, right) =>
+        (left.car.bestLapTimeSeconds ?? Number.POSITIVE_INFINITY) -
+        (right.car.bestLapTimeSeconds ?? Number.POSITIVE_INFINITY),
+      )[0] ?? timingRows[0],
+    [timingRows],
+  )
+  const trackEvolution = useMemo(
+    () => Array.from({ length: 18 }, (_, index) => {
+      const progress = index / 17
+      const wave = Math.sin(index * 1.6) * 0.018
+      return clamp(0.22 + snapshot.trackEvolutionLevel * progress + wave, 0, 1)
+    }),
+    [snapshot.trackEvolutionLevel],
+  )
+  const displayedFeed = feedMode === 'control'
+    ? raceControlLog
+    : snapshot.events.map((event) => ({
+        id: event.id,
+        message: event.message,
+        source: 'SIM',
+        timeLabel: event.timeLabel,
+      }))
+  const trackTitle = `${eventName.replace(/\s+20\d{2}$/u, '')} 2026`
+  const averageWater = snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
+
+  return (
+    <div className="broadcast-app">
+      <header className="broadcast-topbar">
+        <div className="broadcast-brand"><Gauge aria-hidden="true" size={29} /><div><strong>{trackTitle}</strong><span>{track.name}</span></div></div>
+        <div className="broadcast-session-core">
+          <span className={`broadcast-live-mode mode-${dataMode.toLowerCase()}`}>{dataMode}</span>
+          <strong>{stage.toUpperCase()}</strong>
+          <span>{sessionProgressLabel}</span>
+          <time>{formatClock(snapshot.raceClockSeconds)}</time>
+        </div>
+        <div className="broadcast-weather-strip">
+          <div><span>TRACK TEMP</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong></div>
+          <div><span>AIR TEMP</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong></div>
+          <div><span>HUMIDITY</span><strong>{cleanEnvironmentValue(environment.humidityLabel)}</strong></div>
+          <div><span>WIND</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong></div>
+          <button aria-label="Open setup" onClick={onOpenSetup} title="Setup" type="button"><Settings2 size={17} /></button>
+        </div>
+      </header>
+
+      <aside className="broadcast-sidebar" aria-label="dashboard navigation">
+        <div className="broadcast-mark"><Radio aria-hidden="true" size={21} /></div>
+        <nav>
+          {dashboardViews.map(({ Icon, id, label }) => (
+            <button
+              aria-current={activeView === id ? 'page' : undefined}
+              key={id}
+              onClick={() => {
+                setActiveView(id)
+                if (id === 'timing') setShowLiveTiming(true)
+                if (id === 'messages') setShowRaceFeed(true)
+              }}
+              title={label}
+              type="button"
+            >
+              <Icon aria-hidden="true" size={16} /><span>{label}</span>
+            </button>
+          ))}
+        </nav>
+        <button className="sidebar-settings" onClick={onOpenSetup} title="Settings" type="button"><Wrench size={16} /><span>Settings</span></button>
+      </aside>
+
+      <main className="broadcast-workspace">
+        <div className="broadcast-left-column">
+          <LeftLeaderboard
+            mode={leaderboardMode}
+            onFocusDriver={onFocusDriver}
+            onModeChange={setLeaderboardMode}
+            rows={timingRows}
+            selectedDriverId={selectedCar.driverId}
+          />
+          <div className="broadcast-left-analytics">
+            <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} /></section>
+            <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div className="pit-stop-list"><div><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).slice(0, 8).map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
+            <section className="broadcast-panel gap-history-panel"><PanelHeader eyebrow="COMPLETED LAPS" title="Gap To Leader" /><GapHistory rows={timingRows} /></section>
+          </div>
+        </div>
+
+        <div className="broadcast-center-column">
+          <section className="broadcast-panel broadcast-live-timing">
+            <PanelHeader
+              action={<button aria-label={showLiveTiming ? 'Hide live timing' : 'Show live timing'} className="panel-close" onClick={() => setShowLiveTiming((value) => !value)} title={showLiveTiming ? 'Hide live timing' : 'Show live timing'} type="button">{showLiveTiming ? <X size={13} /> : <Timer size={13} />}</button>}
+              eyebrow={activeView === 'overview' ? 'TOP 10' : activeView.toUpperCase()}
+              title={activeView === 'overview' ? 'Live Timing' : dashboardViews.find((item) => item.id === activeView)?.label ?? 'Live Timing'}
+            />
+            {showLiveTiming ? (
+              <CenterView
+                dataControl={dataControl}
+                dataDetails={dataDetails}
+                environment={environment}
+                onFocusDriver={onFocusDriver}
+                raceControlLog={raceControlLog}
+                rows={timingRows}
+                selectedDriverId={selectedCar.driverId}
+                snapshot={snapshot}
+                track={track}
+                view={activeView}
+              />
+            ) : <button className="restore-panel" onClick={() => setShowLiveTiming(true)} type="button"><Timer size={14} /> Restore live timing</button>}
+          </section>
+
+          <section className="broadcast-panel broadcast-track-panel">
+            <PanelHeader
+              action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
+              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${track.aeroActivationZones?.length ?? 0} AERO ZONES`}
+              title={`Track Map - ${track.name}`}
+            />
+            <div className="broadcast-track-stage">
+              <div className="map-grid-texture" aria-hidden="true" />
+              {trackScene}
+              <div className="track-map-status"><span className={`flag-dot flag-${snapshot.flag}`} />{snapshot.flagLabel}<SourceTag source={track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM'} /></div>
+              <div className="track-map-legend">
+                {(Object.keys(tireLabels) as CarSnapshot['tire'][]).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}
+              </div>
+            </div>
+          </section>
+
+          <BottomAnalytics rows={timingRows} showSectors={showSectorTables} snapshot={snapshot} />
+        </div>
+
+        <aside className="broadcast-right-column">
+          <section className="broadcast-panel race-control-panel">
+            <PanelHeader eyebrow={snapshot.flag === 'clear' ? 'TRACK CLEAR' : snapshot.flagLabel} title="Race Control" />
+            <div className="track-status-grid"><div><span>TRACK STATUS</span><strong className={`flag-${snapshot.flag}`}>{snapshot.flagLabel}</strong></div><div><span>GRIP</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong></div><div><span>RUBBER</span><strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong></div></div>
+          </section>
+          <section className="broadcast-panel evolution-panel"><PanelHeader eyebrow="SIM MODEL" title="Track Evolution" /><Sparkline values={trackEvolution} /><div className="evolution-axis"><span>LOW</span><span>LAP {snapshot.leaderLap}</span><span>HIGH</span></div></section>
+          <section className="broadcast-panel conditions-panel"><PanelHeader title="Current Conditions" /><div className="conditions-grid"><div><Thermometer size={15}/><span>AIR TEMP</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong></div><div><Gauge size={15}/><span>TRACK TEMP</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong></div><div><Droplets size={15}/><span>WATER</span><strong>{averageWater.toFixed(2)} mm</strong></div><div><Wind size={15}/><span>WIND</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong></div><div><CloudRain size={15}/><span>RAIN</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong></div></div></section>
+          <section className="broadcast-panel messages-panel">
+            <PanelHeader action={<button aria-label={showRaceFeed ? 'Hide messages' : 'Show messages'} className="panel-close" onClick={() => setShowRaceFeed((value) => !value)} title={showRaceFeed ? 'Hide messages' : 'Show messages'} type="button"><X size={13}/></button>} title="Messages" />
+            <div className="broadcast-tabs feed-tabs">{(['control', 'events'] as const).map((mode) => <button aria-selected={feedMode === mode} key={mode} onClick={() => setFeedMode(mode)} type="button">{mode === 'control' ? 'RACE CONTROL' : 'EVENTS'}</button>)}</div>
+            {showRaceFeed ? <ol className="race-message-list">{displayedFeed.slice(0, 9).map((event) => <li key={event.id}><time>{event.timeLabel}</time><span>{event.message}</span></li>)}</ol> : <button className="restore-panel" onClick={() => setShowRaceFeed(true)} type="button"><MessageSquare size={13}/> Restore messages</button>}
+          </section>
+          <section className="broadcast-panel fastest-lap-panel"><span>FASTEST LAP</span><strong>{fastestRow ? formatLapTime(fastestRow.car.bestLapTimeSeconds ?? fastestRow.lapTimeSeconds) : '--:--.---'}</strong><small>{fastestRow ? `${fastestRow.car.driverName} / LAP ${fastestRow.car.bestLapLap ?? '-'}` : 'Awaiting completed lap'}</small></section>
+          <section className="broadcast-panel live-gap-panel"><PanelHeader title="Live Gap To Leader" /><ol>{timingRows.slice(1, 10).map((row) => <li key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong><span><i style={{ backgroundColor: row.car.teamColor, width: `${clamp(100 - row.car.gapToLeader * 2.4, 12, 100)}%` }} /></span><b>{row.displayGapToLeaderLabel}</b></li>)}</ol></section>
+        </aside>
+      </main>
+
+      <footer className="broadcast-footer">
+        <div className="footer-race-control"><Radio size={14}/><strong>RACE CONTROL</strong><time>{raceControlLog[0]?.timeLabel ?? snapshot.elapsedLabel}</time><span>{raceControlLog[0]?.message ?? snapshot.eventMessage}</span></div>
+        <div className="footer-controls">
+          <button aria-label={isPaused ? 'Resume simulation' : 'Pause simulation'} onClick={onPauseChange} title={isPaused ? 'Resume' : 'Pause'} type="button">{isPaused ? <Play size={14}/> : <Pause size={14}/>}</button>
+          {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
+          <button aria-label="Toggle sector tables" aria-pressed={showSectorTables} onClick={() => setShowSectorTables((value) => !value)} title="Toggle sector tables" type="button"><BarChart3 size={14}/></button>
+          <button onClick={onOpenInsights} title="Selected driver analysis" type="button"><Activity size={14}/>{selectedCar.code}</button>
+          <button onClick={onOpenClassification} title="Classification" type="button"><Trophy size={14}/></button>
+        </div>
+        <div className="footer-data-modes"><span title={engineLabel}>{engineLabel}</span>{(['SIM', 'HIST', 'LIVE'] as DataMode[]).map((mode) => <button aria-pressed={dataMode === mode} disabled={!dataModeAvailability[mode]} key={mode} onClick={() => onDataModeChange(mode)} type="button">{mode}</button>)}</div>
+        <div className="footer-best"><span>BEST LAP</span><strong>{fastestRow ? formatLapTime(fastestRow.car.bestLapTimeSeconds ?? fastestRow.lapTimeSeconds) : '--:--.---'}</strong><b>{fastestRow?.car.code ?? '-'}</b></div>
+      </footer>
+    </div>
+  )
+}

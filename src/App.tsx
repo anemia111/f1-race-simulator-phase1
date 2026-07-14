@@ -19,6 +19,10 @@ import {
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import './App.css'
+import {
+  BroadcastDashboard,
+  type BroadcastDataDetail,
+} from './components/BroadcastDashboard'
 import { RaceClassificationPanel } from './components/RaceClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
 import { SetupPanel } from './components/SetupPanel'
@@ -252,6 +256,14 @@ const formatLapTime = (seconds: number) => {
 const formatSector = (seconds: number) => seconds.toFixed(3)
 
 const formatTemperature = (value: number) => `${value.toFixed(1)}C`
+
+const formatWind = (speedMetersPerSecond: number, directionDegrees: number) => {
+  const compassPoints = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  const normalizedDirection = ((directionDegrees % 360) + 360) % 360
+  const compass = compassPoints[Math.round(normalizedDirection / 45) % 8]
+
+  return `${(speedMetersPerSecond * 3.6).toFixed(1)} km/h ${compass}`
+}
 
 const compactForecastLabel = (label: string) =>
   label
@@ -957,7 +969,7 @@ const simulatedEnvironmentFor = (
     pressureLabel: `${Math.round(1002 + hashUnit(`${seed}:pressure:${track.id}`) * 18)} hPa S`,
     source: 'simulation' as const,
     trackLabel: `${formatTemperature(trackTemperature)} S`,
-    windLabel: `${windSpeed.toFixed(1)}m/s ${windDirection} S`,
+    windLabel: `${formatWind(windSpeed, windDirection)} S`,
   }
 }
 
@@ -970,7 +982,7 @@ const openF1EnvironmentFor = (
   rainLabel: weather.rainfall > 0 ? 'RAIN OBS' : 'DRY OBS',
   source: `OpenF1 observed ${weather.date}` as const,
   trackLabel: `${formatTemperature(weather.track_temperature)} OBS`,
-  windLabel: `${weather.wind_speed.toFixed(1)}m/s ${Math.round(weather.wind_direction)} OBS`,
+  windLabel: `${formatWind(weather.wind_speed, weather.wind_direction)} OBS`,
 })
 
 const openF1GridResultsFor = (
@@ -1037,7 +1049,7 @@ export default function App() {
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
   const [isOpenF1PanelOpen, setIsOpenF1PanelOpen] = useState(false)
   const [isRaceControlLogOpen, setIsRaceControlLogOpen] = useState(false)
-  const [showOpenF1Cars, setShowOpenF1Cars] = useState(false)
+  const [showOpenF1Cars, setShowOpenF1Cars] = useState(true)
   const [requestedDataMode, setRequestedDataMode] = useState<DataMode>('SIM')
   const [openF1AccessToken, setOpenF1AccessToken] = useState<string | null>(null)
   const [openF1TokenDraft, setOpenF1TokenDraft] = useState('')
@@ -1490,6 +1502,69 @@ export default function App() {
     hasHistoricalData: latestOpenF1Sample !== null,
     requestedMode: requestedDataMode,
   })
+  const observedTimelineActive =
+    dataModeUsesObservedTiming(dataMode) &&
+    openF1Timeline.targetMs > 0 &&
+    Boolean(openF1Bundle?.selectedSession)
+  const observedLeaderLap = useMemo(() => {
+    if (!observedTimelineActive || !openF1Bundle) {
+      return null
+    }
+
+    const eligibleLaps = openF1Bundle.laps.filter((lap) => {
+      if (!lap.date_start) return true
+      const startedAt = new Date(lap.date_start).getTime()
+      return Number.isFinite(startedAt) && startedAt <= openF1Timeline.targetMs
+    })
+
+    return eligibleLaps.length > 0
+      ? Math.max(...eligibleLaps.map((lap) => lap.lap_number))
+      : null
+  }, [observedTimelineActive, openF1Bundle, openF1Timeline.targetMs])
+  const observedElapsedSeconds = useMemo(() => {
+    const sessionStart = openF1Bundle?.selectedSession?.date_start
+
+    if (!observedTimelineActive || !sessionStart) {
+      return null
+    }
+
+    const startMs = new Date(sessionStart).getTime()
+    return Number.isFinite(startMs)
+      ? Math.max(0, (openF1Timeline.targetMs - startMs) / 1_000)
+      : null
+  }, [observedTimelineActive, openF1Bundle?.selectedSession?.date_start, openF1Timeline.targetMs])
+  const observedMapActive =
+    observedTimelineActive && showOpenF1Cars && openF1TrackProgressAvailable
+  const broadcastSnapshot = useMemo<RaceSnapshot>(() => {
+    if (!observedTimelineActive) {
+      return snapshot
+    }
+
+    return {
+      ...snapshot,
+      elapsedSeconds: observedElapsedSeconds ?? snapshot.elapsedSeconds,
+      eventMessage:
+        openF1LiveState.raceControlMessage ?? snapshot.eventMessage,
+      flag: openF1LiveState.flag ?? snapshot.flag,
+      flagLabel: openF1LiveState.flagLabel ?? snapshot.flagLabel,
+      leaderLap: observedLeaderLap ?? snapshot.leaderLap,
+      weekend: openF1LiveState.weekend ?? snapshot.weekend,
+    }
+  }, [
+    observedElapsedSeconds,
+    observedLeaderLap,
+    observedTimelineActive,
+    openF1LiveState.flag,
+    openF1LiveState.flagLabel,
+    openF1LiveState.raceControlMessage,
+    openF1LiveState.weekend,
+    snapshot,
+  ])
+  useEffect(() => {
+    if (observedTimelineActive && cameraMode !== 'overview') {
+      setCameraMode('overview')
+    }
+  }, [cameraMode, observedTimelineActive])
   const environmentReadout = useMemo(
     () =>
       dataModeUsesObservedEnvironment(dataMode) && latestOpenF1Weather
@@ -1578,6 +1653,10 @@ export default function App() {
     isRaceProgressSession || selectedSessionDurationSeconds === null
       ? `${snapshot.leaderLap} / ${snapshot.raceLaps}`
       : `${snapshot.elapsedLabel} / ${formatShortDuration(selectedSessionDurationSeconds)}`
+  const broadcastSessionProgressLabel =
+    observedTimelineActive && observedLeaderLap !== null && isRaceProgressSession
+      ? `${observedLeaderLap} / ${snapshot.raceLaps}`
+      : sessionProgressLabel
   const activePitCars = snapshot.cars.filter((car) => car.status === 'pit').length
   const liveTimingProgressLabel =
     isRaceProgressSession || selectedSessionDurationSeconds === null
@@ -2087,6 +2166,249 @@ export default function App() {
         : 'Brief'
   const bestSetupTeam = practiceSetup.teamSummaries[0]
 
+  const broadcastDataDetails: BroadcastDataDetail[] = [
+    {
+      label: 'OpenF1 link',
+      source: openF1Bundle?.meeting ? 'OBS' : 'UNAVAILABLE',
+      value: openF1Bundle?.meeting?.meeting_name ?? 'No matching meeting',
+    },
+    {
+      label: 'Session status',
+      source: openF1Bundle?.selectedSession ? 'OBS' : 'SIM',
+      value: openF1StatusLabel(openF1Bundle),
+    },
+    {
+      label: 'API endpoints',
+      source: openF1LoadedEndpoints > 0 ? 'OBS' : 'UNAVAILABLE',
+      value: `${openF1LoadedEndpoints}/${openF1RequestedEndpoints} loaded`,
+    },
+    {
+      label: 'Newest sample',
+      source: latestOpenF1Sample ? 'OBS' : 'UNAVAILABLE',
+      value: latestOpenF1Sample
+        ? `${formatOpenF1Date(latestOpenF1Sample)} / ${openF1DataAge}`
+        : 'No sample',
+    },
+    {
+      label: 'Timing rows',
+      source: openF1TimingSources.size > 0 ? 'OBS' : 'SIM',
+      value: `${openF1TimingSources.size}/${timingRows.length} observed`,
+    },
+    {
+      label: 'Telemetry rows',
+      source: openF1CarDataByCode.size > 0 ? 'OBS' : 'SIM',
+      value: `${openF1CarDataByCode.size}/${timingRows.length} observed`,
+    },
+    {
+      label: 'Track geometry',
+      source: raceConfig.track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM',
+      value: raceConfig.track.layoutSource?.label ?? 'Fallback layout',
+    },
+    {
+      label: 'Race distance',
+      source: raceConfig.track.raceLapsSource === 'official' ? 'FIA' : 'SIM',
+      value: `${snapshot.raceLaps} laps`,
+    },
+    {
+      label: 'Field calibration',
+      source: fieldCalibration.source === 'openf1-calibrated' ? 'CAL' : 'SIM',
+      value: `${Math.round(fieldCalibration.confidence * 100)}% confidence`,
+    },
+    {
+      label: 'Environment',
+      source: environmentReadout.source.startsWith('OpenF1') ? 'OBS' : 'SIM',
+      value: environmentReadout.source,
+    },
+    {
+      label: 'FIA event pack',
+      source: fiaEventPack ? 'FIA' : 'UNAVAILABLE',
+      value: fiaEventPack?.status ?? 'Not linked',
+    },
+    {
+      label: 'Simulation engine',
+      source: 'SIM',
+      value: engineError ? `Error: ${engineError}` : engineMode.toUpperCase(),
+    },
+  ]
+  const broadcastDataControl = (
+    <form
+      className="broadcast-data-control"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const token = openF1TokenDraft.trim()
+        setOpenF1AccessToken(token || null)
+      }}
+    >
+      <label>
+        <span>OpenF1 bearer token</span>
+        <input
+          autoComplete="off"
+          onChange={(event) => setOpenF1TokenDraft(event.target.value)}
+          placeholder="Optional access token"
+          type="password"
+          value={openF1TokenDraft}
+        />
+      </label>
+      <button type="submit">Apply token</button>
+      {openF1AccessToken ? (
+        <button
+          onClick={() => {
+            setOpenF1AccessToken(null)
+            setOpenF1TokenDraft('')
+          }}
+          type="button"
+        >
+          Clear token
+        </button>
+      ) : null}
+      <button
+        aria-pressed={showOpenF1Cars}
+        disabled={
+          !openF1TrackProgressAvailable ||
+          !dataModeUsesObservedTiming(dataMode)
+        }
+        onClick={() => setShowOpenF1Cars((shown) => !shown)}
+        type="button"
+      >
+        {observedMapActive ? 'Hide' : 'Show'} OpenF1 positions
+      </button>
+    </form>
+  )
+  const legacyLayoutRequested =
+    new URLSearchParams(window.location.search).get('layout') === 'legacy'
+
+  if (!legacyLayoutRequested) {
+    return (
+      <div className="race-shell broadcast-race-shell">
+        <BroadcastDashboard
+          cameraMode={cameraMode}
+          dataControl={broadcastDataControl}
+          dataDetails={broadcastDataDetails}
+          dataMode={dataMode}
+          dataModeAvailability={{
+            HIST: latestOpenF1Sample !== null,
+            LIVE: detectedDataMode === 'LIVE',
+            SIM: true,
+          }}
+          engineLabel={`ENGINE ${engineMode.toUpperCase()}`}
+          environment={environmentReadout}
+          eventName={
+            track.openF1?.meetingName ??
+            fiaEventPack?.eventName ??
+            `${track.location} Grand Prix`
+          }
+          isPaused={isPaused}
+          onCameraModeChange={setCameraMode}
+          onDataModeChange={setRequestedDataMode}
+          onFocusDriver={focusDriver}
+          onOpenClassification={() => {
+            setIsClassificationOpen(true)
+            setIsInsightsOpen(false)
+          }}
+          onOpenInsights={() => {
+            setIsInsightsOpen(true)
+            setIsClassificationOpen(false)
+          }}
+          onOpenSetup={() => setIsSetupOpen(true)}
+          onPauseChange={() => setIsPaused((paused) => !paused)}
+          onSpeedChange={setSpeed}
+          raceControlLog={raceControlLog}
+          selectedCar={selectedCar}
+          sessionProgressLabel={broadcastSessionProgressLabel}
+          snapshot={broadcastSnapshot}
+          speed={speed}
+          stage={selectedWeekendStage}
+          timingRows={timingRows}
+          track={raceConfig.track}
+          trackScene={
+            <Suspense
+              fallback={
+                <div className="scene-loading" role="status">
+                  Loading circuit map...
+                </div>
+              }
+            >
+              <RaceScene
+                cameraMode={cameraMode}
+                config={raceConfig}
+                onSelectDriver={focusDriver}
+                openF1Overlay={
+                  observedMapActive
+                    ? openF1TrackProgress
+                    : null
+                }
+                openF1OverlayMode={openF1TrackProgressMode}
+                selectedDriverId={selectedCar.driverId}
+                showSimulationCars={!observedMapActive}
+                snapshot={snapshot}
+              />
+            </Suspense>
+          }
+        />
+
+        <SetupPanel
+          componentReplacementDisabled={!isPaused}
+          drivers={drivers}
+          gridSource={gridSource}
+          isOpen={isSetupOpen}
+          knockoutQualifying={knockoutQualifying}
+          onApplyTeamPreset={applyTeamPreset}
+          onCarSetupChange={updateCarSetup}
+          onComponentReplace={replaceComponent}
+          onDriverChange={focusDriver}
+          onDriverStatChange={updateDriverStat}
+          onGridSourceChange={setGridSource}
+          onPitLaneStartChange={setPitLaneStart}
+          onRandomSeed={randomSeed}
+          onResetGrid={resetGrid}
+          onSeedChange={setSeed}
+          onTeamChange={setSelectedTeamId}
+          onTeamStatChange={updateTeamStat}
+          onToggle={() => setIsSetupOpen((isOpen) => !isOpen)}
+          onTrackChange={changeTrack}
+          openF1GridAvailable={openF1GridResults.length > 0}
+          openF1GridStatus={openF1GridStatus}
+          practiceResults={practiceResults}
+          practiceSetup={practiceSetup}
+          qualifyingResults={qualifyingResults}
+          seed={seed}
+          selectedDriverId={selectedDriverId}
+          selectedTeamId={selectedTeamId}
+          selectedTrackId={selectedTrackId}
+          selectedWeekendStage={selectedWeekendStage}
+          teams={teams}
+          tracks={tracks}
+          weekendContext={weekendContext}
+          weekendTirePlan={weekendTirePlan}
+        />
+
+        {isClassificationOpen && isRaceProgressSession ? (
+          <RaceClassificationPanel
+            onClose={() => setIsClassificationOpen(false)}
+            snapshot={snapshot}
+          />
+        ) : null}
+
+        {isInsightsOpen && isRaceProgressSession && selectedDriver ? (
+          <RaceInsightsPanel
+            car={selectedCar}
+            driver={selectedDriver}
+            onClose={() => setIsInsightsOpen(false)}
+            onRequestPitStop={requestPitStop}
+            onSetDriverPaceMode={setDriverPaceMode}
+            openF1Mode={dataMode}
+            season={season}
+            snapshot={snapshot}
+            telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
+            timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
+            track={track}
+            weekendContext={weekendContext}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <main className="race-shell">
       <Suspense
@@ -2101,14 +2423,13 @@ export default function App() {
           config={raceConfig}
           onSelectDriver={focusDriver}
           openF1Overlay={
-            showOpenF1Cars &&
-            dataModeUsesObservedTiming(dataMode) &&
-            openF1TrackProgressAvailable
+            observedMapActive
               ? openF1TrackProgress
               : null
           }
           openF1OverlayMode={openF1TrackProgressMode}
           selectedDriverId={selectedCar.driverId}
+          showSimulationCars={!observedMapActive}
           snapshot={snapshot}
         />
       </Suspense>

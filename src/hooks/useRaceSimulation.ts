@@ -9,8 +9,8 @@ import type {
   TireCompound,
 } from '../types'
 import {
-  RACE_WORKER_PUBLISH_MS,
   RACE_WORKER_TICK_MS,
+  raceWorkerPublishMsFor,
   type RaceWorkerInboundMessage,
   type RaceWorkerOutboundMessage,
 } from '../workers/raceWorkerProtocol'
@@ -134,7 +134,7 @@ export function useRaceSimulation({
       const now = performance.now()
 
       if (
-        now - lastFallbackPublishRef.current >= RACE_WORKER_PUBLISH_MS ||
+        now - lastFallbackPublishRef.current >= raceWorkerPublishMsFor(speed) ||
         nextSnapshot.sessionStatus === 'finished'
       ) {
         lastFallbackPublishRef.current = now

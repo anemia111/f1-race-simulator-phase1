@@ -9,6 +9,13 @@ import type {
 export const RACE_WORKER_TICK_MS = 50
 export const RACE_WORKER_PUBLISH_MS = 100
 
+export function raceWorkerPublishMsFor(speed: SpeedMultiplier): number {
+  if (speed >= 60) return 500
+  if (speed >= 20) return 250
+  if (speed >= 5) return 150
+  return RACE_WORKER_PUBLISH_MS
+}
+
 export type RaceWorkerInboundMessage =
   | {
       type: 'initialize'
@@ -24,4 +31,3 @@ export type RaceWorkerOutboundMessage =
   | { type: 'ready'; snapshot: RaceSnapshot }
   | { type: 'snapshot'; snapshot: RaceSnapshot }
   | { type: 'error'; message: string }
-

@@ -54,7 +54,7 @@ import { tireDeltaSeconds } from './tires'
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
   lineDeviationPenaltySeconds,
-  progressForSpeed,
+  progressForProfileSpeed,
   trackDynamicsAt,
 } from './trackDynamics'
 import {
@@ -1040,6 +1040,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       tireTemperatureC: 86,
       tireWearPercent: 0,
       brakeTemperatureC: 460,
+      brakeOverheatSeconds: 0,
       stewardStatus: 'clear',
       stewardNote: null,
       timedRunStartedAtSeconds: null,
@@ -2172,6 +2173,10 @@ export function advanceRace(
         ),
         tireTemperatureC: Math.max(58, car.tireTemperatureC - deltaSeconds * 0.7),
         brakeTemperatureC: Math.max(260, car.brakeTemperatureC - deltaSeconds * 4),
+        brakeOverheatSeconds: Math.max(
+          0,
+          car.brakeOverheatSeconds - deltaSeconds * 3,
+        ),
       }
     }
 
@@ -2268,7 +2273,12 @@ export function advanceRace(
 
     let totalDistance =
       car.totalDistance +
-      progressForSpeed(config.track, displayTelemetry.speedKph, deltaSeconds) *
+      progressForProfileSpeed(
+        config.track,
+        car.progress,
+        displayTelemetry.speedKph,
+        deltaSeconds,
+      ) *
         paceMultiplier
     const battleDeltaStep =
       Math.sign(car.battleDeltaSecondsRemaining) *
@@ -2290,7 +2300,12 @@ export function advanceRace(
 
     if (mayUnlap) {
       totalDistance +=
-        progressForSpeed(config.track, displayTelemetry.speedKph, deltaSeconds) *
+        progressForProfileSpeed(
+          config.track,
+          car.progress,
+          displayTelemetry.speedKph,
+          deltaSeconds,
+        ) *
         0.48
     }
 
@@ -2407,16 +2422,27 @@ export function advanceRace(
           modeWearMultiplier[racePaceMode] *
           (localWeather === 'heavy-rain' && car.tire !== 'W' ? 1.6 : 1),
     )
+    const brakeTemperatureTargetC = Math.min(
+      1180,
+      335 +
+        displayTelemetry.brakePercent * 9.3 * modeBrakeMultiplier[racePaceMode] +
+        displayTelemetry.speedKph * 0.28,
+    )
+    const brakeTemperatureResponse =
+      brakeTemperatureTargetC > car.brakeTemperatureC ? 0.34 : 0.055
     const brakeTemperatureC = Math.max(
       260,
       Math.min(
         1150,
         car.brakeTemperatureC +
-          (displayTelemetry.brakePercent * 0.34 - displayTelemetry.speedKph * 0.016) *
-            deltaSeconds *
-            modeBrakeMultiplier[racePaceMode],
+          (brakeTemperatureTargetC - car.brakeTemperatureC) *
+            (1 - Math.exp(-brakeTemperatureResponse * deltaSeconds)),
       ),
     )
+    const brakeOverheatSeconds =
+      brakeTemperatureC >= 1100 && displayTelemetry.brakePercent <= 25
+        ? Math.min(180, car.brakeOverheatSeconds + deltaSeconds)
+        : Math.max(0, car.brakeOverheatSeconds - deltaSeconds * 2.5)
     const brakeFadeSeconds = Math.min(
       0.025,
       Math.max(0, brakeTemperatureC - 980) * 0.00015,
@@ -2470,7 +2496,7 @@ export function advanceRace(
             Math.min(
               5,
               car.vscDeltaSeconds +
-                ((allowedVscSpeed - displayTelemetry.speedKph) /
+                ((allowedVscSpeed - displayTelemetry.speedKph * paceMultiplier) /
                   Math.max(80, allowedVscSpeed)) *
                   deltaSeconds,
             ),
@@ -2506,6 +2532,7 @@ export function advanceRace(
       racePaceMode,
       tireWearPercent,
       brakeTemperatureC,
+      brakeOverheatSeconds,
       blueFlag,
       warningLightsUntilSeconds:
         car.warningLightsUntilSeconds !== null &&
@@ -2556,6 +2583,7 @@ export function advanceRace(
             track: config.track,
             trackProgress: next.totalDistance - Math.floor(next.totalDistance),
             sector: carSector,
+            evaluationsPerLap: 12,
           })
 
           if (battle) {

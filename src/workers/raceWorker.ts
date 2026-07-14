@@ -9,8 +9,8 @@ import type {
   TireCompound,
 } from '../types'
 import {
-  RACE_WORKER_PUBLISH_MS,
   RACE_WORKER_TICK_MS,
+  raceWorkerPublishMsFor,
   type RaceWorkerInboundMessage,
   type RaceWorkerOutboundMessage,
 } from './raceWorkerProtocol'
@@ -74,7 +74,10 @@ setInterval(() => {
 
     const now = performance.now()
 
-    if (now - lastPublishedAt >= RACE_WORKER_PUBLISH_MS || snapshot.sessionStatus === 'finished') {
+    if (
+      now - lastPublishedAt >= raceWorkerPublishMsFor(speed) ||
+      snapshot.sessionStatus === 'finished'
+    ) {
       lastPublishedAt = now
       publish({ type: 'snapshot', snapshot })
     }
@@ -86,4 +89,3 @@ setInterval(() => {
     isPaused = true
   }
 }, RACE_WORKER_TICK_MS)
-

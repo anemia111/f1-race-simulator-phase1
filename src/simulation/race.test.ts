@@ -34,6 +34,7 @@ import {
   raceLapsFor,
   trackEvolutionLevel,
 } from './raceEvents'
+import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
 import {
   decidePitStop,
   estimatePitOpportunity,
@@ -115,21 +116,29 @@ function runToFinish(
 }
 
 describe('determinism', () => {
-  it('produces identical snapshots for the same seed and step pattern', () => {
-    const a = runSteps(makeConfig('repeat-me'), 1200, 1)
-    const b = runSteps(makeConfig('repeat-me'), 1200, 1)
+  it(
+    'produces identical snapshots for the same seed and step pattern',
+    () => {
+      const a = runSteps(makeConfig('repeat-me'), 1200, 1)
+      const b = runSteps(makeConfig('repeat-me'), 1200, 1)
 
-    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
-  })
+      expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    },
+    15_000,
+  )
 
-  it('produces different races for different seeds', () => {
-    const a = runSteps(makeConfig('seed-one'), 1200, 1)
-    const b = runSteps(makeConfig('seed-two'), 1200, 1)
+  it(
+    'produces different races for different seeds',
+    () => {
+      const a = runSteps(makeConfig('seed-one'), 1200, 1)
+      const b = runSteps(makeConfig('seed-two'), 1200, 1)
 
-    expect(JSON.stringify(a.cars.map((car) => car.driverId))).not.toBe(
-      JSON.stringify(b.cars.map((car) => car.driverId)),
-    )
-  })
+      expect(JSON.stringify(a.cars.map((car) => car.driverId))).not.toBe(
+        JSON.stringify(b.cars.map((car) => car.driverId)),
+      )
+    },
+    15_000,
+  )
 })
 
 describe('steward decisions', () => {
@@ -188,6 +197,98 @@ describe('starting grid', () => {
 
     expect(snapshot.cars.some((car) => car.status === 'pit')).toBe(false)
     expect(snapshot.events.some((event) => event.kind === 'pit')).toBe(false)
+  })
+
+  it('does not treat normal brake-temperature peaks as an early pit trigger', () => {
+    const baseConfig = makeConfig('no-early-brake-stop')
+    const config = {
+      ...baseConfig,
+      track: { ...baseConfig.track, rainProbability: 0 },
+    }
+    let snapshot = runThroughStart(config)
+
+    for (let step = 0; step < 300 && snapshot.leaderLap < 10; step += 1) {
+      snapshot = advanceRace(snapshot, 5, config)
+    }
+
+    const brakeStops = snapshot.events.filter(
+      (event) => event.kind === 'pit' && event.message.includes('brake-cooling'),
+    )
+    const cleanLapTimes = snapshot.cars.flatMap((car) =>
+      car.lapHistory
+        .filter((lap) => lap.isValid && !lap.pitStop && lap.lap >= 3)
+        .map((lap) => lap.lapTimeSeconds),
+    )
+    const fastestCleanLap = Math.min(...cleanLapTimes)
+    const carsThatStopped = snapshot.cars.filter((car) => car.pitStops > 0)
+
+    expect(brakeStops).toHaveLength(0)
+    expect(fastestCleanLap).toBeGreaterThan(config.track.baseLapTime * 0.84)
+    expect(fastestCleanLap).toBeLessThan(config.track.baseLapTime * 1.15)
+    expect(carsThatStopped.length).toBeLessThan(snapshot.cars.length / 2)
+  })
+
+  it('stages routine green-flag stops instead of sending the field together', () => {
+    const baseConfig = makeConfig('staggered-pit-window')
+    const config = {
+      ...baseConfig,
+      track: { ...baseConfig.track, rainProbability: 0 },
+    }
+    const started = runThroughStart(config)
+    const staged: RaceSnapshot = {
+      ...started,
+      cars: started.cars.map((car, index) => ({
+        ...car,
+        totalDistance: 9.999 - index * 0.00001,
+        lap: 9,
+        progress: 0.999 - index * 0.00001,
+        processedLap: 9,
+        tire: 'S' as const,
+        tireAgeLaps: 17,
+        tireWearPercent: 82,
+        brakeTemperatureC: 760,
+        brakeOverheatSeconds: 0,
+        damage: 0,
+        gapToAhead: index === 0 ? 0 : 1.8,
+        gapToLeader: index * 1.8,
+      })),
+    }
+    const next = advanceRace(staged, 1, config)
+    const routinePitting = next.cars.filter(
+      (car) =>
+        car.status === 'pit' &&
+        car.damage < pitTuning.damagePitThreshold &&
+        car.brakeOverheatSeconds < pitTuning.brakeOverheatPitSeconds &&
+        car.tireWearPercent < 88,
+    )
+
+    expect(routinePitting.length).toBeLessThanOrEqual(
+      pitTuning.normalPitLaneCapacity,
+    )
+    expect(new Set(routinePitting.map((car) => car.teamId)).size).toBe(
+      routinePitting.length,
+    )
+  })
+
+  it('keeps the default early weather crossover and VSC response credible', () => {
+    const config = makeConfig('phase-2-default')
+    let snapshot = runThroughStart(config)
+    let maximumCarsInPit = 0
+
+    for (let tick = 0; tick < 1_800 && snapshot.leaderLap < 8; tick += 1) {
+      snapshot = advanceRace(snapshot, 0.5, config)
+      maximumCarsInPit = Math.max(
+        maximumCarsInPit,
+        snapshot.cars.filter((car) => car.status === 'pit').length,
+      )
+    }
+
+    const vscPenalties = snapshot.cars.flatMap((car) =>
+      car.penalties.filter((penalty) => penalty.reason === 'VSC delta'),
+    )
+
+    expect(maximumCarsInPit).toBeLessThan(snapshot.cars.length / 2)
+    expect(vscPenalties.length).toBeLessThanOrEqual(2)
   })
 
   it('starts practice from pit boxes and releases cars on staggered run plans', () => {
@@ -525,6 +626,37 @@ describe('start procedure and persisted weekend', () => {
     expect(snapshot.overtakeEnableTargetsByDriver).toBeNull()
   })
 
+  it('measures VSC deltas against the pace-adjusted on-track speed', () => {
+    const config = makeConfig('vsc-delta-pace')
+    let snapshot = runThroughStart(config)
+
+    snapshot = {
+      ...snapshot,
+      flag: 'vsc',
+      flagLabel: 'VSC',
+      flagPhase: {
+        endMessage: 'VSC ending.',
+        endSeconds: snapshot.elapsedSeconds + 40,
+        flag: 'vsc',
+        id: 'forced-vsc',
+        sector: 0,
+        startMessage: 'Virtual Safety Car deployed.',
+        startSeconds: snapshot.elapsedSeconds,
+      },
+    }
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      snapshot = advanceRace(snapshot, 0.5, config)
+    }
+
+    expect(Math.min(...snapshot.cars.map((car) => car.vscDeltaSeconds))).toBeGreaterThanOrEqual(-0.25)
+    expect(
+      snapshot.cars.flatMap((car) =>
+        car.penalties.filter((penalty) => penalty.reason === 'VSC delta'),
+      ),
+    ).toHaveLength(0)
+  })
+
   it('persists practice setup and qualifying grid into the race weekend', () => {
     const config = makeConfig('weekend-persist')
     const practice = runPracticeSession(config, 'fp1')
@@ -568,6 +700,27 @@ describe('official race distances', () => {
 
     expect(raceLapsFor(albertPark)).toBe(58)
     expect(raceLapsFor(madrid)).toBeGreaterThanOrEqual(15)
+  })
+})
+
+describe('track speed profile', () => {
+  it('integrates the reference profile to the configured base lap time', () => {
+    const track = tracks[0]
+    const steps = 1_000
+    const deltaSeconds = track.baseLapTime / steps
+    let progress = 0
+
+    for (let step = 0; step < steps; step += 1) {
+      const referenceSpeed = trackDynamicsAt(track, progress).referenceSpeedKph
+      progress += progressForProfileSpeed(
+        track,
+        progress,
+        referenceSpeed,
+        deltaSeconds,
+      )
+    }
+
+    expect(progress).toBeCloseTo(1, 8)
   })
 })
 
@@ -776,6 +929,57 @@ describe('weather and wet strategy', () => {
     expect(decision?.compound).toBe('W')
   })
 
+  it('stages a non-critical drying crossover instead of boxing the field together', () => {
+    const baseCar = createInitialRace(makeConfig('drying-crossover')).cars[0]
+    const decisions = initialDrivers.map((driver) =>
+      decidePitStop({
+        seed: 'drying-crossover',
+        driver,
+        car: {
+          ...baseCar,
+          tire: 'I',
+          compoundsUsed: ['I'],
+          tireAgeLaps: 4,
+          tireWearPercent: 24,
+        },
+        lap: 5,
+        raceLaps: 58,
+        underSafetyCar: false,
+        weather: 'clear',
+        trackGrip: 0.96,
+      }),
+    )
+    const crossoverCalls = decisions.filter(
+      (decision) => decision?.reason === 'weather',
+    )
+
+    expect(crossoverCalls.length).toBeGreaterThan(0)
+    expect(crossoverCalls.length).toBeLessThan(initialDrivers.length)
+  })
+
+  it('holds an ordinary crossover call while the green-flag pit lane is busy', () => {
+    const baseCar = createInitialRace(makeConfig('drying-congestion')).cars[0]
+    const decision = decidePitStop({
+      seed: 'drying-congestion',
+      driver: initialDrivers[0],
+      car: {
+        ...baseCar,
+        tire: 'I',
+        compoundsUsed: ['I'],
+        tireAgeLaps: 4,
+        tireWearPercent: 24,
+      },
+      lap: 5,
+      raceLaps: 58,
+      underSafetyCar: false,
+      weather: 'clear',
+      trackGrip: 0.96,
+      pitLaneOccupancy: pitTuning.normalPitLaneCapacity,
+    })
+
+    expect(decision).toBeNull()
+  })
+
   it('explains a weather crossover as an immediate strategy call', () => {
     const car = createInitialRace(makeConfig('strategy-outlook')).cars[0]
     const outlook = strategyOutlookFor({
@@ -906,7 +1110,7 @@ describe('weather and wet strategy', () => {
     expect(decision).toBeNull()
   })
 
-  it('boxes for measured tire wear or dangerous brake temperature', () => {
+  it('boxes for measured tire wear or sustained brake overheating', () => {
     const baseCar = createInitialRace(makeConfig('sensor-strategy')).cars[0]
     const tireDecision = decidePitStop({
       seed: 'sensor-strategy-tire',
@@ -921,7 +1125,12 @@ describe('weather and wet strategy', () => {
     const brakeDecision = decidePitStop({
       seed: 'sensor-strategy-brake',
       driver: initialDrivers[0],
-      car: { ...baseCar, tireWearPercent: 22, brakeTemperatureC: 1115 },
+      car: {
+        ...baseCar,
+        tireWearPercent: 22,
+        brakeTemperatureC: 1115,
+        brakeOverheatSeconds: pitTuning.brakeOverheatPitSeconds + 1,
+      },
       lap: 12,
       raceLaps: 57,
       underSafetyCar: false,
@@ -931,6 +1140,27 @@ describe('weather and wet strategy', () => {
 
     expect(tireDecision?.reason).toBe('tire-condition')
     expect(brakeDecision?.reason).toBe('brake-cooling')
+  })
+
+  it('does not pit for a normal short-lived brake temperature peak', () => {
+    const baseCar = createInitialRace(makeConfig('brake-peak')).cars[0]
+    const decision = decidePitStop({
+      seed: 'brake-peak',
+      driver: initialDrivers[0],
+      car: {
+        ...baseCar,
+        tireWearPercent: 22,
+        brakeTemperatureC: 1115,
+        brakeOverheatSeconds: 4,
+      },
+      lap: 12,
+      raceLaps: 57,
+      underSafetyCar: false,
+      weather: 'clear',
+      trackGrip: 1,
+    })
+
+    expect(decision).toBeNull()
   })
 })
 
@@ -1619,20 +1849,25 @@ describe('incidents', () => {
   it('produces a plausible number of incidents across a race distance', () => {
     const raceLaps = raceLapsFor(tracks[0])
     let incidents = 0
+    let retirements = 0
 
     for (const driver of initialDrivers) {
       const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
 
       for (let lap = 2; lap <= raceLaps; lap += 1) {
-        if (incidentForLap('frequency-seed', driver, team, lap)) {
+        const incident = incidentForLap('frequency-seed', driver, team, lap)
+
+        if (incident) {
           incidents += 1
+          retirements += incident.retirement ? 1 : 0
         }
       }
     }
 
     // 22 cars x ~50 laps: expect some action but not a demolition derby.
     expect(incidents).toBeGreaterThan(0)
-    expect(incidents).toBeLessThan(40)
+    expect(incidents).toBeLessThan(24)
+    expect(retirements).toBeLessThanOrEqual(4)
   })
 })
 

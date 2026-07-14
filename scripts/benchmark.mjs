@@ -4,6 +4,11 @@ import { chromium } from 'playwright'
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
 const sampleSeconds = Number(process.env.BENCHMARK_SECONDS ?? 8)
 const strict = process.env.BENCHMARK_STRICT === '1'
+const benchmarkSpeed = process.env.BENCHMARK_SPEED ?? '60'
+
+if (!['1', '5', '20', '60'].includes(benchmarkSpeed)) {
+  throw new Error(`Unsupported BENCHMARK_SPEED: ${benchmarkSpeed}`)
+}
 
 const browser = await chromium.launch({ headless: true })
 
@@ -28,9 +33,11 @@ try {
   })
 
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.broadcast-app')
   await page.waitForSelector('canvas')
-  await page.getByTitle('Set weekend stage to Race').click()
-  await page.getByTitle('Speed 60x').click()
+  await page
+    .getByRole('button', { name: `${benchmarkSpeed}x`, exact: true })
+    .click()
   await page.waitForTimeout(1_000)
 
   const metrics = await page.evaluate(async (durationMs) => {
@@ -96,7 +103,7 @@ try {
     recordedAt: new Date().toISOString(),
     appUrl,
     viewport: '1440x900@1x',
-    simulationSpeed: '60x',
+    simulationSpeed: `${benchmarkSpeed}x`,
     strict,
     pageErrors,
     ...metrics,
