@@ -57,8 +57,8 @@ export function auditTrackCalendar(
       add(
         track,
         'layoutSource',
-        track.id === 'madrid-approx' ? 'warning' : 'error',
-        'OpenF1 circuit layout unavailable; fallback active',
+        'error',
+        'Verified circuit layout unavailable; fallback active',
       )
     }
 

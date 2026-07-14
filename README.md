@@ -6,9 +6,9 @@ driving game or a broadcast-video renderer.
 
 ## Current Features
 
-- 24 selectable circuit packs with 23 OpenF1-derived centerlines. The current
-  FIA calendar is 22 rounds after Bahrain/Jeddah cancellation; Madrid is an
-  explicitly labelled geometry fallback.
+- 24 selectable circuit packs: 23 OpenF1-derived centerlines plus the official
+  2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
+  the Bahrain/Jeddah cancellation.
 - FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
   lap records, including aborted starts, pit-lane starts, and standing/rolling
@@ -22,8 +22,8 @@ driving game or a broadcast-video renderer.
   Safety Car leading the queue. See
   [`docs/FIA_2026_REGULATION_COVERAGE.md`](docs/FIA_2026_REGULATION_COVERAGE.md)
   for article-level coverage and non-public-document boundaries.
-- One normal racing line; lateral movement appears only during close attacks
-  and defence. Battle checks run in 12 lightweight track segments per lap.
+- One normal racing line with no artificial lateral weaving. Battle checks run
+  in 12 lightweight track segments per lap.
 - Dense live timing with lap-numbered CPU sector measurements, progressive
   comparative mini-sectors, telemetry, source chips, race control,
   classification, analysis, and manual strategy controls.

@@ -26,11 +26,12 @@ feel factual and operational rather than like an arcade driving game.
 - `src/data/tracks.ts` exposes 24 selectable track packs. The amended FIA
   calendar has 22 championship rounds; Bahrain and Jeddah remain selectable
   but are visibly marked cancelled.
-- `src/data/realTrackLayouts.ts` contains 23 generated real centerlines and
-  sectors from OpenF1 circuit information. Do not hand-edit its point arrays.
-- Madrid is an explicit, UI-labelled layout fallback because OpenF1 geometry
-  is unavailable. Its official 5.416 km length and 57-lap distance remain
-  separate from the fallback shape.
+- `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
+  official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
+- MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
+  corners. Its sector boundaries remain labelled derived until the FIA event
+  circuit map is published, and it intentionally has no fabricated OpenF1
+  telemetry-coordinate projection.
 - OpenF1 collection covers drivers, grid/results, laps, sectors, mini-sectors,
   weather, pit/stints, race control, positions, intervals, overtakes, radio,
   car telemetry, location, and championship data when endpoints provide it.
@@ -183,16 +184,15 @@ npm run benchmark
 
 ## Honest Remaining Limits
 
-1. Madrid remains fallback geometry until authoritative data exists.
-2. Active-aero/Overtake, pit, and safety-car operational markers are derived unless a source is
+1. Active-aero/Overtake, pit, and safety-car operational markers are derived unless a source is
    explicitly labelled authoritative.
-3. OpenF1 location/telemetry availability varies by session; keep the SIM and
+2. OpenF1 location/telemetry availability varies by session; keep the SIM and
    unavailable states even when testing with a data-rich historical race.
-4. SC/red procedures still simplify some race-director discretion and detailed
+3. SC/red procedures still simplify some race-director discretion and detailed
    delta enforcement.
-5. FIA event packs currently provide a truthful document ledger; most values
+4. FIA event packs currently provide a truthful document ledger; most values
    are not yet parsed from PDFs into normalized machine-readable markers.
-6. The lazy Three.js scene is about 0.93 MB minified. It no longer blocks the
+5. The lazy Three.js scene is about 0.93 MB minified. It no longer blocks the
    initial UI bundle, but Three.js remains the largest download.
 
 ## Guardrails

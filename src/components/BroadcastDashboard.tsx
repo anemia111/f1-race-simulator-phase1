@@ -86,7 +86,7 @@ export type BroadcastRaceControlEntry = {
 
 export type BroadcastDataDetail = {
   label: string
-  source: 'OBS' | 'CAL' | 'SIM' | 'FIA' | 'PIR' | 'UNAVAILABLE'
+  source: 'OBS' | 'OFF' | 'CAL' | 'SIM' | 'FIA' | 'PIR' | 'UNAVAILABLE'
   value: string
 }
 
@@ -242,6 +242,22 @@ function PanelHeader({
 function SourceTag({ source }: { source: BroadcastDataDetail['source'] }) {
   return <span className={`broadcast-source source-${source.toLowerCase()}`}>{source}</span>
 }
+
+const layoutSourceTag = (
+  track: TrackDefinition,
+): BroadcastDataDetail['source'] =>
+  track.layoutSource?.provider === 'official'
+    ? 'OFF'
+    : track.layoutSource?.provider === 'openf1'
+      ? 'OBS'
+      : 'SIM'
+
+const layoutGeometryLabel = (track: TrackDefinition) =>
+  track.layoutSource?.provider === 'official'
+    ? 'Official vector geometry'
+    : track.layoutSource?.provider === 'openf1'
+      ? 'Observed geometry'
+      : 'Fallback geometry'
 
 const miniSectorStateLabels: Record<MiniSectorState, string> = {
   dim: 'not completed',
@@ -609,6 +625,7 @@ function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
       {rows.map((row) => (
         <div
           className={row.car.blueFlag ? 'blue-flag-active' : undefined}
+          data-car-status={row.car.status}
           key={row.car.driverId}
           role="listitem"
         >
@@ -680,8 +697,9 @@ function CenterView({
     return (
       <div className="detail-grid track-detail-grid">
         <span>Track length</span><strong>{track.lengthKm.toFixed(3)} km</strong><SourceTag source={track.lengthSource === 'official' ? 'FIA' : 'SIM'} />
-        <span>Layout</span><strong>{track.layoutSource?.detail === 'real' ? 'Observed geometry' : 'Fallback geometry'}</strong><SourceTag source={track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM'} />
-        <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? 'OBS' : 'UNAVAILABLE'} />
+        <span>Layout</span><strong>{layoutGeometryLabel(track)}</strong><SourceTag source={layoutSourceTag(track)} />
+        <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? layoutSourceTag(track) : 'UNAVAILABLE'} />
+        <span>Sector boundaries</span><strong>{track.sectorMarks.slice(1).map((mark) => `${Math.round(mark * 100)}%`).join(' / ')}</strong><SourceTag source={track.sectorMarksSource === 'official' ? 'FIA' : 'CAL'} />
         <span>Active aero zones</span><strong>{track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={aeroSource} />
         <span>Overtake detection lines</span><strong>{track.overtakeControlLines?.length ?? 0}</strong><SourceTag source="CAL" />
         <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
@@ -1063,7 +1081,7 @@ export function BroadcastDashboard({
             <div className="broadcast-track-stage">
               <div className="map-grid-texture" aria-hidden="true" />
               {trackScene}
-              <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM'} /></div>
+              <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={layoutSourceTag(track)} /></div>
               <div className="track-map-legend">
                 {(Object.keys(tireLabels) as CarSnapshot['tire'][]).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}
               </div>

@@ -11,7 +11,8 @@ Before editing, read:
 
 Important constraints:
 - The race engine is SIM; OpenF1 is a separately labelled LIVE/HIST/SIM layer.
-- Preserve the 23 real layouts and the explicit Madrid fallback.
+- Preserve all 24 verified layouts, including the official MADRING vector and
+  its explicit lack of an OpenF1 telemetry-coordinate projection.
 - Preserve fixed-tick Worker ownership and the explicit SIM/HIST/LIVE contract.
 - Preserve measured 24-part mini-sector timing and provisional purple-to-green
   transitions; never recolor from projected lap time.

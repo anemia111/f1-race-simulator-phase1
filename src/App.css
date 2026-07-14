@@ -2438,6 +2438,7 @@
 }
 
 .broadcast-source.source-obs { color: #4ee182; }
+.broadcast-source.source-off { color: #ff6576; }
 .broadcast-source.source-fia { color: #4bd8ff; }
 .broadcast-source.source-pir { color: #ff6576; }
 .broadcast-source.source-cal { color: #bd7cff; }

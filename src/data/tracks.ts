@@ -464,14 +464,14 @@ const trackPool: Array<Omit<TrackDefinition, 'lengthKm' | 'lengthSource'>> = [
   },
   {
     id: 'madrid-approx',
-    name: 'Madrid Approx',
+    name: 'MADRING',
     location: 'Spain',
-    kind: 'street',
-    feature: 'New hybrid-style city layout with broad sweepers and tight links',
+    kind: 'hybrid',
+    feature: 'Hybrid Madrid layout with the 24% banked La Monumental and an 837 m straight',
     isSprintWeekend: false,
     rainProbability: 0.12,
     width: 5.0,
-    baseLapTime: 92,
+    baseLapTime: 94.4,
     sectorMarks: [0, 0.34, 0.69],
     centerline: [
       [-24, 0, -9],
@@ -669,7 +669,7 @@ const officialRaceLaps: Partial<Record<(typeof calendarTrackIds)[number], number
 }
 
 // Current official racing-layout lengths in kilometres. Layout-coordinate
-// provenance is tracked separately because Madrid still lacks an OpenF1 map.
+// provenance is tracked separately from distance provenance.
 const circuitLengthKm: Record<(typeof calendarTrackIds)[number], number> = {
   'albert-park-approx': 5.278,
   'bahrain-approx': 5.412,
@@ -882,15 +882,14 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
       ? {
           detail: 'real',
           label: `${realLayout.source.circuitName} ${realLayout.source.year}`,
+          provider: realLayout.source.kind,
           url: realLayout.source.url,
           year: realLayout.source.year,
         }
       : {
           detail: 'fallback',
-          label:
-            id === 'madrid-approx'
-              ? 'Madrid layout fallback: OpenF1 circuit_info_url returned 404'
-              : 'Fallback layout: circuit_info_url unavailable',
+          provider: 'fallback',
+          label: 'Fallback layout: verified geometry unavailable',
           url: null,
           year: null,
         },
@@ -906,6 +905,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     raceLapsSource: officialRaceLaps[id] === undefined ? 'estimated' : 'official',
     safetyCarLines: deriveSafetyCarLines({ ...track, pitLane }),
     sectorMarks: realLayout?.sectorMarks ?? track.sectorMarks,
+    sectorMarksSource: realLayout?.sectorMarksSource ?? 'fallback',
     tireNomination: tireNominationForTrack(track),
     width: realLayout?.width ?? fallbackTrackWidth(track),
   }

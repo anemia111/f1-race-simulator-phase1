@@ -2281,6 +2281,12 @@ export default function App() {
           : 'Quali'
         : 'Brief'
   const bestSetupTeam = practiceSetup.teamSummaries[0]
+  const trackGeometrySource: BroadcastDataDetail['source'] =
+    raceConfig.track.layoutSource?.provider === 'official'
+      ? 'OFF'
+      : raceConfig.track.layoutSource?.provider === 'openf1'
+        ? 'OBS'
+        : 'SIM'
 
   const broadcastDataDetails: BroadcastDataDetail[] = [
     {
@@ -2317,7 +2323,7 @@ export default function App() {
     },
     {
       label: 'Track geometry',
-      source: raceConfig.track.layoutSource?.detail === 'real' ? 'OBS' : 'SIM',
+      source: trackGeometrySource,
       value: raceConfig.track.layoutSource?.label ?? 'Fallback layout',
     },
     {
@@ -2669,7 +2675,7 @@ export default function App() {
             }
             title={`${trackCalendarAudit.warningCount} warnings / ${trackCalendarAudit.errorCount} errors`}
           >
-            {trackCalendarAudit.realLayoutCount}/{trackCalendarAudit.trackCount} OBS{' '}
+            {trackCalendarAudit.realLayoutCount}/{trackCalendarAudit.trackCount} REAL{' '}
             {trackCalendarAudit.scorePercent}%
           </strong>
           <span>Grid</span>
@@ -2918,7 +2924,7 @@ export default function App() {
               !openF1TrackProgressAvailable
                 ? raceConfig.track.locationProjection
                   ? 'OpenF1 car positions unavailable: no recent location samples'
-                  : 'OpenF1 car positions unavailable: fallback layout has no coordinate mapping'
+                  : 'OpenF1 car positions unavailable: no matching telemetry coordinate projection'
                 : showOpenF1Cars
                   ? 'Hide factual OpenF1 car positions'
                   : `Show factual OpenF1 car positions (${openF1TrackProgressMode} window replay)`
@@ -3215,7 +3221,7 @@ export default function App() {
                     ? `Replay of the newest fetched OpenF1 location window. Cars sit on the racing line: OpenF1 lateral placement is not reliable at this scale. ${openF1TrackProgress.rejectedSamples} off-track samples dropped.`
                     : raceConfig.track.locationProjection
                       ? 'No recent OpenF1 location samples for this session'
-                      : 'Fallback layout has no OpenF1 coordinate mapping'
+                      : 'No matching OpenF1 telemetry coordinate projection'
                 }
               >
                 {openF1TrackProgressAvailable
@@ -3398,7 +3404,9 @@ export default function App() {
                 <span>Track geometry</span>
                 <strong>
                   {raceConfig.track.layoutSource?.detail === 'real'
-                    ? 'OPENF1 OBS'
+                    ? raceConfig.track.layoutSource.provider === 'official'
+                      ? 'OFFICIAL VECTOR'
+                      : 'OPENF1 OBS'
                     : 'FALLBACK'}
                 </strong>
               </a>

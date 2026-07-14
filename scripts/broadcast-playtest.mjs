@@ -195,7 +195,13 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
     dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
   }))
-  const timingLapLabels = await page.locator('.timing-lap-source > small').allInnerTexts()
+  const timingLapRows = await page.locator('.timing-detail-list > [role="listitem"]').evaluateAll((rows) =>
+    rows.map((row) => ({
+      label: row.querySelector('.timing-lap-source > small')?.textContent ?? '',
+      status: row.getAttribute('data-car-status') ?? '',
+    })),
+  )
+  const timingLapLabels = timingLapRows.map((row) => row.label)
   await page.locator('.broadcast-sidebar button[title="Overview"]').click()
   const speed60Selected = await page.getByRole('button', { name: '60x' }).getAttribute('aria-pressed')
   const pauseButton = page.getByLabel('Pause simulation')
@@ -307,6 +313,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     timingDetailRows,
     timingDetailScroll,
     timingLapLabels,
+    timingLapRows,
     runningMiniSectorStates,
     timingOverviewHeader,
     tokenInputVisible,
@@ -350,7 +357,12 @@ try {
     if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !label.includes('CLEAR'))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
     if (!result.sectorFlagAriaLabel?.includes('Sector 1 CLEAR') || !result.sectorFlagAriaLabel.includes('Sector 3 CLEAR')) failures.push('sector flag strip needs an accessible per-sector summary')
     if (result.runningMiniSectorStates.colored === 0 || result.runningMiniSectorStates.dim === 0) failures.push('running mini sectors need completed and pending states')
-    if (result.timingLapLabels.some((label) => !/^L\d+$/u.test(label))) failures.push(`timing rows need measured lap labels: ${result.timingLapLabels.join(', ')}`)
+    const invalidTimingLapRows = result.timingLapRows.filter(
+      (row) =>
+        !/^L\d+$/u.test(row.label) &&
+        !['retired', 'disqualified', 'dns'].includes(row.status),
+    )
+    if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
     if (result.driverAbilityMaxes.length !== 6 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability sliders must use the 150-point ceiling')
     if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('configured driver abilities must remain at or below 100')
     for (const label of ['SPD', 'THR', 'BRK', 'GEAR', 'RPM', 'ERS', 'SOURCE']) {

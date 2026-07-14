@@ -15,8 +15,8 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 
 ## Current Baseline
 
-- 24 selectable tracks; 23 real OpenF1-derived centerlines, one labelled Madrid
-  fallback, and the amended 22-round championship status.
+- 24 verified tracks: 23 OpenF1-derived centerlines plus the official 2026
+  MADRING organizer vector, with the amended 22-round championship status.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ

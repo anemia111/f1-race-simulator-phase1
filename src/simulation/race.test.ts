@@ -1549,14 +1549,8 @@ describe('calendar regression', () => {
     expect(tracks).toHaveLength(24)
 
     for (const track of tracks) {
-      if (track.layoutSource?.detail === 'real') {
-        expect(track.centerline.length).toBeGreaterThan(30)
-      } else {
-        // Madrid is explicitly labeled as an API-unavailable fallback rather
-        // than being presented as a surveyed layout.
-        expect(track.id).toBe('madrid-approx')
-        expect(track.centerline.length).toBeGreaterThan(8)
-      }
+      expect(track.layoutSource?.detail).toBe('real')
+      expect(track.centerline.length).toBeGreaterThan(30)
       expect(track.sectorMarks).toHaveLength(3)
       expect(track.sectorMarks[0]).toBeLessThan(track.sectorMarks[1])
       expect(track.sectorMarks[1]).toBeLessThan(track.sectorMarks[2])

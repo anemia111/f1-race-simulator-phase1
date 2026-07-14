@@ -267,6 +267,7 @@ export type TrackDefinition = {
   raceLaps?: number
   raceLapsSource?: 'official' | 'estimated'
   sectorMarks: number[]
+  sectorMarksSource?: OperationalDataSource
   /** 2026 front/rear driver-adjustable bodywork activation zones. */
   aeroActivationZones?: AeroActivationZone[]
   /** 2026 electrical Overtake detection and activation control lines. */
@@ -294,13 +295,13 @@ export type TrackDefinition = {
   layoutSource?: {
     detail: 'real' | 'fallback'
     label: string
+    provider: 'openf1' | 'official' | 'fallback'
     url: string | null
     year: number | null
   }
   /**
-   * Maps raw OpenF1 location-sample coordinates into this track's local frame.
-   * Only present for generated real layouts; fallback layouts cannot place
-   * factual car positions and must say so in the UI.
+   * Maps raw OpenF1 location samples into this track's local frame. Official
+   * vector layouts without a matching telemetry coordinate frame omit it.
    */
   locationProjection?: {
     rotationDeg: number
