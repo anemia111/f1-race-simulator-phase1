@@ -14,6 +14,7 @@ export type FieldCalibration = {
   referenceLapTimeSeconds: number | null
   sampleCount: number
   source: 'openf1-calibrated' | 'simulation'
+  teamPaceDeltaSeconds: Record<string, number | null>
   teams: Team[]
 }
 
@@ -29,6 +30,9 @@ type StandingSource =
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+const FUEL_GAIN_PER_LAP_PRIOR_SECONDS = 0.04
+const MIN_TIRE_OFFSET_SAMPLES = 6
 
 const normalize = (value: string) =>
   value
@@ -74,23 +78,24 @@ function openF1Compound(value: string | null): TireCompound | null {
   return null
 }
 
-function regressionSlope(samples: Array<{ x: number; y: number }>) {
+function robustSlope(samples: Array<{ x: number; y: number }>) {
   if (samples.length < 4) {
     return null
   }
 
-  const meanX = samples.reduce((sum, sample) => sum + sample.x, 0) / samples.length
-  const meanY = samples.reduce((sum, sample) => sum + sample.y, 0) / samples.length
-  const numerator = samples.reduce(
-    (sum, sample) => sum + (sample.x - meanX) * (sample.y - meanY),
-    0,
-  )
-  const denominator = samples.reduce(
-    (sum, sample) => sum + (sample.x - meanX) ** 2,
-    0,
-  )
+  const slopes: number[] = []
 
-  return denominator <= 0 ? null : numerator / denominator
+  for (let left = 0; left < samples.length; left += 1) {
+    for (let right = left + 1; right < samples.length; right += 1) {
+      const run = samples[right].x - samples[left].x
+
+      if (run > 0 && run <= 8) {
+        slopes.push((samples[right].y - samples[left].y) / run)
+      }
+    }
+  }
+
+  return median(slopes)
 }
 
 export function buildOpenF1TrackCalibration(
@@ -107,6 +112,8 @@ export function buildOpenF1TrackCalibration(
     sampleCount: 0,
     sectorWeights: null,
     tireDegradationByCompound: {},
+    tirePaceOffsetByCompound: {},
+    tireSampleCountByCompound: {},
   }
 
   if (!bundle?.selectedSession) {
@@ -177,6 +184,25 @@ export function buildOpenF1TrackCalibration(
   const lapsByDriverAndNumber = new Map(
     validLaps.map((lap) => [`${lap.driver_number}:${lap.lap_number}`, lap]),
   )
+  const fastestLapByDriver = new Map<number, number>()
+
+  for (const lap of validLaps) {
+    const duration = lap.lap_duration as number
+    fastestLapByDriver.set(
+      lap.driver_number,
+      Math.min(fastestLapByDriver.get(lap.driver_number) ?? Infinity, duration),
+    )
+  }
+
+  type TireLapSample = {
+    adjustedLapTime: number
+    compound: TireCompound
+    driverNumber: number
+    lapNumber: number
+    tireAge: number
+  }
+
+  const tireLapSamples: TireLapSample[] = []
   const slopesByCompound = new Map<TireCompound, number[]>()
 
   for (const stint of bundle.stints) {
@@ -186,7 +212,7 @@ export function buildOpenF1TrackCalibration(
       continue
     }
 
-    const samples: Array<{ x: number; y: number }> = []
+    const samples: TireLapSample[] = []
 
     for (let lapNumber = stint.lap_start; lapNumber <= stint.lap_end; lapNumber += 1) {
       const lap = lapsByDriverAndNumber.get(`${stint.driver_number}:${lapNumber}`)
@@ -195,17 +221,37 @@ export function buildOpenF1TrackCalibration(
         continue
       }
 
-      const stintLap = lapNumber - stint.lap_start
-      // Remove a small generic fuel-burn gain before estimating degradation.
-      samples.push({ x: stintLap, y: lap.lap_duration + stintLap * 0.04 })
+      const fastestLap = fastestLapByDriver.get(stint.driver_number)
+
+      if (fastestLap !== undefined && lap.lap_duration > fastestLap * 1.1) {
+        continue
+      }
+
+      const sample = {
+        adjustedLapTime:
+          lap.lap_duration + lapNumber * FUEL_GAIN_PER_LAP_PRIOR_SECONDS,
+        compound,
+        driverNumber: stint.driver_number,
+        lapNumber,
+        tireAge:
+          Math.max(0, stint.tyre_age_at_start) +
+          Math.max(0, lapNumber - stint.lap_start),
+      }
+      samples.push(sample)
+      tireLapSamples.push(sample)
     }
 
-    const slope = regressionSlope(samples)
+    const slope = robustSlope(
+      samples.map((sample) => ({
+        x: sample.tireAge,
+        y: sample.adjustedLapTime,
+      })),
+    )
 
-    if (slope !== null && slope >= 0 && slope <= 0.35) {
+    if (slope !== null && slope >= -0.02 && slope <= 0.45) {
       slopesByCompound.set(compound, [
         ...(slopesByCompound.get(compound) ?? []),
-        slope,
+        Math.max(0, slope),
       ])
     }
   }
@@ -216,6 +262,64 @@ export function buildOpenF1TrackCalibration(
       return slope === null ? [] : [[compound, Number(slope.toFixed(4))]]
     }),
   ) as Partial<Record<TireCompound, number>>
+  const tireSampleCountByCompound = tireLapSamples.reduce<
+    Partial<Record<TireCompound, number>>
+  >((counts, sample) => {
+    counts[sample.compound] = (counts[sample.compound] ?? 0) + 1
+    return counts
+  }, {})
+  const adjustedTimesByDriver = new Map<number, number[]>()
+
+  for (const sample of tireLapSamples) {
+    adjustedTimesByDriver.set(sample.driverNumber, [
+      ...(adjustedTimesByDriver.get(sample.driverNumber) ?? []),
+      sample.adjustedLapTime,
+    ])
+  }
+
+  const residualsByCompound = new Map<TireCompound, number[]>()
+
+  for (const sample of tireLapSamples) {
+    const driverBaseline = median(
+      adjustedTimesByDriver.get(sample.driverNumber) ?? [],
+    )
+
+    if (driverBaseline === null) {
+      continue
+    }
+
+    const degradation =
+      tireDegradationByCompound[sample.compound] ?? 0
+    residualsByCompound.set(sample.compound, [
+      ...(residualsByCompound.get(sample.compound) ?? []),
+      sample.adjustedLapTime -
+        driverBaseline -
+        degradation * sample.tireAge,
+    ])
+  }
+
+  const mediumResidual = median(residualsByCompound.get('M') ?? [])
+  const tirePaceOffsetByCompound: Partial<Record<TireCompound, number>> = {}
+
+  if (
+    mediumResidual !== null &&
+    (tireSampleCountByCompound.M ?? 0) >= MIN_TIRE_OFFSET_SAMPLES
+  ) {
+    tirePaceOffsetByCompound.M = 0
+
+    for (const compound of ['S', 'H'] as const) {
+      const residual = median(residualsByCompound.get(compound) ?? [])
+
+      if (
+        residual !== null &&
+        (tireSampleCountByCompound[compound] ?? 0) >= MIN_TIRE_OFFSET_SAMPLES
+      ) {
+        tirePaceOffsetByCompound[compound] = Number(
+          clamp(residual - mediumResidual, -2, 2).toFixed(3),
+        )
+      }
+    }
+  }
   const sampleCount =
     validLaps.length + bundle.carData.length + bundle.pit.length + bundle.stints.length
 
@@ -228,11 +332,13 @@ export function buildOpenF1TrackCalibration(
       sampledAt: bundle.selectedSession.date_end,
       sessionKey: bundle.selectedSession.session_key,
       sourceYear: bundle.year,
-      note: `${validLaps.length} clean laps; ${bundle.pit.length} pit visits; ${bundle.stints.length} stints`,
+      note: `${validLaps.length} valid laps; ${tireLapSamples.length} clean tire laps; ${bundle.pit.length} pit visits; ${bundle.stints.length} stints`,
     },
     sampleCount,
     sectorWeights: normalizedSectorWeights,
     tireDegradationByCompound,
+    tirePaceOffsetByCompound,
+    tireSampleCountByCompound,
   }
 }
 
@@ -258,23 +364,23 @@ function cleanLapPaceByDriver(source: ObservedSource | null | undefined) {
       lap.lap_duration < 240 &&
       !lap.is_pit_out_lap,
   )
-  const sessionBest = Math.min(
-    ...valid.map((lap) => lap.lap_duration ?? Number.POSITIVE_INFINITY),
-  )
   const byDriver = new Map<number, number[]>()
 
   for (const lap of valid) {
-    if ((lap.lap_duration ?? Infinity) > sessionBest * 1.12) {
-      continue
-    }
-
     const samples = byDriver.get(lap.driver_number) ?? []
     samples.push(lap.lap_duration ?? 0)
     byDriver.set(lap.driver_number, samples)
   }
 
   for (const [driverNumber, samples] of byDriver) {
-    const pace = median(samples)
+    const sorted = samples.sort((left, right) => left - right)
+    const fastest = sorted[0]
+    const clean = sorted.filter((lapTime) => lapTime <= fastest * 1.06)
+    const representativeCount = Math.min(
+      clean.length,
+      Math.max(3, Math.ceil(clean.length * 0.35)),
+    )
+    const pace = median(clean.slice(0, representativeCount))
 
     if (pace !== null) {
       result.set(driverNumber, pace)
@@ -405,6 +511,9 @@ export function calibrateFieldFromOpenF1(
       referenceLapTimeSeconds,
       sampleCount: 0,
       source: 'simulation',
+      teamPaceDeltaSeconds: Object.fromEntries(
+        teams.map((team) => [team.id, null]),
+      ),
       teams,
     }
   }
@@ -463,6 +572,19 @@ export function calibrateFieldFromOpenF1(
   const teamPaces = [...medianPaceByTeam.values()]
   const minimumPace = Math.min(...teamPaces)
   const maximumPace = Math.max(...teamPaces)
+  const fastestTeamPace = Math.min(...teamPaces)
+  const teamPaceDeltaSeconds = Object.fromEntries(
+    teams.map((team) => {
+      const pace = medianPaceByTeam.get(normalize(team.name))
+
+      return [
+        team.id,
+        pace === undefined || !Number.isFinite(fastestTeamPace)
+          ? null
+          : Number((pace - fastestTeamPace).toFixed(3)),
+      ]
+    }),
+  )
   const speedByTeam = representativeSpeedByTeam(observed)
   const observedSpeeds = [...speedByTeam.values()]
   const minimumSpeed = Math.min(...observedSpeeds)
@@ -586,17 +708,24 @@ export function calibrateFieldFromOpenF1(
 
     return {
       ...driver,
-      consistency: clamp(
-        driver.consistency * 0.68 + (0.68 + observedStrength * 0.27) * 0.32,
-        0.68,
-        0.96,
-      ),
-      speed: clamp(
-        driver.speed * speedPriorWeight +
-          speedTarget * (1 - speedPriorWeight),
-        0.7,
-        0.97,
-      ),
+      consistency:
+        driver.consistency > 1
+          ? driver.consistency
+          : clamp(
+              driver.consistency * 0.68 +
+                (0.68 + observedStrength * 0.27) * 0.32,
+              0.68,
+              0.96,
+            ),
+      speed:
+        driver.speed > 1
+          ? driver.speed
+          : clamp(
+              driver.speed * speedPriorWeight +
+                speedTarget * (1 - speedPriorWeight),
+              0.7,
+              0.97,
+            ),
     }
   })
   const sampleCount =
@@ -626,6 +755,7 @@ export function calibrateFieldFromOpenF1(
     referenceLapTimeSeconds,
     sampleCount,
     source: 'openf1-calibrated',
+    teamPaceDeltaSeconds,
     teams: calibratedTeams,
   }
 }

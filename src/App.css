@@ -2349,7 +2349,7 @@
 
 .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 220px; }
 .broadcast-center-column { grid-template-rows: 220px minmax(250px, 1fr) 170px; }
-.broadcast-right-column { grid-template-rows: 76px 90px 116px minmax(150px, 1fr) 70px minmax(130px, 1fr); }
+.broadcast-right-column { grid-template-rows: 90px 90px 116px minmax(150px, 1fr) 70px minmax(130px, 1fr); }
 
 .broadcast-panel {
   min-width: 0;
@@ -2439,6 +2439,7 @@
 
 .broadcast-source.source-obs { color: #4ee182; }
 .broadcast-source.source-fia { color: #4bd8ff; }
+.broadcast-source.source-pir { color: #ff6576; }
 .broadcast-source.source-cal { color: #bd7cff; }
 .broadcast-source.source-sim { color: #ffd21f; }
 .broadcast-source.source-unavailable { color: #76818c; }
@@ -2451,7 +2452,7 @@
 .leaderboard-column-head,
 .leaderboard-rows button {
   display: grid;
-  grid-template-columns: 26px minmax(46px, 0.75fr) 24px minmax(44px, 0.78fr) minmax(56px, 1fr) minmax(56px, 1fr) 42px 42px 42px 28px;
+  grid-template-columns: 26px minmax(46px, 0.75fr) 24px minmax(44px, 0.78fr) minmax(54px, 1fr) minmax(54px, 1fr) 40px 40px 40px 28px 28px;
   align-items: center;
   gap: 3px;
 }
@@ -2481,6 +2482,12 @@
 }
 
 .leaderboard-rows li.selected { background: #10253a; }
+.leaderboard-rows li.blue-flag-active,
+.center-table li.blue-flag-active,
+.timing-detail-list > div.blue-flag-active {
+  background: #071d38;
+  box-shadow: inset 3px 0 #2f8dff;
+}
 
 .leaderboard-rows button {
   width: 100%;
@@ -2518,11 +2525,25 @@
 .leaderboard-driver i { width: 2px; height: 13px; }
 .leaderboard-driver strong { font-size: 9px; }
 .leaderboard-driver small { color: var(--broadcast-muted); font-size: 6px; }
+.leaderboard-driver .blue-flag-label { display: flex; align-items: center; gap: 1px; color: #54a7ff; font-weight: 900; }
 .status-value { color: #ff6b7c; font-weight: 900; }
-.sector-value { color: #e1e6ec; }
-.sector-value.sector-1 { color: #d478ff; }
-.sector-value.sector-2 { color: #48df7c; }
-.sector-value.sector-3 { color: #f3f6f8; }
+.sector-value { color: #68727d; }
+.sector-value.sector-status-pending,
+.sector-time.sector-status-pending,
+.timing-detail-sector .sector-status-pending,
+.sector-board li span.sector-status-pending { color: #68727d; }
+.sector-value.sector-status-overall-best,
+.sector-time.sector-status-overall-best,
+.timing-detail-sector .sector-status-overall-best,
+.sector-board li span.sector-status-overall-best { color: #cf69ff; }
+.sector-value.sector-status-personal-best,
+.sector-time.sector-status-personal-best,
+.timing-detail-sector .sector-status-personal-best,
+.sector-board li span.sector-status-personal-best { color: #45df7a; }
+.sector-value.sector-status-slower,
+.sector-time.sector-status-slower,
+.timing-detail-sector .sector-status-slower,
+.sector-board li span.sector-status-slower { color: #ffd21f; }
 
 .broadcast-tire {
   display: inline-grid;
@@ -2629,7 +2650,7 @@
 
 .tyre-detail-table .center-table-head,
 .tyre-detail-table li > div {
-  grid-template-columns: 42px minmax(92px, 1fr) 40px 40px 44px 45px 34px;
+  grid-template-columns: 42px minmax(76px, 1fr) 34px 38px 54px 42px 32px 32px 30px;
 }
 
 .driver-detail-table .center-table-head,
@@ -2662,9 +2683,10 @@
 .center-table .broadcast-tire { width: 13px; height: 13px; margin-right: 3px; font-size: 6px; }
 
 .timing-detail-list { display: grid; grid-template-rows: repeat(10, minmax(0, 1fr)); min-height: 0; padding: 2px 8px; overflow: hidden; }
-.timing-detail-list > div { display: grid; grid-template-columns: 48px repeat(3, minmax(0, 1fr)) 28px; align-items: center; gap: 7px; min-height: 0; border-bottom: 1px solid #10202d; font-size: 7px; }
+.timing-detail-list > div { display: grid; grid-template-columns: 48px repeat(3, minmax(0, 1fr)) 42px; align-items: center; gap: 7px; min-height: 0; border-bottom: 1px solid #10202d; font-size: 7px; }
 .timing-detail-sector { display: grid; grid-template-columns: 16px 44px minmax(0, 1fr); align-items: center; gap: 4px; min-width: 0; }
 .timing-detail-sector small { color: var(--broadcast-muted); }
+.timing-lap-source { display: grid; grid-template-columns: 16px 24px; align-items: center; gap: 2px; color: var(--broadcast-muted); }
 .broadcast-mini-sectors { display: grid; grid-template-columns: repeat(8, minmax(2px, 1fr)); gap: 1px; height: 7px; min-width: 0; }
 .broadcast-mini-sectors span { background: #26313b; }
 .broadcast-mini-sectors .mini-yellow { background: #ffd21f; }
@@ -2756,15 +2778,31 @@
 .conditions-panel,
 .messages-panel,
 .live-gap-panel { display: grid; grid-template-rows: 30px minmax(0, 1fr); }
+.race-control-panel { grid-template-rows: 30px auto minmax(0, 1fr); }
 .race-control-panel .broadcast-panel-header,
 .evolution-panel .broadcast-panel-header,
 .conditions-panel .broadcast-panel-header,
 .messages-panel .broadcast-panel-header,
 .live-gap-panel .broadcast-panel-header { min-height: 30px; }
-.track-status-grid { display: grid; grid-template-columns: 1fr 0.6fr 0.6fr; gap: 5px; padding: 6px 8px; }
+.track-status-grid { display: grid; grid-template-columns: 1fr 0.6fr 0.6fr; gap: 5px; padding: 4px 8px 2px; }
 .track-status-grid div { display: grid; gap: 2px; }
 .track-status-grid span { color: var(--broadcast-muted); font-size: 6px; }
 .track-status-grid strong { font-size: 8px; }
+.sector-flag-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; min-height: 0; padding: 2px 8px 6px; }
+.sector-flag { display: grid; grid-template-columns: 12px minmax(0, 1fr); align-items: center; gap: 2px; min-width: 0; border: 1px solid #1a2a37; border-left-width: 2px; border-radius: 2px; padding: 2px 3px; background: #07111a; }
+.sector-flag b { color: var(--broadcast-muted); font-size: 5.5px; }
+.sector-flag strong { overflow: hidden; color: #35d66f; font-size: 5.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sector-flag-yellow,
+.sector-flag-double-yellow { border-color: #826d00; background: #211c02; }
+.sector-flag-yellow strong,
+.sector-flag-double-yellow strong { color: #ffd21f; }
+.sector-flag-double-yellow strong { font-size: 5px; }
+.sector-flag-vsc,
+.sector-flag-sc { border-color: #826d00; }
+.sector-flag-vsc strong,
+.sector-flag-sc strong { color: #ffd21f; }
+.sector-flag-red { border-color: #7e1725; background: #21070c; }
+.sector-flag-red strong { color: #ff5267; }
 .evolution-panel .broadcast-sparkline { min-height: 36px; padding: 2px 8px 0; }
 .evolution-axis { display: flex; justify-content: space-between; padding: 0 8px 4px; color: var(--broadcast-muted); font-size: 6px; }
 .conditions-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 0; padding: 8px 5px; }
@@ -2843,7 +2881,9 @@
   .broadcast-center-column { grid-template-rows: 176px minmax(220px, 1fr) 142px; }
   .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 176px; }
   .broadcast-left-analytics { grid-template-rows: 88px minmax(0, 1fr); }
-  .broadcast-right-column { grid-template-rows: 66px 76px 96px minmax(120px, 1fr) 60px minmax(106px, 1fr); }
+  .broadcast-right-column { grid-template-rows: 78px 76px 96px minmax(120px, 1fr) 60px minmax(106px, 1fr); }
+  .track-status-grid { padding-top: 2px; }
+  .sector-flag-strip { padding-bottom: 3px; }
   .tyre-donut { width: 50px; height: 50px; }
   .tyre-usage-content { grid-template-columns: 54px 1fr; }
   .broadcast-sidebar { grid-template-rows: 34px minmax(0, 1fr) 46px; }

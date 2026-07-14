@@ -6,6 +6,7 @@ export type TireCompound = 'S' | 'M' | 'H' | 'I' | 'W'
 export type DryCompoundFamily = 'C1' | 'C2' | 'C3' | 'C4' | 'C5'
 export type GridSource = 'brief' | 'qualifying' | 'openf1'
 export type FlagState = 'clear' | 'yellow' | 'vsc' | 'sc' | 'red'
+export type SectorFlagState = FlagState | 'double-yellow'
 export type CarStatus =
   | 'running'
   | 'pit'
@@ -166,6 +167,8 @@ export type TrackObservedCalibration = {
   pitLaneTransitSeconds: number | null
   sectorWeights: [number, number, number] | null
   tireDegradationByCompound: Partial<Record<TireCompound, number>>
+  tirePaceOffsetByCompound: Partial<Record<TireCompound, number>>
+  tireSampleCountByCompound: Partial<Record<TireCompound, number>>
   sampleCount: number
   provenance: DataProvenance
 }
@@ -327,6 +330,8 @@ export type RaceConfig = {
   drivers: Driver[]
   seed: string
   weekendStage?: WeekendStage
+  /** FIA event directive override; public regulations otherwise expose 8.5 MJ. */
+  fiaEventRechargeLimitMj?: number | null
   /** Persisted weekend effects passed from previously completed sessions. */
   weekendContext?: WeekendContext
   timedSessionPlan?: TimedSessionPlan
@@ -374,11 +379,19 @@ export type WeekendState = {
   source: 'openf1' | 'simulation'
 }
 
+export type SectorTimingStatus =
+  | 'pending'
+  | 'overall-best'
+  | 'personal-best'
+  | 'slower'
+
 /** Immutable record written only when a car crosses the timing line. */
 export type LapRecord = {
   lap: number
   lapTimeSeconds: number
   sectors: [number, number, number]
+  /** 24 measured timing segments (eight per sector), written at the line. */
+  miniSectors?: number[]
   tire: TireCompound
   tireAgeLaps: number
   weather: WeatherState
@@ -418,6 +431,8 @@ export type CarSnapshot = {
   lapStartedAtSeconds: number | null
   /** Current-lap splits, written once when the CPU car crosses each sector line. */
   currentLapSectorTimes: [number | null, number | null, number | null]
+  /** Current-lap 24-part timing, frozen as each mini-sector line is crossed. */
+  currentLapMiniSectorTimes: Array<number | null>
   /** Completed lap history; sampled at the timing line, never per frame. */
   lapHistory: LapRecord[]
   position: number
@@ -527,6 +542,10 @@ export type RaceSnapshot = {
   formationLapDurationSeconds: number
   formationLapsPlanned: number
   formationLapsCompleted: number
+  /** Race Director has ordered formation laps behind the Safety Car. */
+  formationBehindSafetyCar: boolean
+  /** Full wet tyres are compulsory for the current SC start/resumption. */
+  wetWeatherTyresMandatory: boolean
   raceStartedAtSeconds: number | null
   restartProcedure: RestartProcedure
   restartProcedureUntilSeconds: number | null
@@ -539,6 +558,8 @@ export type RaceSnapshot = {
   flag: FlagState
   flagLabel: string
   flagPhase: ActiveFlagPhase | null
+  /** Control state for sectors 1..3, including local and double yellows. */
+  sectorFlags: [SectorFlagState, SectorFlagState, SectorFlagState]
   /** End of the post-SC/VSC/red restart window (low grip), if active. */
   restartUntilSeconds: number | null
   fuelEffectSeconds: number
@@ -546,6 +567,10 @@ export type RaceSnapshot = {
   weather: WeatherState
   weatherLabel: string
   weatherForecastLabel: string
+  /** Sporting B1.5.11 declaration, held for the relevant session once made. */
+  rainHazardDeclared: boolean
+  /** Sporting B1.5.12 Race Director grip declaration. */
+  lowGripConditions: boolean
   trackGrip: number
   /** Stateful surface water depth in millimetres for sectors 1..3. */
   surfaceWaterMmBySector: [number, number, number]

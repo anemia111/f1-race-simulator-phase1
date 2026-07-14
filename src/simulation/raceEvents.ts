@@ -6,7 +6,12 @@
 // Phase 3-B: flags are incident-driven (see incidents.ts) and carried in the
 // snapshot as an ActiveFlagPhase; the Phase 3-A precomputed timeline is gone.
 
-import type { ActiveFlagPhase, TrackDefinition } from '../types'
+import type {
+  ActiveFlagPhase,
+  FlagState,
+  SectorFlagState,
+  TrackDefinition,
+} from '../types'
 import { hashChance } from './random'
 
 export const phaseThreeTuning = {
@@ -33,6 +38,9 @@ export const phaseThreeTuning = {
   // Flag pace multipliers.
   yellowSectorPace: 0.88,
   vscPace: 0.62,
+  vscDeltaGain: 0.58,
+  vscMinimumPace: 0.18,
+  vscMaximumPace: 0.9,
   scPace: 0.5,
   /** Pace for cars still catching the SC queue (bunching). */
   scCatchUpPace: 0.74,
@@ -236,6 +244,61 @@ export function flagPaceMultiplier(
     default:
       return 1
   }
+}
+
+/** Local yellows only govern cars that are inside the affected sector. */
+export function flagPhaseForSector(
+  phase: ActiveFlagPhase | null,
+  carSector: number,
+): ActiveFlagPhase | null {
+  return phase?.flag === 'yellow' && phase.sector !== carSector ? null : phase
+}
+
+export function sectorFlagStatesFor(
+  flag: FlagState,
+  localYellowSector: number | null,
+  timedDoubleYellowSector: number | null = null,
+): [SectorFlagState, SectorFlagState, SectorFlagState] {
+  if (flag === 'vsc' || flag === 'sc' || flag === 'red') {
+    return [flag, flag, flag]
+  }
+
+  const states: [SectorFlagState, SectorFlagState, SectorFlagState] = [
+    'clear',
+    'clear',
+    'clear',
+  ]
+
+  if (flag === 'yellow') {
+    if (localYellowSector === null || localYellowSector < 0 || localYellowSector > 2) {
+      return ['yellow', 'yellow', 'yellow']
+    }
+
+    states[localYellowSector] = 'yellow'
+    return states
+  }
+
+  if (
+    timedDoubleYellowSector !== null &&
+    timedDoubleYellowSector >= 0 &&
+    timedDoubleYellowSector <= 2
+  ) {
+    states[timedDoubleYellowSector] = 'double-yellow'
+  }
+
+  return states
+}
+
+/** Closed-loop VSC pace: recover positive time credit, slow for a negative delta. */
+export function vscPaceScaleForDelta(deltaSeconds: number): number {
+  return Math.min(
+    phaseThreeTuning.vscMaximumPace,
+    Math.max(
+      phaseThreeTuning.vscMinimumPace,
+      phaseThreeTuning.vscPace +
+        deltaSeconds * phaseThreeTuning.vscDeltaGain,
+    ),
+  )
 }
 
 /** Lap-time loss from cold tires/brakes right after a restart. */

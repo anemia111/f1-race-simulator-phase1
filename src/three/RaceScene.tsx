@@ -1,6 +1,6 @@
 import { Line, OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { memo, Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type {
@@ -51,6 +51,23 @@ const PIT_ENTRY_VISUAL_SECONDS = 3.2
 const STARTING_GRID_SLOT_GAP = 0.0022
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+const sectorPathColors = ['#00d8ff', '#ffd21f', '#ff344d']
+const sectorFlagColors: Record<RaceSnapshot['sectorFlags'][number], string> = {
+  clear: '#35d66f',
+  'double-yellow': '#ffe35a',
+  red: '#ff344d',
+  sc: '#ffd21f',
+  vsc: '#ffd21f',
+  yellow: '#ffd21f',
+}
+const sectorFlagLabels: Record<RaceSnapshot['sectorFlags'][number], string> = {
+  clear: 'CLEAR',
+  'double-yellow': 'DOUBLE YELLOW',
+  red: 'RED',
+  sc: 'SC',
+  vsc: 'VSC',
+  yellow: 'YELLOW',
+}
 
 /** Broadcast maps show a timing trace, not a scale model of the asphalt. */
 function presentationTrackWidth(track: TrackDefinition) {
@@ -700,11 +717,13 @@ function TrackFurniture({
   )
 }
 
-function SectorPathLines({
+function SectorPathLinesContent({
   curve,
+  sectorFlags,
   track,
 }: {
   curve: THREE.CatmullRomCurve3
+  sectorFlags: RaceSnapshot['sectorFlags']
   track: TrackDefinition
 }) {
   const sectors = useMemo(() => {
@@ -730,24 +749,48 @@ function SectorPathLines({
       return { labelPose, points }
     })
   }, [curve, track])
-  const colors = ['#00d8ff', '#ffd21f', '#ff344d']
-
   return (
     <group>
-      {sectors.map((sector, index) => (
-        <group key={index}>
-          <Line points={sector.points} color={colors[index]} lineWidth={2.1} />
-          <SpriteLabel
-            color={colors[index]}
-            fontSize={0.56}
-            position={sector.labelPose.position.setY(0.5)}
-            text={`SECTOR ${index + 1}`}
-          />
-        </group>
-      ))}
+      {sectors.map((sector, index) => {
+        const flag = sectorFlags[index]
+        const isControlled = flag !== 'clear'
+        const color = isControlled
+          ? sectorFlagColors[flag]
+          : sectorPathColors[index]
+
+        return (
+          <group key={index}>
+            <Line
+              points={sector.points}
+              color={color}
+              lineWidth={isControlled ? 3.6 : 2.1}
+            />
+            <SpriteLabel
+              color={color}
+              fontSize={isControlled ? 0.64 : 0.56}
+              position={sector.labelPose.position.setY(0.5)}
+              text={
+                isControlled
+                  ? `${sectorFlagLabels[flag]} S${index + 1}`
+                  : `SECTOR ${index + 1}`
+              }
+            />
+          </group>
+        )
+      })}
     </group>
   )
 }
+
+const SectorPathLines = memo(
+  SectorPathLinesContent,
+  (previous, next) =>
+    previous.curve === next.curve &&
+    previous.track === next.track &&
+    previous.sectorFlags.every(
+      (flag, index) => flag === next.sectorFlags[index],
+    ),
+)
 
 function TrackSurface({
   cameraMode,
@@ -756,10 +799,11 @@ function TrackSurface({
   edgeLeft,
   edgeRight,
   roadGeometry,
+  sectorFlags,
 }: Pick<
   SceneContentsProps,
   'cameraMode' | 'config' | 'curve' | 'edgeLeft' | 'edgeRight' | 'roadGeometry'
->) {
+> & { sectorFlags: RaceSnapshot['sectorFlags'] }) {
   return (
     <group>
       <mesh geometry={roadGeometry}>
@@ -767,7 +811,11 @@ function TrackSurface({
       </mesh>
       <Line points={edgeLeft} color="#eef4fb" lineWidth={1.15} />
       <Line points={edgeRight} color="#eef4fb" lineWidth={1.15} />
-      <SectorPathLines curve={curve} track={config.track} />
+      <SectorPathLines
+        curve={curve}
+        sectorFlags={sectorFlags}
+        track={config.track}
+      />
       <ActiveAeroZoneLines curve={curve} track={config.track} />
       <RaceControlLines curve={curve} track={config.track} />
       <PitLane curve={curve} track={config.track} />
@@ -827,6 +875,7 @@ function CarMarker({
   track: TrackDefinition
 }) {
   const groupRef = useRef<THREE.Group>(null)
+  const markerPlacedRef = useRef(false)
   const invalidate = useThree((state) => state.invalidate)
   const markerColor =
     car.status === 'retired' ||
@@ -837,56 +886,39 @@ function CarMarker({
   const markerTexture = useMemo(() => {
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
-    canvas.width = 320
-    canvas.height = 112
+    canvas.width = 192
+    canvas.height = 192
 
     if (context) {
       const borderColor =
         isSelected
           ? '#ffffff'
+          : car.blueFlag
+            ? '#2f8dff'
           : car.overtakeStatus === 'active'
             ? '#4cff79'
+            : car.status === 'pit'
+              ? '#47ddff'
             : '#071018'
-      const statusLabel =
-        car.status === 'pit'
-          ? 'PIT'
-          : car.status === 'retired'
-            ? 'OUT'
-            : car.status === 'disqualified'
-              ? 'DSQ'
-              : car.status === 'dns'
-                ? 'DNS'
-                : ''
 
       context.clearRect(0, 0, canvas.width, canvas.height)
       context.beginPath()
-      context.arc(54, 56, isSelected ? 39 : 35, 0, Math.PI * 2)
+      context.arc(96, 96, isSelected ? 79 : 73, 0, Math.PI * 2)
       context.fillStyle = markerColor
       context.fill()
-      context.lineWidth = isSelected ? 8 : 6
+      context.lineWidth = isSelected ? 12 : 10
       context.strokeStyle = borderColor
       context.stroke()
 
-      context.font = '900 30px Arial, sans-serif'
+      context.font = '900 70px "Arial Narrow", Arial, sans-serif'
       context.textAlign = 'center'
       context.textBaseline = 'middle'
-      context.fillStyle = '#ffffff'
-      context.fillText(`${car.position}`, 54, 57)
-
-      context.font = '900 52px Arial, sans-serif'
-      context.textAlign = 'left'
       context.lineWidth = 9
       context.lineJoin = 'round'
       context.strokeStyle = '#05090e'
-      context.strokeText(car.code, 98, statusLabel ? 46 : 57)
+      context.strokeText(car.code, 96, 99)
       context.fillStyle = '#ffffff'
-      context.fillText(car.code, 98, statusLabel ? 46 : 57)
-
-      if (statusLabel) {
-        context.font = '800 20px Arial, sans-serif'
-        context.fillStyle = statusLabel === 'PIT' ? '#47ddff' : '#aab4bf'
-        context.fillText(statusLabel, 102, 82)
-      }
+      context.fillText(car.code, 96, 99)
     }
 
     const texture = new THREE.CanvasTexture(canvas)
@@ -894,7 +926,7 @@ function CarMarker({
     texture.minFilter = THREE.LinearFilter
 
     return texture
-  }, [car.code, car.overtakeStatus, car.position, car.status, isSelected, markerColor])
+  }, [car.blueFlag, car.code, car.overtakeStatus, car.status, isSelected, markerColor])
 
   useEffect(() => () => markerTexture.dispose(), [markerTexture])
 
@@ -916,8 +948,13 @@ function CarMarker({
     }
 
     const target = pose.position.setY(0.54)
+    const distanceToTarget = group.position.distanceToSquared(target)
 
-    if (group.position.distanceToSquared(target) > 0.0004) {
+    if (!markerPlacedRef.current || distanceToTarget > 2.25) {
+      group.position.copy(target)
+      markerPlacedRef.current = true
+      invalidate()
+    } else if (distanceToTarget > 0.0004) {
       group.position.lerp(target, 0.28)
       invalidate()
     } else {
@@ -933,7 +970,7 @@ function CarMarker({
           onSelectDriver(car.driverId)
         }}
         renderOrder={isSelected ? 20 : 10}
-        scale={isSelected ? [5, 1.75, 1] : [4.45, 1.56, 1]}
+        scale={isSelected ? [2.15, 2.15, 1] : [1.9, 1.9, 1]}
       >
         <spriteMaterial
           depthTest={false}
@@ -942,6 +979,56 @@ function CarMarker({
           transparent
         />
       </sprite>
+    </group>
+  )
+}
+
+function SafetyCarMarker({
+  curve,
+  leader,
+  track,
+}: {
+  curve: THREE.CatmullRomCurve3
+  leader: CarSnapshot
+  track: TrackDefinition
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+  const placedRef = useRef(false)
+  const invalidate = useThree((state) => state.invalidate)
+  const leadGap = Math.max(0.009, 1.35 / Math.max(55, leader.projectedLapTime))
+
+  useFrame(() => {
+    const group = groupRef.current
+
+    if (!group) return
+
+    const pose = poseOnTrack(curve, (leader.progress + leadGap) % 1, 0)
+    const target = pose.position.setY(0.5)
+
+    if (!placedRef.current) {
+      group.position.copy(target)
+      placedRef.current = true
+      invalidate()
+    } else if (group.position.distanceToSquared(target) > 0.0003) {
+      group.position.lerp(target, 0.3)
+      invalidate()
+    } else {
+      group.position.copy(target)
+    }
+  })
+
+  return (
+    <group ref={groupRef}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[Math.max(0.22, presentationTrackWidth(track) * 0.2), 24]} />
+        <meshBasicMaterial color="#f4c430" depthTest={false} />
+      </mesh>
+      <SpriteLabel
+        color="#f4c430"
+        fontSize={0.72}
+        position={[0, 0.55, 0]}
+        text="SC"
+      />
     </group>
   )
 }
@@ -1069,9 +1156,48 @@ function CameraRig({
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
-  const { camera, invalidate } = useThree()
+  const { camera, invalidate, size } = useThree()
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   const targetRef = useRef(new THREE.Vector3(0, 0, 0))
+  const overviewFrame = useMemo(() => {
+    const bounds = new THREE.Box3().setFromPoints(curve.getSpacedPoints(320))
+    const center = bounds.getCenter(new THREE.Vector3())
+    const dimensions = bounds.getSize(new THREE.Vector3())
+
+    return {
+      center,
+      halfDepth: dimensions.z / 2,
+      halfWidth: dimensions.x / 2,
+    }
+  }, [curve])
+  const overviewCamera = useMemo(() => {
+    const verticalFov =
+      camera instanceof THREE.PerspectiveCamera
+        ? THREE.MathUtils.degToRad(camera.fov)
+        : THREE.MathUtils.degToRad(48)
+    const verticalTangent = Math.tan(verticalFov / 2)
+    const aspect = Math.max(0.5, size.width / Math.max(1, size.height))
+    const markerPadding = 2.8
+    const cameraHeight = Math.max(
+      30,
+      (overviewFrame.halfDepth + markerPadding) / verticalTangent,
+      (overviewFrame.halfWidth + markerPadding) /
+        (verticalTangent * aspect),
+    )
+
+    return {
+      position: new THREE.Vector3(
+        overviewFrame.center.x,
+        cameraHeight,
+        overviewFrame.center.z + 0.01,
+      ),
+      target: new THREE.Vector3(
+        overviewFrame.center.x,
+        0,
+        overviewFrame.center.z,
+      ),
+    }
+  }, [camera, overviewFrame, size.height, size.width])
 
   useFrame(() => {
     const pose = displayPoseForCar(
@@ -1086,15 +1212,13 @@ function CameraRig({
     const target = pose.position.clone().setY(0.5)
 
     if (cameraMode === 'overview') {
-      const overviewPosition = new THREE.Vector3(0, 47, 0.01)
-      const overviewTarget = new THREE.Vector3(0, 0, 0)
-      camera.position.lerp(overviewPosition, 0.12)
-      targetRef.current.lerp(overviewTarget, 0.08)
+      camera.position.lerp(overviewCamera.position, 0.12)
+      targetRef.current.lerp(overviewCamera.target, 0.08)
       camera.lookAt(targetRef.current)
 
       if (
-        camera.position.distanceToSquared(overviewPosition) > 0.0004 ||
-        targetRef.current.distanceToSquared(overviewTarget) > 0.0004
+        camera.position.distanceToSquared(overviewCamera.position) > 0.0004 ||
+        targetRef.current.distanceToSquared(overviewCamera.target) > 0.0004
       ) {
         invalidate()
       }
@@ -1183,6 +1307,15 @@ function SceneContents({
     () => new Map(config.drivers.map((driver) => [driver.code, driver.id])),
     [config.drivers],
   )
+  const safetyCarLeader = snapshot.cars.find(
+    (car) => car.status === 'running' && car.pitPhase === 'none',
+  )
+  const safetyCarVisible = Boolean(
+    safetyCarLeader &&
+      (snapshot.flag === 'sc' ||
+        (snapshot.formationBehindSafetyCar && snapshot.startProcedure === 'formation') ||
+        snapshot.restartProcedure === 'rolling'),
+  )
 
   return (
     <>
@@ -1198,7 +1331,15 @@ function SceneContents({
         edgeLeft={edgeLeft}
         edgeRight={edgeRight}
         roadGeometry={roadGeometry}
+        sectorFlags={snapshot.sectorFlags}
       />
+      {safetyCarVisible && safetyCarLeader ? (
+        <SafetyCarMarker
+          curve={curve}
+          leader={safetyCarLeader}
+          track={config.track}
+        />
+      ) : null}
       {showSimulationCars
         ? snapshot.cars.map((car) =>
         // Retired cars stay on track (grayed out) until marshals clear them.

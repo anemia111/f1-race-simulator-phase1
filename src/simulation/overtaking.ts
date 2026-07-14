@@ -63,15 +63,20 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 function driverOvertaking(driver: Driver): number {
-  return clamp01(driver.overtaking ?? driver.speed)
+  return clamp(driver.overtaking ?? driver.speed, 0, 1.5)
 }
 
 function driverDefense(driver: Driver): number {
-  return clamp01(driver.defense ?? driver.consistency)
+  return clamp(driver.defense ?? driver.consistency, 0, 1.5)
 }
 
 function driverWetSkill(driver: Driver): number {
-  return clamp01(driver.wetSkill ?? (driver.consistency * 0.6 + driver.tireManagement * 0.4))
+  return clamp(
+    driver.wetSkill ??
+      (driver.consistency * 0.6 + driver.tireManagement * 0.4),
+    0,
+    1.5,
+  )
 }
 
 function driverErrorRate(driver: Driver): number {

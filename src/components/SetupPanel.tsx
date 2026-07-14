@@ -14,6 +14,12 @@ import {
   componentAllocationSource,
   normalizeCarComponents,
 } from '../simulation/components'
+import {
+  DRIVER_ABILITY_INTERNAL_MAX,
+  DRIVER_ABILITY_SCALE_MAX,
+  driverAbilityPoints,
+  driverAbilityValue,
+} from '../simulation/driverAbility'
 import type {
   CarComponents,
   Driver,
@@ -98,25 +104,14 @@ const componentRows: Array<{ key: keyof CarComponents; label: string }> = [
   { key: 'gearbox', label: 'Gearbox (SIM)' },
 ]
 
-function driverStatValue(driver: Driver, stat: DriverStat): number {
-  switch (stat) {
-    case 'overtaking':
-      return driver.overtaking ?? driver.speed
-    case 'defense':
-      return driver.defense ?? driver.consistency
-    case 'wetSkill':
-      return driver.wetSkill ?? driver.consistency * 0.6 + driver.tireManagement * 0.4
-    default:
-      return driver[stat]
-  }
-}
-
 function SliderRow({
   label,
+  max = 1,
   onChange,
   value,
 }: {
   label: string
+  max?: number
   onChange: (value: number) => void
   value: number
 }) {
@@ -124,14 +119,14 @@ function SliderRow({
     <label className="slider-row">
       <span>{label}</span>
       <input
-        max="1"
+        max={max}
         min="0.55"
         onChange={(event) => onChange(Number(event.target.value))}
         step="0.01"
         type="range"
         value={value}
       />
-      <strong>{Math.round(value * 100)}</strong>
+      <strong>{driverAbilityPoints(value)}</strong>
     </label>
   )
 }
@@ -561,6 +556,7 @@ export function SetupPanel({
       <div className="setup-section">
         <div className="section-title">
           <span>Driver tune</span>
+          <small>MAX {DRIVER_ABILITY_SCALE_MAX}</small>
         </div>
         <label className="field-block">
           <span>Driver</span>
@@ -579,8 +575,9 @@ export function SetupPanel({
           <SliderRow
             key={stat.key}
             label={stat.label}
+            max={DRIVER_ABILITY_INTERNAL_MAX}
             onChange={(value) => onDriverStatChange(selectedDriver.id, stat.key, value)}
-            value={driverStatValue(selectedDriver, stat.key)}
+            value={driverAbilityValue(selectedDriver, stat.key)}
           />
         ))}
       </div>

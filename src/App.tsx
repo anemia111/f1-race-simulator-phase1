@@ -38,6 +38,11 @@ import {
   resolveRequestedDataMode,
   type DataMode,
 } from './domain/dataMode'
+import {
+  bestSectorTime,
+  classifySectorTime,
+  isCurrentLapEligibleForBest,
+} from './domain/sectorTiming'
 import { useOpenF1Data } from './hooks/useOpenF1Data'
 import { useOpenF1SeasonStandings } from './hooks/useOpenF1SeasonStandings'
 import { useRaceSimulation } from './hooks/useRaceSimulation'
@@ -69,7 +74,9 @@ import {
   type PracticeSessionName,
   sessionDurationSecondsFor,
 } from './simulation/sessionRules'
+import { FIA_2026_REGULATION_PROFILE } from './simulation/regulations'
 import { weatherTrackStateFor } from './simulation/weather'
+import { isDryCompound, tireDeltaSeconds } from './simulation/tires'
 import { buildTimedSessionPlan } from './simulation/timedSessionPlan'
 import type { OpenF1Bundle, OpenF1CarData, OpenF1Lap } from './services/openF1'
 import { buildOpenF1LiveRaceState } from './services/openF1Derived'
@@ -106,12 +113,14 @@ import type {
   GridSource,
   RaceConfig,
   RaceSnapshot,
+  SectorTimingStatus,
   SpeedMultiplier,
   Team,
   TireCompound,
   WeekendContext,
   WeekendStage,
 } from './types'
+import { clampDriverAbility } from './simulation/driverAbility'
 
 const cameraModes: Array<{
   mode: CameraMode
@@ -132,8 +141,8 @@ const speedOptions: SpeedMultiplier[] = [1, 5, 20, 60]
 const dataModeOptions: DataMode[] = ['SIM', 'HIST', 'LIVE']
 const emptyOpenF1CarDataByCode = new Map<string, OpenF1CarData>()
 const trackCalendarAudit = auditTrackCalendar(tracks)
-const fallbackSectorWeights = [0.318, 0.407, 0.275] as const
 const microSectorCount = 8
+const totalMicroSectorCount = microSectorCount * 3
 const weekendStageLabels: Record<WeekendStage, string> = {
   fp1: 'FP1',
   fp2: 'FP2',
@@ -179,12 +188,20 @@ type TimingRow = {
   lapTimeSeconds: number | null
   lapDataLabel: string
   microSectors: MiniSectorState[][]
+  microSectorTimes: Array<number | null> | null
+  microSectorDisplayIsCurrent: boolean
+  performancePaceDeltaSeconds: number | null
+  performanceSource: 'openf1-calibrated' | 'simulation'
   rpm: number
+  sectorLapNumber: number | null
   source: 'openf1' | 'simulation'
   sectors: [number | null, number | null, number | null]
+  sectorStatuses: [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus]
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
+  tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation'
+  tirePaceDeltaSeconds: number
   tireTemperatureC: number
 }
 
@@ -195,6 +212,65 @@ type MiniSectorState =
   | 'purple'
   | 'pit'
   | 'stopped'
+
+type TimingRowWithoutSectorStatuses = Omit<TimingRow, 'sectorStatuses'>
+
+type PersonalTimingBests = {
+  sectors: [number | null, number | null, number | null]
+  miniSectors: Array<number | null>
+}
+
+const lowerTimingValue = (
+  current: number | null,
+  candidate: number | null | undefined,
+) =>
+  typeof candidate === 'number' &&
+  Number.isFinite(candidate) &&
+  (current === null || candidate < current)
+    ? candidate
+    : current
+
+const personalTimingBestsForRow = (
+  row: TimingRowWithoutSectorStatuses,
+): PersonalTimingBests => {
+  if (row.source === 'openf1') {
+    return {
+      sectors: [...row.sectors],
+      miniSectors: Array.from(
+        { length: totalMicroSectorCount },
+        () => null,
+      ),
+    }
+  }
+
+  const sectors: PersonalTimingBests['sectors'] = [null, null, null]
+  const miniSectors: PersonalTimingBests['miniSectors'] = Array.from(
+    { length: totalMicroSectorCount },
+    () => null,
+  )
+
+  for (const lap of row.car.lapHistory) {
+    if (!lap.isValid) continue
+
+    lap.sectors.forEach((value, index) => {
+      sectors[index] = lowerTimingValue(sectors[index], value)
+    })
+    lap.miniSectors?.forEach((value, index) => {
+      miniSectors[index] = lowerTimingValue(miniSectors[index], value)
+    })
+  }
+
+  if (isCurrentLapEligibleForBest(row.car.timedRunPhase)) {
+    row.car.currentLapSectorTimes.forEach((value, index) => {
+      sectors[index] = lowerTimingValue(sectors[index], value)
+    })
+    row.car.currentLapMiniSectorTimes.forEach((value, index) => {
+      miniSectors[index] = lowerTimingValue(miniSectors[index], value)
+    })
+  }
+
+  return { sectors, miniSectors }
+}
 
 const miniSectorAriaLabel = (
   states: MiniSectorState[],
@@ -296,154 +372,63 @@ const shortTeamName = (teamName: string) =>
     .replace('Racing Bulls', 'RB')
     .replace('Stake Kick Sauber', 'Sauber')
 
-const sectorWeightsForTrack = (track: RaceConfig['track']): [number, number, number] => {
-  if (track.observedCalibration?.sectorWeights) {
-    return track.observedCalibration.sectorWeights
+const measuredMiniSectorStates = (
+  car: CarSnapshot,
+  displayedTimes: Array<number | null>,
+  overallBests: Array<number | null>,
+  personalBests: Array<number | null>,
+  displayingCurrentLap: boolean,
+): MiniSectorState[][] => {
+  if (car.status === 'pit' || car.timedRunPhase === 'garage') {
+    return Array.from({ length: 3 }, (_, sectorIndex) =>
+      Array.from({ length: microSectorCount }, (_, miniSectorIndex) =>
+        sectorIndex === 0 && miniSectorIndex === 0
+          ? 'pit'
+          : sectorIndex === 2 && miniSectorIndex === microSectorCount - 1
+            ? 'pit'
+            : 'dim',
+      ),
+    )
   }
 
-  const [start = 0, sectorTwo = fallbackSectorWeights[0], sectorThree = 1 - fallbackSectorWeights[2]] =
-    track.sectorMarks
-  const weights: [number, number, number] = [
-    sectorTwo - start,
-    sectorThree - sectorTwo,
-    1 - sectorThree,
-  ].map((weight) => Math.max(0.12, weight)) as [number, number, number]
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  return Array.from({ length: 3 }, (_, sectorIndex) =>
+    Array.from({ length: microSectorCount }, (_, miniSectorIndex) => {
+      const timingIndex = sectorIndex * microSectorCount + miniSectorIndex
+      const value = displayedTimes[timingIndex]
 
-  return weights.map((weight) => weight / total) as [number, number, number]
-}
+      if (value === null || value === undefined) {
+        return 'dim'
+      }
 
-const sectorSplitsForCar = (
-  car: CarSnapshot,
-  rowIndex: number,
-  track: RaceConfig['track'],
-): [number, number, number] =>
-  sectorWeightsForTrack(track).map((weight, sectorIndex) => {
-    const jitter = (hashUnit(`${car.driverId}:${sectorIndex}`) - 0.5) * 0.46
-    const traffic = Math.min(0.42, rowIndex * 0.015)
-    const tireWarmupLoss =
-      car.tireTemperatureC < 76 ? (76 - car.tireTemperatureC) * 0.012 : 0
-    const overheatLoss =
-      car.tireTemperatureC > 112 ? (car.tireTemperatureC - 112) * 0.008 : 0
-    const damageLoss = car.damage * (0.18 + sectorIndex * 0.09)
-    const phaseLoss =
-      car.timedRunPhase === 'attack-lap'
-        ? -0.08
-        : car.timedRunPhase === 'out-lap' || car.timedRunPhase === 'in-lap'
-          ? 0.28
-          : car.timedRunPhase === 'cooldown'
-            ? 0.18
-            : 0
+      if (
+        car.status === 'retired' ||
+        car.status === 'disqualified' ||
+        car.status === 'dns'
+      ) {
+        return 'stopped'
+      }
 
-    return (
-      car.projectedLapTime * weight +
-      jitter +
-      traffic +
-      tireWarmupLoss +
-      overheatLoss +
-      damageLoss +
-      phaseLoss
-    )
-  }) as [number, number, number]
+      if (
+        displayingCurrentLap &&
+        !isCurrentLapEligibleForBest(car.timedRunPhase)
+      ) {
+        return 'yellow'
+      }
 
-const estimatedMicroSectorTime = (
-  car: CarSnapshot,
-  rowIndex: number,
-  sectorIndex: number,
-  microSectorIndex: number,
-  track: RaceConfig['track'],
-) => {
-  const sectorTime =
-    car.lapHistory.at(-1)?.sectors[sectorIndex] ??
-    sectorSplitsForCar(car, rowIndex, track)[sectorIndex]
-  const phaseFactor =
-    car.timedRunPhase === 'out-lap'
-      ? 1.18
-      : car.timedRunPhase === 'in-lap'
-        ? 1.24
-        : car.timedRunPhase === 'cooldown'
-          ? 1.12
-          : 1
-  const localVariation =
-    (hashUnit(
-      `${car.driverId}:${car.lap}:${sectorIndex}:${microSectorIndex}:split`,
-    ) -
-      0.5) *
-    0.045
+      const status = classifySectorTime(
+        value,
+        overallBests[timingIndex],
+        personalBests[timingIndex],
+      )
 
-  return Math.max(
-    0.1,
-    (sectorTime / microSectorCount) * phaseFactor + localVariation,
+      return status === 'overall-best'
+        ? 'purple'
+        : status === 'personal-best'
+          ? 'green'
+          : 'yellow'
+    }),
   )
 }
-
-const microSectorsForCar = (
-  car: CarSnapshot,
-  rowIndex: number,
-  sectorIndex: number,
-  track: RaceConfig['track'],
-  fieldBestTimes: number[][],
-): MiniSectorState[] =>
-  Array.from({ length: microSectorCount }, (_, index) => {
-    if (car.status === 'pit' || car.timedRunPhase === 'garage') {
-      return sectorIndex === 0 && index === 0
-        ? 'pit'
-        : sectorIndex === 2 && index === microSectorCount - 1
-          ? 'pit'
-          : 'dim'
-    }
-
-    const sectorStarts = track.sectorMarks
-    const sectorStart = sectorStarts[sectorIndex] ?? 0
-    const sectorEnd = sectorStarts[sectorIndex + 1] ?? 1
-    const sectorSpan = Math.max(0.01, sectorEnd - sectorStart)
-    const sectorProgress = Math.min(
-      1,
-      Math.max(0, (car.progress - sectorStart) / sectorSpan),
-    )
-    const completedMicroSectors = Math.min(
-      microSectorCount,
-      Math.ceil(sectorProgress * microSectorCount),
-    )
-
-    if (
-      car.status === 'retired' ||
-      car.status === 'disqualified' ||
-      car.status === 'dns'
-    ) {
-      return index < completedMicroSectors ? 'stopped' : 'dim'
-    }
-
-    if (index >= completedMicroSectors) {
-      return 'dim'
-    }
-
-    if (car.timedRunPhase === 'out-lap' || car.timedRunPhase === 'in-lap') {
-      return 'yellow'
-    }
-
-    const microTime = estimatedMicroSectorTime(
-      car,
-      rowIndex,
-      sectorIndex,
-      index,
-      track,
-    )
-    const fieldBest = fieldBestTimes[sectorIndex]?.[index]
-
-    if (Number.isFinite(fieldBest) && microTime <= fieldBest + 0.001) {
-      return 'purple'
-    }
-
-    if (
-      car.bestLapTimeSeconds === null ||
-      car.projectedLapTime <= car.bestLapTimeSeconds * 0.998
-    ) {
-      return 'green'
-    }
-
-    return 'yellow'
-  })
 
 const openF1MiniSectorState = (
   segment: number | null | undefined,
@@ -629,10 +614,15 @@ const openF1TimingForCar = (
   | 'displayPosition'
   | 'aeroOvertakeLabel'
   | 'gear'
+  | 'performancePaceDeltaSeconds'
+  | 'performanceSource'
   | 'rpm'
+  | 'sectorStatuses'
   | 'speedKph'
   | 'telemetrySource'
   | 'throttlePercent'
+  | 'tireModelSource'
+  | 'tirePaceDeltaSeconds'
   | 'tireTemperatureC'
 > | null => {
   const source = sourcesByCode.get(car.code)
@@ -651,6 +641,9 @@ const openF1TimingForCar = (
       normalizeOpenF1Segments(miniSectorLap?.segments_sector_2),
       normalizeOpenF1Segments(miniSectorLap?.segments_sector_3),
     ],
+    microSectorTimes: null,
+    microSectorDisplayIsCurrent: false,
+    sectorLapNumber: sectorLap.lap_number,
     source: 'openf1',
     sectors: [
       sectorLap.duration_sector_1,
@@ -737,6 +730,10 @@ const intervalLabel = (car: CarSnapshot) => {
 }
 
 const overtakeControlLabel = (snapshot: RaceSnapshot) => {
+  if (snapshot.lowGripConditions) {
+    return 'DISABLED / LOW GRIP'
+  }
+
   if (snapshot.overtakeEnabled) {
     return 'ENABLED'
   }
@@ -1563,6 +1560,7 @@ export default function App() {
       flag: openF1LiveState.flag ?? snapshot.flag,
       flagLabel: openF1LiveState.flagLabel ?? snapshot.flagLabel,
       leaderLap: observedLeaderLap ?? snapshot.leaderLap,
+      sectorFlags: openF1LiveState.sectorFlags ?? snapshot.sectorFlags,
       weekend: openF1LiveState.weekend ?? snapshot.weekend,
     }
   }, [
@@ -1572,6 +1570,7 @@ export default function App() {
     openF1LiveState.flag,
     openF1LiveState.flagLabel,
     openF1LiveState.raceControlMessage,
+    openF1LiveState.sectorFlags,
     openF1LiveState.weekend,
     snapshot,
   ])
@@ -1742,45 +1741,9 @@ export default function App() {
         return positionA - positionB
       })
   }, [dataMode, openF1LiveState.positionsByCode, orderedCars])
-  const simulatedMicroSectorBests = useMemo(() => {
-    const bests = Array.from({ length: 3 }, () =>
-      Array.from({ length: microSectorCount }, () => Number.POSITIVE_INFINITY),
-    )
-
-    timingCars.forEach((car, rowIndex) => {
-      if (
-        car.status === 'retired' ||
-        car.status === 'disqualified' ||
-        car.status === 'dns'
-      ) {
-        return
-      }
-
-      for (let sectorIndex = 0; sectorIndex < 3; sectorIndex += 1) {
-        for (
-          let microSectorIndex = 0;
-          microSectorIndex < microSectorCount;
-          microSectorIndex += 1
-        ) {
-          bests[sectorIndex][microSectorIndex] = Math.min(
-            bests[sectorIndex][microSectorIndex],
-            estimatedMicroSectorTime(
-              car,
-              rowIndex,
-              sectorIndex,
-              microSectorIndex,
-              track,
-            ),
-          )
-        }
-      }
-    })
-
-    return bests
-  }, [timingCars, track])
-  const timingRows = useMemo<TimingRow[]>(
-    () =>
-      timingCars.map((car, rowIndex) => {
+  const timingRows = useMemo<TimingRow[]>(() => {
+    const rows: TimingRowWithoutSectorStatuses[] = timingCars.map(
+      (car) => {
         const useObservedTiming = dataModeUsesObservedTiming(dataMode)
         const openF1Timing = useObservedTiming
           ? openF1TimingForCar(car, openF1TimingSources)
@@ -1805,10 +1768,67 @@ export default function App() {
             ? (openF1LiveTiming?.intervalLabel ?? intervalLabel(car))
             : intervalLabel(car)
         const latestCompletedLap = car.lapHistory.at(-1)
-        const measuredSectors = car.currentLapSectorTimes.map(
-          (sectorTime, sectorIndex) =>
-            sectorTime ?? latestCompletedLap?.sectors[sectorIndex] ?? null,
-        ) as [number | null, number | null, number | null]
+        const tireSampleCount =
+          raceConfig.track.observedCalibration?.tireSampleCountByCompound[
+            car.tire
+          ] ?? 0
+        const tireModel = {
+          performancePaceDeltaSeconds:
+            fieldCalibration.teamPaceDeltaSeconds[car.teamId] ?? null,
+          performanceSource: fieldCalibration.source,
+          tireModelSource:
+            tireSampleCount >= 4
+              ? ('openf1-calibrated' as const)
+              : isDryCompound(car.tire) &&
+                  raceConfig.track.tireNomination?.source === 'pirelli'
+                ? ('pirelli' as const)
+                : ('simulation' as const),
+          tirePaceDeltaSeconds: tireDeltaSeconds(
+            car.tire,
+            car.tireAgeLaps,
+            raceConfig.drivers.find((driver) => driver.id === car.driverId)
+              ?.tireManagement ?? 0.8,
+            snapshot.weather,
+            snapshot.trackGrip,
+            car.tireTemperatureC,
+            car.tireWearPercent,
+            raceConfig.track.tireNomination,
+            {
+              degradationPerLapSeconds:
+                raceConfig.track.observedCalibration
+                  ?.tireDegradationByCompound[car.tire],
+              paceOffsetSeconds:
+                raceConfig.track.observedCalibration
+                  ?.tirePaceOffsetByCompound[car.tire],
+              sampleCount: tireSampleCount,
+            },
+          ),
+        }
+        const hasCurrentLapSector = car.currentLapSectorTimes.some(
+          (sectorTime) => sectorTime !== null,
+        )
+        const hasCurrentLapMiniSector = car.currentLapMiniSectorTimes.some(
+          (sectorTime) => sectorTime !== null,
+        )
+        const hasCurrentLapTiming =
+          hasCurrentLapSector || hasCurrentLapMiniSector
+        const measuredSectors = hasCurrentLapTiming
+          ? ([...car.currentLapSectorTimes] as [
+              number | null,
+              number | null,
+              number | null,
+            ])
+          : latestCompletedLap
+            ? ([...latestCompletedLap.sectors] as [number, number, number])
+            : ([null, null, null] as [null, null, null])
+        const measuredMiniSectors = hasCurrentLapTiming
+          ? [...car.currentLapMiniSectorTimes]
+          : latestCompletedLap?.miniSectors
+            ? [...latestCompletedLap.miniSectors]
+            : Array.from({ length: totalMicroSectorCount }, () => null)
+        const sectorLapNumber = hasCurrentLapTiming
+          ? (latestCompletedLap?.lap ?? 0) + 1
+          : latestCompletedLap?.lap ?? null
 
         if (openF1Timing) {
           return {
@@ -1818,6 +1838,7 @@ export default function App() {
             displayPosition,
             ...openF1Timing,
             ...telemetry,
+            ...tireModel,
           }
         }
 
@@ -1827,32 +1848,108 @@ export default function App() {
           displayIntervalLabel,
           displayPosition,
           ...telemetry,
+          ...tireModel,
           lapTimeSeconds: car.lastLapTimeSeconds,
           lapDataLabel: latestCompletedLap
-            ? 'SIM MEASURED / TIMING LINE'
+            ? `SIM MEASURED / LAP ${sectorLapNumber}`
             : 'SIM AWAITING TIMING LINE',
-          microSectors: [0, 1, 2].map((sectorIndex) =>
-            microSectorsForCar(
-              car,
-              rowIndex,
-              sectorIndex,
-              track,
-              simulatedMicroSectorBests,
-            ),
+          microSectors: Array.from({ length: 3 }, () =>
+            Array.from({ length: microSectorCount }, () => 'dim' as const),
           ),
+          microSectorTimes: measuredMiniSectors,
+          microSectorDisplayIsCurrent: hasCurrentLapTiming,
+          sectorLapNumber,
           source: 'simulation',
           sectors: measuredSectors,
         }
-      }),
+      },
+    )
+    const personalBestsByDriver = new Map(
+      rows.map((row) => [
+        row.car.driverId,
+        personalTimingBestsForRow(row),
+      ]),
+    )
+    const overallComparisonSource = rows.some(
+      (row) => row.source === 'openf1',
+    )
+      ? 'openf1'
+      : 'simulation'
+    const comparisonRows = rows.filter(
+      (row) => row.source === overallComparisonSource,
+    )
+    const overallSectorBests = [0, 1, 2].map((sectorIndex) =>
+      bestSectorTime(
+        comparisonRows.map(
+          (row) =>
+            personalBestsByDriver.get(row.car.driverId)!.sectors[sectorIndex],
+        ),
+      ),
+    )
+    const overallMiniSectorBests = Array.from(
+      { length: totalMicroSectorCount },
+      (_, miniSectorIndex) =>
+        bestSectorTime(
+          comparisonRows.map(
+            (row) =>
+              personalBestsByDriver.get(row.car.driverId)!.miniSectors[
+                miniSectorIndex
+              ],
+          ),
+        ),
+    )
+    const noOverallMiniSectorBests = Array.from(
+      { length: totalMicroSectorCount },
+      () => null,
+    )
+
+    return rows.map((row) => {
+      const personalBests = personalBestsByDriver.get(row.car.driverId)!
+      const rowUsesOverallComparison =
+        row.source === overallComparisonSource
+
+      return {
+        ...row,
+        microSectors:
+          row.source === 'simulation' && row.microSectorTimes
+            ? measuredMiniSectorStates(
+                row.car,
+                row.microSectorTimes,
+                rowUsesOverallComparison
+                  ? overallMiniSectorBests
+                  : noOverallMiniSectorBests,
+                personalBests.miniSectors,
+                row.microSectorDisplayIsCurrent,
+              )
+            : row.microSectors,
+        sectorStatuses: row.sectors.map((sectorTime, sectorIndex) =>
+          row.source === 'simulation' &&
+          row.microSectorDisplayIsCurrent &&
+          !isCurrentLapEligibleForBest(row.car.timedRunPhase) &&
+          sectorTime !== null
+            ? 'slower'
+            : classifySectorTime(
+                sectorTime,
+                rowUsesOverallComparison
+                  ? overallSectorBests[sectorIndex]
+                  : null,
+                personalBests.sectors[sectorIndex],
+              ),
+        ) as [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus],
+      }
+    })
+  },
     [
       openF1CarDataByCode,
       dataMode,
       openF1LiveState.positionsByCode,
       openF1LiveState.timingByCode,
       openF1TimingSources,
-      simulatedMicroSectorBests,
+      fieldCalibration,
+      raceConfig,
+      snapshot.trackGrip,
+      snapshot.weather,
       timingCars,
-      track,
     ],
   )
   const sectorBoards = useMemo(
@@ -1870,7 +1967,13 @@ export default function App() {
 
             return sectorTime === null
               ? []
-              : [{ car: row.car, sectorTime }]
+              : [
+                  {
+                    car: row.car,
+                    sectorTime,
+                    status: row.sectorStatuses[sectorIndex],
+                  },
+                ]
           })
           .sort((a, b) => a.sectorTime - b.sectorTime)
           .slice(0, 10),
@@ -2043,7 +2146,9 @@ export default function App() {
   ) => {
     setDrivers((currentDrivers) =>
       currentDrivers.map((driver) =>
-        driver.id === driverId ? { ...driver, [stat]: value } : driver,
+        driver.id === driverId
+          ? { ...driver, [stat]: clampDriverAbility(value) }
+          : driver,
       ),
     )
   }
@@ -2219,6 +2324,28 @@ export default function App() {
       label: 'Race distance',
       source: raceConfig.track.raceLapsSource === 'official' ? 'FIA' : 'SIM',
       value: `${snapshot.raceLaps} laps`,
+    },
+    {
+      label: '2026 rulebook',
+      source: 'FIA',
+      value: `Sporting Iss ${FIA_2026_REGULATION_PROFILE.sporting.issue} / Technical Iss ${FIA_2026_REGULATION_PROFILE.technical.issue} / ${FIA_2026_REGULATION_PROFILE.asOf}`,
+    },
+    {
+      label: 'Grip declaration',
+      source: 'SIM',
+      value: snapshot.lowGripConditions
+        ? 'LOW / partial front aero / Overtake off'
+        : 'NORMAL / full aero zones',
+    },
+    {
+      label: 'ERS limits',
+      source: 'FIA',
+      value: `${FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw} kW / ${FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj} MJ SOC / ${raceConfig.fiaEventRechargeLimitMj ?? FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj} MJ recharge`,
+    },
+    {
+      label: 'Low-grip ERS curve',
+      source: 'UNAVAILABLE',
+      value: `${FIA_2026_REGULATION_PROFILE.lowGripPowerCurve.document} non-public / conservative SIM`,
     },
     {
       label: 'Field calibration',
@@ -3388,6 +3515,7 @@ export default function App() {
                   microSectors,
                   rpm,
                   sectors,
+                  sectorStatuses,
                   source,
                   speedKph,
                   telemetrySource,
@@ -3508,7 +3636,9 @@ export default function App() {
                       </span>
                       {[0, 1, 2].map((sectorIndex) => (
                         <span className="sector-pair" key={sectorIndex}>
-                          <span className="sector-time">
+                          <span
+                            className={`sector-time sector-status-${sectorStatuses[sectorIndex]}`}
+                          >
                             {formatSector(sectors[sectorIndex])}
                           </span>
                           <span
@@ -3565,7 +3695,7 @@ export default function App() {
                   </strong>
                 </header>
                 <ol>
-                  {entries.map(({ car, sectorTime }, index) => (
+                  {entries.map(({ car, sectorTime, status }, index) => (
                     <li
                       className={
                         car.driverId === selectedCar.driverId ? 'selected' : ''
@@ -3574,7 +3704,9 @@ export default function App() {
                     >
                       <span>{index + 1}</span>
                       <strong style={{ color: car.teamColor }}>{car.code}</strong>
-                      <span>{formatSector(sectorTime)}</span>
+                      <span className={`sector-status-${status}`}>
+                        {formatSector(sectorTime)}
+                      </span>
                     </li>
                   ))}
                 </ol>

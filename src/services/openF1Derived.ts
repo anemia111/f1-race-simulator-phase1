@@ -1,5 +1,6 @@
 import type {
   FlagState,
+  SectorFlagState,
   WeekendStage,
   WeekendState,
 } from '../types'
@@ -22,12 +23,32 @@ export type OpenF1LiveRaceState = {
   positionsByCode: Map<string, number>
   raceControlCategory: string | null
   raceControlMessage: string | null
+  sectorFlags: [SectorFlagState, SectorFlagState, SectorFlagState] | null
   timingByCode: Map<string, OpenF1LiveTiming>
   weekend: WeekendState | null
 }
 
 function latestByDate<T extends { date: string }>(items: T[]) {
   return [...items].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null
+}
+
+const raceControlText = (raceControl: OpenF1RaceControl) =>
+  `${raceControl.flag ?? ''} ${raceControl.category} ${raceControl.message}`
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+
+const raceControlSectorIndex = (raceControl: OpenF1RaceControl) => {
+  const sector = raceControl.sector
+
+  if (typeof sector !== 'number' || !Number.isInteger(sector)) {
+    return null
+  }
+
+  return sector >= 1 && sector <= 3
+    ? sector - 1
+    : sector >= 0 && sector <= 2
+      ? sector
+      : null
 }
 
 function driverCodesByNumber(bundle: OpenF1Bundle) {
@@ -113,9 +134,7 @@ export function flagFromRaceControl(
     return { flag: null, flagLabel: null }
   }
 
-  const text = `${raceControl.flag ?? ''} ${raceControl.category} ${raceControl.message}`
-    .toUpperCase()
-    .replace(/\s+/g, ' ')
+  const text = raceControlText(raceControl)
 
   if (text.includes('RED FLAG')) {
     return { flag: 'red', flagLabel: 'RED' }
@@ -130,7 +149,13 @@ export function flagFromRaceControl(
   }
 
   if (text.includes('YELLOW')) {
-    return { flag: 'yellow', flagLabel: 'YELLOW' }
+    const sector = raceControlSectorIndex(raceControl)
+    const label = text.includes('DOUBLE YELLOW') ? 'DOUBLE YELLOW' : 'YELLOW'
+
+    return {
+      flag: 'yellow',
+      flagLabel: sector === null ? label : `${label} S${sector + 1}`,
+    }
   }
 
   if (text.includes('GREEN') || text.includes('CLEAR')) {
@@ -138,6 +163,58 @@ export function flagFromRaceControl(
   }
 
   return { flag: null, flagLabel: null }
+}
+
+export function sectorFlagsFromRaceControl(
+  raceControl: OpenF1RaceControl[],
+): [SectorFlagState, SectorFlagState, SectorFlagState] | null {
+  let states: [SectorFlagState, SectorFlagState, SectorFlagState] = [
+    'clear',
+    'clear',
+    'clear',
+  ]
+  let sawFlagMessage = false
+
+  for (const event of [...raceControl].sort((a, b) => a.date.localeCompare(b.date))) {
+    const parsed = flagFromRaceControl(event)
+
+    if (parsed.flag === null) continue
+    sawFlagMessage = true
+
+    const sector = raceControlSectorIndex(event)
+    const sectorScoped = event.scope?.toUpperCase().includes('SECTOR') ?? false
+
+    if (parsed.flag === 'clear') {
+      if (sectorScoped && sector !== null) {
+        states[sector] = 'clear'
+      } else {
+        states = ['clear', 'clear', 'clear']
+      }
+      continue
+    }
+
+    if (parsed.flag === 'yellow') {
+      const state: SectorFlagState = raceControlText(event).includes(
+        'DOUBLE YELLOW',
+      )
+        ? 'double-yellow'
+        : 'yellow'
+
+      if (sectorScoped && sector !== null) {
+        if (states.some((value) => value === 'vsc' || value === 'sc' || value === 'red')) {
+          states = ['clear', 'clear', 'clear']
+        }
+        states[sector] = state
+      } else {
+        states = [state, state, state]
+      }
+      continue
+    }
+
+    states = [parsed.flag, parsed.flag, parsed.flag]
+  }
+
+  return sawFlagMessage ? states : null
 }
 
 function stageLabel(stage: WeekendStage) {
@@ -207,6 +284,7 @@ export function buildOpenF1LiveRaceState(
       positionsByCode: new Map(),
       raceControlCategory: null,
       raceControlMessage: null,
+      sectorFlags: null,
       timingByCode: new Map(),
       weekend: null,
     }
@@ -218,18 +296,21 @@ export function buildOpenF1LiveRaceState(
   const targetMs = Number.isFinite(parsedTargetMs)
     ? parsedTargetMs
     : Date.now()
-  const raceControl = latestByDate(
-    bundle.raceControl.filter(
+  const eligibleRaceControl = bundle.raceControl.filter(
       (event) => new Date(event.date).getTime() <= targetMs,
-    ),
-  )
-  const flag = flagFromRaceControl(raceControl)
+    )
+  const raceControl = latestByDate(eligibleRaceControl)
+  const latestFlagEvent = [...eligibleRaceControl]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .find((event) => flagFromRaceControl(event).flag !== null) ?? null
+  const flag = flagFromRaceControl(latestFlagEvent)
 
   return {
     ...flag,
     positionsByCode: latestPositionsByCode(bundle, targetMs),
     raceControlCategory: raceControl?.category ?? null,
     raceControlMessage: raceControl?.message ?? null,
+    sectorFlags: sectorFlagsFromRaceControl(eligibleRaceControl),
     timingByCode: latestTimingByCode(bundle, targetMs),
     weekend: openF1WeekendState(bundle, fallbackStage, targetMs),
   }

@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
+import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import { flagFromRaceControl } from '../services/openF1Derived'
 import { calibrateFieldFromOpenF1 } from '../services/openF1Performance'
 import type { RaceConfig, RaceSnapshot, TireCompound } from '../types'
@@ -20,9 +21,11 @@ import {
 } from './qualifying'
 import {
   advanceRace,
+  blueFlagApproachingCarFor,
   createInitialRace,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
+  lateralTargetWithBrakingRule,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
 } from './race'
@@ -94,6 +97,32 @@ function runThroughStart(
   snapshot = advanceRace(snapshot, 5, config)
   return snapshot
 }
+
+describe('blue flags', () => {
+  it('warns a lapped car only while a lead-lap car approaches from behind', () => {
+    const [leader, backmarker] = createInitialRace(makeConfig('blue-flag')).cars
+    const approaching = {
+      ...leader,
+      position: 1,
+      totalDistance: 4.91,
+    }
+    const lapped = {
+      ...backmarker,
+      position: 20,
+      totalDistance: 4,
+    }
+
+    expect(blueFlagApproachingCarFor(lapped, [approaching, lapped])?.driverId).toBe(
+      approaching.driverId,
+    )
+    expect(
+      blueFlagApproachingCarFor(lapped, [
+        { ...approaching, totalDistance: 5.01 },
+        lapped,
+      ]),
+    ).toBeNull()
+  })
+})
 
 function runToFinish(
   config: RaceConfig,
@@ -197,6 +226,42 @@ describe('starting grid', () => {
 
     expect(snapshot.cars.some((car) => car.status === 'pit')).toBe(false)
     expect(snapshot.events.some((event) => event.kind === 'pit')).toBe(false)
+  })
+
+  it('uses a Safety Car formation and compulsory wets in severe rain', () => {
+    const track = { ...tracks[0], rainProbability: 0.75 }
+    const seed = Array.from({ length: 5000 }, (_, index) => `wet-start-${index}`).find(
+      (candidate) => weatherFor(candidate, track, 0) === 'heavy-rain',
+    )
+
+    expect(seed).toBeDefined()
+
+    const config: RaceConfig = {
+      drivers: initialDrivers,
+      seed: seed!,
+      teams: initialTeams,
+      track,
+    }
+    const initial = createInitialRace(config)
+
+    expect(initial.formationBehindSafetyCar).toBe(true)
+    expect(initial.wetWeatherTyresMandatory).toBe(true)
+    expect(initial.flag).toBe('sc')
+    expect(initial.sectorFlags).toEqual(['sc', 'sc', 'sc'])
+    expect(initial.lowGripConditions).toBe(true)
+    expect(initial.overtakeEnabled).toBe(false)
+    expect(initial.cars.every((car) => car.tire === 'W')).toBe(true)
+
+    const rollingStart = advanceRace(
+      initial,
+      initial.formationLapDurationSeconds * initial.formationLapsPlanned,
+      config,
+    )
+
+    expect(rollingStart.startProcedure).toBe('racing')
+    expect(rollingStart.sectorFlags).toEqual(['clear', 'clear', 'clear'])
+    expect(rollingStart.wetWeatherTyresMandatory).toBe(false)
+    expect(rollingStart.eventMessage).toContain('ROLLING START')
   })
 
   it('does not treat normal brake-temperature peaks as an early pit trigger', () => {
@@ -330,6 +395,8 @@ describe('CPU timing lines', () => {
           car.lastLapTimeSeconds === null &&
           car.bestLapTimeSeconds === null &&
           car.currentLapSectorTimes.every((sector) => sector === null) &&
+          car.currentLapMiniSectorTimes.length === 24 &&
+          car.currentLapMiniSectorTimes.every((sector) => sector === null) &&
           car.lapHistory.length === 0,
       ),
     ).toBe(true)
@@ -377,11 +444,19 @@ describe('CPU timing lines', () => {
 
     expect(measuredS1).not.toBeNull()
 
+    const measuredMiniSector = snapshot.cars.find(
+      (car) => car.driverId === driverId,
+    )!.currentLapMiniSectorTimes[0]
+    expect(measuredMiniSector).not.toBeNull()
+
     snapshot = advanceRace(snapshot, 0.05, config)
-    expect(
-      snapshot.cars.find((car) => car.driverId === driverId)!
-        .currentLapSectorTimes[0],
-    ).toBe(measuredS1)
+    const snapshotAfterCrossing = snapshot.cars.find(
+      (car) => car.driverId === driverId,
+    )!
+    expect(snapshotAfterCrossing.currentLapSectorTimes[0]).toBe(measuredS1)
+    expect(snapshotAfterCrossing.currentLapMiniSectorTimes[0]).toBe(
+      measuredMiniSector,
+    )
 
     for (
       let step = 0;
@@ -404,6 +479,85 @@ describe('CPU timing lines', () => {
     expect(
       completedLap.sectors.reduce((sum, sector) => sum + sector, 0),
     ).toBeCloseTo(completedLap.lapTimeSeconds, 8)
+    expect(completedLap.miniSectors).toHaveLength(24)
+    expect(completedLap.miniSectors?.every((sector) => sector > 0)).toBe(true)
+    const completedMiniSectors = completedLap.miniSectors!
+    expect(
+      completedMiniSectors.reduce((sum, sector) => sum + sector, 0),
+    ).toBeCloseTo(completedLap.lapTimeSeconds, 6)
+  })
+
+  it('moves lap-one provisional purple from the first car to a faster follower', () => {
+    const slowDriver = {
+      ...initialDrivers[0],
+      consistency: 0.7,
+      pace: 0.55,
+    }
+    const fastDriver = {
+      ...initialDrivers[2],
+      consistency: 1,
+      pace: 1,
+    }
+    const slowTeam = {
+      ...initialTeams.find((team) => team.id === slowDriver.teamId)!,
+      cornering: 0.7,
+      straightLine: 0.7,
+    }
+    const fastTeam = {
+      ...initialTeams.find((team) => team.id === fastDriver.teamId)!,
+      cornering: 1,
+      straightLine: 1,
+    }
+    const config: RaceConfig = {
+      ...makeConfig('lap-one-provisional-purple'),
+      drivers: [slowDriver, fastDriver],
+      teams: [slowTeam, fastTeam],
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    let snapshot = runThroughStart(config)
+    const targetMiniSectorIndex = 1
+    let firstCarId: string | null = null
+    let firstTime: number | null = null
+
+    for (let step = 0; step < 5_000 && firstTime === null; step += 1) {
+      snapshot = advanceRace(snapshot, 0.01, config)
+      const measured = snapshot.cars.filter(
+        (car) =>
+          car.currentLapMiniSectorTimes[targetMiniSectorIndex] !== null,
+      )
+
+      if (measured.length === 1) {
+        firstCarId = measured[0].driverId
+        firstTime =
+          measured[0].currentLapMiniSectorTimes[targetMiniSectorIndex]
+      }
+    }
+
+    expect(firstCarId).toBe(slowDriver.id)
+    expect(firstTime).not.toBeNull()
+    expect(classifySectorTime(firstTime, firstTime, firstTime)).toBe(
+      'overall-best',
+    )
+
+    let followerTime: number | null = null
+
+    for (let step = 0; step < 2_000 && followerTime === null; step += 1) {
+      snapshot = advanceRace(snapshot, 0.01, config)
+      followerTime =
+        snapshot.cars.find((car) => car.driverId === fastDriver.id)
+          ?.currentLapMiniSectorTimes[targetMiniSectorIndex] ?? null
+    }
+
+    expect(followerTime).not.toBeNull()
+    expect(followerTime!).toBeLessThan(firstTime!)
+    const overallBest = bestSectorTime([firstTime, followerTime])
+
+    expect(classifySectorTime(firstTime, overallBest, firstTime)).toBe(
+      'personal-best',
+    )
+    expect(classifySectorTime(followerTime, overallBest, followerTime)).toBe(
+      'overall-best',
+    )
   })
 })
 
@@ -650,6 +804,33 @@ describe('start procedure and persisted weekend', () => {
     expect(snapshot.restartProcedure).toBe('none')
   })
 
+  it('publishes a local yellow only for its affected sector', () => {
+    const config = makeConfig('sector-yellow-snapshot')
+    let snapshot = runThroughStart(config)
+
+    snapshot = advanceRace(
+      {
+        ...snapshot,
+        flag: 'yellow',
+        flagLabel: 'YELLOW S2',
+        flagPhase: {
+          endMessage: 'Sector clear.',
+          endSeconds: snapshot.elapsedSeconds + 20,
+          flag: 'yellow',
+          id: 'forced-sector-two-yellow',
+          sector: 1,
+          startMessage: 'Yellow flag in sector 2.',
+          startSeconds: snapshot.elapsedSeconds,
+        },
+      },
+      0.1,
+      config,
+    )
+
+    expect(snapshot.flagLabel).toBe('YELLOW S2')
+    expect(snapshot.sectorFlags).toEqual(['clear', 'yellow', 'clear'])
+  })
+
   it('waits for the on-track field to cross the control line after a Safety Car', () => {
     const config = makeConfig('sc-overtake-reenable')
     let snapshot = runThroughStart(config)
@@ -857,6 +1038,41 @@ describe('tires', () => {
   it('makes softer compounds faster when fresh', () => {
     expect(tireDeltaSeconds('S', 0, 0.8)).toBeLessThan(tireDeltaSeconds('M', 0, 0.8))
     expect(tireDeltaSeconds('M', 0, 0.8)).toBeLessThan(tireDeltaSeconds('H', 0, 0.8))
+  })
+
+  it('uses the nominated medium as the event pace reference', () => {
+    const nomination = {
+      H: 'C3',
+      M: 'C4',
+      S: 'C5',
+      source: 'pirelli',
+      sourceUrl: 'https://press.pirelli.com/',
+    } as const
+
+    expect(tireDeltaSeconds('M', 0, 0.8, 'clear', 1, undefined, 0, nomination)).toBe(0)
+    expect(tireDeltaSeconds('S', 0, 0.8, 'clear', 1, undefined, 0, nomination)).toBeLessThan(0)
+    expect(tireDeltaSeconds('H', 0, 0.8, 'clear', 1, undefined, 0, nomination)).toBeGreaterThan(0)
+  })
+
+  it('blends sufficient observed tire samples into pace and wear', () => {
+    const modeled = tireDeltaSeconds('S', 6, 0.8)
+    const calibrated = tireDeltaSeconds(
+      'S',
+      6,
+      0.8,
+      'clear',
+      1,
+      undefined,
+      0,
+      undefined,
+      {
+        degradationPerLapSeconds: 0.2,
+        paceOffsetSeconds: -1.2,
+        sampleCount: 40,
+      },
+    )
+
+    expect(calibrated).not.toBe(modeled)
   })
 
   it('wears with age and falls off a cliff', () => {
@@ -1376,7 +1592,7 @@ describe('OpenF1 race control mapping', () => {
         scope: 'Sector',
         sector: 2,
       }),
-    ).toEqual({ flag: 'yellow', flagLabel: 'YELLOW' })
+    ).toEqual({ flag: 'yellow', flagLabel: 'YELLOW S2' })
 
     expect(
       flagFromRaceControl({
@@ -1752,8 +1968,8 @@ describe('overtaking', () => {
     const started = runThroughStart(config)
     const leaderId = started.cars[0].driverId
     const attackerId = started.cars[1].driverId
-    const leaderDistance = 2 + straightProgress
-    const attackerDistance = leaderDistance - 0.004
+    const attackerDistance = 2 + straightProgress
+    const leaderDistance = attackerDistance + 0.004
     const prepared: RaceSnapshot = {
       ...started,
       cars: started.cars.map((car) => {
@@ -1804,8 +2020,8 @@ describe('overtaking', () => {
     }
     const lateralSigns: number[] = []
 
-    for (let step = 0; step < 5; step += 1) {
-      committed = advanceRace(committed, 0.05, config)
+    for (let step = 0; step < 8; step += 1) {
+      committed = advanceRace(committed, 0.005, config)
       const lateralOffset = committed.cars.find(
         (car) => car.driverId === attackerId,
       )!.trackLateralOffset
@@ -1817,6 +2033,43 @@ describe('overtaking', () => {
 
     expect(lateralSigns.length).toBeGreaterThan(1)
     expect(new Set(lateralSigns).size).toBe(1)
+
+    let defending: RaceSnapshot = {
+      ...prepared,
+      cars: prepared.cars.map((car) =>
+        car.driverId === leaderId
+          ? {
+              ...car,
+              battleOpponentId: attackerId,
+              battlePhase: 'defending' as const,
+              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
+            }
+          : car,
+      ),
+    }
+    const defensiveSigns: number[] = []
+
+    for (let step = 0; step < 8; step += 1) {
+      defending = advanceRace(defending, 0.005, config)
+      const lateralOffset = defending.cars.find(
+        (car) => car.driverId === leaderId,
+      )!.trackLateralOffset
+
+      if (Math.abs(lateralOffset) > 0.0001) {
+        defensiveSigns.push(Math.sign(lateralOffset))
+      }
+    }
+
+    expect(defensiveSigns.length).toBeGreaterThan(1)
+    expect(new Set(defensiveSigns).size).toBe(1)
+  })
+})
+
+describe('driving standards', () => {
+  it('locks the selected line as soon as braking starts', () => {
+    expect(lateralTargetWithBrakingRule(0.18, -0.42, 0)).toBe(-0.42)
+    expect(lateralTargetWithBrakingRule(0.18, -0.42, 5)).toBe(0.18)
+    expect(lateralTargetWithBrakingRule(0.18, 0.42, 72)).toBe(0.18)
   })
 })
 

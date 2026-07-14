@@ -9,6 +9,12 @@ import {
 } from './activeAero'
 import { createInitialRace } from './race'
 import {
+  flagPhaseForSector,
+  sectorFlagStatesFor,
+  vscPaceScaleForDelta,
+} from './raceEvents'
+import { calculateCarTelemetry } from './telemetry'
+import {
   lineDeviationPenaltySeconds,
   racingLineAt,
   trackDynamicsAt,
@@ -20,6 +26,98 @@ import {
 } from './trackWater'
 
 describe('track-dependent systems', () => {
+  it('scopes a local yellow to its affected sector', () => {
+    const yellow = {
+      id: 'local-yellow',
+      flag: 'yellow' as const,
+      sector: 1,
+      startSeconds: 20,
+      endSeconds: 40,
+      startMessage: 'Yellow flag',
+      endMessage: 'Track clear',
+    }
+
+    expect(flagPhaseForSector(yellow, 0)).toBeNull()
+    expect(flagPhaseForSector(yellow, 1)).toBe(yellow)
+    expect(sectorFlagStatesFor('yellow', 1)).toEqual([
+      'clear',
+      'yellow',
+      'clear',
+    ])
+    expect(sectorFlagStatesFor('clear', null, 2)).toEqual([
+      'clear',
+      'clear',
+      'double-yellow',
+    ])
+    expect(sectorFlagStatesFor('vsc', null)).toEqual(['vsc', 'vsc', 'vsc'])
+  })
+
+  it('uses VSC delta as a pace controller instead of a fixed speed cap', () => {
+    expect(vscPaceScaleForDelta(-1)).toBeLessThan(
+      vscPaceScaleForDelta(0),
+    )
+    expect(vscPaceScaleForDelta(2)).toBeGreaterThan(
+      vscPaceScaleForDelta(0),
+    )
+  })
+
+  it('slows for a local yellow without a fixed 225 km/h ceiling', () => {
+    const track = tracks[0]
+    const snapshot = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'local-yellow-speed',
+      teams: initialTeams,
+      track,
+    })
+    const fastestPoint = track.centerline.reduce(
+      (best, _, index) => {
+        const progress = index / track.centerline.length
+        const speed = trackDynamicsAt(track, progress).referenceSpeedKph
+
+        return speed > best.speed ? { progress, speed } : best
+      },
+      { progress: 0, speed: 0 },
+    )
+    const car = {
+      ...snapshot.cars[0],
+      progress: fastestPoint.progress,
+      speedKph: 320,
+      status: 'running' as const,
+    }
+    const yellow = {
+      id: 'local-yellow',
+      flag: 'yellow' as const,
+      sector: 0,
+      startSeconds: 20,
+      endSeconds: 40,
+      startMessage: 'Yellow flag',
+      endMessage: 'Track clear',
+    }
+    const shared = {
+      car,
+      deltaSeconds: 2,
+      driver: initialDrivers[0],
+      elapsedSeconds: 30,
+      lowGripConditions: false,
+      raceLap: 3,
+      track,
+      trackGrip: 1,
+      weather: 'clear' as const,
+    }
+    const clearTelemetry = calculateCarTelemetry({
+      ...shared,
+      phase: null,
+    })
+    const yellowTelemetry = calculateCarTelemetry({
+      ...shared,
+      localFlagPaceScale: 0.88,
+      phase: yellow,
+    })
+
+    expect(yellowTelemetry.speedKph).toBeGreaterThan(225)
+    expect(yellowTelemetry.speedKph).toBeLessThan(clearTelemetry.speedKph)
+  })
+
   it('disables Overtake in low grip while retaining partial active aero', () => {
     const track = tracks[0]
     const snapshot = createInitialRace({
@@ -39,20 +137,19 @@ describe('track-dependent systems', () => {
     expect(
       activeAeroModeFor({
         car,
+        lowGripConditions: true,
         phase: null,
         track,
-        trackGrip: 0.8,
-        weather: 'light-rain',
       }),
     ).toBe(zone.lowGripMode === 'partial' ? 'partial-straight' : 'corner')
     expect(
       overtakeStatusFor({
         batteryPercent: 80,
         car,
+        lowGripConditions: true,
         phase: null,
         raceLap: 4,
         track,
-        trackGrip: 0.8,
       }),
     ).toBe('disabled')
   })
@@ -110,11 +207,11 @@ describe('track-dependent systems', () => {
       overtakeStatusFor({
         batteryPercent: 80,
         car,
+        lowGripConditions: false,
         overtakeEnergyRemainingMj: 0,
         phase: null,
         raceLap: 4,
         track,
-        trackGrip: 1,
       }),
     ).toBe('disabled')
   })
@@ -138,12 +235,12 @@ describe('track-dependent systems', () => {
     }
     const eligibility = updateOvertakeEligibilityAfterTravel({
       car: baseCar,
+      lowGripConditions: false,
       nextTotalDistance: detectionDistance + 0.001,
       phase: null,
       previousTotalDistance: detectionDistance - 0.001,
       raceControlEnabled: true,
       track,
-      trackGrip: 1,
     })
     const activationDistance =
       eligibility!.activationLap + line.activationProgress
@@ -164,10 +261,10 @@ describe('track-dependent systems', () => {
       overtakeStatusFor({
         batteryPercent: 80,
         car: readyCar,
+        lowGripConditions: false,
         phase: null,
         raceLap: 4,
         track,
-        trackGrip: 1,
       }),
     ).toBe('available')
     expect(
@@ -178,10 +275,10 @@ describe('track-dependent systems', () => {
           progress: line.activationProgress + 0.01,
           totalDistance: activationDistance + 0.01,
         },
+        lowGripConditions: false,
         phase: null,
         raceLap: 4,
         track,
-        trackGrip: 1,
       }),
     ).toBe('active')
   })
@@ -204,12 +301,12 @@ describe('track-dependent systems', () => {
     }
     const eligibility = updateOvertakeEligibilityAfterTravel({
       car: baseCar,
+      lowGripConditions: false,
       nextTotalDistance: detectionDistance + 0.001,
       phase: null,
       previousTotalDistance: detectionDistance - 0.001,
       raceControlEnabled: true,
       track,
-      trackGrip: 1,
     })
     const activationDistance =
       eligibility!.activationLap + line.activationProgress
@@ -225,45 +322,81 @@ describe('track-dependent systems', () => {
           progress: line.activationProgress + 0.01,
           totalDistance: activationDistance + 0.01,
         },
+        lowGripConditions: false,
         phase: null,
         raceLap: 3,
         track,
-        trackGrip: 1,
       }),
     ).toBe('disabled')
   })
 
-  it('tapers standard ERS deployment and caps the Overtake power delta', () => {
-    const standardAt280 = ersDeploymentPowerKw({
+  it('uses the FIA C5.2.8 ERS-K deployment curves exactly', () => {
+    const standardAt289 = ersDeploymentPowerKw({
       ersMode: 'deploy',
       overtakeStatus: 'available',
-      speedKph: 280,
-      straightness: 1,
+      speedKph: 289,
     })
-    const standardAt337 = ersDeploymentPowerKw({
+    const standardAt290 = ersDeploymentPowerKw({
       ersMode: 'deploy',
       overtakeStatus: 'available',
-      speedKph: 337,
-      straightness: 1,
+      speedKph: 290,
     })
-    const overtakeAt337 = ersDeploymentPowerKw({
+    const standardAt291 = ersDeploymentPowerKw({
+      ersMode: 'deploy',
+      overtakeStatus: 'available',
+      speedKph: 291,
+    })
+    const standardAt340 = ersDeploymentPowerKw({
+      ersMode: 'deploy',
+      overtakeStatus: 'available',
+      speedKph: 340,
+    })
+    const overtakeAt340 = ersDeploymentPowerKw({
       ersMode: 'deploy',
       overtakeStatus: 'active',
-      speedKph: 337,
-      straightness: 1,
+      speedKph: 340,
     })
 
-    expect(standardAt280).toBe(350)
-    expect(standardAt337).toBeLessThan(standardAt280)
-    expect(overtakeAt337).toBeGreaterThan(standardAt337)
-    expect(overtakeAt337 - standardAt337).toBeLessThanOrEqual(150)
-    expect(overtakeAt337).toBeLessThanOrEqual(350)
+    expect(standardAt289).toBe(350)
+    expect(standardAt290).toBe(350)
+    expect(standardAt291).toBe(345)
+    expect(standardAt340).toBe(100)
+    expect(overtakeAt340).toBe(300)
+    expect(
+      ersDeploymentPowerKw({
+        ersMode: 'deploy',
+        overtakeStatus: 'available',
+        speedKph: 345,
+      }),
+    ).toBe(0)
+    expect(
+      ersDeploymentPowerKw({
+        ersMode: 'deploy',
+        overtakeStatus: 'active',
+        speedKph: 355,
+      }),
+    ).toBe(0)
+    expect(
+      ersDeploymentPowerKw({
+        curve: 'specified-sector',
+        ersMode: 'deploy',
+        overtakeStatus: 'available',
+        speedKph: 280,
+      }),
+    ).toBe(250)
+    expect(
+      ersDeploymentPowerKw({
+        curve: 'low-grip-estimate',
+        ersMode: 'deploy',
+        overtakeStatus: 'disabled',
+        speedKph: 290,
+      }),
+    ).toBe(250)
     expect(
       ersDeploymentPowerKw({
         ersMode: 'harvest',
         overtakeStatus: 'active',
         speedKph: 320,
-        straightness: 1,
       }),
     ).toBe(0)
   })

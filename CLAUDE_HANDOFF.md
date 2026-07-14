@@ -63,7 +63,9 @@ feel factual and operational rather than like an arcade driving game.
 - Race starts use a moving formation lap, return to grid slots, five lights,
   then launch. Opening laps do not trigger an immediate strategy stop.
 - Completed lap records use elapsed timing-line crossing timestamps. Sector
-  records always sum to the measured lap.
+  records always sum to the measured lap. Each lap also persists 24 measured
+  mini-sector intervals; the first car through is provisionally purple and a
+  later faster interval moves the old purple to personal-best green.
 - Tire wear is percentage-based with compound, pace, weather, thermal, damage,
   and driver-management effects. Strategy reads measured wear and brake heat.
 - Rain intensity and track grip transition continuously rather than jumping at
@@ -87,6 +89,10 @@ feel factual and operational rather than like an arcade driving game.
   owed penalties.
 - Race control includes yellow/VSC/SC/red, restart effects, track limits,
   investigations, penalties, retirement, and post-race classification.
+- Local yellow and timed-session double-yellow states are published separately
+  for sectors 1/2/3. Only the affected sector slows and suppresses racing; the
+  dashboard and 3D trace show the same state. OpenF1 sector/scope fields map to
+  the same display without mixing observed and SIM flag sources.
 - Drive-through and stop-and-go penalties use dedicated pit services, service
   deadlines, and disqualification when unserved. Low-power starts trigger a
   rear warning light and an MGU-K event.
@@ -114,6 +120,8 @@ feel factual and operational rather than like an arcade driving game.
   and source labels. Purple is session best, green personal best, yellow slower.
 - Mini-sector states use distinct patterns as well as colors and expose an
   accessible per-sector summary. Forced-colors mode remains legible.
+- The race-control panel exposes S1/S2/S3 status independently, and active
+  local flags thicken and relabel the affected 3D sector trace.
 - Analysis includes tire condition, strategy outlook, manual box compound,
   push/standard/save/defend pace, lap history, championship, and track profile.
 - A dedicated Web Worker owns a deterministic 50ms fixed tick and publishes
@@ -134,6 +142,8 @@ feel factual and operational rather than like an arcade driving game.
 - `src/services/openF1Timeline.ts`: coherent historical playback range/target.
 - `src/data/fiaEventPacks2026.ts`: FIA event document coverage ledger.
 - `src/simulation/race.ts`: core state advance loop.
+- `src/domain/sectorTiming.ts`: measured best/personal-best classification and
+  timed-lap eligibility.
 - `src/workers/raceWorker.ts`: fixed-tick simulation ownership.
 - `src/domain/dataMode.ts`: SIM/HIST/LIVE contract.
 - `src/persistence.ts`: V3 save migration and nested season-garage normalization.
@@ -145,6 +155,8 @@ feel factual and operational rather than like an arcade driving game.
 - `src/simulation/season.ts`: classification, points, countback.
 - `src/three/RaceScene.tsx`: scene and vehicle presentation.
 - `src/simulation/race.test.ts`: primary simulation regressions.
+- `docs/FIA_2026_REGULATION_COVERAGE.md`: article-level official coverage and
+  explicit non-public-document boundaries.
 
 ## Verification Baseline
 
@@ -157,11 +169,12 @@ npm run benchmark
 ```
 
 - Lint: passed
-- Build: passed; the initial app chunk is below 500 kB and the lazy Three.js
-  scene chunk still emits a large-chunk warning
-- Tests: 130 passed
-- Playtest: 1440x900 and 1280x720 PC layouts, WebGL pixels, overlay controls,
-  no page overflow, and a verified 9px gap between timing/session panels
+- Build: passed; the main UI and lazy Three.js scene chunks still emit the
+  expected large-chunk warning
+- Tests: 184 passed across 22 files
+- Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
+  provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
+  controls, no clipping, and no page overflow
 - Benchmark: records renderer identity and does not fail normal runs on
   Chromium SwiftShader; use `BENCHMARK_STRICT=1` only with real GPU rendering
 
@@ -190,4 +203,4 @@ npm run benchmark
 - Keep OpenF1 values nullable and source-labelled.
 - Derive randomness from the seed helpers.
 - Add numeric realism tests for model changes.
-- Run all four verification commands before handoff.
+- Run all five verification commands before handoff.

@@ -10,7 +10,8 @@ editing. This file remains as a compatibility entry point for older prompts.
 - Tracks: 23 OpenF1-derived real layouts plus a labelled Madrid fallback.
 - Sessions: FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, Race.
 - Model: tires, continuous weather/grip, telemetry, active aero/Overtake/ERS, strategy, pits,
-  race control, incidents, penalties, classification, and championship.
+  sector-scoped yellow/double-yellow control, incidents, penalties,
+  classification, and championship.
 - Source policy: core race is SIM; OpenF1 is a separately labelled enrichment
   layer and may be LIVE, HIST, unavailable, or replaced by a SIM estimate.
 - Visual policy: lightweight primitives, one racing line except during close
@@ -23,9 +24,10 @@ npm run lint
 npm run build
 npm test
 npm run playtest
+npm run benchmark
 ```
 
-The current unit baseline is 109 passing tests. `playtest` requires the Vite
+The current unit baseline is 184 passing tests across 22 files. `playtest` requires the Vite
 server at `http://127.0.0.1:5173/`.
 
 ## Known Constraints

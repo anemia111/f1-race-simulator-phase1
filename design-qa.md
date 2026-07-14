@@ -2,7 +2,7 @@
 
 Reference: `codex-clipboard-c963d84e-0415-4a4c-988e-2e51125e1c31.png`
 
-Comparison artifact: `qa-reference-comparison.png`
+Automated verification: `npm run playtest`
 
 ## P0 - Fixed
 

@@ -103,10 +103,13 @@ type QualifyingRun = {
 const byId = <T extends { id: string }>(items: T[]) =>
   new Map(items.map((item) => [item.id, item]))
 
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+const clampAbility = (value: number) => Math.min(1.5, Math.max(0, value))
 
 function wetSkill(driver: Driver): number {
-  return clamp01(driver.wetSkill ?? driver.consistency * 0.6 + driver.tireManagement * 0.4)
+  return clampAbility(
+    driver.wetSkill ??
+      driver.consistency * 0.6 + driver.tireManagement * 0.4,
+  )
 }
 
 function qualifyingCutSizes(driverCount: number) {
@@ -206,7 +209,8 @@ function qualifyingRunLapTime(
     segment === 'Q1' && hashChance(`${key}:traffic`) < 0.12
       ? 0.15 + hashChance(`${key}:traffic-loss`) * 0.8
       : 0
-  const mistakeChance = 0.025 + (1 - driver.consistency) * 0.16
+  const mistakeChance =
+    0.025 + Math.max(0, 1 - driver.consistency) * 0.16
   const mistake =
     hashChance(`${key}:mistake`) < mistakeChance
       ? 0.35 + hashChance(`${key}:mistake-loss`) * 3.8
@@ -255,10 +259,11 @@ function qualifyingRunsForDriver(
     const trafficLossSeconds = 0
     const aborted =
       hashChance(`${runKey}:abort`) <
-      0.012 + (1 - driver.consistency) * 0.035
+      0.012 + Math.max(0, 1 - driver.consistency) * 0.035
     const deleted =
       !aborted &&
-      hashChance(`${runKey}:track-limit`) < 0.008 + (1 - driver.consistency) * 0.035
+      hashChance(`${runKey}:track-limit`) <
+        0.008 + Math.max(0, 1 - driver.consistency) * 0.035
     const lapTimeSeconds = rawLapTimeSeconds + trafficLossSeconds
     const rainMultiplier = weather === 'heavy-rain' ? 1.18 : weather === 'light-rain' ? 1.08 : 1
     const outLapTimeSeconds =

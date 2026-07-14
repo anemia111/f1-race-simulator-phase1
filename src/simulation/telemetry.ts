@@ -15,11 +15,11 @@ import {
   overtakeStatusFor,
 } from './activeAero'
 import { hashChance } from './random'
+import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import { approachSpeed, trackDynamicsAt } from './trackDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-const MAX_RECHARGE_PER_LAP_MJ = 7
 
 const compoundBaseTemperature = {
   H: 86,
@@ -38,7 +38,7 @@ function ersModeFor(options: {
 }) {
   const { batteryPercent, brakePercent, car, overtakeStatus, straightness } = options
 
-  if (batteryPercent < 24 || brakePercent > 58) {
+  if (batteryPercent < 24 || brakePercent > 5) {
     return 'harvest' satisfies ErsMode
   }
 
@@ -76,10 +76,15 @@ export function calculateCarTelemetry(options: {
   driver: Driver
   elapsedSeconds: number
   phase: ActiveFlagPhase | null
+  localFlagPaceScale?: number
+  lowGripConditions: boolean
+  maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
   paceScale?: number
   raceLap: number
   sessionType?: 'race-distance' | 'limited-time'
+  standingStartMguKRestricted?: boolean
+  specifiedErsPowerSector?: boolean
   track: TrackDefinition
   trackGrip: number
   weather: WeatherState
@@ -90,10 +95,16 @@ export function calculateCarTelemetry(options: {
     driver,
     elapsedSeconds,
     phase,
+    localFlagPaceScale = 1,
+    lowGripConditions,
+    maxRechargePerLapMj =
+      FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
     raceControlOvertakeEnabled = true,
     paceScale = 1,
     raceLap,
     sessionType = 'race-distance',
+    standingStartMguKRestricted = false,
+    specifiedErsPowerSector = false,
     track,
     trackGrip,
     weather,
@@ -102,26 +113,32 @@ export function calculateCarTelemetry(options: {
     track,
     car.progress,
   )
-  const activeAeroMode = activeAeroModeFor({ car, phase, track, trackGrip, weather })
+  const activeAeroMode = activeAeroModeFor({
+    car,
+    lowGripConditions,
+    phase,
+    track,
+  })
   const flagSpeedCap =
     phase?.flag === 'red'
       ? 0
       : phase?.flag === 'sc'
         ? 145
-        : phase?.flag === 'vsc'
-          ? 185
-          : phase?.flag === 'yellow'
-            ? 225
-            : track.observedCalibration?.maxSpeedKph
-              ? clamp(track.observedCalibration.maxSpeedKph + 10, 300, 365)
-              : 365
+        : track.observedCalibration?.maxSpeedKph
+          ? clamp(track.observedCalibration.maxSpeedKph + 10, 300, 365)
+          : 365
   const seedPulse =
     Math.sin(elapsedSeconds / 3.8 + hashChance(`${driver.id}:telemetry`) * Math.PI * 2) *
     5
   const profileDeceleration = Math.max(0, car.speedKph - referenceSpeedKph)
+  const wetBrakingLoad =
+    weather === 'heavy-rain' &&
+    (curvature > 0.04 || profileDeceleration > 0)
+      ? 8
+      : 0
   const brakePercent = Math.round(
     clamp(
-      curvature * 92 + profileDeceleration * 0.75 + (weather === 'heavy-rain' ? 8 : 0),
+      curvature * 92 + profileDeceleration * 0.75 + wetBrakingLoad,
       0,
       100,
     ),
@@ -133,55 +150,63 @@ export function calculateCarTelemetry(options: {
       100,
     ),
   )
-  const projectedBattery = clamp(
-    car.ersBatteryPercent +
-      (brakePercent / 100) * deltaSeconds * 1.4 -
-      (straightness > 0.8 ? deltaSeconds * 0.2 : 0),
-    5,
-    100,
-  )
   const overtakeStatus = overtakeStatusFor({
-    batteryPercent: projectedBattery,
+    batteryPercent: car.ersBatteryPercent,
     car,
+    lowGripConditions,
     phase,
     raceControlEnabled: raceControlOvertakeEnabled,
     raceLap,
     overtakeEnergyRemainingMj: car.overtakeEnergyRemainingMj,
     sessionType,
     track,
-    trackGrip,
   })
-  const ersMode = ersModeFor({
-    batteryPercent: projectedBattery,
+  const requestedErsMode = ersModeFor({
+    batteryPercent: car.ersBatteryPercent,
     brakePercent,
     car,
     overtakeStatus,
     straightness,
   })
+  const ersMode = standingStartMguKRestricted
+    ? ('balanced' as const)
+    : requestedErsMode
+  const ersCurve = lowGripConditions
+    ? ('low-grip-estimate' as const)
+    : specifiedErsPowerSector
+      ? ('specified-sector' as const)
+      : ('standard' as const)
   const ersPowerKw = ersDeploymentPowerKw({
+    curve: ersCurve,
     ersMode,
     overtakeStatus,
     speedKph: car.speedKph,
-    straightness,
   })
   const standardErsPowerKw = ersDeploymentPowerKw({
+    curve: ersCurve,
     ersMode,
     overtakeStatus: 'available',
     speedKph: car.speedKph,
-    straightness,
   })
   const overtakeBoostPowerKw = Math.max(0, ersPowerKw - standardErsPowerKw)
-  const ersDelta =
-    ersMode === 'deploy'
-      ? -deltaSeconds * (0.45 + (ersPowerKw / 350) * 1.05)
-      : ersMode === 'harvest'
-        ? deltaSeconds * 0.85
-        : -deltaSeconds * 0.18
-  const harvestedEnergyMj = Math.min(
-    MAX_RECHARGE_PER_LAP_MJ,
-    car.energyHarvestedThisLapMj +
-      (brakePercent / 100) * deltaSeconds * 0.09,
+  const remainingRechargeMj = Math.max(
+    0,
+    maxRechargePerLapMj - car.energyHarvestedThisLapMj,
   )
+  const regenerativePowerKw =
+    ersMode === 'harvest'
+      ? Math.min(
+          FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
+          35 + brakePercent * 2.8 + (100 - throttlePercent) * 0.18,
+        )
+      : 0
+  const harvestedThisFrameMj = Math.min(
+    remainingRechargeMj,
+    (regenerativePowerKw * deltaSeconds) / 1000,
+  )
+  const harvestedEnergyMj =
+    car.energyHarvestedThisLapMj + harvestedThisFrameMj
+  const deployedThisFrameMj = (ersPowerKw * deltaSeconds) / 1000
   const overtakeEnergyUsedMj =
     overtakeStatus === 'active'
       ? Math.min(
@@ -193,16 +218,33 @@ export function calculateCarTelemetry(options: {
     0,
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
   )
-  const ersBatteryPercent = Math.round(clamp(projectedBattery + ersDelta, 5, 100))
+  const ersBatteryPercent = Math.round(
+    clamp(
+      car.ersBatteryPercent +
+        ((harvestedThisFrameMj - deployedThisFrameMj) /
+          FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj) *
+          100,
+      0,
+      100,
+    ),
+  )
   const aeroGain = activeAeroSpeedGainKph(activeAeroMode)
   const ersGain =
     ersMode === 'deploy' ? (ersPowerKw / 350) * 20 : ersMode === 'harvest' ? -7 : 0
   const targetSpeedKph = clamp(
-    referenceSpeedKph * clamp(paceScale, 0.48, 1.12) +
+    referenceSpeedKph *
+      clamp(paceScale, 0.48, 1.12) *
+      clamp(localFlagPaceScale, 0.5, 1) +
       aeroGain +
       ersGain +
       seedPulse,
-    phase?.flag === 'red' ? 0 : car.status === 'pit' ? 78 : 55,
+    phase?.flag === 'red'
+      ? 0
+      : phase?.flag === 'vsc'
+        ? 35
+        : car.status === 'pit'
+          ? 78
+          : 55,
     flagSpeedCap,
   )
   const speedKph = Math.round(

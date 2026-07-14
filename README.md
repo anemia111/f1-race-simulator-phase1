@@ -13,14 +13,25 @@ driving game or a broadcast-video renderer.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
   lap records, including aborted starts, pit-lane starts, and standing/rolling
   red-flag restarts.
-- Fixed-tick Worker race model for pace, tires, weather/grip, 2026 active aero,
-  Overtake, ERS, battery,
+- Fixed-tick Worker race model for pace, tires, Rain Hazard/Low Grip control,
+  2026 active aero, Overtake, ERS, battery,
   brakes, expected-loss strategy, pit stops, flags, incidents, procedural
   penalties, and stewarding.
+- FIA 2026 public ERS power curves, 4 MJ usable SOC window, recharge limits,
+  wet Safety Car starts, full-wet mandates, blue-flag yielding, and a visible
+  Safety Car leading the queue. See
+  [`docs/FIA_2026_REGULATION_COVERAGE.md`](docs/FIA_2026_REGULATION_COVERAGE.md)
+  for article-level coverage and non-public-document boundaries.
 - One normal racing line; lateral movement appears only during close attacks
   and defence. Battle checks run in 12 lightweight track segments per lap.
-- Dense live timing with progressive, comparative mini-sectors, telemetry, source chips, race
-  control, classification, analysis, and manual strategy controls.
+- Dense live timing with lap-numbered CPU sector measurements, progressive
+  comparative mini-sectors, telemetry, source chips, race control,
+  classification, analysis, and manual strategy controls.
+- Independent S1/S2/S3 flag states for local yellow, double yellow, VSC, SC,
+  and red phases, synchronized between pace control, OpenF1 race control,
+  dashboard status, and the 3D circuit trace.
+- Driver abilities use a 150-point extensible scale; every configured 2026
+  driver remains at or below 100.
 - Explicit SIM/HIST/LIVE modes for OpenF1 timing, telemetry, weather,
   race-control, position, pit/stint, radio,
   result, and championship enrichment with SIM/HIST/LIVE source separation.
@@ -69,9 +80,12 @@ npm run benchmark
 ```
 
 `npm run playtest` expects the dev server to be running. It checks 1440x900 and
-1280x720 PC layouts, WebGL pixels, overlay controls, and panel overlap.
+1280x720 PC layouts, WebGL pixels, overlay controls, and panel overlap. Screenshots
+go to the OS temporary directory by default; set `QA_ARTIFACT_DIR` to retain them
+at a specific location.
 `npm run benchmark` records 60x frame rate, long tasks, DOM size, canvas pixels,
-renderer identity, and optional Chromium heap usage to `qa-performance.json`.
+renderer identity, and optional Chromium heap usage. It prints JSON to stdout and
+only writes a file when `BENCHMARK_REPORT` specifies a path.
 Software renderers such as SwiftShader are recorded but are not treated as a
 hardware frame-rate pass/fail signal. Set `BENCHMARK_STRICT=1` for a real-GPU
 threshold run.

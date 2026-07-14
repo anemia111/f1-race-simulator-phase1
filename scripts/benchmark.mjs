@@ -1,10 +1,12 @@
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 import { chromium } from 'playwright'
 
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
 const sampleSeconds = Number(process.env.BENCHMARK_SECONDS ?? 8)
 const strict = process.env.BENCHMARK_STRICT === '1'
 const benchmarkSpeed = process.env.BENCHMARK_SPEED ?? '60'
+const reportPath = process.env.BENCHMARK_REPORT?.trim()
 
 if (!['1', '5', '20', '60'].includes(benchmarkSpeed)) {
   throw new Error(`Unsupported BENCHMARK_SPEED: ${benchmarkSpeed}`)
@@ -109,7 +111,11 @@ try {
     ...metrics,
   }
 
-  await writeFile('qa-performance.json', `${JSON.stringify(report, null, 2)}\n`)
+  if (reportPath) {
+    const resolvedReportPath = resolve(reportPath)
+    await mkdir(dirname(resolvedReportPath), { recursive: true })
+    await writeFile(resolvedReportPath, `${JSON.stringify(report, null, 2)}\n`)
+  }
   console.log(JSON.stringify(report, null, 2))
 
   if (pageErrors.length > 0) {

@@ -7,18 +7,19 @@ import type {
   OvertakeEligibility,
   OvertakeStatus,
   TrackDefinition,
-  WeatherState,
 } from '../types'
+import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 const OVERTAKE_ACTIVATION_LENGTH = 0.12
-const STANDARD_TAPER_START_KPH = 290
-const STANDARD_TAPER_END_KPH = 355
-const OVERTAKE_TAPER_START_KPH = 337
-const OVERTAKE_TAPER_END_KPH = 370
-const MAX_MGU_K_POWER_KW = 350
-const MAX_OVERTAKE_POWER_DELTA_KW = 150
+const MAX_MGU_K_POWER_KW =
+  FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
+
+export type ErsDeploymentCurve =
+  | 'standard'
+  | 'specified-sector'
+  | 'low-grip-estimate'
 
 function progressIsInZone(progress: number, start: number, end: number) {
   return start <= end
@@ -67,7 +68,7 @@ export function updateOvertakeEligibilityAfterTravel(options: {
   previousTotalDistance: number
   raceControlEnabled: boolean
   track: TrackDefinition
-  trackGrip: number
+  lowGripConditions: boolean
 }): OvertakeEligibility | null {
   const {
     car,
@@ -76,14 +77,14 @@ export function updateOvertakeEligibilityAfterTravel(options: {
     previousTotalDistance,
     raceControlEnabled,
     track,
-    trackGrip,
+    lowGripConditions,
   } = options
 
   if (
     car.status !== 'running' ||
     phase ||
     !raceControlEnabled ||
-    trackGrip < 0.86
+    lowGripConditions
   ) {
     return null
   }
@@ -137,21 +138,18 @@ export function activeAeroZoneAt(
 
 export function activeAeroModeFor(options: {
   car: CarSnapshot
+  lowGripConditions: boolean
   phase: ActiveFlagPhase | null
   track: TrackDefinition
-  trackGrip: number
-  weather: WeatherState
 }): ActiveAeroMode {
-  const { car, phase, track, trackGrip, weather } = options
+  const { car, lowGripConditions, phase, track } = options
   const zone = activeAeroZoneAt(track, car.progress)
 
   if (!zone || car.status !== 'running' || phase?.flag === 'red') {
     return 'corner'
   }
 
-  const lowGrip = trackGrip < 0.88 || weather !== 'clear'
-
-  if (lowGrip) {
+  if (lowGripConditions) {
     return zone.lowGripMode === 'partial' ? 'partial-straight' : 'corner'
   }
 
@@ -161,24 +159,24 @@ export function activeAeroModeFor(options: {
 export function overtakeStatusFor(options: {
   batteryPercent: number
   car: CarSnapshot
+  lowGripConditions: boolean
   phase: ActiveFlagPhase | null
   raceControlEnabled?: boolean
   raceLap: number
   overtakeEnergyRemainingMj?: number
   sessionType?: 'race-distance' | 'limited-time'
   track: TrackDefinition
-  trackGrip: number
 }): OvertakeStatus {
   const {
     batteryPercent,
     car,
+    lowGripConditions,
     phase,
     raceControlEnabled = true,
     raceLap,
     overtakeEnergyRemainingMj = 0.5,
     sessionType = 'race-distance',
     track,
-    trackGrip,
   } = options
   const controlLines = track.overtakeControlLines ?? []
   const activeLineIndex = controlLines.findIndex((line) =>
@@ -193,7 +191,7 @@ export function overtakeStatusFor(options: {
     car.status === 'running' &&
     !phase &&
     raceControlEnabled &&
-    trackGrip >= 0.86 &&
+    !lowGripConditions &&
     batteryPercent > 24 &&
     overtakeEnergyRemainingMj > 0.01
 
@@ -245,45 +243,68 @@ export function activeAeroSpeedGainKph(mode: ActiveAeroMode) {
   return 0
 }
 
+function standardDeploymentLimitKw(speedKph: number) {
+  if (speedKph >= 345) {
+    return 0
+  }
+
+  const formula =
+    speedKph < 340 ? 1800 - 5 * speedKph : 6900 - 20 * speedKph
+
+  return clamp(formula, 0, MAX_MGU_K_POWER_KW)
+}
+
+function overtakeDeploymentLimitKw(speedKph: number) {
+  if (speedKph >= 355) {
+    return 0
+  }
+
+  return clamp(7100 - 20 * speedKph, 0, MAX_MGU_K_POWER_KW)
+}
+
+function specifiedSectorDeploymentLimitKw(speedKph: number) {
+  return speedKph < 310
+    ? Math.min(250, MAX_MGU_K_POWER_KW)
+    : standardDeploymentLimitKw(speedKph)
+}
+
 /**
- * Lightweight estimate of the FIA circuit-specific ERS-K power curves. The
- * published 290/355 and 337/370 km/h breakpoints and 350 kW ceiling are used,
- * while the exact event curve remains marked as simulated in the UI.
+ * Public FIA Technical Regulations C5.2.7-C5.2.8 power curves. Low-grip
+ * values live in non-public FIA-F1-DOC-111, so the simulator uses a clearly
+ * identified conservative estimate instead of presenting invented FIA data.
  */
 export function ersDeploymentPowerKw(options: {
+  curve?: ErsDeploymentCurve
   ersMode: ErsMode
   overtakeStatus: OvertakeStatus
   speedKph: number
-  straightness: number
 }) {
-  const { ersMode, overtakeStatus, speedKph, straightness } = options
+  const {
+    curve = 'standard',
+    ersMode,
+    overtakeStatus,
+    speedKph: rawSpeedKph,
+  } = options
 
   if (ersMode !== 'deploy') {
     return 0
   }
 
-  const accelerationZonePeakKw = straightness >= 0.58 ? 350 : 250
-  const standardSpeedFactor = clamp(
-    (STANDARD_TAPER_END_KPH - speedKph) /
-      (STANDARD_TAPER_END_KPH - STANDARD_TAPER_START_KPH),
-    0,
-    1,
-  )
-  const standardPowerKw = accelerationZonePeakKw * standardSpeedFactor
+  const speedKph = Math.max(0, rawSpeedKph)
 
-  if (overtakeStatus !== 'active') {
-    return Math.round(standardPowerKw)
+  if (curve === 'specified-sector') {
+    return Math.round(specifiedSectorDeploymentLimitKw(speedKph))
   }
 
-  const overtakeSpeedFactor = clamp(
-    (OVERTAKE_TAPER_END_KPH - speedKph) /
-      (OVERTAKE_TAPER_END_KPH - OVERTAKE_TAPER_START_KPH),
-    0,
-    1,
-  )
-  const boostPowerKw = MAX_OVERTAKE_POWER_DELTA_KW * overtakeSpeedFactor
+  if (curve === 'low-grip-estimate') {
+    return Math.round(
+      Math.min(250, standardDeploymentLimitKw(speedKph)),
+    )
+  }
 
   return Math.round(
-    Math.min(MAX_MGU_K_POWER_KW, standardPowerKw + boostPowerKw),
+    overtakeStatus === 'active'
+      ? overtakeDeploymentLimitKw(speedKph)
+      : standardDeploymentLimitKw(speedKph),
   )
 }

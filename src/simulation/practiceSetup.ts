@@ -1,4 +1,5 @@
 import type { Driver, RaceConfig, Team } from '../types'
+import { DRIVER_ABILITY_INTERNAL_MAX } from './driverAbility'
 import {
   runPracticeSession,
   type PracticeSessionName,
@@ -200,7 +201,15 @@ function applyDriverSetup(
 
   return {
     ...driver,
-    consistency: clamp(driver.consistency + summary.setupDelta * 0.8, 0.55, 1),
-    tireManagement: clamp(driver.tireManagement + summary.setupDelta, 0.55, 1),
+    consistency: clamp(
+      driver.consistency + summary.setupDelta * 0.8,
+      0.55,
+      DRIVER_ABILITY_INTERNAL_MAX,
+    ),
+    tireManagement: clamp(
+      driver.tireManagement + summary.setupDelta,
+      0.55,
+      DRIVER_ABILITY_INTERNAL_MAX,
+    ),
   }
 }

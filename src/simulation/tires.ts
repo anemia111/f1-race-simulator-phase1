@@ -25,6 +25,12 @@ export type TireCondition = {
   wearState: 'fresh' | 'used' | 'critical'
 }
 
+export type ObservedTireCalibration = {
+  degradationPerLapSeconds?: number | null
+  paceOffsetSeconds?: number | null
+  sampleCount?: number
+}
+
 export const tireCompounds: Record<TireCompound, TireCompoundSpec> = {
   S: { offsetSeconds: -0.9, wearPerLapSeconds: 0.11, cliffLaps: 12, cliffPerLapSeconds: 0.44 },
   M: { offsetSeconds: 0, wearPerLapSeconds: 0.064, cliffLaps: 21, cliffPerLapSeconds: 0.34 },
@@ -49,7 +55,15 @@ function specFor(
     nomination &&
     (compound === 'H' || compound === 'M' || compound === 'S')
   ) {
-    return dryCompoundFamilies[nomination[compound]]
+    const selected = dryCompoundFamilies[nomination[compound]]
+    const medium = dryCompoundFamilies[nomination.M]
+
+    return {
+      ...selected,
+      // The circuit allocation changes which C-family is called S/M/H.
+      // Keep the displayed Medium as the zero reference at every event.
+      offsetSeconds: selected.offsetSeconds - medium.offsetSeconds,
+    }
   }
 
   return tireCompounds[compound]
@@ -85,14 +99,24 @@ export function tireDeltaSeconds(
   tireTemperatureC?: number,
   tireWearPercent = 0,
   nomination?: TireNomination,
-  observedWearPerLapSeconds?: number | null,
+  observed?: ObservedTireCalibration,
 ): number {
   const spec = specFor(compound, nomination)
+  const sampleWeight = Math.min(0.55, Math.max(0, (observed?.sampleCount ?? 0) / 40))
+  const observedWearPerLapSeconds = observed?.degradationPerLapSeconds
+  const observedPaceOffsetSeconds = observed?.paceOffsetSeconds
   const wearPerLapSeconds =
     observedWearPerLapSeconds === null ||
     observedWearPerLapSeconds === undefined
       ? spec.wearPerLapSeconds
-      : spec.wearPerLapSeconds * 0.45 + observedWearPerLapSeconds * 0.55
+      : spec.wearPerLapSeconds * (1 - sampleWeight) +
+        observedWearPerLapSeconds * sampleWeight
+  const freshPaceOffset =
+    observedPaceOffsetSeconds === null ||
+    observedPaceOffsetSeconds === undefined
+      ? spec.offsetSeconds
+      : spec.offsetSeconds * (1 - sampleWeight) +
+        observedPaceOffsetSeconds * sampleWeight
   // Better tire management shallows the wear slope.
   const wearFactor = 1.35 - tireManagement * 0.5
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
@@ -110,13 +134,32 @@ export function tireDeltaSeconds(
   const surfaceWearPenalty = Math.max(0, tireWearPercent - 55) * 0.018
 
   return (
-    spec.offsetSeconds +
+    freshPaceOffset +
     wearPerLapSeconds * ageLaps * wearFactor +
     spec.cliffPerLapSeconds * beyondCliff +
     weatherPenalty +
     thermalPenalty +
     surfaceWearPenalty
   )
+}
+
+/** Estimated physical wear accumulated over one representative lap. */
+export function tireWearPercentPerLap(
+  compound: TireCompound,
+  tireManagement: number,
+  nomination?: TireNomination,
+  observed?: ObservedTireCalibration,
+): number {
+  const spec = specFor(compound, nomination)
+  const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
+  const baseWearPercent = 82 / Math.max(6, cliff)
+  const observedWear = observed?.degradationPerLapSeconds
+  const observedScale =
+    observedWear === null || observedWear === undefined
+      ? 1
+      : Math.min(1.65, Math.max(0.55, observedWear / spec.wearPerLapSeconds))
+
+  return baseWearPercent * observedScale
 }
 
 export function tireConditionFor(

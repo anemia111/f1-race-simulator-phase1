@@ -90,7 +90,9 @@ export function incidentForLap(
   }
 
   const errorChance =
-    incidentTuning.errorBaseChance * (1 - driver.consistency) * riskMultiplier
+    incidentTuning.errorBaseChance *
+    Math.max(0, 1 - driver.consistency) *
+    riskMultiplier
 
   if (hashChance(`${seed}:error:${driver.id}:${lap}`) >= errorChance) {
     return null

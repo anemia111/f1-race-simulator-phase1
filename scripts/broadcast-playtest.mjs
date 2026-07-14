@@ -1,7 +1,14 @@
 import { chromium } from 'playwright'
-import { resolve } from 'node:path'
+import { mkdir } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
+const artifactDirectory = resolve(
+  process.env.QA_ARTIFACT_DIR?.trim() || join(tmpdir(), 'f1-simulator-qa'),
+)
+
+await mkdir(artifactDirectory, { recursive: true })
 
 async function inspectCanvas(page) {
   return page.evaluate(async () => {
@@ -84,13 +91,19 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const timingOverviewHeader = await page.locator('.timing-overview-table .center-table-head').innerText()
   const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
   const initialSectorValues = await page.locator('.leaderboard-rows .sector-value').allInnerTexts()
+  const initialSectorStatuses = await page.locator('.leaderboard-rows .sector-value').evaluateAll((cells) => ({
+    pending: cells.filter((cell) => cell.classList.contains('sector-status-pending')).length,
+    total: cells.length,
+  }))
   const trackTitle = await page.locator('.broadcast-track-panel .broadcast-panel-header').innerText()
   const headerText = await page.locator('.broadcast-topbar').innerText()
+  const sectorFlagLabels = await page.locator('.sector-flag').allInnerTexts()
+  const sectorFlagAriaLabel = await page.locator('.sector-flag-strip').getAttribute('aria-label')
 
   await page.locator('.broadcast-sidebar button[title="Timing"]').click()
   await page.waitForSelector('.timing-detail-list')
   const miniSectors = await page.locator('.broadcast-mini-sectors span').count()
-  const miniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
+  const initialMiniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
     dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
   }))
@@ -101,6 +114,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   await page.locator('.broadcast-sidebar button[title="Tyres"]').click()
   const tyreRows = await page.locator('.tyre-detail-table li').count()
+  const tyreHeader = await page.locator('.tyre-detail-table .center-table-head').innerText()
 
   await page.locator('.broadcast-sidebar button[title="Messages"]').click()
   const messageRows = await page.locator('.detail-message-list li').count()
@@ -133,7 +147,27 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const selectedRows = await page.locator('.leaderboard-rows li.selected').count()
 
   await page.getByRole('button', { name: '60x' }).click()
-  await page.waitForTimeout(4_500)
+  let observedOverallBest = false
+
+  for (let sample = 0; sample < 45; sample += 1) {
+    await page.waitForTimeout(100)
+    observedOverallBest ||=
+      (await page.locator('.leaderboard-rows .sector-status-overall-best').count()) > 0
+  }
+
+  const batteryValues = await page.locator('.leaderboard-rows button > span:last-child').allInnerTexts()
+  const sectorStatuses = await page.locator('.leaderboard-rows .sector-value').evaluateAll((cells) => ({
+    overallBest: cells.filter((cell) => cell.classList.contains('sector-status-overall-best')).length,
+    personalBest: cells.filter((cell) => cell.classList.contains('sector-status-personal-best')).length,
+    slower: cells.filter((cell) => cell.classList.contains('sector-status-slower')).length,
+  }))
+  await page.locator('.broadcast-sidebar button[title="Timing"]').click()
+  const runningMiniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
+    colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
+    dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
+  }))
+  const timingLapLabels = await page.locator('.timing-lap-source > small').allInnerTexts()
+  await page.locator('.broadcast-sidebar button[title="Overview"]').click()
   const speed60Selected = await page.getByRole('button', { name: '60x' }).getAttribute('aria-pressed')
   const pauseButton = page.getByLabel('Pause simulation')
   await pauseButton.click()
@@ -148,6 +182,8 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.locator('.broadcast-sidebar .sidebar-settings').click()
   await page.waitForSelector('.setup-panel')
   const setupVisible = await page.locator('.setup-panel').isVisible()
+  const driverAbilityMaxes = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('input[type="range"]').evaluateAll((inputs) => inputs.map((input) => input.getAttribute('max')))
+  const driverAbilityValues = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('.slider-row strong').allInnerTexts()
   await page.getByLabel('close setup').click()
 
   await page.getByTitle('Classification').click()
@@ -196,12 +232,14 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   return {
     activePitRows,
+    batteryValues,
     canvas,
     chaseSelected,
     classificationVisible,
     dataDetails,
     headerText,
     initialFastestText,
+    initialSectorStatuses,
     initialSectorValues,
     insightsVisible,
     layout,
@@ -213,22 +251,31 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     messagesClosed,
     messagesRestored,
     miniSectors,
-    miniSectorStates,
+    driverAbilityMaxes,
+    driverAbilityValues,
+    initialMiniSectorStates,
     name,
+    observedOverallBest,
     pageErrors,
     resumeVisible,
     screenshotPath,
     sectorsClosed,
     sectorsRestored,
+    sectorStatuses,
     selectedRows,
+    sectorFlagAriaLabel,
+    sectorFlagLabels,
     setupVisible,
     speed60Selected,
     strategyControlsVisible,
     telemetryHeader,
     telemetryRows,
+    timingLapLabels,
+    runningMiniSectorStates,
     timingOverviewHeader,
     tokenInputVisible,
     trackTitle,
+    tyreHeader,
     tyreRows,
   }
 }
@@ -237,8 +284,8 @@ const browser = await chromium.launch({ headless: true })
 
 try {
   const results = [
-    await runViewport(browser, 'desktop', { width: 1440, height: 900 }, resolve('qa-broadcast-desktop.png')),
-    await runViewport(browser, 'desktop-compact', { width: 1280, height: 720 }, resolve('qa-broadcast-compact.png')),
+    await runViewport(browser, 'desktop', { width: 1440, height: 900 }, join(artifactDirectory, 'broadcast-desktop.png')),
+    await runViewport(browser, 'desktop-compact', { width: 1280, height: 720 }, join(artifactDirectory, 'broadcast-compact.png')),
   ]
 
   console.log(JSON.stringify(results, null, 2))
@@ -248,18 +295,30 @@ try {
 
     if (result.leaderboardRows < 22) failures.push(`expected 22 leaderboard rows, saw ${result.leaderboardRows}`)
     if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
+    if (!result.leaderboardHeader.includes('BAT')) failures.push('leaderboard battery column missing')
     if (!result.timingOverviewHeader.includes('SPD')) failures.push('timing overview speed column missing')
     if (!result.initialFastestText.includes('--:--.---') || !result.initialFastestText.includes('Awaiting completed lap')) failures.push('initial fastest lap must wait for a measured CPU lap')
     if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
+    if (result.initialSectorStatuses.pending !== result.initialSectorStatuses.total) failures.push('initial sector cells must all use the pending state')
+    if (!result.observedOverallBest) failures.push('completed sectors never showed a provisional overall-best state')
+    if (result.sectorStatuses.overallBest + result.sectorStatuses.personalBest + result.sectorStatuses.slower === 0) failures.push('completed sectors need a measured color state')
+    if (result.batteryValues.some((value) => !/^\d+%$/u.test(value))) failures.push('leaderboard battery values are invalid')
     if (result.activePitRows >= result.leaderboardRows / 2) failures.push(`implausible simultaneous pit wave: ${result.activePitRows} cars`)
     if (!result.headerText.includes('AUSTRALIAN GRAND PRIX 2026')) failures.push('official event name missing from header')
     if (!result.headerText.includes('km/h')) failures.push('broadcast wind speed must use km/h')
     if (result.miniSectors < 240) failures.push(`expected timing mini sectors, saw ${result.miniSectors}`)
-    if (result.miniSectorStates.colored === 0 || result.miniSectorStates.dim === 0) failures.push('mini sectors need completed and pending states')
+    if (result.initialMiniSectorStates.colored !== 0 || result.initialMiniSectorStates.dim !== result.miniSectors) failures.push('initial mini sectors must all be pending')
+    if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !label.includes('CLEAR'))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
+    if (!result.sectorFlagAriaLabel?.includes('Sector 1 CLEAR') || !result.sectorFlagAriaLabel.includes('Sector 3 CLEAR')) failures.push('sector flag strip needs an accessible per-sector summary')
+    if (result.runningMiniSectorStates.colored === 0 || result.runningMiniSectorStates.dim === 0) failures.push('running mini sectors need completed and pending states')
+    if (result.timingLapLabels.some((label) => !/^L\d+$/u.test(label))) failures.push(`timing rows need measured lap labels: ${result.timingLapLabels.join(', ')}`)
+    if (result.driverAbilityMaxes.length !== 6 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability sliders must use the 150-point ceiling')
+    if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('configured driver abilities must remain at or below 100')
     for (const label of ['SPD', 'THR', 'BRK', 'GEAR', 'RPM', 'ERS', 'SOURCE']) {
       if (!result.telemetryHeader.includes(label)) failures.push(`telemetry header missing ${label}`)
     }
     if (result.telemetryRows < 10 || result.tyreRows < 10) failures.push('detail tables did not render ten drivers')
+    if (!result.tyreHeader.includes('PACE DELTA') || !result.tyreHeader.includes('SOURCE')) failures.push('tyre model provenance is missing')
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
     if (!result.messagesClosed || !result.messagesRestored) failures.push('message close/restore failed')
