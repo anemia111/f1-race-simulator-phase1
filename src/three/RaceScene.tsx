@@ -873,14 +873,14 @@ function CarMarker({
       context.fillStyle = '#ffffff'
       context.fillText(`${car.position}`, 54, 57)
 
-      context.font = '900 44px Arial, sans-serif'
+      context.font = '900 52px Arial, sans-serif'
       context.textAlign = 'left'
       context.lineWidth = 9
       context.lineJoin = 'round'
       context.strokeStyle = '#05090e'
-      context.strokeText(car.code, 101, statusLabel ? 46 : 57)
+      context.strokeText(car.code, 98, statusLabel ? 46 : 57)
       context.fillStyle = '#ffffff'
-      context.fillText(car.code, 101, statusLabel ? 46 : 57)
+      context.fillText(car.code, 98, statusLabel ? 46 : 57)
 
       if (statusLabel) {
         context.font = '800 20px Arial, sans-serif'
@@ -933,7 +933,7 @@ function CarMarker({
           onSelectDriver(car.driverId)
         }}
         renderOrder={isSelected ? 20 : 10}
-        scale={isSelected ? [4.15, 1.45, 1] : [3.6, 1.26, 1]}
+        scale={isSelected ? [5, 1.75, 1] : [4.45, 1.56, 1]}
       >
         <spriteMaterial
           depthTest={false}
@@ -1028,7 +1028,7 @@ function OpenF1CarOverlay({
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry
               args={[
-                driverIdByCode.get(car.code) === selectedDriverId ? 0.36 : 0.27,
+                driverIdByCode.get(car.code) === selectedDriverId ? 0.4 : 0.31,
                 24,
               ]}
             />
@@ -1042,7 +1042,7 @@ function OpenF1CarOverlay({
           </mesh>
           <SpriteLabel
             color={car.teamColor}
-            fontSize={0.68}
+            fontSize={0.9}
             position={[0, 0.52, 0]}
             text={car.code}
           />

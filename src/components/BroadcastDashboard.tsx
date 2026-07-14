@@ -58,12 +58,12 @@ export type BroadcastTimingRow = {
   displayIntervalLabel: string
   displayPosition: number
   gear: number
-  lapTimeSeconds: number
+  lapTimeSeconds: number | null
   lapDataLabel: string
   microSectors: MiniSectorState[][]
   rpm: number
   source: 'openf1' | 'simulation'
-  sectors: [number, number, number]
+  sectors: [number | null, number | null, number | null]
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
@@ -168,6 +168,11 @@ const formatLapTime = (seconds: number | null | undefined) => {
 
   return `${minutes}:${remaining}`
 }
+
+const formatSectorTime = (seconds: number | null | undefined) =>
+  typeof seconds === 'number' && Number.isFinite(seconds)
+    ? seconds.toFixed(3)
+    : '--.---'
 
 const formatClock = (seconds: number) => {
   const hours = Math.floor(seconds / 3600)
@@ -401,7 +406,7 @@ function LeftLeaderboard({
       />
       <div className="leaderboard-column-head" aria-hidden="true">
         <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
-        <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span><span>PIT</span>
+        <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span><span>SPD</span>
       </div>
       <ol className="leaderboard-rows">
         {rows.map((row) => {
@@ -425,9 +430,9 @@ function LeftLeaderboard({
                 <span>{formatLapTime(row.lapTimeSeconds)}</span>
                 <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
                 {row.sectors.map((sector, index) => (
-                  <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>
+                  <span className={`sector-value sector-${index + 1}`} key={index}>{formatSectorTime(sector)}</span>
                 ))}
-                <span>{row.car.pitStops}</span>
+                <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
               </button>
             </li>
           )
@@ -449,7 +454,7 @@ function TimingOverview({
   return (
     <div className="center-table timing-overview-table">
       <div className="center-table-head">
-        <span>POS</span><span>DRIVER</span><span>S1</span><span>S2</span><span>S3</span>
+        <span>POS</span><span>DRIVER</span><span>SPD</span><span>S1</span><span>S2</span><span>S3</span>
         <span>LAST LAP</span><span>BEST LAP</span><span>GAP</span><span>INT</span>
       </div>
       <ol>
@@ -458,8 +463,9 @@ function TimingOverview({
             <button onClick={() => onFocusDriver(row.car.driverId)} type="button">
               <span>{row.displayPosition}</span>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
+              <span>{Math.round(row.speedKph)}</span>
               {row.sectors.map((sector, index) => (
-                <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>
+                <span className={`sector-value sector-${index + 1}`} key={index}>{formatSectorTime(sector)}</span>
               ))}
               <span>{formatLapTime(row.lapTimeSeconds)}</span>
               <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
@@ -514,7 +520,7 @@ function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
           {[0, 1, 2].map((sectorIndex) => (
             <span className="timing-detail-sector" key={sectorIndex}>
               <small>S{sectorIndex + 1}</small>
-              <b>{row.sectors[sectorIndex].toFixed(3)}</b>
+              <b>{formatSectorTime(row.sectors[sectorIndex])}</b>
               <MiniSectorStrip states={row.microSectors[sectorIndex]} />
             </span>
           ))}
@@ -725,9 +731,12 @@ function BottomAnalytics({
         <div className="analysis-table analysis-laps">
           <div><span>DRIVER</span><span>LAST</span><span>BEST</span><span>DELTA</span></div>
           {topRows.map((row) => {
-            const best = row.car.bestLapTimeSeconds ?? row.lapTimeSeconds
-            const delta = row.lapTimeSeconds - best
-            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{formatLapTime(row.lapTimeSeconds)}</span><span>{formatLapTime(best)}</span><b>+{Math.max(0, delta).toFixed(3)}</b></div>
+            const best = row.car.bestLapTimeSeconds
+            const delta =
+              row.lapTimeSeconds === null || best === null
+                ? null
+                : row.lapTimeSeconds - best
+            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{formatLapTime(row.lapTimeSeconds)}</span><span>{formatLapTime(best)}</span><b>{delta === null ? '--.---' : `+${Math.max(0, delta).toFixed(3)}`}</b></div>
           })}
         </div>
       </section>
@@ -735,7 +744,7 @@ function BottomAnalytics({
         <PanelHeader title="Sector Times (Live)" />
         <div className="analysis-table analysis-sectors">
           <div><span>DRIVER</span><span>S1</span><span>S2</span><span>S3</span></div>
-          {topRows.map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>{row.sectors.map((sector, index) => <span className={`sector-value sector-${index + 1}`} key={index}>{sector.toFixed(3)}</span>)}</div>)}
+          {topRows.map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>{row.sectors.map((sector, index) => <span className={`sector-value sector-${index + 1}`} key={index}>{formatSectorTime(sector)}</span>)}</div>)}
         </div>
       </section>
       <section className="broadcast-panel fuel-panel">
@@ -808,7 +817,7 @@ export function BroadcastDashboard({
       .sort((left, right) =>
         (left.car.bestLapTimeSeconds ?? Number.POSITIVE_INFINITY) -
         (right.car.bestLapTimeSeconds ?? Number.POSITIVE_INFINITY),
-      )[0] ?? timingRows[0],
+      )[0] ?? null,
     [timingRows],
   )
   const trackEvolution = useMemo(
@@ -941,7 +950,7 @@ export function BroadcastDashboard({
             <div className="broadcast-tabs feed-tabs">{(['control', 'events'] as const).map((mode) => <button aria-selected={feedMode === mode} key={mode} onClick={() => setFeedMode(mode)} type="button">{mode === 'control' ? 'RACE CONTROL' : 'EVENTS'}</button>)}</div>
             {showRaceFeed ? <ol className="race-message-list">{displayedFeed.slice(0, 9).map((event) => <li key={event.id}><time>{event.timeLabel}</time><span>{event.message}</span></li>)}</ol> : <button className="restore-panel" onClick={() => setShowRaceFeed(true)} type="button"><MessageSquare size={13}/> Restore messages</button>}
           </section>
-          <section className="broadcast-panel fastest-lap-panel"><span>FASTEST LAP</span><strong>{fastestRow ? formatLapTime(fastestRow.car.bestLapTimeSeconds ?? fastestRow.lapTimeSeconds) : '--:--.---'}</strong><small>{fastestRow ? `${fastestRow.car.driverName} / LAP ${fastestRow.car.bestLapLap ?? '-'}` : 'Awaiting completed lap'}</small></section>
+          <section className="broadcast-panel fastest-lap-panel"><span>FASTEST LAP</span><strong>{formatLapTime(fastestRow?.car.bestLapTimeSeconds)}</strong><small>{fastestRow ? `${fastestRow.car.driverName} / LAP ${fastestRow.car.bestLapLap ?? '-'}` : 'Awaiting completed lap'}</small></section>
           <section className="broadcast-panel live-gap-panel"><PanelHeader title="Live Gap To Leader" /><ol>{timingRows.slice(1, 10).map((row) => <li key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong><span><i style={{ backgroundColor: row.car.teamColor, width: `${clamp(100 - row.car.gapToLeader * 2.4, 12, 100)}%` }} /></span><b>{row.displayGapToLeaderLabel}</b></li>)}</ol></section>
         </aside>
       </main>
@@ -956,7 +965,7 @@ export function BroadcastDashboard({
           <button onClick={onOpenClassification} title="Classification" type="button"><Trophy size={14}/></button>
         </div>
         <div className="footer-data-modes"><span title={engineLabel}>{engineLabel}</span>{(['SIM', 'HIST', 'LIVE'] as DataMode[]).map((mode) => <button aria-pressed={dataMode === mode} disabled={!dataModeAvailability[mode]} key={mode} onClick={() => onDataModeChange(mode)} type="button">{mode}</button>)}</div>
-        <div className="footer-best"><span>BEST LAP</span><strong>{fastestRow ? formatLapTime(fastestRow.car.bestLapTimeSeconds ?? fastestRow.lapTimeSeconds) : '--:--.---'}</strong><b>{fastestRow?.car.code ?? '-'}</b></div>
+        <div className="footer-best"><span>BEST LAP</span><strong>{formatLapTime(fastestRow?.car.bestLapTimeSeconds)}</strong><b>{fastestRow?.car.code ?? '-'}</b></div>
       </footer>
     </div>
   )

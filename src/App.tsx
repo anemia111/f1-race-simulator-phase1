@@ -176,12 +176,12 @@ type TimingRow = {
   displayIntervalLabel: string
   displayPosition: number
   gear: number
-  lapTimeSeconds: number
+  lapTimeSeconds: number | null
   lapDataLabel: string
   microSectors: MiniSectorState[][]
   rpm: number
   source: 'openf1' | 'simulation'
-  sectors: [number, number, number]
+  sectors: [number | null, number | null, number | null]
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
@@ -246,14 +246,29 @@ const hashUnit = (value: string) => {
   return (hash >>> 0) / 4294967295
 }
 
-const formatLapTime = (seconds: number) => {
+const createAutoScenarioSeed = () => {
+  const randomPart =
+    globalThis.crypto?.randomUUID?.() ??
+    Math.random().toString(36).slice(2, 12)
+
+  return `auto-${Date.now().toString(36)}-${randomPart}`
+}
+
+const formatLapTime = (seconds: number | null | undefined) => {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+    return '--:--.---'
+  }
+
   const minutes = Math.floor(seconds / 60)
   const remaining = (seconds - minutes * 60).toFixed(3).padStart(6, '0')
 
   return `${minutes}:${remaining}`
 }
 
-const formatSector = (seconds: number) => seconds.toFixed(3)
+const formatSector = (seconds: number | null | undefined) =>
+  typeof seconds === 'number' && Number.isFinite(seconds)
+    ? seconds.toFixed(3)
+    : '--.---'
 
 const formatTemperature = (value: number) => `${value.toFixed(1)}C`
 
@@ -1054,7 +1069,7 @@ export default function App() {
   const [openF1AccessToken, setOpenF1AccessToken] = useState<string | null>(null)
   const [openF1TokenDraft, setOpenF1TokenDraft] = useState('')
   const [historicalTimelineRatio, setHistoricalTimelineRatio] = useState(1)
-  const [seed, setSeed] = useState(persistedWeekend?.seed ?? 'phase-2-default')
+  const [seed, setSeed] = useState(createAutoScenarioSeed)
   const [selectedTrackId, setSelectedTrackId] = useState(
     persistedWeekend?.trackId ?? defaultTrack.id,
   )
@@ -1789,18 +1804,11 @@ export default function App() {
           useObservedTiming
             ? (openF1LiveTiming?.intervalLabel ?? intervalLabel(car))
             : intervalLabel(car)
-        const latestTimedSegment = raceConfig.timedSessionPlan?.segments
-          .slice()
-          .reverse()
-          .find((segment) =>
-            Object.prototype.hasOwnProperty.call(
-              car.timedSegmentBestSeconds,
-              segment.name,
-            ),
-          )
-        const timedSegmentTime = latestTimedSegment
-          ? car.timedSegmentBestSeconds[latestTimedSegment.name]
-          : undefined
+        const latestCompletedLap = car.lapHistory.at(-1)
+        const measuredSectors = car.currentLapSectorTimes.map(
+          (sectorTime, sectorIndex) =>
+            sectorTime ?? latestCompletedLap?.sectors[sectorIndex] ?? null,
+        ) as [number | null, number | null, number | null]
 
         if (openF1Timing) {
           return {
@@ -1819,15 +1827,10 @@ export default function App() {
           displayIntervalLabel,
           displayPosition,
           ...telemetry,
-          lapTimeSeconds:
-            timedSegmentTime ??
-            car.lastLapTimeSeconds ??
-            car.projectedLapTime,
-          lapDataLabel: latestTimedSegment
-            ? timedSegmentTime === null
-              ? `SIM ${latestTimedSegment.name} NO TIME`
-              : `SIM ${latestTimedSegment.name}`
-            : 'SIM ESTIMATE',
+          lapTimeSeconds: car.lastLapTimeSeconds,
+          lapDataLabel: latestCompletedLap
+            ? 'SIM MEASURED / TIMING LINE'
+            : 'SIM AWAITING TIMING LINE',
           microSectors: [0, 1, 2].map((sectorIndex) =>
             microSectorsForCar(
               car,
@@ -1838,7 +1841,7 @@ export default function App() {
             ),
           ),
           source: 'simulation',
-          sectors: car.lapHistory.at(-1)?.sectors ?? sectorSplitsForCar(car, rowIndex, track),
+          sectors: measuredSectors,
         }
       }),
     [
@@ -1847,7 +1850,6 @@ export default function App() {
       openF1LiveState.positionsByCode,
       openF1LiveState.timingByCode,
       openF1TimingSources,
-      raceConfig.timedSessionPlan,
       simulatedMicroSectorBests,
       timingCars,
       track,
@@ -1863,10 +1865,13 @@ export default function App() {
               car.status !== 'disqualified' &&
               car.status !== 'dns',
           )
-          .map((row) => ({
-            car: row.car,
-            sectorTime: row.sectors[sectorIndex],
-          }))
+          .flatMap((row) => {
+            const sectorTime = row.sectors[sectorIndex]
+
+            return sectorTime === null
+              ? []
+              : [{ car: row.car, sectorTime }]
+          })
           .sort((a, b) => a.sectorTime - b.sectorTime)
           .slice(0, 10),
       ),
@@ -1901,6 +1906,7 @@ export default function App() {
 
     setSeason(seasonWithCurrentWear)
     setSelectedTrackId(trackId)
+    setSeed(createAutoScenarioSeed())
     setWeekendContext(
       applySeasonGarageToWeekend(
         createWeekendContext(drivers, nextTrack.isSprintWeekend, nextTrack),
@@ -1962,7 +1968,10 @@ export default function App() {
       setWeekendContext((current) => completeStagesBefore(current, stage))
     }
 
-    setSelectedWeekendStage(stage)
+    if (stage !== selectedWeekendStage) {
+      setSeed(createAutoScenarioSeed())
+      setSelectedWeekendStage(stage)
+    }
   }
 
   const advanceWeekendStage = () => {
@@ -2001,6 +2010,7 @@ export default function App() {
     const currentIndex = weekendStages.indexOf(selectedWeekendStage)
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % weekendStages.length
 
+    setSeed(createAutoScenarioSeed())
     setSelectedWeekendStage(weekendStages[nextIndex])
   }
 
@@ -2144,6 +2154,7 @@ export default function App() {
     setDrivers(copyDrivers(initialDrivers))
     setSelectedTeamId(initialTeams[0].id)
     setSelectedDriverId(initialDrivers[0].id)
+    setSeed(createAutoScenarioSeed())
     setWeekendContext(
       applySeasonGarageToWeekend(
         createWeekendContext(initialDrivers, track.isSprintWeekend, track),
@@ -2154,7 +2165,7 @@ export default function App() {
   }
 
   const randomSeed = () => {
-    setSeed(`seed-${Math.random().toString(36).slice(2, 8)}`)
+    setSeed(createAutoScenarioSeed())
   }
   const effectiveGridLabel =
     gridSource === 'openf1'

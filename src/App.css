@@ -2451,7 +2451,7 @@
 .leaderboard-column-head,
 .leaderboard-rows button {
   display: grid;
-  grid-template-columns: 26px minmax(46px, 0.75fr) 24px minmax(44px, 0.78fr) minmax(56px, 1fr) minmax(56px, 1fr) 42px 42px 42px 20px;
+  grid-template-columns: 26px minmax(46px, 0.75fr) 24px minmax(44px, 0.78fr) minmax(56px, 1fr) minmax(56px, 1fr) 42px 42px 42px 28px;
   align-items: center;
   gap: 3px;
 }
@@ -2619,7 +2619,7 @@
 
 .timing-overview-table .center-table-head,
 .timing-overview-table li > button {
-  grid-template-columns: 22px 34px 43px 43px 43px minmax(58px, 1fr) minmax(58px, 1fr) 50px 50px;
+  grid-template-columns: 22px 34px 34px 43px 43px 43px minmax(58px, 1fr) minmax(58px, 1fr) 50px 50px;
 }
 
 .telemetry-table .center-table-head,

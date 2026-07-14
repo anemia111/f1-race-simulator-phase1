@@ -605,27 +605,97 @@ function localTrackPaceDelta(
   return cornerGain + straightGain + elevationLoss
 }
 
-function completedLapSectors(
-  config: RaceConfig,
-  driver: Driver,
-  lap: number,
-  lapTimeSeconds: number,
-): [number, number, number] {
-  const marks = config.track.sectorMarks
-  const weights = [
-    Math.max(0.12, (marks[1] ?? 0.32) - (marks[0] ?? 0)),
-    Math.max(0.12, (marks[2] ?? 0.72) - (marks[1] ?? 0.32)),
-    Math.max(0.12, 1 - (marks[2] ?? 0.72)),
-  ]
-  const total = weights[0] + weights[1] + weights[2]
-  const normalized = weights.map((weight) => weight / total)
-  const s1Variation = (hashChance(`${config.seed}:sector:${driver.id}:${lap}:1`) - 0.5) * 0.36
-  const s2Variation = (hashChance(`${config.seed}:sector:${driver.id}:${lap}:2`) - 0.5) * 0.42
-  const sectorOne = lapTimeSeconds * normalized[0] + s1Variation
-  const sectorTwo = lapTimeSeconds * normalized[1] + s2Variation
-  const sectorThree = lapTimeSeconds - sectorOne - sectorTwo
+function measuredSectorTimesAfterTravel({
+  current,
+  deltaSeconds,
+  frameStartSeconds,
+  lapStartedAtSeconds,
+  nextTotalDistance,
+  previousTotalDistance,
+  sectorMarks,
+}: {
+  current: CarSnapshot['currentLapSectorTimes']
+  deltaSeconds: number
+  frameStartSeconds: number
+  lapStartedAtSeconds: number | null
+  nextTotalDistance: number
+  previousTotalDistance: number
+  sectorMarks: RaceConfig['track']['sectorMarks']
+}): CarSnapshot['currentLapSectorTimes'] {
+  const measured: CarSnapshot['currentLapSectorTimes'] = [...current]
 
-  return [sectorOne, sectorTwo, sectorThree]
+  if (
+    lapStartedAtSeconds === null ||
+    nextTotalDistance <= previousTotalDistance
+  ) {
+    return measured
+  }
+
+  const lapBase = Math.floor(previousTotalDistance)
+  const frameDistance = nextTotalDistance - previousTotalDistance
+  const boundaries = [
+    lapBase + (sectorMarks[1] ?? 1 / 3),
+    lapBase + (sectorMarks[2] ?? 2 / 3),
+  ]
+
+  boundaries.forEach((boundary, sectorIndex) => {
+    if (
+      measured[sectorIndex] !== null ||
+      previousTotalDistance > boundary ||
+      nextTotalDistance < boundary
+    ) {
+      return
+    }
+
+    const crossingFraction = Math.min(
+      1,
+      Math.max(0, (boundary - previousTotalDistance) / frameDistance),
+    )
+    const crossedAtSeconds =
+      frameStartSeconds + deltaSeconds * crossingFraction
+    const cumulativeTime = Math.max(
+      0.001,
+      crossedAtSeconds - lapStartedAtSeconds,
+    )
+
+    measured[sectorIndex] =
+      sectorIndex === 0
+        ? cumulativeTime
+        : Math.max(0.001, cumulativeTime - (measured[0] ?? 0))
+  })
+
+  return measured
+}
+
+function emptyCurrentLapSectorTimes(): CarSnapshot['currentLapSectorTimes'] {
+  return [null, null, null]
+}
+
+function completedMeasuredSectors(
+  current: CarSnapshot['currentLapSectorTimes'],
+  lapTimeSeconds: number,
+  sectorMarks: RaceConfig['track']['sectorMarks'],
+): [number, number, number] {
+  const weights = [
+    Math.max(0.12, (sectorMarks[1] ?? 1 / 3) - (sectorMarks[0] ?? 0)),
+    Math.max(
+      0.12,
+      (sectorMarks[2] ?? 2 / 3) - (sectorMarks[1] ?? 1 / 3),
+    ),
+    Math.max(0.12, 1 - (sectorMarks[2] ?? 2 / 3)),
+  ]
+  const totalWeight = weights[0] + weights[1] + weights[2]
+  let sectorOne = current[0] ?? (lapTimeSeconds * weights[0]) / totalWeight
+  let sectorTwo = current[1] ?? (lapTimeSeconds * weights[1]) / totalWeight
+  const maximumFirstTwo = Math.max(0.002, lapTimeSeconds - 0.001)
+
+  if (sectorOne + sectorTwo > maximumFirstTwo) {
+    const scale = maximumFirstTwo / (sectorOne + sectorTwo)
+    sectorOne *= scale
+    sectorTwo *= scale
+  }
+
+  return [sectorOne, sectorTwo, lapTimeSeconds - sectorOne - sectorTwo]
 }
 
 function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
@@ -1016,6 +1086,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       bestLapTimeSeconds: null,
       bestLapLap: null,
       lapStartedAtSeconds: null,
+      currentLapSectorTimes: emptyCurrentLapSectorTimes(),
       lapHistory: [],
       position: 0,
       gapToLeader: 0,
@@ -1388,6 +1459,7 @@ export function advanceRace(
           overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
           energyHarvestedThisLapMj: 0,
           lapStartedAtSeconds: null,
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
         }
       }
 
@@ -1453,6 +1525,9 @@ export function advanceRace(
         stewardStatus: jumpStart ? ('penalty' as const) : car.stewardStatus,
         stewardNote: jumpStart ? 'False start +5s' : car.stewardNote,
         lapStartedAtSeconds: lightsOut ? elapsedSeconds : car.lapStartedAtSeconds,
+        currentLapSectorTimes: lightsOut
+          ? emptyCurrentLapSectorTimes()
+          : car.currentLapSectorTimes,
         lowPowerStartDetected: lowPowerStart,
         warningLightsUntilSeconds: lowPowerStart
           ? elapsedSeconds + 4
@@ -1784,6 +1859,7 @@ export function advanceRace(
           pitExitUntilSeconds: null,
           pendingTire: null,
           lapStartedAtSeconds: null,
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           timedRunStartedAtSeconds: null,
           timedRunPhase: 'garage' as const,
         }
@@ -1860,6 +1936,7 @@ export function advanceRace(
         pitExitUntilSeconds: null,
         pendingTire: null,
         lapStartedAtSeconds: null,
+        currentLapSectorTimes: emptyCurrentLapSectorTimes(),
         timedRunStartedAtSeconds: null,
         timedRunPhase: 'garage' as const,
         timedRunsCompleted: completedRuns,
@@ -2102,6 +2179,8 @@ export function advanceRace(
           timedRunPhase: isTimedLapSession(weekendStage)
             ? 'out-lap'
             : car.timedRunPhase,
+          lapStartedAtSeconds: isTimedSession ? null : elapsedSeconds,
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           compoundsUsed,
           damage: servesProceduralPenalty ? car.damage : 0,
           activeAeroMode: 'corner' as const,
@@ -2321,11 +2400,16 @@ export function advanceRace(
       carBehind.gapToAhead < 0.72 &&
       !controlPhase
     const sideBySide = attacking && car.gapToAhead < 0.34
+    const hasCommittedBattleWindow =
+      car.battlePhaseUntilSeconds !== null &&
+      car.battlePhaseUntilSeconds > elapsedSeconds &&
+      (car.battlePhase === 'attacking' ||
+        car.battlePhase === 'defending' ||
+        car.battlePhase === 'side-by-side')
     const activeBattlePhase =
       controlPhase
         ? ('single-file' as const)
-        : car.battlePhaseUntilSeconds !== null &&
-            car.battlePhaseUntilSeconds > elapsedSeconds
+        : hasCommittedBattleWindow
           ? car.battlePhase
           : sideBySide
             ? ('side-by-side' as const)
@@ -2345,13 +2429,10 @@ export function advanceRace(
             ? null
             : car.battleOpponentId
     const battlePhaseUntilSeconds =
-      activeBattlePhase === 'side-by-side'
-        ? elapsedSeconds + 2.4
-        : activeBattlePhase === 'attacking' || activeBattlePhase === 'defending'
-          ? elapsedSeconds + 1.4
-          : activeBattlePhase === 'resolved'
-            ? car.battlePhaseUntilSeconds
-            : null
+      car.battlePhaseUntilSeconds !== null &&
+      car.battlePhaseUntilSeconds > elapsedSeconds
+        ? car.battlePhaseUntilSeconds
+        : null
     const turnDirection = trackDynamicsAt(
       config.track,
       car.progress,
@@ -2368,7 +2449,7 @@ export function advanceRace(
         : car.driverId
     const randomPassingSide =
       hashChance(
-        `${config.seed}:battle-line:${lineAttackerId}:${lineDefenderId}:${Math.floor(car.totalDistance * 12)}`,
+        `${config.seed}:battle-line:${lineAttackerId}:${lineDefenderId}`,
       ) < 0.5
         ? -1
         : 1
@@ -2376,7 +2457,7 @@ export function advanceRace(
     const passingSide =
       turnDirection !== 0 &&
       hashChance(
-        `${config.seed}:inside-line:${lineAttackerId}:${lineDefenderId}:${Math.floor(car.totalDistance * 12)}`,
+        `${config.seed}:inside-line:${lineAttackerId}:${lineDefenderId}`,
       ) < 0.72
         ? insideSide
         : -insideSide
@@ -2385,10 +2466,16 @@ export function advanceRace(
       !controlPhase &&
       car.position > 1 &&
       leaderDistance - car.totalDistance >= 0.95
+    const committedLineChange =
+      hasCommittedBattleWindow &&
+      (activeBattlePhase === 'attacking' ||
+        activeBattlePhase === 'defending' ||
+        activeBattlePhase === 'side-by-side')
     const targetLateralOffset =
-      activeBattlePhase === 'attacking' || activeBattlePhase === 'side-by-side'
+      committedLineChange &&
+      (activeBattlePhase === 'attacking' || activeBattlePhase === 'side-by-side')
       ? passingSide * Math.min(1.05, config.track.width * 0.28)
-      : activeBattlePhase === 'defending'
+      : committedLineChange && activeBattlePhase === 'defending'
         ? -passingSide * Math.min(0.46, config.track.width * 0.13)
         : blueFlag
           ? randomPassingSide * Math.min(0.26, config.track.width * 0.08)
@@ -2396,9 +2483,7 @@ export function advanceRace(
     const lateralBlend = Math.min(
       1,
       deltaSeconds *
-        (activeBattlePhase === 'attacking' ||
-        activeBattlePhase === 'side-by-side' ||
-        activeBattlePhase === 'defending'
+        (committedLineChange
           ? 4.2
           : 2.6),
     )
@@ -2518,9 +2603,19 @@ export function advanceRace(
       )
     }
 
+    const currentLapSectorTimes = measuredSectorTimesAfterTravel({
+      current: car.currentLapSectorTimes,
+      deltaSeconds,
+      frameStartSeconds: snapshot.elapsedSeconds,
+      lapStartedAtSeconds: car.lapStartedAtSeconds,
+      nextTotalDistance: totalDistance,
+      previousTotalDistance: car.totalDistance,
+      sectorMarks: config.track.sectorMarks,
+    })
     let next: CarSnapshot = {
       ...car,
       totalDistance,
+      currentLapSectorTimes,
       trackLateralOffset,
       battlePhase: activeBattlePhase,
       battleOpponentId,
@@ -2620,7 +2715,8 @@ export function advanceRace(
                 battleDeltaSecondsRemaining:
                   next.battleDeltaSecondsRemaining +
                   battle.attackerTimeGainSeconds,
-                battlePhase: battle.kind === 'pass' ? 'resolved' : next.battlePhase,
+                battlePhase:
+                  battle.kind === 'pass' ? 'side-by-side' : next.battlePhase,
                 battleOpponentId: defender.id,
                 battlePhaseUntilSeconds: elapsedSeconds + 1.6,
               }
@@ -2756,13 +2852,6 @@ export function advanceRace(
               (left, right) =>
                 left.totalDistance - right.totalDistance,
             )[0]
-          const impedingLossSeconds = closestSlowerCar
-            ? 0.18 +
-              hashChance(
-                `${config.seed}:impeding-loss:${segmentKey}:${driver.id}:${completedRun}`,
-              ) *
-                0.42
-            : 0
           const causedYellow =
             hashChance(
               `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedRun}`,
@@ -2792,7 +2881,7 @@ export function advanceRace(
                     ]?.number ?? 1
                   }`
                 : null
-          const recordedLapTime = rawLapTime + impedingLossSeconds
+          const recordedLapTime = rawLapTime
           const lapIsValid = invalidReason === null
           const isPersonalBest =
             lapIsValid &&
@@ -2860,16 +2949,16 @@ export function advanceRace(
               : next.bestLapTimeSeconds,
             bestLapLap: isPersonalBest ? completedRun : next.bestLapLap,
             lapStartedAtSeconds: crossedAtSeconds,
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             lapHistory: [
               ...next.lapHistory,
               {
                 lap: completedRun,
                 lapTimeSeconds: recordedLapTime,
-                sectors: completedLapSectors(
-                  config,
-                  driver,
-                  completedRun,
+                sectors: completedMeasuredSectors(
+                  next.currentLapSectorTimes,
                   recordedLapTime,
+                  config.track.sectorMarks,
                 ),
                 tire: next.tire,
                 tireAgeLaps: next.tireAgeLaps + 1,
@@ -2976,6 +3065,7 @@ export function advanceRace(
                 }
               : next.tireSetsRemaining,
             lapStartedAtSeconds: null,
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             timedRunStartedAtSeconds: null,
             timedRunPhase: 'garage',
           }
@@ -2984,6 +3074,7 @@ export function advanceRace(
           next = {
             ...next,
             lapStartedAtSeconds: crossedAtSeconds,
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             timedRunPhase: 'attack-lap',
           }
         }
@@ -3010,12 +3101,17 @@ export function advanceRace(
             : next.bestLapTimeSeconds,
           bestLapLap: isPersonalBest ? completedLap : next.bestLapLap,
           lapStartedAtSeconds: crossedAtSeconds,
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           lapHistory: [
             ...next.lapHistory,
             {
               lap: completedLap,
               lapTimeSeconds: recordedLapTime,
-              sectors: completedLapSectors(config, driver, completedLap, recordedLapTime),
+              sectors: completedMeasuredSectors(
+                next.currentLapSectorTimes,
+                recordedLapTime,
+                config.track.sectorMarks,
+              ),
               tire: next.tire,
               tireAgeLaps: next.tireAgeLaps + 1,
               weather: localWeather,

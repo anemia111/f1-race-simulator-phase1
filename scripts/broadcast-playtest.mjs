@@ -80,6 +80,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForTimeout(1800)
 
   const leaderboardRows = await page.locator('.leaderboard-rows li').count()
+  const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
+  const timingOverviewHeader = await page.locator('.timing-overview-table .center-table-head').innerText()
+  const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
+  const initialSectorValues = await page.locator('.leaderboard-rows .sector-value').allInnerTexts()
   const trackTitle = await page.locator('.broadcast-track-panel .broadcast-panel-header').innerText()
   const headerText = await page.locator('.broadcast-topbar').innerText()
 
@@ -197,9 +201,12 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     classificationVisible,
     dataDetails,
     headerText,
+    initialFastestText,
+    initialSectorValues,
     insightsVisible,
     layout,
     leaderboardRows,
+    leaderboardHeader,
     liveTimingClosed,
     liveTimingRestored,
     messageRows,
@@ -219,6 +226,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     strategyControlsVisible,
     telemetryHeader,
     telemetryRows,
+    timingOverviewHeader,
     tokenInputVisible,
     trackTitle,
     tyreRows,
@@ -239,6 +247,10 @@ try {
     const failures = []
 
     if (result.leaderboardRows < 22) failures.push(`expected 22 leaderboard rows, saw ${result.leaderboardRows}`)
+    if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
+    if (!result.timingOverviewHeader.includes('SPD')) failures.push('timing overview speed column missing')
+    if (!result.initialFastestText.includes('--:--.---') || !result.initialFastestText.includes('Awaiting completed lap')) failures.push('initial fastest lap must wait for a measured CPU lap')
+    if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
     if (result.activePitRows >= result.leaderboardRows / 2) failures.push(`implausible simultaneous pit wave: ${result.activePitRows} cars`)
     if (!result.headerText.includes('AUSTRALIAN GRAND PRIX 2026')) failures.push('official event name missing from header')
     if (!result.headerText.includes('km/h')) failures.push('broadcast wind speed must use km/h')

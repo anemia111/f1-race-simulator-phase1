@@ -416,6 +416,8 @@ export type CarSnapshot = {
   bestLapLap: number | null
   /** Simulation clock at the most recent start/finish crossing. */
   lapStartedAtSeconds: number | null
+  /** Current-lap splits, written once when the CPU car crosses each sector line. */
+  currentLapSectorTimes: [number | null, number | null, number | null]
   /** Completed lap history; sampled at the timing line, never per frame. */
   lapHistory: LapRecord[]
   position: number

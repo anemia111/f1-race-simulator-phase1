@@ -320,6 +320,93 @@ describe('starting grid', () => {
   })
 })
 
+describe('CPU timing lines', () => {
+  it('starts with no invented lap or sector times', () => {
+    const snapshot = createInitialRace(makeConfig('timing-placeholders'))
+
+    expect(
+      snapshot.cars.every(
+        (car) =>
+          car.lastLapTimeSeconds === null &&
+          car.bestLapTimeSeconds === null &&
+          car.currentLapSectorTimes.every((sector) => sector === null) &&
+          car.lapHistory.length === 0,
+      ),
+    ).toBe(true)
+  })
+
+  it('locks sectors at CPU crossings and builds the lap from those crossings', () => {
+    const driver = initialDrivers[0]
+    const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
+    const config: RaceConfig = {
+      ...makeConfig('measured-timing-lines'),
+      drivers: [driver],
+      teams: [team],
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const driverId = driver.id
+    const deltaSeconds = 0.1
+    let previous = runThroughStart(config)
+    let measuredS1: number | null = null
+    let snapshot = previous
+
+    for (let step = 0; step < 2_000 && measuredS1 === null; step += 1) {
+      snapshot = advanceRace(previous, deltaSeconds, config)
+      const previousCar = previous.cars.find((car) => car.driverId === driverId)!
+      const currentCar = snapshot.cars.find((car) => car.driverId === driverId)!
+      const boundary =
+        Math.floor(previousCar.totalDistance) + config.track.sectorMarks[1]
+
+      if (
+        previousCar.totalDistance <= boundary &&
+        currentCar.totalDistance >= boundary
+      ) {
+        const crossingFraction =
+          (boundary - previousCar.totalDistance) /
+          (currentCar.totalDistance - previousCar.totalDistance)
+        const expectedS1 =
+          previous.elapsedSeconds + deltaSeconds * crossingFraction -
+          previousCar.lapStartedAtSeconds!
+
+        measuredS1 = currentCar.currentLapSectorTimes[0]
+        expect(measuredS1).toBeCloseTo(expectedS1, 6)
+      }
+
+      previous = snapshot
+    }
+
+    expect(measuredS1).not.toBeNull()
+
+    snapshot = advanceRace(snapshot, 0.05, config)
+    expect(
+      snapshot.cars.find((car) => car.driverId === driverId)!
+        .currentLapSectorTimes[0],
+    ).toBe(measuredS1)
+
+    for (
+      let step = 0;
+      step < 2_000 &&
+      snapshot.cars.find((car) => car.driverId === driverId)!.lapHistory
+        .length === 0;
+      step += 1
+    ) {
+      snapshot = advanceRace(snapshot, deltaSeconds, config)
+    }
+
+    const completedLap = snapshot.cars.find(
+      (car) => car.driverId === driverId,
+    )!.lapHistory[0]
+
+    expect(completedLap).toBeDefined()
+    expect(completedLap.sectors[0]).toBeCloseTo(measuredS1!, 6)
+    expect(completedLap.sectors[1]).toBeGreaterThan(0)
+    expect(completedLap.sectors[2]).toBeGreaterThan(0)
+    expect(
+      completedLap.sectors.reduce((sum, sector) => sum + sector, 0),
+    ).toBeCloseTo(completedLap.lapTimeSeconds, 8)
+  })
+})
+
 describe('weekend grid penalties', () => {
   it('moves an over-allocation penalty down the race grid', () => {
     const context = createWeekendContext(initialDrivers)
@@ -1646,6 +1733,90 @@ describe('overtaking', () => {
     expect(snapshot.startProcedure).toBe('racing')
     expect(snapshot.cars[0].lapHistory).toHaveLength(0)
     expect(snapshot.cars[0].processedBattleSegment).toBeGreaterThanOrEqual(12)
+  })
+
+  it('holds the racing line until a passing move is actually committed', () => {
+    const drivers = initialDrivers.slice(0, 2)
+    const teamIds = new Set(drivers.map((driver) => driver.teamId))
+    const config: RaceConfig = {
+      ...makeConfig('stable-straight-lines'),
+      drivers,
+      teams: initialTeams.filter((team) => teamIds.has(team.id)),
+    }
+    const straightProgress =
+      Array.from({ length: 800 }, (_, index) => 0.08 + index / 1_000).find(
+        (progress) =>
+          progress < 0.9 &&
+          trackDynamicsAt(config.track, progress).turnDirection === 0,
+      ) ?? 0.5
+    const started = runThroughStart(config)
+    const leaderId = started.cars[0].driverId
+    const attackerId = started.cars[1].driverId
+    const leaderDistance = 2 + straightProgress
+    const attackerDistance = leaderDistance - 0.004
+    const prepared: RaceSnapshot = {
+      ...started,
+      cars: started.cars.map((car) => {
+        const isLeader = car.driverId === leaderId
+        const totalDistance = isLeader ? leaderDistance : attackerDistance
+
+        return {
+          ...car,
+          battleOpponentId: null,
+          battlePhase: 'single-file' as const,
+          battlePhaseUntilSeconds: null,
+          currentLapSectorTimes: [null, null, null],
+          gapToAhead: isLeader ? 0 : 0.5,
+          gapToLeader: isLeader ? 0 : 0.5,
+          lap: Math.floor(totalDistance),
+          lapStartedAtSeconds: started.elapsedSeconds - 20,
+          position: isLeader ? 1 : 2,
+          processedBattleSegment: Math.floor(totalDistance * 12) + 10,
+          processedLap: Math.floor(totalDistance),
+          progress: totalDistance - Math.floor(totalDistance),
+          totalDistance,
+          trackLateralOffset: 0,
+        }
+      }),
+    }
+    let following = advanceRace(prepared, 0.05, config)
+
+    following = advanceRace(following, 0.05, config)
+    const followingAttacker = following.cars.find(
+      (car) => car.driverId === attackerId,
+    )!
+
+    expect(followingAttacker.trackLateralOffset).toBeCloseTo(0, 8)
+    expect(followingAttacker.battlePhaseUntilSeconds).toBeNull()
+
+    let committed: RaceSnapshot = {
+      ...prepared,
+      cars: prepared.cars.map((car) =>
+        car.driverId === attackerId
+          ? {
+              ...car,
+              battleOpponentId: leaderId,
+              battlePhase: 'attacking' as const,
+              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
+            }
+          : car,
+      ),
+    }
+    const lateralSigns: number[] = []
+
+    for (let step = 0; step < 5; step += 1) {
+      committed = advanceRace(committed, 0.05, config)
+      const lateralOffset = committed.cars.find(
+        (car) => car.driverId === attackerId,
+      )!.trackLateralOffset
+
+      if (Math.abs(lateralOffset) > 0.0001) {
+        lateralSigns.push(Math.sign(lateralOffset))
+      }
+    }
+
+    expect(lateralSigns.length).toBeGreaterThan(1)
+    expect(new Set(lateralSigns).size).toBe(1)
   })
 })
 
