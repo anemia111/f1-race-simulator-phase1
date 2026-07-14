@@ -216,18 +216,12 @@ function displayLaneOffset(
     return startingGridSlotOffset(track, car.position)
   }
 
-  const battleOffset =
-    car.battlePhase === 'attacking' ||
-    car.battlePhase === 'defending' ||
-    car.battlePhase === 'side-by-side'
-      ? car.trackLateralOffset
-      : 0
   const presentationScale = presentationTrackWidth(track) / track.width
 
-  // Cars use one racing line until the race engine explicitly enters a
-  // passing battle. The scale changes presentation only, never simulation.
+  // Broadcast-map markers stay on the racing line during passes. Lateral
+  // battle movement remains in the simulation model, but is not visualized.
   return clamp(
-    (racingLineOffset(track, car) + battleOffset) * presentationScale,
+    racingLineOffset(track, car) * presentationScale,
     -presentationTrackWidth(track) * 0.42,
     presentationTrackWidth(track) * 0.42,
   )
