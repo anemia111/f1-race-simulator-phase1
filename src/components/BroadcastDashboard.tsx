@@ -460,7 +460,11 @@ function LeftLeaderboard({
         <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
         <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span><span>SPD</span><span>BAT</span>
       </div>
-      <ol className="leaderboard-rows">
+      <ol
+        aria-label="All drivers race leaderboard"
+        className="leaderboard-rows"
+        tabIndex={0}
+      >
         {rows.map((row) => {
           const status = terminalLabel(row.car)
 
@@ -528,8 +532,8 @@ function TimingOverview({
         <span>POS</span><span>DRIVER</span><span>SPD</span><span>S1</span><span>S2</span><span>S3</span>
         <span>LAST LAP</span><span>BEST LAP</span><span>GAP</span><span>INT</span>
       </div>
-      <ol>
-        {rows.slice(0, 10).map((row) => (
+      <ol aria-label="All drivers live timing" tabIndex={0}>
+        {rows.map((row) => (
           <li
             className={[
               row.car.driverId === selectedDriverId ? 'selected' : '',
@@ -569,8 +573,8 @@ function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
         <span>DRIVER</span><span>SPD</span><span>THR</span><span>BRK</span><span>GEAR</span>
         <span>RPM</span><span>ERS</span><span>AERO / OVT</span><span>SOURCE</span>
       </div>
-      <ol>
-        {rows.slice(0, 10).map((row) => (
+      <ol aria-label="All drivers telemetry" tabIndex={0}>
+        {rows.map((row) => (
           <li key={row.car.driverId}>
             <div>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
@@ -596,9 +600,18 @@ function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
 
 function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
   return (
-    <div className="timing-detail-list">
-      {rows.slice(0, 10).map((row) => (
-        <div className={row.car.blueFlag ? 'blue-flag-active' : undefined} key={row.car.driverId}>
+    <div
+      aria-label="All drivers sector timing"
+      className="timing-detail-list"
+      role="list"
+      tabIndex={0}
+    >
+      {rows.map((row) => (
+        <div
+          className={row.car.blueFlag ? 'blue-flag-active' : undefined}
+          key={row.car.driverId}
+          role="listitem"
+        >
           <strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong>
           {[0, 1, 2].map((sectorIndex) => (
             <span className="timing-detail-sector" key={sectorIndex}>
@@ -704,8 +717,8 @@ function CenterView({
     return (
       <div className="center-table tyre-detail-table">
         <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>WEAR</span><span>PACE DELTA</span><span>TEMP</span><span>SETS</span><span>STOPS</span><span>SOURCE</span></div>
-        <ol>
-          {rows.slice(0, 10).map((row) => (
+        <ol aria-label="All drivers tyre information" tabIndex={0}>
+          {rows.map((row) => (
             <li key={row.car.driverId}><div>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
               <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {row.car.tire === 'S' || row.car.tire === 'M' || row.car.tire === 'H' ? track.tireNomination?.[row.car.tire] ?? tireLabels[row.car.tire] : tireLabels[row.car.tire]}</span>
@@ -752,7 +765,7 @@ function CenterView({
     return (
       <div className="center-table driver-detail-table">
         <div className="center-table-head"><span>DRIVER</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
-        <ol>{rows.slice(0, 10).map((row) => (
+        <ol aria-label="All driver information" tabIndex={0}>{rows.map((row) => (
           <li key={row.car.driverId}><div>
             <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.teamName}</span>
             <span>{row.car.gridPosition}</span><span>{row.displayPosition}</span><span>{row.car.gridPosition - row.displayPosition >= 0 ? '+' : ''}{row.car.gridPosition - row.displayPosition}</span>
@@ -1013,7 +1026,7 @@ export function BroadcastDashboard({
           />
           <div className="broadcast-left-analytics">
             <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} /></section>
-            <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div className="pit-stop-list"><div><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).slice(0, 8).map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
+            <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div aria-label="All drivers pit stops" className="pit-stop-list" role="table" tabIndex={0}><div role="row"><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).map((row) => <div key={row.car.driverId} role="row"><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
             <section className="broadcast-panel gap-history-panel"><PanelHeader eyebrow="COMPLETED LAPS" title="Gap To Leader" /><GapHistory rows={timingRows} /></section>
           </div>
         </div>
@@ -1022,7 +1035,7 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-live-timing">
             <PanelHeader
               action={<button aria-label={showLiveTiming ? 'Hide live timing' : 'Show live timing'} className="panel-close" onClick={() => setShowLiveTiming((value) => !value)} title={showLiveTiming ? 'Hide live timing' : 'Show live timing'} type="button">{showLiveTiming ? <X size={13} /> : <Timer size={13} />}</button>}
-              eyebrow={activeView === 'overview' ? 'TOP 10' : activeView.toUpperCase()}
+              eyebrow={activeView === 'overview' ? `ALL ${timingRows.length}` : activeView.toUpperCase()}
               title={activeView === 'overview' ? 'Live Timing' : dashboardViews.find((item) => item.id === activeView)?.label ?? 'Live Timing'}
             />
             {showLiveTiming ? (
@@ -1086,7 +1099,7 @@ export function BroadcastDashboard({
             {showRaceFeed ? <ol className="race-message-list">{displayedFeed.slice(0, 9).map((event) => <li key={event.id}><time>{event.timeLabel}</time><span>{event.message}</span></li>)}</ol> : <button className="restore-panel" onClick={() => setShowRaceFeed(true)} type="button"><MessageSquare size={13}/> Restore messages</button>}
           </section>
           <section className="broadcast-panel fastest-lap-panel"><span>FASTEST LAP</span><strong>{formatLapTime(fastestRow?.car.bestLapTimeSeconds)}</strong><small>{fastestRow ? `${fastestRow.car.driverName} / LAP ${fastestRow.car.bestLapLap ?? '-'}` : 'Awaiting completed lap'}</small></section>
-          <section className="broadcast-panel live-gap-panel"><PanelHeader title="Live Gap To Leader" /><ol>{timingRows.slice(1, 10).map((row) => <li key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong><span><i style={{ backgroundColor: row.car.teamColor, width: `${clamp(100 - row.car.gapToLeader * 2.4, 12, 100)}%` }} /></span><b>{row.displayGapToLeaderLabel}</b></li>)}</ol></section>
+          <section className="broadcast-panel live-gap-panel"><PanelHeader title="Live Gap To Leader" /><ol aria-label="All drivers gaps to leader" tabIndex={0}>{timingRows.slice(1).map((row) => <li key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong><span><i style={{ backgroundColor: row.car.teamColor, width: `${clamp(100 - row.car.gapToLeader * 2.4, 12, 100)}%` }} /></span><b>{row.displayGapToLeaderLabel}</b></li>)}</ol></section>
         </aside>
       </main>
 

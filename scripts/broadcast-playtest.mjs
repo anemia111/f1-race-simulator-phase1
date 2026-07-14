@@ -75,6 +75,23 @@ async function waitForCanvasPixels(page) {
   return result
 }
 
+async function inspectScroll(locator) {
+  return locator.evaluate((element) => {
+    const initialScrollTop = element.scrollTop
+    const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight)
+    element.scrollTop = maxScrollTop
+    const reachedBottom = Math.abs(element.scrollTop - maxScrollTop) <= 1
+    element.scrollTop = initialScrollTop
+
+    return {
+      clientHeight: element.clientHeight,
+      maxScrollTop,
+      reachedBottom,
+      scrollHeight: element.scrollHeight,
+    }
+  })
+}
+
 async function runViewport(browser, name, viewport, screenshotPath) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
   const pageErrors = []
@@ -87,6 +104,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForTimeout(1800)
 
   const leaderboardRows = await page.locator('.leaderboard-rows li').count()
+  const leaderboardScroll = await inspectScroll(page.locator('.leaderboard-rows'))
+  const liveGapRows = await page.locator('.live-gap-panel li').count()
+  const liveGapScroll = await inspectScroll(page.locator('.live-gap-panel ol'))
+  const liveTimingTitle = await page.locator('.broadcast-live-timing .broadcast-panel-header').innerText()
   const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
   const timingOverviewHeader = await page.locator('.timing-overview-table .center-table-head').innerText()
   const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
@@ -102,6 +123,8 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   await page.locator('.broadcast-sidebar button[title="Timing"]').click()
   await page.waitForSelector('.timing-detail-list')
+  const timingDetailRows = await page.locator('.timing-detail-list > [role="listitem"]').count()
+  const timingDetailScroll = await inspectScroll(page.locator('.timing-detail-list'))
   const miniSectors = await page.locator('.broadcast-mini-sectors span').count()
   const initialMiniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
@@ -111,10 +134,16 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.locator('.broadcast-sidebar button[title="Telemetry"]').click()
   const telemetryHeader = await page.locator('.telemetry-table .center-table-head').innerText()
   const telemetryRows = await page.locator('.telemetry-table li').count()
+  const telemetryScroll = await inspectScroll(page.locator('.telemetry-table ol'))
 
   await page.locator('.broadcast-sidebar button[title="Tyres"]').click()
   const tyreRows = await page.locator('.tyre-detail-table li').count()
   const tyreHeader = await page.locator('.tyre-detail-table .center-table-head').innerText()
+  const tyreScroll = await inspectScroll(page.locator('.tyre-detail-table ol'))
+
+  await page.locator('.broadcast-sidebar button[title="Drivers"]').click()
+  const driverRows = await page.locator('.driver-detail-table li').count()
+  const driverScroll = await inspectScroll(page.locator('.driver-detail-table ol'))
 
   await page.locator('.broadcast-sidebar button[title="Messages"]').click()
   const messageRows = await page.locator('.detail-message-list li').count()
@@ -244,7 +273,11 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     insightsVisible,
     layout,
     leaderboardRows,
+    leaderboardScroll,
     leaderboardHeader,
+    liveGapRows,
+    liveGapScroll,
+    liveTimingTitle,
     liveTimingClosed,
     liveTimingRestored,
     messageRows,
@@ -270,6 +303,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     strategyControlsVisible,
     telemetryHeader,
     telemetryRows,
+    telemetryScroll,
+    timingDetailRows,
+    timingDetailScroll,
     timingLapLabels,
     runningMiniSectorStates,
     timingOverviewHeader,
@@ -277,6 +313,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     trackTitle,
     tyreHeader,
     tyreRows,
+    tyreScroll,
+    driverRows,
+    driverScroll,
   }
 }
 
@@ -317,7 +356,26 @@ try {
     for (const label of ['SPD', 'THR', 'BRK', 'GEAR', 'RPM', 'ERS', 'SOURCE']) {
       if (!result.telemetryHeader.includes(label)) failures.push(`telemetry header missing ${label}`)
     }
-    if (result.telemetryRows < 10 || result.tyreRows < 10) failures.push('detail tables did not render ten drivers')
+    for (const [name, count] of [
+      ['timing', result.timingDetailRows],
+      ['telemetry', result.telemetryRows],
+      ['tyres', result.tyreRows],
+      ['drivers', result.driverRows],
+    ]) {
+      if (count !== result.leaderboardRows) failures.push(`${name} table rendered ${count}/${result.leaderboardRows} drivers`)
+    }
+    if (result.liveGapRows !== result.leaderboardRows - 1) failures.push(`live gap rendered ${result.liveGapRows}/${result.leaderboardRows - 1} trailing drivers`)
+    if (!result.liveTimingTitle.includes(`ALL ${result.leaderboardRows}`)) failures.push(`live timing field label is stale: ${result.liveTimingTitle}`)
+    for (const [name, metrics] of [
+      ['leaderboard', result.leaderboardScroll],
+      ['timing', result.timingDetailScroll],
+      ['telemetry', result.telemetryScroll],
+      ['tyres', result.tyreScroll],
+      ['drivers', result.driverScroll],
+      ['live gap', result.liveGapScroll],
+    ]) {
+      if (metrics.maxScrollTop <= 0 || !metrics.reachedBottom) failures.push(`${name} list cannot scroll through all drivers: ${JSON.stringify(metrics)}`)
+    }
     if (!result.tyreHeader.includes('PACE DELTA') || !result.tyreHeader.includes('SOURCE')) failures.push('tyre model provenance is missing')
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')

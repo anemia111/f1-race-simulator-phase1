@@ -1,7 +1,9 @@
-import type { Team, TrackDefinition } from '../types'
+import type { PitPhase, Team, TrackDefinition } from '../types'
 
 export const DEFAULT_PIT_BOX_START_PROGRESS = 0.976
 export const DEFAULT_PIT_BOX_SPACING_PROGRESS = 0.0017
+export const PIT_LANE_ARRIVAL_FRACTION = 0.24
+export const PIT_SERVICE_END_FRACTION = 0.72
 
 export function pitBoxProgress(
   track: TrackDefinition,
@@ -36,4 +38,48 @@ export function pitBoxProgressForTeam(
 
 export function wrappedProgressSpan(start: number, end: number): number {
   return (end + 1 - start) % 1
+}
+
+export function forwardProgressBetween(
+  start: number,
+  end: number,
+  amount: number,
+): number {
+  const fraction = Math.min(1, Math.max(0, amount))
+
+  return (start + wrappedProgressSpan(start, end) * fraction) % 1
+}
+
+export function pitLaneMotionAt(
+  pitFraction: number,
+  entryProgress: number,
+  boxProgress: number,
+  exitProgress: number,
+): { phase: Extract<PitPhase, 'lane' | 'box' | 'exit'>; progress: number } {
+  const fraction = Math.min(1, Math.max(0, pitFraction))
+
+  if (fraction < PIT_LANE_ARRIVAL_FRACTION) {
+    return {
+      phase: 'lane',
+      progress: forwardProgressBetween(
+        entryProgress,
+        boxProgress,
+        fraction / PIT_LANE_ARRIVAL_FRACTION,
+      ),
+    }
+  }
+
+  if (fraction < PIT_SERVICE_END_FRACTION) {
+    return { phase: 'box', progress: boxProgress }
+  }
+
+  return {
+    phase: 'exit',
+    progress: forwardProgressBetween(
+      boxProgress,
+      exitProgress,
+      (fraction - PIT_SERVICE_END_FRACTION) /
+        (1 - PIT_SERVICE_END_FRACTION),
+    ),
+  }
 }

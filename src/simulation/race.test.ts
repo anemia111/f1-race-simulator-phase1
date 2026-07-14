@@ -25,7 +25,6 @@ import {
   createInitialRace,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
-  lateralTargetWithBrakingRule,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
 } from './race'
@@ -1951,7 +1950,7 @@ describe('overtaking', () => {
     expect(snapshot.cars[0].processedBattleSegment).toBeGreaterThanOrEqual(12)
   })
 
-  it('holds the racing line until a passing move is actually committed', () => {
+  it('keeps all normal-track battle phases on one fixed line', () => {
     const drivers = initialDrivers.slice(0, 2)
     const teamIds = new Set(drivers.map((driver) => driver.teamId))
     const config: RaceConfig = {
@@ -2014,25 +2013,21 @@ describe('overtaking', () => {
               battleOpponentId: leaderId,
               battlePhase: 'attacking' as const,
               battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
+              trackLateralOffset: 0.42,
             }
           : car,
       ),
     }
-    const lateralSigns: number[] = []
+    const attackingOffsets: number[] = []
 
     for (let step = 0; step < 8; step += 1) {
       committed = advanceRace(committed, 0.005, config)
-      const lateralOffset = committed.cars.find(
+      attackingOffsets.push(committed.cars.find(
         (car) => car.driverId === attackerId,
-      )!.trackLateralOffset
-
-      if (Math.abs(lateralOffset) > 0.0001) {
-        lateralSigns.push(Math.sign(lateralOffset))
-      }
+      )!.trackLateralOffset)
     }
 
-    expect(lateralSigns.length).toBeGreaterThan(1)
-    expect(new Set(lateralSigns).size).toBe(1)
+    expect(attackingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
 
     let defending: RaceSnapshot = {
       ...prepared,
@@ -2043,33 +2038,21 @@ describe('overtaking', () => {
               battleOpponentId: attackerId,
               battlePhase: 'defending' as const,
               battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
+              trackLateralOffset: -0.42,
             }
           : car,
       ),
     }
-    const defensiveSigns: number[] = []
+    const defendingOffsets: number[] = []
 
     for (let step = 0; step < 8; step += 1) {
       defending = advanceRace(defending, 0.005, config)
-      const lateralOffset = defending.cars.find(
+      defendingOffsets.push(defending.cars.find(
         (car) => car.driverId === leaderId,
-      )!.trackLateralOffset
-
-      if (Math.abs(lateralOffset) > 0.0001) {
-        defensiveSigns.push(Math.sign(lateralOffset))
-      }
+      )!.trackLateralOffset)
     }
 
-    expect(defensiveSigns.length).toBeGreaterThan(1)
-    expect(new Set(defensiveSigns).size).toBe(1)
-  })
-})
-
-describe('driving standards', () => {
-  it('locks the selected line as soon as braking starts', () => {
-    expect(lateralTargetWithBrakingRule(0.18, -0.42, 0)).toBe(-0.42)
-    expect(lateralTargetWithBrakingRule(0.18, -0.42, 5)).toBe(0.18)
-    expect(lateralTargetWithBrakingRule(0.18, 0.42, 72)).toBe(0.18)
+    expect(defendingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
   })
 })
 

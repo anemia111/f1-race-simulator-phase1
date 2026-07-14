@@ -10,11 +10,11 @@ import type {
   RaceSnapshot,
   TrackDefinition,
 } from '../types'
-import { racingLineAt } from '../simulation/trackDynamics'
 import {
   pitBoxProgress,
   pitBoxSlotForTeam,
 } from '../simulation/pitLane'
+import { startingGridDistance } from '../simulation/startingGrid'
 import {
   progressAtTime,
   type OpenF1TrackProgress,
@@ -48,7 +48,6 @@ type SceneContentsProps = RaceSceneProps & {
 }
 
 const PIT_ENTRY_VISUAL_SECONDS = 3.2
-const STARTING_GRID_SLOT_GAP = 0.0022
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 const sectorPathColors = ['#00d8ff', '#ffd21f', '#ff344d']
@@ -67,6 +66,50 @@ const sectorFlagLabels: Record<RaceSnapshot['sectorFlags'][number], string> = {
   sc: 'SC',
   vsc: 'VSC',
   yellow: 'YELLOW',
+}
+
+function createRoundMarkerTexture({
+  borderColor,
+  fillColor,
+  isSelected = false,
+  label,
+}: {
+  borderColor: string
+  fillColor: string
+  isSelected?: boolean
+  label: string
+}) {
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  canvas.width = 192
+  canvas.height = 192
+
+  if (context) {
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.beginPath()
+    context.arc(96, 96, isSelected ? 79 : 73, 0, Math.PI * 2)
+    context.fillStyle = fillColor
+    context.fill()
+    context.lineWidth = isSelected ? 12 : 10
+    context.strokeStyle = borderColor
+    context.stroke()
+
+    context.font = '900 70px "Arial Narrow", Arial, sans-serif'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.lineWidth = 9
+    context.lineJoin = 'round'
+    context.strokeStyle = '#05090e'
+    context.strokeText(label, 96, 99)
+    context.fillStyle = '#ffffff'
+    context.fillText(label, 96, 99)
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.minFilter = THREE.LinearFilter
+
+  return texture
 }
 
 /** Broadcast maps show a timing trace, not a scale model of the asphalt. */
@@ -184,25 +227,21 @@ function InstancedPitBoxes({ boxes }: { boxes: PosedInstance[] }) {
   )
 }
 
-function racingLineOffset(
-  track: TrackDefinition,
-  car: CarSnapshot,
-) {
-  return car.status === 'pit' ? 0 : racingLineAt(track, car.progress).offset
-}
-
 function startingGridSlotOffset(track: TrackDefinition, position: number) {
   const side = position % 2 === 1 ? -1 : 1
 
   return side * presentationTrackWidth(track) * 0.28
 }
 
-function shouldUseStartingGridSlot(car: CarSnapshot, elapsedSeconds: number) {
+function shouldUseStartingGridSlot(
+  car: CarSnapshot,
+  showStartingGridSlots: boolean,
+) {
   return (
+    showStartingGridSlots &&
     car.status === 'running' &&
     car.timedRunPhase === null &&
-    elapsedSeconds < 7 &&
-    car.totalDistance >= 1 - STARTING_GRID_SLOT_GAP * 24 &&
+    car.totalDistance >= startingGridDistance(23) &&
     car.totalDistance <= 1.035
   )
 }
@@ -210,21 +249,15 @@ function shouldUseStartingGridSlot(car: CarSnapshot, elapsedSeconds: number) {
 function displayLaneOffset(
   track: TrackDefinition,
   car: CarSnapshot,
-  elapsedSeconds: number,
+  showStartingGridSlots: boolean,
 ) {
-  if (shouldUseStartingGridSlot(car, elapsedSeconds)) {
+  if (shouldUseStartingGridSlot(car, showStartingGridSlots)) {
     return startingGridSlotOffset(track, car.position)
   }
 
-  const presentationScale = presentationTrackWidth(track) / track.width
-
-  // Broadcast-map markers stay on the racing line during passes. Lateral
-  // battle movement remains in the simulation model, but is not visualized.
-  return clamp(
-    racingLineOffset(track, car) * presentationScale,
-    -presentationTrackWidth(track) * 0.42,
-    presentationTrackWidth(track) * 0.42,
-  )
+  // Normal running uses one stable trace. Only grid staging and the pit lane
+  // use lateral placement on the timing map.
+  return 0
 }
 
 function displayPoseForCar(
@@ -237,6 +270,8 @@ function displayPoseForCar(
   elapsedSeconds: number,
 ) {
   const trackPose = poseOnTrack(curve, car.progress, laneOffset)
+  const pitProgress =
+    car.pitLaneProgress ?? pitBoxProgress(track, pitSlot)
   const garagePose = poseOnTrack(
     curve,
     pitBoxProgress(track, pitSlot),
@@ -250,23 +285,40 @@ function displayPoseForCar(
   const movingPitPose =
     car.pitLaneProgress === null || car.pitPhase === 'box'
       ? garagePose
-      : poseOnTrack(curve, car.pitLaneProgress, pitLaneOffset(track))
+      : poseOnTrack(curve, pitProgress, pitLaneOffset(track))
 
   if (car.status === 'pit') {
-    if (car.pitStartedAtSeconds === null) {
+    if (car.pitStartedAtSeconds === null || car.pitPhase === 'box') {
       return movingPitPose
     }
 
-    const transition = Math.min(
-      1,
-      Math.max(0, (elapsedSeconds - car.pitStartedAtSeconds) / PIT_ENTRY_VISUAL_SECONDS),
-    )
+    if (car.pitPhase === 'entry' || car.pitPhase === 'lane') {
+      const entryTrackPose = poseOnTrack(curve, pitProgress, 0)
+      const transition = Math.min(
+        1,
+        Math.max(
+          0,
+          (elapsedSeconds - car.pitStartedAtSeconds) /
+            PIT_ENTRY_VISUAL_SECONDS,
+        ),
+      )
 
-    return {
-      position: trackPose.position.clone().lerp(movingPitPose.position, transition),
-      tangent: trackPose.tangent.clone().lerp(movingPitPose.tangent, transition).normalize(),
-      normal: trackPose.normal.clone().lerp(movingPitPose.normal, transition).normalize(),
+      return {
+        position: entryTrackPose.position
+          .clone()
+          .lerp(movingPitPose.position, transition),
+        tangent: entryTrackPose.tangent
+          .clone()
+          .lerp(movingPitPose.tangent, transition)
+          .normalize(),
+        normal: entryTrackPose.normal
+          .clone()
+          .lerp(movingPitPose.normal, transition)
+          .normalize(),
+      }
     }
+
+    return movingPitPose
   }
 
   if (
@@ -277,10 +329,20 @@ function displayPoseForCar(
       (car.pitExitUntilSeconds - elapsedSeconds) / PIT_ENTRY_VISUAL_SECONDS
     const transition = Math.min(1, Math.max(0, remaining))
 
+    const exitPitPose = poseOnTrack(curve, car.progress, pitLaneOffset(track))
+
     return {
-      position: movingPitPose.position.clone().lerp(trackPose.position, 1 - transition),
-      tangent: movingPitPose.tangent.clone().lerp(trackPose.tangent, 1 - transition).normalize(),
-      normal: movingPitPose.normal.clone().lerp(trackPose.normal, 1 - transition).normalize(),
+      position: exitPitPose.position
+        .clone()
+        .lerp(trackPose.position, 1 - transition),
+      tangent: exitPitPose.tangent
+        .clone()
+        .lerp(trackPose.tangent, 1 - transition)
+        .normalize(),
+      normal: exitPitPose.normal
+        .clone()
+        .lerp(trackPose.normal, 1 - transition)
+        .normalize(),
     }
   }
 
@@ -479,7 +541,7 @@ function StartingGridSlots({
     () =>
       Array.from({ length: 22 }, (_, index) => {
         const position = index + 1
-        const progress = (1 - index * STARTING_GRID_SLOT_GAP + 1) % 1
+        const progress = (startingGridDistance(index) + 1) % 1
         const pose = poseOnTrack(
           curve,
           progress,
@@ -856,6 +918,7 @@ function CarMarker({
   index,
   isSelected,
   onSelectDriver,
+  showStartingGridSlots,
   snapshotElapsedSeconds,
   track,
 }: {
@@ -865,6 +928,7 @@ function CarMarker({
   index: number
   isSelected: boolean
   onSelectDriver: (driverId: string) => void
+  showStartingGridSlots: boolean
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
@@ -878,54 +942,29 @@ function CarMarker({
       ? '#5a5f63'
       : car.teamColor
   const markerTexture = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
-    canvas.width = 192
-    canvas.height = 192
+    const borderColor =
+      isSelected
+        ? '#ffffff'
+        : car.blueFlag
+          ? '#2f8dff'
+        : car.overtakeStatus === 'active'
+          ? '#4cff79'
+          : car.status === 'pit'
+            ? '#47ddff'
+          : '#071018'
 
-    if (context) {
-      const borderColor =
-        isSelected
-          ? '#ffffff'
-          : car.blueFlag
-            ? '#2f8dff'
-          : car.overtakeStatus === 'active'
-            ? '#4cff79'
-            : car.status === 'pit'
-              ? '#47ddff'
-            : '#071018'
-
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      context.beginPath()
-      context.arc(96, 96, isSelected ? 79 : 73, 0, Math.PI * 2)
-      context.fillStyle = markerColor
-      context.fill()
-      context.lineWidth = isSelected ? 12 : 10
-      context.strokeStyle = borderColor
-      context.stroke()
-
-      context.font = '900 70px "Arial Narrow", Arial, sans-serif'
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      context.lineWidth = 9
-      context.lineJoin = 'round'
-      context.strokeStyle = '#05090e'
-      context.strokeText(car.code, 96, 99)
-      context.fillStyle = '#ffffff'
-      context.fillText(car.code, 96, 99)
-    }
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.minFilter = THREE.LinearFilter
-
-    return texture
+    return createRoundMarkerTexture({
+      borderColor,
+      fillColor: markerColor,
+      isSelected,
+      label: car.code,
+    })
   }, [car.blueFlag, car.code, car.overtakeStatus, car.status, isSelected, markerColor])
 
   useEffect(() => () => markerTexture.dispose(), [markerTexture])
 
   useFrame(() => {
-    const laneOffset = displayLaneOffset(track, car, snapshotElapsedSeconds)
+    const laneOffset = displayLaneOffset(track, car, showStartingGridSlots)
     const pose = displayPoseForCar(
       curve,
       car,
@@ -980,16 +1019,25 @@ function CarMarker({
 function SafetyCarMarker({
   curve,
   leader,
-  track,
 }: {
   curve: THREE.CatmullRomCurve3
   leader: CarSnapshot
-  track: TrackDefinition
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const placedRef = useRef(false)
   const invalidate = useThree((state) => state.invalidate)
   const leadGap = Math.max(0.009, 1.35 / Math.max(55, leader.projectedLapTime))
+  const markerTexture = useMemo(
+    () =>
+      createRoundMarkerTexture({
+        borderColor: '#071018',
+        fillColor: '#f4c430',
+        label: 'SC',
+      }),
+    [],
+  )
+
+  useEffect(() => () => markerTexture.dispose(), [markerTexture])
 
   useFrame(() => {
     const group = groupRef.current
@@ -1013,16 +1061,14 @@ function SafetyCarMarker({
 
   return (
     <group ref={groupRef}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[Math.max(0.22, presentationTrackWidth(track) * 0.2), 24]} />
-        <meshBasicMaterial color="#f4c430" depthTest={false} />
-      </mesh>
-      <SpriteLabel
-        color="#f4c430"
-        fontSize={0.72}
-        position={[0, 0.55, 0]}
-        text="SC"
-      />
+      <sprite renderOrder={10} scale={[1.9, 1.9, 1]}>
+        <spriteMaterial
+          depthTest={false}
+          depthWrite={false}
+          map={markerTexture}
+          transparent
+        />
+      </sprite>
     </group>
   )
 }
@@ -1331,7 +1377,6 @@ function SceneContents({
         <SafetyCarMarker
           curve={curve}
           leader={safetyCarLeader}
-          track={config.track}
         />
       ) : null}
       {showSimulationCars
@@ -1346,6 +1391,10 @@ function SceneContents({
             isSelected={car.driverId === selectedDriverId}
             key={car.driverId}
             onSelectDriver={onSelectDriver}
+            showStartingGridSlots={
+              snapshot.startProcedure === 'grid' ||
+              snapshot.startProcedure === 'lights'
+            }
             snapshotElapsedSeconds={snapshot.elapsedSeconds}
             track={config.track}
           />

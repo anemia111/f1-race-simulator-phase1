@@ -412,7 +412,7 @@ export type CarSnapshot = {
   progress: number
   lap: number
   totalDistance: number
-  /** Dynamic lateral displacement from the normal racing line, in track units. */
+  /** Compatibility field; normal-track simulation keeps this fixed at zero. */
   trackLateralOffset: number
   battlePhase: BattlePhase
   battleOpponentId: string | null

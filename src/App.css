@@ -2459,6 +2459,7 @@
 
 .leaderboard-column-head {
   padding: 0 6px;
+  padding-right: 12px;
   color: var(--broadcast-muted);
   border-bottom: 1px solid var(--broadcast-border-soft);
   font-size: 6.5px;
@@ -2469,7 +2470,7 @@
 
 .leaderboard-rows {
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: 24px;
   min-height: 0;
   padding: 0;
   margin: 0;
@@ -2588,9 +2589,9 @@
   font-size: 7px;
 }
 
-.pit-stop-list { padding: 4px 8px; }
+.pit-stop-list { align-content: start; padding: 4px 8px; }
 .pit-stop-list > div { display: grid; grid-template-columns: 1fr 34px 30px; align-items: center; min-height: 16px; border-bottom: 1px solid #11202d; }
-.pit-stop-list > div:first-child { color: var(--broadcast-muted); font-size: 6px; }
+.pit-stop-list > div:first-child { position: sticky; z-index: 1; top: -4px; color: var(--broadcast-muted); background: var(--broadcast-panel); font-size: 6px; }
 
 .gap-history-chart { display: grid; grid-template-columns: 30px 1fr; height: calc(100% - 32px); min-height: 0; padding: 4px 8px 5px; }
 .gap-history-axis { display: flex; flex-direction: column; justify-content: space-between; color: var(--broadcast-muted); font-size: 6px; }
@@ -2660,6 +2661,7 @@
 
 .center-table-head {
   padding: 0 8px;
+  padding-right: 14px;
   color: var(--broadcast-muted);
   border-bottom: 1px solid var(--broadcast-border-soft);
   font-size: 6px;
@@ -2667,7 +2669,7 @@
 
 .center-table ol {
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: 20px;
   min-height: 0;
   padding: 0;
   margin: 0;
@@ -2682,7 +2684,7 @@
 .center-table li > button:hover { background: #0d2233; }
 .center-table .broadcast-tire { width: 13px; height: 13px; margin-right: 3px; font-size: 6px; }
 
-.timing-detail-list { display: grid; grid-template-rows: repeat(10, minmax(0, 1fr)); min-height: 0; padding: 2px 8px; overflow: hidden; }
+.timing-detail-list { display: grid; grid-auto-rows: 20px; min-height: 0; padding: 2px 8px; }
 .timing-detail-list > div { display: grid; grid-template-columns: 48px repeat(3, minmax(0, 1fr)) 42px; align-items: center; gap: 7px; min-height: 0; border-bottom: 1px solid #10202d; font-size: 7px; }
 .timing-detail-sector { display: grid; grid-template-columns: 16px 44px minmax(0, 1fr); align-items: center; gap: 4px; min-width: 0; }
 .timing-detail-sector small { color: var(--broadcast-muted); }
@@ -2823,11 +2825,77 @@
 .fastest-lap-panel > span { color: #d774ff; font-size: 7px; font-weight: 900; }
 .fastest-lap-panel > strong { grid-column: 2; grid-row: 1 / 3; color: #e673ff; font-size: 16px; }
 .fastest-lap-panel > small { overflow: hidden; color: #bd8acb; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
-.live-gap-panel ol { display: grid; grid-auto-rows: minmax(17px, 1fr); min-height: 0; padding: 3px 7px; margin: 0; list-style: none; }
+.live-gap-panel ol { display: grid; grid-auto-rows: 18px; min-height: 0; padding: 3px 7px; margin: 0; list-style: none; }
 .live-gap-panel li { display: grid; grid-template-columns: 48px minmax(0, 1fr) 46px; align-items: center; gap: 5px; min-height: 0; font-size: 6.5px; }
 .live-gap-panel li > span { height: 3px; background: #1d2a35; }
 .live-gap-panel li i { display: block; height: 100%; }
 .live-gap-panel li b { text-align: right; }
+
+.leaderboard-rows,
+.center-table ol,
+.timing-detail-list,
+.pit-stop-list,
+.live-gap-panel ol {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #5f89a7 #050c13;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+}
+
+:is(
+  .leaderboard-rows,
+  .center-table ol,
+  .timing-detail-list,
+  .pit-stop-list,
+  .live-gap-panel ol
+):focus-visible {
+  outline: 1px solid #2f8dff;
+  outline-offset: -1px;
+}
+
+:is(
+  .leaderboard-rows,
+  .center-table ol,
+  .timing-detail-list,
+  .pit-stop-list,
+  .live-gap-panel ol
+)::-webkit-scrollbar {
+  width: 8px;
+}
+
+:is(
+  .leaderboard-rows,
+  .center-table ol,
+  .timing-detail-list,
+  .pit-stop-list,
+  .live-gap-panel ol
+)::-webkit-scrollbar-track {
+  background: #050c13;
+}
+
+:is(
+  .leaderboard-rows,
+  .center-table ol,
+  .timing-detail-list,
+  .pit-stop-list,
+  .live-gap-panel ol
+)::-webkit-scrollbar-thumb {
+  border: 1px solid #050c13;
+  border-radius: 2px;
+  background: #5f89a7;
+}
+
+:is(
+  .leaderboard-rows,
+  .center-table ol,
+  .timing-detail-list,
+  .pit-stop-list,
+  .live-gap-panel ol
+)::-webkit-scrollbar-thumb:hover {
+  background: #83b4d4;
+}
 
 .broadcast-footer {
   z-index: 20;

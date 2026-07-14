@@ -25,7 +25,7 @@ import {
   weakestComponent,
 } from './components'
 import { overtakeForLap } from './overtaking'
-import { pitBoxProgressForTeam } from './pitLane'
+import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
   dirtyAirDeltaSeconds,
   flagLabelFor,
@@ -51,12 +51,12 @@ import {
   weekendStageLabelFor,
 } from './sessionRules'
 import { decidePitStop, pitStopLossSeconds } from './strategy'
+import { startingGridDistance } from './startingGrid'
 import { calculateCarTelemetry } from './telemetry'
 import { updateOvertakeEligibilityAfterTravel } from './activeAero'
 import { tireDeltaSeconds, tireWearPercentPerLap } from './tires'
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
-  lineDeviationPenaltySeconds,
   progressForProfileSpeed,
   trackDynamicsAt,
 } from './trackDynamics'
@@ -93,19 +93,8 @@ const GRAND_PRIX_TIME_LIMIT_SECONDS = 2 * 60 * 60
 const SPRINT_TIME_LIMIT_SECONDS = 60 * 60
 const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
 const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
-const BRAKING_LINE_LOCK_PERCENT = 5
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
-
-export function lateralTargetWithBrakingRule(
-  currentOffset: number,
-  requestedOffset: number,
-  brakePercent: number,
-) {
-  return brakePercent >= BRAKING_LINE_LOCK_PERCENT
-    ? currentOffset
-    : requestedOffset
-}
 
 export function blueFlagApproachingCarFor(
   car: CarSnapshot,
@@ -230,8 +219,6 @@ export function reformFieldForStandingRestart(
 }
 /** Visual-only pit exit blend window after a completed stop. */
 const PIT_EXIT_VISUAL_SECONDS = 4
-/** Distance between grid slots before lights out, as a fraction of a lap. */
-const STARTING_GRID_SLOT_GAP = 0.0022
 const GRID_SETTLE_SECONDS = 8
 const START_LIGHTS_SECONDS = 5
 const OVERTAKE_EXTRA_ENERGY_MJ = 0.5
@@ -272,11 +259,6 @@ export function redRestartProcedureFor(
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
-
-function progressBetween(start: number, end: number, amount: number) {
-  const span = (end + 1 - start) % 1
-  return (start + span * clamp01(amount)) % 1
-}
 
 function postSafetyCarControlLineTargets(cars: CarSnapshot[]) {
   return Object.fromEntries(
@@ -373,10 +355,6 @@ function addDeferredBattleEffect(
     reason: effect.retires ? effect.reason : (current?.reason ?? effect.reason),
     opponentId: effect.opponentId ?? current?.opponentId ?? null,
   })
-}
-
-function startingGridDistance(gridIndex: number) {
-  return 1 - gridIndex * STARTING_GRID_SLOT_GAP
 }
 
 function timedSessionPitReleaseSeconds(
@@ -2589,26 +2567,16 @@ export function advanceRace(
         (elapsedSeconds - (car.pitStartedAtSeconds ?? elapsedSeconds)) /
           pitDuration,
       )
-      const pitPhase =
+      const pitMotion =
         car.pitStartedAtSeconds === null
-          ? ('box' as const)
-          : pitFraction < 0.24
-            ? ('lane' as const)
-            : pitFraction < 0.72
-              ? ('box' as const)
-              : ('exit' as const)
-      const pitLaneProgress =
-        pitPhase === 'lane'
-          ? progressBetween(pitEntry, pitBox, pitFraction / 0.24)
-          : pitPhase === 'box'
-            ? pitBox
-            : progressBetween(pitBox, pitExit, (pitFraction - 0.72) / 0.28)
+          ? { phase: 'box' as const, progress: pitBox }
+          : pitLaneMotionAt(pitFraction, pitEntry, pitBox, pitExit)
 
       return {
         ...car,
-        pitPhase,
-        pitLaneProgress,
-        speedKph: pitPhase === 'box' ? 0 : pitSpeedLimit,
+        pitPhase: pitMotion.phase,
+        pitLaneProgress: pitMotion.progress,
+        speedKph: pitMotion.phase === 'box' ? 0 : pitSpeedLimit,
         throttlePercent: 12,
         brakePercent: 0,
         rpm: 4600,
@@ -2681,13 +2649,7 @@ export function advanceRace(
     const baselineEffectiveLapTime = Math.max(
       40,
       (lapTime +
-        localTrackPaceDelta(config, driver, team, car.progress) +
-        lineDeviationPenaltySeconds(
-          config.track,
-          car.progress,
-          car.trackLateralOffset,
-          car.battlePhase,
-        )) *
+        localTrackPaceDelta(config, driver, team, car.progress)) *
         timedRun.paceFactor,
     )
     const raceControlOvertakeAvailable =
@@ -2841,68 +2803,7 @@ export function advanceRace(
       car.battlePhaseUntilSeconds > elapsedSeconds
         ? car.battlePhaseUntilSeconds
         : null
-    const turnDirection = trackDynamicsAt(
-      config.track,
-      car.progress,
-    ).turnDirection
-    const lineAttackerId =
-      activeBattlePhase === 'attacking' ||
-      activeBattlePhase === 'side-by-side'
-        ? car.driverId
-        : battleOpponentId ?? carBehind?.driverId ?? car.driverId
-    const lineDefenderId =
-      activeBattlePhase === 'attacking' ||
-      activeBattlePhase === 'side-by-side'
-        ? battleOpponentId ??
-          snapshot.cars[index - 1]?.driverId ??
-          car.driverId
-        : car.driverId
-    const randomPassingSide =
-      hashChance(
-        `${config.seed}:battle-line:${lineAttackerId}:${lineDefenderId}`,
-      ) < 0.5
-        ? -1
-        : 1
-    const insideSide = turnDirection === 0 ? randomPassingSide : -turnDirection
-    const passingSide =
-      turnDirection !== 0 &&
-      hashChance(
-        `${config.seed}:inside-line:${lineAttackerId}:${lineDefenderId}`,
-      ) < 0.72
-        ? insideSide
-        : -insideSide
-    const blueFlagSide =
-      hashChance(`${config.seed}:blue-flag-side:${car.driverId}`) < 0.5 ? -1 : 1
-    const committedLineChange =
-      hasCommittedBattleWindow &&
-      (activeBattlePhase === 'attacking' ||
-        activeBattlePhase === 'defending' ||
-        activeBattlePhase === 'side-by-side')
-    // The driver-pair seed selects one side for the whole committed battle;
-    // it cannot flip on a later frame and create a second defensive move.
-    const requestedLateralOffset =
-      committedLineChange &&
-      (activeBattlePhase === 'attacking' || activeBattlePhase === 'side-by-side')
-      ? passingSide * Math.min(1.05, config.track.width * 0.28)
-      : committedLineChange && activeBattlePhase === 'defending'
-        ? -passingSide * Math.min(0.46, config.track.width * 0.13)
-        : blueFlag
-          ? blueFlagSide * Math.min(0.34, config.track.width * 0.1)
-        : 0
-    const targetLateralOffset = lateralTargetWithBrakingRule(
-      car.trackLateralOffset,
-      requestedLateralOffset,
-      displayTelemetry.brakePercent,
-    )
-    const lateralBlend = Math.min(
-      1,
-      deltaSeconds *
-        (committedLineChange
-          ? 4.2
-          : 2.6),
-    )
-    const trackLateralOffset =
-      car.trackLateralOffset + (targetLateralOffset - car.trackLateralOffset) * lateralBlend
+    const trackLateralOffset = 0
     const wearPercentPerLap = tireWearPercentPerLap(
       car.tire,
       driver.tireManagement,
