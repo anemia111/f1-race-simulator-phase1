@@ -765,68 +765,126 @@ function CarMarker({
           onSelectDriver(car.driverId)
         }}
       >
-        <mesh castShadow>
-          <boxGeometry args={[0.62, 0.22, 1.42]} />
-          <meshStandardMaterial color={markerColor} roughness={0.42} metalness={0.25} />
+        <mesh position={[0, -0.1, 0.04]} receiveShadow>
+          <boxGeometry args={[0.92, 0.055, 1.76]} />
+          <meshStandardMaterial color="#080a0c" roughness={0.64} metalness={0.18} />
         </mesh>
-        <mesh position={[0, -0.1, 0.08]}>
-          <boxGeometry args={[1.02, 0.08, 1.58]} />
-          <meshStandardMaterial color="#0c0f11" roughness={0.58} />
+        <mesh castShadow position={[0, 0.015, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[0.225, 0.88, 4, 10]} />
+          <meshStandardMaterial color={markerColor} roughness={0.38} metalness={0.24} />
         </mesh>
-        {showDetails ? (
-          <>
-            {[-1, 1].map((side) => (
-              <mesh key={side} position={[side * 0.43, 0.01, 0.18]}>
-                <boxGeometry args={[0.3, 0.17, 0.68]} />
-                <meshStandardMaterial color={markerColor} roughness={0.46} metalness={0.18} />
-              </mesh>
-            ))}
-            <mesh position={[0, 0.06, -0.98]} rotation={[Math.PI / 2, 0, 0]}>
-              <coneGeometry args={[0.22, 0.72, 3]} />
-              <meshStandardMaterial color="#f9fafb" roughness={0.4} />
-            </mesh>
-            <mesh position={[0, 0.15, -0.1]}>
-              <boxGeometry args={[0.38, 0.18, 0.32]} />
-              <meshStandardMaterial color="#121518" roughness={0.35} />
-            </mesh>
-            <mesh position={[0, 0.31, -0.08]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.2, 0.035, 8, 18, Math.PI * 1.55]} />
-              <meshStandardMaterial color="#d7dce0" roughness={0.32} metalness={0.3} />
-            </mesh>
-          </>
-        ) : null}
-        <mesh position={[0, 0.04, -1.26]}>
-          <boxGeometry args={[1.34, 0.08, 0.18]} />
-          <meshStandardMaterial color="#e9edf0" roughness={0.45} />
+        <mesh castShadow position={[0, 0.015, -0.73]}>
+          <boxGeometry args={[0.2, 0.13, 0.76]} />
+          <meshStandardMaterial color={markerColor} roughness={0.4} metalness={0.2} />
         </mesh>
-        <mesh position={[0, 0.2, 0.9]}>
-          <boxGeometry args={[1.08, 0.12, 0.14]} />
+        <mesh position={[0, -0.005, -1.12]}>
+          <boxGeometry args={[0.12, 0.085, 0.28]} />
+          <meshStandardMaterial color="#eef1f2" roughness={0.44} metalness={0.12} />
+        </mesh>
+        {[-1, 1].map((side) => (
+          <mesh
+            castShadow
+            key={`sidepod-${side}`}
+            position={[side * 0.34, 0.005, 0.16]}
+            rotation={[0, side * -0.08, 0]}
+          >
+            <boxGeometry args={[0.3, 0.18, 0.7]} />
+            <meshStandardMaterial color={markerColor} roughness={0.43} metalness={0.2} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.13, 0.02]}>
+          <capsuleGeometry args={[0.17, 0.22, 3, 8]} />
+          <meshStandardMaterial color="#101418" roughness={0.3} metalness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.13, 0.43]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.2, 0.48, 8]} />
+          <meshStandardMaterial color={markerColor} roughness={0.4} metalness={0.2} />
+        </mesh>
+
+        <mesh position={[0, 0.015, -1.27]}>
+          <boxGeometry args={[1.36, 0.055, 0.16]} />
+          <meshStandardMaterial
+            color={car.activeAeroMode !== 'corner' ? '#46d880' : '#e8ecef'}
+            roughness={0.42}
+          />
+        </mesh>
+        <mesh position={[0, 0.075, -1.15]}>
+          <boxGeometry args={[1.16, 0.035, 0.1]} />
+          <meshStandardMaterial color="#111419" roughness={0.48} />
+        </mesh>
+        {[-1, 1].map((side) => (
+          <mesh key={`front-endplate-${side}`} position={[side * 0.68, 0.07, -1.22]}>
+            <boxGeometry args={[0.04, 0.16, 0.3]} />
+            <meshStandardMaterial color="#0b0e11" roughness={0.5} />
+          </mesh>
+        ))}
+
+        <mesh position={[0, 0.25, 0.94]}>
+          <boxGeometry args={[1.06, 0.095, 0.16]} />
           <meshStandardMaterial
             color={car.activeAeroMode !== 'corner' ? '#46d880' : '#111419'}
             roughness={0.36}
           />
         </mesh>
-        <mesh position={[0, 0.14, 1.01]}>
-          <boxGeometry args={[0.18, 0.1, 0.06]} />
+        <mesh position={[0, 0.1, 0.89]}>
+          <boxGeometry args={[0.82, 0.05, 0.12]} />
+          <meshStandardMaterial color="#080a0c" roughness={0.52} />
+        </mesh>
+        {[-1, 1].map((side) => (
+          <mesh key={`rear-endplate-${side}`} position={[side * 0.52, 0.17, 0.94]}>
+            <boxGeometry args={[0.045, 0.32, 0.24]} />
+            <meshStandardMaterial color={markerColor} roughness={0.42} metalness={0.16} />
+          </mesh>
+        ))}
+
+        {[
+          [-0.53, -0.49],
+          [0.53, -0.49],
+          [-0.53, 0.58],
+          [0.53, 0.58],
+        ].map(([x, z]) => (
+          <mesh castShadow key={`wheel-${x}-${z}`} position={[x, -0.035, z]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.185, 0.185, 0.17, 14]} />
+            <meshStandardMaterial color="#030405" roughness={0.72} metalness={0.08} />
+          </mesh>
+        ))}
+
+        {showDetails ? (
+          <>
+            <mesh position={[0, 0.19, -0.03]}>
+              <sphereGeometry args={[0.115, 12, 8]} />
+              <meshStandardMaterial color="#f2d14d" roughness={0.35} metalness={0.16} />
+            </mesh>
+            <mesh position={[0, 0.31, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.205, 0.032, 8, 18, Math.PI * 1.55]} />
+              <meshStandardMaterial color="#d7dce0" roughness={0.32} metalness={0.3} />
+            </mesh>
+            <mesh position={[0, 0.235, -0.21]} rotation={[-0.18, 0, 0]}>
+              <boxGeometry args={[0.045, 0.24, 0.045]} />
+              <meshStandardMaterial color="#d7dce0" roughness={0.32} metalness={0.3} />
+            </mesh>
+            {[-1, 1].map((side) => (
+              <group key={`mirror-${side}`}>
+                <mesh position={[side * 0.34, 0.2, -0.2]} rotation={[0, side * 0.2, 0]}>
+                  <boxGeometry args={[0.13, 0.065, 0.08]} />
+                  <meshStandardMaterial color={markerColor} roughness={0.38} metalness={0.2} />
+                </mesh>
+                <mesh position={[side * 0.265, 0.15, -0.15]} rotation={[0, 0, side * 0.5]}>
+                  <boxGeometry args={[0.025, 0.16, 0.025]} />
+                  <meshStandardMaterial color="#15191c" roughness={0.46} metalness={0.22} />
+                </mesh>
+              </group>
+            ))}
+          </>
+        ) : null}
+        <mesh position={[0, 0.13, 1.045]}>
+          <boxGeometry args={[0.18, 0.095, 0.055]} />
           <meshStandardMaterial
             color={warningLightOn ? '#ff1f32' : '#2c080c'}
             emissive={warningLightOn ? '#ff1f32' : '#000000'}
             emissiveIntensity={warningLightOn ? 3.2 : 0}
           />
         </mesh>
-        {showDetails
-          ? [
-              [-0.52, -0.48],
-              [0.52, -0.48],
-              [-0.52, 0.58],
-              [0.52, 0.58],
-            ].map(([x, z]) => (
-              <mesh key={`${x}-${z}`} position={[x, -0.04, z]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.17, 0.17, 0.16, 14]} />
-                <meshStandardMaterial color="#050607" roughness={0.55} />
-              </mesh>
-            ))
-          : null}
       </group>
       {isSelected ? (
         <mesh position={[0, -0.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1049,7 +1107,10 @@ function SceneContents({
             isSelected={car.driverId === selectedDriverId}
             key={car.driverId}
             onSelectDriver={onSelectDriver}
-            showDetails={cameraMode !== 'overview' || car.driverId === selectedDriverId}
+            showDetails={
+              car.driverId === selectedDriverId ||
+              (cameraMode === 'orbit' && car.position <= 6)
+            }
             snapshotElapsedSeconds={snapshot.elapsedSeconds}
             track={config.track}
           />

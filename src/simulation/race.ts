@@ -48,6 +48,7 @@ import {
 } from './sessionRules'
 import { decidePitStop, pitStopLossSeconds } from './strategy'
 import { calculateCarTelemetry } from './telemetry'
+import { updateOvertakeEligibilityAfterTravel } from './activeAero'
 import { tireDeltaSeconds } from './tires'
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
@@ -167,6 +168,8 @@ export function reformFieldForStandingRestart(
       gear: 1,
       activeAeroMode: 'corner',
       overtakeStatus: 'disabled',
+      overtakeEligibility: null,
+      ersPowerKw: 0,
     }
   })
 }
@@ -211,6 +214,27 @@ const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 function progressBetween(start: number, end: number, amount: number) {
   const span = (end + 1 - start) % 1
   return (start + span * clamp01(amount)) % 1
+}
+
+function postSafetyCarControlLineTargets(cars: CarSnapshot[]) {
+  return Object.fromEntries(
+    cars
+      .filter((car) => car.status === 'running')
+      .map((car) => [car.driverId, Math.floor(car.totalDistance) + 1]),
+  )
+}
+
+function fieldHasCrossedControlLineTargets(
+  cars: CarSnapshot[],
+  targets: Record<string, number>,
+) {
+  const carsByDriver = new Map(cars.map((car) => [car.driverId, car]))
+
+  return Object.entries(targets).every(([driverId, target]) => {
+    const car = carsByDriver.get(driverId)
+
+    return !car || car.status !== 'running' || car.totalDistance >= target
+  })
 }
 
 type DeferredBattleEffect = {
@@ -445,6 +469,7 @@ function telemetryForTimedRunPhase<T extends {
   activeAeroMode: CarSnapshot['activeAeroMode']
   ersBatteryPercent: number
   ersMode: CarSnapshot['ersMode']
+  ersPowerKw: number
   overtakeStatus: CarSnapshot['overtakeStatus']
   rpm: number
   speedKph: number
@@ -464,6 +489,7 @@ function telemetryForTimedRunPhase<T extends {
     activeAeroMode: 'corner',
     ersBatteryPercent: Math.min(100, telemetry.ersBatteryPercent + 2),
     ersMode: 'harvest',
+    ersPowerKw: 0,
     overtakeStatus: 'disabled',
     rpm: Math.round(telemetry.rpm * scale),
     speedKph: Math.round(telemetry.speedKph * scale),
@@ -1004,9 +1030,11 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       gear: 1,
       activeAeroMode: 'corner',
       overtakeStatus: 'disabled',
+      overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
       energyHarvestedThisLapMj: 0,
       ersMode: 'balanced',
+      ersPowerKw: 0,
       ersBatteryPercent: 82,
       tireTemperatureC: 86,
       tireWearPercent: 0,
@@ -1094,6 +1122,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     overtakeEnableAtLeaderDistance: isRaceDistance
       ? 1 + initialOvertakeDetectionProgress
       : null,
+    overtakeEnableTargetsByDriver: null,
     cars: rankCars(cars, config),
     eventMessage: isRaceDistance
       ? `Formation lap begins. ${formationLapsPlanned > 1 ? 'An additional formation lap is scheduled after an aborted start.' : 'Cars will complete a full circuit before returning to the grid.'}`
@@ -1347,7 +1376,9 @@ export function advanceRace(
           gear: 1,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
+          overtakeEligibility: null,
           ersMode: 'harvest' as const,
+          ersPowerKw: 0,
           overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
           energyHarvestedThisLapMj: 0,
           lapStartedAtSeconds: null,
@@ -1482,6 +1513,8 @@ export function advanceRace(
   let restartProcedureUntilSeconds = snapshot.restartProcedureUntilSeconds
   let overtakeEnabled = snapshot.overtakeEnabled
   let overtakeEnableAtLeaderDistance = snapshot.overtakeEnableAtLeaderDistance
+  let overtakeEnableTargetsByDriver =
+    snapshot.overtakeEnableTargetsByDriver
   let redFlagRestart = false
 
   if (phase && elapsedSeconds >= phase.endSeconds) {
@@ -1501,12 +1534,19 @@ export function advanceRace(
           : Math.max(35, baseLapTime * 1.18))
     }
     if (phase.flag !== 'yellow') {
-      const detectionProgress =
-        config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
-      const leaderDistance = snapshot.cars[0]?.totalDistance ?? 1
       overtakeEnabled = false
-      overtakeEnableAtLeaderDistance =
-        Math.floor(leaderDistance) + 1 + detectionProgress
+      if (phase.flag === 'sc') {
+        overtakeEnableAtLeaderDistance = null
+        overtakeEnableTargetsByDriver =
+          postSafetyCarControlLineTargets(snapshot.cars)
+      } else {
+        const detectionProgress =
+          config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
+        const leaderDistance = snapshot.cars[0]?.totalDistance ?? 1
+        overtakeEnableAtLeaderDistance =
+          Math.floor(leaderDistance) + 1 + detectionProgress
+        overtakeEnableTargetsByDriver = null
+      }
     }
     phase = null
   }
@@ -1525,6 +1565,7 @@ export function advanceRace(
       config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
     overtakeEnableAtLeaderDistance =
       Math.floor(snapshot.cars[0]?.totalDistance ?? 1) + 1 + detectionProgress
+    overtakeEnableTargetsByDriver = null
     newEvents.push(
       makeEvent(
         `red-${completedProcedure}-restart-complete-${Math.floor(elapsedSeconds)}`,
@@ -1557,15 +1598,25 @@ export function advanceRace(
   if (restartUntilSeconds !== null && elapsedSeconds >= restartUntilSeconds) {
     restartUntilSeconds = null
   }
-  if (
-    !phase &&
-    snapshot.restartProcedure === 'none' &&
-    !overtakeEnabled &&
+  const leaderHasReachedOvertakeEnableLine =
     overtakeEnableAtLeaderDistance !== null &&
     (snapshot.cars[0]?.totalDistance ?? 0) >= overtakeEnableAtLeaderDistance
+  const fieldHasReachedOvertakeEnableLine =
+    overtakeEnableTargetsByDriver !== null &&
+    fieldHasCrossedControlLineTargets(
+      snapshot.cars,
+      overtakeEnableTargetsByDriver,
+    )
+
+  if (
+    !phase &&
+    restartProcedure === 'none' &&
+    !overtakeEnabled &&
+    (leaderHasReachedOvertakeEnableLine || fieldHasReachedOvertakeEnableLine)
   ) {
     overtakeEnabled = true
     overtakeEnableAtLeaderDistance = null
+    overtakeEnableTargetsByDriver = null
     newEvents.push(
       makeEvent(
         `overtake-enabled-${Math.floor(elapsedSeconds)}`,
@@ -1717,7 +1768,9 @@ export function advanceRace(
           gear: 1,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
+          overtakeEligibility: null,
           ersMode: 'harvest' as const,
+          ersPowerKw: 0,
           pitPhase: 'box' as const,
           pitLaneProgress: pitBox,
           pitStartedAtSeconds: null,
@@ -1791,7 +1844,9 @@ export function advanceRace(
           : [...car.compoundsUsed, compound],
         activeAeroMode: 'corner' as const,
         overtakeStatus: 'disabled' as const,
+        overtakeEligibility: null,
         ersMode: 'harvest' as const,
+        ersPowerKw: 0,
         pitPhase: 'box' as const,
         pitLaneProgress: pitBox,
         pitStartedAtSeconds: null,
@@ -2045,7 +2100,9 @@ export function advanceRace(
           damage: servesProceduralPenalty ? car.damage : 0,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
+          overtakeEligibility: null,
           ersMode: 'harvest' as const,
+          ersPowerKw: 0,
           ersBatteryPercent: Math.min(100, car.ersBatteryPercent + 10),
           speedKph: 80,
           throttlePercent: 18,
@@ -2101,7 +2158,9 @@ export function advanceRace(
         gear: 1,
         activeAeroMode: 'corner' as const,
         overtakeStatus: 'disabled' as const,
+        overtakeEligibility: null,
         ersMode: 'harvest' as const,
+        ersPowerKw: 0,
         ersBatteryPercent: Math.min(
           100,
           car.ersBatteryPercent + deltaSeconds * 0.6,
@@ -2163,6 +2222,9 @@ export function advanceRace(
         )) *
         timedRun.paceFactor,
     )
+    const raceControlOvertakeAvailable =
+      !isRaceDistance ||
+      (overtakeEnabled && restartProcedure === 'none')
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car,
       deltaSeconds,
@@ -2170,11 +2232,7 @@ export function advanceRace(
       elapsedSeconds,
       paceScale: config.track.baseLapTime / baselineEffectiveLapTime,
       phase: controlPhase,
-      raceControlOvertakeEnabled:
-        !isRaceDistance ||
-        (overtakeEnabled &&
-          restartUntilSeconds === null &&
-          restartProcedure === 'none'),
+      raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       track: config.track,
@@ -2378,6 +2436,17 @@ export function advanceRace(
       car.totalDistance,
       totalDistance - brakeFadeSeconds / baseLapTime,
     )
+    const overtakeEligibility = isRaceDistance
+      ? updateOvertakeEligibilityAfterTravel({
+          car,
+          nextTotalDistance: totalDistance,
+          phase: controlPhase,
+          previousTotalDistance: car.totalDistance,
+          raceControlEnabled: raceControlOvertakeAvailable,
+          track: config.track,
+          trackGrip: localTrackGrip,
+        })
+      : null
     const distanceDelta = Math.max(0, totalDistance - car.totalDistance)
     const components = advanceComponentWear({
       components: car.components,
@@ -2427,6 +2496,7 @@ export function advanceRace(
       battlePhaseUntilSeconds,
       battleDeltaSecondsRemaining,
       ...displayTelemetry,
+      overtakeEligibility,
       timedRunPhase: timedRun.phase,
       racePaceMode,
       tireWearPercent,
@@ -2576,6 +2646,8 @@ export function advanceRace(
                 status: 'retired',
                 activeAeroMode: 'corner',
                 overtakeStatus: 'disabled',
+                overtakeEligibility: null,
+                ersPowerKw: 0,
                 blueFlag: false,
                 pitPhase: 'none',
                 pitLaneProgress: null,
@@ -2852,7 +2924,9 @@ export function advanceRace(
             gear: 1,
             activeAeroMode: 'corner',
             overtakeStatus: 'disabled',
+            overtakeEligibility: null,
             ersMode: 'harvest',
+            ersPowerKw: 0,
             pitPhase: 'box',
             pitLaneProgress: pitBox,
             pitStartedAtSeconds: null,
@@ -3023,6 +3097,8 @@ export function advanceRace(
               status: 'retired',
               activeAeroMode: 'corner',
               overtakeStatus: 'disabled',
+              overtakeEligibility: null,
+              ersPowerKw: 0,
               blueFlag: false,
               pitPhase: 'none',
               pitLaneProgress: null,
@@ -3082,6 +3158,8 @@ export function advanceRace(
           status: 'retired',
           activeAeroMode: 'corner',
           overtakeStatus: 'disabled',
+          overtakeEligibility: null,
+          ersPowerKw: 0,
           blueFlag: false,
           pitPhase: 'none',
           pitLaneProgress: null,
@@ -3532,6 +3610,8 @@ export function advanceRace(
         pendingTire: null,
         activeAeroMode: 'corner' as const,
         overtakeStatus: 'disabled' as const,
+        overtakeEligibility: null,
+        ersPowerKw: 0,
         blueFlag: false,
         retiredAtSeconds: elapsedSeconds,
         retiredReason: effect.reason,
@@ -3596,6 +3676,7 @@ export function advanceRace(
       overtakeEnabled = false
       overtakeEnableAtLeaderDistance =
         Math.floor(leaderDistance) + 1 + detectionProgress
+      overtakeEnableTargetsByDriver = null
     }
     newEvents.push(
       makeEvent(phase.id, 'flag', elapsedSeconds, phase.startMessage),
@@ -3779,6 +3860,7 @@ export function advanceRace(
     restartProcedureUntilSeconds,
     overtakeEnabled,
     overtakeEnableAtLeaderDistance,
+    overtakeEnableTargetsByDriver,
     cars: classifiedCars,
     eventMessage: '',
     flag: timedSessionState.suspended

@@ -145,6 +145,14 @@ export type OvertakeControlLine = {
   source: OperationalDataSource
 }
 
+/** Gap sampled at a detection line for one subsequent Overtake activation. */
+export type OvertakeEligibility = {
+  activationLap: number
+  controlLineIndex: number
+  detectedGapSeconds: number
+  eligible: boolean
+}
+
 export type TireNomination = {
   H: DryCompoundFamily
   M: DryCompoundFamily
@@ -426,11 +434,15 @@ export type CarSnapshot = {
   activeAeroMode: ActiveAeroMode
   /** 2026 electrical Overtake availability, separate from active aero. */
   overtakeStatus: OvertakeStatus
+  /** Detection-line result held until the corresponding activation zone. */
+  overtakeEligibility: OvertakeEligibility | null
   /** Additional electrical energy available to 2026 Overtake this lap. */
   overtakeEnergyRemainingMj: number
   /** ERS-K recharge accumulated on the current lap for regulation limits. */
   energyHarvestedThisLapMj: number
   ersMode: ErsMode
+  /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
+  ersPowerKw: number
   ersBatteryPercent: number
   tireTemperatureC: number
   /** Accumulated stint wear independent from integer lap age. */
@@ -515,6 +527,8 @@ export type RaceSnapshot = {
   restartProcedureUntilSeconds: number | null
   overtakeEnabled: boolean
   overtakeEnableAtLeaderDistance: number | null
+  /** Per-car control-line targets used for post-Safety-Car re-enablement. */
+  overtakeEnableTargetsByDriver: Record<string, number> | null
   cars: CarSnapshot[]
   eventMessage: string
   flag: FlagState

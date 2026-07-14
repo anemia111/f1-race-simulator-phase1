@@ -101,6 +101,7 @@ import type {
   DriverTunableStat,
   GridSource,
   RaceConfig,
+  RaceSnapshot,
   SpeedMultiplier,
   Team,
   TireCompound,
@@ -706,6 +707,32 @@ const intervalLabel = (car: CarSnapshot) => {
   }
 
   return car.gapToAheadLabel
+}
+
+const overtakeControlLabel = (snapshot: RaceSnapshot) => {
+  if (snapshot.overtakeEnabled) {
+    return 'ENABLED'
+  }
+
+  const targets = snapshot.overtakeEnableTargetsByDriver
+
+  if (targets) {
+    const carsByDriver = new Map(
+      snapshot.cars.map((car) => [car.driverId, car]),
+    )
+    const entries = Object.entries(targets)
+    const crossed = entries.filter(([driverId, target]) => {
+      const car = carsByDriver.get(driverId)
+
+      return !car || car.status !== 'running' || car.totalDistance >= target
+    }).length
+
+    return `WAIT FIELD ${crossed}/${entries.length}`
+  }
+
+  return snapshot.overtakeEnableAtLeaderDistance === null
+    ? 'DISABLED'
+    : 'WAIT LEADER'
 }
 
 const terminalStatusLabel = (car: CarSnapshot) => {
@@ -2157,11 +2184,7 @@ export default function App() {
           </strong>
           <span>Overtake</span>
           <strong className={snapshot.overtakeEnabled ? 'flag-clear' : 'flag-yellow'}>
-            {snapshot.overtakeEnabled
-              ? 'ENABLED'
-              : snapshot.overtakeEnableAtLeaderDistance === null
-                ? 'DISABLED'
-                : `WAIT ${snapshot.overtakeEnableAtLeaderDistance.toFixed(2)}`}
+            {overtakeControlLabel(snapshot)}
           </strong>
           <span>Timed yellow</span>
           <strong className={snapshot.timedYellowUntilSeconds === null ? undefined : 'flag-yellow'}>
@@ -3136,7 +3159,7 @@ export default function App() {
                       <span className="timing-number">{tireTemperatureC}C</span>
                       <span
                         className="battery-cell"
-                        title={`Battery ${batteryPercent}% / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / harvested ${car.energyHarvestedThisLapMj.toFixed(2)} of 7.00 MJ this lap`}
+                        title={`Battery ${batteryPercent}% / estimated MGU-K deployment ${car.ersPowerKw} kW / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / harvested ${car.energyHarvestedThisLapMj.toFixed(2)} of 7.00 MJ this lap`}
                       >
                         <span>{batteryPercent}%</span>
                         <span className="battery-meter" aria-hidden="true">

@@ -11,7 +11,7 @@ import type {
 import {
   activeAeroModeFor,
   activeAeroSpeedGainKph,
-  overtakePowerGainKph,
+  ersDeploymentPowerKw,
   overtakeStatusFor,
 } from './activeAero'
 import { hashChance } from './random'
@@ -58,6 +58,7 @@ type CalculatedTelemetry = {
   brakePercent: number
   ersBatteryPercent: number
   ersMode: ErsMode
+  ersPowerKw: number
   gear: number
   performanceDeltaSeconds: number
   rpm: number
@@ -135,7 +136,7 @@ export function calculateCarTelemetry(options: {
   const projectedBattery = clamp(
     car.ersBatteryPercent +
       (brakePercent / 100) * deltaSeconds * 1.4 -
-      (straightness > 0.8 ? deltaSeconds * 0.45 : 0),
+      (straightness > 0.8 ? deltaSeconds * 0.2 : 0),
     5,
     100,
   )
@@ -157,9 +158,22 @@ export function calculateCarTelemetry(options: {
     overtakeStatus,
     straightness,
   })
+  const ersPowerKw = ersDeploymentPowerKw({
+    ersMode,
+    overtakeStatus,
+    speedKph: car.speedKph,
+    straightness,
+  })
+  const standardErsPowerKw = ersDeploymentPowerKw({
+    ersMode,
+    overtakeStatus: 'available',
+    speedKph: car.speedKph,
+    straightness,
+  })
+  const overtakeBoostPowerKw = Math.max(0, ersPowerKw - standardErsPowerKw)
   const ersDelta =
     ersMode === 'deploy'
-      ? -deltaSeconds * (overtakeStatus === 'active' ? 1.75 : 1.1)
+      ? -deltaSeconds * (0.45 + (ersPowerKw / 350) * 1.05)
       : ersMode === 'harvest'
         ? deltaSeconds * 0.85
         : -deltaSeconds * 0.18
@@ -170,7 +184,10 @@ export function calculateCarTelemetry(options: {
   )
   const overtakeEnergyUsedMj =
     overtakeStatus === 'active'
-      ? Math.min(car.overtakeEnergyRemainingMj, deltaSeconds * 0.18)
+      ? Math.min(
+          car.overtakeEnergyRemainingMj,
+          (deltaSeconds * overtakeBoostPowerKw) / 1000,
+        )
       : 0
   const overtakeEnergyRemainingMj = Math.max(
     0,
@@ -178,12 +195,11 @@ export function calculateCarTelemetry(options: {
   )
   const ersBatteryPercent = Math.round(clamp(projectedBattery + ersDelta, 5, 100))
   const aeroGain = activeAeroSpeedGainKph(activeAeroMode)
-  const overtakeGain = overtakePowerGainKph(overtakeStatus, ersBatteryPercent)
-  const ersGain = ersMode === 'deploy' ? 14 : ersMode === 'harvest' ? -7 : 0
+  const ersGain =
+    ersMode === 'deploy' ? (ersPowerKw / 350) * 20 : ersMode === 'harvest' ? -7 : 0
   const targetSpeedKph = clamp(
     referenceSpeedKph * clamp(paceScale, 0.48, 1.12) +
       aeroGain +
-      overtakeGain +
       ersGain +
       seedPulse,
     phase?.flag === 'red' ? 0 : car.status === 'pit' ? 78 : 55,
@@ -216,8 +232,12 @@ export function calculateCarTelemetry(options: {
       : activeAeroMode === 'partial-straight'
         ? -0.07
         : 0) +
-    (overtakeStatus === 'active' ? -0.28 : 0) +
-    (ersMode === 'deploy' ? -0.22 : ersMode === 'harvest' ? 0.14 : 0) +
+    (overtakeBoostPowerKw / 150) * -0.18 +
+    (ersMode === 'deploy'
+      ? (ersPowerKw / 350) * -0.22
+      : ersMode === 'harvest'
+        ? 0.14
+        : 0) +
     (weather === 'heavy-rain' && activeAeroMode === 'straight' ? 0.2 : 0)
 
   return {
@@ -225,6 +245,7 @@ export function calculateCarTelemetry(options: {
     brakePercent,
     ersBatteryPercent,
     ersMode,
+    ersPowerKw,
     gear,
     performanceDeltaSeconds,
     rpm,

@@ -43,6 +43,18 @@ npm run dev -- --host 127.0.0.1
 
 Open `http://127.0.0.1:5173/`.
 
+## Permanent Web App
+
+The permanent production app is published at `https://anemia111.github.io/`
+from a separate public deployment repository. The source repository remains
+private. Run `scripts/publish-web-app.ps1` to verify the source, build the PWA,
+sync only generated assets, and push a new deployment.
+
+After one complete online load, the simulator shell can reopen from its cache
+without a temporary Vite server. OpenF1 network responses are not pre-cached,
+so LIVE/HIST data still requires a connection and is never silently presented
+as fresh while offline.
+
 ## Verify
 
 ```bash

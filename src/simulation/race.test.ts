@@ -460,6 +460,69 @@ describe('start procedure and persisted weekend', () => {
     expect(snapshot.restartProcedure).toBe('none')
   })
 
+  it('waits for the on-track field to cross the control line after a Safety Car', () => {
+    const config = makeConfig('sc-overtake-reenable')
+    let snapshot = runThroughStart(config)
+    const endSeconds = snapshot.elapsedSeconds + 1
+
+    snapshot = advanceRace(
+      {
+        ...snapshot,
+        flag: 'sc',
+        flagLabel: 'SC',
+        flagPhase: {
+          endMessage: 'Safety Car in.',
+          endSeconds,
+          flag: 'sc',
+          id: 'forced-sc',
+          lappedCarsMayOvertakeAtSeconds: null,
+          sector: 0,
+          startMessage: 'Safety Car deployed.',
+          startSeconds: snapshot.elapsedSeconds,
+        },
+        overtakeEnabled: false,
+      },
+      2,
+      config,
+    )
+
+    expect(snapshot.overtakeEnabled).toBe(false)
+    expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
+    expect(
+      Object.keys(snapshot.overtakeEnableTargetsByDriver ?? {}),
+    ).not.toHaveLength(0)
+
+    const targets = snapshot.overtakeEnableTargetsByDriver!
+    snapshot = {
+      ...snapshot,
+      flag: 'clear',
+      flagLabel: 'CLEAR',
+      flagPhase: null,
+      cars: snapshot.cars.map((car) => {
+        const target = targets[car.driverId]
+
+        if (target === undefined) {
+          return car
+        }
+
+        const totalDistance = target + 0.002
+
+        return {
+          ...car,
+          lap: Math.floor(totalDistance),
+          processedBattleSegment: Number.MAX_SAFE_INTEGER,
+          processedLap: Math.floor(totalDistance),
+          progress: totalDistance - Math.floor(totalDistance),
+          totalDistance,
+        }
+      }),
+    }
+    snapshot = advanceRace(snapshot, 0.01, config)
+
+    expect(snapshot.overtakeEnabled).toBe(true)
+    expect(snapshot.overtakeEnableTargetsByDriver).toBeNull()
+  })
+
   it('persists practice setup and qualifying grid into the race weekend', () => {
     const config = makeConfig('weekend-persist')
     const practice = runPracticeSession(config, 'fp1')

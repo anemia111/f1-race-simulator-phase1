@@ -252,6 +252,8 @@ export function RaceInsightsPanel({
           <span>Active aero</span><strong>{car.activeAeroMode}</strong>
           <span>Overtake</span><strong>{car.overtakeStatus}</strong>
           <span>Battery</span><strong>{Math.round(car.ersBatteryPercent)}% / {car.ersMode}</strong>
+          <span>MGU-K output</span><strong>{car.ersPowerKw} kW / SIM model</strong>
+          <span>Detection result</span><strong>{car.overtakeEligibility ? `${car.overtakeEligibility.eligible ? 'IN GAP' : 'OUT OF GAP'} ${car.overtakeEligibility.detectedGapSeconds.toFixed(3)}s / Z${car.overtakeEligibility.controlLineIndex + 1}` : 'NO SAMPLE'}</strong>
           <span>Overtake energy</span><strong>{car.overtakeEnergyRemainingMj.toFixed(2)} MJ / 0.50</strong>
           <span>Harvested</span><strong>{car.energyHarvestedThisLapMj.toFixed(2)} MJ / 7.00</strong>
           <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
