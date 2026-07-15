@@ -7,6 +7,7 @@ import {
   type OpenF1RaceControl,
   type OpenF1Session,
   type OpenF1SessionResult,
+  type OpenF1Stint,
 } from './openF1'
 
 const session = (session_name: string, session_type: string): OpenF1Session => ({
@@ -81,5 +82,34 @@ describe('OpenF1 schema normalization', () => {
     )
 
     expect(message.qualifying_phase).toBe(2)
+  })
+
+  it('drops impossible stint ranges at the API boundary', () => {
+    const stints = normalizeOpenF1Endpoint<OpenF1Stint>('stints', [
+      {
+        compound: 'MEDIUM',
+        driver_number: 4,
+        lap_end: 18,
+        lap_start: 1,
+        stint_number: 1,
+        tyre_age_at_start: 2,
+      },
+      {
+        compound: 'HARD',
+        driver_number: 81,
+        lap_end: Number.MAX_SAFE_INTEGER,
+        lap_start: 1,
+        stint_number: 1,
+        tyre_age_at_start: 0,
+      },
+    ])
+
+    expect(stints).toHaveLength(1)
+    expect(stints[0]).toMatchObject({
+      driver_number: 4,
+      lap_end: 18,
+      lap_start: 1,
+      tyre_age_at_start: 2,
+    })
   })
 })

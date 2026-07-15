@@ -7,6 +7,7 @@ import {
   createSeasonState,
   rankSeasonEntries,
   recordSeasonRound,
+  seasonSessionId,
   updateSeasonGarageFromCars,
   updateSeasonGarageReplacement,
 } from './season'
@@ -40,6 +41,15 @@ describe('local season standings', () => {
       roundId: 'bahrain:race:one',
       stage: 'race',
     })).toBe(recorded)
+  })
+
+  it('uses a seed-independent championship key for each race session', () => {
+    expect(seasonSessionId('melbourne-approx', 'race')).toBe(
+      'melbourne-approx:race',
+    )
+    expect(seasonSessionId('shanghai-approx', 'sprint')).toBe(
+      'shanghai-approx:sprint',
+    )
   })
 
   it('does not award points to a retirement below 90 percent distance', () => {
@@ -145,6 +155,23 @@ describe('local season standings', () => {
     ])
   })
 
+  it('ignores impossible countback values without iterating through them', () => {
+    const ranked = rankSeasonEntries(
+      { driverA: 120, driverB: 120, driverC: Number.POSITIVE_INFINITY },
+      {
+        driverA: [Number.POSITIVE_INFINITY, -1, 2.5],
+        driverB: [1],
+        driverC: [2],
+      },
+    )
+
+    expect(ranked.map(([driverId]) => driverId)).toEqual([
+      'driverB',
+      'driverA',
+      'driverC',
+    ])
+  })
+
   it('carries component wear and pending allocation penalties between rounds', () => {
     const snapshot = createInitialRace({
       drivers: initialDrivers,
@@ -192,5 +219,22 @@ describe('local season standings', () => {
     })
 
     expect(afterRace.garage.pendingGridPenaltyByDriver).toEqual({})
+  })
+
+  it('caps corrupted carried grid penalties to the size of the field', () => {
+    const driverId = initialDrivers[0].id
+    const weekend = applySeasonGarageToWeekend(
+      createWeekendContext(initialDrivers, false, tracks[0]),
+      {
+        ...createSeasonState(),
+        garage: {
+          componentsByDriver: {},
+          pendingGridPenaltyByDriver: { [driverId]: 500 },
+        },
+      },
+      initialDrivers,
+    )
+
+    expect(weekend.gridPenaltyByDriver[driverId]).toBe(initialDrivers.length)
   })
 })

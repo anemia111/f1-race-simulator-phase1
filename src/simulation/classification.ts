@@ -80,7 +80,10 @@ export function buildRaceClassification(
 export function fastestLapFromClassification(entries: RaceClassificationEntry[]) {
   return entries
     .filter(
-      (entry) => entry.statusLabel === 'FIN' && entry.bestLapTimeSeconds !== null,
+      (entry) =>
+        entry.statusLabel !== 'DSQ' &&
+        entry.statusLabel !== 'DNS' &&
+        entry.bestLapTimeSeconds !== null,
     )
     .sort(
       (left, right) =>

@@ -27,12 +27,31 @@ export function normalizeCarComponents(
   components?: Partial<CarComponents> | null,
 ): CarComponents {
   const defaults = createCarComponents()
+  const finiteOr = (value: unknown, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : fallback
 
   return Object.fromEntries(
-    (Object.keys(defaults) as Array<keyof CarComponents>).map((key) => [
-      key,
-      { ...defaults[key], ...(components?.[key] ?? {}) },
-    ]),
+    (Object.keys(defaults) as Array<keyof CarComponents>).map((key) => {
+      const fallback = defaults[key]
+      const candidate = components?.[key]
+
+      return [
+        key,
+        {
+          allocationLimit: fallback.allocationLimit,
+          allocationUsed: clamp(
+            Math.floor(finiteOr(candidate?.allocationUsed, fallback.allocationUsed)),
+            1,
+            99,
+          ),
+          conditionPercent: clamp(
+            finiteOr(candidate?.conditionPercent, fallback.conditionPercent),
+            0,
+            100,
+          ),
+        },
+      ]
+    }),
   ) as CarComponents
 }
 

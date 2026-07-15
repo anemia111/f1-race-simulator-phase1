@@ -29,6 +29,24 @@ export type SeasonGarageState = {
   pendingGridPenaltyByDriver: Record<string, number>
 }
 
+export function seasonSessionId(
+  trackId: string,
+  stage: Extract<WeekendStage, 'race' | 'sprint'>,
+) {
+  return `${trackId}:${stage}`
+}
+
+export function canonicalSeasonSessionId(value: string) {
+  const legacy = /^([^:]+):(race|sprint)(?::.+)?$/.exec(value)
+
+  return legacy
+    ? seasonSessionId(
+        legacy[1],
+        legacy[2] as Extract<WeekendStage, 'race' | 'sprint'>,
+      )
+    : value
+}
+
 export function createSeasonState(drivers: Driver[] = []): SeasonState {
   return {
     completedRounds: [],
@@ -62,7 +80,10 @@ export function applySeasonGarageToWeekend(
     )
     const pendingPenalty = Math.max(
       0,
-      season.garage.pendingGridPenaltyByDriver[driver.id] ?? 0,
+      Math.min(
+        drivers.length,
+        season.garage.pendingGridPenaltyByDriver[driver.id] ?? 0,
+      ),
     )
 
     if (pendingPenalty > 0) {
@@ -131,15 +152,24 @@ export function rankSeasonEntries(
   raceResults: Record<string, number[]>,
 ): Array<[string, number]> {
   return Object.entries(points).sort((left, right) => {
-    if (right[1] !== left[1]) {
-      return right[1] - left[1]
+    const leftPoints = Number.isFinite(left[1]) ? left[1] : 0
+    const rightPoints = Number.isFinite(right[1]) ? right[1] : 0
+
+    if (rightPoints !== leftPoints) {
+      return rightPoints - leftPoints
     }
 
     const leftResults = raceResults[left[0]] ?? []
     const rightResults = raceResults[right[0]] ?? []
-    const maximumPosition = Math.max(24, ...leftResults, ...rightResults)
+    const positions = Array.from(
+      new Set(
+        [...leftResults, ...rightResults].filter(
+          (position) => Number.isSafeInteger(position) && position >= 1,
+        ),
+      ),
+    ).sort((leftPosition, rightPosition) => leftPosition - rightPosition)
 
-    for (let position = 1; position <= maximumPosition; position += 1) {
+    for (const position of positions) {
       const leftCount = leftResults.filter((result) => result === position).length
       const rightCount = rightResults.filter((result) => result === position).length
 

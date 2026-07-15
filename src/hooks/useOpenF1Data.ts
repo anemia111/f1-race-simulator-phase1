@@ -8,31 +8,122 @@ type OpenF1DataState =
   | { status: 'ready'; data: OpenF1Bundle; error: null }
   | { status: 'error'; data: OpenF1Bundle | null; error: string }
 
-type CachedBundle = { bundle: OpenF1Bundle; fetchedAt: number }
+export type CachedBundle = { bundle: OpenF1Bundle; fetchedAt: number }
 
 const bundleCache = new Map<string, CachedBundle>()
 const OPENF1_LIVE_REFRESH_MS = 45_000
 const OPENF1_IDLE_REFRESH_MS = 600_000
 const OPENF1_LIVE_WINDOW_MARGIN_MS = 45 * 60_000
 const OPENF1_RETRY_MS = 30_000
+const weekendStages = new Set<WeekendStage>([
+  'fp1',
+  'fp2',
+  'fp3',
+  'sprintQualifying',
+  'sprint',
+  'qualifying',
+  'race',
+])
 
 function storageKey(cacheKey: string) {
   return `f1-sim-openf1:${cacheKey}`
 }
 
-function restoreBundle(cacheKey: string): CachedBundle | null {
-  try {
-    const raw = window.sessionStorage.getItem(storageKey(cacheKey))
+const requiredBundleArrays: Array<keyof OpenF1Bundle> = [
+  'carData',
+  'championshipDrivers',
+  'championshipTeams',
+  'drivers',
+  'endpointStatuses',
+  'intervals',
+  'laps',
+  'location',
+  'miniSectorDrivers',
+  'miniSectorLaps',
+  'overtakes',
+  'pit',
+  'positions',
+  'raceControl',
+  'sessionResult',
+  'sessions',
+  'startingGrid',
+  'stints',
+  'teamRadio',
+  'weather',
+]
 
-    if (!raw) {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+export function parseCachedOpenF1Bundle(raw: string | null): CachedBundle | null {
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown
+
+    if (
+      !isRecord(parsed) ||
+      typeof parsed.fetchedAt !== 'number' ||
+      !Number.isFinite(parsed.fetchedAt) ||
+      parsed.fetchedAt < 0 ||
+      !isRecord(parsed.bundle)
+    ) {
       return null
     }
 
-    const parsed = JSON.parse(raw) as Partial<CachedBundle>
+    const bundle = parsed.bundle
+    const nullableObjects = [
+      bundle.meeting,
+      bundle.miniSectorSession,
+      bundle.raceSession,
+      bundle.selectedSession,
+    ]
+    const summary = bundle.summary
+    const validSummary =
+      isRecord(summary) &&
+      typeof summary.miniSectorSamples === 'number' &&
+      Number.isFinite(summary.miniSectorSamples) &&
+      summary.miniSectorSamples >= 0 &&
+      typeof summary.telemetrySamples === 'number' &&
+      Number.isFinite(summary.telemetrySamples) &&
+      summary.telemetrySamples >= 0 &&
+      [
+        summary.bestLap,
+        summary.fastestPitStop,
+        summary.latestRaceControl,
+        summary.latestWeather,
+        summary.maxSpeed,
+      ].every((value) => value === null || isRecord(value))
+    const validEnvelope =
+      (bundle.authMode === 'public' || bundle.authMode === 'bearer') &&
+      typeof bundle.year === 'number' &&
+      Number.isSafeInteger(bundle.year) &&
+      bundle.year >= 2023 &&
+      bundle.year <= 2100 &&
+      typeof bundle.requestedStage === 'string' &&
+      weekendStages.has(bundle.requestedStage as WeekendStage) &&
+      validSummary &&
+      nullableObjects.every((value) => value === null || isRecord(value)) &&
+      requiredBundleArrays.every(
+        (key) =>
+          Array.isArray(bundle[key]) && bundle[key].every((row) => isRecord(row)),
+      )
 
-    return parsed.bundle && typeof parsed.fetchedAt === 'number'
-      ? { bundle: parsed.bundle, fetchedAt: parsed.fetchedAt }
+    return validEnvelope
+      ? { bundle: bundle as unknown as OpenF1Bundle, fetchedAt: parsed.fetchedAt }
       : null
+  } catch {
+    return null
+  }
+}
+
+function restoreBundle(cacheKey: string): CachedBundle | null {
+  try {
+    return parseCachedOpenF1Bundle(
+      window.sessionStorage.getItem(storageKey(cacheKey)),
+    )
   } catch {
     return null
   }

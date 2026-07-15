@@ -33,6 +33,8 @@ const clamp = (value: number, min: number, max: number) =>
 
 const FUEL_GAIN_PER_LAP_PRIOR_SECONDS = 0.04
 const MIN_TIRE_OFFSET_SAMPLES = 6
+const MAX_OBSERVED_RACE_LAPS = 120
+const MAX_OBSERVED_STINTS = 20
 
 const normalize = (value: string) =>
   value
@@ -76,6 +78,32 @@ function openF1Compound(value: string | null): TireCompound | null {
   if (normalized.includes('INTER')) return 'I'
   if (normalized.includes('WET')) return 'W'
   return null
+}
+
+function observedStintRange(stint: OpenF1Bundle['stints'][number]) {
+  if (
+    !Number.isSafeInteger(stint.driver_number) ||
+    stint.driver_number <= 0 ||
+    !Number.isSafeInteger(stint.lap_start) ||
+    !Number.isSafeInteger(stint.lap_end) ||
+    stint.lap_start < 1 ||
+    stint.lap_end < stint.lap_start ||
+    stint.lap_end > MAX_OBSERVED_RACE_LAPS
+  ) {
+    return null
+  }
+
+  return {
+    end: stint.lap_end,
+    length: stint.lap_end - stint.lap_start + 1,
+    start: stint.lap_start,
+    tireAgeAtStart:
+      Number.isFinite(stint.tyre_age_at_start) &&
+      stint.tyre_age_at_start >= 0 &&
+      stint.tyre_age_at_start <= MAX_OBSERVED_RACE_LAPS
+        ? stint.tyre_age_at_start
+        : 0,
+  }
 }
 
 function robustSlope(samples: Array<{ x: number; y: number }>) {
@@ -127,8 +155,14 @@ export function buildOpenF1TrackCalibration(
   const validLaps = bundle.laps.filter(
     (lap) =>
       lap.lap_duration !== null &&
+      Number.isFinite(lap.lap_duration) &&
       lap.lap_duration > 35 &&
       lap.lap_duration < 240 &&
+      Number.isSafeInteger(lap.driver_number) &&
+      lap.driver_number > 0 &&
+      Number.isSafeInteger(lap.lap_number) &&
+      lap.lap_number >= 1 &&
+      lap.lap_number <= MAX_OBSERVED_RACE_LAPS &&
       !lap.is_pit_out_lap,
   )
   const sectorRatios = validLaps.flatMap((lap) => {
@@ -170,19 +204,29 @@ export function buildOpenF1TrackCalibration(
     : null
   const pitLaneTransitSeconds = median(
     bundle.pit.flatMap((pit) => {
-      if (pit.lane_duration === null || pit.lane_duration <= 0) {
+      if (
+        pit.lane_duration === null ||
+        !Number.isFinite(pit.lane_duration) ||
+        pit.lane_duration <= 0
+      ) {
         return []
       }
 
       return [
-        Math.max(1, pit.lane_duration - Math.max(0, pit.stop_duration ?? 0)),
+        Math.max(
+          1,
+          pit.lane_duration -
+            (pit.stop_duration !== null && Number.isFinite(pit.stop_duration)
+              ? Math.max(0, pit.stop_duration)
+              : 0),
+        ),
       ]
     }),
   )
   const maxSpeedKph = percentile(
     bundle.carData
       .map((sample) => sample.speed)
-      .filter((speed) => speed > 80 && speed < 390),
+      .filter((speed) => Number.isFinite(speed) && speed > 80 && speed < 390),
     0.99,
   )
   const lapsByDriverAndNumber = new Map(
@@ -211,14 +255,15 @@ export function buildOpenF1TrackCalibration(
 
   for (const stint of bundle.stints) {
     const compound = openF1Compound(stint.compound)
+    const range = observedStintRange(stint)
 
-    if (!compound) {
+    if (!compound || !range) {
       continue
     }
 
     const samples: TireLapSample[] = []
 
-    for (let lapNumber = stint.lap_start; lapNumber <= stint.lap_end; lapNumber += 1) {
+    for (let lapNumber = range.start; lapNumber <= range.end; lapNumber += 1) {
       const lap = lapsByDriverAndNumber.get(`${stint.driver_number}:${lapNumber}`)
 
       if (!lap?.lap_duration) {
@@ -238,8 +283,7 @@ export function buildOpenF1TrackCalibration(
         driverNumber: stint.driver_number,
         lapNumber,
         tireAge:
-          Math.max(0, stint.tyre_age_at_start) +
-          Math.max(0, lapNumber - stint.lap_start),
+          range.tireAgeAtStart + Math.max(0, lapNumber - range.start),
       }
       samples.push(sample)
       tireLapSamples.push(sample)
@@ -271,20 +315,31 @@ export function buildOpenF1TrackCalibration(
 
   for (const stint of bundle.stints) {
     const compound = openF1Compound(stint.compound)
-    const stintLaps = stint.lap_end - stint.lap_start + 1
+    const range = observedStintRange(stint)
+
+    if (!range) {
+      continue
+    }
+
+    const stintNumber =
+      Number.isSafeInteger(stint.stint_number) &&
+      stint.stint_number >= 1 &&
+      stint.stint_number <= MAX_OBSERVED_STINTS
+        ? stint.stint_number
+        : 1
 
     stintCountByDriver.set(
       stint.driver_number,
       Math.max(
         stintCountByDriver.get(stint.driver_number) ?? 0,
-        stint.stint_number,
+        stintNumber,
       ),
     )
 
-    if (compound && stintLaps >= 3) {
+    if (compound && range.length >= 3) {
       stintLengthsByCompound.set(compound, [
         ...(stintLengthsByCompound.get(compound) ?? []),
-        stintLaps,
+        range.length,
       ])
     }
   }

@@ -52,11 +52,13 @@ describe('race classification', () => {
     expect(entries[2].statusLabel).toBe('DNF')
   })
 
-  it('selects the best completed lap only from finishers', () => {
+  it('keeps a valid fastest lap when its driver later retires', () => {
     const entries = buildRaceClassification(snapshotFixture())
+    entries[2].bestLapTimeSeconds = 79.9
+    entries[2].bestLapLap = 31
     const fastestLap = fastestLapFromClassification(entries)
 
-    expect(fastestLap?.code).toBe(entries[1].code)
-    expect(fastestLap?.bestLapLap).toBe(27)
+    expect(fastestLap?.code).toBe(entries[2].code)
+    expect(fastestLap?.bestLapLap).toBe(31)
   })
 })

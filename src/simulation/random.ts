@@ -2,6 +2,17 @@
 // needs randomness must derive it from the race seed through these functions
 // so the same seed always replays the same race.
 
+export const MAX_SIMULATION_SEED_LENGTH = 120
+
+export function normalizeSimulationSeed(
+  value: string,
+  fallback = 'free-run',
+): string {
+  const normalized = value.trim().slice(0, MAX_SIMULATION_SEED_LENGTH)
+
+  return normalized || fallback
+}
+
 /**
  * FNV-1a hash of a string to an unsigned 32-bit integer, finished with the
  * murmur3 avalanche mix. Plain FNV-1a is strongly correlated for keys that

@@ -41,4 +41,41 @@ describe('power-unit and gearbox lifecycle', () => {
     expect(worn.ice.conditionPercent).toBeLessThan(100)
     expect(worn.turbo.conditionPercent).toBeLessThan(worn.ice.conditionPercent)
   })
+
+  it('repairs malformed saved component values and retains regulation limits', () => {
+    const normalized = normalizeCarComponents({
+      ice: {
+        allocationLimit: 999,
+        allocationUsed: Number.POSITIVE_INFINITY,
+        conditionPercent: -500,
+      },
+      gearbox: {
+        allocationLimit: 7,
+        allocationUsed: 1e200,
+        conditionPercent: Number.NaN,
+      },
+    })
+
+    expect(normalized.ice).toEqual({
+      allocationLimit: 4,
+      allocationUsed: 1,
+      conditionPercent: 0,
+    })
+    expect(normalized.gearbox).toEqual({
+      allocationLimit: null,
+      allocationUsed: 99,
+      conditionPercent: 100,
+    })
+    expect(componentValuesAreFinite(normalized)).toBe(true)
+  })
 })
+
+function componentValuesAreFinite(
+  components: ReturnType<typeof createCarComponents>,
+) {
+  return Object.values(components).every(
+    (component) =>
+      Number.isFinite(component.conditionPercent) &&
+      Number.isFinite(component.allocationUsed),
+  )
+}

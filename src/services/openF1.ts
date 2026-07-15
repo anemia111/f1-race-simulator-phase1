@@ -347,15 +347,30 @@ function sleep(ms: number, signal?: AbortSignal) {
       return
     }
 
-    const timeout = window.setTimeout(resolve, ms)
-    signal?.addEventListener(
-      'abort',
-      () => {
-        window.clearTimeout(timeout)
+    let settled = false
+    const finish = (aborted: boolean) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      window.clearTimeout(timeout)
+      signal?.removeEventListener('abort', handleAbort)
+
+      if (aborted) {
         reject(new DOMException('Aborted', 'AbortError'))
-      },
-      { once: true },
-    )
+      } else {
+        resolve()
+      }
+    }
+    const handleAbort = () => finish(true)
+    const timeout = window.setTimeout(() => finish(false), ms)
+
+    signal?.addEventListener('abort', handleAbort, { once: true })
+
+    if (signal?.aborted) {
+      finish(true)
+    }
   })
 }
 
@@ -468,6 +483,42 @@ export function normalizeOpenF1Endpoint<T>(endpoint: string, body: unknown): T[]
         finiteNumberOrNull(row.pit_duration),
       stop_duration: finiteNumberOrNull(row.stop_duration),
     })) as T[]
+  }
+
+  if (endpoint === 'stints') {
+    return rows
+      .flatMap((row) => {
+        const driverNumber = finiteNumberOrNull(row.driver_number)
+        const stintNumber = finiteNumberOrNull(row.stint_number)
+        const lapStart = finiteNumberOrNull(row.lap_start)
+        const lapEnd = finiteNumberOrNull(row.lap_end)
+        const tireAge = finiteNumberOrNull(row.tyre_age_at_start)
+        const validRange =
+          Number.isSafeInteger(driverNumber) &&
+          (driverNumber ?? 0) > 0 &&
+          Number.isSafeInteger(stintNumber) &&
+          (stintNumber ?? 0) >= 1 &&
+          (stintNumber ?? 0) <= 20 &&
+          Number.isSafeInteger(lapStart) &&
+          (lapStart ?? 0) >= 1 &&
+          Number.isSafeInteger(lapEnd) &&
+          (lapEnd ?? 0) >= (lapStart ?? 0) &&
+          (lapEnd ?? 0) <= 120
+
+        if (!validRange) {
+          return []
+        }
+
+        return [{
+          ...row,
+          driver_number: driverNumber,
+          stint_number: stintNumber,
+          lap_start: lapStart,
+          lap_end: lapEnd,
+          tyre_age_at_start:
+            tireAge !== null && tireAge >= 0 && tireAge <= 120 ? tireAge : 0,
+        }]
+      }) as T[]
   }
 
   return rows as T[]

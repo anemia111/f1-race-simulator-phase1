@@ -15,8 +15,13 @@ import {
   driverAbilityValue,
 } from './simulation/driverAbility'
 import type { SeasonState } from './simulation/season'
-import { createSeasonState } from './simulation/season'
+import {
+  canonicalSeasonSessionId,
+  createSeasonState,
+} from './simulation/season'
 import { createWeekendContext } from './simulation/weekend'
+import { normalizeCarSetup } from './simulation/engineering'
+import { normalizeSimulationSeed } from './simulation/random'
 
 export const WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
 export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
@@ -59,6 +64,103 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const finiteNumber = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
+
+const MAX_PERSISTED_ENTRIES = 100
+const MAX_PERSISTED_POINTS = 10_000
+const MAX_PERSISTED_RESULT_POSITION = 100
+const MAX_PERSISTED_RESULTS_PER_ENTRY = 100
+const MAX_PERSISTED_COMPLETED_ROUNDS = 64
+const MAX_PERSISTED_TIRE_SETS_PER_DRIVER = 40
+
+const isSafeStorageKey = (value: string) =>
+  /^[a-zA-Z0-9_.:-]{1,160}$/.test(value) &&
+  value !== '__proto__' &&
+  value !== 'constructor' &&
+  value !== 'prototype'
+
+export function readFirstAvailableStorageValue(
+  keys: string[],
+  getItem: (key: string) => string | null,
+): string | null {
+  try {
+    for (const key of keys) {
+      const value = getItem(key)
+
+      if (value !== null) {
+        return value
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+function normalizePointsRecord(value: unknown): Record<string, number> {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .slice(0, MAX_PERSISTED_ENTRIES)
+      .flatMap(([id, points]) =>
+        isSafeStorageKey(id) &&
+        typeof points === 'number' &&
+        Number.isFinite(points) &&
+        points >= 0 &&
+        points <= MAX_PERSISTED_POINTS
+          ? [[id, points] as const]
+          : [],
+      ),
+  )
+}
+
+function normalizeResultsRecord(value: unknown): Record<string, number[]> {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .slice(0, MAX_PERSISTED_ENTRIES)
+      .flatMap(([id, results]) => {
+        if (!isSafeStorageKey(id) || !Array.isArray(results)) {
+          return []
+        }
+
+        const normalized = results
+          .filter(
+            (result): result is number =>
+              typeof result === 'number' &&
+              Number.isInteger(result) &&
+              result >= 1 &&
+              result <= MAX_PERSISTED_RESULT_POSITION,
+          )
+          .slice(-MAX_PERSISTED_RESULTS_PER_ENTRY)
+
+        return [[id, normalized] as const]
+      }),
+  )
+}
+
+function normalizeCompletedRounds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter(
+          (round): round is string =>
+            typeof round === 'string' && isSafeStorageKey(round),
+        )
+        .map(canonicalSeasonSessionId),
+    ),
+  ).slice(-MAX_PERSISTED_COMPLETED_ROUNDS)
+}
 
 export function parsePersistedDriverRatings(
   raw: string | null,
@@ -158,6 +260,7 @@ function normalizeTireSet(value: unknown): TireSet | null {
 
   if (
     typeof value.id !== 'string' ||
+    !isSafeStorageKey(value.id) ||
     typeof compound !== 'string' ||
     !compounds.includes(compound as TireCompound) ||
     (status !== 'available' && status !== 'used' && status !== 'returned')
@@ -178,8 +281,8 @@ function normalizeTireSet(value: unknown): TireSet | null {
     id: value.id,
     compound: compound as TireCompound,
     family,
-    heatCycles: Math.max(0, finiteNumber(value.heatCycles, 0)),
-    laps: Math.max(0, finiteNumber(value.laps, 0)),
+    heatCycles: Math.min(20, Math.max(0, finiteNumber(value.heatCycles, 0))),
+    laps: Math.min(1_000, Math.max(0, finiteNumber(value.laps, 0))),
     status,
   }
 }
@@ -237,7 +340,7 @@ function normalizeWeekendContext(
 
     if (isRecord(setupCandidate)) {
       const setup = base.setupByDriver[id]
-      base.setupByDriver[id] = {
+      base.setupByDriver[id] = normalizeCarSetup({
         brakeBiasPercent: finiteNumber(
           setupCandidate.brakeBiasPercent,
           setup.brakeBiasPercent,
@@ -256,24 +359,24 @@ function normalizeWeekendContext(
           setupCandidate.rideHeightMm,
           setup.rideHeightMm,
         ),
-      }
+      })
     }
 
-    base.setupBonusByDriver[id] = finiteNumber(
-      source.setupBonusByDriver?.[id],
-      0,
+    base.setupBonusByDriver[id] = Math.min(
+      0.35,
+      Math.max(0, finiteNumber(source.setupBonusByDriver?.[id], 0)),
     )
-    base.setupConfidenceByDriver[id] = finiteNumber(
-      source.setupConfidenceByDriver?.[id],
-      0,
+    base.setupConfidenceByDriver[id] = Math.min(
+      1,
+      Math.max(0, finiteNumber(source.setupConfidenceByDriver?.[id], 0)),
     )
     base.parcFermeLockedByDriver[id] =
       typeof source.parcFermeLockedByDriver?.[id] === 'boolean'
         ? source.parcFermeLockedByDriver[id]
         : false
-    base.gridPenaltyByDriver[id] = Math.max(
-      0,
-      finiteNumber(source.gridPenaltyByDriver?.[id], 0),
+    base.gridPenaltyByDriver[id] = Math.min(
+      drivers.length,
+      Math.max(0, finiteNumber(source.gridPenaltyByDriver?.[id], 0)),
     )
     base.pitLaneStartByDriver[id] =
       typeof source.pitLaneStartByDriver?.[id] === 'boolean'
@@ -292,10 +395,13 @@ function normalizeWeekendContext(
     for (const compound of compounds) {
       base.tireSetsByDriver[id][compound] = Math.max(
         0,
-        Math.floor(
-          finiteNumber(
-            source.tireSetsByDriver?.[id]?.[compound],
-            base.tireSetsByDriver[id][compound] ?? 0,
+        Math.min(
+          base.tireSetsByDriver[id][compound] ?? 0,
+          Math.floor(
+            finiteNumber(
+              source.tireSetsByDriver?.[id]?.[compound],
+              base.tireSetsByDriver[id][compound] ?? 0,
+            ),
           ),
         ),
       )
@@ -304,6 +410,7 @@ function normalizeWeekendContext(
     const storedSets = source.tireSetInventoryByDriver?.[id]
     if (Array.isArray(storedSets)) {
       const normalizedSets = storedSets
+        .slice(0, MAX_PERSISTED_TIRE_SETS_PER_DRIVER)
         .map(normalizeTireSet)
         .filter((set): set is TireSet => set !== null)
 
@@ -318,7 +425,10 @@ function normalizeWeekendContext(
     completed,
     gridByStage,
     notes: Array.isArray(source.notes)
-      ? source.notes.filter((note): note is string => typeof note === 'string').slice(-30)
+      ? source.notes
+          .filter((note): note is string => typeof note === 'string')
+          .slice(-30)
+          .map((note) => note.slice(0, 240))
       : [],
   }
 }
@@ -355,7 +465,7 @@ export function parsePersistedWeekend(
       version: 2,
       trackId: track.id,
       stage: parsed.stage,
-      seed: parsed.seed,
+      seed: normalizeSimulationSeed(parsed.seed),
       gridSource: parsed.gridSource as GridSource,
       weekendContext: normalizeWeekendContext(
         parsed.weekendContext,
@@ -380,15 +490,16 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
       return createSeasonState()
     }
 
-    const completedRounds = Array.isArray(parsed.completedRounds)
-      ? parsed.completedRounds.filter(
-          (round): round is string => typeof round === 'string',
-        )
-      : []
+    const completedRounds = normalizeCompletedRounds(parsed.completedRounds)
 
     if (!isRecord(parsed.driverPoints) || !isRecord(parsed.teamPoints)) {
       return createSeasonState()
     }
+
+    const driverPoints = normalizePointsRecord(parsed.driverPoints)
+    const teamPoints = normalizePointsRecord(parsed.teamPoints)
+    const driverResults = normalizeResultsRecord(parsed.driverResults)
+    const teamResults = normalizeResultsRecord(parsed.teamResults)
 
     const garage = createSeasonState().garage
 
@@ -396,7 +507,11 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
       if (isRecord(parsed.garage.componentsByDriver)) {
         for (const [driverId, components] of Object.entries(
           parsed.garage.componentsByDriver,
-        )) {
+        ).slice(0, MAX_PERSISTED_ENTRIES)) {
+          if (!isSafeStorageKey(driverId)) {
+            continue
+          }
+
           garage.componentsByDriver[driverId] = normalizeCarComponents(
             isRecord(components) ? components : null,
           )
@@ -406,10 +521,17 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
       if (isRecord(parsed.garage.pendingGridPenaltyByDriver)) {
         for (const [driverId, penalty] of Object.entries(
           parsed.garage.pendingGridPenaltyByDriver,
-        )) {
+        ).slice(0, MAX_PERSISTED_ENTRIES)) {
+          if (!isSafeStorageKey(driverId)) {
+            continue
+          }
+
           garage.pendingGridPenaltyByDriver[driverId] = Math.max(
             0,
-            Math.floor(finiteNumber(penalty, 0)),
+            Math.min(
+              MAX_PERSISTED_RESULT_POSITION,
+              Math.floor(finiteNumber(penalty, 0)),
+            ),
           )
         }
       }
@@ -417,14 +539,10 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
 
     return {
       completedRounds,
-      driverPoints: parsed.driverPoints as Record<string, number>,
-      teamPoints: parsed.teamPoints as Record<string, number>,
-      driverResults: isRecord(parsed.driverResults)
-        ? (parsed.driverResults as Record<string, number[]>)
-        : {},
-      teamResults: isRecord(parsed.teamResults)
-        ? (parsed.teamResults as Record<string, number[]>)
-        : {},
+      driverPoints,
+      teamPoints,
+      driverResults,
+      teamResults,
       garage,
     }
   } catch {

@@ -122,4 +122,22 @@ describe('OpenF1 tire calibration', () => {
     expect(calibration.tirePaceOffsetByCompound.M).toBe(0)
     expect(calibration.tirePaceOffsetByCompound.S).toBeLessThan(-0.5)
   })
+
+  it('rejects impossible stint ranges without distorting calibration', () => {
+    const bundle = tireCalibrationBundle()
+    bundle.stints.push({
+      compound: 'HARD',
+      driver_number: 2,
+      lap_end: Number.MAX_SAFE_INTEGER,
+      lap_start: 1,
+      stint_number: Number.MAX_SAFE_INTEGER,
+      tyre_age_at_start: Number.POSITIVE_INFINITY,
+    })
+
+    const calibration = buildOpenF1TrackCalibration(bundle)
+
+    expect(calibration.tireSampleCountByCompound.H).toBeUndefined()
+    expect(calibration.medianStintLapsByCompound.H).toBeUndefined()
+    expect(calibration.medianPitStopsPerDriver).toBe(1)
+  })
 })

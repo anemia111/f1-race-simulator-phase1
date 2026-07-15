@@ -2628,8 +2628,34 @@ describe('qualifying', () => {
     expect(legalStartCompoundForConditions('W', 'clear', 1)).toBe('M')
     expect(legalStartCompoundForConditions('I', 'clear', 0.97)).toBe('M')
     expect(legalStartCompoundForConditions('S', 'light-rain', 0.88)).toBe('I')
+    expect(legalStartCompoundForConditions('I', 'light-rain', 0.88)).toBe('I')
+    expect(legalStartCompoundForConditions('W', 'light-rain', 0.88)).toBe('W')
     expect(legalStartCompoundForConditions('H', 'heavy-rain', 0.72)).toBe('W')
+    expect(legalStartCompoundForConditions('I', 'heavy-rain', 0.72)).toBe('W')
     expect(legalStartCompoundForConditions('M', 'clear', 1)).toBe('M')
+  })
+
+  it('splits intermediate and wet starts near a wet crossover', () => {
+    const wetTrack = { ...tracks[0], rainProbability: 0.75 }
+    const seed = Array.from({ length: 2_000 }, (_, index) => `mixed-wet-${index}`).find(
+      (candidate) => weatherFor(candidate, wetTrack, 0) === 'light-rain',
+    )
+
+    expect(seed).toBeDefined()
+    const config = { ...makeConfig(seed!), seed: seed!, track: wetTrack }
+    const qualifying = runKnockoutQualifying({
+      ...config,
+      track: { ...wetTrack, rainProbability: 0 },
+    })
+    const plan = buildWeekendTirePlan(config, qualifying)
+    const compounds = new Set(
+      plan.driverPlans.map((driverPlan) => driverPlan.raceStartCompound),
+    )
+
+    expect([...compounds].every((compound) => compound === 'I' || compound === 'W')).toBe(
+      true,
+    )
+    expect(compounds).toEqual(new Set(['I', 'W']))
   })
 
   it('uses the 2026 FIA standard and sprint weekend tire allocations', () => {

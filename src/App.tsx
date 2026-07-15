@@ -55,6 +55,7 @@ import {
   parsePersistedSeason,
   parsePersistedDriverRatings,
   parsePersistedWeekend,
+  readFirstAvailableStorageValue,
   serializeDriverRatings,
   type PersistedWeekend,
 } from './persistence'
@@ -102,6 +103,7 @@ import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
   recordSeasonRound,
+  seasonSessionId,
   updateSeasonGarageFromCars,
   updateSeasonGarageReplacement,
   type SeasonState,
@@ -137,6 +139,7 @@ import {
   driverAbilityValue,
   driverOverallAbilityPoints,
 } from './simulation/driverAbility'
+import { normalizeSimulationSeed } from './simulation/random'
 
 const cameraModes: Array<{
   mode: CameraMode
@@ -176,8 +179,10 @@ const weekendStageLabels: Record<WeekendStage, string> = {
  */
 function loadPersistedWeekend(): PersistedWeekend | null {
   return parsePersistedWeekend(
-    window.localStorage.getItem(WEEKEND_STORAGE_KEY) ??
-      window.localStorage.getItem(LEGACY_WEEKEND_STORAGE_KEY),
+    readFirstAvailableStorageValue(
+      [WEEKEND_STORAGE_KEY, LEGACY_WEEKEND_STORAGE_KEY],
+      (key) => window.localStorage.getItem(key),
+    ),
     tracks,
     initialDrivers,
   )
@@ -187,8 +192,10 @@ const persistedWeekend = loadPersistedWeekend()
 
 function loadPersistedSeason(): SeasonState {
   return parsePersistedSeason(
-    window.localStorage.getItem(SEASON_STORAGE_KEY) ??
-      window.localStorage.getItem(LEGACY_SEASON_STORAGE_KEY),
+    readFirstAvailableStorageValue(
+      [SEASON_STORAGE_KEY, LEGACY_SEASON_STORAGE_KEY],
+      (key) => window.localStorage.getItem(key),
+    ),
   )
 }
 
@@ -331,14 +338,13 @@ const copyDrivers = (drivers: Driver[]) =>
   }))
 
 function loadPersistedDrivers(): Driver[] {
-  try {
-    return parsePersistedDriverRatings(
-      window.localStorage.getItem(DRIVER_RATINGS_STORAGE_KEY),
-      initialDrivers,
-    )
-  } catch {
-    return copyDrivers(initialDrivers)
-  }
+  return parsePersistedDriverRatings(
+    readFirstAvailableStorageValue(
+      [DRIVER_RATINGS_STORAGE_KEY],
+      (key) => window.localStorage.getItem(key),
+    ),
+    initialDrivers,
+  )
 }
 
 const weekendStagesFor = (track: RaceConfig['track']): WeekendStage[] =>
@@ -1238,7 +1244,7 @@ export default function App() {
   const baseConfig: RaceConfig = useMemo(
     () => ({
       drivers: fieldCalibration.drivers,
-      seed: seed.trim() || 'free-run',
+      seed: normalizeSimulationSeed(seed),
       teams: fieldCalibration.teams,
       track: calibratedTrack,
       weekendStage: selectedWeekendStage,
@@ -1521,13 +1527,12 @@ export default function App() {
       recordSeasonRound(current, {
         cars: snapshot.cars,
         greenFlagLaps: snapshot.greenFlagLaps,
-        roundId: `${selectedTrackId}:${selectedWeekendStage}:${seed}`,
+        roundId: seasonSessionId(selectedTrackId, selectedWeekendStage),
         scheduledLaps: snapshot.raceLaps,
         stage: selectedWeekendStage,
       }),
     )
   }, [
-    seed,
     selectedTrackId,
     selectedWeekendStage,
     snapshot.cars,

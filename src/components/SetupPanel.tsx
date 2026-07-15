@@ -5,6 +5,7 @@ import type {
   QualifyingResult,
 } from '../simulation/qualifying'
 import type { PracticeSetupSummary } from '../simulation/practiceSetup'
+import { MAX_SIMULATION_SEED_LENGTH } from '../simulation/random'
 import {
   compactSessionDurationLabel,
   isPracticeStage,
@@ -332,6 +333,7 @@ export function SetupPanel({
         <label className="field-block">
           <span>Seed</span>
           <input
+            maxLength={MAX_SIMULATION_SEED_LENGTH}
             onChange={(event) => onSeedChange(event.target.value)}
             placeholder="simulation seed"
             type="text"

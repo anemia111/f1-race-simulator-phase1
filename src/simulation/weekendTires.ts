@@ -4,7 +4,11 @@ import { driverAbilityValue } from './driverAbility'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
 import { effectiveCliffLaps } from './tires'
-import { trackGripForWeather, weatherFor } from './weather'
+import {
+  trackGripForWeather,
+  weatherFor,
+  weatherForecastFor,
+} from './weather'
 
 export type DrySetInventory = {
   H: number
@@ -81,12 +85,47 @@ function addQualifyingUsage(
   }
 }
 
-function weatherStartCompound(config: RaceConfig): TireCompound | null {
+function wetStartCompound(
+  config: RaceConfig,
+  driver: Driver,
+  session: 'race' | 'sprint',
+): TireCompound | null {
   const weather = weatherFor(config.seed, config.track, 0)
   const trackGrip = trackGripForWeather(config.seed, config.track, 0)
   const compound = legalStartCompoundForConditions('M', weather, trackGrip)
 
-  return dryCompounds.has(compound) ? null : compound
+  if (dryCompounds.has(compound)) {
+    return null
+  }
+
+  if (compound === 'W') {
+    return 'W'
+  }
+
+  const forecast = weatherForecastFor(config.seed, config.track, 0)
+  const wetSeverity = clamp01((0.93 - trackGrip) / 0.17)
+  const worseningForecast =
+    forecast.willChange &&
+    forecast.weather === 'heavy-rain' &&
+    forecast.secondsAhead <= 180 &&
+    forecast.confidence >= 0.65
+      ? 1
+      : 0
+  const wetSkill = clamp01((driverAbilityValue(driver, 'wetSkill') - 0.55) / 0.95)
+  const conservativeTeamBias =
+    1 - hashChance(`${config.seed}:${session}-wet-risk:${driver.teamId}`)
+  const fullWetProbability = clamp01(
+    0.03 +
+      wetSeverity * 0.55 +
+      worseningForecast * 0.28 +
+      (1 - wetSkill) * 0.05 +
+      conservativeTeamBias * 0.07,
+  )
+
+  return hashChance(`${config.seed}:${session}-wet-start:${driver.id}`) <
+    fullWetProbability
+    ? 'W'
+    : 'I'
 }
 
 export function legalStartCompoundForConditions(
@@ -100,7 +139,7 @@ export function legalStartCompoundForConditions(
   }
 
   if (weather === 'light-rain' || trackGrip < 0.93) {
-    return 'I'
+    return planned === 'I' || planned === 'W' ? planned : 'I'
   }
 
   return dryCompounds.has(planned) ? planned : 'M'
@@ -194,7 +233,7 @@ function raceStartCompoundFor(
   driver: Driver,
   remaining: DrySetInventory,
 ) {
-  const wet = weatherStartCompound(config)
+  const wet = wetStartCompound(config, driver, 'race')
 
   if (wet) {
     return wet
@@ -208,7 +247,7 @@ function sprintStartCompoundFor(
   driver: Driver,
   remaining: DrySetInventory,
 ) {
-  const wet = weatherStartCompound(config)
+  const wet = wetStartCompound(config, driver, 'sprint')
 
   if (wet) {
     return wet

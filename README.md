@@ -58,6 +58,11 @@ driving game or a broadcast-video renderer.
 - FIA 2026 standard/sprint tire allocations, 90% race classification, and
   championship race-result countback. PU/gearbox condition and replacement
   penalties carry across rounds.
+- Grid tire choices vary by available sets, stint demand, team/driver risk,
+  and the wet crossover while remaining legal for the current track state.
+- Versioned weekend, championship, driver-rating, and OpenF1 cache inputs are
+  bounded and schema-checked, so stale or corrupted browser data falls back
+  without freezing startup or contaminating standings and calibration.
 - Qualifying lap deletion, double-yellow invalidation, impeding, pit-exit
   queues, 107% checks, and steward exemptions.
 - Historical OpenF1 timeline scrubbing and observed sector, pit-transit,
@@ -112,6 +117,9 @@ only writes a file when `BENCHMARK_REPORT` specifies a path.
 Software renderers such as SwiftShader are recorded but are not treated as a
 hardware frame-rate pass/fail signal. Set `BENCHMARK_STRICT=1` for a real-GPU
 threshold run.
+The race-engine suite also runs full-distance stability checks at Monaco,
+Monza, and Singapore to catch non-finite state, broken ordering, and races
+that fail to finish under contrasting circuit and weather demands.
 
 ## Data Truthfulness
 
