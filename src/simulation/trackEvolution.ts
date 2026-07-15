@@ -82,4 +82,3 @@ export function trackEvolutionGainSecondsFor(
 
   return clamp(rubberLevel, 0, 1) * 1.65 * circuitFactor
 }
-
