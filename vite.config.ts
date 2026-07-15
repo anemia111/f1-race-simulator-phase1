@@ -29,7 +29,9 @@ export default defineConfig({
         start_url: './',
         theme_color: '#050607',
       },
-      registerType: 'autoUpdate',
+      // Install updates in the background, then activate after the current
+      // race tab closes so a deployment can never reload a live session.
+      registerType: 'prompt',
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{css,html,js,json}'],
