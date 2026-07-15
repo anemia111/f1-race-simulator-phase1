@@ -7,6 +7,16 @@ export function registerAppUpdater() {
     return
   }
 
+  let reloadingForUpdate = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadingForUpdate) {
+      return
+    }
+
+    reloadingForUpdate = true
+    window.location.reload()
+  })
+
   const checkForUpdate = (registration: ServiceWorkerRegistration) => {
     if (!navigator.onLine) {
       return
