@@ -3,8 +3,12 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type { Driver, DriverSkillProfile } from '../types'
 import {
+  MACHINE_PACE_REFERENCE,
+  MACHINE_PACE_SPREAD_FACTOR,
+  MACHINE_SEGMENT_RESPONSE,
   airDensityKgM3,
   integrateVehicleSpeedKph,
+  machinePaceRating,
   performanceLapGainSeconds,
 } from './vehicleDynamics'
 
@@ -18,6 +22,15 @@ function driverAt(value: number): Driver {
 }
 
 describe('multi-axis vehicle dynamics', () => {
+  it('widens machine effects without changing the source rating', () => {
+    expect(MACHINE_PACE_REFERENCE).toBe(0.86)
+    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.35)
+    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
+    expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
+    expect(machinePaceRating(0.96)).toBeCloseTo(0.995, 10)
+    expect(machinePaceRating(0.62)).toBeCloseTo(0.536, 10)
+  })
+
   it('keeps the full configured driver scale monotonic against one machine', () => {
     const team = initialTeams.find(
       (candidate) => candidate.id === initialDrivers[0].teamId,
@@ -98,6 +111,11 @@ describe('multi-axis vehicle dynamics', () => {
     expect(monzaResults.map((result) => result.teamId)).not.toEqual(
       monacoResults.map((result) => result.teamId),
     )
+    const monzaFieldSpreadSeconds =
+      monzaResults[0].gain - monzaResults.at(-1)!.gain
+
+    expect(monzaFieldSpreadSeconds).toBeGreaterThan(4)
+    expect(monzaFieldSpreadSeconds).toBeLessThan(7)
   })
 
   it('produces team-relative terminal speeds from CSV power and drag axes', () => {
@@ -130,9 +148,11 @@ describe('multi-axis vehicle dynamics', () => {
     expect(new Set(terminalSpeeds.map((speed) => speed.toFixed(2))).size).toBe(
       initialTeams.length,
     )
-    expect(Math.max(...terminalSpeeds) - Math.min(...terminalSpeeds)).toBeGreaterThan(
-      8,
-    )
+    const terminalSpeedSpreadKph =
+      Math.max(...terminalSpeeds) - Math.min(...terminalSpeeds)
+
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(11)
+    expect(terminalSpeedSpreadKph).toBeLessThan(35)
   })
 
   it('compares all 30 CSV drivers in one identical machine without sorting by OVR', () => {

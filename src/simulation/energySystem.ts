@@ -320,16 +320,16 @@ export function energyDeploymentRequestFor(
     1,
   )
   const straightValue = clamp(
-    0.12 +
-      straightness * 0.48 +
-      clamp(straightLengthAheadMeters / 1_250, 0, 1) * 0.25 +
-      clamp((330 - speedKph) / 260, 0, 1) * 0.15,
+    0.15 +
+      straightness * 0.5 +
+      clamp(straightLengthAheadMeters / 950, 0, 1) * 0.28 +
+      clamp((350 - speedKph) / 280, 0, 1) * 0.17,
     0,
     1,
   )
   const selectiveValue = Math.pow(
     straightValue,
-    1.05 + management * 0.72,
+    0.86 + management * 0.48,
   )
   const sessionBudgetShare =
     timedRunPhase === 'attack-lap'
@@ -338,7 +338,7 @@ export function energyDeploymentRequestFor(
           timedRunPhase === 'in-lap' ||
           timedRunPhase === 'cooldown'
         ? 0.18
-        : 0.66
+      : 0.82
   const lapBudgetMJ = state.usableEnergyMJ * sessionBudgetShare
   const remainingBudgetMJ = Math.max(
     0,
@@ -352,8 +352,8 @@ export function energyDeploymentRequestFor(
     1.12,
   )
   const reserveSoc =
-    (timedRunPhase === 'attack-lap' ? 0.08 : 0.22) +
-    remainingLapShare * (0.09 + management * 0.06)
+    (timedRunPhase === 'attack-lap' ? 0.07 : 0.16) +
+    remainingLapShare * (0.06 + management * 0.04)
   const reserveFactor = smoothstep(
     reserveSoc,
     Math.min(0.72, reserveSoc + 0.34),
@@ -386,6 +386,7 @@ export function energyDeploymentRequestFor(
 
   return clamp(
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *
+      0.82 *
       paceMultiplier[paceMode] *
       battleMultiplier *
       timedMultiplier *

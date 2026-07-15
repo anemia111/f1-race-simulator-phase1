@@ -58,6 +58,15 @@ export function flagSeverityRank(flag: Exclude<FlagState, 'clear'> | null): numb
   return flag ? flagRank[flag] : 0
 }
 
+export function terminalCrashFlagResponse(
+  obstructionRoll: number,
+): Exclude<FlagState, 'clear'> {
+  if (obstructionRoll < 0.28) return 'yellow'
+  if (obstructionRoll < 0.72) return 'vsc'
+  if (obstructionRoll < 0.96) return 'sc'
+  return 'red'
+}
+
 /**
  * Roll for an incident when `driver` completes `lap`. Returns null on a clean
  * lap. Deterministic for (seed, driver, lap); `riskMultiplier` raises the
@@ -91,7 +100,7 @@ export function incidentForLap(
 
   if (hashChance(`${seed}:mechanical:${driver.id}:${lap}`) < mechanicalChance) {
     // Mechanical retirement: the car pulls off, marshals respond.
-    const usesVsc = detail < 0.5
+    const usesVsc = detail < 0.2
     return {
       kind: 'mechanical',
       classification: 'incident',
@@ -166,10 +175,11 @@ export function incidentForLap(
   }
 
   // Terminal crash: retirement plus a strong flag response.
-  const response: Exclude<FlagState, 'clear'> =
-    detail < 0.6 ? 'sc' : detail < 0.9 ? 'vsc' : 'red'
+  const response = terminalCrashFlagResponse(detail)
   const duration =
-    response === 'sc'
+    response === 'yellow'
+      ? 18 + detail * 20
+      : response === 'sc'
       ? 55 + detail * 45
       : response === 'vsc'
         ? 30 + detail * 25

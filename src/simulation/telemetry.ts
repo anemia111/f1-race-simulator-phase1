@@ -42,16 +42,20 @@ function ersModeFor(options: {
   batteryPercent: number
   brakePercent: number
   car: CarSnapshot
+  fullThrottle: boolean
   overtakeStatus: OvertakeStatus
   phase: ActiveFlagPhase | null
+  straightLengthAheadMeters: number
   straightness: number
 }) {
   const {
     batteryPercent,
     brakePercent,
     car,
+    fullThrottle,
     overtakeStatus,
     phase,
+    straightLengthAheadMeters,
     straightness,
   } = options
 
@@ -62,7 +66,11 @@ function ersModeFor(options: {
   if (
     batteryPercent > 36 &&
     car.status === 'running' &&
-    (overtakeStatus === 'active' || car.gapToAhead < 1.4 || straightness > 0.82)
+    (overtakeStatus === 'active' ||
+      car.gapToAhead < 1.4 ||
+      fullThrottle ||
+      straightness > 0.74 ||
+      straightLengthAheadMeters >= 180)
   ) {
     return 'deploy' satisfies ErsMode
   }
@@ -212,7 +220,10 @@ export function calculateCarTelemetry(options: {
   )
   const profileBrakeDemand =
     dynamics.brakingSeverity * 91 * brakingActivation +
-    speedExcess * (0.7 + dynamics.brakingSeverity * 0.65)
+    speedExcess * (0.7 + dynamics.brakingSeverity * 0.65) +
+    (phase?.flag === 'yellow'
+      ? (phase.yellowSeverity === 'double' ? 11 : 7) + car.speedKph * 0.01
+      : 0)
   const brakeControl = driverSkillBlend(driver, {
     brakingSkill: 0.58,
     precision: 0.24,
@@ -277,8 +288,10 @@ export function calculateCarTelemetry(options: {
     batteryPercent: batteryPercentAtFrameStart,
     brakePercent,
     car,
+    fullThrottle: dynamics.fullThrottle,
     overtakeStatus,
     phase,
+    straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
     straightness: dynamics.straightness,
   })
   const isPreparationLap =
@@ -290,9 +303,15 @@ export function calculateCarTelemetry(options: {
     : isPreparationLap || superClipping.intensity >= 0.04
       ? ('harvest' as const)
       : requestedErsMode
+  const keyAccelerationZone =
+    specifiedErsPowerSector ||
+    dynamics.fullThrottle ||
+    (dynamics.straightness >= 0.7 &&
+      dynamics.brakingSeverity < 0.22 &&
+      dynamics.straightLengthAheadMeters >= 110)
   const ersCurve = lowGripConditions
     ? ('low-grip-estimate' as const)
-    : specifiedErsPowerSector
+    : keyAccelerationZone
       ? ('specified-sector' as const)
       : ('standard' as const)
   const regulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
@@ -437,7 +456,9 @@ export function calculateCarTelemetry(options: {
   // hold maximum braking all the way to zero. The target remains flag-, grip-,
   // machine-, and driver-dependent rather than becoming a speed cap.
   const brakeModulatedSpeedKph =
-    brakePercent > 3 && phase?.flag !== 'red'
+    brakePercent > 3 &&
+    phase?.flag !== 'red' &&
+    phase?.flag !== 'yellow'
       ? Math.max(
           physicallyIntegratedSpeedKph,
           Math.min(car.speedKph, targetSpeedKph * 0.96),

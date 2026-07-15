@@ -51,6 +51,7 @@ import {
   sectorFlagStatesFor,
   sectorIndexForProgress,
   vscPaceScaleForDelta,
+  wearScaleForControlPhase,
 } from './raceEvents'
 import { hashChance } from './random'
 import {
@@ -65,7 +66,13 @@ import {
   sessionDurationSecondsFor,
   weekendStageLabelFor,
 } from './sessionRules'
-import { decidePitStop, pitStopLossSeconds } from './strategy'
+import {
+  decidePitStop,
+  decideRedFlagTireChange,
+  effectivePitLaneLossSecondsForControlPhase,
+  overtakeDifficultyForTrack,
+  pitStopLossSeconds,
+} from './strategy'
 import { startingGridDistance } from './startingGrid'
 import { calculateCarTelemetry } from './telemetry'
 import {
@@ -141,6 +148,7 @@ const TICKER_EVENT_WINDOW_SECONDS = 12
 const WRECK_CLEAR_SECONDS = 25
 /** Minimum spacing (seconds) enforced inside the SC/VSC queue. */
 const QUEUE_MIN_GAP_SECONDS = 0.4
+export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.45
 const GRAND_PRIX_TIME_LIMIT_SECONDS = 2 * 60 * 60
 const SPRINT_TIME_LIMIT_SECONDS = 60 * 60
 const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
@@ -2804,11 +2812,79 @@ export function advanceRace(
   }
 
   if (redFlagRestart) {
+    const redFlagTrackCondition: TireTrackCondition = {
+      dryingLine:
+        trackWater.dryingLineBySector.reduce((sum, value) => sum + value, 0) /
+        trackWater.dryingLineBySector.length,
+      rainIntensityMmH,
+      surfaceWaterMm:
+        trackWater.surfaceWaterMmBySector.reduce(
+          (sum, value) => sum + value,
+          0,
+        ) / trackWater.surfaceWaterMmBySector.length,
+    }
+    const strategicallyPreparedCars = snapshot.cars.map((car) => {
+      const driver = drivers.get(car.driverId)
+
+      if (!driver || car.status !== 'running') {
+        return car
+      }
+
+      const decision = decideRedFlagTireChange({
+        availableCompounds: car.tireSetsRemaining,
+        car,
+        driver,
+        lap: Math.floor(car.totalDistance),
+        mandatoryTwoDryCompounds: weekendStage === 'race',
+        raceLaps,
+        seed: config.seed,
+        tireNomination: config.track.tireNomination,
+        trackCondition: redFlagTrackCondition,
+        trackGrip,
+        weather,
+      })
+
+      if (!decision) {
+        return car
+      }
+
+      newEvents.push(
+        makeEvent(
+          `red-flag-tire-${car.driverId}-${Math.floor(elapsedSeconds)}`,
+          'pit',
+          elapsedSeconds,
+          `${car.code} fits ${decision.compound} tyres during the suspension (${decision.reason}).`,
+        ),
+      )
+
+      return {
+        ...car,
+        compoundsUsed: car.compoundsUsed.includes(decision.compound)
+          ? car.compoundsUsed
+          : [...car.compoundsUsed, decision.compound],
+        tire: decision.compound,
+        tireAgeLaps: 0,
+        tireCarcassTemperatureC: 78,
+        tireGrainingPercent: 0,
+        tireOverheatingPercent: 0,
+        tirePerformanceState: 'optimal' as const,
+        tireSetsRemaining: {
+          ...car.tireSetsRemaining,
+          [decision.compound]: Math.max(
+            0,
+            (car.tireSetsRemaining[decision.compound] ?? 0) - 1,
+          ),
+        },
+        tireTemperatureC: 82,
+        tireThermalStressPercent: 0,
+        tireWearPercent: 0,
+      }
+    })
     frameCars =
       restartProcedure === 'standing'
-        ? reformFieldForStandingRestart(snapshot.cars)
+        ? reformFieldForStandingRestart(strategicallyPreparedCars)
         : reformFieldForRedRestart(
-            snapshot.cars,
+            strategicallyPreparedCars,
             QUEUE_MIN_GAP_SECONDS / baseLapTime,
           )
     newEvents.push(
@@ -3080,6 +3156,7 @@ export function advanceRace(
         const servesProceduralPenalty =
           car.pitServiceKind === 'drive-through' ||
           car.pitServiceKind === 'stop-go'
+        const repairsDamage = car.pitServiceKind === 'repair-stop'
         const newTire = car.pendingTire ?? car.tire
         const compoundsUsed = car.compoundsUsed.includes(newTire)
           ? car.compoundsUsed
@@ -3120,7 +3197,7 @@ export function advanceRace(
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
           compoundsUsed,
-          damage: servesProceduralPenalty ? car.damage : 0,
+          damage: repairsDamage ? 0 : car.damage,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
@@ -3253,7 +3330,7 @@ export function advanceRace(
       safetyCarProcedure?.stage === 'unlapping' &&
       safetyCarProcedure.eligibleLappedDriverIds.includes(car.driverId) &&
       !safetyCarProcedure.unlappingRejoinedDriverIds.includes(car.driverId)
-    const paceMultiplier = flagPaceMultiplier(controlPhase, carSector, {
+    const paceMultiplier = flagPaceMultiplier(localControlPhase, carSector, {
       isLeader: car.position === 1,
       gapToAheadSeconds: car.gapToAhead,
     })
@@ -3420,8 +3497,9 @@ export function advanceRace(
       safetyCarProcedure.stage !== 'pit-entry'
     ) {
       const safetyCarGapLaps = Math.max(
-        0.009,
-        1.35 / Math.max(55, car.projectedLapTime),
+        0.003,
+        SAFETY_CAR_LEADER_TARGET_GAP_SECONDS /
+          Math.max(55, car.projectedLapTime),
       )
       const safetyCarCeiling =
         safetyCarProcedure.safetyCarDistance - safetyCarGapLaps
@@ -3547,7 +3625,9 @@ export function advanceRace(
           config.track.observedCalibration?.tireSampleCountByCompound[car.tire],
       },
     )
-    const tireLapFraction = deltaSeconds / Math.max(40, effectiveLapTime)
+    const wearScale = wearScaleForControlPhase(localControlPhase)
+    const tireLapFraction =
+      (deltaSeconds / Math.max(40, effectiveLapTime)) * wearScale.tire
     const localDynamics = trackDynamicsAt(config.track, car.progress)
     const fuelEffects = fuelMassEffects({
       fuelLoadKg: car.fuelLoadKg,
@@ -3683,7 +3763,7 @@ export function advanceRace(
     )
     const components = advanceComponentWear({
       components: car.components,
-      deltaLaps: distanceDelta,
+      deltaLaps: distanceDelta * wearScale.component,
       engineStress:
         displayTelemetry.throttlePercent / 100 +
         (displayTelemetry.ersMode === 'deploy' ? 0.24 : 0),
@@ -3890,7 +3970,7 @@ export function advanceRace(
       }
 
       if (
-        !controlPhase &&
+        !localControlPhase &&
         !frame.proposedPhase &&
         hasCrossedRestartLine
       ) {
@@ -4749,13 +4829,33 @@ export function advanceRace(
         (14 +
           (80 - (config.track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
           (config.track.kind === 'street' ? 2.5 : 0))
+      const pitControlPhase =
+        localControlPhase?.flag === 'sc'
+          ? ('safety-car' as const)
+          : localControlPhase?.flag === 'vsc'
+            ? ('vsc' as const)
+            : ('green' as const)
+      const vscResumeAtSeconds =
+        localControlPhase?.neutralisation?.kind === 'vsc'
+          ? localControlPhase.neutralisation.resumeAtSeconds
+          : null
+      const neutralisationSecondsRemaining =
+        vscResumeAtSeconds === null
+          ? null
+          : Math.max(0, vscResumeAtSeconds - elapsedSeconds)
+      const strategicPitLaneLossSeconds =
+        effectivePitLaneLossSecondsForControlPhase({
+          controlPhase: pitControlPhase,
+          neutralisationSecondsRemaining,
+          pitLaneLossSeconds: modeledPitLaneLossSeconds,
+        })
       const estimatedStopLoss = pitStopLossSeconds(
         config.seed,
         driver.id,
         team,
         next.pitStops + 1,
         next.damage > 0,
-        modeledPitLaneLossSeconds,
+        strategicPitLaneLossSeconds,
       )
       const projectedRejoinDistance =
         next.totalDistance - estimatedStopLoss / baseLapTime
@@ -4835,8 +4935,10 @@ export function advanceRace(
               car: next,
               lap,
               raceLaps,
-              underSafetyCar:
-                controlPhase?.flag === 'sc' || controlPhase?.flag === 'vsc',
+              controlPhase: pitControlPhase,
+              neutralisationSecondsRemaining,
+              pitEntrySecondsAway: 0,
+              overtakeDifficulty: overtakeDifficultyForTrack(config.track),
               weather: localWeather,
               trackGrip: localTrackGrip,
               forecast: weatherForecast,
@@ -4861,7 +4963,12 @@ export function advanceRace(
           manualPitRequests?.delete(driver.id)
         }
         const servesProceduralPenalty = decision.reason === 'penalty-service'
-        const repairsDamage = !servesProceduralPenalty && next.damage > 0
+        // B5.12 permits a VSC pit stop for tyres, but not a repair service.
+        // Persist the service kind because the VSC may end before pit exit.
+        const repairsDamage =
+          !servesProceduralPenalty &&
+          pitControlPhase !== 'vsc' &&
+          next.damage > 0
         const penaltiesToServe = servesProceduralPenalty
           ? proceduralPenalty
             ? [proceduralPenalty]
@@ -5026,7 +5133,9 @@ export function advanceRace(
             ? proceduralPenalty?.kind === 'stop-go-10'
               ? 'stop-go'
               : 'drive-through'
-            : 'tire-stop',
+            : repairsDamage
+              ? 'repair-stop'
+              : 'tire-stop',
           pitLaneProgress: config.track.pitLane?.entryProgress ?? 0.965,
           pitStartedAtSeconds: elapsedSeconds,
           pitUntilSeconds:

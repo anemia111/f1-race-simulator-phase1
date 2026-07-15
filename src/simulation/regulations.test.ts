@@ -32,6 +32,7 @@ describe('2026 session regulations', () => {
       FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj,
     ).toBe(4)
     expect(maxRechargePerLapMjFor({ stage: 'race' })).toBe(8.5)
+    expect(maxRechargePerLapMjFor({ stage: 'qualifying' })).toBe(7)
     expect(
       maxRechargePerLapMjFor({
         eventLimitMj: 6,

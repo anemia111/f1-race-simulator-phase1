@@ -109,6 +109,27 @@ function driverErrorRate(driver: Driver): number {
   return clamp01((1 - control) * 0.5)
 }
 
+export function crashFlagResponseFor(options: {
+  attackerRetires: boolean
+  defenderRetires: boolean
+  obstructionRoll: number
+}): Exclude<FlagState, 'clear'> {
+  const { attackerRetires, defenderRetires, obstructionRoll } = options
+
+  if (!attackerRetires && !defenderRetires) {
+    return 'yellow'
+  }
+
+  if (attackerRetires && defenderRetires) {
+    if (obstructionRoll < 0.35) return 'vsc'
+    if (obstructionRoll < 0.9) return 'sc'
+    return 'red'
+  }
+
+  if (obstructionRoll < 0.45) return 'yellow'
+  return obstructionRoll < 0.9 ? 'vsc' : 'sc'
+}
+
 function progressIsInZone(progress: number, start: number, end: number): boolean {
   return start <= end
     ? progress >= start && progress <= end
@@ -369,12 +390,11 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       const attackerRetires = hashChance(`${key}:attacker-out`) < 0.68
       const defenderRetires = hashChance(`${key}:defender-out`) < 0.32
       const majorMultiCarCrash = attackerRetires && defenderRetires
-      const flagResponse: Exclude<FlagState, 'clear'> =
-        responseRoll > (majorMultiCarCrash ? 0.68 : 0.92)
-          ? 'red'
-          : responseRoll > 0.42
-            ? 'sc'
-            : 'vsc'
+      const flagResponse = crashFlagResponseFor({
+        attackerRetires,
+        defenderRetires,
+        obstructionRoll: responseRoll,
+      })
 
       return {
         kind: 'crash',
@@ -387,7 +407,9 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
         defenderRetires,
         flagResponse,
         flagDurationSeconds:
-          flagResponse === 'red'
+          flagResponse === 'yellow'
+            ? 14 + detail * 16
+            : flagResponse === 'red'
             ? 75 + detail * 45
             : flagResponse === 'sc'
               ? 55 + detail * 42

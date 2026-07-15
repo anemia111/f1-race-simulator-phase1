@@ -295,6 +295,23 @@ export function flagPhaseForSector(
   return phase?.flag === 'yellow' && phase.sector !== carSector ? null : phase
 }
 
+export function wearScaleForControlPhase(
+  phase: ActiveFlagPhase | null,
+): { component: number; tire: number } {
+  switch (phase?.flag) {
+    case 'red':
+      return { component: 0, tire: 0 }
+    case 'sc':
+      return { component: 0.42, tire: 0.24 }
+    case 'vsc':
+      return { component: 0.62, tire: 0.5 }
+    case 'yellow':
+      return { component: 0.9, tire: 0.82 }
+    default:
+      return { component: 1, tire: 1 }
+  }
+}
+
 export function sectorFlagStatesFor(
   flag: FlagState,
   localYellowSector: number | null,

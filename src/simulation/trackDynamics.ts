@@ -17,6 +17,8 @@ type CachedProfile = { points: TrackDynamicPoint[] }
 const profileCache = new WeakMap<TrackDefinition, CachedProfile>()
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+const MIN_REFERENCE_SPEED_KPH = 55
+const MAX_REFERENCE_SPEED_KPH = 395
 
 function pointAt(track: TrackDefinition, index: number) {
   const length = track.centerline.length
@@ -50,9 +52,11 @@ function rawProfileAt(track: TrackDefinition, index: number) {
   const straightness = 1 - curvature
   const gradient = clamp((next[1] - previous[1]) / 8, -1, 1)
   const rawSpeedFactor = clamp(
-    0.42 + straightness * 0.72 - Math.max(0, gradient) * 0.06,
-    0.38,
-    1.14,
+    0.24 +
+      Math.pow(straightness, 1.55) * 1.38 -
+      Math.max(0, gradient) * 0.08,
+    0.22,
+    1.62,
   )
 
   return { curvature, gradient, rawSpeedFactor, straightness, turnDirection }
@@ -60,16 +64,37 @@ function rawProfileAt(track: TrackDefinition, index: number) {
 
 function buildProfile(track: TrackDefinition): CachedProfile {
   const raw = track.centerline.map((_, index) => rawProfileAt(track, index))
-  const harmonicFactor =
-    raw.length / raw.reduce((total, point) => total + 1 / point.rawSpeedFactor, 0)
   const averageSpeedKph = (track.lengthKm / track.baseLapTime) * 3600
+  let speedScale =
+    averageSpeedKph /
+    (raw.length /
+      raw.reduce((total, point) => total + 1 / point.rawSpeedFactor, 0))
+
+  // Curvature creates a wide F1-like speed range while this iterative scale
+  // keeps the distance-weighted lap time anchored to the configured circuit
+  // baseline, including tracks that touch the hairpin or straight-line bounds.
+  for (let iteration = 0; iteration < 12; iteration += 1) {
+    const speeds = raw.map((point) =>
+      clamp(
+        point.rawSpeedFactor * speedScale,
+        MIN_REFERENCE_SPEED_KPH,
+        MAX_REFERENCE_SPEED_KPH,
+      ),
+    )
+    const achievedAverageSpeedKph =
+      speeds.length /
+      speeds.reduce((total, speedKph) => total + 1 / speedKph, 0)
+
+    speedScale *= averageSpeedKph / achievedAverageSpeedKph
+  }
+
   const speedPoints = raw.map((point) => ({
     curvature: point.curvature,
     gradient: point.gradient,
     referenceSpeedKph: clamp(
-      averageSpeedKph * (point.rawSpeedFactor / harmonicFactor),
-      72,
-      355,
+      point.rawSpeedFactor * speedScale,
+      MIN_REFERENCE_SPEED_KPH,
+      MAX_REFERENCE_SPEED_KPH,
     ),
     straightness: point.straightness,
     turnDirection: point.turnDirection,
@@ -120,7 +145,9 @@ function buildProfile(track: TrackDefinition): CachedProfile {
       brakingSeverity,
       cornerClass,
       fullThrottle:
-        point.straightness > 0.88 && brakingSeverity < 0.08,
+        (point.straightness > 0.68 || straightLengthAheadMeters >= 100) &&
+        point.referenceSpeedKph >= 190 &&
+        brakingSeverity < 0.32,
       straightLengthAheadMeters,
     }
   })

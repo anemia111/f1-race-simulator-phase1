@@ -36,8 +36,22 @@ driving game or a broadcast-video renderer.
 - Independent S1/S2/S3 flag states for local yellow, double yellow, VSC, SC,
   and red phases, synchronized between pace control, OpenF1 race control,
   dashboard status, and the 3D circuit trace.
+- Minor contact remains a sector-local yellow. VSC, Safety Car, and red-flag
+  escalation requires a stopped or obstructing car, and cars in clear sectors
+  retain green-flag pace.
+- Neutralised-race strategy prices SC and VSC pit loss separately, rejects a
+  VSC opportunity that will end before pit entry, preserves the VSC tyre-only
+  service restriction, and splits calls by traffic, track position, tyre state,
+  team profile, available sets, and double-stack risk.
+- Integrated acceleration now produces representative dry maxima above the old
+  260 km/h plateau, while 420-class speed remains limited to favorable long
+  straights with low drag, low fuel, tow, and ERS deployment.
 - Driver abilities use the CSV's 150-point scale without silently clamping
   source ratings. Machine and driver performance stay separate in the model.
+- Machine pace axes keep their CSV values for display and auditing. The
+  physical simulation expands axis deviations by 35% around the reference car
+  and applies a wider local response so team differences are clearer in
+  corners, acceleration, braking, and speed.
 - Explicit SIM/HIST/LIVE modes for OpenF1 timing, telemetry, weather,
   race-control, position, pit/stint, radio,
   result, and championship enrichment with SIM/HIST/LIVE source separation.

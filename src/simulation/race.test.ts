@@ -12,8 +12,12 @@ import type {
   Team,
   TireCompound,
 } from '../types'
-import { incidentForLap } from './incidents'
-import { battleDynamicsFor, overtakeForLap } from './overtaking'
+import { incidentForLap, terminalCrashFlagResponse } from './incidents'
+import {
+  battleDynamicsFor,
+  crashFlagResponseFor,
+  overtakeForLap,
+} from './overtaking'
 import {
   applyPracticeSetup,
   buildPracticeSetupSummary,
@@ -47,6 +51,8 @@ import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
 import { startingGridDistance } from './startingGrid'
 import {
   decidePitStop,
+  decideRedFlagTireChange,
+  effectivePitLaneLossSecondsForControlPhase,
   estimatePitOpportunity,
   pitTuning,
   strategyOutlookFor,
@@ -538,13 +544,13 @@ describe('CPU timing lines', () => {
     const slowTeam = {
       ...initialTeams.find((team) => team.id === slowDriver.teamId)!,
       machine: Object.fromEntries(
-        Object.keys(initialTeams[0].machine).map((key) => [key, 0.9]),
+        Object.keys(initialTeams[0].machine).map((key) => [key, 0.95]),
       ) as Team['machine'],
     }
     const fastTeam = {
       ...initialTeams.find((team) => team.id === fastDriver.teamId)!,
       machine: Object.fromEntries(
-        Object.keys(initialTeams[0].machine).map((key) => [key, 1]),
+        Object.keys(initialTeams[0].machine).map((key) => [key, 0.95]),
       ) as Team['machine'],
     }
     const config: RaceConfig = {
@@ -1399,6 +1405,114 @@ describe('weather and wet strategy', () => {
     expect(clearTrack.controlPhaseSavingSeconds).toBeGreaterThan(7)
     expect(clearTrack.netGainSeconds).toBeGreaterThan(traffic.netGainSeconds)
     expect(traffic.doubleStackCostSeconds).toBeGreaterThan(0)
+  })
+
+  it('prices green, VSC, and Safety Car pit losses separately', () => {
+    const green = effectivePitLaneLossSecondsForControlPhase({
+      controlPhase: 'green',
+      pitLaneLossSeconds: 20,
+    })
+    const vsc = effectivePitLaneLossSecondsForControlPhase({
+      controlPhase: 'vsc',
+      pitLaneLossSeconds: 20,
+    })
+    const safetyCar = effectivePitLaneLossSecondsForControlPhase({
+      controlPhase: 'safety-car',
+      pitLaneLossSeconds: 20,
+    })
+    const endingVsc = effectivePitLaneLossSecondsForControlPhase({
+      controlPhase: 'vsc',
+      neutralisationSecondsRemaining: 3,
+      pitEntrySecondsAway: 5,
+      pitLaneLossSeconds: 20,
+    })
+
+    expect(safetyCar).toBeLessThan(vsc)
+    expect(vsc).toBeLessThan(green)
+    expect(endingVsc).toBe(green)
+  })
+
+  it('does not schedule a repair-only service while the VSC is active', () => {
+    const driver = initialDrivers[0]
+    const baseCar = createInitialRace(makeConfig('vsc-repair-rule')).cars[0]
+    const car = {
+      ...baseCar,
+      damage: 0.85,
+      tireAgeLaps: 1,
+      tireWearPercent: 4,
+    }
+    const shared = {
+      car,
+      driver,
+      lap: 8,
+      raceLaps: 58,
+      seed: 'vsc-repair-rule',
+      trackGrip: 1,
+      weather: 'clear' as const,
+    }
+
+    expect(decidePitStop({ ...shared, controlPhase: 'vsc' })).toBeNull()
+    expect(decidePitStop({ ...shared, controlPhase: 'green' })?.reason).toBe(
+      'damage',
+    )
+  })
+
+  it('splits strategic calls under the same Safety Car opportunity', () => {
+    const baseCar = createInitialRace(makeConfig('sc-strategy-split')).cars[0]
+    const calls = initialDrivers.map((driver) =>
+      decidePitStop({
+        car: {
+          ...baseCar,
+          tireAgeLaps: 8,
+          tireWearPercent: 38,
+        },
+        controlPhase: 'safety-car',
+        driver,
+        lap: 18,
+        overtakeDifficulty: 0.72,
+        position: initialDrivers.indexOf(driver) + 1,
+        projectedRejoinPosition: initialDrivers.indexOf(driver) + 3,
+        raceLaps: 58,
+        seed: 'sc-strategy-split',
+        trackGrip: 1,
+        weather: 'clear',
+      }),
+    )
+    const pitCalls = calls.filter((decision) => decision !== null)
+
+    expect(pitCalls.length).toBeGreaterThan(0)
+    expect(pitCalls.length).toBeLessThan(initialDrivers.length)
+  })
+
+  it('recalculates red-flag tyres while fresh-tyre cars retain track position', () => {
+    const baseCar = createInitialRace(makeConfig('red-flag-strategy')).cars[0]
+    const freshDecision = decideRedFlagTireChange({
+      availableCompounds: baseCar.tireSetsRemaining,
+      car: { ...baseCar, tireAgeLaps: 1, tireWearPercent: 8 },
+      driver: initialDrivers[0],
+      lap: 24,
+      raceLaps: 58,
+      seed: 'red-flag-strategy',
+      trackGrip: 1,
+      weather: 'clear',
+    })
+    const fieldDecisions = initialDrivers.map((driver) =>
+      decideRedFlagTireChange({
+        availableCompounds: baseCar.tireSetsRemaining,
+        car: { ...baseCar, tireAgeLaps: 9, tireWearPercent: 42 },
+        driver,
+        lap: 24,
+        raceLaps: 58,
+        seed: 'red-flag-strategy',
+        trackGrip: 1,
+        weather: 'clear',
+      }),
+    )
+    const changes = fieldDecisions.filter((decision) => decision !== null)
+
+    expect(freshDecision).toBeNull()
+    expect(changes.length).toBeGreaterThan(0)
+    expect(changes.length).toBeLessThan(initialDrivers.length)
   })
 
   it('is deterministic for a seed, track, and time', () => {
@@ -2499,6 +2613,33 @@ describe('qualifying', () => {
 })
 
 describe('incidents', () => {
+  it('reserves VSC, Safety Car, and red flags for stopped or obstructing cars', () => {
+    expect(
+      crashFlagResponseFor({
+        attackerRetires: false,
+        defenderRetires: false,
+        obstructionRoll: 0.99,
+      }),
+    ).toBe('yellow')
+    expect(
+      crashFlagResponseFor({
+        attackerRetires: true,
+        defenderRetires: false,
+        obstructionRoll: 0.2,
+      }),
+    ).toBe('yellow')
+    expect(
+      crashFlagResponseFor({
+        attackerRetires: true,
+        defenderRetires: true,
+        obstructionRoll: 0.95,
+      }),
+    ).toBe('red')
+    expect(terminalCrashFlagResponse(0.1)).toBe('yellow')
+    expect(terminalCrashFlagResponse(0.5)).toBe('vsc')
+    expect(terminalCrashFlagResponse(0.8)).toBe('sc')
+  })
+
   it('is deterministic for the same inputs', () => {
     const driver = initialDrivers[5]
     const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!

@@ -10,10 +10,12 @@ import {
 import { createInitialRace } from './race'
 import {
   advanceVscMarshallingSectorTracking,
+  flagPaceMultiplier,
   flagPhaseForSector,
   phaseThreeTuning,
   sectorFlagStatesFor,
   vscPaceScaleForDelta,
+  wearScaleForControlPhase,
 } from './raceEvents'
 import { calculateCarTelemetry } from './telemetry'
 import {
@@ -41,6 +43,18 @@ describe('track-dependent systems', () => {
 
     expect(flagPhaseForSector(yellow, 0)).toBeNull()
     expect(flagPhaseForSector(yellow, 1)).toBe(yellow)
+    expect(
+      flagPaceMultiplier(flagPhaseForSector(yellow, 0), 0, {
+        gapToAheadSeconds: 0.4,
+        isLeader: false,
+      }),
+    ).toBe(1)
+    expect(
+      flagPaceMultiplier(flagPhaseForSector(yellow, 1), 1, {
+        gapToAheadSeconds: 0.4,
+        isLeader: false,
+      }),
+    ).toBe(phaseThreeTuning.yellowSectorPace)
     expect(sectorFlagStatesFor('yellow', 1)).toEqual([
       'clear',
       'yellow',
@@ -76,6 +90,27 @@ describe('track-dependent systems', () => {
     expect(
       phaseThreeTuning.vscMinimumTimePace - phaseThreeTuning.vscPace,
     ).toBeGreaterThanOrEqual(0.02)
+  })
+
+  it('reduces tire and component wear under neutralisation', () => {
+    const phaseFor = (flag: 'yellow' | 'vsc' | 'sc' | 'red') => ({
+      endMessage: '',
+      endSeconds: 30,
+      flag,
+      id: flag,
+      sector: 1,
+      startMessage: '',
+      startSeconds: 10,
+    })
+
+    expect(wearScaleForControlPhase(null)).toEqual({ component: 1, tire: 1 })
+    expect(wearScaleForControlPhase(phaseFor('sc')).tire).toBeLessThan(
+      wearScaleForControlPhase(phaseFor('vsc')).tire,
+    )
+    expect(wearScaleForControlPhase(phaseFor('red'))).toEqual({
+      component: 0,
+      tire: 0,
+    })
   })
 
   it('counts only completed marshalling sectors crossed with a negative VSC delta', () => {
@@ -374,7 +409,7 @@ describe('track-dependent systems', () => {
     ).toBe('disabled')
   })
 
-  it('uses the FIA C5.2.8 ERS-K deployment curves exactly', () => {
+  it('uses the post-Miami FIA 2026 ERS-K zone limits', () => {
     const standardAt289 = ersDeploymentPowerKw({
       ersMode: 'deploy',
       overtakeStatus: 'available',
@@ -401,25 +436,25 @@ describe('track-dependent systems', () => {
       speedKph: 340,
     })
 
-    expect(standardAt289).toBe(350)
-    expect(standardAt290).toBe(350)
-    expect(standardAt291).toBe(345)
-    expect(standardAt340).toBe(100)
-    expect(overtakeAt340).toBe(300)
+    expect(standardAt289).toBe(250)
+    expect(standardAt290).toBe(250)
+    expect(standardAt291).toBe(250)
+    expect(standardAt340).toBe(250)
+    expect(overtakeAt340).toBe(350)
     expect(
       ersDeploymentPowerKw({
         ersMode: 'deploy',
         overtakeStatus: 'available',
         speedKph: 345,
       }),
-    ).toBe(0)
+    ).toBe(250)
     expect(
       ersDeploymentPowerKw({
         ersMode: 'deploy',
         overtakeStatus: 'active',
         speedKph: 355,
       }),
-    ).toBe(0)
+    ).toBe(350)
     expect(
       ersDeploymentPowerKw({
         curve: 'specified-sector',
@@ -427,7 +462,7 @@ describe('track-dependent systems', () => {
         overtakeStatus: 'available',
         speedKph: 280,
       }),
-    ).toBe(250)
+    ).toBe(350)
     expect(
       ersDeploymentPowerKw({
         curve: 'low-grip-estimate',

@@ -58,7 +58,12 @@ export type StewardConsequence =
   | 'major'
   | 'reckless'
 export type PitPhase = 'none' | 'entry' | 'lane' | 'box' | 'exit'
-export type PitServiceKind = 'tire-stop' | 'drive-through' | 'stop-go' | null
+export type PitServiceKind =
+  | 'tire-stop'
+  | 'repair-stop'
+  | 'drive-through'
+  | 'stop-go'
+  | null
 export type PenaltyKind =
   | 'time-5'
   | 'time-10'

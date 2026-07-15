@@ -5,6 +5,7 @@ Audited against the latest public documents available on 2026-07-15:
 - General Provisions, Issue 03, 2026-06-25
 - Sporting Regulations, Issue 07, 2026-06-25
 - Technical Regulations, Issue 19, 2026-06-25
+- FIA 2026 power-unit and superclip refinements, 2026-04-20
 - Formula 1 Driving Standards Guidelines, v01, 2026-02-26
 - Formula 1 Penalty Guidelines, v01, 2026
 
@@ -21,9 +22,9 @@ FIA when the corresponding competition document is not public or normalized.
 | Low Grip Conditions | B1.5.12 | Stateful Race Director declaration with drying hysteresis. Qualifying cannot return to Normal Grip with five minutes or less remaining in a period. |
 | Active aero | B7.1.1-B7.1.2 | Normal Grip permits full activation in mapped zones. Low Grip prohibits full activation and permits front-wing-only partial activation in mapped Low Grip zones. |
 | Overtake | B7.2.2-B7.2.3 | Disabled at a race start, under Safety Car, and in Low Grip. Detection-line eligibility is latched and activation-line use is modelled. |
-| ERS-K power | C5.2.7-C5.2.8 | 350 kW absolute cap and exact public standard, Overtake, and specified-sector speed curves. Standard deployment is zero from 345 km/h; Overtake deployment is zero from 355 km/h. |
+| ERS-K power | C5.2.7-C5.2.8, FIA 2026 refinement | 350 kW is available in identified acceleration sectors, with 250 kW elsewhere. Overtake can add at most 150 kW without exceeding the 350 kW absolute cap. Low Grip remains a separately labelled estimate where event curves are not public. |
 | Energy Store | C5.2.9 | Battery percentage maps to the public 4 MJ usable state-of-charge window. |
-| Recharge | C5.2.10 | Public 8.5 MJ per-lap maximum by default, optional event override, 5 MJ qualifying floor, and no recharge limit behind the Safety Car in Low Grip. |
+| Recharge | C5.2.10, FIA 2026 refinement | Public 8.5 MJ per-lap maximum by default, optional event override, 7 MJ qualifying recharge, and no recharge limit behind the Safety Car in Low Grip. |
 | Standing start ERS | C5.2.12 | MGU-K deployment is blocked below 50 km/h, except for the existing SECU low-power-start safety state. |
 | Race and Sprint distance | B2.3/B2.5 | Sprint exceeds 100 km; Grand Prix uses the official event lap count and time limits. |
 | Qualifying format | B2.4 | Q1/Q2/Q3 run for 18/15/13 minutes with seven-minute intervals. |
@@ -32,6 +33,7 @@ FIA when the corresponding competition document is not public or normalized.
 | Race tyre rule | B6.3.6 | Two dry specifications are required unless Intermediate or Wet tyres were used. |
 | Wet Safety Car start | B5.10, B6.3.7 | Severe-rain starts can run formation laps behind the Safety Car; when mandated, all cars use Wet tyres until the Safety Car returns. |
 | VSC | B5.12 | Cars follow a marshalling-sector delta rather than a fixed speed cap; overtaking is disabled. `VSC ENDING` starts a deterministic 10-15 second wait before the panels turn green. |
+| Neutralised pit strategy | B5.12-B5.14 | Relative pit loss is lower under VSC and lower again behind the Safety Car, but the strategy remains car-specific. VSC service is tyre-only; damage repair is deferred. Red-flag tyre changes are recalculated from weather, tyre condition, remaining sets and track position rather than applied to every car. |
 | VSC infringements | B5.12.2, Penalty Guidelines v01 | Delta is sampled only when a car completes one of the 24 timing mini-sectors. Two/three completed red sectors produce 5s, four 10s, five a drive-through, and six a 10s stop-and-go. A red end-delta produces 5s, rising to 10s above 3s and a drive-through above 5s. CPU pace first establishes a small positive margin, then closed-loop control returns toward the minimum time. |
 | Safety Car | B5.13 | Yellow is shown before deployment. The leader catches the SC, the field forms a queue, the SC may route the field through the pit lane, and the physical SC returns through Pit Entry Road. Final-lap SC finishes remain under yellow. |
 | SC lapped-car procedure | B5.13.4-B5.13.5 | Eligibility is frozen at the prescribed second SC1 crossing. Only named eligible cars pass, the pit exit may close, cars rejoin at the tail without racing, and withdrawal normally follows at the end of the following lap. |
@@ -71,6 +73,7 @@ FIA when the corresponding competition document is not public or normalized.
 ## Official sources
 
 - https://www.fia.com/regulation/category/110
+- https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders
 - https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_07_-_2026-06-25.pdf
 - https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_19_-_2026-06-25.pdf
 - https://www.fia.com/sites/default/files/2026_f1_driving_standards_guidelines.pdf

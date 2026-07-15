@@ -576,7 +576,7 @@ function runKnockoutSession(
   const { q2Size, q3Size } = qualifyingCutSizes(config.drivers.length)
   const first = runQualifyingSegment(config, teams, config.drivers, segments[0], 0)
   const firstSurvivors = first
-    .filter((result) => result.classificationStatus === 'classified')
+    .filter((result) => result.validRunCount > 0)
     .slice(0, q2Size)
   const firstSurvivorIds = new Set(
     firstSurvivors.map((result) => result.driverId),

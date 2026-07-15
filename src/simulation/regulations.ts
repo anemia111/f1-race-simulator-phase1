@@ -8,7 +8,7 @@ import { raceLapsFor } from './raceEvents'
 import { isDryCompound } from './tires'
 
 export const FIA_2026_REGULATION_PROFILE = {
-  asOf: '2026-06-25',
+  asOf: '2026-07-15',
   sporting: {
     issue: '07',
     label: 'FIA 2026 F1 Sporting Regulations Issue 07',
@@ -29,6 +29,11 @@ export const FIA_2026_REGULATION_PROFILE = {
     label: '2026 Formula 1 Penalty Guidelines v01',
     url: 'https://www.fia.com/sites/default/files/2026_f1_penalty_guidelines.pdf',
   },
+  energyRefinement: {
+    date: '2026-04-20',
+    label: 'FIA 2026 energy-management refinements',
+    url: 'https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders',
+  },
   heatHazard: {
     declarationThresholdHeatIndexC: 31,
     declaredSessionMassIncreaseKg: 5,
@@ -46,8 +51,12 @@ export const FIA_2026_REGULATION_PROFILE = {
   },
   energy: {
     maxErsPowerKw: 350,
+    keyAccelerationPowerKw: 350,
+    otherLapPowerKw: 250,
+    maximumBoostIncreaseKw: 150,
     usableStateOfChargeWindowMj: 4,
     publicRechargeLimitMj: 8.5,
+    qualifyingRechargeLimitMj: 7,
     normalCompetitionReducedLimitMj: 7,
     qualifyingMinimumLimitMj: 5,
     standingStartDeploymentMinKph: 50,
@@ -131,7 +140,9 @@ export function maxRechargePerLapMjFor(options: {
   const eventLimit = options.eventLimitMj
 
   if (eventLimit === undefined || eventLimit === null) {
-    return FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+    return isQualifying
+      ? FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj
+      : FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
   }
 
   const minimum = isQualifying

@@ -178,7 +178,7 @@ export function superClippingDemandFor(options: {
     speedKph < MIN_SUPER_CLIPPING_SPEED_KPH ||
     throttlePercent < 90 ||
     brakePercent > 3 ||
-    straightness < 0.86 ||
+    straightness < 0.78 ||
     straightLengthAheadMeters < 150 ||
     harvestedThisLapMj >= maxRechargePerLapMj - 0.01 ||
     batteryPercent >= 98

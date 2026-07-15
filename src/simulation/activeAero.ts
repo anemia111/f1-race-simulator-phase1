@@ -10,8 +10,6 @@ import type {
 } from '../types'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value))
 const OVERTAKE_ACTIVATION_LENGTH = 0.12
 const MAX_MGU_K_POWER_KW =
   FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
@@ -231,35 +229,31 @@ export function overtakeStatusFor(options: {
   return car.totalDistance < activationDistance ? 'available' : 'disabled'
 }
 
-function standardDeploymentLimitKw(speedKph: number) {
-  if (speedKph >= 345) {
-    return 0
-  }
-
-  const formula =
-    speedKph < 340 ? 1800 - 5 * speedKph : 6900 - 20 * speedKph
-
-  return clamp(formula, 0, MAX_MGU_K_POWER_KW)
+function standardDeploymentLimitKw() {
+  return Math.min(
+    FIA_2026_REGULATION_PROFILE.energy.otherLapPowerKw,
+    MAX_MGU_K_POWER_KW,
+  )
 }
 
-function overtakeDeploymentLimitKw(speedKph: number) {
-  if (speedKph >= 355) {
-    return 0
-  }
-
-  return clamp(7100 - 20 * speedKph, 0, MAX_MGU_K_POWER_KW)
+function overtakeDeploymentLimitKw(basePowerKw: number) {
+  return Math.min(
+    MAX_MGU_K_POWER_KW,
+    basePowerKw + FIA_2026_REGULATION_PROFILE.energy.maximumBoostIncreaseKw,
+  )
 }
 
-function specifiedSectorDeploymentLimitKw(speedKph: number) {
-  return speedKph < 310
-    ? Math.min(250, MAX_MGU_K_POWER_KW)
-    : standardDeploymentLimitKw(speedKph)
+function specifiedSectorDeploymentLimitKw() {
+  return Math.min(
+    FIA_2026_REGULATION_PROFILE.energy.keyAccelerationPowerKw,
+    MAX_MGU_K_POWER_KW,
+  )
 }
 
 /**
- * Public FIA Technical Regulations C5.2.7-C5.2.8 power curves. Low-grip
- * values live in non-public FIA-F1-DOC-111, so the simulator uses a clearly
- * identified conservative estimate instead of presenting invented FIA data.
+ * FIA's April 2026 refinement keeps 350 kW from corner exit to the braking
+ * point and limits other parts of the lap to 250 kW. Low-grip values remain
+ * non-public, so that curve stays a clearly identified conservative estimate.
  */
 export function ersDeploymentPowerKw(options: {
   curve?: ErsDeploymentCurve
@@ -271,28 +265,24 @@ export function ersDeploymentPowerKw(options: {
     curve = 'standard',
     ersMode,
     overtakeStatus,
-    speedKph: rawSpeedKph,
   } = options
 
   if (ersMode !== 'deploy') {
     return 0
   }
 
-  const speedKph = Math.max(0, rawSpeedKph)
-
-  if (curve === 'specified-sector') {
-    return Math.round(specifiedSectorDeploymentLimitKw(speedKph))
-  }
+  const basePowerKw =
+    curve === 'specified-sector'
+      ? specifiedSectorDeploymentLimitKw()
+      : standardDeploymentLimitKw()
 
   if (curve === 'low-grip-estimate') {
-    return Math.round(
-      Math.min(250, standardDeploymentLimitKw(speedKph)),
-    )
+    return Math.round(Math.min(250, basePowerKw))
   }
 
   return Math.round(
     overtakeStatus === 'active'
-      ? overtakeDeploymentLimitKw(speedKph)
-      : standardDeploymentLimitKw(speedKph),
+      ? overtakeDeploymentLimitKw(basePowerKw)
+      : basePowerKw,
   )
 }

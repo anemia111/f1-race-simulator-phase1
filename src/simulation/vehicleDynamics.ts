@@ -18,6 +18,24 @@ import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+export const MACHINE_PACE_REFERENCE = 0.86
+export const MACHINE_PACE_SPREAD_FACTOR = 1.35
+export const MACHINE_SEGMENT_RESPONSE = 0.135
+
+/**
+ * Expands the effect of a machine rating without mutating the factual CSV
+ * value. A rating at the reference remains unchanged while strengths and
+ * weaknesses have 35% more influence on the physical pace model.
+ */
+export function machinePaceRating(value: number): number {
+  return clamp(
+    MACHINE_PACE_REFERENCE +
+      (value - MACHINE_PACE_REFERENCE) * MACHINE_PACE_SPREAD_FACTOR,
+    0.45,
+    1.05,
+  )
+}
+
 export type TrackLoadProfile = {
   accelerationShare: number
   brakingShare: number
@@ -94,31 +112,31 @@ function machineCornerScore(team: Team, dynamics: TrackDynamicPoint) {
   switch (dynamics.cornerClass) {
     case 'low':
       return (
-        machine.lowSpeedCornerPerformance * 0.38 +
-        machine.mechanicalGrip * 0.25 +
-        machine.traction * 0.22 +
-        machine.rideCompliance * 0.15
+        machinePaceRating(machine.lowSpeedCornerPerformance) * 0.38 +
+        machinePaceRating(machine.mechanicalGrip) * 0.25 +
+        machinePaceRating(machine.traction) * 0.22 +
+        machinePaceRating(machine.rideCompliance) * 0.15
       )
     case 'medium':
       return (
-        machine.mediumSpeedCornerPerformance * 0.4 +
-        machine.downforceGeneration * 0.25 +
-        machine.mechanicalGrip * 0.2 +
-        machine.aerodynamicEfficiency * 0.15
+        machinePaceRating(machine.mediumSpeedCornerPerformance) * 0.4 +
+        machinePaceRating(machine.downforceGeneration) * 0.25 +
+        machinePaceRating(machine.mechanicalGrip) * 0.2 +
+        machinePaceRating(machine.aerodynamicEfficiency) * 0.15
       )
     case 'high':
       return (
-        machine.highSpeedCornerPerformance * 0.42 +
-        machine.downforceGeneration * 0.3 +
-        machine.aerodynamicEfficiency * 0.18 +
-        machine.rideCompliance * 0.1
+        machinePaceRating(machine.highSpeedCornerPerformance) * 0.42 +
+        machinePaceRating(machine.downforceGeneration) * 0.3 +
+        machinePaceRating(machine.aerodynamicEfficiency) * 0.18 +
+        machinePaceRating(machine.rideCompliance) * 0.1
       )
     default:
       return (
-        machine.straightLineEfficiency * 0.35 +
-        machine.dragEfficiency * 0.3 +
-        machine.puOutput * 0.25 +
-        machine.activeAeroEfficiency * 0.1
+        machinePaceRating(machine.straightLineEfficiency) * 0.35 +
+        machinePaceRating(machine.dragEfficiency) * 0.3 +
+        machinePaceRating(machine.puOutput) * 0.25 +
+        machinePaceRating(machine.activeAeroEfficiency) * 0.1
       )
   }
 }
@@ -133,24 +151,34 @@ export function machineSegmentCapability(options: {
   const machine = team.machine
   const cornerScore = machineCornerScore(team, dynamics)
   const brakingScore =
-    machine.brakingPerformance * 0.55 + machine.brakingStability * 0.45
+    machinePaceRating(machine.brakingPerformance) * 0.55 +
+    machinePaceRating(machine.brakingStability) * 0.45
   const wetScore =
     weather === 'heavy-rain'
-      ? machine.wetPerformance
+      ? machinePaceRating(machine.wetPerformance)
       : weather === 'light-rain'
-        ? machine.intermediatePerformance
-        : 0.86
+        ? machinePaceRating(machine.intermediatePerformance)
+        : MACHINE_PACE_REFERENCE
   const localScore =
     cornerScore * (1 - dynamics.brakingSeverity * 0.3) +
     brakingScore * dynamics.brakingSeverity * 0.3
   const weatherAdjusted = localScore * 0.86 + wetScore * 0.14
   const sessionPace =
-    session === 'qualifying' ? machine.qualifyingPace : machine.racePace
+    machinePaceRating(
+      session === 'qualifying' ? machine.qualifyingPace : machine.racePace,
+    )
   const sessionAdjusted = weatherAdjusted * 0.94 + sessionPace * 0.06
 
-  // Machine differences alter the physical limit by less than two percent
-  // over a representative lap, but the ordering changes with circuit type.
-  return clamp(1 + (sessionAdjusted - 0.86) * 0.105, 0.975, 1.018)
+  // Each axis still decides where a car gains or loses time. The wider lower
+  // bound makes backmarker deficits visible without turning Overall into a
+  // hidden all-purpose rating.
+  return clamp(
+    1 +
+      (sessionAdjusted - MACHINE_PACE_REFERENCE) *
+        MACHINE_SEGMENT_RESPONSE,
+    0.955,
+    1.022,
+  )
 }
 
 export function driverSegmentExecution(options: {
@@ -214,7 +242,8 @@ export function dirtyAirDownforceMultiplier(options: {
   }
 
   const proximity = 1 - clamp(gapSeconds / 2.5, 0, 1)
-  const sensitivity = 1.08 - team.machine.dirtyAirTolerance * 0.22
+  const sensitivity =
+    1.08 - machinePaceRating(team.machine.dirtyAirTolerance) * 0.22
   const loss = proximity ** 1.35 * dynamics.curvature * 0.115 * sensitivity
 
   return clamp(1 - loss, 0.88, 1)
@@ -234,7 +263,9 @@ export function towDragReductionFor(options: {
   const proximity = 1 - clamp((gapSeconds - 0.08) / 1.72, 0, 1)
 
   return clamp(
-    proximity * dynamics.straightness * (0.09 + team.machine.towSensitivity * 0.065),
+    proximity *
+      dynamics.straightness *
+      (0.09 + machinePaceRating(team.machine.towSensitivity) * 0.065),
     0,
     0.17,
   )
@@ -253,7 +284,7 @@ export function airDensityKgM3(options: {
 }
 
 function activeAeroDragMultiplier(mode: ActiveAeroMode, team: Team) {
-  const efficiency = team.machine.activeAeroEfficiency
+  const efficiency = machinePaceRating(team.machine.activeAeroEfficiency)
 
   if (mode === 'straight') {
     return clamp(0.88 - (efficiency - 0.84) * 0.2, 0.84, 0.9)
@@ -276,9 +307,9 @@ export function vehicleDragAreaM2(options: {
   const machine = team.machine
   const baseDragArea =
     1.18 -
-    machine.dragEfficiency * 0.1 -
-    machine.aerodynamicEfficiency * 0.03 -
-    machine.straightLineEfficiency * 0.025
+    machinePaceRating(machine.dragEfficiency) * 0.1 -
+    machinePaceRating(machine.aerodynamicEfficiency) * 0.03 -
+    machinePaceRating(machine.straightLineEfficiency) * 0.025
 
   return clamp(
     baseDragArea *
@@ -315,12 +346,12 @@ export function combustionPowerKwFor(team: Team) {
   // This fictional 420 km/h category retains F1-style energy deployment but
   // uses a higher combustion output. Aerodynamic drag, not a speed clamp,
   // determines whether a car can approach the category's headline speed.
-  return 575 + team.machine.puOutput * 78
+  return 575 + machinePaceRating(team.machine.puOutput) * 78
 }
 
 export function topGearPowerTransferEfficiency(speedKph: number, team: Team) {
   const efficientRangeEndKph =
-    390 + team.machine.straightLineEfficiency * 38
+    390 + machinePaceRating(team.machine.straightLineEfficiency) * 38
   const overspeedKph = Math.max(0, speedKph - efficientRangeEndKph)
 
   return clamp(0.992 - overspeedKph * 0.0025, 0.9, 0.992)
@@ -344,7 +375,9 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
   const powerKw =
     (combustionPowerKwFor(input.team) +
       Math.max(0, input.ersPowerKw) *
-        input.team.machine.electricalDeploymentEfficiency) *
+        machinePaceRating(
+          input.team.machine.electricalDeploymentEfficiency,
+        )) *
     clamp(input.drivePowerScale ?? 1, 0.45, 1) *
     clamp(
       input.gearEfficiency ??
@@ -358,13 +391,13 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
   const downforceTractionGain =
     1 +
     Math.min(1.5, (speedMps / 75) ** 2) *
-      input.team.machine.downforceGeneration *
+      machinePaceRating(input.team.machine.downforceGeneration) *
       0.75
   const tractionLimitN =
     massKg *
     9.81 *
     clamp(input.gripMultiplier, 0.35, 1.15) *
-    (1.35 + input.team.machine.traction * 0.42) *
+    (1.35 + machinePaceRating(input.team.machine.traction) * 0.42) *
     downforceTractionGain
   const driveForceN = Math.min(requestedDriveForceN, tractionLimitN)
   const regenerativeResistanceForceN =
@@ -372,7 +405,7 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
     Math.max(25, speedMps)
   const brakeDecelerationMps2 =
     clamp(input.brakePercent / 100, 0, 1) *
-    (9.8 + input.team.machine.brakingPerformance * 4.8) *
+    (9.8 + machinePaceRating(input.team.machine.brakingPerformance) * 4.8) *
     clamp(input.gripMultiplier, 0.35, 1.08)
   const accelerationMps2 =
     (driveForceN -
@@ -475,7 +508,11 @@ export function fuelBurnKgPerLap(options: {
   const weatherFactor =
     weather === 'heavy-rain' ? 0.86 : weather === 'light-rain' ? 0.94 : 1
   const efficiencyFactor = team
-    ? clamp(1.055 - team.machine.fuelEfficiency * 0.065, 0.985, 1.015)
+    ? clamp(
+        1.055 - machinePaceRating(team.machine.fuelEfficiency) * 0.065,
+        0.985,
+        1.015,
+      )
     : 1
 
   return (

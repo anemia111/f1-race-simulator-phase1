@@ -7,6 +7,7 @@ import type {
   Team,
   TireCompound,
   TireNomination,
+  TrackDefinition,
   TrackObservedCalibration,
   WeatherState,
 } from '../types'
@@ -21,6 +22,9 @@ import {
   type TireTrackCondition,
 } from './tires'
 import type { WeatherForecast } from './weather'
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
 
 export type PitDecision = {
   compound: TireCompound
@@ -60,6 +64,58 @@ export type PitOpportunityEstimate = {
   estimatedPitLossSeconds: number
 }
 
+export type PitControlPhase = 'green' | 'safety-car' | 'vsc' | 'red-flag'
+
+export type RedFlagTireDecision = {
+  compound: TireCompound
+  reason: 'weather' | 'wear' | 'strategic-reset'
+}
+
+export function overtakeDifficultyForTrack(track: TrackDefinition) {
+  const streetPremium = track.kind === 'street' ? 0.17 : 0
+  const zoneRelief = Math.min(0.2, (track.overtakeControlLines?.length ?? 0) * 0.055)
+  const widthRelief = clamp((track.width - 4.5) * 0.045, 0, 0.12)
+
+  return clamp(0.6 + streetPremium - zoneRelief - widthRelief, 0.25, 0.9)
+}
+
+function normalizedPitControlPhase(options: {
+  controlPhase?: PitControlPhase
+  underSafetyCar?: boolean
+}): PitControlPhase {
+  return options.controlPhase ??
+    (options.underSafetyCar ? 'safety-car' : 'green')
+}
+
+export function effectivePitLaneLossSecondsForControlPhase(options: {
+  controlPhase: PitControlPhase
+  pitLaneLossSeconds: number
+  neutralisationSecondsRemaining?: number | null
+  pitEntrySecondsAway?: number
+}) {
+  const {
+    controlPhase,
+    pitLaneLossSeconds,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway = 0,
+  } = options
+  const savingShare =
+    controlPhase === 'safety-car' ? 0.55 : controlPhase === 'vsc' ? 0.4 : 0
+  const endingConfidence =
+    controlPhase !== 'vsc' || neutralisationSecondsRemaining == null
+      ? 1
+      : clamp(
+          (neutralisationSecondsRemaining - pitEntrySecondsAway) / 8,
+          0,
+          1,
+        )
+
+  return Math.max(
+    5,
+    pitLaneLossSeconds * (1 - savingShare * endingConfidence),
+  )
+}
+
 export const pitTuning = {
   /** Fixed pit-lane transit loss vs staying out (seconds). */
   pitLaneLossSeconds: 16,
@@ -95,7 +151,11 @@ export function estimatePitOpportunity(options: {
   cliffLaps: number
   remainingLaps: number
   pitLaneLossSeconds?: number
-  underSafetyCar: boolean
+  underSafetyCar?: boolean
+  controlPhase?: PitControlPhase
+  neutralisationSecondsRemaining?: number | null
+  pitEntrySecondsAway?: number
+  overtakeDifficulty?: number
   gapToAheadSeconds?: number | null
   projectedRejoinPositionLoss?: number
   teammateInPit?: boolean
@@ -106,27 +166,46 @@ export function estimatePitOpportunity(options: {
     cliffLaps,
     remainingLaps,
     pitLaneLossSeconds = pitTuning.pitLaneLossSeconds,
-    underSafetyCar,
+    underSafetyCar: legacyUnderSafetyCar,
+    controlPhase: requestedControlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway = 0,
+    overtakeDifficulty = 0.5,
     gapToAheadSeconds,
     projectedRejoinPositionLoss = 0,
     teammateInPit = false,
   } = options
+  const controlPhase = normalizedPitControlPhase({
+    controlPhase: requestedControlPhase,
+    underSafetyCar: legacyUnderSafetyCar,
+  })
+  const underNeutralisation =
+    controlPhase === 'safety-car' || controlPhase === 'vsc'
   const horizonLaps = Math.max(1, Math.min(5, remainingLaps))
   const lapsIntoWindow = Math.max(0, tireAgeLaps - (cliffLaps - 4))
   const wearRisk = Math.max(0, tireWearPercent - 68) / 10
   const degradationAvoidedSeconds =
     (lapsIntoWindow * 0.34 + wearRisk * 0.48) * horizonLaps
-  const controlPhaseSavingSeconds = underSafetyCar
-    ? pitLaneLossSeconds * 0.43
-    : 0
+  const effectivePitLossSeconds = effectivePitLaneLossSecondsForControlPhase({
+    controlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway,
+    pitLaneLossSeconds,
+  })
+  const controlPhaseSavingSeconds = Math.max(
+    0,
+    pitLaneLossSeconds - effectivePitLossSeconds,
+  )
   const undercutOpportunitySeconds =
-    !underSafetyCar &&
+    !underNeutralisation &&
     typeof gapToAheadSeconds === 'number' &&
     gapToAheadSeconds > 0 &&
     gapToAheadSeconds < 1.6
       ? (1.6 - gapToAheadSeconds) * 0.9
       : 0
-  const rejoinTrafficCostSeconds = Math.max(0, projectedRejoinPositionLoss) * 0.7
+  const rejoinTrafficCostSeconds =
+    Math.max(0, projectedRejoinPositionLoss) *
+    (0.48 + clamp(overtakeDifficulty, 0, 1) * 0.58)
   const doubleStackCostSeconds = teammateInPit ? 3.4 : 0
   const netGainSeconds =
     degradationAvoidedSeconds +
@@ -142,10 +221,8 @@ export function estimatePitOpportunity(options: {
     undercutOpportunitySeconds,
     rejoinTrafficCostSeconds,
     doubleStackCostSeconds,
-    estimatedPitLossSeconds: Math.max(
-      5,
-      pitLaneLossSeconds - controlPhaseSavingSeconds + doubleStackCostSeconds,
-    ),
+    estimatedPitLossSeconds:
+      effectivePitLossSeconds + doubleStackCostSeconds,
   }
 }
 
@@ -180,6 +257,117 @@ function observedStopTarget(options: {
   return Math.max(0, Math.min(4, Math.round(observed + variation)))
 }
 
+export function decideRedFlagTireChange(options: {
+  availableCompounds?: Partial<Record<TireCompound, number>>
+  car: Pick<
+    CarSnapshot,
+    | 'compoundsUsed'
+    | 'tire'
+    | 'tireAgeLaps'
+    | 'tireThermalStressPercent'
+    | 'tireWearPercent'
+  >
+  driver: Driver
+  lap: number
+  mandatoryTwoDryCompounds?: boolean
+  raceLaps: number
+  seed: string
+  tireNomination?: TireNomination
+  trackCondition?: TireTrackCondition
+  trackGrip: number
+  weather: WeatherState
+}): RedFlagTireDecision | null {
+  const {
+    availableCompounds,
+    car,
+    driver,
+    lap,
+    mandatoryTwoDryCompounds = true,
+    raceLaps,
+    seed,
+    tireNomination,
+    trackCondition,
+    trackGrip,
+    weather,
+  } = options
+  const remainingLaps = Math.max(0, raceLaps - lap)
+  const usedDryCompounds = new Set(car.compoundsUsed.filter(isDryCompound))
+  const mustFitSecondDryCompound =
+    mandatoryTwoDryCompounds &&
+    !car.compoundsUsed.some((compound) => !isDryCompound(compound)) &&
+    usedDryCompounds.size < 2 &&
+    remainingLaps <= 14
+  const preferred = chooseCompound(
+    remainingLaps,
+    mustFitSecondDryCompound ? car.tire : null,
+    hashChance(`${seed}:red-flag-compound:${driver.id}:${lap}`),
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const compound =
+    availableCompounds && (availableCompounds[preferred] ?? 0) <= 0
+      ? (['S', 'M', 'H', 'I', 'W'] as TireCompound[]).find(
+          (candidate) =>
+            (availableCompounds[candidate] ?? 0) > 0 &&
+            compoundMatchesWeather(candidate, weather, trackGrip, trackCondition),
+        )
+      : preferred
+
+  if (!compound || (availableCompounds && (availableCompounds[compound] ?? 0) <= 0)) {
+    return null
+  }
+
+  const weatherMismatch = !compoundMatchesWeather(
+    car.tire,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const effectiveWear = Math.min(
+    100,
+    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
+  )
+  const cliff = effectiveCliffLaps(
+    car.tire,
+    driverAbilityValue(driver, 'tireManagement'),
+    tireNomination,
+  )
+  const recentlyFitted =
+    car.tireAgeLaps < 3 && effectiveWear < 18 && !weatherMismatch
+
+  if (recentlyFitted && !mustFitSecondDryCompound) {
+    return null
+  }
+
+  const setScarcity = (availableCompounds?.[compound] ?? 2) <= 1 ? 1 : 0
+  const strategyAggression = hashChance(
+    `${seed}:strategy-profile:${driver.teamId}`,
+  )
+  const changeScore =
+    (weatherMismatch ? 20 : 0) +
+    effectiveWear * 0.075 +
+    (car.tireAgeLaps / Math.max(1, cliff)) * 4.2 +
+    (mustFitSecondDryCompound ? 4 : 0) +
+    strategyAggression * 1.6 -
+    setScarcity * 1.8
+  const threshold =
+    4.2 + hashChance(`${seed}:red-flag-call:${driver.id}:${lap}`) * 3.4
+
+  if (changeScore < threshold) {
+    return null
+  }
+
+  return {
+    compound,
+    reason: weatherMismatch
+      ? 'weather'
+      : effectiveWear >= 45
+        ? 'wear'
+        : 'strategic-reset',
+  }
+}
+
 /**
  * Decide whether this car pits at the end of `lap`. Deterministic for
  * (seed, driver, lap). Returns null to stay out.
@@ -200,7 +388,11 @@ export function decidePitStop(options: {
   > & { brakeOverheatSeconds?: number }
   lap: number
   raceLaps: number
-  underSafetyCar: boolean
+  underSafetyCar?: boolean
+  controlPhase?: PitControlPhase
+  neutralisationSecondsRemaining?: number | null
+  pitEntrySecondsAway?: number
+  overtakeDifficulty?: number
   weather: WeatherState
   trackGrip: number
   forecast?: WeatherForecast
@@ -228,7 +420,11 @@ export function decidePitStop(options: {
     car,
     lap,
     raceLaps,
-    underSafetyCar,
+    underSafetyCar: legacyUnderSafetyCar,
+    controlPhase: requestedControlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway = 0,
+    overtakeDifficulty = 0.5,
     weather,
     trackGrip,
     forecast,
@@ -245,6 +441,12 @@ export function decidePitStop(options: {
     trackCondition,
     observedCalibration,
   } = options
+  const controlPhase = normalizedPitControlPhase({
+    controlPhase: requestedControlPhase,
+    underSafetyCar: legacyUnderSafetyCar,
+  })
+  const underSafetyCar =
+    controlPhase === 'safety-car' || controlPhase === 'vsc'
   const remaining = raceLaps - lap
 
   if (!pitLaneOpen || remaining < pitTuning.minRemainingLaps) {
@@ -332,9 +534,10 @@ export function decidePitStop(options: {
   const criticalWeatherMismatch =
     (preferredTrackCategory === 'W' && isDryCompound(car.tire)) ||
     (preferredTrackCategory === 'M' && car.tire === 'W')
+  const repairServiceAllowed = controlPhase !== 'vsc'
 
   // Damage repair takes priority.
-  if (car.damage >= pitTuning.damagePitThreshold) {
+  if (repairServiceAllowed && car.damage >= pitTuning.damagePitThreshold) {
     return { compound, reason: 'damage' }
   }
 
@@ -344,7 +547,7 @@ export function decidePitStop(options: {
     car.brakeTemperatureC >= 1090 &&
     (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
 
-  if (sustainedBrakeOverheat) {
+  if (repairServiceAllowed && sustainedBrakeOverheat) {
     return { compound, reason: 'brake-cooling' }
   }
 
@@ -353,22 +556,39 @@ export function decidePitStop(options: {
   }
 
   const emergencyStop =
-    car.damage >= pitTuning.damagePitThreshold ||
-    sustainedBrakeOverheat ||
+    (repairServiceAllowed && car.damage >= pitTuning.damagePitThreshold) ||
+    (repairServiceAllowed && sustainedBrakeOverheat) ||
     effectiveWearPercent >= 88 ||
     criticalWeatherMismatch
 
-  if (teammateInPit && !emergencyStop && !underSafetyCar) {
-    return null
+  if (teammateInPit && !emergencyStop) {
+    const acceptsDoubleStack =
+      underSafetyCar &&
+      effectiveWearPercent >= 76 &&
+      hashChance(`${seed}:double-stack-call:${driver.teamId}:${driver.id}:${lap}`) <
+        0.14
+
+    if (!acceptsDoubleStack) {
+      return null
+    }
   }
 
   // A green-flag pit lane can physically take more cars, but routine stops
   // are normally staggered to avoid release risk and a compressed pit queue.
-  // Safety-car opportunities and genuinely urgent stops remain unrestricted.
+  // Neutralised pit lanes still have release and double-stack constraints.
   if (
     !underSafetyCar &&
     pitLaneOccupancy >= pitTuning.normalPitLaneCapacity &&
     !emergencyStop
+  ) {
+    return null
+  }
+
+  if (
+    underSafetyCar &&
+    pitLaneOccupancy >= 5 &&
+    !emergencyStop &&
+    hashChance(`${seed}:neutralised-pit-traffic:${driver.id}:${lap}`) > 0.2
   ) {
     return null
   }
@@ -403,6 +623,10 @@ export function decidePitStop(options: {
     cliffLaps: strategicCliff,
     remainingLaps: remaining,
     underSafetyCar,
+    controlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway,
+    overtakeDifficulty,
     gapToAheadSeconds,
     projectedRejoinPositionLoss: rejoinLoss,
     teammateInPit,
@@ -453,12 +677,37 @@ export function decidePitStop(options: {
     return { compound, reason: 'forecast' }
   }
 
-  // Cheap stop under safety car once the tires have some age.
+  const teamStrategyAggression = hashChance(
+    `${seed}:strategy-profile:${driver.teamId}`,
+  )
+  const callVariation =
+    (hashChance(`${seed}:neutralisation-call:${driver.id}:${lap}`) - 0.5) * 3.2
+  const trackPositionPremium =
+    (frontRunner ? 1.2 : 0) +
+    (frontRunner && remaining <= 10 ? 2.8 : 0) +
+    Math.max(0, rejoinLoss) * clamp(overtakeDifficulty, 0, 1) * 0.45
+  const neutralisationThreshold =
+    (controlPhase === 'safety-car' ? 1.6 : 2.4) +
+    (1 - teamStrategyAggression) * 2.8 +
+    trackPositionPremium +
+    callVariation
+  const minimumNeutralisationAgeShare =
+    controlPhase === 'safety-car'
+      ? 0.32 + (1 - teamStrategyAggression) * 0.16
+      : 0.4 + (1 - teamStrategyAggression) * 0.14
+  const vscEndingBeforeEntry =
+    controlPhase === 'vsc' &&
+    neutralisationSecondsRemaining !== null &&
+    neutralisationSecondsRemaining !== undefined &&
+    neutralisationSecondsRemaining <= pitEntrySecondsAway + 5
+
+  // Neutralisation creates an opportunity, not a command. Stable team traits,
+  // track position and this driver's rejoin traffic split the field's calls.
   if (
     underSafetyCar &&
-    age >= strategicCliff * 0.45 &&
-    opportunity.netGainSeconds >= 1.5 &&
-    hashChance(`${seed}:sc-pit:${driver.id}:${lap}`) < 0.8
+    !vscEndingBeforeEntry &&
+    age >= strategicCliff * minimumNeutralisationAgeShare &&
+    opportunity.netGainSeconds >= neutralisationThreshold
   ) {
     return { compound, reason: 'safety-car' }
   }

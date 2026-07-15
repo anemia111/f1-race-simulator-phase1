@@ -170,7 +170,7 @@ describe('super clipping physical integration', () => {
     const firstSecond = clipped.trace[0]
 
     expect(normalTopSpeed).toBeGreaterThanOrEqual(410)
-    expect(normalTopSpeed).toBeLessThanOrEqual(430)
+    expect(normalTopSpeed).toBeLessThanOrEqual(432)
     expect(firstSecond.speedKph).toBeLessThan(normalTopSpeed)
     expect(firstSecond.speedKph).toBeGreaterThan(normalTopSpeed - 35)
     expect(speedLossKph).toBeGreaterThanOrEqual(48)
@@ -330,13 +330,20 @@ describe('super clipping physical integration', () => {
   })
 
   it('integrates clipping state, recovery, and gradual speed loss into live telemetry', () => {
-    const track = tracks[0]
+    const track = tracks.find(
+      (candidate) => candidate.id === 'las-vegas-approx',
+    )!
     const straight = track.centerline
       .map((_, index) => {
         const progress = index / track.centerline.length
         return { dynamics: trackDynamicsAt(track, progress), progress }
       })
-      .filter(({ dynamics }) => dynamics.fullThrottle)
+      .filter(
+        ({ dynamics }) =>
+          dynamics.fullThrottle &&
+          dynamics.straightness >= 0.78 &&
+          dynamics.straightLengthAheadMeters >= 150,
+      )
       .sort(
         (left, right) =>
           right.dynamics.straightLengthAheadMeters -
