@@ -27,6 +27,7 @@ import { setupPaceDeltaSeconds } from './engineering'
 import {
   advanceEnergyStore,
   createInitialEnergyStore,
+  INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
   startNextEnergyLap,
 } from './energySystem'
 import {
@@ -1483,8 +1484,11 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       energyDeployedThisLapMj: 0,
       ersMode: 'balanced',
       ersPowerKw: 0,
-      energyStore: createInitialEnergyStore(team, 0.82),
-      ersBatteryPercent: 82,
+      energyStore: createInitialEnergyStore(
+        team,
+        INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
+      ),
+      ersBatteryPercent: INITIAL_ENERGY_STORE_STATE_OF_CHARGE * 100,
       superClippingIntensity: 0,
       superClippingDrivePowerScale: 1,
       superClippingRegenPowerKw: 0,

@@ -1,16 +1,21 @@
 import type {
   BattlePhase,
+  CarSetup,
   Driver,
   RacePaceMode,
   Team,
 } from '../types'
 import { driverSkillBlend } from './driverAbility'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
+import { setupDragAreaMultiplier } from './vehicleDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-export const MIN_SUPER_CLIPPING_SPEED_KPH = 280
+const smoothstep = (edge0: number, edge1: number, value: number) => {
+  const progress = clamp((value - edge0) / Math.max(0.000001, edge1 - edge0), 0, 1)
+  return progress * progress * (3 - 2 * progress)
+}
 
 export type SuperClippingLevel =
   | 'off'
@@ -29,6 +34,31 @@ export type SuperClippingPower = {
 export type SuperClippingResult = SuperClippingPower & {
   demandIntensity: number
   intensity: number
+}
+
+export function superClippingSpeedWindowFor(team: Team, setup?: CarSetup) {
+  const machine = team.machine
+  const setupDrag = setupDragAreaMultiplier(setup)
+  const referenceTopSpeedKph = clamp(
+    350 +
+      (machine.puOutput - 0.85) * 58 +
+      (machine.dragEfficiency - 0.85) * 68 +
+      (machine.electricalDeploymentEfficiency - 0.85) * 22 -
+      (setupDrag - 1) * 58,
+    342,
+    405,
+  )
+  const onsetKph = clamp(referenceTopSpeedKph - 48, 300, 355)
+
+  return {
+    fullEffectKph: clamp(
+      referenceTopSpeedKph - 12,
+      onsetKph + 18,
+      393,
+    ),
+    onsetKph,
+    referenceTopSpeedKph,
+  }
 }
 
 export function superClippingLevelForIntensity(
@@ -144,6 +174,7 @@ export function superClippingDemandFor(options: {
   phaseActive: boolean
   racePaceMode: RacePaceMode
   sessionType: 'race-distance' | 'limited-time'
+  setup?: CarSetup
   speedKph: number
   straightLengthAheadMeters: number
   straightness: number
@@ -165,6 +196,7 @@ export function superClippingDemandFor(options: {
     phaseActive,
     racePaceMode,
     sessionType,
+    setup,
     speedKph,
     straightLengthAheadMeters,
     straightness,
@@ -175,7 +207,6 @@ export function superClippingDemandFor(options: {
   if (
     phaseActive ||
     lowGripConditions ||
-    speedKph < MIN_SUPER_CLIPPING_SPEED_KPH ||
     throttlePercent < 90 ||
     brakePercent > 3 ||
     straightness < 0.78 ||
@@ -231,6 +262,12 @@ export function superClippingDemandFor(options: {
     0.28,
     1,
   )
+  const speedWindow = superClippingSpeedWindowFor(team, setup)
+  const highSpeedOpportunity = smoothstep(
+    speedWindow.onsetKph,
+    speedWindow.fullEffectKph,
+    speedKph,
+  )
   const efficiencyPressure =
     (1 - team.machine.electricalDeploymentEfficiency) * 0.16 +
     (1 - team.machine.energyRecoveryEfficiency) * 0.11
@@ -249,6 +286,7 @@ export function superClippingDemandFor(options: {
       strategyVariation) *
     recoveryHeadroom *
     straightOpportunity *
+    highSpeedOpportunity *
     battleProtection
 
   return clamp(demand, 0, 1)
@@ -272,12 +310,9 @@ export function advanceSuperClipping(options: Parameters<
     ? 0.38 + (1 - management) * 0.26
     : 0.68 + management * 0.18
   const step = ratePerSecond * Math.max(0, options.deltaSeconds)
-  const intensity =
-    options.speedKph < MIN_SUPER_CLIPPING_SPEED_KPH
-      ? 0
-      : rising
-        ? Math.min(demandIntensity, currentIntensity + step)
-        : Math.max(demandIntensity, currentIntensity - step)
+  const intensity = rising
+    ? Math.min(demandIntensity, currentIntensity + step)
+    : Math.max(demandIntensity, currentIntensity - step)
   const power = superClippingPowerForIntensity({
     batteryPercent: options.batteryPercent,
     deltaSeconds: options.deltaSeconds,

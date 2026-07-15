@@ -21,6 +21,8 @@ const finite = (value: number, fallback = 0) =>
   Number.isFinite(value) ? value : fallback
 const ENERGY_INTEGRATION_STEP_SECONDS = 0.5
 
+export const INITIAL_ENERGY_STORE_STATE_OF_CHARGE = 1
+
 export type EnergySystemParameters = {
   usableEnergyMJ: number
   minimumUsableEnergyMJ: number
@@ -137,7 +139,7 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
 
 export function createInitialEnergyStore(
   team: Team,
-  initialStateOfCharge = 0.82,
+  initialStateOfCharge = INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
 ): EnergyStoreState {
   const parameters = energySystemParametersFor(team)
   const stateOfCharge = clamp(initialStateOfCharge, 0, 1)
@@ -185,7 +187,7 @@ export function createInitialEnergyStore(
 export function normalizeEnergyStoreState(
   state: EnergyStoreState | undefined,
   team: Team,
-  fallbackBatteryPercent = 82,
+  fallbackBatteryPercent = INITIAL_ENERGY_STORE_STATE_OF_CHARGE * 100,
 ): EnergyStoreState {
   if (!state) {
     return createInitialEnergyStore(team, fallbackBatteryPercent / 100)
@@ -208,7 +210,19 @@ export function normalizeEnergyStoreState(
     ),
   )
   const currentEnergyMJ = clamp(
-    finite(state.currentEnergyMJ, minimumUsableEnergyMJ + usableEnergyMJ * 0.82),
+    finite(
+      state.currentEnergyMJ,
+      minimumUsableEnergyMJ +
+        usableEnergyMJ *
+          clamp(
+            finite(
+              state.stateOfCharge,
+              fallbackBatteryPercent / 100,
+            ),
+            0,
+            1,
+          ),
+    ),
     minimumUsableEnergyMJ,
     maximumUsableEnergyMJ,
   )

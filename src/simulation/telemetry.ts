@@ -278,6 +278,7 @@ export function calculateCarTelemetry(options: {
     phaseActive: phase !== null,
     racePaceMode: car.racePaceMode,
     sessionType,
+    setup,
     speedKph: car.speedKph,
     straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
     straightness: dynamics.straightness,

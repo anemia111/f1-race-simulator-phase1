@@ -87,6 +87,42 @@ describe('multi-axis vehicle dynamics', () => {
     expect(speedKph).toBeLessThan(438)
   })
 
+  it('turns ERS deployment into acceleration and recovery into resistance', () => {
+    const team = initialTeams[0]
+    const common = {
+      activeAeroMode: 'straight' as const,
+      airDensityKgM3: airDensityKgM3({
+        altitudeMeters: 0,
+        temperatureC: 25,
+      }),
+      brakePercent: 0,
+      currentSpeedKph: 260,
+      deltaSeconds: 0.5,
+      dynamics: { gradient: 0, straightness: 1 },
+      fuelLoadKg: 70,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      towDragReduction: 0,
+    }
+    const combustionOnly = integrateVehicleSpeedKph({
+      ...common,
+      ersPowerKw: 0,
+    })
+    const deploying = integrateVehicleSpeedKph({
+      ...common,
+      ersPowerKw: 350,
+    })
+    const harvesting = integrateVehicleSpeedKph({
+      ...common,
+      ersPowerKw: 0,
+      regenerativeResistancePowerKw: 180,
+    })
+
+    expect(deploying).toBeGreaterThan(combustionOnly)
+    expect(harvesting).toBeLessThan(combustionOnly)
+  })
+
   it('compares all 15 CSV machines with one identical reference driver', () => {
     const referenceDriver = driverAt(1)
     const monza = tracks.find((track) => track.id === 'monza-approx')!

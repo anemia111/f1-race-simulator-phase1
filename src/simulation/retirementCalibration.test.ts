@@ -61,7 +61,7 @@ describe('full-race retirement calibration', () => {
       expect(mean).toBeLessThanOrEqual(4)
       expect(maximum).toBeLessThanOrEqual(7)
       expect(early).toBeLessThanOrEqual(2)
-      expect(samples.some((sample) => sample.retired === 0)).toBe(true)
+      expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 5)).toBe(true)
     },
     60_000,

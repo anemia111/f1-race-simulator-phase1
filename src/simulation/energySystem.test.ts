@@ -68,6 +68,20 @@ function deploymentRequest(
 }
 
 describe('physical Energy Store integration', () => {
+  it('starts fully charged and spends stored energy through ERS deployment', () => {
+    const initial = createInitialEnergyStore(team)
+    const deployed = step(initial, {
+      deltaSeconds: 1,
+      deploymentRequest: 1,
+    }).state
+
+    expect(initial.stateOfCharge).toBe(1)
+    expect(initial.currentEnergyMJ).toBe(initial.maximumUsableEnergyMJ)
+    expect(deployed.actualDeploymentPowerKw).toBeGreaterThan(0)
+    expect(deployed.currentEnergyMJ).toBeLessThan(initial.currentEnergyMJ)
+    expect(deployed.stateOfCharge).toBeLessThan(1)
+  })
+
   it('ENERGY-1: conserves stored energy through repeated recovery and deployment', () => {
     const initial = createInitialEnergyStore(team, 0.64)
     let state = initial

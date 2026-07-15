@@ -256,6 +256,24 @@ describe('starting grid', () => {
     expect(snapshot.cars.every((car) => car.status === 'running')).toBe(true)
   })
 
+  it('starts every car with a fully charged Energy Store', () => {
+    const config = makeConfig('full-start-energy')
+    const snapshot = createInitialRace(config)
+    const lightsOut = runThroughStart(config, snapshot)
+    const raceStates = [snapshot, lightsOut]
+
+    raceStates.forEach((raceState) => {
+      raceState.cars.forEach((car) => {
+        expect(car.ersBatteryPercent).toBe(100)
+        expect(car.energyStore.stateOfCharge).toBe(1)
+        expect(car.energyStore.currentEnergyMJ).toBeCloseTo(
+          car.energyStore.maximumUsableEnergyMJ,
+          10,
+        )
+      })
+    })
+  })
+
   it('does not send cars straight into the pits on the opening tour', () => {
     const snapshot = runSteps(makeConfig('no-opening-pit'), 30, 0.5)
 

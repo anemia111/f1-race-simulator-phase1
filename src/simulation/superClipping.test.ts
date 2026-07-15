@@ -5,8 +5,8 @@ import type { CarSetup, CarSnapshot } from '../types'
 import { createInitialRace } from './race'
 import {
   advanceSuperClipping,
-  MIN_SUPER_CLIPPING_SPEED_KPH,
   superClippingPowerForIntensity,
+  superClippingSpeedWindowFor,
 } from './superClipping'
 import {
   airDensityKgM3,
@@ -317,16 +317,59 @@ describe('super clipping physical integration', () => {
       deployedThisLapMj: 0.3,
       speedKph: 390,
     })
-    const belowMinimum = advanceSuperClipping({
+    const speedWindow = superClippingSpeedWindowFor(team, standardSetup)
+    const atOldFixedThreshold = advanceSuperClipping({
       ...shared,
       batteryPercent: 7,
-      speedKph: MIN_SUPER_CLIPPING_SPEED_KPH - 1,
+      setup: standardSetup,
+      speedKph: 280,
+    })
+    const belowDynamicWindow = advanceSuperClipping({
+      ...shared,
+      batteryPercent: 7,
+      setup: standardSetup,
+      speedKph: speedWindow.onsetKph - 1,
     })
 
     expect(needed.demandIntensity).toBeGreaterThan(0.8)
     expect(needed.intensity).toBeGreaterThan(0)
     expect(notNeeded.intensity).toBe(0)
-    expect(belowMinimum.intensity).toBe(0)
+    expect(speedWindow.onsetKph).toBeGreaterThan(280)
+    expect(atOldFixedThreshold.intensity).toBe(0)
+    expect(belowDynamicWindow.intensity).toBe(0)
+  })
+
+  it('releases clipping smoothly instead of switching off at 280 km/h', () => {
+    const shared = {
+      battlePhase: 'single-file' as const,
+      batteryPercent: 7,
+      brakePercent: 0,
+      currentIntensity: 0.8,
+      deltaSeconds: 0.1,
+      deployedThisLapMj: 3.4,
+      driver,
+      fuelLoadKg: 70,
+      gapToAheadSeconds: 3,
+      harvestedThisLapMj: 0.4,
+      lap: 8,
+      lowGripConditions: false,
+      maxRechargePerLapMj: 8.5,
+      phaseActive: false,
+      racePaceMode: 'standard' as const,
+      sessionType: 'race-distance' as const,
+      setup: standardSetup,
+      straightLengthAheadMeters: 900,
+      straightness: 1,
+      team,
+      throttlePercent: 100,
+    }
+    const justBelow = advanceSuperClipping({ ...shared, speedKph: 279 })
+    const justAbove = advanceSuperClipping({ ...shared, speedKph: 281 })
+
+    expect(justBelow.intensity).toBeGreaterThan(0)
+    expect(justAbove.intensity).toBeGreaterThan(0)
+    expect(justBelow.intensity).toBeCloseTo(justAbove.intensity, 10)
+    expect(justBelow.intensity).toBeLessThan(shared.currentIntensity)
   })
 
   it('integrates clipping state, recovery, and gradual speed loss into live telemetry', () => {
@@ -341,6 +384,7 @@ describe('super clipping physical integration', () => {
       .filter(
         ({ dynamics }) =>
           dynamics.fullThrottle &&
+          dynamics.brakingSeverity < 0.02 &&
           dynamics.straightness >= 0.78 &&
           dynamics.straightLengthAheadMeters >= 150,
       )
@@ -355,11 +399,14 @@ describe('super clipping physical integration', () => {
       teams: initialTeams,
       track,
     })
+    const clippingSpeedKph = Math.ceil(
+      superClippingSpeedWindowFor(team).fullEffectKph + 5,
+    )
     const car = {
       ...carWithEnergyState(snapshot.cars[0], 0.07, 0.4, 3.4),
       progress: straight.progress,
       racePaceMode: 'save' as const,
-      speedKph: 300,
+      speedKph: clippingSpeedKph,
       status: 'running' as const,
     }
     const telemetry = calculateCarTelemetry({
