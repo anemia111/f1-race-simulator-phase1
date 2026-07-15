@@ -39,9 +39,19 @@ npm run lint
 npm run build
 npm test
 npm run playtest
+npm run publish
 ```
 
-`npm run playtest` requires `http://127.0.0.1:5173/` to be running.
+`npm run playtest` opens the latest production build on an isolated local
+preview server. `npm run playtest:dev` targets an already-running server.
+
+## Completion Publishing
+
+Every completed coding batch must end with `npm run publish`. It verifies the
+app, deploys the PWA to `https://anemia111.github.io/`, waits for the release to
+become available, and refreshes the desktop `F1 Race Simulator` shortcut. Do
+not report completion while that command is failing. Source commits and pushes
+remain intentional, separate steps so unrelated work is never swept in.
 
 ## Architecture
 

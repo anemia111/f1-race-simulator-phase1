@@ -11,6 +11,7 @@ import type {
   TrackDefinition,
 } from '../types'
 import {
+  forwardProgressBetween,
   pitBoxProgress,
   pitBoxSlotForTeam,
 } from '../simulation/pitLane'
@@ -1018,23 +1019,33 @@ function CarMarker({
 
 function SafetyCarMarker({
   curve,
+  elapsedSeconds,
   leader,
+  phase,
+  track,
 }: {
   curve: THREE.CatmullRomCurve3
+  elapsedSeconds: number
   leader: CarSnapshot
+  phase: RaceSnapshot['flagPhase']
+  track: TrackDefinition
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const placedRef = useRef(false)
   const invalidate = useThree((state) => state.invalidate)
-  const leadGap = Math.max(0.009, 1.35 / Math.max(55, leader.projectedLapTime))
+  const procedure =
+    phase?.neutralisation?.kind === 'safety-car'
+      ? phase.neutralisation
+      : null
+  const orangeLights = procedure?.orangeLights ?? true
   const markerTexture = useMemo(
     () =>
       createRoundMarkerTexture({
-        borderColor: '#071018',
-        fillColor: '#f4c430',
+        borderColor: orangeLights ? '#ff9d18' : '#d8e1e8',
+        fillColor: orangeLights ? '#f4c430' : '#59636d',
         label: 'SC',
       }),
-    [],
+    [orangeLights],
   )
 
   useEffect(() => () => markerTexture.dispose(), [markerTexture])
@@ -1044,7 +1055,32 @@ function SafetyCarMarker({
 
     if (!group) return
 
-    const pose = poseOnTrack(curve, (leader.progress + leadGap) % 1, 0)
+    let pose: ReturnType<typeof poseOnTrack>
+
+    if (
+      procedure?.stage === 'pit-entry' &&
+      procedure.pitEntryAtSeconds !== null
+    ) {
+      const returnFraction = clamp(
+        (elapsedSeconds - procedure.pitEntryAtSeconds) / 7,
+        0,
+        1,
+      )
+      const pitProgress = forwardProgressBetween(
+        track.pitLane?.entryProgress ?? 0.965,
+        track.pitLane?.boxStartProgress ?? 0.976,
+        returnFraction,
+      )
+      pose = poseOnTrack(curve, pitProgress, pitLaneOffset(track))
+    } else {
+      pose = poseOnTrack(
+        curve,
+        procedure
+          ? procedure.safetyCarDistance % 1
+          : (leader.progress + 0.012) % 1,
+        0,
+      )
+    }
     const target = pose.position.setY(0.5)
 
     if (!placedRef.current) {
@@ -1376,7 +1412,10 @@ function SceneContents({
       {safetyCarVisible && safetyCarLeader ? (
         <SafetyCarMarker
           curve={curve}
+          elapsedSeconds={snapshot.elapsedSeconds}
           leader={safetyCarLeader}
+          phase={snapshot.flagPhase}
+          track={config.track}
         />
       ) : null}
       {showSimulationCars

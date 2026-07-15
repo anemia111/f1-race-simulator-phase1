@@ -61,8 +61,10 @@ Open `http://127.0.0.1:5173/`.
 
 The permanent production app is published at `https://anemia111.github.io/`
 from a separate public deployment repository. The source repository remains
-private. Run `scripts/publish-web-app.ps1` to verify the source, build the PWA,
-sync only generated assets, and push a new deployment.
+private. Run `npm run publish` to lint, test, build, playtest, sync only
+generated assets, push a new deployment, wait for GitHub Pages, and refresh the
+desktop shortcut. Codex and Claude completion notes both require this command
+at the end of each completed coding batch.
 
 After one complete online load, the simulator shell can reopen from its cache
 without a temporary Vite server. OpenF1 network responses are not pre-cached,
@@ -79,7 +81,8 @@ npm run playtest
 npm run benchmark
 ```
 
-`npm run playtest` expects the dev server to be running. It checks 1440x900 and
+`npm run playtest` serves the latest `dist` build on an isolated local preview.
+Use `npm run playtest:dev` to target an already-running server. It checks 1440x900 and
 1280x720 PC layouts, WebGL pixels, overlay controls, and panel overlap. Screenshots
 go to the OS temporary directory by default; set `QA_ARTIFACT_DIR` to retain them
 at a specific location.

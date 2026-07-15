@@ -2,6 +2,7 @@
 // pit-release plans and ranks legal flying laps for the race grid.
 
 import type { CarSetup, Driver, RaceConfig, Team, TireCompound, WeatherState } from '../types'
+import { driverPerformanceAbility } from './driverAbility'
 import { practiceSetupRecommendation } from './engineering'
 import { hashChance } from './random'
 import {
@@ -107,8 +108,8 @@ const clampAbility = (value: number) => Math.min(1.5, Math.max(0, value))
 
 function wetSkill(driver: Driver): number {
   return clampAbility(
-    driver.wetSkill ??
-      driver.consistency * 0.6 + driver.tireManagement * 0.4,
+    driverPerformanceAbility(driver, 'wetSkill') * 0.78 +
+      driverPerformanceAbility(driver, 'adaptability') * 0.22,
   )
 }
 
@@ -194,7 +195,10 @@ function qualifyingRunLapTime(
     team.cornering * 2.25 +
     team.straightLine * 1.85 +
     team.reliability * 0.28
-  const driverGain = driver.speed * 3.75 + driver.consistency * 1.05
+  const qualifyingPace = driverPerformanceAbility(driver, 'qualifyingPace')
+  const consistency = driverPerformanceAbility(driver, 'consistency')
+  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
+  const driverGain = qualifyingPace * 3.75 + consistency * 1.05
   const segmentEvolution = segmentEvolutionFor(segment)
   const compoundPenalty = qualifyingCompoundPenalty(compound)
   const wetPenalty =
@@ -206,11 +210,12 @@ function qualifyingRunLapTime(
   const key = `${seed}:qualifying:${segment}:${driver.id}:${run}`
   const variance = (hashChance(`${key}:variance`) - 0.5) * 1.35
   const trafficLoss =
-    segment === 'Q1' && hashChance(`${key}:traffic`) < 0.12
+    segment === 'Q1' &&
+    hashChance(`${key}:traffic`) < 0.12 + Math.max(0, 0.84 - awareness) * 0.12
       ? 0.15 + hashChance(`${key}:traffic-loss`) * 0.8
       : 0
   const mistakeChance =
-    0.025 + Math.max(0, 1 - driver.consistency) * 0.16
+    0.025 + Math.max(0, 1 - (consistency * 0.7 + awareness * 0.3)) * 0.16
   const mistake =
     hashChance(`${key}:mistake`) < mistakeChance
       ? 0.35 + hashChance(`${key}:mistake-loss`) * 3.8
@@ -242,6 +247,7 @@ function qualifyingRunsForDriver(
   const sessionDurationSeconds = durationForSegment(segment)
   const compound = compoundForQualifyingSegment(segment, weather, trackGrip)
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
+  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
 
   return Array.from({ length: maxRuns }, (_, run) => {
     const rawLapTimeSeconds = qualifyingRunLapTime(
@@ -259,11 +265,11 @@ function qualifyingRunsForDriver(
     const trafficLossSeconds = 0
     const aborted =
       hashChance(`${runKey}:abort`) <
-      0.012 + Math.max(0, 1 - driver.consistency) * 0.035
+      0.012 + Math.max(0, 1 - awareness) * 0.035
     const deleted =
       !aborted &&
       hashChance(`${runKey}:track-limit`) <
-        0.008 + Math.max(0, 1 - driver.consistency) * 0.035
+        0.008 + Math.max(0, 1 - awareness) * 0.035
     const lapTimeSeconds = rawLapTimeSeconds + trafficLossSeconds
     const rainMultiplier = weather === 'heavy-rain' ? 1.18 : weather === 'light-rain' ? 1.08 : 1
     const outLapTimeSeconds =
@@ -655,6 +661,9 @@ export function runPracticeSession(
     }
 
     const reliabilityRoll = hashChance(`${config.seed}:practice:${stage}:${driver.id}:laps`)
+    const adaptability = driverPerformanceAbility(driver, 'adaptability')
+    const consistency = driverPerformanceAbility(driver, 'consistency')
+    const racePace = driverPerformanceAbility(driver, 'racePace')
     const wetPenalty =
       weather === 'clear'
         ? 0
@@ -674,7 +683,7 @@ export function runPracticeSession(
           13 +
             reliabilityRoll * 10 +
             team.reliability * 4 +
-            driver.consistency * 3 -
+            consistency * 3 -
             (weather === 'heavy-rain' ? 4 : weather === 'light-rain' ? 1.5 : 0),
         ),
       ),
@@ -682,7 +691,7 @@ export function runPracticeSession(
     const bestLapTimeSeconds =
       config.track.baseLapTime +
       1.9 -
-      driver.speed * 2.65 -
+      racePace * 2.65 -
       team.cornering * 1.6 -
       team.straightLine * 1.2 +
       wetPenalty +
@@ -700,7 +709,8 @@ export function runPracticeSession(
           100,
           28 +
             lapsCompleted * 1.45 +
-            driver.consistency * 18 +
+            consistency * 13 +
+            adaptability * 5 +
             team.reliability * 14 +
             stageIndex * 5 -
             (weather === 'heavy-rain' ? 8 : weather === 'light-rain' ? 3 : 0) +

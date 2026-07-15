@@ -7,6 +7,7 @@ import type {
   Team,
   TireCompound,
   TireNomination,
+  TrackObservedCalibration,
   WeatherState,
 } from '../types'
 import { hashChance } from './random'
@@ -15,6 +16,8 @@ import {
   compoundMatchesWeather,
   effectiveCliffLaps,
   isDryCompound,
+  preferredTireCategoryFor,
+  type TireTrackCondition,
 } from './tires'
 import type { WeatherForecast } from './weather'
 
@@ -150,6 +153,32 @@ function usedDistinct(compoundsUsed: TireCompound[]): Set<TireCompound> {
   return new Set(compoundsUsed)
 }
 
+function observedStopTarget(options: {
+  calibration?: Pick<
+    TrackObservedCalibration,
+    'medianPitStopsPerDriver' | 'strategySampleCount'
+  >
+  driver: Driver
+  seed: string
+}) {
+  const { calibration, driver, seed } = options
+  const observed = calibration?.medianPitStopsPerDriver
+
+  if (
+    observed === null ||
+    observed === undefined ||
+    (calibration?.strategySampleCount ?? 0) < 6
+  ) {
+    return null
+  }
+
+  const variation =
+    (hashChance(`${seed}:observed-stop-target:${driver.id}`) - 0.5) * 0.7 +
+    (0.8 - driver.tireManagement) * 0.45
+
+  return Math.max(0, Math.min(4, Math.round(observed + variation)))
+}
+
 /**
  * Decide whether this car pits at the end of `lap`. Deterministic for
  * (seed, driver, lap). Returns null to stay out.
@@ -162,6 +191,7 @@ export function decidePitStop(options: {
     | 'tire'
     | 'tireAgeLaps'
     | 'tireWearPercent'
+    | 'tireThermalStressPercent'
     | 'brakeTemperatureC'
     | 'compoundsUsed'
     | 'damage'
@@ -183,6 +213,13 @@ export function decidePitStop(options: {
   pitLaneOccupancy?: number
   tireNomination?: TireNomination
   mandatoryTwoDryCompounds?: boolean
+  trackCondition?: TireTrackCondition
+  observedCalibration?: Pick<
+    TrackObservedCalibration,
+    | 'medianPitStopsPerDriver'
+    | 'medianStintLapsByCompound'
+    | 'strategySampleCount'
+  >
 }): PitDecision | null {
   const {
     seed,
@@ -204,6 +241,8 @@ export function decidePitStop(options: {
     pitLaneOccupancy = 0,
     tireNomination,
     mandatoryTwoDryCompounds = true,
+    trackCondition,
+    observedCalibration,
   } = options
   const remaining = raceLaps - lap
 
@@ -216,6 +255,25 @@ export function decidePitStop(options: {
     driver.tireManagement,
     tireNomination,
   )
+  const observedStintLaps =
+    observedCalibration?.medianStintLapsByCompound[car.tire]
+  const observedWeight = Math.min(
+    0.55,
+    (observedCalibration?.strategySampleCount ?? 0) / 30,
+  )
+  const strategicCliff =
+    observedStintLaps === undefined
+      ? cliff
+      : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
+  const effectiveWearPercent = Math.min(
+    100,
+    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
+  )
+  const targetStops = observedStopTarget({
+    calibration: observedCalibration,
+    driver,
+    seed,
+  })
   const age = car.tireAgeLaps
   const usedDryCompounds = [...usedDistinct(car.compoundsUsed)].filter(isDryCompound)
   const wetRaceExemption = car.compoundsUsed.some((compound) => !isDryCompound(compound))
@@ -237,6 +295,7 @@ export function decidePitStop(options: {
     compoundRoll,
     strategicWeather,
     strategicGrip,
+    forecastIsActionable ? undefined : trackCondition,
   )
   const compound =
     availableCompounds && (availableCompounds[preferredCompound] ?? 0) <= 0
@@ -255,11 +314,23 @@ export function decidePitStop(options: {
     gapBehindSeconds > 0 &&
     gapBehindSeconds < 1.25
   const frontRunner = (position ?? 99) <= 6
-  const inPitWindow = age >= cliff - 4
-  const weatherMismatch = !compoundMatchesWeather(car.tire, weather, trackGrip)
+  const inPitWindow = age >= strategicCliff - 4
+  const weatherMismatch = !compoundMatchesWeather(
+    car.tire,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const preferredTrackCategory = trackCondition
+    ? preferredTireCategoryFor(trackCondition)
+    : weather === 'heavy-rain' || trackGrip < 0.74
+      ? 'W'
+      : weather === 'light-rain' || trackGrip < 0.93
+        ? 'I'
+        : 'M'
   const criticalWeatherMismatch =
-    (weather === 'heavy-rain' && isDryCompound(car.tire)) ||
-    (weather === 'clear' && trackGrip >= 0.98 && car.tire === 'W')
+    (preferredTrackCategory === 'W' && isDryCompound(car.tire)) ||
+    (preferredTrackCategory === 'M' && car.tire === 'W')
 
   // Damage repair takes priority.
   if (car.damage >= pitTuning.damagePitThreshold) {
@@ -276,14 +347,14 @@ export function decidePitStop(options: {
     return { compound, reason: 'brake-cooling' }
   }
 
-  if (car.tireWearPercent >= 88) {
+  if (effectiveWearPercent >= 88) {
     return { compound, reason: 'tire-condition' }
   }
 
   const emergencyStop =
     car.damage >= pitTuning.damagePitThreshold ||
     sustainedBrakeOverheat ||
-    car.tireWearPercent >= 88 ||
+    effectiveWearPercent >= 88 ||
     criticalWeatherMismatch
 
   if (teammateInPit && !emergencyStop && !underSafetyCar) {
@@ -327,8 +398,8 @@ export function decidePitStop(options: {
       : projectedRejoinPosition - (position ?? projectedRejoinPosition)
   const opportunity = estimatePitOpportunity({
     tireAgeLaps: age,
-    tireWearPercent: car.tireWearPercent,
-    cliffLaps: cliff,
+    tireWearPercent: effectiveWearPercent,
+    cliffLaps: strategicCliff,
     remainingLaps: remaining,
     underSafetyCar,
     gapToAheadSeconds,
@@ -336,7 +407,12 @@ export function decidePitStop(options: {
     teammateInPit,
   })
 
-  if (!underSafetyCar && rejoinLoss >= 5 && age < cliff && !emergencyStop) {
+  if (
+    !underSafetyCar &&
+    rejoinLoss >= 5 &&
+    age < strategicCliff &&
+    !emergencyStop
+  ) {
     return null
   }
 
@@ -345,11 +421,33 @@ export function decidePitStop(options: {
     return { compound, reason: 'compound-rule' }
   }
 
+  const targetStopsSatisfied =
+    targetStops !== null && car.pitStops >= targetStops
+
+  if (
+    targetStopsSatisfied &&
+    !underSafetyCar &&
+    age < strategicCliff + 2 &&
+    effectiveWearPercent < 88
+  ) {
+    return null
+  }
+
+  if (
+    targetStops !== null &&
+    car.pitStops < targetStops &&
+    age >= Math.max(4, strategicCliff - 4) &&
+    remaining <=
+      (targetStops - car.pitStops) * Math.max(6, strategicCliff * 0.72)
+  ) {
+    return { compound, reason: 'wear' }
+  }
+
   if (
     forecastIsActionable &&
     underSafetyCar &&
     !compoundMatchesWeather(car.tire, strategicWeather, strategicGrip) &&
-    age >= cliff * 0.35
+    age >= strategicCliff * 0.35
   ) {
     return { compound, reason: 'forecast' }
   }
@@ -357,7 +455,7 @@ export function decidePitStop(options: {
   // Cheap stop under safety car once the tires have some age.
   if (
     underSafetyCar &&
-    age >= cliff * 0.45 &&
+    age >= strategicCliff * 0.45 &&
     opportunity.netGainSeconds >= 1.5 &&
     hashChance(`${seed}:sc-pit:${driver.id}:${lap}`) < 0.8
   ) {
@@ -387,8 +485,8 @@ export function decidePitStop(options: {
     !underSafetyCar &&
     frontRunner &&
     closeBehind &&
-    age >= cliff - 2 &&
-    age <= cliff + 2 &&
+    age >= strategicCliff - 2 &&
+    age <= strategicCliff + 2 &&
     driver.tireManagement > 0.8 &&
     hashChance(`${seed}:overcut-hold:${driver.id}:${lap}`) < 0.64
   ) {
@@ -405,7 +503,7 @@ export function decidePitStop(options: {
   }
 
   // Past the cliff: box now.
-  if (age >= cliff + 2) {
+  if (age >= strategicCliff + 2) {
     return {
       compound,
       reason: frontRunner && driver.tireManagement > 0.84 ? 'overcut' : 'wear',
@@ -414,12 +512,15 @@ export function decidePitStop(options: {
 
   // If a reliable weather change is close, stretch marginal tire wear to
   // avoid paying for an extra stop right before the crossover.
-  if (forecastIsActionable && age >= cliff - 3) {
+  if (forecastIsActionable && age >= strategicCliff - 3) {
     return null
   }
 
   // Inside the pit window: staggered entries via a per-lap roll.
-  if (age >= cliff - 3 && hashChance(`${seed}:pit:${driver.id}:${lap}`) < 0.3) {
+  if (
+    age >= strategicCliff - 3 &&
+    hashChance(`${seed}:pit:${driver.id}:${lap}`) < 0.3
+  ) {
     return { compound, reason: 'wear' }
   }
 
@@ -438,6 +539,7 @@ export function strategyOutlookFor(options: {
     | 'tire'
     | 'tireAgeLaps'
     | 'tireWearPercent'
+    | 'tireThermalStressPercent'
     | 'brakeTemperatureC'
     | 'damage'
     | 'tireSetsRemaining'
@@ -452,6 +554,11 @@ export function strategyOutlookFor(options: {
   gapToAheadSeconds?: number | null
   projectedRejoinPositionLoss?: number
   teammateInPit?: boolean
+  observedCalibration?: Pick<
+    TrackObservedCalibration,
+    'medianStintLapsByCompound' | 'strategySampleCount'
+  >
+  trackCondition?: TireTrackCondition
 }): StrategyOutlook {
   const {
     car,
@@ -467,11 +574,27 @@ export function strategyOutlookFor(options: {
     gapToAheadSeconds,
     projectedRejoinPositionLoss,
     teammateInPit,
+    observedCalibration,
+    trackCondition,
   } = options
   const cliff = effectiveCliffLaps(
     car.tire,
     driver.tireManagement,
     tireNomination,
+  )
+  const observedStintLaps =
+    observedCalibration?.medianStintLapsByCompound[car.tire]
+  const observedWeight = Math.min(
+    0.55,
+    (observedCalibration?.strategySampleCount ?? 0) / 30,
+  )
+  const strategicCliff =
+    observedStintLaps === undefined
+      ? cliff
+      : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
+  const effectiveWearPercent = Math.min(
+    100,
+    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
   )
   const remaining = Math.max(0, raceLaps - lap)
   const compound = chooseCompound(
@@ -482,16 +605,25 @@ export function strategyOutlookFor(options: {
     hashChance(`${seed}:outlook:${driver.id}:${lap}`),
     weather,
     trackGrip,
+    trackCondition,
   )
-  const weatherMismatch = !compoundMatchesWeather(car.tire, weather, trackGrip)
+  const weatherMismatch = !compoundMatchesWeather(
+    car.tire,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
   const estimatedStopLap = Math.min(
     raceLaps,
-    Math.max(lap, lap + Math.max(0, Math.ceil(cliff - car.tireAgeLaps))),
+    Math.max(
+      lap,
+      lap + Math.max(0, Math.ceil(strategicCliff - car.tireAgeLaps)),
+    ),
   )
   const opportunity = estimatePitOpportunity({
     tireAgeLaps: car.tireAgeLaps,
-    tireWearPercent: car.tireWearPercent,
-    cliffLaps: cliff,
+    tireWearPercent: effectiveWearPercent,
+    cliffLaps: strategicCliff,
     remainingLaps: remaining,
     pitLaneLossSeconds,
     underSafetyCar,
@@ -500,9 +632,9 @@ export function strategyOutlookFor(options: {
     teammateInPit,
   })
   const confidence: StrategyOutlook['confidence'] =
-    weatherMismatch || underSafetyCar || car.tireWearPercent >= 82
+    weatherMismatch || underSafetyCar || effectiveWearPercent >= 82
       ? 'high'
-      : car.tireAgeLaps >= cliff - 4
+      : car.tireAgeLaps >= strategicCliff - 4
         ? 'medium'
         : 'low'
   const shared = {
@@ -525,7 +657,7 @@ export function strategyOutlookFor(options: {
     car.brakeTemperatureC >= 1090 &&
     (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
 
-  if (sustainedBrakeOverheat || car.tireWearPercent >= 88) {
+  if (sustainedBrakeOverheat || effectiveWearPercent >= 88) {
     return {
       compound,
       estimatedStopLap: lap,
@@ -535,7 +667,7 @@ export function strategyOutlookFor(options: {
     }
   }
 
-  if (underSafetyCar && car.tireAgeLaps >= cliff * 0.38) {
+  if (underSafetyCar && car.tireAgeLaps >= strategicCliff * 0.38) {
     return {
       compound,
       estimatedStopLap: lap,
@@ -545,7 +677,7 @@ export function strategyOutlookFor(options: {
     }
   }
 
-  if (car.tireAgeLaps >= cliff - 3) {
+  if (car.tireAgeLaps >= strategicCliff - 3) {
     return {
       compound,
       estimatedStopLap,

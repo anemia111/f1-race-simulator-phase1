@@ -5,6 +5,7 @@ import type {
   Driver,
   ErsMode,
   OvertakeStatus,
+  Team,
   TrackDefinition,
   WeatherState,
 } from '../types'
@@ -16,18 +17,15 @@ import {
 } from './activeAero'
 import { hashChance } from './random'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
+import { tireOperatingWindowFor } from './tires'
 import { approachSpeed, trackDynamicsAt } from './trackDynamics'
+import {
+  fuelMassEffects,
+  vehicleSpeedPerformanceMultiplier,
+} from './vehicleDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-
-const compoundBaseTemperature = {
-  H: 86,
-  I: 66,
-  M: 92,
-  S: 98,
-  W: 56,
-} as const
 
 function ersModeFor(options: {
   batteryPercent: number
@@ -86,7 +84,9 @@ export function calculateCarTelemetry(options: {
   standingStartMguKRestricted?: boolean
   specifiedErsPowerSector?: boolean
   track: TrackDefinition
+  team?: Team
   trackGrip: number
+  trackTemperatureC?: number
   weather: WeatherState
 }): CalculatedTelemetry {
   const {
@@ -106,13 +106,20 @@ export function calculateCarTelemetry(options: {
     standingStartMguKRestricted = false,
     specifiedErsPowerSector = false,
     track,
+    team,
     trackGrip,
+    trackTemperatureC = 30,
     weather,
   } = options
   const { curvature, referenceSpeedKph, straightness } = trackDynamicsAt(
     track,
     car.progress,
   )
+  const fuelEffects = fuelMassEffects({
+    fuelLoadKg: car.fuelLoadKg,
+    localDynamics: { curvature, straightness },
+    track,
+  })
   const activeAeroMode = activeAeroModeFor({
     car,
     lowGripConditions,
@@ -123,7 +130,7 @@ export function calculateCarTelemetry(options: {
     phase?.flag === 'red'
       ? 0
       : phase?.flag === 'sc'
-        ? 145
+        ? 230
         : track.observedCalibration?.maxSpeedKph
           ? clamp(track.observedCalibration.maxSpeedKph + 10, 300, 365)
           : 365
@@ -138,7 +145,8 @@ export function calculateCarTelemetry(options: {
       : 0
   const brakePercent = Math.round(
     clamp(
-      curvature * 92 + profileDeceleration * 0.75 + wetBrakingLoad,
+      (curvature * 92 + profileDeceleration * 0.75 + wetBrakingLoad) *
+        fuelEffects.brakeLoadMultiplier,
       0,
       100,
     ),
@@ -231,10 +239,22 @@ export function calculateCarTelemetry(options: {
   const aeroGain = activeAeroSpeedGainKph(activeAeroMode)
   const ersGain =
     ersMode === 'deploy' ? (ersPowerKw / 350) * 20 : ersMode === 'harvest' ? -7 : 0
+  const vehiclePerformanceMultiplier = team
+    ? vehicleSpeedPerformanceMultiplier({
+        driver,
+        dynamics: { curvature, straightness },
+        team,
+      })
+    : 1
+  const massSpeedMultiplier =
+    fuelEffects.longitudinalSpeedMultiplier *
+    (1 - curvature * (1 - fuelEffects.cornerSpeedMultiplier))
   const targetSpeedKph = clamp(
     referenceSpeedKph *
       clamp(paceScale, 0.48, 1.12) *
-      clamp(localFlagPaceScale, 0.5, 1) +
+      clamp(localFlagPaceScale, 0.5, 1) *
+      vehiclePerformanceMultiplier *
+      massSpeedMultiplier +
       aeroGain +
       ersGain +
       seedPulse,
@@ -256,14 +276,29 @@ export function calculateCarTelemetry(options: {
       ? 0
       : clamp(6900 + speedKph * 29 + throttlePercent * 24 - brakePercent * 10, 4200, 13500),
   )
+  const tireWindow = tireOperatingWindowFor(car.tire, track.tireNomination)
+  const paceModeHeat =
+    car.racePaceMode === 'push'
+      ? 4
+      : car.racePaceMode === 'defend'
+        ? 2.5
+        : car.racePaceMode === 'save'
+          ? -3
+          : 0
   const tireTemperatureC = Math.round(
     clamp(
-      compoundBaseTemperature[car.tire] +
+      tireWindow.targetC -
+        12 +
+        (trackTemperatureC - 30) * 0.22 +
         (1 - trackGrip) * -12 +
-        speedKph * 0.028 +
-        brakePercent * 0.1 +
-        car.tireAgeLaps * 0.38 -
-        car.damage * 7,
+        speedKph * 0.018 +
+        brakePercent * 0.075 +
+        curvature * 7 +
+        paceModeHeat +
+        (1 - driver.tireManagement) * 5 +
+        car.damage * 5 +
+        (fuelEffects.tireLoadMultiplier - 1) * 13 +
+        Math.min(3, (car.tireThermalStressPercent ?? 0) * 0.08),
       car.tire === 'W' ? 42 : 62,
       car.tire === 'S' ? 124 : 116,
     ),

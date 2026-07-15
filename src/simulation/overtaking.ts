@@ -10,6 +10,7 @@ import type {
   WeatherState,
 } from '../types'
 import { hashChance } from './random'
+import { driverPerformanceAbility } from './driverAbility'
 import { tireDeltaSeconds } from './tires'
 
 export type OvertakeOutcomeKind = 'pass' | 'defended' | 'contact' | 'crash'
@@ -63,24 +64,26 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 function driverOvertaking(driver: Driver): number {
-  return clamp(driver.overtaking ?? driver.speed, 0, 1.5)
+  return driverPerformanceAbility(driver, 'overtaking')
 }
 
 function driverDefense(driver: Driver): number {
-  return clamp(driver.defense ?? driver.consistency, 0, 1.5)
+  return driverPerformanceAbility(driver, 'defense')
 }
 
 function driverWetSkill(driver: Driver): number {
   return clamp(
-    driver.wetSkill ??
-      (driver.consistency * 0.6 + driver.tireManagement * 0.4),
-    0,
+    driverPerformanceAbility(driver, 'wetSkill') * 0.78 +
+      driverPerformanceAbility(driver, 'adaptability') * 0.22,
+    0.55,
     1.5,
   )
 }
 
 function driverErrorRate(driver: Driver): number {
-  return clamp01(driver.errorRate ?? (1 - driver.consistency) * 0.5)
+  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
+
+  return clamp01(driver.errorRate ?? (1 - awareness) * 0.5)
 }
 
 function progressIsInZone(progress: number, start: number, end: number): boolean {
@@ -149,6 +152,14 @@ export function battleDynamicsFor(
     attackerCar.tireTemperatureC,
     attackerCar.tireWearPercent,
     track?.tireNomination,
+    undefined,
+    attackerCar.tireThermalStressPercent ?? 0,
+    undefined,
+    {
+      carcassTemperatureC: attackerCar.tireCarcassTemperatureC,
+      grainingPercent: attackerCar.tireGrainingPercent,
+      overheatingPercent: attackerCar.tireOverheatingPercent,
+    },
   )
   const defenderTireDelta = tireDeltaSeconds(
     defenderCar.tire,
@@ -159,6 +170,14 @@ export function battleDynamicsFor(
     defenderCar.tireTemperatureC,
     defenderCar.tireWearPercent,
     track?.tireNomination,
+    undefined,
+    defenderCar.tireThermalStressPercent ?? 0,
+    undefined,
+    {
+      carcassTemperatureC: defenderCar.tireCarcassTemperatureC,
+      grainingPercent: defenderCar.tireGrainingPercent,
+      overheatingPercent: defenderCar.tireOverheatingPercent,
+    },
   )
   const tirePerformanceEdge = clamp(
     (defenderTireDelta - attackerTireDelta) * 0.085,
@@ -282,10 +301,15 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
 
     if (crashRoll < crashThreshold) {
       const responseRoll = hashChance(`${key}:flag`)
-      const flagResponse: Exclude<FlagState, 'clear'> =
-        responseRoll > 0.92 ? 'red' : responseRoll > 0.42 ? 'sc' : 'vsc'
       const attackerRetires = hashChance(`${key}:attacker-out`) < 0.68
       const defenderRetires = hashChance(`${key}:defender-out`) < 0.32
+      const majorMultiCarCrash = attackerRetires && defenderRetires
+      const flagResponse: Exclude<FlagState, 'clear'> =
+        responseRoll > (majorMultiCarCrash ? 0.68 : 0.92)
+          ? 'red'
+          : responseRoll > 0.42
+            ? 'sc'
+            : 'vsc'
 
       return {
         kind: 'crash',

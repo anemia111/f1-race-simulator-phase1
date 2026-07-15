@@ -4,6 +4,7 @@
 // Pure TypeScript, all randomness derived from the race seed.
 
 import type { Driver, FlagState, Team } from '../types'
+import { driverPerformanceAbility } from './driverAbility'
 import { hashChance } from './random'
 
 export type IncidentKind =
@@ -91,7 +92,12 @@ export function incidentForLap(
 
   const errorChance =
     incidentTuning.errorBaseChance *
-    Math.max(0, 1 - driver.consistency) *
+    Math.max(
+      0,
+      1 -
+        (driverPerformanceAbility(driver, 'consistency') * 0.55 +
+          driverPerformanceAbility(driver, 'raceAwareness') * 0.45),
+    ) *
     riskMultiplier
 
   if (hashChance(`${seed}:error:${driver.id}:${lap}`) >= errorChance) {

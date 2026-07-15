@@ -271,7 +271,7 @@ describe('starting grid', () => {
     }
     let snapshot = runThroughStart(config)
 
-    for (let step = 0; step < 300 && snapshot.leaderLap < 10; step += 1) {
+    for (let step = 0; step < 500 && snapshot.leaderLap < 15; step += 1) {
       snapshot = advanceRace(snapshot, 5, config)
     }
 
@@ -833,7 +833,7 @@ describe('start procedure and persisted weekend', () => {
   it('waits for the on-track field to cross the control line after a Safety Car', () => {
     const config = makeConfig('sc-overtake-reenable')
     let snapshot = runThroughStart(config)
-    const endSeconds = snapshot.elapsedSeconds + 1
+    const endSeconds = snapshot.elapsedSeconds + 10
 
     snapshot = advanceRace(
       {
@@ -851,18 +851,43 @@ describe('start procedure and persisted weekend', () => {
           startSeconds: snapshot.elapsedSeconds,
         },
         overtakeEnabled: false,
+        overtakeEnableAtLeaderDistance: null,
+        overtakeEnableTargetsByDriver: null,
       },
       2,
       config,
     )
 
+    expect(snapshot.flagPhase?.flag).toBe('sc')
+    expect(snapshot.overtakeEnabled).toBe(false)
+
+    for (
+      let step = 0;
+      step < 240 &&
+      (snapshot.flagPhase !== null ||
+        snapshot.overtakeEnableTargetsByDriver === null);
+      step += 1
+    ) {
+      snapshot = advanceRace(snapshot, 2, config)
+    }
+
+    expect(snapshot.flagPhase).toBeNull()
     expect(snapshot.overtakeEnabled).toBe(false)
     expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
-    expect(
-      Object.keys(snapshot.overtakeEnableTargetsByDriver ?? {}),
-    ).not.toHaveLength(0)
-
+    const controlMessages = snapshot.events.map((event) => event.message)
+    for (const expectedMessage of [
+      'SAFETY CAR ON TRACK',
+      'behind the Safety Car',
+      'SAFETY CAR QUEUE FORMED',
+      'SAFETY CAR IN THIS LAP',
+      'SAFETY CAR ENTERING PIT ENTRY ROAD',
+    ]) {
+      expect(
+        controlMessages.some((message) => message.includes(expectedMessage)),
+      ).toBe(true)
+    }
     const targets = snapshot.overtakeEnableTargetsByDriver!
+    expect(Object.keys(targets)).not.toHaveLength(0)
     snapshot = {
       ...snapshot,
       flag: 'clear',
@@ -922,6 +947,54 @@ describe('start procedure and persisted weekend', () => {
         car.penalties.filter((penalty) => penalty.reason === 'VSC delta'),
       ),
     ).toHaveLength(0)
+  })
+
+  it('runs the announced 10-to-15-second VSC ending sequence before green', () => {
+    const config = makeConfig('vsc-ending-sequence')
+    let snapshot = runThroughStart(config)
+    const deploymentStart = snapshot.elapsedSeconds
+
+    snapshot = advanceRace(
+      {
+        ...snapshot,
+        flag: 'vsc',
+        flagLabel: 'VSC',
+        flagPhase: {
+          endMessage: 'VSC ending.',
+          endSeconds: deploymentStart + 2,
+          flag: 'vsc',
+          id: 'forced-vsc-ending',
+          sector: 0,
+          startMessage: 'Virtual Safety Car deployed.',
+          startSeconds: deploymentStart,
+        },
+        overtakeEnabled: false,
+      },
+      2.1,
+      config,
+    )
+
+    const procedure = snapshot.flagPhase?.neutralisation
+    expect(procedure?.kind).toBe('vsc')
+    expect(procedure?.stage).toBe('ending')
+    if (!procedure || procedure.kind !== 'vsc') {
+      throw new Error('VSC ending procedure was not created.')
+    }
+
+    const endingDuration =
+      (procedure.resumeAtSeconds ?? 0) -
+      (procedure.endingStartedAtSeconds ?? 0)
+    expect(endingDuration).toBeGreaterThanOrEqual(10)
+    expect(endingDuration).toBeLessThanOrEqual(15)
+    expect(snapshot.eventMessage).toContain('VSC ENDING')
+
+    snapshot = advanceRace(snapshot, endingDuration - 0.2, config)
+    expect(snapshot.flagPhase?.flag).toBe('vsc')
+
+    snapshot = advanceRace(snapshot, 0.3, config)
+    expect(snapshot.flagPhase).toBeNull()
+    expect(snapshot.greenLightUntilSeconds).not.toBeNull()
+    expect(snapshot.eventMessage).toContain('GREEN FLAG')
   })
 
   it('persists practice setup and qualifying grid into the race weekend', () => {
@@ -1110,6 +1183,17 @@ describe('tires', () => {
       wearState: 'critical',
     })
     expect(tireConditionFor('M', 4, 0.82, 60).operatingState).toBe('cold')
+  })
+
+  it('reports tire life as a remaining value that falls from 100 toward 0', () => {
+    const fresh = tireConditionFor('M', 0, 0.82, 96, 0, undefined, 0)
+    const used = tireConditionFor('M', 8, 0.82, 101, 28, undefined, 4)
+    const critical = tireConditionFor('M', 22, 0.82, 118, 82, undefined, 12)
+
+    expect(fresh.lifeRemainingPercent).toBe(100)
+    expect(used.lifeRemainingPercent).toBeLessThan(fresh.lifeRemainingPercent)
+    expect(critical.lifeRemainingPercent).toBeLessThan(used.lifeRemainingPercent)
+    expect(critical.lifeRemainingPercent).toBeGreaterThanOrEqual(0)
   })
 
   it('keeps measured wear within a credible first-lap range', () => {

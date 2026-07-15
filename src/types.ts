@@ -3,6 +3,13 @@ import type { Vector3Tuple } from 'three'
 export type CameraMode = 'overview' | 'chase' | 'orbit'
 export type SpeedMultiplier = 1 | 5 | 20 | 60
 export type TireCompound = 'S' | 'M' | 'H' | 'I' | 'W'
+
+export type TirePerformanceState =
+  | 'cold'
+  | 'optimal'
+  | 'graining'
+  | 'overheating'
+  | 'degraded'
 export type DryCompoundFamily = 'C1' | 'C2' | 'C3' | 'C4' | 'C5'
 export type GridSource = 'brief' | 'qualifying' | 'openf1'
 export type FlagState = 'clear' | 'yellow' | 'vsc' | 'sc' | 'red'
@@ -54,12 +61,18 @@ export type WeekendStage =
   | 'qualifying'
   | 'race'
 export type DriverTunableStat =
-  | 'speed'
+  | 'qualifyingPace'
+  | 'racePace'
   | 'consistency'
   | 'tireManagement'
   | 'overtaking'
   | 'defense'
   | 'wetSkill'
+  | 'starts'
+  | 'braking'
+  | 'cornering'
+  | 'raceAwareness'
+  | 'adaptability'
 
 export type RaceEventKind =
   | 'flag'
@@ -164,8 +177,12 @@ export type TireNomination = {
 
 export type TrackObservedCalibration = {
   maxSpeedKph: number | null
+  medianPitStopsPerDriver: number | null
+  medianStintLapsByCompound: Partial<Record<TireCompound, number>>
   pitLaneTransitSeconds: number | null
   sectorWeights: [number, number, number] | null
+  strategySampleCount: number
+  trackTemperatureC: number | null
   tireDegradationByCompound: Partial<Record<TireCompound, number>>
   tirePaceOffsetByCompound: Partial<Record<TireCompound, number>>
   tireSampleCountByCompound: Partial<Record<TireCompound, number>>
@@ -191,9 +208,47 @@ export type TireSet = {
   status: 'available' | 'used' | 'returned'
 }
 
+export type SafetyCarProcedureStage =
+  | 'deployed'
+  | 'collecting-field'
+  | 'queue-formed'
+  | 'unlapping'
+  | 'in-this-lap'
+  | 'pit-entry'
+
+export type NeutralisationProcedure =
+  | {
+      kind: 'vsc'
+      stage: 'deployed' | 'ending'
+      endingStartedAtSeconds: number | null
+      resumeAtSeconds: number | null
+    }
+  | {
+      kind: 'safety-car'
+      stage: SafetyCarProcedureStage
+      orangeLights: boolean
+      leaderDistanceAtDeployment: number
+      leaderCollectionTargetDistance: number
+      safetyCarDistance: number
+      safetyCarLastUpdatedAtSeconds: number
+      leaderCollectedAtSeconds: number | null
+      fieldQueuedAtSeconds: number | null
+      eligibleLappedDriverIds: string[]
+      lappedCarsMayOvertakeAtSeconds: number | null
+      returnNotBeforeLeaderDistance: number | null
+      inThisLapEarliestLeaderDistance: number | null
+      inThisLapAtSeconds: number | null
+      pitEntryLeaderDistance: number | null
+      pitEntrySafetyCarDistance: number | null
+      pitEntryAtSeconds: number | null
+      restartLineDistance: number | null
+      restartTargetsByDriver: Record<string, number> | null
+    }
+
 /**
- * A live flag phase carried in the race snapshot. Phases are created by
- * incidents (crashes, retirements) and expire at `endSeconds`.
+ * A live flag phase carried in the race snapshot. `endSeconds` is the earliest
+ * hazard-clear time; SC and VSC phases still complete their formal withdrawal
+ * procedures before racing resumes.
  */
 export type ActiveFlagPhase = {
   id: string
@@ -204,6 +259,17 @@ export type ActiveFlagPhase = {
   endSeconds: number
   startMessage: string
   endMessage: string
+  /** Race Control escalation after the marshals' initial local-yellow response. */
+  escalation?: {
+    activateAtSeconds: number
+    endMessage: string
+    flag: Exclude<FlagState, 'clear' | 'yellow'>
+    hazardClearAtSeconds: number
+    id: string
+    startMessage: string
+  } | null
+  neutralisation?: NeutralisationProcedure | null
+  /** Legacy import hint; live SC timing is owned by `neutralisation`. */
   lappedCarsMayOvertakeAtSeconds?: number | null
 }
 
@@ -222,15 +288,30 @@ export type Driver = {
   teamId: string
   code: string
   name: string
+  /** Legacy baseline used to derive the detailed abilities when no tune exists. */
   speed: number
   consistency: number
   tireManagement: number
+  /** One-lap pace. Defaults from speed and consistency. */
+  qualifyingPace?: number
+  /** Long-run pace. Defaults from speed, consistency, and tire management. */
+  racePace?: number
   /** Racecraft when trying to pass another car. Defaults to `speed`. */
   overtaking?: number
   /** Racecraft when defending from a car behind. Defaults to `consistency`. */
   defense?: number
   /** Wet-weather racecraft. Defaults to consistency/tire management blend. */
   wetSkill?: number
+  /** Launch and reaction quality. Defaults from speed and consistency. */
+  starts?: number
+  /** Threshold braking and trail-braking quality. */
+  braking?: number
+  /** Corner-entry, minimum-speed, and exit execution. */
+  cornering?: number
+  /** Situational judgment, track limits, and incident avoidance. */
+  raceAwareness?: number
+  /** Ability to learn grip, setup, weather, and changing conditions. */
+  adaptability?: number
   /** Error tendency in wheel-to-wheel racing. Defaults from consistency. */
   errorRate?: number
   startOffset: number
@@ -463,9 +544,21 @@ export type CarSnapshot = {
   /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
   ersPowerKw: number
   ersBatteryPercent: number
+  /** Remaining fuel mass. This is consumed continuously from travelled distance. */
+  fuelLoadKg: number
+  /** Surface tread temperature used for immediate grip and wear. */
   tireTemperatureC: number
+  /** Slower-moving internal tyre temperature used for thermal history. */
+  tireCarcassTemperatureC: number
+  /** Temporary cold-surface performance loss, 0..100. */
+  tireGrainingPercent: number
+  /** Temporary heat saturation, 0..100. */
+  tireOverheatingPercent: number
+  tirePerformanceState: TirePerformanceState
   /** Accumulated stint wear independent from integer lap age. */
   tireWearPercent: number
+  /** Permanent performance loss accumulated while outside the thermal window. */
+  tireThermalStressPercent?: number
   brakeTemperatureC: number
   /** Time spent continuously above the brake system's safe thermal range. */
   brakeOverheatSeconds: number
@@ -559,12 +652,16 @@ export type RaceSnapshot = {
   flag: FlagState
   flagLabel: string
   flagPhase: ActiveFlagPhase | null
+  /** FIA green light-panel display following a VSC/SC withdrawal. */
+  greenLightUntilSeconds: number | null
   /** Control state for sectors 1..3, including local and double yellows. */
   sectorFlags: [SectorFlagState, SectorFlagState, SectorFlagState]
   /** End of the post-SC/VSC/red restart window (low grip), if active. */
   restartUntilSeconds: number | null
   fuelEffectSeconds: number
   trackEvolutionLevel: number
+  /** Stateful racing-line rubber for sectors 1..3, 0 (green) to 1 (rubbered). */
+  rubberLevelBySector: [number, number, number]
   weather: WeatherState
   weatherLabel: string
   weatherForecastLabel: string

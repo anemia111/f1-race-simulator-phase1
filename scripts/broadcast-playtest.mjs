@@ -117,6 +117,28 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     total: cells.length,
   }))
   const trackTitle = await page.locator('.broadcast-track-panel .broadcast-panel-header').innerText()
+  const removedBottomPanelLabels = await page.evaluate(() => {
+    const labels = [
+      'LAP TIME COMPARISON',
+      'SECTOR TIMES (LIVE)',
+      'FUEL LOAD',
+      'NEXT EVENTS',
+    ]
+    const bodyText = document.body.innerText.toUpperCase()
+
+    return labels.filter((label) => bodyText.includes(label))
+  })
+  const centerMapLayout = await page.evaluate(() => {
+    const center = document.querySelector('.broadcast-center-column')?.getBoundingClientRect()
+    const map = document.querySelector('.broadcast-track-panel')?.getBoundingClientRect()
+
+    return {
+      centerHeight: center?.height ?? 0,
+      mapHeight: map?.height ?? 0,
+      mapHeightRatio:
+        center && map && center.height > 0 ? map.height / center.height : 0,
+    }
+  })
   const headerText = await page.locator('.broadcast-topbar').innerText()
   const sectorFlagLabels = await page.locator('.sector-flag').allInnerTexts()
   const sectorFlagAriaLabel = await page.locator('.sector-flag-strip').getAttribute('aria-label')
@@ -164,12 +186,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.locator('.messages-panel .restore-panel').click()
   const messagesRestored = await page.locator('.race-message-list').isVisible()
 
-  const sectorToggle = page.getByTitle('Toggle sector tables')
-  await sectorToggle.click()
-  const sectorsClosed = await page.locator('.analytics-hidden').isVisible()
-  await sectorToggle.click()
-  const sectorsRestored = await page.locator('.broadcast-bottom-analytics').isVisible()
-
   await page.locator('.broadcast-sidebar button[title="Overview"]').click()
   const secondDriver = page.locator('.leaderboard-rows li button').nth(1)
   await secondDriver.click()
@@ -185,6 +201,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   }
 
   const batteryValues = await page.locator('.leaderboard-rows button > span:last-child').allInnerTexts()
+  const tireLifeValues = await page.locator('.leaderboard-tire-life').allInnerTexts()
   const sectorStatuses = await page.locator('.leaderboard-rows .sector-value').evaluateAll((cells) => ({
     overallBest: cells.filter((cell) => cell.classList.contains('sector-status-overall-best')).length,
     personalBest: cells.filter((cell) => cell.classList.contains('sector-status-personal-best')).length,
@@ -219,6 +236,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const setupVisible = await page.locator('.setup-panel').isVisible()
   const driverAbilityMaxes = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('input[type="range"]').evaluateAll((inputs) => inputs.map((input) => input.getAttribute('max')))
   const driverAbilityValues = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('.slider-row strong').allInnerTexts()
+  const driverOverallAbility = await page.locator('.driver-overall-rating strong').innerText()
   await page.getByLabel('close setup').click()
 
   await page.getByTitle('Classification').click()
@@ -269,6 +287,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     activePitRows,
     batteryValues,
     canvas,
+    centerMapLayout,
     chaseSelected,
     classificationVisible,
     dataDetails,
@@ -291,15 +310,15 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     messagesRestored,
     miniSectors,
     driverAbilityMaxes,
+    driverOverallAbility,
     driverAbilityValues,
     initialMiniSectorStates,
     name,
     observedOverallBest,
     pageErrors,
+    removedBottomPanelLabels,
     resumeVisible,
     screenshotPath,
-    sectorsClosed,
-    sectorsRestored,
     sectorStatuses,
     selectedRows,
     sectorFlagAriaLabel,
@@ -310,6 +329,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     telemetryHeader,
     telemetryRows,
     telemetryScroll,
+    tireLifeValues,
     timingDetailRows,
     timingDetailScroll,
     timingLapLabels,
@@ -363,8 +383,13 @@ try {
         !['retired', 'disqualified', 'dns'].includes(row.status),
     )
     if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
-    if (result.driverAbilityMaxes.length !== 6 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability sliders must use the 150-point ceiling')
+    if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability model must expose 12 sliders with the 150-point ceiling')
     if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('configured driver abilities must remain at or below 100')
+    if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 100) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
+    if (result.removedBottomPanelLabels.length > 0) failures.push(`removed bottom panels are still visible: ${result.removedBottomPanelLabels.join(', ')}`)
+    if (result.centerMapLayout.mapHeightRatio < 0.55) failures.push(`track map did not expand into the removed panel space: ${JSON.stringify(result.centerMapLayout)}`)
+    if (result.tireLifeValues.some((value) => !/^\d{1,3}$/u.test(value) || Number(value) < 0 || Number(value) > 100)) failures.push(`tyre life must be a 100-to-0 remaining value: ${result.tireLifeValues.join(', ')}`)
+    if (result.tireLifeValues.every((value) => Number(value) === 100)) failures.push('tyre life never decreased from 100 during the accelerated run')
     for (const label of ['SPD', 'THR', 'BRK', 'GEAR', 'RPM', 'ERS', 'SOURCE']) {
       if (!result.telemetryHeader.includes(label)) failures.push(`telemetry header missing ${label}`)
     }
@@ -392,7 +417,6 @@ try {
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
     if (!result.messagesClosed || !result.messagesRestored) failures.push('message close/restore failed')
-    if (!result.sectorsClosed || !result.sectorsRestored) failures.push('sector table toggle failed')
     if (result.selectedRows !== 1) failures.push(`expected one selected timing row, saw ${result.selectedRows}`)
     if (result.speed60Selected !== 'true' || !result.resumeVisible) failures.push('playback controls failed')
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')

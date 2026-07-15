@@ -26,10 +26,33 @@ export type WeatherTrackState = {
   trackWetnessPercent: number
 }
 
+export type SimulatedTemperatures = {
+  airTemperatureC: number
+  trackTemperatureC: number
+}
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 const rainLevelForState = (weather: WeatherState) =>
   weather === 'heavy-rain' ? 1 : weather === 'light-rain' ? 0.45 : 0
+
+export function simulatedTemperaturesFor(
+  seed: string,
+  track: Pick<TrackDefinition, 'id' | 'rainProbability'>,
+  weather: WeatherState,
+): SimulatedTemperatures {
+  const coolOff = weather === 'heavy-rain' ? 7 : weather === 'light-rain' ? 4 : 0
+  const airTemperatureC =
+    22 +
+    (1 - track.rainProbability) * 8 +
+    hashChance(`${seed}:air:${track.id}`) * 5 -
+    coolOff
+  const trackTemperatureC =
+    airTemperatureC +
+    (weather === 'clear' ? 15 : weather === 'light-rain' ? 7 : 3)
+
+  return { airTemperatureC, trackTemperatureC }
+}
 
 function weatherForSegment(
   seed: string,

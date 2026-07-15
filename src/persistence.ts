@@ -1,5 +1,6 @@
 import type {
   Driver,
+  DriverTunableStat,
   GridSource,
   TireCompound,
   TireSet,
@@ -8,6 +9,11 @@ import type {
   WeekendStage,
 } from './types'
 import { normalizeCarComponents } from './simulation/components'
+import {
+  DRIVER_ABILITY_STATS,
+  clampDriverAbility,
+  driverAbilityValue,
+} from './simulation/driverAbility'
 import type { SeasonState } from './simulation/season'
 import { createSeasonState } from './simulation/season'
 import { createWeekendContext } from './simulation/weekend'
@@ -16,6 +22,7 @@ export const WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
 export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
 export const SEASON_STORAGE_KEY = 'f1-sim-season-v3'
 export const LEGACY_SEASON_STORAGE_KEY = 'f1-sim-season-v2'
+export const DRIVER_RATINGS_STORAGE_KEY = 'f1-sim-driver-ratings-v1'
 
 const weekendStages: WeekendStage[] = [
   'fp1',
@@ -38,11 +45,84 @@ export type PersistedWeekend = {
   weekendContext: WeekendContext
 }
 
+export type PersistedDriverRatings = {
+  version: 1
+  ratingsByDriver: Record<
+    string,
+    Partial<Record<DriverTunableStat, number>>
+  >
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const finiteNumber = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
+
+export function parsePersistedDriverRatings(
+  raw: string | null,
+  baseDrivers: Driver[],
+): Driver[] {
+  if (!raw) {
+    return baseDrivers.map((driver) => ({ ...driver }))
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown
+
+    if (
+      !isRecord(parsed) ||
+      parsed.version !== 1 ||
+      !isRecord(parsed.ratingsByDriver)
+    ) {
+      return baseDrivers.map((driver) => ({ ...driver }))
+    }
+
+    const ratingsByDriver = parsed.ratingsByDriver
+
+    return baseDrivers.map((driver) => {
+      const candidate = ratingsByDriver[driver.id]
+
+      if (!isRecord(candidate)) {
+        return { ...driver }
+      }
+
+      const ratings = Object.fromEntries(
+        DRIVER_ABILITY_STATS.flatMap((stat) => {
+          const value = candidate[stat]
+
+          return typeof value === 'number' && Number.isFinite(value)
+            ? [[stat, clampDriverAbility(value)]]
+            : []
+        }),
+      ) as Partial<Record<DriverTunableStat, number>>
+
+      return { ...driver, ...ratings }
+    })
+  } catch {
+    return baseDrivers.map((driver) => ({ ...driver }))
+  }
+}
+
+export function serializeDriverRatings(
+  drivers: Driver[],
+): PersistedDriverRatings {
+  return {
+    version: 1,
+    ratingsByDriver: Object.fromEntries(
+      drivers.map((driver) => [
+        driver.id,
+        Object.fromEntries(
+          DRIVER_ABILITY_STATS.flatMap((stat) =>
+            Object.prototype.hasOwnProperty.call(driver, stat)
+              ? [[stat, driverAbilityValue(driver, stat)]]
+              : [],
+          ),
+        ),
+      ]),
+    ),
+  }
+}
 
 const isWeekendStage = (value: unknown): value is WeekendStage =>
   typeof value === 'string' && weekendStages.includes(value as WeekendStage)

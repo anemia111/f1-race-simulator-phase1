@@ -103,6 +103,8 @@ export function buildOpenF1TrackCalibration(
 ): TrackObservedCalibration {
   const unavailable: TrackObservedCalibration = {
     maxSpeedKph: null,
+    medianPitStopsPerDriver: null,
+    medianStintLapsByCompound: {},
     pitLaneTransitSeconds: null,
     provenance: {
       kind: 'unavailable',
@@ -111,6 +113,8 @@ export function buildOpenF1TrackCalibration(
     },
     sampleCount: 0,
     sectorWeights: null,
+    strategySampleCount: 0,
+    trackTemperatureC: null,
     tireDegradationByCompound: {},
     tirePaceOffsetByCompound: {},
     tireSampleCountByCompound: {},
@@ -262,6 +266,43 @@ export function buildOpenF1TrackCalibration(
       return slope === null ? [] : [[compound, Number(slope.toFixed(4))]]
     }),
   ) as Partial<Record<TireCompound, number>>
+  const stintLengthsByCompound = new Map<TireCompound, number[]>()
+  const stintCountByDriver = new Map<number, number>()
+
+  for (const stint of bundle.stints) {
+    const compound = openF1Compound(stint.compound)
+    const stintLaps = stint.lap_end - stint.lap_start + 1
+
+    stintCountByDriver.set(
+      stint.driver_number,
+      Math.max(
+        stintCountByDriver.get(stint.driver_number) ?? 0,
+        stint.stint_number,
+      ),
+    )
+
+    if (compound && stintLaps >= 3) {
+      stintLengthsByCompound.set(compound, [
+        ...(stintLengthsByCompound.get(compound) ?? []),
+        stintLaps,
+      ])
+    }
+  }
+
+  const medianStintLapsByCompound = Object.fromEntries(
+    [...stintLengthsByCompound].flatMap(([compound, lengths]) => {
+      const stintMedian = median(lengths)
+      return stintMedian === null ? [] : [[compound, Number(stintMedian.toFixed(1))]]
+    }),
+  ) as Partial<Record<TireCompound, number>>
+  const observedStopCounts = [...stintCountByDriver.values()].map(
+    (stintCount) => Math.max(0, stintCount - 1),
+  )
+  const medianPitStopsPerDriver =
+    bundle.requestedStage === 'race' || bundle.requestedStage === 'sprint'
+      ? median(observedStopCounts)
+      : null
+  const strategySampleCount = observedStopCounts.length
   const tireSampleCountByCompound = tireLapSamples.reduce<
     Partial<Record<TireCompound, number>>
   >((counts, sample) => {
@@ -325,6 +366,8 @@ export function buildOpenF1TrackCalibration(
 
   return {
     maxSpeedKph,
+    medianPitStopsPerDriver,
+    medianStintLapsByCompound,
     pitLaneTransitSeconds,
     provenance: {
       kind: sampleCount > 0 ? 'calibrated' : 'unavailable',
@@ -336,6 +379,9 @@ export function buildOpenF1TrackCalibration(
     },
     sampleCount,
     sectorWeights: normalizedSectorWeights,
+    strategySampleCount,
+    trackTemperatureC:
+      bundle.summary.latestWeather?.track_temperature ?? null,
     tireDegradationByCompound,
     tirePaceOffsetByCompound,
     tireSampleCountByCompound,

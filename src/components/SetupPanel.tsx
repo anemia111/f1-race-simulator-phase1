@@ -19,6 +19,7 @@ import {
   DRIVER_ABILITY_SCALE_MAX,
   driverAbilityPoints,
   driverAbilityValue,
+  driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
 import type {
   CarComponents,
@@ -86,12 +87,18 @@ const teamStats: Array<{ key: TeamStat; label: string }> = [
 ]
 
 const driverStats: Array<{ key: DriverStat; label: string }> = [
-  { key: 'speed', label: 'Speed' },
+  { key: 'qualifyingPace', label: 'Qualifying' },
+  { key: 'racePace', label: 'Race pace' },
   { key: 'consistency', label: 'Consistency' },
   { key: 'tireManagement', label: 'Tire mgmt' },
   { key: 'overtaking', label: 'Overtake' },
   { key: 'defense', label: 'Defense' },
   { key: 'wetSkill', label: 'Wet skill' },
+  { key: 'starts', label: 'Starts' },
+  { key: 'braking', label: 'Braking' },
+  { key: 'cornering', label: 'Cornering' },
+  { key: 'raceAwareness', label: 'Awareness' },
+  { key: 'adaptability', label: 'Adaptability' },
 ]
 
 const componentRows: Array<{ key: keyof CarComponents; label: string }> = [
@@ -571,15 +578,22 @@ export function SetupPanel({
             ))}
           </select>
         </label>
-        {driverStats.map((stat) => (
-          <SliderRow
-            key={stat.key}
-            label={stat.label}
-            max={DRIVER_ABILITY_INTERNAL_MAX}
-            onChange={(value) => onDriverStatChange(selectedDriver.id, stat.key, value)}
-            value={driverAbilityValue(selectedDriver, stat.key)}
-          />
-        ))}
+        <div className="driver-overall-rating">
+          <span>Overall ability</span>
+          <strong>{driverOverallAbilityPoints(selectedDriver)}</strong>
+          <small>12-stat mean</small>
+        </div>
+        <div className="driver-ability-grid">
+          {driverStats.map((stat) => (
+            <SliderRow
+              key={stat.key}
+              label={stat.label}
+              max={DRIVER_ABILITY_INTERNAL_MAX}
+              onChange={(value) => onDriverStatChange(selectedDriver.id, stat.key, value)}
+              value={driverAbilityValue(selectedDriver, stat.key)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   )

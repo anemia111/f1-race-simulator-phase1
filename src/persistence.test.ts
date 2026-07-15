@@ -1,9 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers } from './data/grid2026'
 import { tracks } from './data/tracks'
-import { parsePersistedSeason, parsePersistedWeekend } from './persistence'
+import {
+  parsePersistedDriverRatings,
+  parsePersistedSeason,
+  parsePersistedWeekend,
+  serializeDriverRatings,
+} from './persistence'
 
 describe('V2 persistence migration', () => {
+  it('round-trips explicit 12-stat driver tuning without materializing fallbacks', () => {
+    const tuned = initialDrivers.map((driver, index) =>
+      index === 0
+        ? {
+            ...driver,
+            adaptability: 0.93,
+            qualifyingPace: 0.97,
+            raceAwareness: 0.95,
+          }
+        : driver,
+    )
+    const serialized = serializeDriverRatings(tuned)
+    const restored = parsePersistedDriverRatings(
+      JSON.stringify(serialized),
+      initialDrivers,
+    )
+
+    expect(restored[0]).toMatchObject({
+      adaptability: 0.93,
+      qualifyingPace: 0.97,
+      raceAwareness: 0.95,
+    })
+    expect(restored[1]).not.toHaveProperty('qualifyingPace')
+  })
+
   it('normalizes a legacy weekend against its saved track', () => {
     const track = tracks.find((candidate) => candidate.id === 'suzuka-approx')!
     const raw = JSON.stringify({

@@ -3,8 +3,10 @@
 
 import type {
   DryCompoundFamily,
+  RacePaceMode,
   TireCompound,
   TireNomination,
+  TirePerformanceState,
   WeatherState,
 } from '../types'
 
@@ -23,6 +25,27 @@ export type TireCondition = {
   lifeRemainingPercent: number
   operatingState: 'cold' | 'window' | 'overheated'
   wearState: 'fresh' | 'used' | 'critical'
+}
+
+export type TireTrackCondition = {
+  dryingLine: number
+  rainIntensityMmH: number
+  surfaceWaterMm: number
+}
+
+export type TireDynamicState = {
+  carcassTemperatureC: number
+  grainingPercent: number
+  overheatingPercent: number
+  performanceState: TirePerformanceState
+  surfaceTemperatureC: number
+  thermalStressPercent: number
+  wearPercent: number
+}
+
+export type TireThermalWear = {
+  permanentStressPercentPerLap: number
+  wearMultiplier: number
 }
 
 export type ObservedTireCalibration = {
@@ -69,6 +92,123 @@ function specFor(
   return tireCompounds[compound]
 }
 
+function dryFamilyFor(
+  compound: TireCompound,
+  nomination?: TireNomination,
+) {
+  return compound === 'H' || compound === 'M' || compound === 'S'
+    ? nomination?.[compound] ?? ({ H: 'C2', M: 'C3', S: 'C4' } as const)[compound]
+    : null
+}
+
+export function tireOperatingWindowFor(
+  compound: TireCompound,
+  nomination?: TireNomination,
+) {
+  if (compound === 'I') return { lowerC: 70, upperC: 98, targetC: 84 }
+  if (compound === 'W') return { lowerC: 55, upperC: 86, targetC: 72 }
+
+  const targetByFamily: Record<DryCompoundFamily, number> = {
+    C1: 101,
+    C2: 100,
+    C3: 98,
+    C4: 96,
+    C5: 94,
+  }
+  const targetC = targetByFamily[dryFamilyFor(compound, nomination) ?? 'C3']
+
+  return { lowerC: targetC - 13, upperC: targetC + 17, targetC }
+}
+
+/**
+ * Segment-level mechanical and thermal wear. Exact carcass temperatures are
+ * team-confidential, so this is a bounded model calibrated by the nominated
+ * Pirelli C-family and any OpenF1 stint degradation available for the event.
+ */
+export function tireThermalWearForLap(options: {
+  brakePercent: number
+  compound: TireCompound
+  curvature: number
+  nomination?: TireNomination
+  paceMode: RacePaceMode
+  throttlePercent: number
+  tireTemperatureC: number
+  trackTemperatureC: number
+  weather: WeatherState
+  dryingLine?: number
+  fuelLoadMultiplier?: number
+  surfaceWaterMm?: number
+}): TireThermalWear {
+  const {
+    brakePercent,
+    compound,
+    curvature,
+    nomination,
+    paceMode,
+    throttlePercent,
+    tireTemperatureC,
+    trackTemperatureC,
+    weather,
+    dryingLine = weather === 'clear' ? 1 : 0,
+    fuelLoadMultiplier = 1,
+    surfaceWaterMm = weather === 'heavy-rain' ? 2.2 : weather === 'light-rain' ? 0.55 : 0,
+  } = options
+  const window = tireOperatingWindowFor(compound, nomination)
+  const overheatC = Math.max(0, tireTemperatureC - window.upperC)
+  const coldC = Math.max(0, window.lowerC - tireTemperatureC)
+  const paceFactor: Record<RacePaceMode, number> = {
+    defend: 1.08,
+    push: 1.22,
+    save: 0.78,
+    standard: 1,
+  }
+  const mechanicalDemand =
+    (0.78 +
+    curvature * 0.42 +
+    (brakePercent / 100) * 0.14 +
+    curvature * (throttlePercent / 100) * 0.16) * fuelLoadMultiplier
+  const hotTrackLoad =
+    weather === 'clear' ? Math.max(0, trackTemperatureC - 38) * 0.012 : 0
+  const effectiveWaterMm =
+    surfaceWaterMm * (1 - Math.min(1, Math.max(0, dryingLine)) * 0.68)
+  const wetTyreOnDry =
+    (compound === 'I' || compound === 'W') && effectiveWaterMm < 0.16
+  const dryWetTyreMultiplier = wetTyreOnDry
+    ? compound === 'W'
+      ? 1 + (1 - effectiveWaterMm / 0.16) ** 1.5 * 6.8
+      : 1 + (1 - effectiveWaterMm / 0.16) ** 1.35 * 3.6
+    : 1
+  const slickAquaplaningLoad =
+    isDryCompound(compound) && effectiveWaterMm > 0.28
+      ? 1 + Math.min(1.8, effectiveWaterMm ** 1.2 * 0.5)
+      : 1
+  const thermalMultiplier =
+    1 +
+    Math.min(1.2, overheatC * 0.055) +
+    Math.min(0.28, coldC * 0.012) +
+    Math.min(0.3, hotTrackLoad)
+  const wearMultiplier = Math.min(
+    9,
+    Math.max(
+      0.42,
+      mechanicalDemand *
+        paceFactor[paceMode] *
+        thermalMultiplier *
+        dryWetTyreMultiplier *
+        slickAquaplaningLoad,
+    ),
+  )
+  const permanentStressPercentPerLap = Math.min(
+    wetTyreOnDry && compound === 'W' ? 5.2 : 2.4,
+    (overheatC ** 1.16 * 0.03 + coldC ** 1.08 * 0.008) *
+      mechanicalDemand *
+      paceFactor[paceMode] *
+      (wetTyreOnDry ? dryWetTyreMultiplier * 0.72 : 1),
+  )
+
+  return { permanentStressPercentPerLap, wearMultiplier }
+}
+
 export function isWetCompound(compound: TireCompound): boolean {
   return compound === 'I' || compound === 'W'
 }
@@ -100,6 +240,12 @@ export function tireDeltaSeconds(
   tireWearPercent = 0,
   nomination?: TireNomination,
   observed?: ObservedTireCalibration,
+  thermalStressPercent = 0,
+  trackCondition?: TireTrackCondition,
+  dynamicState?: Pick<
+    TireDynamicState,
+    'carcassTemperatureC' | 'grainingPercent' | 'overheatingPercent'
+  >,
 ): number {
   const spec = specFor(compound, nomination)
   const sampleWeight = Math.min(0.55, Math.max(0, (observed?.sampleCount ?? 0) / 40))
@@ -121,17 +267,36 @@ export function tireDeltaSeconds(
   const wearFactor = 1.35 - tireManagement * 0.5
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
   const beyondCliff = Math.max(0, ageLaps - cliff)
-  const weatherPenalty = weatherTirePenalty(compound, weather, trackGrip)
-  const targetTemperature = compound === 'W' ? 72 : compound === 'I' ? 82 : 98
+  const weatherPenalty = weatherTirePenalty(
+    compound,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const window = tireOperatingWindowFor(compound, nomination)
   const thermalPenalty =
     tireTemperatureC === undefined
       ? 0
-      : tireTemperatureC < targetTemperature - 13
-        ? (targetTemperature - 13 - tireTemperatureC) * 0.055
-        : tireTemperatureC > targetTemperature + 17
-          ? (tireTemperatureC - targetTemperature - 17) * 0.075
+      : tireTemperatureC < window.lowerC
+        ? (window.lowerC - tireTemperatureC) * 0.055
+        : tireTemperatureC > window.upperC
+          ? (tireTemperatureC - window.upperC) * 0.075
           : 0
-  const surfaceWearPenalty = Math.max(0, tireWearPercent - 55) * 0.018
+  const effectiveWearPercent = Math.min(
+    100,
+    tireWearPercent + thermalStressPercent,
+  )
+  const surfaceWearPenalty = Math.max(0, effectiveWearPercent - 55) * 0.018
+  const carcassPenalty =
+    dynamicState === undefined
+      ? 0
+      : dynamicState.carcassTemperatureC < window.lowerC - 7
+        ? (window.lowerC - 7 - dynamicState.carcassTemperatureC) * 0.028
+        : dynamicState.carcassTemperatureC > window.upperC + 5
+          ? (dynamicState.carcassTemperatureC - window.upperC - 5) * 0.034
+          : 0
+  const grainingPenalty = (dynamicState?.grainingPercent ?? 0) * 0.025
+  const overheatingPenalty = (dynamicState?.overheatingPercent ?? 0) * 0.032
 
   return (
     freshPaceOffset +
@@ -139,7 +304,10 @@ export function tireDeltaSeconds(
     spec.cliffPerLapSeconds * beyondCliff +
     weatherPenalty +
     thermalPenalty +
-    surfaceWearPenalty
+    surfaceWearPenalty +
+    carcassPenalty +
+    grainingPenalty +
+    overheatingPenalty
   )
 }
 
@@ -152,7 +320,7 @@ export function tireWearPercentPerLap(
 ): number {
   const spec = specFor(compound, nomination)
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
-  const baseWearPercent = 82 / Math.max(6, cliff)
+  const baseWearPercent = 56 / Math.max(6, cliff)
   const observedWear = observed?.degradationPerLapSeconds
   const observedScale =
     observedWear === null || observedWear === undefined
@@ -162,6 +330,157 @@ export function tireWearPercentPerLap(
   return baseWearPercent * observedScale
 }
 
+export function advanceTireDynamicState(options: {
+  baseWearPercentPerLap: number
+  brakePercent: number
+  compound: TireCompound
+  current: TireDynamicState
+  curvature: number
+  deltaLaps: number
+  deltaSeconds: number
+  dryingLine: number
+  fuelLoadMultiplier: number
+  nomination?: TireNomination
+  paceMode: RacePaceMode
+  rainIntensityMmH: number
+  surfaceTemperatureC: number
+  surfaceWaterMm: number
+  throttlePercent: number
+  trackTemperatureC: number
+  weather: WeatherState
+}): TireDynamicState {
+  const {
+    baseWearPercentPerLap,
+    brakePercent,
+    compound,
+    current,
+    curvature,
+    deltaLaps,
+    deltaSeconds,
+    dryingLine,
+    fuelLoadMultiplier,
+    nomination,
+    paceMode,
+    rainIntensityMmH,
+    surfaceTemperatureC,
+    surfaceWaterMm,
+    throttlePercent,
+    trackTemperatureC,
+    weather,
+  } = options
+  const window = tireOperatingWindowFor(compound, nomination)
+  const lineWaterMm =
+    surfaceWaterMm * (1 - Math.min(1, Math.max(0, dryingLine)) * 0.68) +
+    rainIntensityMmH * 0.015
+  const wetPatchCoolingC =
+    (compound === 'I' || compound === 'W') &&
+    dryingLine > 0.45 &&
+    surfaceWaterMm > 0.035
+      ? Math.min(8, surfaceWaterMm * 3.2 + dryingLine * 2.5)
+      : 0
+  const dryWetTyreHeatC =
+    lineWaterMm < 0.14
+      ? compound === 'W'
+        ? 18 * (1 - lineWaterMm / 0.14)
+        : compound === 'I'
+          ? 9 * (1 - lineWaterMm / 0.14)
+          : 0
+      : 0
+  const resolvedSurfaceTemperatureC = Math.max(
+    35,
+    surfaceTemperatureC + dryWetTyreHeatC - wetPatchCoolingC,
+  )
+  const carcassTargetC =
+    resolvedSurfaceTemperatureC * 0.76 + trackTemperatureC * 0.24
+  const carcassResponse = 1 - Math.exp(-Math.max(0, deltaSeconds) * 0.038)
+  const carcassTemperatureC =
+    current.carcassTemperatureC +
+    (carcassTargetC - current.carcassTemperatureC) * carcassResponse
+  const coldSeverity = Math.max(0, window.lowerC - resolvedSurfaceTemperatureC)
+  const hotSeverity = Math.max(0, resolvedSurfaceTemperatureC - window.upperC)
+  const dampSlickGraining =
+    isDryCompound(compound) && lineWaterMm > 0.08 && lineWaterMm < 0.55
+      ? 18 + lineWaterMm * 34
+      : 0
+  const grainingTarget = Math.min(
+    100,
+    coldSeverity * 3.4 + dampSlickGraining + curvature * coldSeverity * 2.1,
+  )
+  const grainingResponse = Math.min(
+    1,
+    deltaLaps * (grainingTarget > current.grainingPercent ? 0.72 : 0.24),
+  )
+  const grainingPercent = Math.max(
+    0,
+    current.grainingPercent +
+      (grainingTarget - current.grainingPercent) * grainingResponse,
+  )
+  const overheatingTarget = Math.min(
+    100,
+    hotSeverity * 4.1 + dryWetTyreHeatC * 3.2,
+  )
+  const overheatingResponse = Math.min(
+    1,
+    deltaLaps * (overheatingTarget > current.overheatingPercent ? 1.1 : 0.34),
+  )
+  const overheatingPercent = Math.max(
+    0,
+    current.overheatingPercent +
+      (overheatingTarget - current.overheatingPercent) * overheatingResponse,
+  )
+  const thermalWear = tireThermalWearForLap({
+    brakePercent,
+    compound,
+    curvature,
+    dryingLine,
+    fuelLoadMultiplier,
+    nomination,
+    paceMode,
+    surfaceWaterMm,
+    throttlePercent,
+    tireTemperatureC: resolvedSurfaceTemperatureC,
+    trackTemperatureC,
+    weather,
+  })
+  const rainSlideWear =
+    isDryCompound(compound) && lineWaterMm > 0.35
+      ? 1 + Math.min(1.2, lineWaterMm * 0.42)
+      : 1
+  const wearPercent = Math.min(
+    100,
+    current.wearPercent +
+      deltaLaps *
+        baseWearPercentPerLap *
+        thermalWear.wearMultiplier *
+        rainSlideWear,
+  )
+  const thermalStressPercent = Math.min(
+    100,
+    current.thermalStressPercent +
+      deltaLaps * thermalWear.permanentStressPercentPerLap,
+  )
+  const performanceState: TirePerformanceState =
+    wearPercent + thermalStressPercent >= 88
+      ? 'degraded'
+      : overheatingPercent >= 34
+        ? 'overheating'
+        : grainingPercent >= 28
+          ? 'graining'
+          : coldSeverity >= 7
+            ? 'cold'
+            : 'optimal'
+
+  return {
+    carcassTemperatureC,
+    grainingPercent,
+    overheatingPercent,
+    performanceState,
+    surfaceTemperatureC: resolvedSurfaceTemperatureC,
+    thermalStressPercent,
+    wearPercent,
+  }
+}
+
 export function tireConditionFor(
   compound: TireCompound,
   ageLaps: number,
@@ -169,23 +488,32 @@ export function tireConditionFor(
   tireTemperatureC: number,
   tireWearPercent = 0,
   nomination?: TireNomination,
+  thermalStressPercent = 0,
 ): TireCondition {
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
   const ageLifePercent = (1 - ageLaps / Math.max(1, cliff + 6)) * 100
   const lifeRemainingPercent = Math.round(
-    Math.max(0, Math.min(100, ageLifePercent, 100 - tireWearPercent)),
+    Math.max(
+      0,
+      Math.min(
+        100,
+        ageLifePercent,
+        100 - tireWearPercent - thermalStressPercent,
+      ),
+    ),
   )
-  const targetTemperature = compound === 'W' ? 72 : compound === 'I' ? 82 : 98
+  const window = tireOperatingWindowFor(compound, nomination)
   const operatingState =
-    tireTemperatureC < targetTemperature - 13
+    tireTemperatureC < window.lowerC
       ? 'cold'
-      : tireTemperatureC > targetTemperature + 17
+      : tireTemperatureC > window.upperC
         ? 'overheated'
         : 'window'
+  const effectiveWearPercent = tireWearPercent + thermalStressPercent
   const wearState =
-    ageLaps >= cliff || tireWearPercent >= 85
+    ageLaps >= cliff || effectiveWearPercent >= 85
       ? 'critical'
-      : ageLaps >= cliff * 0.58 || tireWearPercent >= 55
+      : ageLaps >= cliff * 0.58 || effectiveWearPercent >= 55
         ? 'used'
         : 'fresh'
 
@@ -196,7 +524,12 @@ export function weatherTirePenalty(
   compound: TireCompound,
   weather: WeatherState,
   trackGrip: number,
+  condition?: TireTrackCondition,
 ): number {
+  if (condition) {
+    return tireTrackPenaltySeconds(compound, condition)
+  }
+
   const wetness = Math.max(0, Math.min(1, 1 - trackGrip))
   const fullWet = weather === 'heavy-rain' || trackGrip < 0.74
   const intermediateWet = weather === 'light-rain' || trackGrip < 0.93
@@ -236,6 +569,57 @@ export function weatherTirePenalty(
   return 0
 }
 
+export function effectiveLineWaterMm(condition: TireTrackCondition) {
+  return Math.max(
+    0,
+    condition.surfaceWaterMm *
+      (1 - Math.min(1, Math.max(0, condition.dryingLine)) * 0.68) +
+      condition.rainIntensityMmH * 0.015,
+  )
+}
+
+export function tireTrackPenaltySeconds(
+  compound: TireCompound,
+  condition: TireTrackCondition,
+) {
+  const waterMm = effectiveLineWaterMm(condition)
+  const waterIndex = Math.min(1.6, waterMm / 2.2)
+
+  if (isDryCompound(compound)) {
+    if (waterMm <= 0.025) {
+      return 0
+    }
+
+    const loss = 31 * waterIndex ** 1.42
+    const aquaplaning = Math.max(0, waterMm - 1.25) ** 1.32 * 8.5
+
+    return loss + aquaplaning
+  }
+
+  if (compound === 'I') {
+    const dryLoss = waterMm < 0.42 ? (0.42 - waterMm) * 7.1 : 0
+    const deepWaterLoss = waterMm > 1.65 ? (waterMm - 1.65) ** 1.25 * 3.8 : 0
+
+    return 0.45 + dryLoss + deepWaterLoss
+  }
+
+  const dryLoss = waterMm < 1.2 ? (1.2 - waterMm) * 5.7 : 0
+  const extremeWaterRelief = waterMm >= 2.1 ? -0.8 : 0
+
+  return 0.9 + dryLoss + extremeWaterRelief
+}
+
+export function preferredTireCategoryFor(condition: TireTrackCondition) {
+  const candidates: TireCompound[] = ['M', 'I', 'W']
+
+  return candidates.reduce((best, candidate) =>
+    tireTrackPenaltySeconds(candidate, condition) <
+    tireTrackPenaltySeconds(best, condition)
+      ? candidate
+      : best,
+  )
+}
+
 /**
  * Compound choice for a stint of `remainingLaps`. `avoid` supports the
  * two-compound rule; `roll` (0..1, seed-derived) breaks ties so the field
@@ -247,7 +631,17 @@ export function chooseCompound(
   roll: number,
   weather: WeatherState = 'clear',
   trackGrip = 1,
+  condition?: TireTrackCondition,
 ): TireCompound {
+  const preferredCategory = condition
+    ? preferredTireCategoryFor(condition)
+    : null
+
+  if (preferredCategory === 'W' || preferredCategory === 'I') {
+    const backup = preferredCategory === 'W' ? 'I' : 'W'
+    return avoid === preferredCategory ? backup : preferredCategory
+  }
+
   if (weather === 'heavy-rain' || trackGrip < 0.74) {
     return avoid === 'W' ? 'I' : 'W'
   }
@@ -283,7 +677,16 @@ export function compoundMatchesWeather(
   compound: TireCompound,
   weather: WeatherState,
   trackGrip: number,
+  condition?: TireTrackCondition,
 ): boolean {
+  if (condition) {
+    const preferred = preferredTireCategoryFor(condition)
+
+    return preferred === 'M'
+      ? isDryCompound(compound)
+      : compound === preferred
+  }
+
   if (weather === 'heavy-rain' || trackGrip < 0.74) {
     return compound === 'W'
   }

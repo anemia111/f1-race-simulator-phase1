@@ -93,6 +93,25 @@ export function RaceInsightsPanel({
         underSafetyCar: snapshot.flag === 'sc' || snapshot.flag === 'vsc',
         weather: snapshot.weather,
         tireNomination: track.tireNomination,
+        observedCalibration: track.observedCalibration,
+        trackCondition: {
+          dryingLine:
+            snapshot.dryingLineBySector.reduce(
+              (total, value) => total + value,
+              0,
+            ) / 3,
+          rainIntensityMmH:
+            snapshot.weather === 'heavy-rain'
+              ? 8
+              : snapshot.weather === 'light-rain'
+                ? 2
+                : 0,
+          surfaceWaterMm:
+            snapshot.surfaceWaterMmBySector.reduce(
+              (total, value) => total + value,
+              0,
+            ) / 3,
+        },
         pitLaneLossSeconds: pitForecast.lossSeconds,
         gapToAheadSeconds: car.gapToAhead,
         projectedRejoinPositionLoss: pitForecast.projectedPosition - car.position,
@@ -103,7 +122,7 @@ export function RaceInsightsPanel({
             candidate.pitPhase !== 'none',
         ),
       }),
-    [car, driver, pitForecast.lossSeconds, pitForecast.projectedPosition, snapshot.cars, snapshot.flag, snapshot.leaderLap, snapshot.raceLaps, snapshot.trackGrip, snapshot.weather, snapshot.weekend.stage, track.id, track.tireNomination],
+    [car, driver, pitForecast.lossSeconds, pitForecast.projectedPosition, snapshot.cars, snapshot.dryingLineBySector, snapshot.flag, snapshot.leaderLap, snapshot.raceLaps, snapshot.surfaceWaterMmBySector, snapshot.trackGrip, snapshot.weather, snapshot.weekend.stage, track.id, track.observedCalibration, track.tireNomination],
   )
   const weakestComponentEntry = useMemo(
     () =>
@@ -183,7 +202,7 @@ export function RaceInsightsPanel({
           <span>Compound</span><strong>{car.tire} / {car.tireAgeLaps} laps</strong>
           <span>Life</span><strong>{tireCondition.lifeRemainingPercent}% / {tireCondition.wearState}</strong>
           <span>Temperature</span><strong>{Math.round(car.tireTemperatureC)}C / {tireCondition.operatingState}</strong>
-          <span>Wear / brakes</span><strong>{Math.round(car.tireWearPercent)}% / {Math.round(car.brakeTemperatureC)}C</strong>
+          <span>Life / brakes</span><strong>{tireCondition.lifeRemainingPercent}% / {Math.round(car.brakeTemperatureC)}C</strong>
           <span>Surface</span><strong>{compactWeather(snapshot.weather)} / {Math.round(snapshot.trackGrip * 100)}% grip</strong>
         </div>
       </section>

@@ -42,8 +42,10 @@ export const phaseThreeTuning = {
   vscMinimumPace: 0.18,
   vscMaximumPace: 0.9,
   scPace: 0.5,
+  /** Steady leader pace after the SC lights are extinguished. */
+  scRestartLeaderPace: 0.46,
   /** Pace for cars still catching the SC queue (bunching). */
-  scCatchUpPace: 0.74,
+  scCatchUpPace: 0.86,
   /** Gap to the car ahead below which a car is considered "in the queue". */
   scQueueGapSeconds: 1.2,
   // Restart window after SC/VSC/red: cold tires and brakes.
@@ -234,6 +236,23 @@ export function flagPaceMultiplier(
       return phaseThreeTuning.vscPace
     case 'sc':
       if (options.isLeader) {
+        const procedure = phase.neutralisation
+
+        if (
+          procedure?.kind === 'safety-car' &&
+          (procedure.stage === 'in-this-lap' ||
+            procedure.stage === 'pit-entry')
+        ) {
+          return phaseThreeTuning.scRestartLeaderPace
+        }
+
+        if (
+          procedure?.kind === 'safety-car' &&
+          procedure.leaderCollectedAtSeconds === null
+        ) {
+          return phaseThreeTuning.scCatchUpPace
+        }
+
         return phaseThreeTuning.scPace
       }
       return options.gapToAheadSeconds > phaseThreeTuning.scQueueGapSeconds
@@ -290,13 +309,24 @@ export function sectorFlagStatesFor(
 }
 
 /** Closed-loop VSC pace: recover positive time credit, slow for a negative delta. */
-export function vscPaceScaleForDelta(deltaSeconds: number): number {
+export function vscPaceScaleForDelta(
+  deltaSeconds: number,
+  managementPrecision = 0.85,
+  controlPulse = 0,
+): number {
+  const precision = clamp01(managementPrecision)
+  const correctionGain =
+    phaseThreeTuning.vscDeltaGain * (0.72 + precision * 0.38)
+  const managementError =
+    Math.max(-1, Math.min(1, controlPulse)) * (1 - precision) * 0.055
+
   return Math.min(
     phaseThreeTuning.vscMaximumPace,
     Math.max(
       phaseThreeTuning.vscMinimumPace,
       phaseThreeTuning.vscPace +
-        deltaSeconds * phaseThreeTuning.vscDeltaGain,
+        deltaSeconds * correctionGain +
+        managementError,
     ),
   )
 }
@@ -326,9 +356,29 @@ export function flagLabelFor(phase: ActiveFlagPhase | null): string {
     case 'yellow':
       return `YELLOW S${phase.sector + 1}`
     case 'vsc':
-      return 'VSC'
+      return phase.neutralisation?.kind === 'vsc' &&
+        phase.neutralisation.stage === 'ending'
+        ? 'VSC ENDING'
+        : 'VSC'
     case 'sc':
-      return 'SC'
+      if (phase.neutralisation?.kind !== 'safety-car') {
+        return 'SC'
+      }
+
+      switch (phase.neutralisation.stage) {
+        case 'collecting-field':
+          return 'SC - FORMING'
+        case 'queue-formed':
+          return 'SC - QUEUED'
+        case 'unlapping':
+          return 'SC - UNLAPPING'
+        case 'in-this-lap':
+          return 'SC IN THIS LAP'
+        case 'pit-entry':
+          return 'SC PIT ENTRY'
+        default:
+          return 'SC'
+      }
     case 'red':
       return 'RED'
     default:

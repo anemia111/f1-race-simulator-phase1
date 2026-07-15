@@ -47,12 +47,15 @@ import { useOpenF1Data } from './hooks/useOpenF1Data'
 import { useOpenF1SeasonStandings } from './hooks/useOpenF1SeasonStandings'
 import { useRaceSimulation } from './hooks/useRaceSimulation'
 import {
+  DRIVER_RATINGS_STORAGE_KEY,
   LEGACY_SEASON_STORAGE_KEY,
   LEGACY_WEEKEND_STORAGE_KEY,
   SEASON_STORAGE_KEY,
   WEEKEND_STORAGE_KEY,
   parsePersistedSeason,
+  parsePersistedDriverRatings,
   parsePersistedWeekend,
+  serializeDriverRatings,
   type PersistedWeekend,
 } from './persistence'
 import {
@@ -75,8 +78,15 @@ import {
   sessionDurationSecondsFor,
 } from './simulation/sessionRules'
 import { FIA_2026_REGULATION_PROFILE } from './simulation/regulations'
-import { weatherTrackStateFor } from './simulation/weather'
-import { isDryCompound, tireDeltaSeconds } from './simulation/tires'
+import {
+  simulatedTemperaturesFor,
+  weatherTrackStateFor,
+} from './simulation/weather'
+import {
+  isDryCompound,
+  tireConditionFor,
+  tireDeltaSeconds,
+} from './simulation/tires'
 import { buildTimedSessionPlan } from './simulation/timedSessionPlan'
 import type { OpenF1Bundle, OpenF1CarData, OpenF1Lap } from './services/openF1'
 import { buildOpenF1LiveRaceState } from './services/openF1Derived'
@@ -120,7 +130,10 @@ import type {
   WeekendContext,
   WeekendStage,
 } from './types'
-import { clampDriverAbility } from './simulation/driverAbility'
+import {
+  clampDriverAbility,
+  driverOverallAbilityPoints,
+} from './simulation/driverAbility'
 
 const cameraModes: Array<{
   mode: CameraMode
@@ -184,6 +197,7 @@ type TimingRow = {
   displayGapToLeaderLabel: string
   displayIntervalLabel: string
   displayPosition: number
+  driverOverallAbility: number
   gear: number
   lapTimeSeconds: number | null
   lapDataLabel: string
@@ -201,6 +215,7 @@ type TimingRow = {
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
   tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation'
+  tireLifePercent: number
   tirePaceDeltaSeconds: number
   tireTemperatureC: number
 }
@@ -305,6 +320,17 @@ type OpenF1LapWithSectorTimes = OpenF1Lap & {
 
 const copyTeams = (teams: Team[]) => teams.map((team) => ({ ...team }))
 const copyDrivers = (drivers: Driver[]) => drivers.map((driver) => ({ ...driver }))
+
+function loadPersistedDrivers(): Driver[] {
+  try {
+    return parsePersistedDriverRatings(
+      window.localStorage.getItem(DRIVER_RATINGS_STORAGE_KEY),
+      initialDrivers,
+    )
+  } catch {
+    return copyDrivers(initialDrivers)
+  }
+}
 
 const weekendStagesFor = (track: RaceConfig['track']): WeekendStage[] =>
   track.isSprintWeekend
@@ -612,6 +638,7 @@ const openF1TimingForCar = (
   | 'displayGapToLeaderLabel'
   | 'displayIntervalLabel'
   | 'displayPosition'
+  | 'driverOverallAbility'
   | 'aeroOvertakeLabel'
   | 'gear'
   | 'performancePaceDeltaSeconds'
@@ -621,6 +648,7 @@ const openF1TimingForCar = (
   | 'speedKph'
   | 'telemetrySource'
   | 'throttlePercent'
+  | 'tireLifePercent'
   | 'tireModelSource'
   | 'tirePaceDeltaSeconds'
   | 'tireTemperatureC'
@@ -958,29 +986,25 @@ const openF1ClockLabel = (date: string) => {
 const simulatedEnvironmentFor = (
   seed: string,
   track: RaceConfig['track'],
-  weatherLabel: string,
+  weather: RaceSnapshot['weather'],
 ) => {
-  const coolOff = weatherLabel === 'HEAVY RAIN' ? 7 : weatherLabel === 'LIGHT RAIN' ? 4 : 0
-  const airTemperature =
-    22 + (1 - track.rainProbability) * 8 + hashUnit(`${seed}:air:${track.id}`) * 5 - coolOff
-  const trackTemperature =
-    airTemperature +
-    (weatherLabel === 'CLEAR' ? 15 : weatherLabel === 'LIGHT RAIN' ? 7 : 3)
+  const { airTemperatureC, trackTemperatureC } =
+    simulatedTemperaturesFor(seed, track, weather)
   const windSpeed = 1.4 + hashUnit(`${seed}:wind:${track.id}`) * 5.6
   const windDirection = Math.round(hashUnit(`${seed}:wind-dir:${track.id}`) * 359)
   const humidity = Math.round(
     Math.min(
       96,
-      42 + track.rainProbability * 46 + (weatherLabel === 'CLEAR' ? 0 : 18),
+      42 + track.rainProbability * 46 + (weather === 'clear' ? 0 : 18),
     ),
   )
 
   return {
-    airLabel: `${formatTemperature(airTemperature)} S`,
+    airLabel: `${formatTemperature(airTemperatureC)} S`,
     humidityLabel: `${humidity}% S`,
     pressureLabel: `${Math.round(1002 + hashUnit(`${seed}:pressure:${track.id}`) * 18)} hPa S`,
     source: 'simulation' as const,
-    trackLabel: `${formatTemperature(trackTemperature)} S`,
+    trackLabel: `${formatTemperature(trackTemperatureC)} S`,
     windLabel: `${formatWind(windSpeed, windDirection)} S`,
   }
 }
@@ -1088,7 +1112,7 @@ export default function App() {
     persistedWeekend?.gridSource ?? 'qualifying',
   )
   const [teams, setTeams] = useState<Team[]>(() => copyTeams(initialTeams))
-  const [drivers, setDrivers] = useState<Driver[]>(() => copyDrivers(initialDrivers))
+  const [drivers, setDrivers] = useState<Driver[]>(loadPersistedDrivers)
   const [selectedTeamId, setSelectedTeamId] = useState(initialTeams[0].id)
   const [selectedDriverId, setSelectedDriverId] = useState(initialDrivers[0].id)
   const [season, setSeason] = useState<SeasonState>(loadPersistedSeason)
@@ -1124,6 +1148,17 @@ export default function App() {
       // Storage may be unavailable (private mode, quota); persistence is optional.
     }
   }, [gridSource, seed, selectedTrackId, selectedWeekendStage, weekendContext])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        DRIVER_RATINGS_STORAGE_KEY,
+        JSON.stringify(serializeDriverRatings(drivers)),
+      )
+    } catch {
+      // Driver tuning remains usable when browser storage is unavailable.
+    }
+  }, [drivers])
 
   useEffect(() => {
     try {
@@ -1587,7 +1622,7 @@ export default function App() {
             ...simulatedEnvironmentFor(
               raceConfig.seed,
               raceConfig.track,
-              snapshot.weatherLabel,
+              snapshot.weather,
             ),
             rainLabel: `${weatherTrackState.rainLabel} S`,
           },
@@ -1596,7 +1631,7 @@ export default function App() {
       latestOpenF1Weather,
       raceConfig.seed,
       raceConfig.track,
-      snapshot.weatherLabel,
+      snapshot.weather,
       weatherTrackState.rainLabel,
     ],
   )
@@ -1742,6 +1777,17 @@ export default function App() {
       })
   }, [dataMode, openF1LiveState.positionsByCode, orderedCars])
   const timingRows = useMemo<TimingRow[]>(() => {
+    const averageSurfaceWaterMm =
+      snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) /
+      snapshot.surfaceWaterMmBySector.length
+    const averageDryingLine =
+      snapshot.dryingLineBySector.reduce((sum, value) => sum + value, 0) /
+      snapshot.dryingLineBySector.length
+    const rainIntensityMmH = weatherTrackStateFor(
+      raceConfig.seed,
+      raceConfig.track,
+      snapshot.elapsedSeconds,
+    ).rainIntensityMmH
     const rows: TimingRowWithoutSectorStatuses[] = timingCars.map(
       (car) => {
         const useObservedTiming = dataModeUsesObservedTiming(dataMode)
@@ -1772,7 +1818,14 @@ export default function App() {
           raceConfig.track.observedCalibration?.tireSampleCountByCompound[
             car.tire
           ] ?? 0
+        const driver = raceConfig.drivers.find(
+          (candidate) => candidate.id === car.driverId,
+        )
+        const tireManagement = driver?.tireManagement ?? 0.8
         const tireModel = {
+          driverOverallAbility: driver
+            ? driverOverallAbilityPoints(driver)
+            : 0,
           performancePaceDeltaSeconds:
             fieldCalibration.teamPaceDeltaSeconds[car.teamId] ?? null,
           performanceSource: fieldCalibration.source,
@@ -1786,8 +1839,7 @@ export default function App() {
           tirePaceDeltaSeconds: tireDeltaSeconds(
             car.tire,
             car.tireAgeLaps,
-            raceConfig.drivers.find((driver) => driver.id === car.driverId)
-              ?.tireManagement ?? 0.8,
+            tireManagement,
             snapshot.weather,
             snapshot.trackGrip,
             car.tireTemperatureC,
@@ -1802,7 +1854,27 @@ export default function App() {
                   ?.tirePaceOffsetByCompound[car.tire],
               sampleCount: tireSampleCount,
             },
+            car.tireThermalStressPercent ?? 0,
+            {
+              dryingLine: averageDryingLine,
+              rainIntensityMmH,
+              surfaceWaterMm: averageSurfaceWaterMm,
+            },
+            {
+              carcassTemperatureC: car.tireCarcassTemperatureC,
+              grainingPercent: car.tireGrainingPercent,
+              overheatingPercent: car.tireOverheatingPercent,
+            },
           ),
+          tireLifePercent: tireConditionFor(
+            car.tire,
+            car.tireAgeLaps,
+            tireManagement,
+            car.tireTemperatureC,
+            car.tireWearPercent,
+            raceConfig.track.tireNomination,
+            car.tireThermalStressPercent ?? 0,
+          ).lifeRemainingPercent,
         }
         const hasCurrentLapSector = car.currentLapSectorTimes.some(
           (sectorTime) => sectorTime !== null,
@@ -1947,6 +2019,9 @@ export default function App() {
       openF1TimingSources,
       fieldCalibration,
       raceConfig,
+      snapshot.dryingLineBySector,
+      snapshot.elapsedSeconds,
+      snapshot.surfaceWaterMmBySector,
       snapshot.trackGrip,
       snapshot.weather,
       timingCars,

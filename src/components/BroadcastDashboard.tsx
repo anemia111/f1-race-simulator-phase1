@@ -1,7 +1,6 @@
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   CircleGauge,
   CloudRain,
   Database,
@@ -58,6 +57,7 @@ export type BroadcastTimingRow = {
   displayGapToLeaderLabel: string
   displayIntervalLabel: string
   displayPosition: number
+  driverOverallAbility: number
   gear: number
   lapTimeSeconds: number | null
   lapDataLabel: string
@@ -73,6 +73,7 @@ export type BroadcastTimingRow = {
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
   tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation'
+  tireLifePercent: number
   tirePaceDeltaSeconds: number
   tireTemperatureC: number
 }
@@ -483,6 +484,7 @@ function LeftLeaderboard({
       >
         {rows.map((row) => {
           const status = terminalLabel(row.car)
+          const tireLife = clamp(Math.round(row.tireLifePercent), 0, 100)
 
           return (
             <li
@@ -507,7 +509,13 @@ function LeftLeaderboard({
                     <small>{compactSource(row.source)}</small>
                   )}
                 </span>
-                <span className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</span>
+                <span
+                  aria-label={`${tireLabels[row.car.tire]} tyre, ${tireLife}% life remaining`}
+                  className={`broadcast-tire leaderboard-tire-life tire-${row.car.tire}`}
+                  title={`${tireLabels[row.car.tire]} tyre: ${tireLife}% life remaining`}
+                >
+                  {tireLife}
+                </span>
                 <span className={status ? 'status-value' : undefined}>
                   {status ?? (mode === 'gap' ? row.displayGapToLeaderLabel : row.displayIntervalLabel)}
                 </span>
@@ -734,13 +742,13 @@ function CenterView({
   if (view === 'tyres') {
     return (
       <div className="center-table tyre-detail-table">
-        <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>WEAR</span><span>PACE DELTA</span><span>TEMP</span><span>SETS</span><span>STOPS</span><span>SOURCE</span></div>
+        <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>LIFE</span><span>PACE DELTA</span><span>TEMP</span><span>SETS</span><span>STOPS</span><span>SOURCE</span></div>
         <ol aria-label="All drivers tyre information" tabIndex={0}>
           {rows.map((row) => (
             <li key={row.car.driverId}><div>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
               <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {row.car.tire === 'S' || row.car.tire === 'M' || row.car.tire === 'H' ? track.tireNomination?.[row.car.tire] ?? tireLabels[row.car.tire] : tireLabels[row.car.tire]}</span>
-              <span>{row.car.tireAgeLaps} L</span><span>{Math.round(row.car.tireWearPercent)}%</span>
+              <span>{row.car.tireAgeLaps} L</span><span>{clamp(Math.round(row.tireLifePercent), 0, 100)}%</span>
               <span>{row.tirePaceDeltaSeconds >= 0 ? '+' : ''}{row.tirePaceDeltaSeconds.toFixed(2)}s</span>
               <span>{row.tireTemperatureC} C</span><span>{row.car.tireSetsRemaining[row.car.tire] ?? 0}</span><span>{row.car.pitStops}</span>
               <SourceTag source={row.tireModelSource === 'openf1-calibrated' ? 'CAL' : row.tireModelSource === 'pirelli' ? 'PIR' : 'SIM'} />
@@ -782,10 +790,10 @@ function CenterView({
   if (view === 'drivers') {
     return (
       <div className="center-table driver-detail-table">
-        <div className="center-table-head"><span>DRIVER</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
+        <div className="center-table-head"><span>DRIVER</span><span>OVR</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
         <ol aria-label="All driver information" tabIndex={0}>{rows.map((row) => (
           <li key={row.car.driverId}><div>
-            <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.teamName}</span>
+            <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><b>{row.driverOverallAbility || '--'}</b><span>{row.car.teamName}</span>
             <span>{row.car.gridPosition}</span><span>{row.displayPosition}</span><span>{row.car.gridPosition - row.displayPosition >= 0 ? '+' : ''}{row.car.gridPosition - row.displayPosition}</span>
             <span title={row.performanceSource === 'openf1-calibrated' ? 'OpenF1 clean-lap calibration' : 'Configured model'}>{row.performancePaceDeltaSeconds === null ? '--' : `+${row.performancePaceDeltaSeconds.toFixed(3)}s`}</span><span>{row.car.racePaceMode}</span><span>{terminalLabel(row.car) ?? 'RUN'}</span>
           </div></li>
@@ -802,102 +810,6 @@ function CenterView({
         ))}
       </div>
       {dataControl}
-    </div>
-  )
-}
-
-function BottomAnalytics({
-  rows,
-  showSectors,
-  snapshot,
-}: {
-  rows: BroadcastTimingRow[]
-  showSectors: boolean
-  snapshot: RaceSnapshot
-}) {
-  const topRows = rows.slice(0, 6)
-  const nextPitCandidate = useMemo(
-    () =>
-      rows
-        .filter((row) => row.car.status === 'running')
-        .map((row) => {
-          const fallbackWearPerLap = {
-            H: 3.2,
-            I: 4.5,
-            M: 4.8,
-            S: 7.5,
-            W: 3.5,
-          }[row.car.tire]
-          const observedWearPerLap =
-            row.car.tireAgeLaps > 0
-              ? row.car.tireWearPercent / row.car.tireAgeLaps
-              : fallbackWearPerLap
-          const lapsToWindow = Math.max(
-            1,
-            Math.ceil(
-              (82 - row.car.tireWearPercent) /
-                Math.max(1, observedWearPerLap),
-            ),
-          )
-
-          return {
-            code: row.car.code,
-            lap: Math.min(
-              snapshot.raceLaps,
-              Math.max(snapshot.leaderLap + 1, row.car.lap + lapsToWindow),
-            ),
-          }
-        })
-        .sort((left, right) => left.lap - right.lap)[0] ?? null,
-    [rows, snapshot.leaderLap, snapshot.raceLaps],
-  )
-
-  if (!showSectors) {
-    return <div className="analytics-hidden">Sector and strategy tables hidden</div>
-  }
-
-  return (
-    <div className="broadcast-bottom-analytics">
-      <section className="broadcast-panel lap-comparison-panel">
-        <PanelHeader title="Lap Time Comparison" />
-        <div className="analysis-table analysis-laps">
-          <div><span>DRIVER</span><span>LAST</span><span>BEST</span><span>DELTA</span></div>
-          {topRows.map((row) => {
-            const best = row.car.bestLapTimeSeconds
-            const delta =
-              row.lapTimeSeconds === null || best === null
-                ? null
-                : row.lapTimeSeconds - best
-            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{formatLapTime(row.lapTimeSeconds)}</span><span>{formatLapTime(best)}</span><b>{delta === null ? '--.---' : `+${Math.max(0, delta).toFixed(3)}`}</b></div>
-          })}
-        </div>
-      </section>
-      <section className="broadcast-panel sector-live-panel">
-        <PanelHeader title="Sector Times (Live)" />
-        <div className="analysis-table analysis-sectors">
-          <div><span>DRIVER</span><span>S1</span><span>S2</span><span>S3</span></div>
-          {topRows.map((row) => <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>{row.sectors.map((sector, index) => <span className={`sector-value sector-status-${row.sectorStatuses[index]}`} key={index} title={`S${index + 1}: ${sectorStatusLabels[row.sectorStatuses[index]]}`}>{formatSectorTime(sector)}</span>)}</div>)}
-        </div>
-      </section>
-      <section className="broadcast-panel fuel-panel">
-        <PanelHeader eyebrow="SIM EST" title="Fuel Load" />
-        <div className="analysis-table fuel-table">
-          <div><span>DRIVER</span><span>FUEL</span><span>LAPS</span><span>RANGE</span></div>
-          {topRows.map((row) => {
-            const lapsRemaining = Math.max(0, snapshot.raceLaps - row.car.lap)
-            const fuelKg = Math.max(1.5, lapsRemaining * 1.52 + 2.1)
-            return <div key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{fuelKg.toFixed(1)} kg</span><span>{lapsRemaining}</span><span>{Math.max(0, lapsRemaining - 2)}-{lapsRemaining + 2}</span></div>
-          })}
-        </div>
-      </section>
-      <section className="broadcast-panel next-events-panel">
-        <PanelHeader eyebrow="SIM EST" title="Next Events" />
-        <ol className="next-event-list">
-          <li><Timer size={12} /><span>Lap {nextPitCandidate?.lap ?? snapshot.raceLaps}</span><strong>{nextPitCandidate ? `${nextPitCandidate.code} pit window` : 'No stop forecast'}</strong></li>
-          <li><CloudRain size={12} /><span>{snapshot.weatherForecastLabel}</span><strong>Forecast update</strong></li>
-          <li><Flag size={12} /><span>Lap {snapshot.raceLaps}</span><strong>Race finish</strong></li>
-        </ol>
-      </section>
     </div>
   )
 }
@@ -935,7 +847,6 @@ export function BroadcastDashboard({
   const [feedMode, setFeedMode] = useState<'control' | 'events'>('control')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
   const [showRaceFeed, setShowRaceFeed] = useState(true)
-  const [showSectorTables, setShowSectorTables] = useState(true)
 
   useEffect(() => {
     if (dataMode !== 'SIM' && cameraMode !== 'overview') {
@@ -1088,7 +999,6 @@ export function BroadcastDashboard({
             </div>
           </section>
 
-          <BottomAnalytics rows={timingRows} showSectors={showSectorTables} snapshot={snapshot} />
         </div>
 
         <aside className="broadcast-right-column">
@@ -1126,7 +1036,6 @@ export function BroadcastDashboard({
         <div className="footer-controls">
           <button aria-label={isPaused ? 'Resume simulation' : 'Pause simulation'} onClick={onPauseChange} title={isPaused ? 'Resume' : 'Pause'} type="button">{isPaused ? <Play size={14}/> : <Pause size={14}/>}</button>
           {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
-          <button aria-label="Toggle sector tables" aria-pressed={showSectorTables} onClick={() => setShowSectorTables((value) => !value)} title="Toggle sector tables" type="button"><BarChart3 size={14}/></button>
           <button onClick={onOpenInsights} title="Selected driver analysis" type="button"><Activity size={14}/>{selectedCar.code}</button>
           <button onClick={onOpenClassification} title="Classification" type="button"><Trophy size={14}/></button>
         </div>

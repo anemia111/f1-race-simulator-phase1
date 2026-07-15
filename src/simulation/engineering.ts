@@ -5,6 +5,7 @@ import type {
   TrackDefinition,
   WeekendStage,
 } from '../types'
+import { driverPerformanceAbility } from './driverAbility'
 import { hashChance } from './random'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -101,8 +102,12 @@ export function practiceSetupRecommendation(options: {
   const current =
     config.weekendContext?.setupByDriver?.[driver.id] ?? defaultCarSetup
   const stageFactor = stage === 'fp1' ? 0.48 : stage === 'fp2' ? 0.7 : 0.86
+  const adaptability = driverPerformanceAbility(driver, 'adaptability')
   const confidence = clamp(
-    lapsCompleted / 28 * 0.62 + setupScore / 100 * 0.28 + stageFactor * 0.1,
+    lapsCompleted / 28 * 0.57 +
+      setupScore / 100 * 0.25 +
+      stageFactor * 0.1 +
+      adaptability * 0.08,
     0.18,
     0.96,
   )
