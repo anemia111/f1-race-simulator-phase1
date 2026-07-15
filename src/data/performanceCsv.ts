@@ -94,7 +94,7 @@ const MACHINE_COLUMNS = [
 
 const TEAM_COLORS: Record<string, string> = {
   'Aston Martin': '#229971',
-  AlphaTauri: '#6692ff',
+  RB: '#6692ff',
   Alpine: '#2293d1',
   Audi: '#c8ccd0',
   BMW: '#4ea1ff',

@@ -1,4 +1,5 @@
 import { phaseOneConfig } from '../data/phaseOne'
+import { START_LIGHT_SEQUENCE_SECONDS } from '../domain/startSignal'
 import type {
   ActiveFlagPhase,
   CarSnapshot,
@@ -294,7 +295,6 @@ export function reformFieldForStandingRestart(
 /** Visual-only pit exit blend window after a completed stop. */
 const PIT_EXIT_VISUAL_SECONDS = 4
 const GRID_SETTLE_SECONDS = 8
-const START_LIGHTS_SECONDS = 5
 const OVERTAKE_EXTRA_ENERGY_MJ = 0.5
 
 export function formationLapDurationSecondsFor(config: RaceConfig) {
@@ -1873,7 +1873,7 @@ export function advanceRace(
     const lightsStartAt = gridStartsAt + GRID_SETTLE_SECONDS
     const raceStartsAt = snapshot.formationBehindSafetyCar
       ? gridStartsAt
-      : lightsStartAt + START_LIGHTS_SECONDS
+      : lightsStartAt + START_LIGHT_SEQUENCE_SECONDS
     const nextProcedure =
       elapsedSeconds < gridStartsAt
         ? 'formation'
@@ -2443,7 +2443,7 @@ export function advanceRace(
       restartProcedureUntilSeconds =
         elapsedSeconds +
         (restartProcedure === 'standing'
-          ? GRID_SETTLE_SECONDS + START_LIGHTS_SECONDS
+          ? GRID_SETTLE_SECONDS + START_LIGHT_SEQUENCE_SECONDS
           : Math.max(35, baseLapTime * 1.18))
     }
     if (phase.flag !== 'yellow') {

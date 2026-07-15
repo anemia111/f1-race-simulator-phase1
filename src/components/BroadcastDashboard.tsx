@@ -24,6 +24,10 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  START_LIGHT_COUNT,
+  startSignalStateFor,
+} from '../domain/startSignal'
 import type {
   CameraMode,
   CarSnapshot,
@@ -126,6 +130,47 @@ type BroadcastDashboardProps = {
   timingRows: BroadcastTimingRow[]
   track: TrackDefinition
   trackScene: ReactNode
+}
+
+function StartSignal({ snapshot }: { snapshot: RaceSnapshot }) {
+  const signal = startSignalStateFor(snapshot)
+
+  if (!signal) {
+    return null
+  }
+
+  return (
+    <section
+      aria-atomic="true"
+      aria-label={
+        signal.phase === 'lights'
+          ? `Start signal: ${signal.activeLightCount} of ${START_LIGHT_COUNT} red light groups illuminated`
+          : `Start signal: ${signal.label.toLowerCase()}`
+      }
+      aria-live="assertive"
+      className={`start-signal start-signal-${signal.phase}`}
+      data-active-lights={signal.activeLightCount}
+      role="status"
+    >
+      <span>{signal.label}</span>
+      <div aria-hidden="true" className="start-signal-gantry">
+        {Array.from({ length: START_LIGHT_COUNT }, (_, groupIndex) => (
+          <i
+            className={
+              groupIndex < signal.activeLightCount
+                ? 'start-light-group is-on'
+                : 'start-light-group'
+            }
+            key={groupIndex}
+          >
+            {Array.from({ length: 4 }, (_, lampIndex) => (
+              <b key={lampIndex} />
+            ))}
+          </i>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 const dashboardViews: Array<{
@@ -965,6 +1010,7 @@ export function BroadcastDashboard({
             <div className="broadcast-track-stage">
               <div className="map-grid-texture" aria-hidden="true" />
               {trackScene}
+              <StartSignal snapshot={snapshot} />
               <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={layoutSourceTag(track)} /></div>
               <div className="track-map-legend">
                 {(Object.keys(tireLabels) as CarSnapshot['tire'][]).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}

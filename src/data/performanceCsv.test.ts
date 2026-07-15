@@ -27,7 +27,7 @@ describe('CSV performance source of truth', () => {
     )
   })
 
-  it('keeps NAK source data intact while applying only car number 31', () => {
+  it('keeps the updated NAK source data intact, including car number 31', () => {
     const yuki = initialDrivers.find((driver) => driver.code === 'NAK')
 
     expect(yuki).toBeDefined()
@@ -39,6 +39,20 @@ describe('CSV performance source of truth', () => {
     expect(yuki?.performanceSource?.overall).toBe(150)
     expect(yuki?.performanceSource?.rawRatings['Raw pace']).toBe(150)
     expect(yuki?.skills.rawPace).toBe(1.5)
+  })
+
+  it('loads the updated RB identity and revised machine ordering', () => {
+    const lawson = initialDrivers.find((driver) => driver.code === 'LAW')
+    const rb = initialTeams.find((team) => team.id === 'rb')
+    const mercedes = initialTeams.find((team) => team.id === 'mercedes')
+    const mclaren = initialTeams.find((team) => team.id === 'mclaren')
+
+    expect(initialTeams.some((team) => team.id === 'alphatauri')).toBe(false)
+    expect(lawson?.teamId).toBe('rb')
+    expect(rb?.name).toBe('RB')
+    expect(rb?.performanceSource?.overall).toBe(81)
+    expect(mercedes?.performanceSource?.overall).toBe(96)
+    expect(mclaren?.performanceSource?.overall).toBe(91)
   })
 
   it('CSV-4: preserves raw ratings and uses one monotonic normalization', () => {

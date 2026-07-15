@@ -2789,6 +2789,68 @@
 .camera-switch button { display: inline-grid; place-items: center; width: 23px; height: 20px; padding: 0; }
 .broadcast-track-stage { position: relative; min-height: 0; overflow: hidden; background: #06101a; }
 .broadcast-track-stage .race-canvas { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; }
+
+.start-signal {
+  position: absolute;
+  z-index: 12;
+  top: 12px;
+  left: 50%;
+  display: grid;
+  gap: 5px;
+  min-width: 210px;
+  transform: translateX(-50%);
+  border: 1px solid #2b3640;
+  border-radius: 4px;
+  padding: 6px 10px 8px;
+  color: #aeb9c2;
+  background: rgb(2 5 8 / 94%);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 55%);
+  pointer-events: none;
+}
+
+.start-signal > span {
+  font-size: 8px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.start-signal-gantry {
+  display: grid;
+  grid-template-columns: repeat(5, 26px);
+  justify-content: center;
+  gap: 8px;
+}
+
+.start-light-group {
+  display: grid;
+  grid-template-columns: repeat(2, 9px);
+  gap: 3px;
+  justify-content: center;
+  border: 1px solid #202a32;
+  border-radius: 3px;
+  padding: 4px 3px;
+  background: #090d11;
+}
+
+.start-light-group b {
+  width: 9px;
+  height: 9px;
+  border: 1px solid #2d3338;
+  border-radius: 50%;
+  background: #15191d;
+}
+
+.start-light-group.is-on b {
+  border-color: #ff5b5b;
+  background: #f20d24;
+  box-shadow: 0 0 8px rgb(255 24 46 / 85%);
+}
+
+.start-signal-lights > span { color: #ff4b59; }
+.start-signal-lights-out {
+  border-color: #24d26f;
+  color: #48e889;
+}
 .map-grid-texture { position: absolute; inset: 0; background: #07111b; }
 .track-map-status { position: absolute; top: 9px; left: 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--broadcast-border); border-radius: 3px; padding: 4px 6px; color: #d9e4ee; background: rgba(3, 9, 15, 0.86); font-size: 7px; font-weight: 800; }
 .flag-dot { width: 7px; height: 7px; border-radius: 50%; background: #35d66f; }

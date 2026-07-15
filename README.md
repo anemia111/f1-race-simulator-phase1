@@ -10,12 +10,14 @@ driving game or a broadcast-video renderer.
   2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
   the Bahrain/Jeddah cancellation.
 - A canonical checked-in performance CSV supplies all 15 teams and 30 drivers.
-  Its values are retained verbatim; the only deliberate source correction is
-  Yuki Nakayama (`NAK`) changing from car number 1 to car number 31.
+  Its values are retained verbatim, including Yuki Nakayama (`NAK`) at car
+  number 31 and the `RB` team identity.
 - FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
   lap records, including aborted starts, pit-lane starts, and standing/rolling
   red-flag restarts.
+- A map-overlay start gantry follows the actual grid and five-light phases,
+  illuminates one red group per second, and clears at lights out.
 - Fixed-tick Worker race model for pace, tires, Rain Hazard/Low Grip control,
   2026 active aero, Overtake, ERS, battery,
   brakes, expected-loss strategy, pit stops, flags, incidents, procedural

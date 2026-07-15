@@ -29,8 +29,8 @@ feel factual and operational rather than like an arcade driving game.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
 - `src/data/f1Performance.csv` is the canonical 15-team/30-driver source. Its
-  values match the supplied CSV except for the requested `NAK` car-number
-  correction from 1 to 31. Do not silently rebalance or deduplicate it.
+  values exactly match the supplied updated CSV, including `NAK` car number 31
+  and the `RB` identity. Do not silently rebalance or deduplicate it.
 - MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
   corners. Its sector boundaries remain labelled derived until the FIA event
   circuit map is published, and it intentionally has no fabricated OpenF1
@@ -121,6 +121,8 @@ feel factual and operational rather than like an arcade driving game.
   and marshal geometry is instanced to reduce draw calls.
 - Sector boards, live timing, OpenF1, race control, classification, analysis,
   and setup start closed.
+- The map overlays a five-column start gantry during the grid, sequential red
+  light, and lights-out phases. Safety Car rolling starts suppress it.
 - Timing includes lap/gap/interval, tire/age, sectors, progressive mini-sectors,
   battery, speed, throttle, brake, RPM, gear, active aero/Overtake, temperature,
   and source labels. Purple is session best, green personal best, yellow slower.
@@ -155,6 +157,7 @@ feel factual and operational rather than like an arcade driving game.
   timed-lap eligibility.
 - `src/workers/raceWorker.ts`: fixed-tick simulation ownership.
 - `src/domain/dataMode.ts`: SIM/HIST/LIVE contract.
+- `src/domain/startSignal.ts`: five-light and lights-out presentation state.
 - `src/persistence.ts`: V3 save migration and nested season-garage normalization.
 - `src/simulation/overtaking.ts`: mapped close-battle outcomes.
 - `src/simulation/strategy.ts`: pit and strategy rules.
@@ -180,7 +183,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 249 passed across 30 files
+- Tests: 260 passed across 31 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow
