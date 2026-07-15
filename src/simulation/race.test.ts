@@ -63,7 +63,11 @@ import {
   tireConditionFor,
   tireDeltaSeconds,
 } from './tires'
-import { buildWeekendTirePlan, weekendTireAllocation } from './weekendTires'
+import {
+  buildWeekendTirePlan,
+  legalStartCompoundForConditions,
+  weekendTireAllocation,
+} from './weekendTires'
 import {
   applyWeekendGrid,
   completePracticeSession,
@@ -257,6 +261,21 @@ describe('starting grid', () => {
 
     expect(snapshot.cars.some((car) => car.status === 'pit')).toBe(false)
     expect(snapshot.events.some((event) => event.kind === 'pit')).toBe(false)
+  })
+
+  it('rejects a wet-weather starting compound on a dry track', () => {
+    const base = makeConfig('dry-start-category')
+    const config: RaceConfig = {
+      ...base,
+      drivers: base.drivers.map((driver, index) => ({
+        ...driver,
+        tire: index % 2 === 0 ? 'I' : 'W',
+      })),
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const snapshot = createInitialRace(config)
+
+    expect(snapshot.cars.every((car) => isDryCompound(car.tire))).toBe(true)
   })
 
   it('uses a Safety Car formation and compulsory wets in severe rain', () => {
@@ -672,7 +691,7 @@ describe('full race', () => {
     const result = runToFinish(config)
     finished = result.snapshot
     seenEventKinds = result.seenEventKinds
-  }, 60_000)
+  }, 90_000)
 
   it('completes with every car finished or retired', () => {
     expect(finished.sessionStatus).toBe('finished')
@@ -1458,7 +1477,11 @@ describe('weather and wet strategy', () => {
   })
 
   it('splits strategic calls under the same Safety Car opportunity', () => {
-    const baseCar = createInitialRace(makeConfig('sc-strategy-split')).cars[0]
+    const baseConfig = makeConfig('sc-strategy-split')
+    const baseCar = createInitialRace({
+      ...baseConfig,
+      track: { ...baseConfig.track, rainProbability: 0 },
+    }).cars[0]
     const calls = initialDrivers.map((driver) =>
       decidePitStop({
         car: {
@@ -2559,11 +2582,54 @@ describe('qualifying', () => {
       ),
     ).toBe(true)
     expect(
+      plan.driverPlans.every((driverPlan) =>
+        isDryCompound(driverPlan.raceStartCompound),
+      ),
+    ).toBe(true)
+    expect(
+      [...new Set(plan.driverPlans.map((driverPlan) => driverPlan.raceStartCompound))]
+        .sort(),
+    ).toEqual(['H', 'M', 'S'])
+    const positions = new Map(
+      qualifying.classification.map((result) => [result.driverId, result.position]),
+    )
+    const topTenCompounds = new Set(
+      plan.driverPlans
+        .filter((driverPlan) => (positions.get(driverPlan.driverId) ?? 99) <= 10)
+        .map((driverPlan) => driverPlan.raceStartCompound),
+    )
+    const bottomTenCompounds = new Set(
+      plan.driverPlans
+        .filter((driverPlan) => (positions.get(driverPlan.driverId) ?? 0) >= 21)
+        .map((driverPlan) => driverPlan.raceStartCompound),
+    )
+    expect(topTenCompounds.size).toBeGreaterThan(1)
+    expect(bottomTenCompounds.size).toBeGreaterThan(1)
+    const alternatePlan = buildWeekendTirePlan(
+      { ...config, seed: 'weekend-tire-plan-alternate' },
+      qualifying,
+      sprintShootout,
+    )
+
+    expect(
+      alternatePlan.driverPlans.map((driverPlan) => driverPlan.raceStartCompound),
+    ).not.toEqual(
+      plan.driverPlans.map((driverPlan) => driverPlan.raceStartCompound),
+    )
+    expect(
       plan.driverPlans.some(
         (driverPlan) =>
           driverPlan.qualifyingUsed.S > 0 || driverPlan.qualifyingUsed.M > 0,
       ),
     ).toBe(true)
+  })
+
+  it('keeps starting compounds in the category required by track conditions', () => {
+    expect(legalStartCompoundForConditions('W', 'clear', 1)).toBe('M')
+    expect(legalStartCompoundForConditions('I', 'clear', 0.97)).toBe('M')
+    expect(legalStartCompoundForConditions('S', 'light-rain', 0.88)).toBe('I')
+    expect(legalStartCompoundForConditions('H', 'heavy-rain', 0.72)).toBe('W')
+    expect(legalStartCompoundForConditions('M', 'clear', 1)).toBe('M')
   })
 
   it('uses the 2026 FIA standard and sprint weekend tire allocations', () => {

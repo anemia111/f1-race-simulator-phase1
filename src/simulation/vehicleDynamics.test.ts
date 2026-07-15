@@ -25,12 +25,12 @@ function driverAt(value: number): Driver {
 describe('multi-axis vehicle dynamics', () => {
   it('widens machine effects without changing the source rating', () => {
     expect(MACHINE_PACE_REFERENCE).toBe(0.86)
-    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.18)
-    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.112)
-    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.055)
+    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.35)
+    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
+    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.075)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
-    expect(machinePaceRating(0.96)).toBeCloseTo(0.978, 10)
-    expect(machinePaceRating(0.62)).toBeCloseTo(0.5768, 10)
+    expect(machinePaceRating(0.96)).toBeCloseTo(0.995, 10)
+    expect(machinePaceRating(0.62)).toBeCloseTo(0.536, 10)
   })
 
   it('keeps the full configured driver scale monotonic against one machine', () => {
@@ -117,7 +117,31 @@ describe('multi-axis vehicle dynamics', () => {
       monzaResults[0].gain - monzaResults.at(-1)!.gain
 
     expect(monzaFieldSpreadSeconds).toBeGreaterThan(2.5)
-    expect(monzaFieldSpreadSeconds).toBeLessThan(4.5)
+    expect(monzaFieldSpreadSeconds).toBeLessThan(6.5)
+  })
+
+  it('places Audi ahead of Alpine on representative aggregate pace', () => {
+    const referenceDriver = driverAt(1)
+    const audi = initialTeams.find((team) => team.id === 'audi')!
+    const alpine = initialTeams.find((team) => team.id === 'alpine')!
+    const representativeTracks = [
+      tracks.find((track) => track.id === 'albert-park-approx')!,
+      tracks.find((track) => track.id === 'monza-approx')!,
+      tracks.find((track) => track.id === 'monaco-approx')!,
+    ]
+    const aggregateGain = (team: typeof audi) =>
+      representativeTracks.reduce(
+        (total, track) =>
+          total +
+          performanceLapGainSeconds({
+            driver: referenceDriver,
+            team,
+            track,
+          }),
+        0,
+      )
+
+    expect(aggregateGain(audi)).toBeGreaterThan(aggregateGain(alpine))
   })
 
   it('produces team-relative terminal speeds from CSV power and drag axes', () => {
@@ -194,7 +218,7 @@ describe('multi-axis vehicle dynamics', () => {
     )
     const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
 
-    expect(dryFieldSpreadSeconds).toBeGreaterThan(2)
-    expect(dryFieldSpreadSeconds).toBeLessThan(3.8)
+    expect(dryFieldSpreadSeconds).toBeGreaterThan(3)
+    expect(dryFieldSpreadSeconds).toBeLessThan(6.5)
   })
 })

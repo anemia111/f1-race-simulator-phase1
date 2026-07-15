@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import performanceCsv from './f1Performance.csv?raw'
+import { driverOverallAbilityPoints } from '../simulation/driverAbility'
 import {
   PERFORMANCE_CSV_FILE,
   initialDrivers,
@@ -41,16 +42,47 @@ describe('CSV performance source of truth', () => {
     expect(yuki?.skills.rawPace).toBe(1.5)
   })
 
+  it('calibrates the 30-driver field around NAK 150 and VER 130', () => {
+    const yuki = initialDrivers.find((driver) => driver.code === 'NAK')!
+    const max = initialDrivers.find((driver) => driver.code === 'VER')!
+    const remainingDrivers = initialDrivers.filter(
+      (driver) => driver.code !== 'NAK' && driver.code !== 'VER',
+    )
+
+    expect(driverOverallAbilityPoints(yuki)).toBe(150)
+    expect(driverOverallAbilityPoints(max)).toBe(130)
+    expect(max.performanceSource?.overall).toBe(130)
+    expect(
+      initialDrivers.every(
+        (driver) =>
+          driver.performanceSource?.overall ===
+          driverOverallAbilityPoints(driver),
+      ),
+    ).toBe(true)
+    expect(
+      remainingDrivers.every(
+        (driver) => (driver.performanceSource?.overall ?? 0) < 130,
+      ),
+    ).toBe(true)
+  })
+
   it('loads the updated RB identity and revised machine ordering', () => {
     const lawson = initialDrivers.find((driver) => driver.code === 'LAW')
     const rb = initialTeams.find((team) => team.id === 'rb')
+    const audi = initialTeams.find((team) => team.id === 'audi')
+    const alpine = initialTeams.find((team) => team.id === 'alpine')
     const mercedes = initialTeams.find((team) => team.id === 'mercedes')
     const mclaren = initialTeams.find((team) => team.id === 'mclaren')
 
     expect(initialTeams.some((team) => team.id === 'alphatauri')).toBe(false)
     expect(lawson?.teamId).toBe('rb')
     expect(rb?.name).toBe('RB')
-    expect(rb?.performanceSource?.overall).toBe(81)
+    expect(rb?.performanceSource?.overall).toBe(82)
+    expect(audi?.performanceSource?.overall).toBe(82)
+    expect(alpine?.performanceSource?.overall).toBe(81)
+    expect(audi!.performanceSource!.overall).toBeGreaterThan(
+      alpine!.performanceSource!.overall,
+    )
     expect(mercedes?.performanceSource?.overall).toBe(96)
     expect(mclaren?.performanceSource?.overall).toBe(91)
   })
@@ -65,8 +97,8 @@ describe('CSV performance source of truth', () => {
     expect(ferrari?.machine.dragEfficiency).toBe(0.96)
     expect(ferrari?.machine.qualifyingPace).toBe(0.94)
     expect(ferrari?.machine.racePace).toBe(0.93)
-    expect(hyundai?.performanceSource?.rawRatings['Top speed']).toBe(70)
-    expect(hyundai?.machine.dragEfficiency).toBe(0.7)
+    expect(hyundai?.performanceSource?.rawRatings['Top speed']).toBe(73)
+    expect(hyundai?.machine.dragEfficiency).toBe(0.73)
     expect(ferrari!.machine.dragEfficiency).toBeGreaterThan(
       hyundai!.machine.dragEfficiency,
     )

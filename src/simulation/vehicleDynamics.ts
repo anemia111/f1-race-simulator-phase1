@@ -19,14 +19,14 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 export const MACHINE_PACE_REFERENCE = 0.86
-export const MACHINE_PACE_SPREAD_FACTOR = 1.18
-export const MACHINE_SEGMENT_RESPONSE = 0.112
-export const DRIVER_SEGMENT_RESPONSE = 0.055
+export const MACHINE_PACE_SPREAD_FACTOR = 1.35
+export const MACHINE_SEGMENT_RESPONSE = 0.135
+export const DRIVER_SEGMENT_RESPONSE = 0.075
 
 /**
  * Expands the effect of a machine rating without mutating the factual CSV
  * value. A rating at the reference remains unchanged while strengths and
- * weaknesses retain a modest influence on the physical pace model.
+ * weaknesses have a clear influence on the physical pace model.
  */
 export function machinePaceRating(value: number): number {
   return clamp(
@@ -170,9 +170,8 @@ export function machineSegmentCapability(options: {
     )
   const sessionAdjusted = weatherAdjusted * 0.94 + sessionPace * 0.06
 
-  // Each axis still decides where a car gains or loses time, but the response
-  // leaves room for tires, setup, traffic, strategy, and execution to reorder
-  // nominally similar cars.
+  // Each axis decides where a car gains or loses time. The source data keeps
+  // the lower field competitive while the response preserves visible car gaps.
   return clamp(
     1 +
       (sessionAdjusted - MACHINE_PACE_REFERENCE) *
@@ -228,7 +227,7 @@ export function driverSegmentExecution(options: {
 
   // Drivers cannot create grip or power beyond the machine limit. Their
   // skills determine how closely and consistently they approach it.
-  return clamp(1 - (1 - skill) * DRIVER_SEGMENT_RESPONSE, 0.955, 1.03)
+  return clamp(1 - (1 - skill) * DRIVER_SEGMENT_RESPONSE, 0.94, 1.04)
 }
 
 export function dirtyAirDownforceMultiplier(options: {

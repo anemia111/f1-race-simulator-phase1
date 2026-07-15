@@ -1,7 +1,9 @@
 import type { Driver, RaceConfig, TireCompound } from '../types'
+import { tireNominationForTrack } from '../data/tireNominations2026'
 import { driverAbilityValue } from './driverAbility'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
+import { effectiveCliffLaps } from './tires'
 import { trackGripForWeather, weatherFor } from './weather'
 
 export type DrySetInventory = {
@@ -53,6 +55,10 @@ export function weekendTireAllocation(
 const cloneInventory = (source: DrySetInventory): DrySetInventory => ({ ...source })
 
 const dryCompounds = new Set<TireCompound>(['S', 'M', 'H'])
+const dryCompoundOrder = ['S', 'M', 'H'] as const
+type DryCompound = (typeof dryCompoundOrder)[number]
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function emptyInventory(): DrySetInventory {
   return { H: 0, M: 0, S: 0 }
@@ -78,8 +84,18 @@ function addQualifyingUsage(
 function weatherStartCompound(config: RaceConfig): TireCompound | null {
   const weather = weatherFor(config.seed, config.track, 0)
   const trackGrip = trackGripForWeather(config.seed, config.track, 0)
+  const compound = legalStartCompoundForConditions('M', weather, trackGrip)
 
-  if (weather === 'heavy-rain' || trackGrip < 0.76) {
+  return dryCompounds.has(compound) ? null : compound
+}
+
+export function legalStartCompoundForConditions(
+  planned: TireCompound,
+  weather: ReturnType<typeof weatherFor>,
+  trackGrip: number,
+  wetWeatherTyresMandatory = false,
+): TireCompound {
+  if (wetWeatherTyresMandatory || weather === 'heavy-rain' || trackGrip < 0.76) {
     return 'W'
   }
 
@@ -87,13 +103,95 @@ function weatherStartCompound(config: RaceConfig): TireCompound | null {
     return 'I'
   }
 
-  return null
+  return dryCompounds.has(planned) ? planned : 'M'
+}
+
+function weightedDryStartCompound(
+  config: RaceConfig,
+  driver: Driver,
+  remaining: DrySetInventory,
+  session: 'race' | 'sprint',
+): DryCompound {
+  const team = config.teams.find((candidate) => candidate.id === driver.teamId)
+  const driverManagement = driverAbilityValue(driver, 'tireManagement')
+  const machineManagement = team?.machine.tireDegManagement ?? 0.82
+  const combinedManagement = driverManagement * 0.65 + machineManagement * 0.35
+  const normalizedManagement = clamp01((combinedManagement - 0.55) / 0.95)
+  const nomination = config.track.tireNomination ?? tireNominationForTrack(config.track)
+  const grandPrixLaps =
+    config.track.raceLaps ?? Math.max(35, Math.round(305 / config.track.lengthKm))
+  const distanceLaps =
+    session === 'sprint' ? Math.max(15, Math.round(grandPrixLaps * 0.33)) : grandPrixLaps
+  const targetOpeningStint = distanceLaps * (session === 'sprint' ? 0.9 : 0.36)
+  const softCliff = effectiveCliffLaps('S', combinedManagement, nomination)
+  const tireStress = clamp01(1 - softCliff / Math.max(1, targetOpeningStint))
+  const pitLossPressure =
+    config.track.kind === 'street' ? 0.78 : config.track.kind === 'hybrid' ? 0.56 : 0.38
+  const teamAggression = hashChance(
+    `${config.seed}:${session}-start-strategy:${driver.teamId}`,
+  )
+  const driverAggression = hashChance(
+    `${config.seed}:${session}-start-aggression:${driver.id}`,
+  )
+  const aggression = teamAggression * 0.62 + driverAggression * 0.38
+  const weights: Record<DryCompound, number> =
+    session === 'sprint'
+      ? {
+          S:
+            0.3 +
+            aggression * 0.24 +
+            normalizedManagement * 0.12 +
+            (1 - tireStress) * 0.1,
+          M: 0.5 + tireStress * 0.12,
+          H: 0.025 + tireStress * 0.05 + (1 - aggression) * 0.03,
+        }
+      : {
+          S:
+            0.16 +
+            aggression * 0.22 +
+            normalizedManagement * 0.1 +
+            (1 - tireStress) * 0.1 -
+            pitLossPressure * 0.05,
+          M:
+            0.42 +
+            (1 - Math.abs(aggression - 0.5) * 2) * 0.12 +
+            tireStress * 0.08,
+          H:
+            0.14 +
+            (1 - aggression) * 0.18 +
+            tireStress * 0.22 +
+            pitLossPressure * 0.08 +
+            (1 - normalizedManagement) * 0.06,
+        }
+  const available = dryCompoundOrder.filter((compound) => remaining[compound] > 0)
+
+  if (available.length === 0) {
+    return 'M'
+  }
+
+  const weighted = available.map((compound) => ({
+    compound,
+    weight: Math.max(0.01, weights[compound]) *
+      (0.65 + Math.min(3, remaining[compound]) * 0.12),
+  }))
+  const totalWeight = weighted.reduce((total, candidate) => total + candidate.weight, 0)
+  let choice =
+    hashChance(`${config.seed}:${session}-start-choice:${driver.id}`) * totalWeight
+
+  for (const candidate of weighted) {
+    choice -= candidate.weight
+
+    if (choice <= 0) {
+      return candidate.compound
+    }
+  }
+
+  return weighted.at(-1)!.compound
 }
 
 function raceStartCompoundFor(
   config: RaceConfig,
   driver: Driver,
-  gridPosition: number,
   remaining: DrySetInventory,
 ) {
   const wet = weatherStartCompound(config)
@@ -102,28 +200,12 @@ function raceStartCompoundFor(
     return wet
   }
 
-  const roll = hashChance(`${config.seed}:race-start-tire:${driver.id}`)
-  const longRace = config.track.baseLapTime > 92 || config.track.kind === 'street'
-
-  if (gridPosition <= 6) {
-    return remaining.M > 0 ? 'M' : remaining.H > 0 ? 'H' : 'S'
-  }
-
-  if (gridPosition >= 15 && (longRace || roll > 0.58) && remaining.H > 0) {
-    return 'H'
-  }
-
-  if (driverAbilityValue(driver, 'tireManagement') > 0.86 && remaining.M > 0) {
-    return 'M'
-  }
-
-  return remaining.M > 0 ? 'M' : remaining.H > 0 ? 'H' : 'S'
+  return weightedDryStartCompound(config, driver, remaining, 'race')
 }
 
 function sprintStartCompoundFor(
   config: RaceConfig,
   driver: Driver,
-  gridPosition: number,
   remaining: DrySetInventory,
 ) {
   const wet = weatherStartCompound(config)
@@ -132,21 +214,7 @@ function sprintStartCompoundFor(
     return wet
   }
 
-  const roll = hashChance(`${config.seed}:sprint-start-tire:${driver.id}`)
-
-  if (gridPosition <= 8 && remaining.M > 0) {
-    return 'M'
-  }
-
-  if (roll > 0.72 && remaining.S > 0) {
-    return 'S'
-  }
-
-  return remaining.M > 0 ? 'M' : 'S'
-}
-
-function gridPositions(results: QualifyingResult[]) {
-  return new Map(results.map((result) => [result.driverId, result.position]))
+  return weightedDryStartCompound(config, driver, remaining, 'sprint')
 }
 
 export function buildWeekendTirePlan(
@@ -166,10 +234,6 @@ export function buildWeekendTirePlan(
     }
   }
 
-  const raceGrid = gridPositions(qualifying.classification)
-  const sprintGrid = gridPositions(
-    sprintShootout?.classification ?? qualifying.classification,
-  )
   const allocation = weekendTireAllocation(sprintShootout !== null)
   const baseDrySets: DrySetInventory = {
     H: allocation.H,
@@ -194,13 +258,11 @@ export function buildWeekendTirePlan(
         raceStartCompound: raceStartCompoundFor(
           config,
           driver,
-          raceGrid.get(driver.id) ?? 99,
           remaining,
         ),
         sprintStartCompound: sprintStartCompoundFor(
           config,
           driver,
-          sprintGrid.get(driver.id) ?? 99,
           remaining,
         ),
       }

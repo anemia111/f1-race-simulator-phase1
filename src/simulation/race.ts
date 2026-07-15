@@ -128,7 +128,10 @@ import {
   performanceLapGainSeconds,
   driverFuelUseMultiplier,
 } from './vehicleDynamics'
-import { weekendTireAllocation } from './weekendTires'
+import {
+  legalStartCompoundForConditions,
+  weekendTireAllocation,
+} from './weekendTires'
 import {
   heatHazardMassIncreaseKgFor,
   heatIndexCFor,
@@ -1405,16 +1408,20 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
           initialTimedSegment,
         )
       : null
-    const startingTire = wetWeatherTyresMandatory
-      ? 'W'
-      : isTimedSession
-        ? timedSessionStartingTire(
-            weekendStage,
-            initialTimedSegment?.compound ?? driver.tire,
-            weather,
-            trackGrip,
-          )
-        : driver.tire
+    const plannedStartingTire = isTimedSession
+      ? timedSessionStartingTire(
+          weekendStage,
+          initialTimedSegment?.compound ?? driver.tire,
+          weather,
+          trackGrip,
+        )
+      : driver.tire
+    const startingTire = legalStartCompoundForConditions(
+      plannedStartingTire,
+      weather,
+      trackGrip,
+      wetWeatherTyresMandatory,
+    )
     const regulationAllocation = weekendTireAllocation(config.track.isSprintWeekend)
     const initialTireSets = {
       H: config.weekendContext?.tireSetsByDriver[driver.id]?.H ?? regulationAllocation.H,
