@@ -10,6 +10,7 @@ const SAFETY_CAR_JOIN_SIGNAL_SECONDS = 2
 const SAFETY_CAR_QUEUE_GAP_SECONDS = 2.4
 const SAFETY_CAR_PIT_ENTRY_PROGRESS = 0.965
 const SAFETY_CAR_LINE_EPSILON = 0.001
+export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.45
 
 type SafetyCarProcedure = Extract<
   NeutralisationProcedure,
@@ -192,6 +193,23 @@ export function isSafetyCarFieldQueued(
 
     return physicalGapLaps <= maximumGapLaps
   })
+}
+
+function hasLeaderCaughtSafetyCar(
+  procedure: SafetyCarProcedure,
+  leader: CarSnapshot,
+) {
+  const maximumGapLaps = Math.max(
+    0.003,
+    SAFETY_CAR_LEADER_TARGET_GAP_SECONDS /
+      Math.max(55, leader.projectedLapTime),
+  )
+  const gapLaps = procedure.safetyCarDistance - leader.totalDistance
+
+  return (
+    gapLaps >= -SAFETY_CAR_LINE_EPSILON &&
+    gapLaps <= maximumGapLaps + SAFETY_CAR_LINE_EPSILON
+  )
 }
 
 function createProcedure(
@@ -638,13 +656,10 @@ function advanceSafetyCar(
       message: 'LOW VISIBILITY - MAXIMUM GAP TWENTY CAR LENGTHS.',
     })
   }
-  const leaderCollectionGapLaps = Math.max(
-    0.018,
-    1.7 / Math.max(55, leader.projectedLapTime),
+  const leaderWasCollected = hasLeaderCaughtSafetyCar(
+    initialProcedure,
+    leader,
   )
-  const leaderWasWithinCollectionGap =
-    initialProcedure.safetyCarDistance - leader.totalDistance <=
-    leaderCollectionGapLaps
   const safetyCarDeltaSeconds = Math.max(
     0,
     elapsedSeconds - procedure.safetyCarLastUpdatedAtSeconds,
@@ -728,9 +743,7 @@ function advanceSafetyCar(
   if (
     procedure.stage === 'collecting-field' &&
     procedure.leaderCollectedAtSeconds === null &&
-    (leaderWasWithinCollectionGap ||
-      procedure.safetyCarDistance - leader.totalDistance <=
-        leaderCollectionGapLaps)
+    (leaderWasCollected || hasLeaderCaughtSafetyCar(procedure, leader))
   ) {
     procedure = {
       ...procedure,

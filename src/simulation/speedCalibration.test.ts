@@ -115,6 +115,28 @@ function runSpeedTrace(
 }
 
 describe('on-track speed calibration', () => {
+  it('smooths resampled layout noise without removing genuine slow corners', () => {
+    const profileFor = (trackId: string) => {
+      const track = tracks.find((candidate) => candidate.id === trackId)!
+
+      return track.centerline
+        .map((_, index) =>
+          trackDynamicsAt(track, index / track.centerline.length),
+        )
+        .map((point) => point.referenceSpeedKph)
+        .sort((left, right) => left - right)
+    }
+    const cota = profileFor('cota-approx')
+    const bahrain = profileFor('bahrain-approx')
+    const monaco = profileFor('monaco-approx')
+
+    expect(cota[0]).toBeGreaterThanOrEqual(80)
+    expect(bahrain[0]).toBeGreaterThanOrEqual(80)
+    expect(monaco[0]).toBeGreaterThanOrEqual(65)
+    expect(monaco[0]).toBeLessThan(80)
+    expect(monaco[Math.floor(monaco.length / 2)]).toBeGreaterThan(190)
+  })
+
   it('keeps representative dry-running tracks above the old 260 km/h ceiling', () => {
     const albertPark = runSpeedTrace(
       tracks.find((candidate) => candidate.id === 'albert-park-approx')!,

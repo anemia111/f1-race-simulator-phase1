@@ -97,6 +97,65 @@ function beginUnlapping(overtakingPermitted = true) {
 }
 
 describe('FIA 2026 Safety Car unlapping procedure', () => {
+  it('does not form the queue or withdraw until the leader reaches the Safety Car', () => {
+    const cars = createInitialRace(config).cars.slice(0, 3)
+    const leader = atDistance(cars[0], 5.4)
+    const queuedCars = [
+      leader,
+      atDistance(cars[1], 5.398),
+      atDistance(cars[2], 5.396),
+    ]
+    const created = ensureNeutralisationProcedure(
+      {
+        endMessage: 'Track clear.',
+        endSeconds: 0,
+        flag: 'sc',
+        id: 'sc-waits-for-leader',
+        sector: 0,
+        startMessage: 'SAFETY CAR DEPLOYED',
+        startSeconds: 0,
+      },
+      queuedCars,
+      config.track,
+    )
+    const procedure = created.neutralisation
+
+    if (!procedure || procedure.kind !== 'safety-car') {
+      throw new Error('Safety Car procedure was not created.')
+    }
+
+    const waiting = advanceNeutralisationProcedure({
+      cars: queuedCars,
+      elapsedSeconds: 100,
+      phase: {
+        ...created,
+        neutralisation: {
+          ...procedure,
+          eligibilityStatusByDriver: Object.fromEntries(
+            queuedCars.map((car) => [car.driverId, 'ineligible' as const]),
+          ),
+          safetyCarDistance: leader.totalDistance + 0.012,
+          safetyCarLastUpdatedAtSeconds: 100,
+          stage: 'collecting-field',
+        },
+      },
+      seed: config.seed,
+      track: config.track,
+    })
+
+    expect(waiting.phase?.neutralisation?.kind).toBe('safety-car')
+    expect(waiting.phase?.neutralisation?.stage).toBe('collecting-field')
+    if (waiting.phase?.neutralisation?.kind !== 'safety-car') {
+      throw new Error('Safety Car procedure ended unexpectedly.')
+    }
+    expect(waiting.phase.neutralisation.leaderCollectedAtSeconds).toBeNull()
+    expect(
+      waiting.events.some((event) =>
+        event.message.includes('SAFETY CAR IN THIS LAP'),
+      ),
+    ).toBe(false)
+  })
+
   it('freezes eligibility at the Line after each car crosses SC1 for the second time', () => {
     const { base, result } = beginUnlapping()
     const procedure = result.phase?.neutralisation

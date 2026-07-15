@@ -58,6 +58,7 @@ import {
   advanceNeutralisationProcedure,
   controlProcedureStatusMessage,
   ensureNeutralisationProcedure,
+  SAFETY_CAR_LEADER_TARGET_GAP_SECONDS,
 } from './neutralisation'
 import {
   compactSessionDurationLabel,
@@ -148,7 +149,6 @@ const TICKER_EVENT_WINDOW_SECONDS = 12
 const WRECK_CLEAR_SECONDS = 25
 /** Minimum spacing (seconds) enforced inside the SC/VSC queue. */
 const QUEUE_MIN_GAP_SECONDS = 0.4
-export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.45
 const GRAND_PRIX_TIME_LIMIT_SECONDS = 2 * 60 * 60
 const SPRINT_TIME_LIMIT_SECONDS = 60 * 60
 const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60

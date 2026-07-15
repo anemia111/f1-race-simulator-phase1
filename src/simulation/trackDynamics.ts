@@ -17,7 +17,7 @@ type CachedProfile = { points: TrackDynamicPoint[] }
 const profileCache = new WeakMap<TrackDefinition, CachedProfile>()
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-const MIN_REFERENCE_SPEED_KPH = 55
+const MIN_REFERENCE_SPEED_KPH = 68
 const MAX_REFERENCE_SPEED_KPH = 395
 
 function pointAt(track: TrackDefinition, index: number) {
@@ -25,10 +25,14 @@ function pointAt(track: TrackDefinition, index: number) {
   return track.centerline[((index % length) + length) % length]
 }
 
-function rawProfileAt(track: TrackDefinition, index: number) {
-  const previous = pointAt(track, index - 2)
+function curvatureAtSpan(
+  track: TrackDefinition,
+  index: number,
+  span: number,
+) {
+  const previous = pointAt(track, index - span)
   const current = pointAt(track, index)
-  const next = pointAt(track, index + 2)
+  const next = pointAt(track, index + span)
   const incoming = {
     x: current[0] - previous[0],
     z: current[2] - previous[2],
@@ -47,15 +51,33 @@ function rawProfileAt(track: TrackDefinition, index: number) {
   )
   const curvature = clamp(Math.acos(dot) / 1.15, 0, 1)
   const cross = incoming.x * outgoing.z - incoming.z * outgoing.x
+
+  return { cross, curvature }
+}
+
+function rawProfileAt(track: TrackDefinition, index: number) {
+  const previous = pointAt(track, index - 2)
+  const next = pointAt(track, index + 2)
+  const localCurve = curvatureAtSpan(track, index, 2)
+
+  // Real layouts are resampled to a shared point count. Blending several
+  // baselines stops one noisy map vertex from becoming a prolonged hairpin.
+  const curvature = clamp(
+    localCurve.curvature * 0.42 +
+      curvatureAtSpan(track, index, 4).curvature * 0.36 +
+      curvatureAtSpan(track, index, 6).curvature * 0.22,
+    0,
+    1,
+  )
   const turnDirection: -1 | 0 | 1 =
-    curvature < 0.04 ? 0 : cross >= 0 ? 1 : -1
+    curvature < 0.04 ? 0 : localCurve.cross >= 0 ? 1 : -1
   const straightness = 1 - curvature
   const gradient = clamp((next[1] - previous[1]) / 8, -1, 1)
   const rawSpeedFactor = clamp(
-    0.24 +
-      Math.pow(straightness, 1.55) * 1.38 -
+    0.33 +
+      Math.pow(straightness, 1.35) * 1.27 -
       Math.max(0, gradient) * 0.08,
-    0.22,
+    0.29,
     1.62,
   )
 
