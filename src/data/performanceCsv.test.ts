@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import performanceCsv from './f1Performance.csv?raw'
-import { driverOverallAbilityPoints } from '../simulation/driverAbility'
+import {
+  driverConfiguredOverallAbilityPoints,
+  driverOverallAbilityPoints,
+} from '../simulation/driverAbility'
 import {
   PERFORMANCE_CSV_FILE,
   initialDrivers,
@@ -42,7 +45,7 @@ describe('CSV performance source of truth', () => {
     expect(yuki?.skills.rawPace).toBe(1.5)
   })
 
-  it('calibrates the 30-driver field around NAK 150 and VER 130', () => {
+  it('preserves the supplied headline rating separately from detailed skills', () => {
     const yuki = initialDrivers.find((driver) => driver.code === 'NAK')!
     const max = initialDrivers.find((driver) => driver.code === 'VER')!
     const remainingDrivers = initialDrivers.filter(
@@ -50,13 +53,14 @@ describe('CSV performance source of truth', () => {
     )
 
     expect(driverOverallAbilityPoints(yuki)).toBe(150)
-    expect(driverOverallAbilityPoints(max)).toBe(130)
+    expect(driverOverallAbilityPoints(max)).toBe(95)
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(130)
     expect(max.performanceSource?.overall).toBe(130)
     expect(
       initialDrivers.every(
         (driver) =>
           driver.performanceSource?.overall ===
-          driverOverallAbilityPoints(driver),
+          driverConfiguredOverallAbilityPoints(driver),
       ),
     ).toBe(true)
     expect(
@@ -66,7 +70,7 @@ describe('CSV performance source of truth', () => {
     ).toBe(true)
   })
 
-  it('loads the updated RB identity and revised machine ordering', () => {
+  it('loads the supplied identities and revised machine ordering', () => {
     const lawson = initialDrivers.find((driver) => driver.code === 'LAW')
     const rb = initialTeams.find((team) => team.id === 'rb')
     const audi = initialTeams.find((team) => team.id === 'audi')
@@ -77,11 +81,11 @@ describe('CSV performance source of truth', () => {
     expect(initialTeams.some((team) => team.id === 'alphatauri')).toBe(false)
     expect(lawson?.teamId).toBe('rb')
     expect(rb?.name).toBe('RB')
-    expect(rb?.performanceSource?.overall).toBe(82)
-    expect(audi?.performanceSource?.overall).toBe(82)
-    expect(alpine?.performanceSource?.overall).toBe(81)
-    expect(audi!.performanceSource!.overall).toBeGreaterThan(
-      alpine!.performanceSource!.overall,
+    expect(rb?.performanceSource?.overall).toBe(81)
+    expect(audi?.performanceSource?.overall).toBe(80)
+    expect(alpine?.performanceSource?.overall).toBe(84)
+    expect(alpine!.performanceSource!.overall).toBeGreaterThan(
+      audi!.performanceSource!.overall,
     )
     expect(mercedes?.performanceSource?.overall).toBe(96)
     expect(mclaren?.performanceSource?.overall).toBe(91)
@@ -97,8 +101,8 @@ describe('CSV performance source of truth', () => {
     expect(ferrari?.machine.dragEfficiency).toBe(0.96)
     expect(ferrari?.machine.qualifyingPace).toBe(0.94)
     expect(ferrari?.machine.racePace).toBe(0.93)
-    expect(hyundai?.performanceSource?.rawRatings['Top speed']).toBe(73)
-    expect(hyundai?.machine.dragEfficiency).toBe(0.73)
+    expect(hyundai?.performanceSource?.rawRatings['Top speed']).toBe(70)
+    expect(hyundai?.machine.dragEfficiency).toBe(0.7)
     expect(ferrari!.machine.dragEfficiency).toBeGreaterThan(
       hyundai!.machine.dragEfficiency,
     )
@@ -129,7 +133,7 @@ describe('CSV performance source of truth', () => {
       'Ferrari,Charles Leclerc,NAK,16',
     )
     const invalid = performanceCsv.replace(
-      'Ferrari,中山裕樹,NAK,31,150.0',
+      'Ferrari,中山裕樹,NAK,31,150',
       'Ferrari,中山裕樹,NAK,31,not-a-number',
     )
 

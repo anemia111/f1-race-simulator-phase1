@@ -68,10 +68,25 @@ export function driverOverallAbilityPoints(driver: Driver): number {
   return driverAbilityPoints(driverOverallAbility(driver))
 }
 
+export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
+  const configuredOverall = driver.performanceSource?.overall
+
+  if (
+    typeof configuredOverall !== 'number' ||
+    !Number.isFinite(configuredOverall)
+  ) {
+    return driverOverallAbilityPoints(driver)
+  }
+
+  return Math.round(
+    Math.min(DRIVER_ABILITY_SCALE_MAX, Math.max(0, configuredOverall)),
+  )
+}
+
 /**
  * Kept as the call-site API for domain skills. It deliberately returns only
- * the requested skill: the OVR mean is display-only and never becomes a
- * hidden all-purpose driver rating.
+ * the requested skill: configured OVR and the calculated mean are
+ * display-only and never become hidden all-purpose driver ratings.
  */
 export function driverPerformanceAbility(
   driver: Driver,

@@ -9,6 +9,7 @@ import {
   clampDriverAbility,
   driverAbilityPoints,
   driverAbilityValue,
+  driverConfiguredOverallAbilityPoints,
   driverOverallAbility,
   driverOverallAbilityPoints,
   driverPerformanceAbility,
@@ -65,6 +66,15 @@ describe('driver ability scale', () => {
     expect(driverOverallAbilityPoints(driver)).toBe(
       Math.round(expectedMean * 100),
     )
+  })
+
+  it('keeps the configured CSV overall separate from the skill mean', () => {
+    const max = initialDrivers.find((driver) => driver.code === 'VER')!
+    const withoutSource = { ...max, performanceSource: undefined }
+
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(130)
+    expect(driverOverallAbilityPoints(max)).toBe(95)
+    expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(95)
   })
 
   it('keeps domain performance independent from the display-only mean', () => {

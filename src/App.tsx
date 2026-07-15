@@ -137,7 +137,7 @@ import type {
 import {
   clampDriverAbility,
   driverAbilityValue,
-  driverOverallAbilityPoints,
+  driverConfiguredOverallAbilityPoints,
 } from './simulation/driverAbility'
 import { normalizeSimulationSeed } from './simulation/random'
 
@@ -1839,7 +1839,7 @@ export default function App() {
           : 0.8
         const tireModel = {
           driverOverallAbility: driver
-            ? driverOverallAbilityPoints(driver)
+            ? driverConfiguredOverallAbilityPoints(driver)
             : 0,
           performancePaceDeltaSeconds:
             fieldCalibration.teamPaceDeltaSeconds[car.teamId] ?? null,

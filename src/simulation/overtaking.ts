@@ -81,6 +81,23 @@ const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+const battleIncidentTuning = {
+  driverErrorScale: 0.4,
+  contactBaseChance: 0.022,
+  attackerErrorContactWeight: 0.16,
+  defenderErrorContactWeight: 0.1,
+  openingLapContactBonus: 0.04,
+  restartContactBonus: 0.03,
+  cornerContactBonus: 0.022,
+  straightContactReduction: 0.01,
+  crashBaseChance: 0.055,
+  openingLapCrashBonus: 0.035,
+  restartCrashBonus: 0.025,
+  crashDetailWeight: 0.04,
+  attackerRetirementChance: 0.55,
+  defenderRetirementChance: 0.2,
+} as const
+
 function driverOvertaking(driver: Driver): number {
   return driverPerformanceAbility(driver, 'overtakingSkill')
 }
@@ -106,7 +123,7 @@ function driverErrorRate(driver: Driver): number {
     pressureHandling: 0.15,
   })
 
-  return clamp01((1 - control) * 0.5)
+  return clamp01((1 - control) * battleIncidentTuning.driverErrorScale)
 }
 
 export function crashFlagResponseFor(options: {
@@ -334,14 +351,18 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   const detail = hashChance(`${key}:detail`)
   const sector = currentSector ?? Math.floor(hashChance(`${key}:sector`) * 3)
   const contactChance = clamp(
-    0.025 +
-      driverErrorRate(attacker) * 0.2 +
-      driverErrorRate(defender) * 0.12 +
+    battleIncidentTuning.contactBaseChance +
+      driverErrorRate(attacker) *
+        battleIncidentTuning.attackerErrorContactWeight +
+      driverErrorRate(defender) *
+        battleIncidentTuning.defenderErrorContactWeight +
       (1 - trackGrip) * 0.16 +
-      (isOpeningLap ? 0.08 : 0) +
-      (inRestartWindow ? 0.06 : 0) +
+      (isOpeningLap ? battleIncidentTuning.openingLapContactBonus : 0) +
+      (inRestartWindow ? battleIncidentTuning.restartContactBonus : 0) +
       Math.max(0, -skillEdge) * 0.08 +
-      (zone === 'corner' ? 0.025 : -0.012),
+      (zone === 'corner'
+        ? battleIncidentTuning.cornerContactBonus
+        : -battleIncidentTuning.straightContactReduction),
     0.02,
     0.34,
   )
@@ -380,15 +401,23 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       1 - attackerResponsibility,
     )
     const crashThreshold = clamp(
-      0.09 + (1 - trackGrip) * 0.2 + (isOpeningLap ? 0.08 : 0) + detail * 0.05,
-      0.08,
+      battleIncidentTuning.crashBaseChance +
+        (1 - trackGrip) * 0.2 +
+        (isOpeningLap ? battleIncidentTuning.openingLapCrashBonus : 0) +
+        (inRestartWindow ? battleIncidentTuning.restartCrashBonus : 0) +
+        detail * battleIncidentTuning.crashDetailWeight,
+      0.045,
       0.3,
     )
 
     if (crashRoll < crashThreshold) {
       const responseRoll = hashChance(`${key}:flag`)
-      const attackerRetires = hashChance(`${key}:attacker-out`) < 0.68
-      const defenderRetires = hashChance(`${key}:defender-out`) < 0.32
+      const attackerRetires =
+        hashChance(`${key}:attacker-out`) <
+        battleIncidentTuning.attackerRetirementChance
+      const defenderRetires =
+        hashChance(`${key}:defender-out`) <
+        battleIncidentTuning.defenderRetirementChance
       const majorMultiCarCrash = attackerRetires && defenderRetires
       const flagResponse = crashFlagResponseFor({
         attackerRetires,

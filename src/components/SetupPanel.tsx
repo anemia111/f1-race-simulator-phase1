@@ -20,6 +20,7 @@ import {
   DRIVER_ABILITY_SCALE_MAX,
   driverAbilityPoints,
   driverAbilityValue,
+  driverConfiguredOverallAbilityPoints,
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
 import type {
@@ -634,8 +635,10 @@ export function SetupPanel({
         </label>
         <div className="driver-overall-rating">
           <span>Overall ability</span>
-          <strong>{driverOverallAbilityPoints(selectedDriver)}</strong>
-          <small>30-skill mean</small>
+          <strong>{driverConfiguredOverallAbilityPoints(selectedDriver)}</strong>
+          <small>
+            CSV rating · 30-skill mean {driverOverallAbilityPoints(selectedDriver)}
+          </small>
         </div>
         <div className="driver-ability-grid">
           {driverStats.map((stat) => (

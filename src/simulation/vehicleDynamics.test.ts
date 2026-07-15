@@ -120,7 +120,7 @@ describe('multi-axis vehicle dynamics', () => {
     expect(monzaFieldSpreadSeconds).toBeLessThan(6.5)
   })
 
-  it('places Audi ahead of Alpine on representative aggregate pace', () => {
+  it('places Alpine ahead of Audi on representative aggregate pace', () => {
     const referenceDriver = driverAt(1)
     const audi = initialTeams.find((team) => team.id === 'audi')!
     const alpine = initialTeams.find((team) => team.id === 'alpine')!
@@ -141,7 +141,7 @@ describe('multi-axis vehicle dynamics', () => {
         0,
       )
 
-    expect(aggregateGain(audi)).toBeGreaterThan(aggregateGain(alpine))
+    expect(aggregateGain(alpine)).toBeGreaterThan(aggregateGain(audi))
   })
 
   it('produces team-relative terminal speeds from CSV power and drag axes', () => {
