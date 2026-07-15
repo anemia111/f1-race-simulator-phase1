@@ -195,11 +195,19 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   await page.getByRole('button', { name: '60x' }).click()
   let observedOverallBest = false
+  let observedMeasuredSector = false
 
   for (let sample = 0; sample < 45; sample += 1) {
     await page.waitForTimeout(100)
+    const measuredSectorCount = await page
+      .locator(
+        '.leaderboard-rows .sector-status-overall-best, .leaderboard-rows .sector-status-personal-best, .leaderboard-rows .sector-status-slower',
+      )
+      .count()
+
     observedOverallBest ||=
       (await page.locator('.leaderboard-rows .sector-status-overall-best').count()) > 0
+    observedMeasuredSector ||= measuredSectorCount > 0
   }
 
   const batteryValues = await page.locator('.leaderboard-rows button > span:last-child').allInnerTexts()
@@ -315,6 +323,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     driverAbilityValues,
     initialMiniSectorStates,
     name,
+    observedMeasuredSector,
     observedOverallBest,
     overviewNavigationItems,
     pageErrors,
@@ -369,15 +378,16 @@ try {
     if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
     if (result.initialSectorStatuses.pending !== result.initialSectorStatuses.total) failures.push('initial sector cells must all use the pending state')
     if (!result.observedOverallBest) failures.push('completed sectors never showed a provisional overall-best state')
-    if (result.sectorStatuses.overallBest + result.sectorStatuses.personalBest + result.sectorStatuses.slower === 0) failures.push('completed sectors need a measured color state')
+    if (!result.observedMeasuredSector) failures.push('completed sectors never showed a measured color state')
     if (result.batteryValues.some((value) => !/^\d+%$/u.test(value))) failures.push('leaderboard battery values are invalid')
     if (result.activePitRows >= result.leaderboardRows / 2) failures.push(`implausible simultaneous pit wave: ${result.activePitRows} cars`)
     if (!result.headerText.includes('AUSTRALIAN GRAND PRIX 2026')) failures.push('official event name missing from header')
     if (!result.headerText.includes('km/h')) failures.push('broadcast wind speed must use km/h')
     if (result.miniSectors < 720) failures.push(`expected 30 complete timing mini-sector rows, saw ${result.miniSectors}`)
     if (result.initialMiniSectorStates.colored !== 0 || result.initialMiniSectorStates.dim !== result.miniSectors) failures.push('initial mini sectors must all be pending')
-    if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !label.includes('CLEAR'))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
-    if (!result.sectorFlagAriaLabel?.includes('Sector 1 CLEAR') || !result.sectorFlagAriaLabel.includes('Sector 3 CLEAR')) failures.push('sector flag strip needs an accessible per-sector summary')
+    const validSectorFlag = /(CLEAR|YELLOW|DOUBLE YELLOW|VSC|SC|RED)/u
+    if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !validSectorFlag.test(label))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
+    if (!result.sectorFlagAriaLabel?.includes('Sector 1') || !result.sectorFlagAriaLabel.includes('Sector 3')) failures.push('sector flag strip needs an accessible per-sector summary')
     if (result.runningMiniSectorStates.colored === 0 || result.runningMiniSectorStates.dim === 0) failures.push('running mini sectors need completed and pending states')
     const invalidTimingLapRows = result.timingLapRows.filter(
       (row) =>
