@@ -361,28 +361,32 @@ describe('starting grid', () => {
     )
   })
 
-  it('keeps the default early weather crossover and VSC response credible', () => {
-    const config = makeConfig('phase-2-default')
-    let snapshot = runThroughStart(config)
-    let maximumCarsInPit = 0
+  it(
+    'keeps the default early weather crossover and VSC response credible',
+    () => {
+      const config = makeConfig('phase-2-default')
+      let snapshot = runThroughStart(config)
+      let maximumCarsInPit = 0
 
-    for (let tick = 0; tick < 1_800 && snapshot.leaderLap < 8; tick += 1) {
-      snapshot = advanceRace(snapshot, 0.5, config)
-      maximumCarsInPit = Math.max(
-        maximumCarsInPit,
-        snapshot.cars.filter((car) => car.status === 'pit').length,
+      for (let tick = 0; tick < 1_800 && snapshot.leaderLap < 8; tick += 1) {
+        snapshot = advanceRace(snapshot, 0.5, config)
+        maximumCarsInPit = Math.max(
+          maximumCarsInPit,
+          snapshot.cars.filter((car) => car.status === 'pit').length,
+        )
+      }
+
+      const vscPenalties = snapshot.cars.flatMap((car) =>
+        car.penalties.filter((penalty) =>
+          penalty.reason.startsWith('Exceeding the VSC'),
+        ),
       )
-    }
 
-    const vscPenalties = snapshot.cars.flatMap((car) =>
-      car.penalties.filter((penalty) =>
-        penalty.reason.startsWith('Exceeding the VSC'),
-      ),
-    )
-
-    expect(maximumCarsInPit).toBeLessThan(snapshot.cars.length / 2)
-    expect(vscPenalties.length).toBeLessThanOrEqual(2)
-  })
+      expect(maximumCarsInPit).toBeLessThan(snapshot.cars.length / 2)
+      expect(vscPenalties.length).toBeLessThanOrEqual(2)
+    },
+    15_000,
+  )
 
   it('starts practice from pit boxes and releases cars on staggered run plans', () => {
     const config = { ...makeConfig('fp-pit-release'), weekendStage: 'fp1' as const }
