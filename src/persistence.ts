@@ -46,7 +46,7 @@ export type PersistedWeekend = {
 }
 
 export type PersistedDriverRatings = {
-  version: 1
+  version: 2
   ratingsByDriver: Record<
     string,
     Partial<Record<DriverTunableStat, number>>
@@ -64,7 +64,11 @@ export function parsePersistedDriverRatings(
   baseDrivers: Driver[],
 ): Driver[] {
   if (!raw) {
-    return baseDrivers.map((driver) => ({ ...driver }))
+    return baseDrivers.map((driver) => ({
+      ...driver,
+      skills: { ...driver.skills },
+      style: { ...driver.style },
+    }))
   }
 
   try {
@@ -72,10 +76,14 @@ export function parsePersistedDriverRatings(
 
     if (
       !isRecord(parsed) ||
-      parsed.version !== 1 ||
+      (parsed.version !== 1 && parsed.version !== 2) ||
       !isRecord(parsed.ratingsByDriver)
     ) {
-      return baseDrivers.map((driver) => ({ ...driver }))
+      return baseDrivers.map((driver) => ({
+        ...driver,
+        skills: { ...driver.skills },
+        style: { ...driver.style },
+      }))
     }
 
     const ratingsByDriver = parsed.ratingsByDriver
@@ -84,7 +92,11 @@ export function parsePersistedDriverRatings(
       const candidate = ratingsByDriver[driver.id]
 
       if (!isRecord(candidate)) {
-        return { ...driver }
+        return {
+          ...driver,
+          skills: { ...driver.skills },
+          style: { ...driver.style },
+        }
       }
 
       const ratings = Object.fromEntries(
@@ -97,10 +109,18 @@ export function parsePersistedDriverRatings(
         }),
       ) as Partial<Record<DriverTunableStat, number>>
 
-      return { ...driver, ...ratings }
+      return {
+        ...driver,
+        skills: { ...driver.skills, ...ratings },
+        style: { ...driver.style },
+      }
     })
   } catch {
-    return baseDrivers.map((driver) => ({ ...driver }))
+    return baseDrivers.map((driver) => ({
+      ...driver,
+      skills: { ...driver.skills },
+      style: { ...driver.style },
+    }))
   }
 }
 
@@ -108,13 +128,13 @@ export function serializeDriverRatings(
   drivers: Driver[],
 ): PersistedDriverRatings {
   return {
-    version: 1,
+    version: 2,
     ratingsByDriver: Object.fromEntries(
       drivers.map((driver) => [
         driver.id,
         Object.fromEntries(
           DRIVER_ABILITY_STATS.flatMap((stat) =>
-            Object.prototype.hasOwnProperty.call(driver, stat)
+            Object.prototype.hasOwnProperty.call(driver.skills, stat)
               ? [[stat, driverAbilityValue(driver, stat)]]
               : [],
           ),

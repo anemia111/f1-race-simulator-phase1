@@ -9,6 +9,7 @@ import type {
   PenaltyKind,
   RaceEvent,
   RaceSnapshot,
+  StewardCase,
   Team,
   TimedSessionSegmentPlan,
   TireCompound,
@@ -16,7 +17,11 @@ import type {
   WeekendStage,
 } from '../types'
 import { flagSeverityRank, incidentForLap } from './incidents'
-import { driverPerformanceAbility } from './driverAbility'
+import {
+  driverAbilityValue,
+  driverPerformanceAbility,
+  driverSkillBlend,
+} from './driverAbility'
 import { setupPaceDeltaSeconds } from './engineering'
 import {
   advanceComponentWear,
@@ -28,6 +33,7 @@ import {
 import { overtakeForLap } from './overtaking'
 import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
+  advanceVscMarshallingSectorTracking,
   dirtyAirDeltaSeconds,
   flagLabelFor,
   flagPaceMultiplier,
@@ -56,6 +62,19 @@ import {
 import { decidePitStop, pitStopLossSeconds } from './strategy'
 import { startingGridDistance } from './startingGrid'
 import { calculateCarTelemetry } from './telemetry'
+import {
+  blueFlagDecision,
+  jumpStartDecision,
+  penaltyLabel,
+  pitLaneSpeedingDecision,
+  proceduralPenaltyDeadlineLap,
+  stewardCaseDecision,
+  unsafeReleaseDecision,
+  vscEndingDeltaDecision,
+  vscSpeedingDecision,
+  yellowFlagDecision,
+  type StewardPenaltyDecision,
+} from './stewarding'
 import { updateOvertakeEligibilityAfterTravel } from './activeAero'
 import {
   advanceTireDynamicState,
@@ -92,9 +111,13 @@ import {
   fuelMassEffects,
   initialFuelLoadKg,
   performanceLapGainSeconds,
+  driverFuelUseMultiplier,
 } from './vehicleDynamics'
 import { weekendTireAllocation } from './weekendTires'
 import {
+  heatHazardMassIncreaseKgFor,
+  heatIndexCFor,
+  simulatedHumidityPercentFor,
   trackGripForSector,
   trackGripForWeather,
   simulatedTemperaturesFor,
@@ -117,6 +140,29 @@ const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
 const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
+
+function simulatedHeadwindMpsAt(
+  config: RaceConfig,
+  progress: number,
+) {
+  const points = config.track.centerline
+
+  if (points.length < 2) {
+    return 0
+  }
+
+  const normalized = ((progress % 1) + 1) % 1
+  const index = Math.floor(normalized * points.length) % points.length
+  const previous = points[(index - 1 + points.length) % points.length]
+  const next = points[(index + 1) % points.length]
+  const travelHeading = Math.atan2(next[2] - previous[2], next[0] - previous[0])
+  const windFromHeading =
+    hashChance(`${config.seed}:wind-dir:${config.track.id}`) * Math.PI * 2
+  const windSpeedMps =
+    1.4 + hashChance(`${config.seed}:wind:${config.track.id}`) * 5.6
+
+  return windSpeedMps * Math.cos(windFromHeading - travelHeading)
+}
 
 export function blueFlagApproachingCarFor(
   car: CarSnapshot,
@@ -281,6 +327,10 @@ export function redRestartProcedureFor(
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+const progressWithin = (progress: number, start: number, end: number) =>
+  start <= end
+    ? progress >= start && progress <= end
+    : progress >= start || progress <= end
 
 function fieldHasCrossedControlLineTargets(
   cars: CarSnapshot[],
@@ -342,6 +392,7 @@ function makePenalty(
   issuedAtSeconds: number,
   seconds: number,
   mustServeByLap: number | null = null,
+  penaltyPoints = 0,
 ) {
   return {
     id,
@@ -349,9 +400,53 @@ function makePenalty(
     kind,
     reason,
     seconds,
+    penaltyPoints,
     served: false,
     mustServeByLap,
     servedAtSeconds: null,
+  }
+}
+
+function applyStewardPenalty(
+  car: CarSnapshot,
+  decision: StewardPenaltyDecision,
+  id: string,
+  issuedAtSeconds: number,
+  raceLaps: number | null = null,
+): CarSnapshot {
+  if (decision.kind === null) {
+    return car
+  }
+
+  const isProcedural =
+    decision.kind === 'drive-through' || decision.kind === 'stop-go-10'
+  const currentLap = Math.floor(car.totalDistance)
+
+  return {
+    ...car,
+    penaltySeconds: car.penaltySeconds + decision.seconds,
+    penaltyPoints: car.penaltyPoints + decision.penaltyPoints,
+    penalties: [
+      ...car.penalties,
+      makePenalty(
+        id,
+        decision.kind,
+        `${decision.reason} (${decision.article})`,
+        issuedAtSeconds,
+        decision.seconds,
+        isProcedural
+          ? proceduralPenaltyDeadlineLap(currentLap, raceLaps)
+          : null,
+        decision.penaltyPoints,
+      ),
+    ],
+    stewardStatus: 'penalty',
+    stewardNote:
+      decision.kind === 'drive-through'
+        ? 'Drive-through pending'
+        : decision.kind === 'stop-go-10'
+          ? '10s stop-go pending'
+          : `${decision.reason} +${decision.seconds}s`,
   }
 }
 
@@ -563,13 +658,18 @@ function projectedLapTime(
   trackGripOverride?: number,
   rubberLevel = 0,
   trackCondition?: TireTrackCondition,
+  regulatoryMassIncreaseKg = 0,
 ) {
+  const weather = weatherOverride ?? weatherFor(config.seed, config.track, elapsedSeconds)
   const performanceGain = performanceLapGainSeconds({
     driver,
     team,
     track: config.track,
+    weather,
+    session: isTimedLapSession(config.weekendStage ?? 'race')
+      ? 'qualifying'
+      : 'race',
   })
-  const weather = weatherOverride ?? weatherFor(config.seed, config.track, elapsedSeconds)
   const trackGrip = trackGripOverride ?? trackGripForWeather(config.seed, config.track, elapsedSeconds)
   const isTimedSession = isTimedLapSession(config.weekendStage ?? 'race')
   const tireCalibration = {
@@ -583,7 +683,7 @@ function projectedLapTime(
   const tireDelta = tireDeltaSeconds(
     car.tire,
     car.tireAgeLaps,
-    driver.tireManagement,
+    driverAbilityValue(driver, 'tireManagement'),
     weather,
     trackGrip,
     car.tireTemperatureC,
@@ -600,7 +700,7 @@ function projectedLapTime(
   )
   const evolution = trackEvolutionGainSecondsFor(rubberLevel, config.track)
   const fuelEffect = fuelMassEffects({
-    fuelLoadKg: car.fuelLoadKg,
+    fuelLoadKg: car.fuelLoadKg + regulatoryMassIncreaseKg,
     track: config.track,
   }).lapTimeDeltaSeconds
   // No wheel-to-wheel racing under a flag, so no dirty-air penalty either.
@@ -612,11 +712,6 @@ function projectedLapTime(
         (0.42 + localDynamics.curvature * 1.18)
   const damageCost = car.damage * phaseThreeTuning.damageLapCostSeconds
   const restartLoss = restartGripLossSeconds(elapsedSeconds, restartUntilSeconds)
-  const seedPhase = hashChance(`${config.seed}:${driver.id}`) * Math.PI * 2
-  const trafficWave =
-    Math.sin(elapsedSeconds * 0.075 + driver.startOffset * 120 + seedPhase) * 0.28
-
-  const setupGain = config.weekendContext?.setupBonusByDriver[driver.id] ?? 0
   const configuredSetup = config.weekendContext?.setupByDriver?.[driver.id]
   const setupPenalty = configuredSetup
     ? setupPaceDeltaSeconds(config.track, configuredSetup)
@@ -638,8 +733,6 @@ function projectedLapTime(
     dirtyAir +
     damageCost +
     restartLoss +
-    trafficWave -
-    setupGain +
     setupPenalty +
     componentPenalty +
     modeDelta[car.racePaceMode]
@@ -1007,7 +1100,7 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   // on-screen gap already reflects what it owes. (Real F1 serves penalties
   // at stops or after the race; simplified for now.)
   const classified = (car: CarSnapshot) =>
-    car.totalDistance - car.penaltySeconds / lapTime
+    car.totalDistance - car.penaltyLaps - car.penaltySeconds / lapTime
   // Finished cars are classified by real crossing time plus penalties, not
   // by frozen distance (which collapses at the line).
   const finishTime = (car: CarSnapshot) =>
@@ -1015,7 +1108,14 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
 
   const finished = cars
     .filter((car) => car.status === 'finished')
-    .sort((a, b) => finishTime(a) - finishTime(b))
+    .sort((a, b) => {
+      const classifiedLapDifference =
+        b.lap - b.penaltyLaps - (a.lap - a.penaltyLaps)
+
+      return classifiedLapDifference !== 0
+        ? classifiedLapDifference
+        : finishTime(a) - finishTime(b)
+    })
   const active = cars
     .filter((car) =>
       ['running', 'pit'].includes(car.status),
@@ -1146,10 +1246,18 @@ function stagedFlagPhase(options: {
   durationSeconds: number
   id: string
   response: Exclude<FlagState, 'clear'>
+  safetyCarUsesPitLane?: boolean
   sector: number
   startSeconds: number
 }) {
-  const { durationSeconds, id, response, sector, startSeconds } = options
+  const {
+    durationSeconds,
+    id,
+    response,
+    safetyCarUsesPitLane = false,
+    sector,
+    startSeconds,
+  } = options
   const hazardClearAtSeconds = startSeconds + durationSeconds
 
   if (response === 'yellow') {
@@ -1157,6 +1265,8 @@ function stagedFlagPhase(options: {
       id,
       flag: response,
       sector,
+      yellowSeverity: 'single',
+      safetyCarUsesPitLane: false,
       startSeconds,
       endSeconds: hazardClearAtSeconds,
       startMessage: flagDeployMessages[response](sector),
@@ -1172,6 +1282,7 @@ function stagedFlagPhase(options: {
     id: `${id}-initial-yellow`,
     flag: 'yellow',
     sector,
+    yellowSeverity: 'double',
     startSeconds,
     endSeconds: activateAtSeconds,
     startMessage: `YELLOW FLAG in sector ${sector + 1}. Race Control is assessing the incident.`,
@@ -1182,6 +1293,8 @@ function stagedFlagPhase(options: {
       flag: response,
       hazardClearAtSeconds,
       id,
+      safetyCarUsesPitLane:
+        response === 'sc' ? safetyCarUsesPitLane : false,
       startMessage: flagDeployMessages[response](sector),
     },
   } satisfies ActiveFlagPhase
@@ -1202,6 +1315,33 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
   const isRaceDistance = isRaceDistanceSession(weekendStage)
   const scheduledRaceLaps = sessionDistanceLapsFor(config.track, weekendStage)
   const weather = weatherFor(config.seed, config.track, 0)
+  const currentTemperatures = simulatedTemperaturesFor(
+    config.seed,
+    config.track,
+    weather,
+  )
+  const currentHumidity = simulatedHumidityPercentFor(config.track, weather)
+  const heatIndexC = heatIndexCFor(
+    currentTemperatures.airTemperatureC,
+    currentHumidity,
+  )
+  const forecastHeatTemperatures = simulatedTemperaturesFor(
+    config.seed,
+    config.track,
+    'clear',
+  )
+  const forecastHeatIndexC = heatIndexCFor(
+    forecastHeatTemperatures.airTemperatureC,
+    simulatedHumidityPercentFor(config.track, 'clear'),
+  )
+  const heatHazardCompetitionDeclared =
+    Math.max(heatIndexC, forecastHeatIndexC) > 31
+  const heatHazardDeclared =
+    isRaceDistance && heatHazardCompetitionDeclared
+  const heatHazardMassIncreaseKg = heatHazardMassIncreaseKgFor({
+    competitionDeclared: heatHazardCompetitionDeclared,
+    sessionDeclared: heatHazardDeclared,
+  })
   const trackGrip = trackGripForWeather(config.seed, config.track, 0)
   const initialWater = createTrackWaterState()
   const initialRubber = createTrackRubberState()
@@ -1324,9 +1464,17 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
       energyHarvestedThisLapMj: 0,
+      energyDeployedThisLapMj: 0,
       ersMode: 'balanced',
       ersPowerKw: 0,
       ersBatteryPercent: 82,
+      superClippingIntensity: 0,
+      superClippingDrivePowerScale: 1,
+      superClippingRegenPowerKw: 0,
+      superClippingRecoveredThisLapMj: 0,
+      superClippingStartedAtSeconds: null,
+      superClippingStartedAtProgress: null,
+      superClippingDurationSeconds: 0,
       fuelLoadKg: initialFuelLoadKg({
         raceLaps,
         stage: weekendStage,
@@ -1379,6 +1527,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       tireSetsRemaining: initialTireSets,
       damage: 0,
       penaltySeconds: 0,
+      penaltyPoints: 0,
+      penaltyLaps: 0,
       penalties: [],
       servedPenaltySeconds: 0,
       retiredAtSeconds: null,
@@ -1386,8 +1536,11 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       finishedAtSeconds: null,
       hiddenFromTrack: didNotQualify,
       vscDeltaSeconds: 0,
+      vscRedSectorCount: 0,
+      vscLastMeasuredMiniSector: null,
       hasUnlappedUnderSafetyCar: false,
       blueFlag: false,
+      blueFlagSinceSeconds: null,
       startsFromPitLane,
       lowPowerStartDetected: false,
       warningLightsUntilSeconds: null,
@@ -1445,7 +1598,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       : ['clear', 'clear', 'clear'],
     restartUntilSeconds: null,
     fuelEffectSeconds: fuelMassEffects({
-      fuelLoadKg: cars[0]?.fuelLoadKg ?? 0,
+      fuelLoadKg:
+        (cars[0]?.fuelLoadKg ?? 0) + heatHazardMassIncreaseKg,
       track: config.track,
     }).lapTimeDeltaSeconds,
     trackEvolutionLevel: trackEvolutionLevelFor(
@@ -1455,6 +1609,9 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     weather,
     weatherLabel: weatherLabelFor(weather),
     weatherForecastLabel: weatherForecast.label,
+    heatHazardDeclared,
+    heatIndexC,
+    heatHazardMassIncreaseKg,
     rainHazardDeclared,
     lowGripConditions,
     trackGrip,
@@ -1473,6 +1630,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     timedYellowUntilSeconds: null,
     timedYellowSector: null,
     pitLaneOpen: true,
+    pitExitOpen: true,
+    stewardCases: [],
     weekend: {
       stage: weekendStage,
       label: weekendStageLabelFor(weekendStage),
@@ -1485,6 +1644,18 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       source: 'simulation',
     },
     events: [
+      ...(heatHazardCompetitionDeclared
+        ? [
+            makeEvent(
+              'heat-hazard-declared',
+              'weather',
+              0,
+              heatHazardDeclared
+                ? `HEAT HAZARD declared. Driver Cooling System required; C4.6 mass increase ${heatHazardMassIncreaseKg}kg.`
+                : `HEAT HAZARD declared for the Sprint/Race; C4.6 mass increase ${heatHazardMassIncreaseKg}kg applies in this session.`,
+            ),
+          ]
+        : []),
       ...(rainHazardDeclared
         ? [
             makeEvent(
@@ -1541,10 +1712,15 @@ export function advanceRace(
   const weather = weatherFor(config.seed, config.track, elapsedSeconds)
   const trackGrip = trackGripForWeather(config.seed, config.track, elapsedSeconds)
   const weatherForecast = weatherForecastFor(config.seed, config.track, elapsedSeconds)
+  const simulatedTemperatures = simulatedTemperaturesFor(
+    config.seed,
+    config.track,
+    weather,
+  )
+  const airTemperatureC = simulatedTemperatures.airTemperatureC
   const trackTemperatureC =
     config.track.observedCalibration?.trackTemperatureC ??
-    simulatedTemperaturesFor(config.seed, config.track, weather)
-      .trackTemperatureC
+    simulatedTemperatures.trackTemperatureC
   const rainIntensityMmH = weatherTrackStateFor(
     config.seed,
     config.track,
@@ -1572,6 +1748,31 @@ export function advanceRace(
   })
   const weekendStage = config.weekendStage ?? snapshot.weekend.stage
   const isRaceDistance = isRaceDistanceSession(weekendStage)
+  const heatIndexC = heatIndexCFor(
+    airTemperatureC,
+    simulatedHumidityPercentFor(config.track, weather),
+  )
+  const forecastHeatTemperatures = simulatedTemperaturesFor(
+    config.seed,
+    config.track,
+    'clear',
+  )
+  const heatHazardCompetitionDeclared =
+    (snapshot.heatHazardMassIncreaseKg ?? 0) > 0 ||
+    Math.max(
+      heatIndexC,
+      heatIndexCFor(
+        forecastHeatTemperatures.airTemperatureC,
+        simulatedHumidityPercentFor(config.track, 'clear'),
+      ),
+    ) > 31
+  const heatHazardDeclared =
+    (snapshot.heatHazardDeclared ?? false) ||
+    (isRaceDistance && heatHazardCompetitionDeclared)
+  const heatHazardMassIncreaseKg = heatHazardMassIncreaseKgFor({
+    competitionDeclared: heatHazardCompetitionDeclared,
+    sessionDeclared: heatHazardDeclared,
+  })
   const isTimedSession = isTimedLapSession(weekendStage)
   const timedSessionDurationSeconds =
     config.timedSessionPlan?.totalDurationSeconds ??
@@ -1611,6 +1812,17 @@ export function advanceRace(
   let timedParticipantDriverIds = snapshot.timedParticipantDriverIds
   let timedYellowUntilSeconds = snapshot.timedYellowUntilSeconds
   let timedYellowSector = snapshot.timedYellowSector
+
+  if (heatHazardDeclared && !snapshot.heatHazardDeclared) {
+    newEvents.push(
+      makeEvent(
+        `heat-hazard-${Math.floor(elapsedSeconds)}`,
+        'weather',
+        elapsedSeconds,
+        `HEAT HAZARD declared. Driver Cooling System required; C4.6 mass increase ${heatHazardMassIncreaseKg}kg.`,
+      ),
+    )
+  }
 
   if (rainHazardDeclared && !snapshot.rainHazardDeclared) {
     newEvents.push(
@@ -1732,7 +1944,7 @@ export function advanceRace(
     const cars = snapshot.cars.map((car, index) => {
       const driver = drivers.get(car.driverId)
       const startAbility = driver
-        ? driverPerformanceAbility(driver, 'starts')
+        ? driverPerformanceAbility(driver, 'startSkill')
         : 0.8
       const raceAwareness = driver
         ? driverPerformanceAbility(driver, 'raceAwareness')
@@ -1743,6 +1955,14 @@ export function advanceRace(
         driver !== undefined &&
         hashChance(`${config.seed}:jump-start:${driver.id}`) <
           0.004 + Math.max(0, 1 - (startAbility * 0.55 + raceAwareness * 0.45)) * 0.014
+      const jumpMovementMeters = jumpStart
+        ? 0.03 +
+          hashChance(`${config.seed}:jump-start-distance:${driver?.id ?? car.driverId}`) *
+            4.2
+        : 0
+      const jumpDecision = jumpStart
+        ? jumpStartDecision(jumpMovementMeters)
+        : null
       const weakestCondition = Math.min(
         car.components.ice.conditionPercent,
         car.components.mguK.conditionPercent,
@@ -1761,7 +1981,7 @@ export function advanceRace(
             `jump-start-${car.driverId}`,
             'penalty',
             elapsedSeconds,
-            `${car.code} receives a +5s penalty for a false start.`,
+            `${car.code} receives ${penaltyLabel(jumpDecision!)} for a false start (${jumpMovementMeters.toFixed(2)}m, ${jumpDecision!.article}).`,
           ),
         )
       }
@@ -1802,6 +2022,14 @@ export function advanceRace(
           ersPowerKw: 0,
           overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
           energyHarvestedThisLapMj: 0,
+          energyDeployedThisLapMj: 0,
+          superClippingIntensity: 0,
+          superClippingDrivePowerScale: 1,
+          superClippingRegenPowerKw: 0,
+          superClippingRecoveredThisLapMj: 0,
+          superClippingStartedAtSeconds: null,
+          superClippingStartedAtProgress: null,
+          superClippingDurationSeconds: 0,
           lapStartedAtSeconds: null,
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
@@ -1893,21 +2121,40 @@ export function advanceRace(
         ),
         overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
         energyHarvestedThisLapMj: 0,
-        penaltySeconds: car.penaltySeconds + (jumpStart ? 5 : 0),
+        energyDeployedThisLapMj: 0,
+        superClippingIntensity: 0,
+        superClippingDrivePowerScale: 1,
+        superClippingRegenPowerKw: 0,
+        superClippingRecoveredThisLapMj: 0,
+        superClippingStartedAtSeconds: null,
+        superClippingStartedAtProgress: null,
+        superClippingDurationSeconds: 0,
+        penaltySeconds:
+          car.penaltySeconds + (jumpDecision?.seconds ?? 0),
         penalties: jumpStart
           ? [
               ...car.penalties,
               makePenalty(
                 `false-start-${driver.id}`,
-                'time-5',
-                'False start',
+                jumpDecision!.kind!,
+                `${jumpDecision!.reason} (${jumpDecision!.article})`,
                 elapsedSeconds,
-                5,
+                jumpDecision!.seconds,
+                jumpDecision!.kind === 'drive-through' ||
+                  jumpDecision!.kind === 'stop-go-10'
+                  ? Math.floor(car.totalDistance) + 2
+                  : null,
               ),
             ]
           : car.penalties,
         stewardStatus: jumpStart ? ('penalty' as const) : car.stewardStatus,
-        stewardNote: jumpStart ? 'False start +5s' : car.stewardNote,
+        stewardNote: jumpStart
+          ? jumpDecision!.kind === 'drive-through'
+            ? 'False start: drive-through pending'
+            : jumpDecision!.kind === 'stop-go-10'
+              ? 'False start: 10s stop-go pending'
+              : `False start +${jumpDecision!.seconds}s`
+          : car.stewardNote,
         lapStartedAtSeconds: raceStartTriggered
           ? elapsedSeconds
           : car.lapStartedAtSeconds,
@@ -2016,6 +2263,11 @@ export function advanceRace(
     snapshot.overtakeEnableTargetsByDriver
   let greenLightUntilSeconds = snapshot.greenLightUntilSeconds ?? null
   let redFlagRestart = false
+  const safetyCarPenaltyLapDriverIds = new Set<string>()
+  const vscPenaltiesByDriver = new Map<
+    string,
+    { decision: StewardPenaltyDecision; id: string }
+  >()
 
   if (
     greenLightUntilSeconds !== null &&
@@ -2047,6 +2299,7 @@ export function advanceRace(
         id: escalation.id,
         flag: escalation.flag,
         sector: phase.sector,
+        safetyCarUsesPitLane: escalation.safetyCarUsesPitLane,
         startSeconds: escalation.activateAtSeconds,
         endSeconds: escalation.hazardClearAtSeconds,
         startMessage: escalation.startMessage,
@@ -2077,6 +2330,15 @@ export function advanceRace(
     const neutralisation = advanceNeutralisationProcedure({
       cars: snapshot.cars,
       elapsedSeconds,
+      finishingLap:
+        isRaceDistance &&
+        snapshot.leaderLap >=
+          (snapshot.checkeredLapTarget ?? snapshot.raceLaps),
+      lowVisibility:
+        weather === 'heavy-rain' &&
+        (rainIntensityMmH >= 16 || averageSurfaceWaterMm >= 2.4),
+      overtakingPermitted:
+        weather !== 'heavy-rain' && averageSurfaceWaterMm < 2.4,
       phase,
       seed: config.seed,
       track: config.track,
@@ -2084,8 +2346,19 @@ export function advanceRace(
 
     for (const event of neutralisation.events) {
       newEvents.push(
-        makeEvent(event.id, 'flag', event.atSeconds, event.message),
+        makeEvent(
+          event.id,
+          event.id.startsWith('sc-unauthorized-overtake')
+            ? 'penalty'
+            : 'flag',
+          event.atSeconds,
+          event.message,
+        ),
       )
+    }
+
+    for (const driverId of neutralisation.penaltyLapDriverIds) {
+      safetyCarPenaltyLapDriverIds.add(driverId)
     }
 
     phase = neutralisation.phase
@@ -2101,12 +2374,55 @@ export function advanceRace(
         overtakeEnableTargetsByDriver =
           neutralisation.restartTargetsByDriver
       } else {
+        for (const car of snapshot.cars) {
+          if (car.status !== 'running') {
+            continue
+          }
+
+          const redSectorCount = car.vscRedSectorCount ?? 0
+          const redSectorDecision = vscSpeedingDecision(redSectorCount)
+          const decision =
+            redSectorDecision.kind !== null
+              ? redSectorDecision
+              : car.vscDeltaSeconds < -0.01
+                ? vscEndingDeltaDecision(Math.abs(car.vscDeltaSeconds))
+                : null
+
+          if (!decision || decision.kind === null) {
+            continue
+          }
+
+          const decisionId =
+            redSectorDecision.kind !== null
+              ? `vsc-red-sectors-${car.driverId}-${Math.floor(elapsedSeconds)}`
+              : `vsc-ending-delta-${car.driverId}-${Math.floor(elapsedSeconds)}`
+          vscPenaltiesByDriver.set(car.driverId, {
+            decision,
+            id: decisionId,
+          })
+          newEvents.push(
+            makeEvent(
+              decisionId,
+              'penalty',
+              elapsedSeconds,
+              redSectorDecision.kind !== null
+                ? `${car.code} records ${redSectorCount} red VSC marshalling sectors and receives ${penaltyLabel(decision)} (${decision.article}).`
+                : `${car.code} is ${Math.abs(car.vscDeltaSeconds).toFixed(2)}s below the minimum delta when the VSC ends and receives ${penaltyLabel(decision)} (${decision.article}).`,
+            ),
+          )
+        }
         const detectionProgress =
           config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
         const leaderDistance = snapshot.cars[0]?.totalDistance ?? 1
         overtakeEnableAtLeaderDistance =
           Math.floor(leaderDistance) + 1 + detectionProgress
         overtakeEnableTargetsByDriver = null
+        const greenEventIndex = newEvents.findIndex((event) =>
+          event.id.startsWith('vsc-green-'),
+        )
+        if (greenEventIndex >= 0) {
+          newEvents.push(...newEvents.splice(greenEventIndex, 1))
+        }
       }
     }
   }
@@ -2217,6 +2533,13 @@ export function advanceRace(
     restartProcedure === 'none' &&
     !incidentBlocksPitEntry &&
     !timedSessionState.suspended
+  const pitExitOpen =
+    pitLaneOpen &&
+    !(
+      phase?.flag === 'sc' &&
+      phase.neutralisation?.kind === 'safety-car' &&
+      phase.neutralisation.pitExitClosed
+    )
 
   if (pitLaneOpen !== snapshot.pitLaneOpen) {
     newEvents.push(
@@ -2225,6 +2548,17 @@ export function advanceRace(
         'pit',
         elapsedSeconds,
         `Pit lane ${pitLaneOpen ? 'open' : 'closed'} by Race Control.`,
+      ),
+    )
+  }
+
+  if (pitExitOpen !== (snapshot.pitExitOpen ?? true)) {
+    newEvents.push(
+      makeEvent(
+        `pit-exit-${pitExitOpen ? 'open' : 'closed'}-${Math.floor(elapsedSeconds)}`,
+        'pit',
+        elapsedSeconds,
+        `Pit exit ${pitExitOpen ? 'open' : 'closed'} by Race Control.`,
       ),
     )
   }
@@ -2247,10 +2581,27 @@ export function advanceRace(
   const deferredTimedGridPenalties = new Map<string, number>()
   const teamsPittingThisFrame = new Set<string>()
   let timedPitExitAvailableAt = elapsedSeconds
+  let stewardCases = [...(snapshot.stewardCases ?? [])]
 
   // During a red-flag suspension the field gathers for the restart, so the
   // resume re-forms a nose-to-tail queue in classification order.
   let frameCars = snapshot.cars
+
+  if (vscPenaltiesByDriver.size > 0) {
+    frameCars = frameCars.map((car) => {
+      const penalty = vscPenaltiesByDriver.get(car.driverId)
+
+      return penalty
+        ? applyStewardPenalty(
+            car,
+            penalty.decision,
+            penalty.id,
+            elapsedSeconds,
+            raceLaps,
+          )
+        : car
+    })
+  }
 
   if (
     isTimedSession &&
@@ -2489,96 +2840,101 @@ export function advanceRace(
       }
     : null
 
-  frameCars = frameCars.map((car) => {
-    const investigation = snapshot.events.find(
-      (event) =>
-        event.id.startsWith(`investigation-contact-${car.driverId}-`) &&
-        elapsedSeconds - event.elapsedSeconds >= 22 &&
-        !snapshot.events.some(
-          (existing) => existing.id === `decision-${event.id}`,
-        ),
+  if (safetyCarPenaltyLapDriverIds.size > 0) {
+    frameCars = frameCars.map((car) => {
+      if (!safetyCarPenaltyLapDriverIds.has(car.driverId)) {
+        return car
+      }
+
+      const penaltyId = `sc-unauthorized-overtake-${phase?.id ?? 'sc'}-${car.driverId}`
+      return {
+        ...car,
+        penaltyLaps: car.penaltyLaps + 1,
+        penalties: [
+          ...car.penalties,
+          makePenalty(
+            penaltyId,
+            'penalty-lap',
+            'Overtaking the Safety Car without eligibility',
+            elapsedSeconds,
+            0,
+          ),
+        ],
+        stewardStatus: 'penalty' as const,
+        stewardNote: 'One penalty lap - unauthorised SC overtake',
+      }
+    })
+  }
+
+  const pendingStewardDriverIds = new Set(
+    stewardCases
+      .filter(({ resolveAtSeconds }) => elapsedSeconds < resolveAtSeconds)
+      .map(({ driverId }) => driverId),
+  )
+  frameCars = frameCars.map((car) =>
+    pendingStewardDriverIds.has(car.driverId)
+      ? {
+          ...car,
+          stewardStatus: 'investigating' as const,
+          stewardNote: car.stewardNote ?? 'Incident under investigation',
+        }
+      : car,
+  )
+
+  const dueStewardCases = stewardCases.filter(
+    (stewardCase) => elapsedSeconds >= stewardCase.resolveAtSeconds,
+  )
+
+  for (const stewardCase of dueStewardCases) {
+    const decision = stewardCaseDecision(stewardCase)
+    const decisionId = `decision-${stewardCase.id}`
+    const investigatedCar = frameCars.find(
+      (car) => car.driverId === stewardCase.driverId,
     )
 
-    if (!investigation) {
-      return car
+    if (!investigatedCar) {
+      continue
     }
-
-    const decisionRoll = hashChance(
-      `${config.seed}:steward-decision:${investigation.id}`,
-    )
-    const penaltyKind: PenaltyKind | null =
-      decisionRoll < 0.45
-        ? null
-        : decisionRoll < 0.75
-          ? 'time-5'
-          : decisionRoll < 0.9
-            ? 'time-10'
-            : decisionRoll < 0.97
-              ? 'drive-through'
-              : 'stop-go-10'
-    const penaltySeconds =
-      penaltyKind === 'time-5'
-        ? 5
-        : penaltyKind === 'time-10'
-          ? 10
-          : penaltyKind === 'drive-through'
-            ? 20
-            : penaltyKind === 'stop-go-10'
-              ? 30
-              : 0
-    const penaltyLabel =
-      penaltyKind === 'drive-through'
-        ? 'a drive-through penalty'
-        : penaltyKind === 'stop-go-10'
-          ? 'a 10-second stop-and-go penalty'
-          : `a +${penaltySeconds}s penalty`
-    const decisionId = `decision-${investigation.id}`
 
     newEvents.push(
       makeEvent(
         decisionId,
-        penaltySeconds > 0 ? 'penalty' : 'info',
+        decision.kind === null ? 'info' : 'penalty',
         elapsedSeconds,
-        penaltySeconds > 0
-          ? `${car.code} receives ${penaltyLabel} for causing a collision.`
-          : `Stewards: no further action for ${car.code} after the contact review.`,
+        decision.kind === null
+          ? `Stewards: no further action for ${investigatedCar.code}. ${decision.reason}.`
+          : `${investigatedCar.code} receives ${penaltyLabel(decision)} for ${decision.reason.toLowerCase()} (${decision.article})${decision.penaltyPoints > 0 ? `, ${decision.penaltyPoints} penalty point${decision.penaltyPoints === 1 ? '' : 's'}` : ''}.`,
       ),
     )
 
-    if (penaltySeconds === 0) {
-      return {
-        ...car,
-        stewardStatus: car.penaltySeconds > 0 ? 'penalty' : 'clear',
-        stewardNote:
-          car.penaltySeconds > 0 ? car.stewardNote : 'No further action',
+    frameCars = frameCars.map((car) => {
+      if (car.driverId !== stewardCase.driverId) {
+        return car
       }
-    }
 
-    return {
-      ...car,
-      penaltySeconds: car.penaltySeconds + penaltySeconds,
-      penalties: [
-        ...car.penalties,
-        makePenalty(
-          decisionId,
-          penaltyKind!,
-          'Causing a collision',
-          elapsedSeconds,
-          penaltySeconds,
-          penaltyKind === 'drive-through' || penaltyKind === 'stop-go-10'
-            ? Math.floor(car.totalDistance) + 3
-            : null,
-        ),
-      ],
-      stewardStatus: 'penalty',
-      stewardNote:
-        penaltyKind === 'drive-through'
-          ? 'Drive-through pending'
-          : penaltyKind === 'stop-go-10'
-            ? '10s stop-go pending'
-            : `Causing a collision +${penaltySeconds}s`,
-    }
-  })
+      if (decision.kind === null) {
+        return {
+          ...car,
+          stewardStatus: car.penaltySeconds > 0 ? 'penalty' : 'clear',
+          stewardNote:
+            car.penaltySeconds > 0 ? car.stewardNote : 'No further action',
+        }
+      }
+
+      return applyStewardPenalty(
+        car,
+        decision,
+        decisionId,
+        elapsedSeconds,
+        raceLaps,
+      )
+    })
+  }
+
+  const resolvedStewardCaseIds = new Set(dueStewardCases.map(({ id }) => id))
+  stewardCases = stewardCases.filter(
+    ({ id }) => !resolvedStewardCaseIds.has(id),
+  )
 
   const timedYellowControlPhase: ActiveFlagPhase | null =
     timedYellowUntilSeconds !== null && timedYellowSector !== null
@@ -2624,6 +2980,28 @@ export function advanceRace(
     }
 
     if (car.status === 'pit') {
+      if (
+        car.pitUntilSeconds !== null &&
+        elapsedSeconds >= car.pitUntilSeconds &&
+        !pitExitOpen
+      ) {
+        const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
+
+        return {
+          ...car,
+          brakePercent: 100,
+          gear: 0,
+          pitExitQueueSeconds:
+            car.pitExitQueueSeconds + Math.max(0, deltaSeconds),
+          pitLaneProgress: (pitExitProgress - 0.004 + 1) % 1,
+          pitPhase: 'lane' as const,
+          pitUntilSeconds: elapsedSeconds + 0.5,
+          rpm: 0,
+          speedKph: 0,
+          throttlePercent: 0,
+        }
+      }
+
       if (car.pitUntilSeconds !== null && elapsedSeconds >= car.pitUntilSeconds) {
         if (isTimedSession) {
           const releaseAtSeconds = Math.max(
@@ -2822,6 +3200,15 @@ export function advanceRace(
     }
     const controlPhase = phase ?? restartControlPhase ?? timedYellowControlPhase
     const localControlPhase = flagPhaseForSector(controlPhase, carSector)
+    const safetyCarProcedure =
+      phase?.flag === 'sc' &&
+      phase.neutralisation?.kind === 'safety-car'
+        ? phase.neutralisation
+        : null
+    const activelyUnlapping =
+      safetyCarProcedure?.stage === 'unlapping' &&
+      safetyCarProcedure.eligibleLappedDriverIds.includes(car.driverId) &&
+      !safetyCarProcedure.unlappingRejoinedDriverIds.includes(car.driverId)
     const paceMultiplier = flagPaceMultiplier(controlPhase, carSector, {
       isLeader: car.position === 1,
       gapToAheadSeconds: car.gapToAhead,
@@ -2832,16 +3219,19 @@ export function advanceRace(
         : localControlPhase?.flag === 'vsc'
           ? vscPaceScaleForDelta(
               car.vscDeltaSeconds,
-              driverPerformanceAbility(driver, 'consistency'),
-              Math.sin(
-                elapsedSeconds * 0.37 +
-                  hashChance(`${config.seed}:${driver.id}:vsc-control`) *
-                    Math.PI *
-                    2,
-              ),
+              driverSkillBlend(driver, {
+                consistency: 0.5,
+                raceAwareness: 0.3,
+                pressureHandling: 0.2,
+              }),
+              hashChance(
+                `${config.seed}:${driver.id}:vsc:${Math.floor(car.totalDistance * MINI_SECTOR_COUNT)}`,
+              ) * 2 - 1,
             )
           : localControlPhase?.flag === 'sc'
-            ? paceMultiplier
+            ? activelyUnlapping
+              ? phaseThreeTuning.scCatchUpPace
+              : paceMultiplier
           : 1
     const lapTime = projectedLapTime(
       driver,
@@ -2855,6 +3245,7 @@ export function advanceRace(
       localTrackGrip,
       trackRubber.rubberLevelBySector[carSector],
       localTireTrackCondition,
+      heatHazardMassIncreaseKg,
     )
     const timedRun = timedRunPaceFor({
       car,
@@ -2864,6 +3255,8 @@ export function advanceRace(
       driver,
       team,
       track: config.track,
+      weather: localWeather,
+      session: isTimedSession ? 'qualifying' : 'race',
     })
     const baselineEffectiveLapTime = Math.max(
       40,
@@ -2911,9 +3304,13 @@ export function advanceRace(
       standingStartMguKRestricted,
       track: config.track,
       team,
+      surfaceWaterMm: trackWater.surfaceWaterMmBySector[carSector],
+      setup: config.weekendContext?.setupByDriver?.[driver.id],
+      headwindMps: simulatedHeadwindMpsAt(config, car.progress),
       trackGrip: localTrackGrip,
       trackTemperatureC,
       weather: localWeather,
+      regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
     const displayTelemetry = telemetryForTimedRunPhase(
       telemetry,
@@ -2939,6 +3336,26 @@ export function advanceRace(
         displayTelemetry.speedKph,
         deltaSeconds,
       )
+    const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
+    const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
+    const projectedProgress =
+      totalDistance - Math.floor(totalDistance)
+    const scPitLaneTransit =
+      safetyCarProcedure?.pitLaneRouteRequired === true &&
+      progressWithin(projectedProgress, pitEntryProgress, pitExitProgress)
+
+    if (scPitLaneTransit) {
+      totalDistance = Math.min(
+        totalDistance,
+        car.totalDistance +
+          progressForProfileSpeed(
+            config.track,
+            car.progress,
+            config.track.pitLane?.speedLimitKph ?? 80,
+            deltaSeconds,
+          ),
+      )
+    }
     const battleDeltaStep =
       Math.sign(car.battleDeltaSecondsRemaining) *
       Math.min(
@@ -2948,12 +3365,6 @@ export function advanceRace(
     totalDistance += battleDeltaStep / baseLapTime
     const battleDeltaSecondsRemaining =
       car.battleDeltaSecondsRemaining - battleDeltaStep
-    const leaderDistance = snapshot.cars[0]?.totalDistance ?? car.totalDistance
-    const safetyCarProcedure =
-      phase?.flag === 'sc' &&
-      phase.neutralisation?.kind === 'safety-car'
-        ? phase.neutralisation
-        : null
     if (
       car.position === 1 &&
       safetyCarProcedure &&
@@ -2971,20 +3382,35 @@ export function advanceRace(
         totalDistance = Math.min(totalDistance, safetyCarCeiling)
       }
     }
-    const mayUnlap =
-      safetyCarProcedure?.stage === 'unlapping' &&
-      safetyCarProcedure.eligibleLappedDriverIds.includes(car.driverId) &&
-      !car.hasUnlappedUnderSafetyCar
+    const mayUnlap = activelyUnlapping
 
-    if (mayUnlap) {
-      totalDistance +=
-        progressForProfileSpeed(
-          config.track,
-          car.progress,
-          displayTelemetry.speedKph,
-          deltaSeconds,
-        ) *
-        0.48
+    if (mayUnlap && safetyCarProcedure) {
+      const orderIndex =
+        safetyCarProcedure.unlappingOrderDriverIds.indexOf(car.driverId)
+      const precedingDriverId =
+        orderIndex > 0
+          ? safetyCarProcedure.unlappingOrderDriverIds[orderIndex - 1]
+          : null
+      const precedingCar = precedingDriverId
+        ? snapshot.cars.find(
+            (candidate) => candidate.driverId === precedingDriverId,
+          )
+        : null
+
+      if (precedingCar) {
+        const precedingProjectedDistance =
+          precedingCar.totalDistance +
+          progressForProfileSpeed(
+            config.track,
+            precedingCar.progress,
+            Math.max(precedingCar.speedKph, displayTelemetry.speedKph),
+            deltaSeconds,
+          )
+        totalDistance = Math.min(
+          totalDistance,
+          precedingProjectedDistance - 0.002,
+        )
+      }
     }
 
     const blueFlagApproachingCar =
@@ -2992,6 +3418,20 @@ export function advanceRace(
       ? blueFlagApproachingCarFor(car, snapshot.cars)
       : null
     const blueFlag = blueFlagApproachingCar !== null
+    const blueFlagSinceSeconds = blueFlag
+      ? (car.blueFlagSinceSeconds ?? elapsedSeconds)
+      : null
+    const ignoresBlueFlag =
+      blueFlag &&
+      hashChance(
+        `${config.seed}:blue-flag-compliance:${driver.id}:${Math.floor(blueFlagSinceSeconds ?? elapsedSeconds)}`,
+      ) <
+        0.012 +
+          Math.max(
+            0,
+            1 - driverPerformanceAbility(driver, 'raceAwareness'),
+          ) *
+            0.11
     const carBehind = snapshot.cars[index + 1]
     const attacking =
       car.position > 1 &&
@@ -3048,7 +3488,7 @@ export function advanceRace(
     const trackLateralOffset = 0
     const wearPercentPerLap = tireWearPercentPerLap(
       car.tire,
-      driver.tireManagement,
+      driverAbilityValue(driver, 'tireManagement'),
       config.track.tireNomination,
       {
         degradationPerLapSeconds:
@@ -3120,7 +3560,9 @@ export function advanceRace(
     )
 
     if (blueFlag) {
-      const yieldedTravel = Math.max(0, totalDistance - car.totalDistance) * 0.82
+      const yieldedTravel =
+        Math.max(0, totalDistance - car.totalDistance) *
+        (ignoresBlueFlag ? 0.985 : 0.82)
       totalDistance = car.totalDistance + yieldedTravel
 
       if (!car.blueFlag) {
@@ -3173,9 +3615,10 @@ export function advanceRace(
           fuelBurnKgPerLap({
             paceMode: racePaceMode,
             phase: localControlPhase,
+            team,
             track: config.track,
             weather: localWeather,
-          }),
+          }) * driverFuelUseMultiplier(driver),
     )
     const components = advanceComponentWear({
       components: car.components,
@@ -3188,7 +3631,7 @@ export function advanceRace(
     const referenceSpeed = trackDynamicsAt(config.track, car.progress).referenceSpeedKph
     const allowedVscSpeed = Math.max(
       35,
-      referenceSpeed * phaseThreeTuning.vscPace,
+      referenceSpeed * phaseThreeTuning.vscMinimumTimePace,
     )
     const vscDeltaSeconds =
       phase?.flag === 'vsc'
@@ -3203,21 +3646,26 @@ export function advanceRace(
             ),
           )
         : 0
+    const vscSectorTracking =
+      phase?.flag === 'vsc'
+        ? advanceVscMarshallingSectorTracking({
+            lastMeasuredSector: car.vscLastMeasuredMiniSector ?? null,
+            nextDeltaSeconds: vscDeltaSeconds,
+            nextTotalDistance: totalDistance,
+            previousDeltaSeconds: car.vscDeltaSeconds,
+            previousTotalDistance: car.totalDistance,
+            redSectorCount: car.vscRedSectorCount ?? 0,
+            sectorsPerLap: MINI_SECTOR_COUNT,
+          })
+        : { lastMeasuredSector: null, redSectorCount: 0 }
     const hasUnlappedUnderSafetyCar =
       phase?.flag === 'sc' &&
       (car.hasUnlappedUnderSafetyCar ||
-        (mayUnlap && totalDistance >= leaderDistance - 0.08))
-
-    if (hasUnlappedUnderSafetyCar && !car.hasUnlappedUnderSafetyCar) {
-      newEvents.push(
-        makeEvent(
-          `unlapped-${car.driverId}-${phase?.id ?? 'sc'}`,
-          'flag',
-          elapsedSeconds,
-          `${car.code} has rejoined the lead-lap Safety Car queue.`,
-        ),
-      )
-    }
+        Boolean(
+          safetyCarProcedure?.unlappingRejoinedDriverIds.includes(
+            car.driverId,
+          ),
+        ))
 
     const currentLapSectorTimes = measuredSectorTimesAfterTravel({
       current: car.currentLapSectorTimes,
@@ -3248,6 +3696,15 @@ export function advanceRace(
       battlePhaseUntilSeconds,
       battleDeltaSecondsRemaining,
       ...displayTelemetry,
+      speedKph: scPitLaneTransit
+        ? Math.min(
+            displayTelemetry.speedKph,
+            config.track.pitLane?.speedLimitKph ?? 80,
+          )
+        : displayTelemetry.speedKph,
+      throttlePercent: scPitLaneTransit
+        ? Math.min(displayTelemetry.throttlePercent, 38)
+        : displayTelemetry.throttlePercent,
       overtakeEligibility,
       timedRunPhase: timedRun.phase,
       racePaceMode,
@@ -3262,6 +3719,7 @@ export function advanceRace(
       brakeTemperatureC,
       brakeOverheatSeconds,
       blueFlag,
+      blueFlagSinceSeconds,
       warningLightsUntilSeconds:
         car.warningLightsUntilSeconds !== null &&
         elapsedSeconds >= car.warningLightsUntilSeconds
@@ -3270,16 +3728,57 @@ export function advanceRace(
       components,
       hasUnlappedUnderSafetyCar,
       pitPhase:
-        car.pitExitUntilSeconds !== null &&
+        scPitLaneTransit
+          ? 'lane'
+          : car.pitExitUntilSeconds !== null &&
         elapsedSeconds < car.pitExitUntilSeconds
           ? 'exit'
           : 'none',
       pitLaneProgress:
-        car.pitExitUntilSeconds !== null &&
+        scPitLaneTransit
+          ? totalDistance - Math.floor(totalDistance)
+          : car.pitExitUntilSeconds !== null &&
         elapsedSeconds < car.pitExitUntilSeconds
           ? (car.pitLaneProgress ?? config.track.pitLane?.exitProgress ?? 0.13)
           : null,
+      pitStartedAtSeconds: scPitLaneTransit
+        ? (car.pitStartedAtSeconds ?? elapsedSeconds)
+        : car.pitPhase === 'lane' && car.pitServiceKind === null
+          ? null
+          : car.pitStartedAtSeconds,
       vscDeltaSeconds,
+      vscRedSectorCount: vscSectorTracking.redSectorCount,
+      vscLastMeasuredMiniSector: vscSectorTracking.lastMeasuredSector,
+    }
+
+    const blueFlagIgnoredForSeconds =
+      blueFlagSinceSeconds === null
+        ? 0
+        : elapsedSeconds - blueFlagSinceSeconds
+    if (
+      ignoresBlueFlag &&
+      blueFlagIgnoredForSeconds >= 5 &&
+      !next.penalties.some((penalty) =>
+        penalty.reason.startsWith('Failing to respect blue flags'),
+      )
+    ) {
+      const decision = blueFlagDecision(blueFlagIgnoredForSeconds)
+      const decisionId = `blue-flag-penalty-${driver.id}-${Math.floor(blueFlagSinceSeconds!)}`
+      newEvents.push(
+        makeEvent(
+          decisionId,
+          'penalty',
+          elapsedSeconds,
+          `${driver.code} receives ${penaltyLabel(decision)} for failing to respect blue flags (${decision.article}).`,
+        ),
+      )
+      next = applyStewardPenalty(
+        next,
+        decision,
+        decisionId,
+        elapsedSeconds,
+        raceLaps,
+      )
     }
 
     // Evaluate close racing at most once per twelfth of a lap. This keeps the
@@ -3289,6 +3788,45 @@ export function advanceRace(
 
     if (isRaceDistance && battleSegment > car.processedBattleSegment) {
       next = { ...next, processedBattleSegment: battleSegment }
+
+      if (localControlPhase?.flag === 'yellow') {
+        const complianceId = `yellow-compliance-${localControlPhase.id}-${driver.id}`
+        const alreadyReviewed =
+          snapshot.events.some(({ id }) => id === complianceId) ||
+          newEvents.some(({ id }) => id === complianceId)
+        const failsToSlow =
+          !alreadyReviewed &&
+          hashChance(
+            `${config.seed}:${complianceId}:${battleSegment}`,
+          ) <
+            0.0006 +
+              Math.max(
+                0,
+                1 - driverPerformanceAbility(driver, 'raceAwareness'),
+              ) *
+                0.012
+
+        if (failsToSlow) {
+          const decision = yellowFlagDecision(
+            localControlPhase.yellowSeverity === 'double',
+          )
+          newEvents.push(
+            makeEvent(
+              complianceId,
+              'penalty',
+              elapsedSeconds,
+              `${driver.code} receives ${penaltyLabel(decision)} for failing to slow for ${localControlPhase.yellowSeverity === 'double' ? 'double yellow' : 'yellow'} flags in sector ${localControlPhase.sector + 1} (${decision.article}).`,
+            ),
+          )
+          next = applyStewardPenalty(
+            next,
+            decision,
+            complianceId,
+            elapsedSeconds,
+            raceLaps,
+          )
+        }
+      }
 
       if (
         !controlPhase &&
@@ -3330,19 +3868,43 @@ export function advanceRace(
               ),
             )
 
-            if (battle.kind === 'contact' || battle.kind === 'crash') {
+            if (battle.stewardReview) {
+              const review = battle.stewardReview
+              const investigatedDriver = drivers.get(
+                review.investigatedDriverId,
+              )
+              const otherDriver = drivers.get(review.otherDriverId)
+              const caseId = `investigation-contact-${review.investigatedDriverId}-${review.otherDriverId}-${battleSegment}`
+              const stewardCase: StewardCase = {
+                id: caseId,
+                openedAtSeconds: elapsedSeconds,
+                resolveAtSeconds: elapsedSeconds + 22,
+                driverId: review.investigatedDriverId,
+                otherDriverId: review.otherDriverId,
+                offence: review.offence,
+                article: 'ISC App. L Ch. IV 2(d)',
+                responsibilityShare: review.responsibilityShare,
+                consequence: review.consequence,
+              }
+
+              if (!stewardCases.some(({ id }) => id === caseId)) {
+                stewardCases.push(stewardCase)
+              }
               newEvents.push(
                 makeEvent(
-                  `investigation-contact-${driver.id}-${defender.id}-${battleSegment}`,
+                  caseId,
                   'investigation',
                   elapsedSeconds,
-                  `Stewards investigating contact between ${driver.code} and ${defender.code}.`,
+                  `INCIDENT NOTED: stewards investigating ${investigatedDriver?.code ?? driver.code} and ${otherDriver?.code ?? defender.code} after contact in sector ${battle.sector + 1}.`,
                 ),
               )
-              next = {
-                ...next,
-                stewardStatus: 'investigating',
-                stewardNote: `Contact with ${defender.code} under review`,
+
+              if (review.investigatedDriverId === driver.id) {
+                next = {
+                  ...next,
+                  stewardStatus: 'investigating',
+                  stewardNote: `Contact with ${defender.code} under review`,
+                }
               }
             }
 
@@ -3395,6 +3957,7 @@ export function advanceRace(
                 durationSeconds: battle.flagDurationSeconds,
                 id: `battle-phase-${driver.id}-${defender.id}-${battleSegment}`,
                 response: battle.flagResponse,
+                safetyCarUsesPitLane: battle.safetyCarUsesPitLane,
                 sector: battle.sector,
                 startSeconds: elapsedSeconds,
               })
@@ -3441,6 +4004,8 @@ export function advanceRace(
         processedLap: lap,
         overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
         energyHarvestedThisLapMj: 0,
+        energyDeployedThisLapMj: 0,
+        superClippingRecoveredThisLapMj: 0,
       }
       const frameDistance = Math.max(
         0.000001,
@@ -3846,13 +4411,24 @@ export function advanceRace(
 
       // Incidents only roll under green (restart laps are riskier).
       if (isRaceDistance && !controlPhase) {
-        const incident = incidentForLap(config.seed, driver, team, lap, riskMultiplier)
+        const incident = incidentForLap(
+          config.seed,
+          driver,
+          team,
+          lap,
+          riskMultiplier,
+          {
+            pressure: Math.max(0, 1 - car.gapToAhead / 3),
+            tireWearPercent: car.tireWearPercent,
+            weather: snapshot.weather,
+          },
+        )
 
         if (incident) {
           newEvents.push(
             makeEvent(
               `incident-${driver.id}-${lap}`,
-              'incident',
+              incident.classification,
               elapsedSeconds,
               incident.message,
             ),
@@ -3863,6 +4439,7 @@ export function advanceRace(
               durationSeconds: incident.flagDurationSeconds,
               id: `phase-${driver.id}-${lap}`,
               response: incident.flagResponse,
+              safetyCarUsesPitLane: incident.safetyCarUsesPitLane,
               sector: incident.sector,
               startSeconds: elapsedSeconds,
             })
@@ -3963,6 +4540,12 @@ export function advanceRace(
           driver.id,
           driverPerformanceAbility(driver, 'raceAwareness'),
           lap,
+          {
+            pressure: Math.max(0, 1 - next.gapToAhead / 2.5),
+            tireWearPercent: next.tireWearPercent,
+            trackGrip: localTrackGrip,
+            weather: localWeather,
+          },
         )
       ) {
         const warnings = next.trackLimitWarnings + 1
@@ -3983,7 +4566,7 @@ export function advanceRace(
             elapsedSeconds,
             escalated
               ? `${driver.code} gets a +${penaltyDelta}s time penalty for track limits (${warnings} warnings).`
-              : `Track limits: lap deleted warning for ${driver.code} (${warnings}).`,
+              : `Track limits: strike ${warnings} for ${driver.code}.`,
           ),
         )
 
@@ -4021,36 +4604,64 @@ export function advanceRace(
               ? `Track limits warning ${warnings}`
               : next.stewardNote,
         }
-      }
 
-      if (
-        phase?.flag === 'vsc' &&
-        next.vscDeltaSeconds < -0.25 &&
-        !next.penalties.some((penalty) => penalty.reason === 'VSC delta')
-      ) {
-        newEvents.push(
-          makeEvent(
-            `vsc-delta-${driver.id}-${lap}`,
-            'penalty',
-            elapsedSeconds,
-            `${driver.code} exceeds the VSC delta and receives a +5s penalty.`,
-          ),
+        const retainedAdvantageSeconds = Math.max(
+          0,
+          next.battleDeltaSecondsRemaining,
         )
-        next = {
-          ...next,
-          penaltySeconds: next.penaltySeconds + 5,
-          penalties: [
-            ...next.penalties,
-            makePenalty(
-              `vsc-delta-${driver.id}-${lap}`,
-              'time-5',
-              'VSC delta',
+        const excursionDetail = hashChance(
+          `${config.seed}:track-excursion:${driver.id}:${lap}`,
+        )
+        const unsafeRejoin =
+          excursionDetail > 0.975 &&
+          (next.gapToAhead < 1.2 || localTrackGrip < 0.78)
+        const gainedLastingAdvantage =
+          !unsafeRejoin && retainedAdvantageSeconds > 0.15
+
+        if (unsafeRejoin || gainedLastingAdvantage) {
+          const caseId = `investigation-excursion-${driver.id}-${lap}`
+          const consequence = unsafeRejoin
+            ? localTrackGrip < 0.66 || next.gapToAhead < 0.45
+              ? ('significant' as const)
+              : ('minor' as const)
+            : retainedAdvantageSeconds > 1.5
+              ? ('major' as const)
+              : retainedAdvantageSeconds > 0.75
+                ? ('significant' as const)
+                : ('minor' as const)
+          stewardCases.push({
+            id: caseId,
+            openedAtSeconds: elapsedSeconds,
+            resolveAtSeconds: elapsedSeconds + 18,
+            driverId: driver.id,
+            otherDriverId: unsafeRejoin ? snapshot.cars[index - 1]?.driverId ?? null : null,
+            offence: unsafeRejoin
+              ? 'unsafe-rejoin'
+              : 'leaving-track-advantage',
+            article: unsafeRejoin
+              ? 'B1.8.6 / ISC App. L Ch. IV 2(c)'
+              : 'B1.9.6 / ISC App. L Ch. IV 2(c)',
+            responsibilityShare: 1,
+            consequence,
+            advantageSeconds: retainedAdvantageSeconds,
+          })
+          newEvents.push(
+            makeEvent(
+              caseId,
+              'investigation',
               elapsedSeconds,
-              5,
+              unsafeRejoin
+                ? `INCIDENT NOTED: ${driver.code} investigated for an unsafe rejoin in sector ${carSector + 1}.`
+                : `INCIDENT NOTED: ${driver.code} investigated for leaving the track and retaining an advantage.`,
             ),
-          ],
-          stewardStatus: 'penalty',
-          stewardNote: 'VSC delta +5s',
+          )
+          next = {
+            ...next,
+            stewardStatus: 'investigating',
+            stewardNote: unsafeRejoin
+              ? 'Unsafe rejoin under review'
+              : 'Off-track advantage under review',
+          }
         }
       }
 
@@ -4103,11 +4714,29 @@ export function advanceRace(
       const pitLaneOccupancy =
         snapshot.cars.filter((candidate) => candidate.status === 'pit').length +
         teamsPittingThisFrame.size
-      const proceduralPenalty = next.penalties.find(
+      let proceduralPenalty = next.penalties.find(
         (penalty) =>
           !penalty.served &&
           (penalty.kind === 'drive-through' || penalty.kind === 'stop-go-10'),
       )
+
+      if (
+        proceduralPenalty?.mustServeByLap !== null &&
+        proceduralPenalty?.mustServeByLap !== undefined &&
+        (controlPhase?.flag === 'sc' || controlPhase?.flag === 'vsc')
+      ) {
+        const extendedPenalty = {
+          ...proceduralPenalty,
+          mustServeByLap: proceduralPenalty.mustServeByLap + 1,
+        }
+        proceduralPenalty = extendedPenalty
+        next = {
+          ...next,
+          penalties: next.penalties.map((penalty) =>
+            penalty.id === extendedPenalty.id ? extendedPenalty : penalty,
+          ),
+        }
+      }
 
       if (
         proceduralPenalty?.mustServeByLap !== null &&
@@ -4198,8 +4827,6 @@ export function advanceRace(
               repairsDamage,
               modeledPitLaneLossSeconds,
             )
-        const loss =
-          baseLoss + (servesProceduralPenalty ? 0 : servedPenalty)
         const doubleStackRisk = !servesProceduralPenalty && teammateInPit
         const pitExitGapSeconds = snapshot.cars
           .filter(
@@ -4213,11 +4840,29 @@ export function advanceRace(
                 closest,
                 Math.abs(candidate.totalDistance - projectedRejoinDistance) *
                   baseLapTime,
-              ),
+            ),
             Number.POSITIVE_INFINITY,
           )
-        const releaseNoted = pitExitGapSeconds < 0.8
-        const unsafeRelease = pitExitGapSeconds < 0.42
+        const releaseConflict = pitExitGapSeconds < 0.42
+        const unsafeReleaseChance =
+          0.008 +
+          (1 - clamp01(team.pitCrewSpeed)) * 0.04 +
+          (doubleStackRisk ? 0.015 : 0)
+        const unsafeRelease =
+          releaseConflict &&
+          hashChance(`${config.seed}:unsafe-release-error:${driver.id}:${lap}`) <
+            unsafeReleaseChance
+        const safeReleaseHoldSeconds =
+          releaseConflict && !unsafeRelease && !servesProceduralPenalty
+            ? Math.min(
+                1.8,
+                Math.max(0.25, (0.5 - pitExitGapSeconds) * 3.5),
+              )
+            : 0
+        const loss =
+          baseLoss +
+          (servesProceduralPenalty ? 0 : servedPenalty) +
+          safeReleaseHoldSeconds
         const speedViolation =
           hashChance(`${config.seed}:pit-speed:${driver.id}:${lap}`) <
           0.003 +
@@ -4226,10 +4871,16 @@ export function advanceRace(
               1 - driverPerformanceAbility(driver, 'raceAwareness'),
             ) *
               0.018
-        const pitOverspeedKph = speedViolation
-          ? 0.3 +
-            hashChance(`${config.seed}:pit-speed-value:${driver.id}:${lap}`) * 2.1
-          : 0
+        const pitSpeedSeverity = hashChance(
+          `${config.seed}:pit-speed-severity:${driver.id}:${lap}`,
+        )
+        const pitOverspeedKph = !speedViolation
+          ? 0
+          : pitSpeedSeverity < 0.86
+            ? 0.3 + pitSpeedSeverity / 0.86 * 5.5
+            : pitSpeedSeverity < 0.985
+              ? 6 + (pitSpeedSeverity - 0.86) / 0.125 * 9
+              : 15.1 + (pitSpeedSeverity - 0.985) / 0.015 * 9.9
 
         newEvents.push(
           makeEvent(
@@ -4253,64 +4904,55 @@ export function advanceRace(
           )
         }
 
-        if (releaseNoted && !servesProceduralPenalty) {
+        if (safeReleaseHoldSeconds > 0) {
+          newEvents.push(
+            makeEvent(
+              `safe-release-hold-${driver.id}-${lap}`,
+              'pit',
+              elapsedSeconds,
+              `${driver.code} is held for ${safeReleaseHoldSeconds.toFixed(1)}s to clear pit-lane traffic.`,
+            ),
+          )
+        }
+
+        if (unsafeRelease && !servesProceduralPenalty) {
+          const releaseDecision = unsafeReleaseDecision({
+            gapSeconds: pitExitGapSeconds,
+          })
           newEvents.push(
             makeEvent(
               `unsafe-release-${driver.id}-${lap}`,
-              unsafeRelease ? 'penalty' : 'investigation',
+              'penalty',
               elapsedSeconds,
-              unsafeRelease
-                ? `${driver.code} receives a +5s penalty for an unsafe release.`
-                : `${driver.code} release noted by Race Control at pit exit.`,
+              `${driver.code} receives ${penaltyLabel(releaseDecision)} for an unsafe release (${releaseDecision.article}).`,
             ),
           )
-          next = {
-            ...next,
-            penaltySeconds: next.penaltySeconds + (unsafeRelease ? 5 : 0),
-            penalties: unsafeRelease
-              ? [
-                  ...next.penalties,
-                  makePenalty(
-                    `unsafe-release-${driver.id}-${lap}`,
-                    'time-5',
-                    'Unsafe release',
-                    elapsedSeconds,
-                    5,
-                  ),
-              ]
-              : next.penalties,
-            stewardStatus: unsafeRelease ? 'penalty' : 'investigating',
-            stewardNote: unsafeRelease
-              ? 'Unsafe release +5s'
-              : 'Pit release under review',
-          }
+          next = applyStewardPenalty(
+            next,
+            releaseDecision,
+            `unsafe-release-${driver.id}-${lap}`,
+            elapsedSeconds,
+            raceLaps,
+          )
         }
 
         if (speedViolation) {
+          const speedDecision = pitLaneSpeedingDecision(pitOverspeedKph)
           newEvents.push(
             makeEvent(
               `pit-speed-${driver.id}-${lap}`,
               'penalty',
               elapsedSeconds,
-              `${driver.code} gets a +5s penalty for pit-lane speed (+${pitOverspeedKph.toFixed(1)} km/h).`,
+              `${driver.code} receives ${penaltyLabel(speedDecision)} for pit-lane speeding (+${pitOverspeedKph.toFixed(1)} km/h, ${speedDecision.article}).`,
             ),
           )
-          next = {
-            ...next,
-            penaltySeconds: next.penaltySeconds + 5,
-            penalties: [
-              ...next.penalties,
-              makePenalty(
-                `pit-speed-${driver.id}-${lap}`,
-                'time-5',
-                'Pit-lane speed',
-                elapsedSeconds,
-                5,
-              ),
-            ],
-            stewardStatus: 'penalty',
-            stewardNote: 'Pit-lane speed +5s',
-          }
+          next = applyStewardPenalty(
+            next,
+            speedDecision,
+            `pit-speed-${driver.id}-${lap}`,
+            elapsedSeconds,
+            raceLaps,
+          )
         }
 
         next = {
@@ -4660,8 +5302,13 @@ export function advanceRace(
       : null
   const sectorFlags = sectorFlagStatesFor(
     nextFlag,
-    phase?.flag === 'yellow' ? phase.sector : null,
-    activeTimedDoubleYellowSector,
+    phase?.flag === 'yellow' && phase.yellowSeverity !== 'double'
+      ? phase.sector
+      : null,
+    activeTimedDoubleYellowSector ??
+      (phase?.flag === 'yellow' && phase.yellowSeverity === 'double'
+        ? phase.sector
+        : null),
   )
 
   const nextSnapshot: RaceSnapshot = {
@@ -4702,7 +5349,7 @@ export function advanceRace(
     sectorFlags,
     restartUntilSeconds,
     fuelEffectSeconds: fuelMassEffects({
-      fuelLoadKg: leader.fuelLoadKg,
+      fuelLoadKg: leader.fuelLoadKg + heatHazardMassIncreaseKg,
       track: config.track,
     }).lapTimeDeltaSeconds,
     trackEvolutionLevel: trackEvolutionLevelFor(
@@ -4712,6 +5359,9 @@ export function advanceRace(
     weather,
     weatherLabel: weatherLabelFor(weather),
     weatherForecastLabel: weatherForecast.label,
+    heatHazardDeclared,
+    heatIndexC,
+    heatHazardMassIncreaseKg,
     rainHazardDeclared,
     lowGripConditions,
     trackGrip,
@@ -4728,6 +5378,8 @@ export function advanceRace(
     timedYellowUntilSeconds,
     timedYellowSector,
     pitLaneOpen,
+    pitExitOpen,
+    stewardCases,
     weekend: snapshot.weekend,
     events,
   }

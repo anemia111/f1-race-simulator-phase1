@@ -27,13 +27,14 @@ import type {
   CarSetup,
   DriverTunableStat,
   GridSource,
+  MachineTunableStat,
   Team,
   TrackDefinition,
   WeekendStage,
   WeekendContext,
 } from '../types'
 
-type TeamStat = 'cornering' | 'straightLine' | 'reliability' | 'pitCrewSpeed'
+type TeamStat = MachineTunableStat | 'pitCrewSpeed'
 type DriverStat = DriverTunableStat
 
 type SetupPanelProps = {
@@ -80,8 +81,35 @@ type SetupPanelProps = {
 }
 
 const teamStats: Array<{ key: TeamStat; label: string }> = [
-  { key: 'cornering', label: 'Cornering' },
-  { key: 'straightLine', label: 'Straight' },
+  { key: 'lowSpeedCornerPerformance', label: 'Low-speed corner' },
+  { key: 'mediumSpeedCornerPerformance', label: 'Mid-speed corner' },
+  { key: 'highSpeedCornerPerformance', label: 'High-speed corner' },
+  { key: 'mechanicalGrip', label: 'Mechanical grip' },
+  { key: 'traction', label: 'Traction' },
+  { key: 'brakingStability', label: 'Brake stability' },
+  { key: 'brakingPerformance', label: 'Braking force' },
+  { key: 'aerodynamicEfficiency', label: 'Aero efficiency' },
+  { key: 'downforceGeneration', label: 'Downforce' },
+  { key: 'dragEfficiency', label: 'Drag efficiency' },
+  { key: 'straightLineEfficiency', label: 'Straight efficiency' },
+  { key: 'activeAeroEfficiency', label: 'Active aero' },
+  { key: 'towSensitivity', label: 'Tow response' },
+  { key: 'dirtyAirTolerance', label: 'Dirty-air tolerance' },
+  { key: 'tireWarmup', label: 'Tire warmup' },
+  { key: 'tireDegManagement', label: 'Tire degradation' },
+  { key: 'frontTireManagement', label: 'Front tire load' },
+  { key: 'rearTireManagement', label: 'Rear tire load' },
+  { key: 'wetPerformance', label: 'Wet performance' },
+  { key: 'intermediatePerformance', label: 'Intermediate perf.' },
+  { key: 'kerbHandling', label: 'Kerb handling' },
+  { key: 'rideCompliance', label: 'Ride compliance' },
+  { key: 'bumpTolerance', label: 'Bump tolerance' },
+  { key: 'coolingEfficiency', label: 'Cooling' },
+  { key: 'brakeCooling', label: 'Brake cooling' },
+  { key: 'puOutput', label: 'PU output' },
+  { key: 'electricalDeploymentEfficiency', label: 'ERS deployment' },
+  { key: 'energyRecoveryEfficiency', label: 'Energy recovery' },
+  { key: 'fuelEfficiency', label: 'Fuel efficiency' },
   { key: 'reliability', label: 'Reliability' },
   { key: 'pitCrewSpeed', label: 'Pit crew' },
 ]
@@ -89,17 +117,39 @@ const teamStats: Array<{ key: TeamStat; label: string }> = [
 const driverStats: Array<{ key: DriverStat; label: string }> = [
   { key: 'qualifyingPace', label: 'Qualifying' },
   { key: 'racePace', label: 'Race pace' },
+  { key: 'rawPace', label: 'Raw pace' },
+  { key: 'brakingSkill', label: 'Braking' },
+  { key: 'lowSpeedCornerSkill', label: 'Low-speed corner' },
+  { key: 'mediumSpeedCornerSkill', label: 'Mid-speed corner' },
+  { key: 'highSpeedCornerSkill', label: 'High-speed corner' },
+  { key: 'tractionControl', label: 'Traction' },
+  { key: 'throttleControl', label: 'Throttle' },
   { key: 'consistency', label: 'Consistency' },
   { key: 'tireManagement', label: 'Tire mgmt' },
-  { key: 'overtaking', label: 'Overtake' },
-  { key: 'defense', label: 'Defense' },
+  { key: 'tireWarmupSkill', label: 'Tire warmup' },
+  { key: 'overtakingSkill', label: 'Overtake' },
+  { key: 'defendingSkill', label: 'Defense' },
+  { key: 'racecraft', label: 'Racecraft' },
   { key: 'wetSkill', label: 'Wet skill' },
-  { key: 'starts', label: 'Starts' },
-  { key: 'braking', label: 'Braking' },
-  { key: 'cornering', label: 'Cornering' },
+  { key: 'intermediateSkill', label: 'Intermediate' },
+  { key: 'mistakeResistance', label: 'Mistake resistance' },
+  { key: 'pressureHandling', label: 'Pressure' },
+  { key: 'trafficManagement', label: 'Traffic' },
+  { key: 'dirtyAirManagement', label: 'Dirty air' },
+  { key: 'fuelManagement', label: 'Fuel management' },
+  { key: 'ersManagement', label: 'ERS management' },
+  { key: 'restartSkill', label: 'Restarts' },
+  { key: 'startSkill', label: 'Starts' },
+  { key: 'confidence', label: 'Confidence' },
+  { key: 'precision', label: 'Precision' },
   { key: 'raceAwareness', label: 'Awareness' },
   { key: 'adaptability', label: 'Adaptability' },
+  { key: 'carBalanceAdaptation', label: 'Balance adaptation' },
 ]
+
+function teamStatValue(team: Team, stat: TeamStat) {
+  return stat === 'pitCrewSpeed' ? team.pitCrewSpeed : team.machine[stat]
+}
 
 const componentRows: Array<{ key: keyof CarComponents; label: string }> = [
   { key: 'ice', label: 'ICE' },
@@ -479,7 +529,7 @@ export function SetupPanel({
             key={stat.key}
             label={stat.label}
             onChange={(value) => onTeamStatChange(selectedTeam.id, stat.key, value)}
-            value={selectedTeam[stat.key]}
+            value={teamStatValue(selectedTeam, stat.key)}
           />
         ))}
       </div>
@@ -581,7 +631,7 @@ export function SetupPanel({
         <div className="driver-overall-rating">
           <span>Overall ability</span>
           <strong>{driverOverallAbilityPoints(selectedDriver)}</strong>
-          <small>12-stat mean</small>
+          <small>30-skill mean</small>
         </div>
         <div className="driver-ability-grid">
           {driverStats.map((stat) => (

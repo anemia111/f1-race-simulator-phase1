@@ -1,5 +1,4 @@
-import type { Driver, RaceConfig, Team } from '../types'
-import { DRIVER_ABILITY_INTERNAL_MAX } from './driverAbility'
+import type { RaceConfig } from '../types'
 import {
   runPracticeSession,
   type PracticeSessionName,
@@ -160,56 +159,9 @@ export function buildPracticeSetupSummary(
 
 export function applyPracticeSetup(
   config: RaceConfig,
-  summary: PracticeSetupSummary,
+  _summary: PracticeSetupSummary,
 ): RaceConfig {
-  const teamSummaries = new Map(summary.teamSummaries.map((team) => [team.teamId, team]))
-  const driverSummaries = new Map(
-    summary.driverSummaries.map((driver) => [driver.driverId, driver]),
-  )
-
-  return {
-    ...config,
-    drivers: config.drivers.map((driver) => applyDriverSetup(driver, driverSummaries)),
-    teams: config.teams.map((team) => applyTeamSetup(team, teamSummaries)),
-  }
-}
-
-function applyTeamSetup(team: Team, summaries: Map<string, TeamSetupSummary>): Team {
-  const summary = summaries.get(team.id)
-
-  if (!summary) {
-    return team
-  }
-
-  return {
-    ...team,
-    cornering: clamp(team.cornering + summary.aeroDelta, 0.55, 1),
-    reliability: clamp(team.reliability + summary.coolingDelta, 0.55, 1),
-    straightLine: clamp(team.straightLine + summary.aeroDelta * 0.28, 0.55, 1),
-  }
-}
-
-function applyDriverSetup(
-  driver: Driver,
-  summaries: Map<string, DriverSetupSummary>,
-): Driver {
-  const summary = summaries.get(driver.id)
-
-  if (!summary) {
-    return driver
-  }
-
-  return {
-    ...driver,
-    consistency: clamp(
-      driver.consistency + summary.setupDelta * 0.8,
-      0.55,
-      DRIVER_ABILITY_INTERNAL_MAX,
-    ),
-    tireManagement: clamp(
-      driver.tireManagement + summary.setupDelta,
-      0.55,
-      DRIVER_ABILITY_INTERNAL_MAX,
-    ),
-  }
+  // Practice improves the persisted car setup and confidence in WeekendContext.
+  // It must never develop the team's physical baseline or the driver's skills.
+  return config
 }

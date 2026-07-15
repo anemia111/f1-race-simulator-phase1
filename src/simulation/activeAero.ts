@@ -231,18 +231,6 @@ export function overtakeStatusFor(options: {
   return car.totalDistance < activationDistance ? 'available' : 'disabled'
 }
 
-export function activeAeroSpeedGainKph(mode: ActiveAeroMode) {
-  if (mode === 'straight') {
-    return 16
-  }
-
-  if (mode === 'partial-straight') {
-    return 7
-  }
-
-  return 0
-}
-
 function standardDeploymentLimitKw(speedKph: number) {
   if (speedKph >= 345) {
     return 0

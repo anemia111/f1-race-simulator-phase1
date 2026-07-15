@@ -11,6 +11,7 @@ import type {
   WeatherState,
 } from '../types'
 import { hashChance } from './random'
+import { driverAbilityValue, driverSkillBlend } from './driverAbility'
 import {
   chooseCompound,
   compoundMatchesWeather,
@@ -174,7 +175,7 @@ function observedStopTarget(options: {
 
   const variation =
     (hashChance(`${seed}:observed-stop-target:${driver.id}`) - 0.5) * 0.7 +
-    (0.8 - driver.tireManagement) * 0.45
+    (0.8 - driverAbilityValue(driver, 'tireManagement')) * 0.45
 
   return Math.max(0, Math.min(4, Math.round(observed + variation)))
 }
@@ -252,7 +253,7 @@ export function decidePitStop(options: {
 
   const cliff = effectiveCliffLaps(
     car.tire,
-    driver.tireManagement,
+    driverAbilityValue(driver, 'tireManagement'),
     tireNomination,
   )
   const observedStintLaps =
@@ -472,7 +473,11 @@ export function decidePitStop(options: {
   ) {
     const roll =
       hashChance(`${seed}:undercut:${driver.id}:${lap}`) +
-      (driver.overtaking ?? driver.speed) * 0.18
+      driverSkillBlend(driver, {
+        overtakingSkill: 0.65,
+        raceAwareness: 0.2,
+        trafficManagement: 0.15,
+      }) * 0.18
 
     if (roll > 0.58) {
       return { compound, reason: 'undercut' }
@@ -487,7 +492,7 @@ export function decidePitStop(options: {
     closeBehind &&
     age >= strategicCliff - 2 &&
     age <= strategicCliff + 2 &&
-    driver.tireManagement > 0.8 &&
+    driverAbilityValue(driver, 'tireManagement') > 0.8 &&
     hashChance(`${seed}:overcut-hold:${driver.id}:${lap}`) < 0.64
   ) {
     return null
@@ -506,7 +511,10 @@ export function decidePitStop(options: {
   if (age >= strategicCliff + 2) {
     return {
       compound,
-      reason: frontRunner && driver.tireManagement > 0.84 ? 'overcut' : 'wear',
+      reason:
+        frontRunner && driverAbilityValue(driver, 'tireManagement') > 0.84
+          ? 'overcut'
+          : 'wear',
     }
   }
 
@@ -579,7 +587,7 @@ export function strategyOutlookFor(options: {
   } = options
   const cliff = effectiveCliffLaps(
     car.tire,
-    driver.tireManagement,
+    driverAbilityValue(driver, 'tireManagement'),
     tireNomination,
   )
   const observedStintLaps =

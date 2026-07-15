@@ -2689,11 +2689,6 @@
   gap: 4px;
 }
 
-.timing-overview-table .center-table-head,
-.timing-overview-table li > button {
-  grid-template-columns: 22px 34px 34px 43px 43px 43px minmax(58px, 1fr) minmax(58px, 1fr) 50px 50px;
-}
-
 .telemetry-table .center-table-head,
 .telemetry-table li > div {
   grid-template-columns: 42px 34px 34px 34px 30px 48px 34px minmax(62px, 1fr) 28px;

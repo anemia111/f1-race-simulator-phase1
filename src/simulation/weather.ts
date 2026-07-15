@@ -54,6 +54,59 @@ export function simulatedTemperaturesFor(
   return { airTemperatureC, trackTemperatureC }
 }
 
+export function simulatedHumidityPercentFor(
+  track: Pick<TrackDefinition, 'rainProbability'>,
+  weather: WeatherState,
+) {
+  return Math.round(
+    Math.min(
+      96,
+      42 + track.rainProbability * 46 + (weather === 'clear' ? 0 : 18),
+    ),
+  )
+}
+
+/** NOAA Rothfusz regression, returned in Celsius for B1.5.10 declarations. */
+export function heatIndexCFor(
+  airTemperatureC: number,
+  relativeHumidityPercent: number,
+) {
+  if (airTemperatureC < 26.7 || relativeHumidityPercent < 40) {
+    return airTemperatureC
+  }
+
+  const temperatureF = (airTemperatureC * 9) / 5 + 32
+  const humidity = Math.min(100, Math.max(0, relativeHumidityPercent))
+  let heatIndexF =
+    -42.379 +
+    2.04901523 * temperatureF +
+    10.14333127 * humidity -
+    0.22475541 * temperatureF * humidity -
+    0.00683783 * temperatureF * temperatureF -
+    0.05481717 * humidity * humidity +
+    0.00122874 * temperatureF * temperatureF * humidity +
+    0.00085282 * temperatureF * humidity * humidity -
+    0.00000199 * temperatureF * temperatureF * humidity * humidity
+
+  if (humidity < 13 && temperatureF >= 80 && temperatureF <= 112) {
+    heatIndexF -=
+      ((13 - humidity) / 4) *
+      Math.sqrt((17 - Math.abs(temperatureF - 95)) / 17)
+  } else if (humidity > 85 && temperatureF >= 80 && temperatureF <= 87) {
+    heatIndexF +=
+      ((humidity - 85) / 10) * ((87 - temperatureF) / 5)
+  }
+
+  return ((heatIndexF - 32) * 5) / 9
+}
+
+export function heatHazardMassIncreaseKgFor(options: {
+  competitionDeclared: boolean
+  sessionDeclared: boolean
+}) {
+  return options.sessionDeclared ? 5 : options.competitionDeclared ? 2 : 0
+}
+
 function weatherForSegment(
   seed: string,
   track: TrackDefinition,

@@ -2,9 +2,18 @@
 // pit-release plans and ranks legal flying laps for the race grid.
 
 import type { CarSetup, Driver, RaceConfig, Team, TireCompound, WeatherState } from '../types'
-import { driverPerformanceAbility } from './driverAbility'
+import {
+  driverAbilityValue,
+  driverPerformanceAbility,
+  driverSkillBlend,
+} from './driverAbility'
 import { practiceSetupRecommendation } from './engineering'
 import { hashChance } from './random'
+import { tireDeltaSeconds } from './tires'
+import {
+  fuelMassEffects,
+  performanceLapGainSeconds,
+} from './vehicleDynamics'
 import {
   FREE_PRACTICE_DURATION_SECONDS,
   QUALIFYING_BREAK_SECONDS,
@@ -191,14 +200,15 @@ function qualifyingRunLapTime(
   compound: TireCompound,
   run: number,
 ): number {
-  const carPerformanceGain =
-    team.cornering * 2.25 +
-    team.straightLine * 1.85 +
-    team.reliability * 0.28
-  const qualifyingPace = driverPerformanceAbility(driver, 'qualifyingPace')
+  const performanceGain = performanceLapGainSeconds({
+    driver,
+    session: 'qualifying',
+    team,
+    track: config.track,
+    weather,
+  })
   const consistency = driverPerformanceAbility(driver, 'consistency')
   const awareness = driverPerformanceAbility(driver, 'raceAwareness')
-  const driverGain = qualifyingPace * 3.75 + consistency * 1.05
   const segmentEvolution = segmentEvolutionFor(segment)
   const compoundPenalty = qualifyingCompoundPenalty(compound)
   const wetPenalty =
@@ -208,14 +218,21 @@ function qualifyingRunLapTime(
         ? 4.8 + (1 - wetSkill(driver)) * 2.7 + (1 - trackGrip) * 3.3
         : 10 + (1 - wetSkill(driver)) * 4.3 + (1 - trackGrip) * 5.6
   const key = `${seed}:qualifying:${segment}:${driver.id}:${run}`
-  const variance = (hashChance(`${key}:variance`) - 0.5) * 1.35
+  const variance =
+    (hashChance(`${key}:variance`) - 0.5) *
+    (1.45 - consistency * 0.65)
   const trafficLoss =
     segment === 'Q1' &&
     hashChance(`${key}:traffic`) < 0.12 + Math.max(0, 0.84 - awareness) * 0.12
       ? 0.15 + hashChance(`${key}:traffic-loss`) * 0.8
       : 0
-  const mistakeChance =
-    0.025 + Math.max(0, 1 - (consistency * 0.7 + awareness * 0.3)) * 0.16
+  const mistakeControl = driverSkillBlend(driver, {
+    consistency: 0.35,
+    mistakeResistance: 0.3,
+    precision: 0.2,
+    pressureHandling: 0.15,
+  })
+  const mistakeChance = 0.008 + Math.max(0, 1 - mistakeControl) * 0.12
   const mistake =
     hashChance(`${key}:mistake`) < mistakeChance
       ? 0.35 + hashChance(`${key}:mistake-loss`) * 3.8
@@ -224,8 +241,7 @@ function qualifyingRunLapTime(
   return Math.max(
     55,
     config.track.baseLapTime -
-      carPerformanceGain -
-      driverGain -
+      performanceGain -
       segmentEvolution +
       compoundPenalty +
       wetPenalty +
@@ -663,7 +679,6 @@ export function runPracticeSession(
     const reliabilityRoll = hashChance(`${config.seed}:practice:${stage}:${driver.id}:laps`)
     const adaptability = driverPerformanceAbility(driver, 'adaptability')
     const consistency = driverPerformanceAbility(driver, 'consistency')
-    const racePace = driverPerformanceAbility(driver, 'racePace')
     const wetPenalty =
       weather === 'clear'
         ? 0
@@ -682,26 +697,44 @@ export function runPracticeSession(
         Math.round(
           13 +
             reliabilityRoll * 10 +
-            team.reliability * 4 +
+            team.machine.reliability * 4 +
             consistency * 3 -
             (weather === 'heavy-rain' ? 4 : weather === 'light-rain' ? 1.5 : 0),
         ),
       ),
     )
+    const performanceGain = performanceLapGainSeconds({
+      driver,
+      session: 'race',
+      team,
+      track: config.track,
+      weather,
+    })
     const bestLapTimeSeconds =
       config.track.baseLapTime +
       1.9 -
-      racePace * 2.65 -
-      team.cornering * 1.6 -
-      team.straightLine * 1.2 +
+      performanceGain +
       wetPenalty +
       (hashChance(`${config.seed}:practice:${stage}:${driver.id}:best`) - 0.5) * 1.6
+    const longRunFuelDelta =
+      fuelMassEffects({ fuelLoadKg: 58, track: config.track }).lapTimeDeltaSeconds -
+      fuelMassEffects({ fuelLoadKg: 10, track: config.track }).lapTimeDeltaSeconds
+    const longRunTireDelta = tireDeltaSeconds(
+      'M',
+      8,
+      driverAbilityValue(driver, 'tireManagement'),
+      weather,
+      trackGrip,
+      96,
+      28,
+      config.track.tireNomination,
+    )
     const longRunPaceSeconds =
       bestLapTimeSeconds +
-      3.5 -
-      driver.tireManagement * 0.9 -
-      team.reliability * 0.25 +
-      hashChance(`${config.seed}:practice:${stage}:${driver.id}:long`) * 1.4
+      longRunFuelDelta +
+      longRunTireDelta +
+      hashChance(`${config.seed}:practice:${stage}:${driver.id}:long`) *
+        (1.25 - consistency * 0.45)
     const setupScore = Math.round(
       Math.max(
         1,
@@ -711,7 +744,7 @@ export function runPracticeSession(
             lapsCompleted * 1.45 +
             consistency * 13 +
             adaptability * 5 +
-            team.reliability * 14 +
+            team.machine.reliability * 14 +
             stageIndex * 5 -
             (weather === 'heavy-rain' ? 8 : weather === 'light-rain' ? 3 : 0) +
             hashChance(`${config.seed}:practice:${stage}:${driver.id}:setup`) * 9,

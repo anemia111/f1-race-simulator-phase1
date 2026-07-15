@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { strategyOutlookFor } from '../simulation/strategy'
 import { rankSeasonEntries, type SeasonState } from '../simulation/season'
 import { tireConditionFor } from '../simulation/tires'
+import { driverAbilityValue } from '../simulation/driverAbility'
 import type {
   CarSnapshot,
   Driver,
@@ -52,17 +53,18 @@ export function RaceInsightsPanel({
   onSetDriverPaceMode,
 }: RaceInsightsPanelProps) {
   const [requestedCompound, setRequestedCompound] = useState<CarSnapshot['tire']>(car.tire)
+  const tireManagement = driverAbilityValue(driver, 'tireManagement')
   const tireCondition = useMemo(
     () =>
       tireConditionFor(
         car.tire,
         car.tireAgeLaps,
-        driver.tireManagement,
+        tireManagement,
         car.tireTemperatureC,
         car.tireWearPercent,
         track.tireNomination,
       ),
-    [car.tire, car.tireAgeLaps, car.tireTemperatureC, car.tireWearPercent, driver.tireManagement, track.tireNomination],
+    [car.tire, car.tireAgeLaps, car.tireTemperatureC, car.tireWearPercent, tireManagement, track.tireNomination],
   )
   const pitForecast = useMemo(() => {
     const lossSeconds = track.observedCalibration?.pitLaneTransitSeconds ??
@@ -227,7 +229,7 @@ export function RaceInsightsPanel({
           <span>Rejoin</span><strong>P{pitForecast.projectedPosition} / {pitForecast.lossSeconds.toFixed(1)}s</strong>
           <span>Stop now delta</span><strong className={strategy.expectedNetGainSeconds >= 0 ? 'flag-clear' : 'flag-yellow'}>{strategy.expectedNetGainSeconds >= 0 ? '+' : ''}{strategy.expectedNetGainSeconds.toFixed(1)}s / {strategy.confidence}</strong>
           <span>Effective loss</span><strong>{strategy.estimatedPitLossSeconds.toFixed(1)}s</strong>
-          <span>Pit lane</span><strong className={snapshot.pitLaneOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? 'OPEN' : 'CLOSED'}</strong>
+          <span>Pit lane / exit</span><strong className={snapshot.pitLaneOpen && snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? (snapshot.pitExitOpen ? 'OPEN' : 'EXIT RED') : 'CLOSED'}</strong>
         </div>
         <div className="manual-strategy">
           <select
@@ -274,7 +276,11 @@ export function RaceInsightsPanel({
           <span>MGU-K output</span><strong>{car.ersPowerKw} kW / SIM model</strong>
           <span>Detection result</span><strong>{car.overtakeEligibility ? `${car.overtakeEligibility.eligible ? 'IN GAP' : 'OUT OF GAP'} ${car.overtakeEligibility.detectedGapSeconds.toFixed(3)}s / Z${car.overtakeEligibility.controlLineIndex + 1}` : 'NO SAMPLE'}</strong>
           <span>Overtake energy</span><strong>{car.overtakeEnergyRemainingMj.toFixed(2)} MJ / 0.50</strong>
-          <span>Harvested</span><strong>{car.energyHarvestedThisLapMj.toFixed(2)} MJ / 7.00</strong>
+          <span>Harvested</span><strong>{car.energyHarvestedThisLapMj.toFixed(2)} MJ / lap</strong>
+          <span>Deployed</span><strong>{car.energyDeployedThisLapMj.toFixed(2)} MJ / lap</strong>
+          <span>Super clipping</span><strong className={car.superClippingIntensity >= 0.63 ? 'flag-yellow' : undefined}>{car.superClippingIntensity < 0.04 ? 'OFF' : `${Math.round(car.superClippingIntensity * 100)}% / ${car.superClippingDurationSeconds.toFixed(1)}s`}</strong>
+          <span>Clip recovery</span><strong>{Math.round(car.superClippingRegenPowerKw)} kW / {car.superClippingRecoveredThisLapMj.toFixed(2)} MJ</strong>
+          <span>Clip drive power</span><strong>{Math.round(car.superClippingDrivePowerScale * 100)}%</strong>
           <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
           <span>Weakest component</span><strong>{weakestComponentEntry ? `${weakestComponentEntry[0]} ${Math.round(weakestComponentEntry[1].conditionPercent)}%` : '-'}</strong>
           <span>Battle state</span><strong>{car.battlePhase}</strong>
@@ -327,7 +333,7 @@ export function RaceInsightsPanel({
         <h2><Flag aria-hidden="true" size={13} /> Classification & weekend</h2>
         <div className="insight-grid">
           <span>Grid change</span><strong>{car.gridPosition - car.position > 0 ? '+' : ''}{car.gridPosition - car.position}</strong>
-          <span>Penalties</span><strong>{car.penaltySeconds + car.servedPenaltySeconds}s / {car.trackLimitWarnings} TL</strong>
+          <span>Penalties</span><strong>{car.penaltyLaps > 0 ? `${car.penaltyLaps}L + ` : ''}{car.penaltySeconds + car.servedPenaltySeconds}s / {car.penaltyPoints} PP / {car.trackLimitWarnings} TL</strong>
           <span>Deleted laps</span><strong>{car.deletedLapCount} / {car.impedingWarnings} impeding</strong>
           <span>107% status</span><strong className={car.outside107Percent && !car.stewardsGrantedStart ? 'flag-red' : 'flag-clear'}>{car.outside107Percent ? (car.stewardsGrantedStart ? 'EXEMPT' : 'OUT') : 'CLEAR'}</strong>
           <span>Race events</span><strong>{relevantEvents.length}</strong>

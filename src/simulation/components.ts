@@ -70,7 +70,7 @@ export function advanceComponentWear(options: {
 }) {
   const { deltaLaps, engineStress, team } = options
   const components = normalizeCarComponents(options.components)
-  const reliabilityFactor = 1.22 - team.reliability * 0.42
+  const reliabilityFactor = 1.22 - team.machine.reliability * 0.42
   const wear = (rate: number) =>
     rate * deltaLaps * reliabilityFactor * (0.76 + engineStress * 0.42)
   const update = (

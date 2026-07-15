@@ -79,6 +79,7 @@ import {
 } from './simulation/sessionRules'
 import { FIA_2026_REGULATION_PROFILE } from './simulation/regulations'
 import {
+  simulatedHumidityPercentFor,
   simulatedTemperaturesFor,
   weatherTrackStateFor,
 } from './simulation/weather'
@@ -121,6 +122,7 @@ import type {
   Driver,
   DriverTunableStat,
   GridSource,
+  MachineTunableStat,
   RaceConfig,
   RaceSnapshot,
   SectorTimingStatus,
@@ -132,6 +134,7 @@ import type {
 } from './types'
 import {
   clampDriverAbility,
+  driverAbilityValue,
   driverOverallAbilityPoints,
 } from './simulation/driverAbility'
 
@@ -318,8 +321,14 @@ type OpenF1LapWithSectorTimes = OpenF1Lap & {
   lap_duration: number
 }
 
-const copyTeams = (teams: Team[]) => teams.map((team) => ({ ...team }))
-const copyDrivers = (drivers: Driver[]) => drivers.map((driver) => ({ ...driver }))
+const copyTeams = (teams: Team[]) =>
+  teams.map((team) => ({ ...team, machine: { ...team.machine } }))
+const copyDrivers = (drivers: Driver[]) =>
+  drivers.map((driver) => ({
+    ...driver,
+    skills: { ...driver.skills },
+    style: { ...driver.style },
+  }))
 
 function loadPersistedDrivers(): Driver[] {
   try {
@@ -819,7 +828,11 @@ const stewardChipLabel = (car: CarSnapshot) => {
   }
 
   if (car.stewardStatus === 'penalty') {
-    return car.penaltySeconds > 0 ? `+${Math.round(car.penaltySeconds)}s` : 'PEN'
+    return car.penaltyLaps > 0
+      ? `${car.penaltyLaps}L`
+      : car.penaltySeconds > 0
+        ? `+${Math.round(car.penaltySeconds)}s`
+        : 'PEN'
   }
 
   if (car.stewardStatus === 'investigating') {
@@ -992,12 +1005,7 @@ const simulatedEnvironmentFor = (
     simulatedTemperaturesFor(seed, track, weather)
   const windSpeed = 1.4 + hashUnit(`${seed}:wind:${track.id}`) * 5.6
   const windDirection = Math.round(hashUnit(`${seed}:wind-dir:${track.id}`) * 359)
-  const humidity = Math.round(
-    Math.min(
-      96,
-      42 + track.rainProbability * 46 + (weather === 'clear' ? 0 : 18),
-    ),
-  )
+  const humidity = Math.round(simulatedHumidityPercentFor(track, weather))
 
   return {
     airLabel: `${formatTemperature(airTemperatureC)} S`,
@@ -1821,7 +1829,9 @@ export default function App() {
         const driver = raceConfig.drivers.find(
           (candidate) => candidate.id === car.driverId,
         )
-        const tireManagement = driver?.tireManagement ?? 0.8
+        const tireManagement = driver
+          ? driverAbilityValue(driver, 'tireManagement')
+          : 0.8
         const tireModel = {
           driverOverallAbility: driver
             ? driverOverallAbilityPoints(driver)
@@ -2204,12 +2214,19 @@ export default function App() {
 
   const updateTeamStat = (
     teamId: string,
-    stat: 'cornering' | 'straightLine' | 'reliability' | 'pitCrewSpeed',
+    stat: MachineTunableStat | 'pitCrewSpeed',
     value: number,
   ) => {
     setTeams((currentTeams) =>
       currentTeams.map((team) =>
-        team.id === teamId ? { ...team, [stat]: value } : team,
+        team.id !== teamId
+          ? team
+          : stat === 'pitCrewSpeed'
+            ? { ...team, pitCrewSpeed: value }
+            : {
+                ...team,
+                machine: { ...team.machine, [stat]: value },
+              },
       ),
     )
   }
@@ -2222,7 +2239,13 @@ export default function App() {
     setDrivers((currentDrivers) =>
       currentDrivers.map((driver) =>
         driver.id === driverId
-          ? { ...driver, [stat]: clampDriverAbility(value) }
+          ? {
+              ...driver,
+              skills: {
+                ...driver.skills,
+                [stat]: clampDriverAbility(value),
+              },
+            }
           : driver,
       ),
     )
@@ -2316,15 +2339,33 @@ export default function App() {
   }
 
   const applyTeamPreset = (preset: 'top' | 'mid' | 'back') => {
-    const values = {
-      back: { cornering: 0.7, pitCrewSpeed: 0.72, reliability: 0.74, straightLine: 0.72 },
-      mid: { cornering: 0.8, pitCrewSpeed: 0.8, reliability: 0.82, straightLine: 0.8 },
-      top: { cornering: 0.91, pitCrewSpeed: 0.9, reliability: 0.89, straightLine: 0.9 },
-    }[preset]
+    const target = { back: 0.73, mid: 0.82, top: 0.91 }[preset]
 
     setTeams((currentTeams) =>
       currentTeams.map((team) =>
-        team.id === selectedTeamId ? { ...team, ...values } : team,
+        team.id !== selectedTeamId
+          ? team
+          : (() => {
+              const entries = Object.entries(team.machine) as Array<
+                [MachineTunableStat, number]
+              >
+              const currentMean =
+                entries.reduce((total, [, value]) => total + value, 0) /
+                entries.length
+              const shift = target - currentMean
+              const machine = Object.fromEntries(
+                entries.map(([key, value]) => [
+                  key,
+                  Math.min(1, Math.max(0.55, value + shift)),
+                ]),
+              ) as Team['machine']
+
+              return {
+                ...team,
+                machine,
+                pitCrewSpeed: Math.min(1, Math.max(0.55, target)),
+              }
+            })(),
       ),
     )
   }
@@ -2409,7 +2450,12 @@ export default function App() {
     {
       label: '2026 rulebook',
       source: 'FIA',
-      value: `Sporting Iss ${FIA_2026_REGULATION_PROFILE.sporting.issue} / Technical Iss ${FIA_2026_REGULATION_PROFILE.technical.issue} / ${FIA_2026_REGULATION_PROFILE.asOf}`,
+      value: `Sporting Iss ${FIA_2026_REGULATION_PROFILE.sporting.issue} / Technical Iss ${FIA_2026_REGULATION_PROFILE.technical.issue} / Penalty v${FIA_2026_REGULATION_PROFILE.penaltyGuidelines.issue} / ${FIA_2026_REGULATION_PROFILE.asOf}`,
+    },
+    {
+      label: 'Heat Hazard',
+      source: 'FIA',
+      value: `${snapshot.heatIndexC.toFixed(1)}°C HI / ${snapshot.heatHazardDeclared ? 'DECLARED' : 'NOT DECLARED'} / +${snapshot.heatHazardMassIncreaseKg}kg`,
     },
     {
       label: 'Grip declaration',
@@ -2839,6 +2885,18 @@ export default function App() {
           <strong title={environmentReadout.source}>
             {environmentReadout.humidityLabel}
           </strong>
+          <span>Heat index</span>
+          <strong className={snapshot.heatHazardDeclared ? 'flag-yellow' : undefined}>
+            {snapshot.heatIndexC.toFixed(1)}°C
+          </strong>
+          <span>Heat Hazard</span>
+          <strong className={snapshot.heatHazardDeclared ? 'flag-yellow' : 'flag-clear'}>
+            {snapshot.heatHazardDeclared
+              ? `DECLARED +${snapshot.heatHazardMassIncreaseKg}kg`
+              : snapshot.heatHazardMassIncreaseKg > 0
+                ? `EVENT +${snapshot.heatHazardMassIncreaseKg}kg`
+                : 'NOT DECLARED'}
+          </strong>
           <span>Pressure</span>
           <strong title={environmentReadout.source}>
             {environmentReadout.pressureLabel}
@@ -2860,6 +2918,10 @@ export default function App() {
           <span>Pit lane</span>
           <strong className={snapshot.pitLaneOpen ? 'flag-clear' : 'flag-red'}>
             {snapshot.pitLaneOpen ? 'OPEN' : 'CLOSED'}
+          </strong>
+          <span>Pit exit</span>
+          <strong className={snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>
+            {snapshot.pitExitOpen ? 'OPEN' : 'RED'}
           </strong>
           <span>Pit activity</span>
           <strong title="Routine green-flag stops are staggered when the lane is busy">
@@ -3710,7 +3772,7 @@ export default function App() {
                       <span className="timing-number">{tireTemperatureC}C</span>
                       <span
                         className="battery-cell"
-                        title={`Battery ${batteryPercent}% / estimated MGU-K deployment ${car.ersPowerKw} kW / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / harvested ${car.energyHarvestedThisLapMj.toFixed(2)} of 7.00 MJ this lap`}
+                        title={`Battery ${batteryPercent}% / estimated MGU-K deployment ${car.ersPowerKw} kW / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / harvested ${car.energyHarvestedThisLapMj.toFixed(2)} MJ / deployed ${car.energyDeployedThisLapMj.toFixed(2)} MJ / clipping ${Math.round(car.superClippingIntensity * 100)}% (${Math.round(car.superClippingRegenPowerKw)} kW recovery)`}
                       >
                         <span>{batteryPercent}%</span>
                         <span className="battery-meter" aria-hidden="true">

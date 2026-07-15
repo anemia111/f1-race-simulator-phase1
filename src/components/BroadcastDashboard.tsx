@@ -7,7 +7,6 @@ import {
   Droplets,
   Flag,
   Gauge,
-  LayoutDashboard,
   Map as MapIcon,
   MessageSquare,
   Pause,
@@ -38,7 +37,6 @@ import type {
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
 type DashboardView =
-  | 'overview'
   | 'timing'
   | 'telemetry'
   | 'track'
@@ -131,11 +129,10 @@ type BroadcastDashboardProps = {
 }
 
 const dashboardViews: Array<{
-  Icon: typeof LayoutDashboard
+  Icon: typeof Timer
   id: DashboardView
   label: string
 }> = [
-  { Icon: LayoutDashboard, id: 'overview', label: 'Overview' },
   { Icon: Timer, id: 'timing', label: 'Timing' },
   { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
   { Icon: Route, id: 'track', label: 'Track' },
@@ -541,55 +538,6 @@ function LeftLeaderboard({
   )
 }
 
-function TimingOverview({
-  onFocusDriver,
-  rows,
-  selectedDriverId,
-}: {
-  onFocusDriver: (driverId: string) => void
-  rows: BroadcastTimingRow[]
-  selectedDriverId: string
-}) {
-  return (
-    <div className="center-table timing-overview-table">
-      <div className="center-table-head">
-        <span>POS</span><span>DRIVER</span><span>SPD</span><span>S1</span><span>S2</span><span>S3</span>
-        <span>LAST LAP</span><span>BEST LAP</span><span>GAP</span><span>INT</span>
-      </div>
-      <ol aria-label="All drivers live timing" tabIndex={0}>
-        {rows.map((row) => (
-          <li
-            className={[
-              row.car.driverId === selectedDriverId ? 'selected' : '',
-              row.car.blueFlag ? 'blue-flag-active' : '',
-            ].filter(Boolean).join(' ') || undefined}
-            key={row.car.driverId}
-          >
-            <button onClick={() => onFocusDriver(row.car.driverId)} type="button">
-              <span>{row.displayPosition}</span>
-              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
-              <span>{Math.round(row.speedKph)}</span>
-              {row.sectors.map((sector, index) => (
-                <span
-                  className={`sector-value sector-status-${row.sectorStatuses[index]}`}
-                  key={index}
-                  title={`S${index + 1}: ${sectorStatusLabels[row.sectorStatuses[index]]}`}
-                >
-                  {formatSectorTime(sector)}
-                </span>
-              ))}
-              <span>{formatLapTime(row.lapTimeSeconds)}</span>
-              <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
-              <span>{row.displayGapToLeaderLabel}</span>
-              <span>{row.displayIntervalLabel}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
 function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
   return (
     <div className="center-table telemetry-table">
@@ -604,7 +552,19 @@ function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
               <span>{row.speedKph}</span><span>{row.throttlePercent}%</span><span>{row.brakePercent}%</span>
               <span>{row.gear}</span><span>{row.rpm}</span><span>{row.batteryPercent}%</span>
-              <span>{row.aeroOvertakeLabel}</span>
+              <span
+                title={
+                  row.telemetrySource === 'simulation' &&
+                  row.car.superClippingIntensity >= 0.04
+                    ? `Super clipping ${Math.round(row.car.superClippingIntensity * 100)}%, ${Math.round(row.car.superClippingRegenPowerKw)} kW recovery`
+                    : row.aeroOvertakeLabel
+                }
+              >
+                {row.telemetrySource === 'simulation' &&
+                row.car.superClippingIntensity >= 0.04
+                  ? `CLIP ${Math.round(row.car.superClippingIntensity * 100)}`
+                  : row.aeroOvertakeLabel}
+              </span>
               <SourceTag
                 source={
                   row.telemetrySource === 'openf1'
@@ -667,10 +627,8 @@ function CenterView({
   dataControl,
   dataDetails,
   environment,
-  onFocusDriver,
   raceControlLog,
   rows,
-  selectedDriverId,
   snapshot,
   track,
   view,
@@ -678,18 +636,12 @@ function CenterView({
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   environment: EnvironmentReadout
-  onFocusDriver: (driverId: string) => void
   raceControlLog: BroadcastRaceControlEntry[]
   rows: BroadcastTimingRow[]
-  selectedDriverId: string
   snapshot: RaceSnapshot
   track: TrackDefinition
   view: DashboardView
 }) {
-  if (view === 'overview') {
-    return <TimingOverview onFocusDriver={onFocusDriver} rows={rows} selectedDriverId={selectedDriverId} />
-  }
-
   if (view === 'timing') return <TimingDetail rows={rows} />
   if (view === 'telemetry') return <TelemetryView rows={rows} />
 
@@ -727,6 +679,8 @@ function CenterView({
         <span><Droplets size={13} /> Rainfall</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
         <span><Wind size={13} /> Wind</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
         <span>Humidity</span><strong>{cleanEnvironmentValue(environment.humidityLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
+        <span>Heat Index</span><strong>{snapshot.heatIndexC.toFixed(1)}°C</strong><SourceTag source="SIM" />
+        <span>Heat Hazard</span><strong>{snapshot.heatHazardDeclared ? `DECLARED / +${snapshot.heatHazardMassIncreaseKg}kg` : snapshot.heatHazardMassIncreaseKg > 0 ? `EVENT / +${snapshot.heatHazardMassIncreaseKg}kg` : 'NOT DECLARED'}</strong><SourceTag source="FIA" />
         <span>Pressure</span><strong>{cleanEnvironmentValue(environment.pressureLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
         <span>Surface water</span><strong>{wetness.toFixed(2)} mm</strong><SourceTag source="SIM" />
         <span>Forecast</span><strong>{snapshot.weatherForecastLabel}</strong><SourceTag source="SIM" />
@@ -775,9 +729,21 @@ function CenterView({
         .filter((row) => row.car.stewardStatus !== 'clear' || row.car.damage > 0.02)
         .map((row) => ({ id: row.car.driverId, label: row.car.code, message: row.car.stewardNote ?? `Car damage ${Math.round(row.car.damage * 100)}%` })),
       ...snapshot.events
-        .filter((event) => ['incident', 'penalty', 'investigation', 'track-limit'].includes(event.kind))
+        .filter((event) => ['accident', 'incident', 'penalty', 'investigation', 'track-limit'].includes(event.kind))
         .slice(0, 8)
-        .map((event) => ({ id: event.id, label: event.timeLabel, message: event.message })),
+        .map((event) => ({
+          id: event.id,
+          label:
+            event.kind === 'accident'
+              ? 'ACC'
+              : event.kind === 'incident'
+                ? 'INC'
+                : event.timeLabel,
+          message:
+            event.kind === 'accident' || event.kind === 'incident'
+              ? `${event.timeLabel} ${event.message}`
+              : event.message,
+        })),
     ]
 
     return alerts.length > 0 ? (
@@ -842,7 +808,7 @@ export function BroadcastDashboard({
   track,
   trackScene,
 }: BroadcastDashboardProps) {
-  const [activeView, setActiveView] = useState<DashboardView>('overview')
+  const [activeView, setActiveView] = useState<DashboardView>('timing')
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
   const [feedMode, setFeedMode] = useState<'control' | 'events'>('control')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
@@ -964,18 +930,16 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-live-timing">
             <PanelHeader
               action={<button aria-label={showLiveTiming ? 'Hide live timing' : 'Show live timing'} className="panel-close" onClick={() => setShowLiveTiming((value) => !value)} title={showLiveTiming ? 'Hide live timing' : 'Show live timing'} type="button">{showLiveTiming ? <X size={13} /> : <Timer size={13} />}</button>}
-              eyebrow={activeView === 'overview' ? `ALL ${timingRows.length}` : activeView.toUpperCase()}
-              title={activeView === 'overview' ? 'Live Timing' : dashboardViews.find((item) => item.id === activeView)?.label ?? 'Live Timing'}
+              eyebrow={activeView === 'timing' ? `ALL ${timingRows.length}` : activeView.toUpperCase()}
+              title={dashboardViews.find((item) => item.id === activeView)?.label ?? 'Timing'}
             />
             {showLiveTiming ? (
               <CenterView
                 dataControl={dataControl}
                 dataDetails={dataDetails}
                 environment={environment}
-                onFocusDriver={onFocusDriver}
                 raceControlLog={raceControlLog}
                 rows={timingRows}
-                selectedDriverId={selectedCar.driverId}
                 snapshot={snapshot}
                 track={track}
                 view={activeView}

@@ -4,7 +4,13 @@ import { tracks } from '../data/tracks'
 import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import { flagFromRaceControl } from '../services/openF1Derived'
 import { calibrateFieldFromOpenF1 } from '../services/openF1Performance'
-import type { RaceConfig, RaceSnapshot, TireCompound } from '../types'
+import type {
+  PenaltyRecord,
+  RaceConfig,
+  RaceSnapshot,
+  Team,
+  TireCompound,
+} from '../types'
 import { incidentForLap } from './incidents'
 import { battleDynamicsFor, overtakeForLap } from './overtaking'
 import {
@@ -194,6 +200,19 @@ describe('steward decisions', () => {
         ),
         elapsedSeconds: 40,
         events: [investigation, ...initial.events],
+        stewardCases: [
+          {
+            id: investigation.id,
+            openedAtSeconds: 0,
+            resolveAtSeconds: 22,
+            driverId: initial.cars[0].driverId,
+            otherDriverId: initial.cars[1].driverId,
+            offence: 'causing-collision',
+            article: 'ISC App. L Ch. IV 2(d)',
+            responsibilityShare: 0.7,
+            consequence: 'significant',
+          },
+        ],
         startProcedure: 'racing',
         startProcedureRemainingSeconds: 0,
       },
@@ -206,7 +225,11 @@ describe('steward decisions', () => {
         (event) => event.id === `decision-${investigation.id}`,
       ),
     ).toBe(true)
-    expect(snapshot.cars[0].stewardStatus).not.toBe('investigating')
+    const investigatedCar = snapshot.cars.find(
+      (car) => car.driverId === initial.cars[0].driverId,
+    )!
+    expect(investigatedCar.stewardStatus).not.toBe('investigating')
+    expect(investigatedCar.penaltyPoints).toBe(2)
   })
 })
 
@@ -284,12 +307,16 @@ describe('starting grid', () => {
         .map((lap) => lap.lapTimeSeconds),
     )
     const fastestCleanLap = Math.min(...cleanLapTimes)
-    const carsThatStopped = snapshot.cars.filter((car) => car.pitStops > 0)
+    const routineWearStops = snapshot.events.filter(
+      (event) =>
+        event.kind === 'pit' &&
+        /\(\d+(?:\.\d+)?s, wear(?:,|\))/u.test(event.message),
+    )
 
     expect(brakeStops).toHaveLength(0)
     expect(fastestCleanLap).toBeGreaterThan(config.track.baseLapTime * 0.84)
     expect(fastestCleanLap).toBeLessThan(config.track.baseLapTime * 1.15)
-    expect(carsThatStopped.length).toBeLessThan(snapshot.cars.length / 2)
+    expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
   })
 
   it('stages routine green-flag stops instead of sending the field together', () => {
@@ -348,7 +375,9 @@ describe('starting grid', () => {
     }
 
     const vscPenalties = snapshot.cars.flatMap((car) =>
-      car.penalties.filter((penalty) => penalty.reason === 'VSC delta'),
+      car.penalties.filter((penalty) =>
+        penalty.reason.startsWith('Exceeding the VSC'),
+      ),
     )
 
     expect(maximumCarsInPit).toBeLessThan(snapshot.cars.length / 2)
@@ -489,23 +518,33 @@ describe('CPU timing lines', () => {
   it('moves lap-one provisional purple from the first car to a faster follower', () => {
     const slowDriver = {
       ...initialDrivers[0],
-      consistency: 0.7,
-      pace: 0.55,
+      skills: {
+        ...initialDrivers[0].skills,
+        consistency: 0.7,
+        rawPace: 0.65,
+        racePace: 0.65,
+      },
     }
     const fastDriver = {
       ...initialDrivers[2],
-      consistency: 1,
-      pace: 1,
+      skills: {
+        ...initialDrivers[2].skills,
+        consistency: 1,
+        rawPace: 1,
+        racePace: 1,
+      },
     }
     const slowTeam = {
       ...initialTeams.find((team) => team.id === slowDriver.teamId)!,
-      cornering: 0.7,
-      straightLine: 0.7,
+      machine: Object.fromEntries(
+        Object.keys(initialTeams[0].machine).map((key) => [key, 0.7]),
+      ) as Team['machine'],
     }
     const fastTeam = {
       ...initialTeams.find((team) => team.id === fastDriver.teamId)!,
-      cornering: 1,
-      straightLine: 1,
+      machine: Object.fromEntries(
+        Object.keys(initialTeams[0].machine).map((key) => [key, 1]),
+      ) as Team['machine'],
     }
     const config: RaceConfig = {
       ...makeConfig('lap-one-provisional-purple'),
@@ -582,7 +621,7 @@ describe('full race', () => {
   it('completes with every car finished or retired', () => {
     expect(finished.sessionStatus).toBe('finished')
     for (const car of finished.cars) {
-      expect(['finished', 'retired']).toContain(car.status)
+      expect(['finished', 'retired', 'disqualified']).toContain(car.status)
     }
   })
 
@@ -599,14 +638,22 @@ describe('full race', () => {
     )
   })
 
-  it('places retired cars at the bottom with OUT labels', () => {
+  it('places retired and excluded cars at the bottom with status labels', () => {
     const statuses = finished.cars.map((car) => car.status)
-    const firstRetired = statuses.indexOf('retired')
+    const firstNonClassified = statuses.findIndex((status) =>
+      ['retired', 'disqualified', 'dns'].includes(status),
+    )
 
-    if (firstRetired !== -1) {
-      for (const car of finished.cars.slice(firstRetired)) {
-        expect(car.status).toBe('retired')
-        expect(car.gapToLeaderLabel).toBe('OUT')
+    if (firstNonClassified !== -1) {
+      for (const car of finished.cars.slice(firstNonClassified)) {
+        expect(['retired', 'disqualified', 'dns']).toContain(car.status)
+        expect(car.gapToLeaderLabel).toBe(
+          car.status === 'disqualified'
+            ? 'DSQ'
+            : car.status === 'dns'
+              ? 'DNS'
+              : 'OUT',
+        )
       }
     }
   })
@@ -632,7 +679,7 @@ describe('full race', () => {
     expect(seenEventKinds.has('pit')).toBe(true)
   })
 
-  it('orders finishers by crossing time plus penalties', () => {
+  it('orders finishers by classified laps, then crossing time plus penalties', () => {
     const finishers = finished.cars.filter((car) => car.status === 'finished')
 
     expect(finishers.length).toBeGreaterThan(0)
@@ -643,11 +690,19 @@ describe('full race', () => {
 
       expect(previous.finishedAtSeconds).not.toBeNull()
       expect(current.finishedAtSeconds).not.toBeNull()
-      expect(
-        (current.finishedAtSeconds ?? 0) + current.penaltySeconds,
-      ).toBeGreaterThanOrEqual(
-        (previous.finishedAtSeconds ?? 0) + previous.penaltySeconds,
+      const previousClassifiedLaps = previous.lap - previous.penaltyLaps
+      const currentClassifiedLaps = current.lap - current.penaltyLaps
+
+      expect(currentClassifiedLaps).toBeLessThanOrEqual(
+        previousClassifiedLaps,
       )
+      if (currentClassifiedLaps === previousClassifiedLaps) {
+        expect(
+          (current.finishedAtSeconds ?? 0) + current.penaltySeconds,
+        ).toBeGreaterThanOrEqual(
+          (previous.finishedAtSeconds ?? 0) + previous.penaltySeconds,
+        )
+      }
     }
   })
 
@@ -943,10 +998,8 @@ describe('start procedure and persisted weekend', () => {
 
     expect(Math.min(...snapshot.cars.map((car) => car.vscDeltaSeconds))).toBeGreaterThanOrEqual(-0.25)
     expect(
-      snapshot.cars.flatMap((car) =>
-        car.penalties.filter((penalty) => penalty.reason === 'VSC delta'),
-      ),
-    ).toHaveLength(0)
+      Math.max(...snapshot.cars.map((car) => car.vscRedSectorCount ?? 0)),
+    ).toBeLessThan(2)
   })
 
   it('runs the announced 10-to-15-second VSC ending sequence before green', () => {
@@ -991,10 +1044,53 @@ describe('start procedure and persisted weekend', () => {
     snapshot = advanceRace(snapshot, endingDuration - 0.2, config)
     expect(snapshot.flagPhase?.flag).toBe('vsc')
 
-    snapshot = advanceRace(snapshot, 0.3, config)
+    const violatingDriverId = snapshot.cars[0].driverId
+    const priorVscPenalty: PenaltyRecord = {
+      id: 'prior-vsc-penalty',
+      issuedAtSeconds: snapshot.elapsedSeconds - 60,
+      kind: 'time-5',
+      mustServeByLap: null,
+      penaltyPoints: 1,
+      reason: 'Exceeding the VSC speed limit (B5.12.2(b))',
+      seconds: 5,
+      served: true,
+      servedAtSeconds: snapshot.elapsedSeconds - 30,
+    }
+    snapshot = advanceRace(
+      {
+        ...snapshot,
+        cars: snapshot.cars.map((car) =>
+          car.driverId === violatingDriverId
+            ? {
+                ...car,
+                penalties: [...car.penalties, priorVscPenalty],
+                vscDeltaSeconds: -0.8,
+                vscRedSectorCount: 4,
+              }
+            : { ...car, vscDeltaSeconds: 0.2, vscRedSectorCount: 0 },
+        ),
+      },
+      0.3,
+      config,
+    )
     expect(snapshot.flagPhase).toBeNull()
     expect(snapshot.greenLightUntilSeconds).not.toBeNull()
     expect(snapshot.eventMessage).toContain('GREEN FLAG')
+    expect(
+      snapshot.cars
+        .find((car) => car.driverId === violatingDriverId)
+        ?.penalties.filter(
+          (penalty) =>
+            penalty.reason.startsWith('Exceeding the VSC speed limit'),
+        ),
+    ).toHaveLength(2)
+    expect(
+      snapshot.cars
+        .find((car) => car.driverId === violatingDriverId)
+        ?.penalties.some(
+          (penalty) => penalty.seconds === 10 && !penalty.served,
+        ),
+    ).toBe(true)
   })
 
   it('persists practice setup and qualifying grid into the race weekend', () => {
@@ -1093,16 +1189,16 @@ describe('track limit penalties', () => {
     expect(penaltyFromWarnings(0)).toBe(0)
     expect(penaltyFromWarnings(3)).toBe(0)
     expect(penaltyFromWarnings(4)).toBe(5)
-    expect(penaltyFromWarnings(5)).toBe(5)
-    expect(penaltyFromWarnings(6)).toBe(10)
-    expect(penaltyFromWarnings(8)).toBe(15)
+    expect(penaltyFromWarnings(5)).toBe(10)
+    expect(penaltyFromWarnings(6)).toBe(15)
+    expect(penaltyFromWarnings(8)).toBe(25)
   })
 
   it('subtracts penalties already served at pit stops', () => {
     expect(owedPenaltySeconds(4, 0)).toBe(5)
     expect(owedPenaltySeconds(4, 5)).toBe(0)
-    expect(owedPenaltySeconds(6, 5)).toBe(5)
-    expect(owedPenaltySeconds(8, 15)).toBe(0)
+    expect(owedPenaltySeconds(6, 5)).toBe(10)
+    expect(owedPenaltySeconds(8, 15)).toBe(10)
   })
 })
 
@@ -1436,8 +1532,11 @@ describe('weather and wet strategy', () => {
   })
 
   it('can call an undercut when a car is close ahead in the pit window', () => {
-    const driver = { ...initialDrivers[0], overtaking: 0.95 }
-    const cliff = effectiveCliffLaps('M', driver.tireManagement)
+    const driver = {
+      ...initialDrivers[0],
+      skills: { ...initialDrivers[0].skills, overtakingSkill: 0.95 },
+    }
+    const cliff = effectiveCliffLaps('M', driver.skills.tireManagement)
     const car = {
       tire: 'M' as const,
       tireAgeLaps: Math.ceil(cliff - 3),
@@ -1467,8 +1566,11 @@ describe('weather and wet strategy', () => {
   })
 
   it('defers a routine green-flag stop when the pit lane is already busy', () => {
-    const driver = { ...initialDrivers[0], overtaking: 0.95 }
-    const cliff = effectiveCliffLaps('M', driver.tireManagement)
+    const driver = {
+      ...initialDrivers[0],
+      skills: { ...initialDrivers[0].skills, overtakingSkill: 0.95 },
+    }
+    const cliff = effectiveCliffLaps('M', driver.skills.tireManagement)
     const car = {
       tire: 'M' as const,
       tireAgeLaps: Math.ceil(cliff - 2),
@@ -1603,6 +1705,7 @@ describe('procedural penalty service', () => {
                   issuedAtSeconds: snapshot.elapsedSeconds,
                   kind: 'drive-through' as const,
                   mustServeByLap: 5,
+                  penaltyPoints: 0,
                   reason: 'Test procedure',
                   seconds: 20,
                   served: false,
@@ -1724,8 +1827,8 @@ describe('OpenF1 field calibration', () => {
     const calibratedNor = calibrated.drivers.find((driver) => driver.code === 'NOR')!
 
     expect(calibrated.source).toBe('openf1-calibrated')
-    expect(mclaren.cornering).toBeGreaterThan(initialTeams[0].cornering)
-    expect(calibratedNor.speed).toBeGreaterThan(nor.speed)
+    expect(mclaren).toEqual(initialTeams.find((team) => team.id === 'mclaren'))
+    expect(calibratedNor).toEqual(nor)
   })
 
   it('keeps configured values when standings are unavailable', () => {
@@ -1806,11 +1909,7 @@ describe('OpenF1 field calibration', () => {
       telemetry,
     )
 
-    expect(
-      calibrated.teams.find((team) => team.id === 'mclaren')!.straightLine,
-    ).toBeGreaterThan(
-      calibrated.teams.find((team) => team.id === 'ferrari')!.straightLine,
-    )
+    expect(calibrated.teams).toEqual(initialTeams)
   })
 })
 
@@ -1821,13 +1920,19 @@ describe('overtaking', () => {
     const attackerCar = { ...snapshot.cars[1], tire: 'S' as const }
     const defender = {
       ...initialDrivers.find((driver) => driver.id === defenderCar.driverId)!,
-      consistency: 0.74,
-      defense: 0.62,
+      skills: {
+        ...initialDrivers.find((driver) => driver.id === defenderCar.driverId)!.skills,
+        consistency: 0.74,
+        defendingSkill: 0.62,
+      },
     }
     const attacker = {
       ...initialDrivers.find((driver) => driver.id === attackerCar.driverId)!,
-      speed: 0.96,
-      overtaking: 0.98,
+      skills: {
+        ...initialDrivers.find((driver) => driver.id === attackerCar.driverId)!.skills,
+        rawPace: 0.96,
+        overtakingSkill: 0.98,
+      },
     }
 
     return { attacker, attackerCar, defender, defenderCar }
@@ -1967,6 +2072,46 @@ describe('overtaking', () => {
     expect(withEligibility.assistance).toBe('overtake')
     expect(withEligibility.ersPowerDeltaKw).toBe(100)
     expect(withEligibility.electricalPerformanceEdge).toBeGreaterThan(0)
+  })
+
+  it('uses the actual speed delta when the leading car is super clipping', () => {
+    const fixture = closeBattleFixture()
+    const track = {
+      ...tracks[0],
+      aeroActivationZones: [
+        {
+          start: 0.2,
+          end: 0.3,
+          label: 'Long straight',
+          lowGripMode: 'partial' as const,
+          source: 'derived' as const,
+        },
+      ],
+    }
+    const closing = battleDynamicsFor({
+      ...fixture,
+      attackerCar: {
+        ...fixture.attackerCar,
+        ersPowerKw: 350,
+        speedKph: 408,
+      },
+      defenderCar: {
+        ...fixture.defenderCar,
+        ersPowerKw: 0,
+        speedKph: 350,
+        superClippingIntensity: 1,
+      },
+      gapToAheadSeconds: 0.7,
+      lap: 14,
+      seed: 'clipping-closing-speed',
+      track,
+      trackGrip: 1,
+      trackProgress: 0.25,
+      weather: 'clear',
+    })
+
+    expect(closing.speedDeltaKph).toBe(58)
+    expect(closing.speedPerformanceEdge).toBeGreaterThan(0)
   })
 
   it('uses live tire wear and temperature in close-battle grip', () => {
@@ -2263,7 +2408,7 @@ describe('qualifying', () => {
     expect(results.every((result) => result.lapsCompleted > 0)).toBe(true)
   })
 
-  it('turns practice mileage into deterministic setup deltas', () => {
+  it('keeps fixed machine and driver capabilities while deriving setup data', () => {
     const config = makeConfig('practice-deltas')
     const summary = buildPracticeSetupSummary(config, ['fp1', 'fp2', 'fp3'])
     const adjusted = applyPracticeSetup(config, summary)
@@ -2271,27 +2416,8 @@ describe('qualifying', () => {
     expect(summary).toEqual(buildPracticeSetupSummary(config, ['fp1', 'fp2', 'fp3']))
     expect(summary.teamSummaries).toHaveLength(initialTeams.length)
     expect(summary.driverSummaries).toHaveLength(initialDrivers.length)
-    expect(
-      adjusted.teams.some((team, index) => {
-        const original = config.teams[index]
-
-        return (
-          team.cornering !== original.cornering ||
-          team.reliability !== original.reliability ||
-          team.straightLine !== original.straightLine
-        )
-      }),
-    ).toBe(true)
-    expect(
-      adjusted.drivers.some((driver, index) => {
-        const original = config.drivers[index]
-
-        return (
-          driver.consistency !== original.consistency ||
-          driver.tireManagement !== original.tireManagement
-        )
-      }),
-    ).toBe(true)
+    expect(adjusted.teams).toEqual(config.teams)
+    expect(adjusted.drivers).toEqual(config.drivers)
   })
 
   it('can seed race start offsets from qualifying order', () => {

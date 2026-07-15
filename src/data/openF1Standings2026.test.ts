@@ -49,25 +49,17 @@ describe('bundled 2026 OpenF1 standings', () => {
     ).toBeNull()
   })
 
-  it('overrides stale configured priors as season evidence grows', () => {
+  it('reports season evidence without mutating fixed capability profiles', () => {
     const snapshot = bundledOpenF1StandingsFor('2026-07-17T00:00:00Z', now)!
     const calibration = calibrateFieldFromOpenF1(
       initialTeams,
       initialDrivers,
       snapshot,
     )
-    const mercedes = calibration.teams.find((team) => team.id === 'mercedes')!
-    const ferrari = calibration.teams.find((team) => team.id === 'ferrari')!
-    const mclaren = calibration.teams.find((team) => team.id === 'mclaren')!
-    const antonelli = calibration.drivers.find(
-      (driver) => driver.id === 'antonelli',
-    )!
-    const norris = calibration.drivers.find((driver) => driver.id === 'norris')!
-
-    expect(mercedes.cornering).toBeGreaterThan(ferrari.cornering)
-    expect(ferrari.cornering).toBeGreaterThan(mclaren.cornering)
-    expect(antonelli.speed).toBeGreaterThan(norris.speed)
+    expect(calibration.teams).toEqual(initialTeams)
+    expect(calibration.drivers).toEqual(initialDrivers)
     expect(calibration.provenance.provider).toBe('OpenF1')
+    expect(calibration.provenance.note).toContain('fixed machine and driver profiles retained')
     expect(calibration.provenance.note).toContain('bundled OpenF1')
   })
 })

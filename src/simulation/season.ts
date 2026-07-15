@@ -173,11 +173,15 @@ export function recordSeasonRound(
   const completionRatio = options.scheduledLaps
     ? winnerCompletedLaps / options.scheduledLaps
     : 1
+  const hasMinimumGreenRunning =
+    (options.greenFlagLaps ?? winnerCompletedLaps) >= 2
   const pointsTable =
-    options.stage === 'sprint'
-      ? sprintPoints
-      : (options.greenFlagLaps ?? winnerCompletedLaps) < 2
-        ? []
+    !hasMinimumGreenRunning
+      ? []
+      : options.stage === 'sprint'
+        ? completionRatio >= 0.5
+          ? sprintPoints
+          : []
         : completionRatio < 0.25
           ? quarterRacePoints
           : completionRatio < 0.5

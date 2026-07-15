@@ -40,6 +40,16 @@ export function wrappedProgressSpan(start: number, end: number): number {
   return (end + 1 - start) % 1
 }
 
+export function progressWithinWrapped(
+  progress: number,
+  start: number,
+  end: number,
+): boolean {
+  return start <= end
+    ? progress >= start && progress <= end
+    : progress >= start || progress <= end
+}
+
 export function forwardProgressBetween(
   start: number,
   end: number,

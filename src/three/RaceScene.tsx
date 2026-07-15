@@ -14,6 +14,7 @@ import {
   forwardProgressBetween,
   pitBoxProgress,
   pitBoxSlotForTeam,
+  progressWithinWrapped,
 } from '../simulation/pitLane'
 import { startingGridDistance } from '../simulation/startingGrid'
 import {
@@ -288,7 +289,10 @@ function displayPoseForCar(
       ? garagePose
       : poseOnTrack(curve, pitProgress, pitLaneOffset(track))
 
-  if (car.status === 'pit') {
+  if (
+    car.status === 'pit' ||
+    (car.status === 'running' && car.pitPhase === 'lane')
+  ) {
     if (car.pitStartedAtSeconds === null || car.pitPhase === 'box') {
       return movingPitPose
     }
@@ -1038,14 +1042,23 @@ function SafetyCarMarker({
       ? phase.neutralisation
       : null
   const orangeLights = procedure?.orangeLights ?? true
+  const greenLight = procedure?.greenLight ?? false
   const markerTexture = useMemo(
     () =>
       createRoundMarkerTexture({
-        borderColor: orangeLights ? '#ff9d18' : '#d8e1e8',
-        fillColor: orangeLights ? '#f4c430' : '#59636d',
+        borderColor: greenLight
+          ? '#55e887'
+          : orangeLights
+            ? '#ff9d18'
+            : '#d8e1e8',
+        fillColor: greenLight
+          ? '#087f3f'
+          : orangeLights
+            ? '#f4c430'
+            : '#59636d',
         label: 'SC',
       }),
-    [orangeLights],
+    [greenLight, orangeLights],
   )
 
   useEffect(() => () => markerTexture.dispose(), [markerTexture])
@@ -1073,12 +1086,20 @@ function SafetyCarMarker({
       )
       pose = poseOnTrack(curve, pitProgress, pitLaneOffset(track))
     } else {
+      const safetyCarProgress = procedure
+        ? procedure.safetyCarDistance % 1
+        : (leader.progress + 0.012) % 1
+      const followsPitLane =
+        procedure?.pitLaneRouteRequired === true &&
+        progressWithinWrapped(
+          safetyCarProgress,
+          track.pitLane?.entryProgress ?? 0.965,
+          track.pitLane?.exitProgress ?? 0.13,
+        )
       pose = poseOnTrack(
         curve,
-        procedure
-          ? procedure.safetyCarDistance % 1
-          : (leader.progress + 0.012) % 1,
-        0,
+        safetyCarProgress,
+        followsPitLane ? pitLaneOffset(track) : 0,
       )
     }
     const target = pose.position.setY(0.5)

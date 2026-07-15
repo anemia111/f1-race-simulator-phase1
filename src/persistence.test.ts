@@ -9,14 +9,17 @@ import {
 } from './persistence'
 
 describe('V2 persistence migration', () => {
-  it('round-trips explicit 12-stat driver tuning without materializing fallbacks', () => {
+  it('round-trips the explicit 30-skill driver profile', () => {
     const tuned = initialDrivers.map((driver, index) =>
       index === 0
         ? {
-            ...driver,
-            adaptability: 0.93,
-            qualifyingPace: 0.97,
-            raceAwareness: 0.95,
+          ...driver,
+            skills: {
+              ...driver.skills,
+              adaptability: 0.93,
+              qualifyingPace: 0.97,
+              raceAwareness: 0.95,
+            },
           }
         : driver,
     )
@@ -26,12 +29,12 @@ describe('V2 persistence migration', () => {
       initialDrivers,
     )
 
-    expect(restored[0]).toMatchObject({
+    expect(restored[0].skills).toMatchObject({
       adaptability: 0.93,
       qualifyingPace: 0.97,
       raceAwareness: 0.95,
     })
-    expect(restored[1]).not.toHaveProperty('qualifyingPace')
+    expect(restored[1].skills).toEqual(initialDrivers[1].skills)
   })
 
   it('normalizes a legacy weekend against its saved track', () => {

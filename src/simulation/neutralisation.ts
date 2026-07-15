@@ -7,8 +7,14 @@ import type {
 import { hashChance } from './random'
 
 const SAFETY_CAR_JOIN_SIGNAL_SECONDS = 2
-const SAFETY_CAR_QUEUE_GAP_SECONDS = 1.35
+const SAFETY_CAR_QUEUE_GAP_SECONDS = 2.4
 const SAFETY_CAR_PIT_ENTRY_PROGRESS = 0.965
+const SAFETY_CAR_LINE_EPSILON = 0.001
+
+type SafetyCarProcedure = Extract<
+  NeutralisationProcedure,
+  { kind: 'safety-car' }
+>
 
 export type NeutralisationEvent = {
   atSeconds: number
@@ -20,6 +26,7 @@ export type NeutralisationAdvanceResult = {
   completedFlag: 'sc' | 'vsc' | null
   events: NeutralisationEvent[]
   greenLightUntilSeconds: number | null
+  penaltyLapDriverIds: string[]
   phase: ActiveFlagPhase | null
   restartTargetsByDriver: Record<string, number> | null
 }
@@ -34,6 +41,99 @@ const runningOnTrackCars = (cars: CarSnapshot[]) =>
     .sort((left, right) => right.totalDistance - left.totalDistance)
 
 const nextControlLine = (distance: number) => Math.floor(distance) + 1
+
+const signedPhysicalGap = (carDistance: number, referenceDistance: number) =>
+  ((lapProgress(carDistance) - lapProgress(referenceDistance) + 1.5) % 1) -
+  0.5
+
+function nextMarkerDistance(distance: number, progress: number) {
+  let target = Math.floor(distance) + progress
+
+  if (target <= distance + SAFETY_CAR_LINE_EPSILON) {
+    target += 1
+  }
+
+  return target
+}
+
+function eligibilityLineTargets(
+  cars: CarSnapshot[],
+  track: TrackDefinition,
+) {
+  const firstSafetyCarLine =
+    track.safetyCarLines?.line1Progress ??
+    track.pitLane?.entryProgress ??
+    SAFETY_CAR_PIT_ENTRY_PROGRESS
+
+  return Object.fromEntries(
+    cars
+      .filter((car) => car.status === 'running' || car.status === 'pit')
+      .map((car) => {
+        const firstCrossing = nextMarkerDistance(
+          car.totalDistance,
+          firstSafetyCarLine,
+        )
+        const secondCrossing = firstCrossing + 1
+
+        // B5.13.4c freezes eligibility at the Line ending the lap in which
+        // the car crosses Safety Car Line 1 for the second time.
+        return [
+          car.driverId,
+          Math.ceil(secondCrossing - SAFETY_CAR_LINE_EPSILON),
+        ]
+      }),
+  )
+}
+
+function captureEligibilityAtReferenceLines(
+  procedure: SafetyCarProcedure,
+  cars: CarSnapshot[],
+  leader: CarSnapshot,
+) {
+  const carsByDriver = new Map(cars.map((car) => [car.driverId, car]))
+  const eligibilityStatusByDriver = {
+    ...procedure.eligibilityStatusByDriver,
+  }
+
+  for (const [driverId, target] of Object.entries(
+    procedure.eligibilityLineTargetByDriver,
+  )) {
+    if (eligibilityStatusByDriver[driverId] !== 'pending') {
+      continue
+    }
+
+    const car = carsByDriver.get(driverId)
+
+    if (
+      !car ||
+      car.status === 'retired' ||
+      car.status === 'finished' ||
+      car.status === 'disqualified' ||
+      car.status === 'dns'
+    ) {
+      eligibilityStatusByDriver[driverId] = 'ineligible'
+      continue
+    }
+
+    if (car.totalDistance + SAFETY_CAR_LINE_EPSILON < target) {
+      continue
+    }
+
+    const leaderCompletedLaps = Math.floor(
+      leader.totalDistance + SAFETY_CAR_LINE_EPSILON,
+    )
+    eligibilityStatusByDriver[driverId] =
+      leaderCompletedLaps >= target + 1 ? 'eligible' : 'ineligible'
+  }
+
+  return {
+    ...procedure,
+    eligibilityStatusByDriver,
+    eligibleLappedDriverIds: Object.entries(eligibilityStatusByDriver)
+      .filter(([, status]) => status === 'eligible')
+      .map(([driverId]) => driverId),
+  }
+}
 
 function leaderCollectionTarget(
   leaderDistance: number,
@@ -73,6 +173,7 @@ function firstLineTargets(cars: CarSnapshot[]) {
 export function isSafetyCarFieldQueued(
   cars: CarSnapshot[],
   referenceLapTimeSeconds: number,
+  maximumQueueGapCarLengths: 10 | 20 = 10,
 ) {
   const running = runningOnTrackCars(cars)
 
@@ -81,7 +182,8 @@ export function isSafetyCarFieldQueued(
   }
 
   const maximumGapLaps =
-    SAFETY_CAR_QUEUE_GAP_SECONDS / Math.max(45, referenceLapTimeSeconds)
+    (SAFETY_CAR_QUEUE_GAP_SECONDS * (maximumQueueGapCarLengths / 10)) /
+    Math.max(45, referenceLapTimeSeconds)
 
   return running.slice(1).every((car, index) => {
     const ahead = running[index]
@@ -113,19 +215,42 @@ function createProcedure(
   const leader = runningOnTrackCars(cars)[0] ?? cars[0]
   const leaderDistance = leader?.totalDistance ?? 0
   const collectionTarget = leaderCollectionTarget(leaderDistance, track)
+  const eligibilityLineTargetByDriver = eligibilityLineTargets(cars, track)
 
   return {
     kind: 'safety-car',
     stage: 'deployed',
     orangeLights: true,
+    greenLight: false,
+    maximumQueueGapCarLengths: 10,
     leaderDistanceAtDeployment: leaderDistance,
     leaderCollectionTargetDistance: collectionTarget,
     safetyCarDistance: collectionTarget,
     safetyCarLastUpdatedAtSeconds: phase.startSeconds,
     leaderCollectedAtSeconds: null,
     fieldQueuedAtSeconds: null,
+    eligibilityLineTargetByDriver,
+    eligibilityStatusByDriver: Object.fromEntries(
+      Object.keys(eligibilityLineTargetByDriver).map((driverId) => [
+        driverId,
+        'pending' as const,
+      ]),
+    ),
     eligibleLappedDriverIds: [],
+    unlappingOrderDriverIds: [],
+    unlappingPassedSafetyCarAtDistanceByDriver: {},
+    unlappingRejoinedDriverIds: [],
+    unauthorizedSafetyCarOvertakeDriverIds: [],
+    lastObservedSafetyCarGapByDriver: Object.fromEntries(
+      cars.map((car) => [
+        car.driverId,
+        signedPhysicalGap(car.totalDistance, collectionTarget),
+      ]),
+    ),
     lappedCarsMayOvertakeAtSeconds: null,
+    overtakingNotPermittedAtSeconds: null,
+    pitExitClosed: false,
+    pitLaneRouteRequired: phase.safetyCarUsesPitLane ?? false,
     returnNotBeforeLeaderDistance: null,
     inThisLapEarliestLeaderDistance: null,
     inThisLapAtSeconds: null,
@@ -134,6 +259,7 @@ function createProcedure(
     pitEntryAtSeconds: null,
     restartLineDistance: null,
     restartTargetsByDriver: null,
+    finishingUnderSafetyCar: false,
   }
 }
 
@@ -198,6 +324,8 @@ function beginSafetyCarWithdrawal(options: {
     ...procedure,
     stage: 'in-this-lap' as const,
     orangeLights: false,
+    greenLight: false,
+    pitExitClosed: false,
     inThisLapAtSeconds: elapsedSeconds,
     pitEntryLeaderDistance,
     pitEntrySafetyCarDistance,
@@ -205,6 +333,204 @@ function beginSafetyCarWithdrawal(options: {
     restartLineDistance,
     restartTargetsByDriver: firstLineTargets(cars),
     returnNotBeforeLeaderDistance: restartLineDistance,
+  }
+}
+
+function pitExitClosureWindow(
+  safetyCarDistance: number,
+  track: TrackDefinition,
+) {
+  const pitExitProgress = track.pitLane?.exitProgress ?? 0.13
+  const distanceUntilPitExit =
+    (pitExitProgress - lapProgress(safetyCarDistance) + 1) % 1
+
+  return distanceUntilPitExit <= 0.1 || distanceUntilPitExit >= 0.975
+}
+
+function advanceUnlapping(options: {
+  cars: CarSnapshot[]
+  elapsedSeconds: number
+  events: NeutralisationEvent[]
+  leader: CarSnapshot
+  phaseId: string
+  procedure: SafetyCarProcedure
+  track: TrackDefinition
+}) {
+  const {
+    cars,
+    elapsedSeconds,
+    events,
+    leader,
+    phaseId,
+    track,
+  } = options
+  const procedure = options.procedure
+  const carsByDriver = new Map(cars.map((car) => [car.driverId, car]))
+  const eligible = new Set(procedure.eligibleLappedDriverIds)
+  const passedSafetyCarAt = {
+    ...procedure.unlappingPassedSafetyCarAtDistanceByDriver,
+  }
+  const rejoined = new Set(procedure.unlappingRejoinedDriverIds)
+  const unauthorized = new Set(
+    procedure.unauthorizedSafetyCarOvertakeDriverIds,
+  )
+  const penaltyLapDriverIds: string[] = []
+
+  for (const car of cars) {
+    if (car.status !== 'running' || car.pitPhase !== 'none') {
+      continue
+    }
+
+    const previousGap =
+      procedure.lastObservedSafetyCarGapByDriver[car.driverId]
+    const currentGap = signedPhysicalGap(
+      car.totalDistance,
+      procedure.safetyCarDistance,
+    )
+    const crossedSafetyCar =
+      previousGap !== undefined &&
+      previousGap <= SAFETY_CAR_LINE_EPSILON &&
+      currentGap > SAFETY_CAR_LINE_EPSILON &&
+      Math.abs(previousGap) < 0.12 &&
+      currentGap < 0.12
+
+    if (!crossedSafetyCar) {
+      continue
+    }
+
+    if (eligible.has(car.driverId)) {
+      if (passedSafetyCarAt[car.driverId] === undefined) {
+        passedSafetyCarAt[car.driverId] = car.totalDistance
+        events.push({
+          atSeconds: elapsedSeconds,
+          id: `sc-passed-${phaseId}-${car.driverId}`,
+          message: `${car.code} has passed the Safety Car and must now proceed without overtaking to the back of the queue.`,
+        })
+      }
+      continue
+    }
+
+    if (!unauthorized.has(car.driverId)) {
+      unauthorized.add(car.driverId)
+      penaltyLapDriverIds.push(car.driverId)
+      events.push({
+        atSeconds: elapsedSeconds,
+        id: `sc-unauthorized-overtake-${phaseId}-${car.driverId}`,
+        message: `${car.code} overtook the Safety Car without being named as eligible. Stewards: one penalty lap.`,
+      })
+    }
+  }
+
+  const allEligibleCarsPassed = procedure.eligibleLappedDriverIds.every(
+    (driverId) => {
+      const car = carsByDriver.get(driverId)
+      return (
+        !car ||
+        car.status === 'retired' ||
+        car.status === 'disqualified' ||
+        car.status === 'dns' ||
+        passedSafetyCarAt[driverId] !== undefined
+      )
+    },
+  )
+
+  if (procedure.greenLight && allEligibleCarsPassed) {
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-green-light-off-${phaseId}`,
+      message: 'SAFETY CAR GREEN LIGHT OFF. Overtaking is no longer permitted except for the B5.13.2c exceptions.',
+    })
+  }
+
+  const rejoiningDriverIds = procedure.eligibleLappedDriverIds.filter(
+    (driverId) =>
+      passedSafetyCarAt[driverId] !== undefined && !rejoined.has(driverId),
+  )
+  const rejoining = new Set(rejoiningDriverIds)
+  const queueCandidates = runningOnTrackCars(cars)
+    .filter((car) => !rejoining.has(car.driverId))
+    .map((car) => ({
+      car,
+      gapBehindSafetyCar:
+        (lapProgress(procedure.safetyCarDistance) -
+          lapProgress(car.totalDistance) +
+          1) %
+        1,
+    }))
+    .filter(({ gapBehindSafetyCar }) => gapBehindSafetyCar <= 0.35)
+    .sort((left, right) => right.gapBehindSafetyCar - left.gapBehindSafetyCar)
+  const queueTail = queueCandidates[0]?.car ?? leader
+  const joinGapLaps = Math.max(
+    0.01,
+    SAFETY_CAR_QUEUE_GAP_SECONDS / Math.max(45, leader.projectedLapTime),
+  )
+
+  for (const driverId of rejoiningDriverIds) {
+    const car = carsByDriver.get(driverId)
+    const passedAt = passedSafetyCarAt[driverId]
+
+    if (!car || passedAt === undefined || car.totalDistance - passedAt < 0.2) {
+      continue
+    }
+
+    const forwardGapToQueueTail =
+      (lapProgress(queueTail.totalDistance) -
+        lapProgress(car.totalDistance) +
+        1) %
+      1
+
+    if (forwardGapToQueueTail <= joinGapLaps) {
+      rejoined.add(driverId)
+      events.push({
+        atSeconds: elapsedSeconds,
+        id: `sc-rejoined-${phaseId}-${driverId}`,
+        message: `${car.code} has joined the back of the Safety Car queue and remains under the no-overtaking rule.`,
+      })
+    }
+  }
+
+  const allEligibleCarsRejoined = procedure.eligibleLappedDriverIds.every(
+    (driverId) => {
+      const car = carsByDriver.get(driverId)
+      return (
+        !car ||
+        car.status === 'retired' ||
+        car.status === 'disqualified' ||
+        car.status === 'dns' ||
+        rejoined.has(driverId)
+      )
+    },
+  )
+  const pitExitClosed =
+    !allEligibleCarsRejoined &&
+    pitExitClosureWindow(procedure.safetyCarDistance, track)
+
+  if (pitExitClosed !== procedure.pitExitClosed) {
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-pit-exit-${pitExitClosed ? 'closed' : 'open'}-${phaseId}-${Math.floor(elapsedSeconds)}`,
+      message: pitExitClosed
+        ? 'PIT EXIT CLOSED while the Safety Car queue passes the exit.'
+        : 'PIT EXIT OPEN after the Safety Car queue has cleared the exit.',
+    })
+  }
+
+  return {
+    penaltyLapDriverIds,
+    procedure: {
+      ...procedure,
+      greenLight: !allEligibleCarsPassed,
+      lastObservedSafetyCarGapByDriver: Object.fromEntries(
+        cars.map((car) => [
+          car.driverId,
+          signedPhysicalGap(car.totalDistance, procedure.safetyCarDistance),
+        ]),
+      ),
+      pitExitClosed,
+      unauthorizedSafetyCarOvertakeDriverIds: [...unauthorized],
+      unlappingPassedSafetyCarAtDistanceByDriver: passedSafetyCarAt,
+      unlappingRejoinedDriverIds: [...rejoined],
+    },
   }
 }
 
@@ -251,6 +577,7 @@ function advanceVsc(
       completedFlag: 'vsc',
       events,
       greenLightUntilSeconds: nextProcedure.resumeAtSeconds + 30,
+      penaltyLapDriverIds: [],
       phase: null,
       restartTargetsByDriver: null,
     }
@@ -260,6 +587,7 @@ function advanceVsc(
     completedFlag: null,
     events,
     greenLightUntilSeconds: null,
+    penaltyLapDriverIds: [],
     phase: { ...phase, neutralisation: nextProcedure },
     restartTargetsByDriver: null,
   }
@@ -275,8 +603,12 @@ function advanceSafetyCar(
   elapsedSeconds: number,
   track: TrackDefinition,
   seed: string,
+  overtakingPermitted: boolean,
+  lowVisibility: boolean,
+  finishingLap: boolean,
 ): NeutralisationAdvanceResult {
   const events: NeutralisationEvent[] = []
+  const penaltyLapDriverIds: string[] = []
   const running = runningOnTrackCars(cars)
   const leader = running[0]
 
@@ -285,12 +617,27 @@ function advanceSafetyCar(
       completedFlag: null,
       events,
       greenLightUntilSeconds: null,
+      penaltyLapDriverIds,
       phase: { ...phase, neutralisation: initialProcedure },
       restartTargetsByDriver: null,
     }
   }
 
   let procedure = initialProcedure
+  procedure = {
+    ...procedure,
+    maximumQueueGapCarLengths: lowVisibility ? 20 : 10,
+  }
+  if (
+    lowVisibility &&
+    initialProcedure.maximumQueueGapCarLengths !== 20
+  ) {
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-low-visibility-${phase.id}`,
+      message: 'LOW VISIBILITY - MAXIMUM GAP TWENTY CAR LENGTHS.',
+    })
+  }
   const leaderCollectionGapLaps = Math.max(
     0.018,
     1.7 / Math.max(55, leader.projectedLapTime),
@@ -322,6 +669,42 @@ function advanceSafetyCar(
     }
   }
 
+  procedure = captureEligibilityAtReferenceLines(procedure, cars, leader)
+
+  if (finishingLap && !procedure.finishingUnderSafetyCar) {
+    const pitEntryProgress =
+      track.pitLane?.entryProgress ?? SAFETY_CAR_PIT_ENTRY_PROGRESS
+    let pitEntrySafetyCarDistance =
+      Math.floor(procedure.safetyCarDistance) + pitEntryProgress
+
+    while (
+      pitEntrySafetyCarDistance <= procedure.safetyCarDistance + 0.012
+    ) {
+      pitEntrySafetyCarDistance += 1
+    }
+
+    procedure = {
+      ...procedure,
+      stage: 'in-this-lap',
+      orangeLights: false,
+      greenLight: false,
+      pitExitClosed: false,
+      finishingUnderSafetyCar: true,
+      inThisLapAtSeconds: elapsedSeconds,
+      pitEntryLeaderDistance: null,
+      pitEntrySafetyCarDistance,
+      pitEntryAtSeconds: null,
+      restartLineDistance: null,
+      restartTargetsByDriver: null,
+    }
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-final-lap-${phase.id}`,
+      message:
+        'FINAL LAP UNDER SAFETY CAR. Orange lights extinguished approaching pit entry; yellow flags and SC boards remain, and no overtaking is permitted before the Line.',
+    })
+  }
+
   if (
     procedure.stage === 'deployed' &&
     elapsedSeconds >= phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS
@@ -332,6 +715,14 @@ function advanceSafetyCar(
       id: `sc-on-track-${phase.id}`,
       message: 'SAFETY CAR ON TRACK. Drivers reduce speed and form a queue behind it.',
     })
+    if (procedure.pitLaneRouteRequired) {
+      events.push({
+        atSeconds: phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS,
+        id: `sc-use-pit-lane-${phase.id}`,
+        message:
+          'SAFETY CAR AND ALL CARS MUST USE PIT LANE. No overtaking in Pit Entry or Pit Exit Road unless a car has an obvious problem.',
+      })
+    }
   }
 
   if (
@@ -355,7 +746,11 @@ function advanceSafetyCar(
   if (
     procedure.stage === 'collecting-field' &&
     procedure.leaderCollectedAtSeconds !== null &&
-    isSafetyCarFieldQueued(cars, leader.projectedLapTime)
+    isSafetyCarFieldQueued(
+      cars,
+      leader.projectedLapTime,
+      procedure.maximumQueueGapCarLengths,
+    )
   ) {
     procedure = {
       ...procedure,
@@ -369,20 +764,39 @@ function advanceSafetyCar(
     })
   }
 
+  const eligibilityComplete = Object.values(
+    procedure.eligibilityStatusByDriver,
+  ).every((status) => status !== 'pending')
+
   if (
     procedure.stage === 'queue-formed' &&
     procedure.fieldQueuedAtSeconds !== null &&
+    eligibilityComplete &&
     elapsedSeconds >=
       Math.max(phase.endSeconds, procedure.fieldQueuedAtSeconds + 4)
   ) {
-    const eligibleLappedCars = running.filter(
-      (car) =>
-        car.driverId !== leader.driverId &&
-        leader.totalDistance - car.totalDistance >= 0.8 &&
-        !car.hasUnlappedUnderSafetyCar,
-    )
+    const eligibleLappedCars = procedure.eligibleLappedDriverIds
+      .map((driverId) => cars.find((car) => car.driverId === driverId))
+      .filter((car): car is CarSnapshot => Boolean(car))
 
-    if (eligibleLappedCars.length > 0) {
+    if (!overtakingPermitted) {
+      procedure = beginSafetyCarWithdrawal({
+        cars,
+        elapsedSeconds,
+        leader,
+        procedure: {
+          ...procedure,
+          overtakingNotPermittedAtSeconds: elapsedSeconds,
+        },
+        requestedRestartLineDistance: null,
+        track,
+      })
+      events.push({
+        atSeconds: elapsedSeconds,
+        id: `sc-no-overtaking-${phase.id}`,
+        message: 'OVERTAKING WILL NOT BE PERMITTED. Track conditions are unsuitable for the lapped-car procedure.',
+      })
+    } else if (eligibleLappedCars.length > 0) {
       const returnNotBeforeLeaderDistance =
         followingLapEndDistance(leader.totalDistance)
       const noticeLeadLaps =
@@ -390,10 +804,19 @@ function advanceSafetyCar(
       procedure = {
         ...procedure,
         stage: 'unlapping',
-        eligibleLappedDriverIds: eligibleLappedCars.map(
-          (car) => car.driverId,
-        ),
+        greenLight: true,
+        eligibleLappedDriverIds: eligibleLappedCars.map((car) => car.driverId),
+        unlappingOrderDriverIds: eligibleLappedCars
+          .slice()
+          .sort((left, right) => right.totalDistance - left.totalDistance)
+          .map((car) => car.driverId),
         lappedCarsMayOvertakeAtSeconds: elapsedSeconds,
+        lastObservedSafetyCarGapByDriver: Object.fromEntries(
+          cars.map((car) => [
+            car.driverId,
+            signedPhysicalGap(car.totalDistance, procedure.safetyCarDistance),
+          ]),
+        ),
         returnNotBeforeLeaderDistance,
         inThisLapEarliestLeaderDistance:
           returnNotBeforeLeaderDistance - noticeLeadLaps,
@@ -401,7 +824,7 @@ function advanceSafetyCar(
       events.push({
         atSeconds: elapsedSeconds,
         id: `sc-unlap-${phase.id}`,
-        message: 'LAPPED CARS MAY NOW OVERTAKE. Eligible cars pass the lead-lap queue and Safety Car.',
+        message: `LAPPED CARS MAY NOW OVERTAKE: ${eligibleLappedCars.map((car) => car.code).join(', ')}. Only these named cars may pass the lead-lap queue and Safety Car.`,
       })
     } else {
       procedure = beginSafetyCarWithdrawal({
@@ -421,11 +844,23 @@ function advanceSafetyCar(
   }
 
   if (procedure.stage === 'unlapping') {
+    const unlapping = advanceUnlapping({
+      cars,
+      elapsedSeconds,
+      events,
+      leader,
+      phaseId: phase.id,
+      procedure,
+      track,
+    })
+    procedure = unlapping.procedure
+    penaltyLapDriverIds.push(...unlapping.penaltyLapDriverIds)
     const carsByDriver = new Map(cars.map((car) => [car.driverId, car]))
+    const rejoined = new Set(procedure.unlappingRejoinedDriverIds)
     const unlappingComplete = procedure.eligibleLappedDriverIds.every(
       (driverId) => {
         const car = carsByDriver.get(driverId)
-        return !car || car.status !== 'running' || car.hasUnlappedUnderSafetyCar
+        return !car || car.status !== 'running' || rejoined.has(driverId)
       },
     )
     const returnDistance = procedure.returnNotBeforeLeaderDistance
@@ -483,12 +918,15 @@ function advanceSafetyCar(
     events.push({
       atSeconds: elapsedSeconds,
       id: `sc-pit-entry-${phase.id}`,
-      message: 'SAFETY CAR ENTERING PIT ENTRY ROAD. No overtaking before each car first crosses the Line.',
+      message: procedure.finishingUnderSafetyCar
+        ? 'SAFETY CAR ENTERING PIT ENTRY ROAD. The field takes the chequered flag without overtaking before the Line.'
+        : 'SAFETY CAR ENTERING PIT ENTRY ROAD. No overtaking before each car first crosses the Line.',
     })
   }
 
   if (
     procedure.stage === 'pit-entry' &&
+    !procedure.finishingUnderSafetyCar &&
     procedure.restartLineDistance !== null &&
     leader.totalDistance >= procedure.restartLineDistance
   ) {
@@ -502,9 +940,22 @@ function advanceSafetyCar(
       completedFlag: 'sc',
       events,
       greenLightUntilSeconds: elapsedSeconds + 10,
+      penaltyLapDriverIds,
       phase: null,
       restartTargetsByDriver:
         procedure.restartTargetsByDriver ?? firstLineTargets(cars),
+    }
+  }
+
+  if (procedure.stage !== 'unlapping') {
+    procedure = {
+      ...procedure,
+      lastObservedSafetyCarGapByDriver: Object.fromEntries(
+        cars.map((car) => [
+          car.driverId,
+          signedPhysicalGap(car.totalDistance, procedure.safetyCarDistance),
+        ]),
+      ),
     }
   }
 
@@ -512,6 +963,7 @@ function advanceSafetyCar(
     completedFlag: null,
     events,
     greenLightUntilSeconds: null,
+    penaltyLapDriverIds,
     phase: { ...phase, neutralisation: procedure },
     restartTargetsByDriver: null,
   }
@@ -520,11 +972,22 @@ function advanceSafetyCar(
 export function advanceNeutralisationProcedure(options: {
   cars: CarSnapshot[]
   elapsedSeconds: number
+  finishingLap?: boolean
+  lowVisibility?: boolean
+  overtakingPermitted?: boolean
   phase: ActiveFlagPhase
   seed: string
   track: TrackDefinition
 }): NeutralisationAdvanceResult {
-  const { cars, elapsedSeconds, seed, track } = options
+  const {
+    cars,
+    elapsedSeconds,
+    finishingLap = false,
+    lowVisibility = false,
+    overtakingPermitted = true,
+    seed,
+    track,
+  } = options
   const phase = ensureNeutralisationProcedure(options.phase, cars, track)
   const procedure = phase.neutralisation
 
@@ -540,6 +1003,9 @@ export function advanceNeutralisationProcedure(options: {
       elapsedSeconds,
       track,
       seed,
+      overtakingPermitted,
+      lowVisibility,
+      finishingLap,
     )
   }
 
@@ -547,6 +1013,7 @@ export function advanceNeutralisationProcedure(options: {
     completedFlag: null,
     events: [],
     greenLightUntilSeconds: null,
+    penaltyLapDriverIds: [],
     phase,
     restartTargetsByDriver: null,
   }
@@ -563,6 +1030,12 @@ export function controlProcedureStatusMessage(phase: ActiveFlagPhase) {
 
   if (procedure?.kind !== 'safety-car') {
     return phase.startMessage
+  }
+
+  if (procedure.finishingUnderSafetyCar) {
+    return procedure.stage === 'pit-entry'
+      ? 'SAFETY CAR IN PIT ENTRY ROAD. The field takes the chequered flag without overtaking.'
+      : 'FINAL LAP UNDER SAFETY CAR. SC boards and yellow flags remain until the Line.'
   }
 
   switch (procedure.stage) {

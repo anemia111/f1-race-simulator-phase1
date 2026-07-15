@@ -109,7 +109,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const liveGapScroll = await inspectScroll(page.locator('.live-gap-panel ol'))
   const liveTimingTitle = await page.locator('.broadcast-live-timing .broadcast-panel-header').innerText()
   const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
-  const timingOverviewHeader = await page.locator('.timing-overview-table .center-table-head').innerText()
+  const overviewNavigationItems = await page.locator('.broadcast-sidebar button[title="Overview"]').count()
   const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
   const initialSectorValues = await page.locator('.leaderboard-rows .sector-value').allInnerTexts()
   const initialSectorStatuses = await page.locator('.leaderboard-rows .sector-value').evaluateAll((cells) => ({
@@ -186,7 +186,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.locator('.messages-panel .restore-panel').click()
   const messagesRestored = await page.locator('.race-message-list').isVisible()
 
-  await page.locator('.broadcast-sidebar button[title="Overview"]').click()
   const secondDriver = page.locator('.leaderboard-rows li button').nth(1)
   await secondDriver.click()
   const selectedRows = await page.locator('.leaderboard-rows li.selected').count()
@@ -219,7 +218,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     })),
   )
   const timingLapLabels = timingLapRows.map((row) => row.label)
-  await page.locator('.broadcast-sidebar button[title="Overview"]').click()
   const speed60Selected = await page.getByRole('button', { name: '60x' }).getAttribute('aria-pressed')
   const pauseButton = page.getByLabel('Pause simulation')
   await pauseButton.click()
@@ -315,6 +313,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     initialMiniSectorStates,
     name,
     observedOverallBest,
+    overviewNavigationItems,
     pageErrors,
     removedBottomPanelLabels,
     resumeVisible,
@@ -335,7 +334,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     timingLapLabels,
     timingLapRows,
     runningMiniSectorStates,
-    timingOverviewHeader,
     tokenInputVisible,
     trackTitle,
     tyreHeader,
@@ -362,7 +360,7 @@ try {
     if (result.leaderboardRows < 22) failures.push(`expected 22 leaderboard rows, saw ${result.leaderboardRows}`)
     if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
     if (!result.leaderboardHeader.includes('BAT')) failures.push('leaderboard battery column missing')
-    if (!result.timingOverviewHeader.includes('SPD')) failures.push('timing overview speed column missing')
+    if (result.overviewNavigationItems !== 0) failures.push('redundant overview navigation is still present')
     if (!result.initialFastestText.includes('--:--.---') || !result.initialFastestText.includes('Awaiting completed lap')) failures.push('initial fastest lap must wait for a measured CPU lap')
     if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
     if (result.initialSectorStatuses.pending !== result.initialSectorStatuses.total) failures.push('initial sector cells must all use the pending state')
@@ -383,7 +381,7 @@ try {
         !['retired', 'disqualified', 'dns'].includes(row.status),
     )
     if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
-    if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability model must expose 12 sliders with the 150-point ceiling')
+    if (result.driverAbilityMaxes.length !== 30 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability model must expose 30 independent sliders with the 150-point ceiling')
     if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('configured driver abilities must remain at or below 100')
     if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 100) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
     if (result.removedBottomPanelLabels.length > 0) failures.push(`removed bottom panels are still visible: ${result.removedBottomPanelLabels.join(', ')}`)

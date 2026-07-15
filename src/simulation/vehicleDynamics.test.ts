@@ -1,55 +1,67 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
-import { performanceLapGainSeconds } from './vehicleDynamics'
+import type { Driver, DriverSkillProfile } from '../types'
+import {
+  airDensityKgM3,
+  integrateVehicleSpeedKph,
+  performanceLapGainSeconds,
+} from './vehicleDynamics'
 
-describe('driver ability integration', () => {
-  it('turns the 12-stat overall average into measurable race pace', () => {
-    const driver = initialDrivers[0]
-    const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
-    const shared = {
-      ...driver,
-      braking: 0.9,
-      cornering: 0.9,
-      racePace: 0.9,
-    }
-    const lowerOverall = {
-      ...shared,
-      adaptability: 0.65,
-      consistency: 0.65,
-      defense: 0.65,
-      overtaking: 0.65,
-      qualifyingPace: 0.65,
-      raceAwareness: 0.65,
-      starts: 0.65,
-      tireManagement: 0.65,
-      wetSkill: 0.65,
-    }
-    const higherOverall = {
-      ...shared,
-      adaptability: 1,
-      consistency: 1,
-      defense: 1,
-      overtaking: 1,
-      qualifyingPace: 1,
-      raceAwareness: 1,
-      starts: 1,
-      tireManagement: 1,
-      wetSkill: 1,
-    }
+function driverAt(value: number): Driver {
+  const base = initialDrivers[0]
+  const skills = Object.fromEntries(
+    Object.keys(base.skills).map((key) => [key, value]),
+  ) as DriverSkillProfile
+
+  return { ...base, skills }
+}
+
+describe('multi-axis vehicle dynamics', () => {
+  it('lets driver skill approach, but never exceed, the machine limit', () => {
+    const team = initialTeams.find(
+      (candidate) => candidate.id === initialDrivers[0].teamId,
+    )!
+    const lowerDriver = driverAt(0.7)
+    const higherDriver = driverAt(1)
 
     expect(
       performanceLapGainSeconds({
-        driver: higherOverall,
+        driver: higherDriver,
         team,
         track: tracks[0],
       }),
     ).toBeGreaterThan(
       performanceLapGainSeconds({
-        driver: lowerOverall,
+        driver: lowerDriver,
         team,
         track: tracks[0],
       }),
     )
+  })
+
+  it('uses drag-limited acceleration instead of adding a fixed top speed', () => {
+    const team = initialTeams[0]
+    let speedKph = 300
+
+    for (let step = 0; step < 500; step += 1) {
+      speedKph = integrateVehicleSpeedKph({
+        activeAeroMode: 'straight',
+        airDensityKgM3: airDensityKgM3({ altitudeMeters: 650, temperatureC: 28 }),
+        brakePercent: 0,
+        currentSpeedKph: speedKph,
+        deltaSeconds: 0.1,
+        dynamics: { gradient: 0, straightness: 1 },
+        ersPowerKw: speedKph < 355 ? 350 : 0,
+        fuelLoadKg: 8,
+        gripMultiplier: 1,
+        team,
+        throttlePercent: 100,
+        towDragReduction: 0.15,
+      })
+    }
+
+    expect(speedKph).toBeGreaterThan(400)
+    expect(speedKph).toBeLessThan(438)
   })
 })

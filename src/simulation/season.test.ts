@@ -65,6 +65,46 @@ describe('local season standings', () => {
     expect(recorded.driverPoints[cars[3].driverId]).toBe(12)
   })
 
+  it('awards Sprint points only after 50 percent and two consecutive green laps', () => {
+    const snapshot = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'season-sprint-distance',
+      teams: initialTeams,
+      track: tracks[0],
+    })
+    const cars = snapshot.cars.map((car, index) => ({
+      ...car,
+      position: index + 1,
+      status: 'finished' as const,
+      totalDistance: 10,
+    }))
+    const shortSprint = recordSeasonRound(createSeasonState(), {
+      cars,
+      greenFlagLaps: 4,
+      roundId: 'sprint:short',
+      scheduledLaps: 21,
+      stage: 'sprint',
+    })
+    const neutralisedSprint = recordSeasonRound(createSeasonState(), {
+      cars: cars.map((car) => ({ ...car, totalDistance: 12 })),
+      greenFlagLaps: 1,
+      roundId: 'sprint:no-green-running',
+      scheduledLaps: 21,
+      stage: 'sprint',
+    })
+    const halfSprint = recordSeasonRound(createSeasonState(), {
+      cars: cars.map((car) => ({ ...car, totalDistance: 12 })),
+      greenFlagLaps: 2,
+      roundId: 'sprint:half',
+      scheduledLaps: 21,
+      stage: 'sprint',
+    })
+
+    expect(shortSprint.driverPoints[cars[0].driverId] ?? 0).toBe(0)
+    expect(neutralisedSprint.driverPoints[cars[0].driverId] ?? 0).toBe(0)
+    expect(halfSprint.driverPoints[cars[0].driverId]).toBe(8)
+  })
+
   it('never awards points or countback results to a disqualified car', () => {
     const snapshot = createInitialRace({
       drivers: initialDrivers,

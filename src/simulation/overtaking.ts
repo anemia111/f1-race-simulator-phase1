@@ -6,12 +6,19 @@ import type {
   CarSnapshot,
   Driver,
   FlagState,
+  StewardConsequence,
+  StewardOffence,
   TrackDefinition,
   WeatherState,
 } from '../types'
 import { hashChance } from './random'
-import { driverPerformanceAbility } from './driverAbility'
+import {
+  driverAbilityValue,
+  driverPerformanceAbility,
+  driverSkillBlend,
+} from './driverAbility'
 import { tireDeltaSeconds } from './tires'
+import { trackDynamicsAt } from './trackDynamics'
 
 export type OvertakeOutcomeKind = 'pass' | 'defended' | 'contact' | 'crash'
 
@@ -26,9 +33,17 @@ export type OvertakeOutcome = {
   defenderRetires: boolean
   flagResponse: Exclude<FlagState, 'clear'> | null
   flagDurationSeconds: number
+  safetyCarUsesPitLane?: boolean
   sector: number
   zone: 'straight' | 'corner'
   assistance: 'overtake' | 'tow' | 'none'
+  stewardReview?: {
+    investigatedDriverId: string
+    otherDriverId: string
+    offence: StewardOffence
+    responsibilityShare: number
+    consequence: StewardConsequence
+  }
   message: string
 }
 
@@ -57,6 +72,9 @@ export type BattleDynamics = {
   tirePerformanceEdge: number
   electricalPerformanceEdge: number
   ersPowerDeltaKw: number
+  speedDeltaKph: number
+  speedPerformanceEdge: number
+  straightClosingOpportunity: number
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
@@ -64,11 +82,11 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 function driverOvertaking(driver: Driver): number {
-  return driverPerformanceAbility(driver, 'overtaking')
+  return driverPerformanceAbility(driver, 'overtakingSkill')
 }
 
 function driverDefense(driver: Driver): number {
-  return driverPerformanceAbility(driver, 'defense')
+  return driverPerformanceAbility(driver, 'defendingSkill')
 }
 
 function driverWetSkill(driver: Driver): number {
@@ -81,9 +99,14 @@ function driverWetSkill(driver: Driver): number {
 }
 
 function driverErrorRate(driver: Driver): number {
-  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
+  const control = driverSkillBlend(driver, {
+    mistakeResistance: 0.42,
+    precision: 0.23,
+    raceAwareness: 0.2,
+    pressureHandling: 0.15,
+  })
 
-  return clamp01(driver.errorRate ?? (1 - awareness) * 0.5)
+  return clamp01((1 - control) * 0.5)
 }
 
 function progressIsInZone(progress: number, start: number, end: number): boolean {
@@ -146,7 +169,7 @@ export function battleDynamicsFor(
   const attackerTireDelta = tireDeltaSeconds(
     attackerCar.tire,
     attackerCar.tireAgeLaps,
-    attacker.tireManagement,
+    driverAbilityValue(attacker, 'tireManagement'),
     weather,
     trackGrip,
     attackerCar.tireTemperatureC,
@@ -164,7 +187,7 @@ export function battleDynamicsFor(
   const defenderTireDelta = tireDeltaSeconds(
     defenderCar.tire,
     defenderCar.tireAgeLaps,
-    defender.tireManagement,
+    driverAbilityValue(defender, 'tireManagement'),
     weather,
     trackGrip,
     defenderCar.tireTemperatureC,
@@ -192,11 +215,32 @@ export function battleDynamicsFor(
     zone === 'straight'
       ? clamp((ersPowerDeltaKw / 150) * 0.075, -0.075, 0.075)
       : 0
+  const speedDeltaKph =
+    zone === 'straight' ? attackerCar.speedKph - defenderCar.speedKph : 0
+  const speedPerformanceEdge =
+    zone === 'straight'
+      ? clamp((speedDeltaKph / 70) * 0.16, -0.16, 0.16)
+      : 0
+  const straightRemainingMeters =
+    zone === 'straight' && track && trackProgress !== undefined
+      ? trackDynamicsAt(track, trackProgress).straightLengthAheadMeters
+      : 0
+  const defenderSpeedMps = Math.max(25, defenderCar.speedKph / 3.6)
+  const secondsRemaining = straightRemainingMeters / defenderSpeedMps
+  const closingDistanceMeters = speedDeltaKph / 3.6 * secondsRemaining
+  const currentGapMeters = gapToAheadSeconds * defenderSpeedMps
+  const straightClosingOpportunity =
+    zone === 'straight' && straightRemainingMeters > 0
+      ? clamp((closingDistanceMeters - currentGapMeters) / 45, -0.12, 0.18)
+      : 0
 
   return {
     assistance,
     electricalPerformanceEdge,
     ersPowerDeltaKw,
+    speedDeltaKph,
+    speedPerformanceEdge,
+    straightClosingOpportunity,
     tirePerformanceEdge,
     zone,
   }
@@ -234,6 +278,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   const {
     assistance,
     electricalPerformanceEdge,
+    speedPerformanceEdge,
+    straightClosingOpportunity,
     tirePerformanceEdge,
     zone,
   } = battleDynamics
@@ -251,6 +297,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       wetEdge * 0.12 +
       chaos +
       electricalPerformanceEdge +
+      speedPerformanceEdge +
+      straightClosingOpportunity +
       (zone === 'straight' ? 0.025 : 0),
     0.05,
     0.82,
@@ -285,6 +333,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       (1 - trackGrip) * 0.1 -
       (isOpeningLap ? 0.05 : 0) +
       electricalPerformanceEdge * 1.2 +
+      speedPerformanceEdge * 1.25 +
+      straightClosingOpportunity * 1.1 +
       (zone === 'straight' ? 0.03 : 0),
     0.08,
     0.86,
@@ -293,6 +343,21 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
 
   if (outcomeRoll < contactChance) {
     const crashRoll = hashChance(`${key}:crash`)
+    const attackerResponsibility = clamp(
+      0.56 +
+        (driverErrorRate(attacker) - driverErrorRate(defender)) * 0.34 +
+        (hashChance(`${key}:responsibility`) - 0.5) * 0.28,
+      0.24,
+      0.9,
+    )
+    const investigatedDriverId =
+      attackerResponsibility >= 0.5 ? attacker.id : defender.id
+    const otherDriverId =
+      investigatedDriverId === attacker.id ? defender.id : attacker.id
+    const responsibilityShare = Math.max(
+      attackerResponsibility,
+      1 - attackerResponsibility,
+    )
     const crashThreshold = clamp(
       0.09 + (1 - trackGrip) * 0.2 + (isOpeningLap ? 0.08 : 0) + detail * 0.05,
       0.08,
@@ -327,10 +392,26 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
             : flagResponse === 'sc'
               ? 55 + detail * 42
               : 28 + detail * 26,
+        safetyCarUsesPitLane:
+          flagResponse === 'sc' &&
+          sector === 2 &&
+          hashChance(`${key}:pit-lane-route`) < 0.22,
         sector,
         zone,
         assistance,
-        message: `${attacker.code} and ${defender.code} collide in sector ${sector + 1}.`,
+        stewardReview: {
+          investigatedDriverId,
+          otherDriverId,
+          offence: 'causing-collision',
+          responsibilityShare,
+          consequence:
+            hashChance(`${key}:reckless`) < 0.012
+              ? 'reckless'
+              : majorMultiCarCrash || flagResponse === 'red'
+                ? 'major'
+                : 'significant',
+        },
+        message: `ACCIDENT: ${attacker.code} and ${defender.code} collide in sector ${sector + 1}.`,
       }
     }
 
@@ -350,7 +431,19 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       sector,
       zone,
       assistance,
-      message: `${attacker.code} tags ${defender.code} in sector ${sector + 1}; both lose time.`,
+      stewardReview: {
+        investigatedDriverId,
+        otherDriverId,
+        offence: 'causing-collision',
+        responsibilityShare,
+        consequence:
+          detail < 0.18
+            ? 'none'
+            : detail < 0.62
+              ? 'minor'
+              : 'significant',
+      },
+      message: `INCIDENT: ${attacker.code} tags ${defender.code} in sector ${sector + 1}; both lose time.`,
     }
   }
 

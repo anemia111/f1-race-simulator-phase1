@@ -37,19 +37,22 @@ describe('driver ability scale', () => {
     }
   })
 
-  it('uses the arithmetic mean of all 12 attributes as overall ability', () => {
+  it('uses the arithmetic mean of all 30 skills as display ability', () => {
     const driver = {
       ...initialDrivers[0],
-      adaptability: 0.84,
-      braking: 0.91,
-      cornering: 0.93,
-      defense: 0.86,
-      overtaking: 0.92,
-      qualifyingPace: 0.95,
-      raceAwareness: 0.89,
-      racePace: 0.9,
-      starts: 0.88,
-      wetSkill: 0.87,
+      skills: {
+        ...initialDrivers[0].skills,
+        adaptability: 0.84,
+        brakingSkill: 0.91,
+        defendingSkill: 0.86,
+        highSpeedCornerSkill: 0.93,
+        overtakingSkill: 0.92,
+        qualifyingPace: 0.95,
+        raceAwareness: 0.89,
+        racePace: 0.9,
+        startSkill: 0.88,
+        wetSkill: 0.87,
+      },
     }
     const expectedMean =
       driverStats.reduce(
@@ -57,29 +60,26 @@ describe('driver ability scale', () => {
         0,
       ) / driverStats.length
 
-    expect(driverStats).toHaveLength(12)
+    expect(driverStats).toHaveLength(30)
     expect(driverOverallAbility(driver)).toBeCloseTo(expectedMean, 10)
     expect(driverOverallAbilityPoints(driver)).toBe(
       Math.round(expectedMean * 100),
     )
   })
 
-  it('blends the overall rating into each domain performance value', () => {
+  it('keeps domain performance independent from the display-only mean', () => {
     const balanced = {
       ...initialDrivers[0],
-      qualifyingPace: 0.9,
+      skills: { ...initialDrivers[0].skills, qualifyingPace: 0.9 },
     }
     const strongerAcrossField = {
       ...balanced,
-      adaptability: 1,
-      braking: 1,
-      cornering: 1,
-      defense: 1,
-      overtaking: 1,
-      raceAwareness: 1,
-      racePace: 1,
-      starts: 1,
-      wetSkill: 1,
+      skills: Object.fromEntries(
+        Object.keys(balanced.skills).map((stat) => [
+          stat,
+          stat === 'qualifyingPace' ? 0.9 : 1,
+        ]),
+      ) as typeof balanced.skills,
     }
 
     expect(driverAbilityValue(strongerAcrossField, 'qualifyingPace')).toBe(
@@ -87,6 +87,6 @@ describe('driver ability scale', () => {
     )
     expect(
       driverPerformanceAbility(strongerAcrossField, 'qualifyingPace'),
-    ).toBeGreaterThan(driverPerformanceAbility(balanced, 'qualifyingPace'))
+    ).toBe(driverPerformanceAbility(balanced, 'qualifyingPace'))
   })
 })

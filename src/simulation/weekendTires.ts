@@ -1,4 +1,5 @@
 import type { Driver, RaceConfig, TireCompound } from '../types'
+import { driverAbilityValue } from './driverAbility'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
 import { trackGripForWeather, weatherFor } from './weather'
@@ -112,7 +113,7 @@ function raceStartCompoundFor(
     return 'H'
   }
 
-  if (driver.tireManagement > 0.86 && remaining.M > 0) {
+  if (driverAbilityValue(driver, 'tireManagement') > 0.86 && remaining.M > 0) {
     return 'M'
   }
 

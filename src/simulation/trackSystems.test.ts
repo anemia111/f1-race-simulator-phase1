@@ -9,7 +9,9 @@ import {
 } from './activeAero'
 import { createInitialRace } from './race'
 import {
+  advanceVscMarshallingSectorTracking,
   flagPhaseForSector,
+  phaseThreeTuning,
   sectorFlagStatesFor,
   vscPaceScaleForDelta,
 } from './raceEvents'
@@ -49,6 +51,11 @@ describe('track-dependent systems', () => {
       'clear',
       'double-yellow',
     ])
+    expect(sectorFlagStatesFor('yellow', null, 1)).toEqual([
+      'clear',
+      'double-yellow',
+      'clear',
+    ])
     expect(sectorFlagStatesFor('vsc', null)).toEqual(['vsc', 'vsc', 'vsc'])
   })
 
@@ -59,6 +66,41 @@ describe('track-dependent systems', () => {
     expect(vscPaceScaleForDelta(2)).toBeGreaterThan(
       vscPaceScaleForDelta(0),
     )
+    expect(vscPaceScaleForDelta(0, 1, 0)).toBeCloseTo(
+      phaseThreeTuning.vscPace,
+      5,
+    )
+    expect(phaseThreeTuning.vscPace).toBeLessThan(
+      phaseThreeTuning.vscMinimumTimePace,
+    )
+    expect(
+      phaseThreeTuning.vscMinimumTimePace - phaseThreeTuning.vscPace,
+    ).toBeGreaterThanOrEqual(0.02)
+  })
+
+  it('counts only completed marshalling sectors crossed with a negative VSC delta', () => {
+    const first = advanceVscMarshallingSectorTracking({
+      lastMeasuredSector: null,
+      nextDeltaSeconds: -0.2,
+      nextTotalDistance: 0.8,
+      previousDeltaSeconds: 0.1,
+      previousTotalDistance: 0.1,
+      redSectorCount: 0,
+      sectorsPerLap: 4,
+    })
+
+    expect(first).toEqual({ lastMeasuredSector: 3, redSectorCount: 2 })
+    expect(
+      advanceVscMarshallingSectorTracking({
+        lastMeasuredSector: first.lastMeasuredSector,
+        nextDeltaSeconds: 0.2,
+        nextTotalDistance: 1.1,
+        previousDeltaSeconds: -0.2,
+        previousTotalDistance: 0.8,
+        redSectorCount: first.redSectorCount,
+        sectorsPerLap: 4,
+      }),
+    ).toEqual({ lastMeasuredSector: 4, redSectorCount: 2 })
   })
 
   it('slows for a local yellow without a fixed 225 km/h ceiling', () => {
@@ -100,6 +142,7 @@ describe('track-dependent systems', () => {
       elapsedSeconds: 30,
       lowGripConditions: false,
       raceLap: 3,
+      team: initialTeams.find((candidate) => candidate.id === car.teamId)!,
       track,
       trackGrip: 1,
       weather: 'clear' as const,
@@ -114,7 +157,8 @@ describe('track-dependent systems', () => {
       phase: yellow,
     })
 
-    expect(yellowTelemetry.speedKph).toBeGreaterThan(225)
+    expect(yellowTelemetry.speedKph).toBeGreaterThan(100)
+    expect(yellowTelemetry.speedKph).not.toBe(225)
     expect(yellowTelemetry.speedKph).toBeLessThan(clearTelemetry.speedKph)
   })
 

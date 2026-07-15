@@ -41,6 +41,17 @@ export type BattlePhase =
   | 'defending'
   | 'resolved'
 export type StewardStatus = 'clear' | 'noted' | 'investigating' | 'penalty'
+export type StewardOffence =
+  | 'causing-collision'
+  | 'forcing-off-track'
+  | 'unsafe-rejoin'
+  | 'leaving-track-advantage'
+export type StewardConsequence =
+  | 'none'
+  | 'minor'
+  | 'significant'
+  | 'major'
+  | 'reckless'
 export type PitPhase = 'none' | 'entry' | 'lane' | 'box' | 'exit'
 export type PitServiceKind = 'tire-stop' | 'drive-through' | 'stop-go' | null
 export type PenaltyKind =
@@ -48,6 +59,7 @@ export type PenaltyKind =
   | 'time-10'
   | 'drive-through'
   | 'stop-go-10'
+  | 'penalty-lap'
   | 'grid-drop'
   | 'pit-lane-start'
   | 'disqualification'
@@ -60,24 +72,94 @@ export type WeekendStage =
   | 'sprint'
   | 'qualifying'
   | 'race'
-export type DriverTunableStat =
-  | 'qualifyingPace'
-  | 'racePace'
-  | 'consistency'
-  | 'tireManagement'
-  | 'overtaking'
-  | 'defense'
-  | 'wetSkill'
-  | 'starts'
-  | 'braking'
-  | 'cornering'
-  | 'raceAwareness'
-  | 'adaptability'
+
+/** Independent driver skills. The displayed overall is informational only. */
+export type DriverSkillProfile = {
+  rawPace: number
+  qualifyingPace: number
+  racePace: number
+  brakingSkill: number
+  lowSpeedCornerSkill: number
+  mediumSpeedCornerSkill: number
+  highSpeedCornerSkill: number
+  tractionControl: number
+  throttleControl: number
+  tireManagement: number
+  tireWarmupSkill: number
+  wetSkill: number
+  intermediateSkill: number
+  overtakingSkill: number
+  defendingSkill: number
+  racecraft: number
+  consistency: number
+  mistakeResistance: number
+  pressureHandling: number
+  trafficManagement: number
+  dirtyAirManagement: number
+  fuelManagement: number
+  ersManagement: number
+  restartSkill: number
+  startSkill: number
+  confidence: number
+  precision: number
+  adaptability: number
+  raceAwareness: number
+  carBalanceAdaptation: number
+}
+
+export type DriverTunableStat = keyof DriverSkillProfile
+
+/** Preferences alter execution losses only; they never create car performance. */
+export type DriverStyleProfile = {
+  frontEndPreference: number
+  rearStabilityNeed: number
+  oversteerTolerance: number
+  understeerTolerance: number
+  brakingAggression: number
+  cornerShapePreference: number
+}
+
+/** Fixed season-long physical characteristics shared by both team cars. */
+export type MachinePerformanceProfile = {
+  lowSpeedCornerPerformance: number
+  mediumSpeedCornerPerformance: number
+  highSpeedCornerPerformance: number
+  mechanicalGrip: number
+  traction: number
+  brakingStability: number
+  brakingPerformance: number
+  aerodynamicEfficiency: number
+  downforceGeneration: number
+  dragEfficiency: number
+  straightLineEfficiency: number
+  activeAeroEfficiency: number
+  towSensitivity: number
+  dirtyAirTolerance: number
+  tireWarmup: number
+  tireDegManagement: number
+  frontTireManagement: number
+  rearTireManagement: number
+  wetPerformance: number
+  intermediatePerformance: number
+  kerbHandling: number
+  rideCompliance: number
+  bumpTolerance: number
+  coolingEfficiency: number
+  brakeCooling: number
+  puOutput: number
+  electricalDeploymentEfficiency: number
+  energyRecoveryEfficiency: number
+  fuelEfficiency: number
+  reliability: number
+}
+
+export type MachineTunableStat = keyof MachinePerformanceProfile
 
 export type RaceEventKind =
   | 'flag'
   | 'track-limit'
   | 'incident'
+  | 'accident'
   | 'pit'
   | 'penalty'
   | 'finish'
@@ -101,9 +183,26 @@ export type PenaltyRecord = {
   kind: PenaltyKind
   reason: string
   seconds: number
+  /** FIA penalty points applied to the driver's twelve-month tally. */
+  penaltyPoints: number
   served: boolean
   mustServeByLap?: number | null
   servedAtSeconds?: number | null
+}
+
+/** Structured evidence retained while the stewards consider an incident. */
+export type StewardCase = {
+  id: string
+  openedAtSeconds: number
+  resolveAtSeconds: number
+  driverId: string
+  otherDriverId: string | null
+  offence: StewardOffence
+  article: string
+  /** Share of responsibility assigned to the investigated driver, 0..1. */
+  responsibilityShare: number
+  consequence: StewardConsequence
+  advantageSeconds?: number
 }
 
 export type ComponentCondition = {
@@ -216,6 +315,11 @@ export type SafetyCarProcedureStage =
   | 'in-this-lap'
   | 'pit-entry'
 
+export type SafetyCarEligibilityStatus =
+  | 'pending'
+  | 'eligible'
+  | 'ineligible'
+
 export type NeutralisationProcedure =
   | {
       kind: 'vsc'
@@ -227,14 +331,33 @@ export type NeutralisationProcedure =
       kind: 'safety-car'
       stage: SafetyCarProcedureStage
       orangeLights: boolean
+      /** Green rear light authorising only the cars named by Race Control. */
+      greenLight: boolean
+      /** B5.13.2b queue-gap instruction selected by the Race Director. */
+      maximumQueueGapCarLengths: 10 | 20
       leaderDistanceAtDeployment: number
       leaderCollectionTargetDistance: number
       safetyCarDistance: number
       safetyCarLastUpdatedAtSeconds: number
       leaderCollectedAtSeconds: number | null
       fieldQueuedAtSeconds: number | null
+      /** End-of-lap reference after each car's second SC1 crossing. */
+      eligibilityLineTargetByDriver: Record<string, number>
+      eligibilityStatusByDriver: Record<string, SafetyCarEligibilityStatus>
       eligibleLappedDriverIds: string[]
+      /** Stable order published with the Race Control permission message. */
+      unlappingOrderDriverIds: string[]
+      /** Distance at which each authorised car passed the Safety Car. */
+      unlappingPassedSafetyCarAtDistanceByDriver: Record<string, number>
+      /** Cars that have completed the no-overtaking lap and joined the tail. */
+      unlappingRejoinedDriverIds: string[]
+      unauthorizedSafetyCarOvertakeDriverIds: string[]
+      lastObservedSafetyCarGapByDriver: Record<string, number>
       lappedCarsMayOvertakeAtSeconds: number | null
+      overtakingNotPermittedAtSeconds: number | null
+      pitExitClosed: boolean
+      /** B5.13.3 Race Director instruction for SC and every car to use pit lane. */
+      pitLaneRouteRequired: boolean
       returnNotBeforeLeaderDistance: number | null
       inThisLapEarliestLeaderDistance: number | null
       inThisLapAtSeconds: number | null
@@ -243,6 +366,8 @@ export type NeutralisationProcedure =
       pitEntryAtSeconds: number | null
       restartLineDistance: number | null
       restartTargetsByDriver: Record<string, number> | null
+      /** B5.13.8: final lap remains neutralised after the SC enters the pits. */
+      finishingUnderSafetyCar: boolean
     }
 
 /**
@@ -255,6 +380,9 @@ export type ActiveFlagPhase = {
   flag: Exclude<FlagState, 'clear'>
   /** Affected sector (0-based). Only local yellows scope slowing to it. */
   sector: number
+  /** Double yellow is used while a major incident is being assessed. */
+  yellowSeverity?: 'single' | 'double'
+  safetyCarUsesPitLane?: boolean
   startSeconds: number
   endSeconds: number
   startMessage: string
@@ -266,6 +394,7 @@ export type ActiveFlagPhase = {
     flag: Exclude<FlagState, 'clear' | 'yellow'>
     hazardClearAtSeconds: number
     id: string
+    safetyCarUsesPitLane?: boolean
     startMessage: string
   } | null
   neutralisation?: NeutralisationProcedure | null
@@ -277,9 +406,7 @@ export type Team = {
   id: string
   name: string
   color: string
-  cornering: number
-  straightLine: number
-  reliability: number
+  machine: MachinePerformanceProfile
   pitCrewSpeed: number
 }
 
@@ -288,32 +415,8 @@ export type Driver = {
   teamId: string
   code: string
   name: string
-  /** Legacy baseline used to derive the detailed abilities when no tune exists. */
-  speed: number
-  consistency: number
-  tireManagement: number
-  /** One-lap pace. Defaults from speed and consistency. */
-  qualifyingPace?: number
-  /** Long-run pace. Defaults from speed, consistency, and tire management. */
-  racePace?: number
-  /** Racecraft when trying to pass another car. Defaults to `speed`. */
-  overtaking?: number
-  /** Racecraft when defending from a car behind. Defaults to `consistency`. */
-  defense?: number
-  /** Wet-weather racecraft. Defaults to consistency/tire management blend. */
-  wetSkill?: number
-  /** Launch and reaction quality. Defaults from speed and consistency. */
-  starts?: number
-  /** Threshold braking and trail-braking quality. */
-  braking?: number
-  /** Corner-entry, minimum-speed, and exit execution. */
-  cornering?: number
-  /** Situational judgment, track limits, and incident avoidance. */
-  raceAwareness?: number
-  /** Ability to learn grip, setup, weather, and changing conditions. */
-  adaptability?: number
-  /** Error tendency in wheel-to-wheel racing. Defaults from consistency. */
-  errorRate?: number
+  skills: DriverSkillProfile
+  style: DriverStyleProfile
   startOffset: number
   /** Starting tire compound. The live compound lives on CarSnapshot. */
   tire: TireCompound
@@ -332,6 +435,9 @@ export type TrackDefinition = {
   /** Circuit lap length used by the speed-integrated movement model. */
   lengthKm: number
   lengthSource: 'official' | 'estimated'
+  /** Physical inputs for air density and surface load; estimates are explicit. */
+  altitudeMeters?: number
+  surfaceRoughness?: number
   tireNomination?: TireNomination
   baseLapTime: number
   baseLapTimeSource?: 'estimated' | 'openf1-observed'
@@ -540,10 +646,26 @@ export type CarSnapshot = {
   overtakeEnergyRemainingMj: number
   /** ERS-K recharge accumulated on the current lap for regulation limits. */
   energyHarvestedThisLapMj: number
+  /** Battery energy spent by the MGU-K on the current lap. */
+  energyDeployedThisLapMj: number
   ersMode: ErsMode
   /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
   ersPowerKw: number
   ersBatteryPercent: number
+  /** Continuous 0..1 high-speed energy-recovery severity. */
+  superClippingIntensity: number
+  /** Fraction of normal PU + MGU-K wheel power currently available. */
+  superClippingDrivePowerScale: number
+  /** Electrical power being recovered specifically by super clipping. */
+  superClippingRegenPowerKw: number
+  /** Energy recovered by super clipping on the current lap. */
+  superClippingRecoveredThisLapMj: number
+  /** Simulation clock at the start of the current clipping episode. */
+  superClippingStartedAtSeconds: number | null
+  /** Track progress at the start of the current clipping episode. */
+  superClippingStartedAtProgress: number | null
+  /** Elapsed duration of the current clipping episode. */
+  superClippingDurationSeconds: number
   /** Remaining fuel mass. This is consumed continuously from travelled distance. */
   fuelLoadKg: number
   /** Surface tread temperature used for immediate grip and wear. */
@@ -606,6 +728,10 @@ export type CarSnapshot = {
   damage: number
   /** Accumulated time penalties, applied to classification. */
   penaltySeconds: number
+  /** Penalty points imposed during this competition. */
+  penaltyPoints: number
+  /** Classification laps removed by the stewards. */
+  penaltyLaps: number
   penalties: PenaltyRecord[]
   /** Penalty seconds already served during pit stops. */
   servedPenaltySeconds: number
@@ -616,8 +742,13 @@ export type CarSnapshot = {
   /** True once a retired car has been cleared from the 3D track. */
   hiddenFromTrack: boolean
   vscDeltaSeconds: number
+  /** Number of completed marshalling sectors with a negative VSC delta. */
+  vscRedSectorCount?: number
+  /** Absolute timing mini-sector last sampled for VSC compliance. */
+  vscLastMeasuredMiniSector?: number | null
   hasUnlappedUnderSafetyCar: boolean
   blueFlag: boolean
+  blueFlagSinceSeconds: number | null
   startsFromPitLane: boolean
   lowPowerStartDetected: boolean
   warningLightsUntilSeconds: number | null
@@ -665,6 +796,12 @@ export type RaceSnapshot = {
   weather: WeatherState
   weatherLabel: string
   weatherForecastLabel: string
+  /** B1.5.10 declaration for the active Sprint or Race session. */
+  heatHazardDeclared: boolean
+  /** Current simulated Heat Index used for the declaration audit. */
+  heatIndexC: number
+  /** C4.6 session mass increase: 5kg declared TTCS, 2kg other sessions. */
+  heatHazardMassIncreaseKg: number
   /** Sporting B1.5.11 declaration, held for the relevant session once made. */
   rainHazardDeclared: boolean
   /** Sporting B1.5.12 Race Director grip declaration. */
@@ -687,6 +824,10 @@ export type RaceSnapshot = {
   timedYellowUntilSeconds: number | null
   timedYellowSector: number | null
   pitLaneOpen: boolean
+  /** Separate SC operational signal; cars may enter while the exit is held. */
+  pitExitOpen: boolean
+  /** Open cases are resolved from evidence, not a second random roll. */
+  stewardCases: StewardCase[]
   events: RaceEvent[]
   weekend: WeekendState
 }

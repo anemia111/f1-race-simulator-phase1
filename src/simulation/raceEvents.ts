@@ -11,8 +11,10 @@ import type {
   FlagState,
   SectorFlagState,
   TrackDefinition,
+  WeatherState,
 } from '../types'
 import { hashChance } from './random'
+import { trackLimitPenaltyFromWarnings } from './stewarding'
 
 export const phaseThreeTuning = {
   // Fuel effect: cars start heavy and gain pace as fuel burns off.
@@ -29,15 +31,14 @@ export const phaseThreeTuning = {
   slipstreamMaxGainSeconds: 0.35,
   slipstreamRangeSeconds: 1.0,
   // Track limits: per-lap warning chance scaled by driver consistency.
-  trackLimitBaseChance: 0.045,
-  trackLimitConsistencyWeight: 0.12,
-  trackLimitPenaltyThreshold: 4,
-  /** Warnings between each additional 5s penalty after the threshold. */
-  trackLimitPenaltyStep: 2,
-  trackLimitPenaltySeconds: 5,
+  trackLimitBaseChance: 0.026,
+  trackLimitConsistencyWeight: 0.075,
   // Flag pace multipliers.
   yellowSectorPace: 0.88,
-  vscPace: 0.62,
+  /** FIA minimum-time reference; drivers target slightly below this pace. */
+  vscMinimumTimePace: 0.63,
+  /** Initial target creates about 0.05s of positive delta before feedback settles. */
+  vscPace: 0.6,
   vscDeltaGain: 0.58,
   vscMinimumPace: 0.18,
   vscMaximumPace: 0.9,
@@ -130,12 +131,34 @@ export function dirtyAirDeltaSeconds(gapToAheadSeconds: number): number {
 
 // --- Track limits ----------------------------------------------------------
 
-function trackLimitChance(consistency: number): number {
+function trackLimitChance(
+  consistency: number,
+  context: {
+    pressure?: number
+    tireWearPercent?: number
+    trackGrip?: number
+    weather?: WeatherState
+  },
+): number {
+  const pressureRisk = Math.max(0, Math.min(1, context.pressure ?? 0)) * 0.018
+  const tireRisk =
+    Math.max(0, (context.tireWearPercent ?? 0) - 72) / 28 * 0.025
+  const gripRisk = Math.max(0, 1 - (context.trackGrip ?? 1)) * 0.035
+  const rainRisk =
+    context.weather === 'heavy-rain'
+      ? 0.012
+      : context.weather === 'light-rain'
+        ? 0.006
+        : 0
   const chance =
     phaseThreeTuning.trackLimitBaseChance +
-    (1 - clamp01(consistency)) * phaseThreeTuning.trackLimitConsistencyWeight
+    (1 - clamp01(consistency)) * phaseThreeTuning.trackLimitConsistencyWeight +
+    pressureRisk +
+    tireRisk +
+    gripRisk +
+    rainRisk
 
-  return Math.min(0.2, Math.max(0.02, chance))
+  return Math.min(0.16, Math.max(0.012, chance))
 }
 
 /** Whether a driver picks up a track-limit warning on a specific lap. */
@@ -144,12 +167,21 @@ export function lapHasTrackLimitWarning(
   driverId: string,
   consistency: number,
   lap: number,
+  context: {
+    pressure?: number
+    tireWearPercent?: number
+    trackGrip?: number
+    weather?: WeatherState
+  } = {},
 ): boolean {
   if (lap < 2) {
     return false
   }
 
-  return hashChance(`${seed}:track-limit:${driverId}:${lap}`) < trackLimitChance(consistency)
+  return (
+    hashChance(`${seed}:track-limit:${driverId}:${lap}`) <
+    trackLimitChance(consistency, context)
+  )
 }
 
 /** Cumulative track-limit warnings for a driver up to and including a lap. */
@@ -171,21 +203,11 @@ export function trackLimitWarningsUpTo(
 }
 
 /**
- * Time penalty owed for a warning count: 5s at the threshold, +5s for every
- * `trackLimitPenaltyStep` warnings beyond it.
+ * Cumulative 2026 track-limit penalty: black-and-white flag on offence three,
+ * then 5s for offence four and every further offence.
  */
 export function penaltyFromWarnings(warnings: number): number {
-  const {
-    trackLimitPenaltyThreshold: threshold,
-    trackLimitPenaltyStep: step,
-    trackLimitPenaltySeconds: unit,
-  } = phaseThreeTuning
-
-  if (warnings < threshold) {
-    return 0
-  }
-
-  return unit * (1 + Math.floor((warnings - threshold) / step))
+  return trackLimitPenaltyFromWarnings(warnings)
 }
 
 /** Remaining penalty owed after any seconds already served at pit stops. */
@@ -289,6 +311,15 @@ export function sectorFlagStatesFor(
   ]
 
   if (flag === 'yellow') {
+    if (
+      timedDoubleYellowSector !== null &&
+      timedDoubleYellowSector >= 0 &&
+      timedDoubleYellowSector <= 2
+    ) {
+      states[timedDoubleYellowSector] = 'double-yellow'
+      return states
+    }
+
     if (localYellowSector === null || localYellowSector < 0 || localYellowSector > 2) {
       return ['yellow', 'yellow', 'yellow']
     }
@@ -331,6 +362,48 @@ export function vscPaceScaleForDelta(
   )
 }
 
+export function advanceVscMarshallingSectorTracking(options: {
+  lastMeasuredSector: number | null
+  nextDeltaSeconds: number
+  nextTotalDistance: number
+  previousDeltaSeconds: number
+  previousTotalDistance: number
+  redSectorCount: number
+  sectorsPerLap: number
+}): { lastMeasuredSector: number; redSectorCount: number } {
+  const sectorsPerLap = Math.max(1, Math.floor(options.sectorsPerLap))
+  const previousDistance = Math.max(0, options.previousTotalDistance)
+  const nextDistance = Math.max(previousDistance, options.nextTotalDistance)
+  const firstSector = Math.floor(previousDistance * sectorsPerLap)
+  const lastMeasuredSector = options.lastMeasuredSector ?? firstSector
+  const finalSector = Math.floor(nextDistance * sectorsPerLap)
+  let redSectorCount = Math.max(0, Math.floor(options.redSectorCount))
+
+  if (finalSector <= lastMeasuredSector || nextDistance <= previousDistance) {
+    return { lastMeasuredSector, redSectorCount }
+  }
+
+  const travel = nextDistance - previousDistance
+
+  for (let sector = lastMeasuredSector + 1; sector <= finalSector; sector += 1) {
+    const crossingDistance = sector / sectorsPerLap
+    const crossingFraction = Math.min(
+      1,
+      Math.max(0, (crossingDistance - previousDistance) / travel),
+    )
+    const crossingDelta =
+      options.previousDeltaSeconds +
+      (options.nextDeltaSeconds - options.previousDeltaSeconds) *
+        crossingFraction
+
+    if (crossingDelta < 0) {
+      redSectorCount += 1
+    }
+  }
+
+  return { lastMeasuredSector: finalSector, redSectorCount }
+}
+
 /** Lap-time loss from cold tires/brakes right after a restart. */
 export function restartGripLossSeconds(
   elapsedSeconds: number,
@@ -354,7 +427,7 @@ export function flagLabelFor(phase: ActiveFlagPhase | null): string {
 
   switch (phase.flag) {
     case 'yellow':
-      return `YELLOW S${phase.sector + 1}`
+      return `${phase.yellowSeverity === 'double' ? 'DOUBLE YELLOW' : 'YELLOW'} S${phase.sector + 1}`
     case 'vsc':
       return phase.neutralisation?.kind === 'vsc' &&
         phase.neutralisation.stage === 'ending'

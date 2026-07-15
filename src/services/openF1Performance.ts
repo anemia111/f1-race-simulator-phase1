@@ -388,14 +388,6 @@ export function buildOpenF1TrackCalibration(
   }
 }
 
-function normalizedStrength(value: number | null, minimum: number, maximum: number) {
-  if (value === null || !Number.isFinite(minimum) || maximum - minimum < 0.001) {
-    return null
-  }
-
-  return clamp((maximum - value) / (maximum - minimum), 0, 1)
-}
-
 function cleanLapPaceByDriver(source: ObservedSource | null | undefined) {
   const result = new Map<number, number>()
 
@@ -465,78 +457,6 @@ function representativeLapTime(source: ObservedSource | null | undefined) {
   return representative === null ? null : Number(representative.toFixed(3))
 }
 
-function representativeSpeedByTeam(source: ObservedSource | null | undefined) {
-  const result = new Map<string, number>()
-
-  if (!source?.carData.length) {
-    return result
-  }
-
-  const teamByDriver = new Map(
-    source.drivers.map((driver) => [driver.driver_number, normalize(driver.team_name)]),
-  )
-  const samplesByTeam = new Map<string, number[]>()
-
-  for (const sample of source.carData) {
-    const team = teamByDriver.get(sample.driver_number)
-
-    if (!team || sample.speed < 250) {
-      continue
-    }
-
-    const samples = samplesByTeam.get(team) ?? []
-    samples.push(sample.speed)
-    samplesByTeam.set(team, samples)
-  }
-
-  for (const [team, samples] of samplesByTeam) {
-    const sorted = samples.sort((a, b) => b - a)
-    const representative = median(sorted.slice(0, Math.max(3, Math.ceil(sorted.length * 0.08))))
-
-    if (representative !== null) {
-      result.set(team, representative)
-    }
-  }
-
-  return result
-}
-
-function pitPerformanceByTeam(source: ObservedSource | null | undefined) {
-  const result = new Map<string, number>()
-
-  if (!source?.pit?.length) {
-    return result
-  }
-
-  const teamByDriver = new Map(
-    source.drivers.map((driver) => [driver.driver_number, normalize(driver.team_name)]),
-  )
-  const samplesByTeam = new Map<string, number[]>()
-
-  for (const stop of source.pit) {
-    const team = teamByDriver.get(stop.driver_number)
-    const duration = stop.stop_duration
-
-    if (!team || duration === null || duration < 1.5 || duration > 8) {
-      continue
-    }
-
-    const samples = samplesByTeam.get(team) ?? []
-    samples.push(duration)
-    samplesByTeam.set(team, samples)
-  }
-
-  for (const [team, samples] of samplesByTeam) {
-    const value = median(samples)
-
-    if (value !== null) {
-      result.set(team, value)
-    }
-  }
-
-  return result
-}
-
 export function calibrateFieldFromOpenF1(
   teams: Team[],
   drivers: Driver[],
@@ -564,40 +484,9 @@ export function calibrateFieldFromOpenF1(
     }
   }
 
-  const teamStandings = new Map(
-    bundle.championshipTeams.map((standing) => [normalize(standing.team_name), standing]),
-  )
-  const driverNumbersByCode = new Map(
-    bundle.drivers.map((driver) => [driver.name_acronym, driver.driver_number]),
-  )
   const teamByDriverNumber = new Map(
     bundle.drivers.map((driver) => [driver.driver_number, normalize(driver.team_name)]),
   )
-  const driverStandings = new Map(
-    bundle.championshipDrivers.map((standing) => [standing.driver_number, standing]),
-  )
-  const maximumTeamPoints = Math.max(
-    0,
-    ...bundle.championshipTeams.map((standing) => standing.points_current),
-  )
-  const maximumDriverPoints = Math.max(
-    0,
-    ...bundle.championshipDrivers.map((standing) => standing.points_current),
-  )
-  const teamStandingEvidence = clamp(maximumTeamPoints / 320, 0.15, 0.85)
-  const driverStandingEvidence = clamp(maximumDriverPoints / 180, 0.15, 0.85)
-  const driverPointsByTeam = new Map<string, number[]>()
-
-  for (const standing of bundle.championshipDrivers) {
-    const team = teamByDriverNumber.get(standing.driver_number)
-
-    if (team) {
-      driverPointsByTeam.set(team, [
-        ...(driverPointsByTeam.get(team) ?? []),
-        standing.points_current,
-      ])
-    }
-  }
   const paceByDriver = cleanLapPaceByDriver(observed)
   const paceByTeam = new Map<string, number[]>()
 
@@ -616,8 +505,6 @@ export function calibrateFieldFromOpenF1(
     }),
   )
   const teamPaces = [...medianPaceByTeam.values()]
-  const minimumPace = Math.min(...teamPaces)
-  const maximumPace = Math.max(...teamPaces)
   const fastestTeamPace = Math.min(...teamPaces)
   const teamPaceDeltaSeconds = Object.fromEntries(
     teams.map((team) => {
@@ -631,149 +518,6 @@ export function calibrateFieldFromOpenF1(
       ]
     }),
   )
-  const speedByTeam = representativeSpeedByTeam(observed)
-  const observedSpeeds = [...speedByTeam.values()]
-  const minimumSpeed = Math.min(...observedSpeeds)
-  const maximumSpeed = Math.max(...observedSpeeds)
-  const pitByTeam = pitPerformanceByTeam(observed)
-  const pitDurations = [...pitByTeam.values()]
-  const fastestPit = Math.min(...pitDurations)
-  const slowestPit = Math.max(...pitDurations)
-
-  const calibratedTeams = teams.map((team) => {
-    const standing = teamStandings.get(normalize(team.name))
-
-    if (!standing) {
-      return team
-    }
-
-    const rankStrength = clamp((12 - standing.position_current) / 11, 0, 1)
-    const pointsStrength =
-      maximumTeamPoints > 0
-        ? Math.sqrt(standing.points_current / maximumTeamPoints)
-        : rankStrength
-    const standingStrength = rankStrength * 0.35 + pointsStrength * 0.65
-    const paceStrength = normalizedStrength(
-      medianPaceByTeam.get(normalize(team.name)) ?? null,
-      minimumPace,
-      maximumPace,
-    )
-    const speed = speedByTeam.get(normalize(team.name))
-    const straightStrength =
-      speed === undefined || maximumSpeed - minimumSpeed < 2
-        ? null
-        : clamp((speed - minimumSpeed) / (maximumSpeed - minimumSpeed), 0, 1)
-    const pitDuration = pitByTeam.get(normalize(team.name))
-    const pitStrength = normalizedStrength(
-      pitDuration ?? null,
-      fastestPit,
-      slowestPit,
-    )
-    const overall =
-      paceStrength === null
-        ? standingStrength
-        : standingStrength * 0.28 + paceStrength * 0.72
-    const performancePriorWeight =
-      paceStrength === null ? 0.62 - teamStandingEvidence * 0.42 : 0.28
-    const performanceTarget = 0.68 + overall * 0.27
-
-    return {
-      ...team,
-      cornering: clamp(
-        team.cornering * performancePriorWeight +
-          performanceTarget * (1 - performancePriorWeight),
-        0.67,
-        0.96,
-      ),
-      straightLine:
-        straightStrength === null
-          ? clamp(
-              team.straightLine * performancePriorWeight +
-                performanceTarget * (1 - performancePriorWeight),
-              0.67,
-              0.95,
-            )
-          : clamp(team.straightLine * 0.42 + (0.68 + straightStrength * 0.27) * 0.58, 0.67, 0.96),
-      // A points table is not a mechanical-failure model. Keep reliability
-      // near the configured prior until multi-event DNF exposure is available.
-      reliability: clamp(team.reliability, 0.68, 0.95),
-      pitCrewSpeed:
-        pitStrength === null
-          ? team.pitCrewSpeed
-          : clamp(team.pitCrewSpeed * 0.45 + (0.68 + pitStrength * 0.27) * 0.55, 0.67, 0.96),
-    }
-  })
-
-  const calibratedDrivers = drivers.map((driver) => {
-    const number = driverNumbersByCode.get(driver.code)
-    const standing = number ? driverStandings.get(number) : null
-
-    if (!standing || !number) {
-      return driver
-    }
-
-    const standingStrength = clamp((24 - standing.position_current) / 23, 0, 1)
-    const pointsStrength =
-      maximumDriverPoints > 0
-        ? Math.sqrt(standing.points_current / maximumDriverPoints)
-        : standingStrength
-    const driverPace = paceByDriver.get(number) ?? null
-    const driverTeam = teamByDriverNumber.get(number)
-    const teamPace = driverTeam ? medianPaceByTeam.get(driverTeam) ?? null : null
-    const teammatePoints = driverTeam
-      ? (driverPointsByTeam.get(driverTeam) ?? []).find(
-          (points) => points !== standing.points_current,
-        ) ?? standing.points_current
-      : standing.points_current
-    const pointsWithinTeamStrength = clamp(
-      0.5 +
-        (standing.points_current - teammatePoints) /
-          Math.max(40, standing.points_current + teammatePoints),
-      0,
-      1,
-    )
-    const lapWithinTeamStrength =
-      driverPace === null || teamPace === null
-        ? null
-        : clamp(0.5 + (teamPace - driverPace) / 1.6, 0, 1)
-    const withinTeamStrength =
-      lapWithinTeamStrength ?? pointsWithinTeamStrength
-    const observedStrength =
-      lapWithinTeamStrength === null
-        ? standingStrength * 0.35 +
-          pointsStrength * 0.35 +
-          withinTeamStrength * 0.3
-        : standingStrength * 0.2 +
-          pointsStrength * 0.15 +
-          withinTeamStrength * 0.65
-    const speedPriorWeight =
-      lapWithinTeamStrength === null
-        ? 0.62 - driverStandingEvidence * 0.38
-        : 0.28
-    const speedTarget = 0.7 + observedStrength * 0.27
-
-    return {
-      ...driver,
-      consistency:
-        driver.consistency > 1
-          ? driver.consistency
-          : clamp(
-              driver.consistency * 0.68 +
-                (0.68 + observedStrength * 0.27) * 0.32,
-              0.68,
-              0.96,
-            ),
-      speed:
-        driver.speed > 1
-          ? driver.speed
-          : clamp(
-              driver.speed * speedPriorWeight +
-                speedTarget * (1 - speedPriorWeight),
-              0.7,
-              0.97,
-            ),
-    }
-  })
   const sampleCount =
     paceByDriver.size + (observed?.carData.length ?? 0) + (observed?.pit?.length ?? 0)
   const confidence = clamp(
@@ -788,13 +532,13 @@ export function calibrateFieldFromOpenF1(
 
   return {
     confidence,
-    drivers: calibratedDrivers,
+    drivers,
     provenance: {
       kind: 'calibrated',
       provider: 'OpenF1',
       sampledAt: asOfDate,
       sourceYear,
-      note: `${paceByDriver.size} clean driver pace samples; ${
+      note: `${paceByDriver.size} clean driver pace samples; fixed machine and driver profiles retained; ${
         snapshotSource === 'bundled' ? 'bundled OpenF1' : 'live OpenF1'
       } standings used as a shrinkage prior`,
     },
@@ -802,6 +546,6 @@ export function calibrateFieldFromOpenF1(
     sampleCount,
     source: 'openf1-calibrated',
     teamPaceDeltaSeconds,
-    teams: calibratedTeams,
+    teams,
   }
 }

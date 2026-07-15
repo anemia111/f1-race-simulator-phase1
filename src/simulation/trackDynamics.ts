@@ -1,9 +1,13 @@
 import type { BattlePhase, TrackDefinition } from '../types'
 
 export type TrackDynamicPoint = {
+  brakingSeverity: number
+  cornerClass: 'low' | 'medium' | 'high' | 'straight'
   curvature: number
+  fullThrottle: boolean
   gradient: number
   referenceSpeedKph: number
+  straightLengthAheadMeters: number
   straightness: number
   turnDirection: -1 | 0 | 1
 }
@@ -59,7 +63,7 @@ function buildProfile(track: TrackDefinition): CachedProfile {
   const harmonicFactor =
     raw.length / raw.reduce((total, point) => total + 1 / point.rawSpeedFactor, 0)
   const averageSpeedKph = (track.lengthKm / track.baseLapTime) * 3600
-  const points = raw.map((point) => ({
+  const speedPoints = raw.map((point) => ({
     curvature: point.curvature,
     gradient: point.gradient,
     referenceSpeedKph: clamp(
@@ -70,6 +74,56 @@ function buildProfile(track: TrackDefinition): CachedProfile {
     straightness: point.straightness,
     turnDirection: point.turnDirection,
   }))
+  const pointLengthMeters = (track.lengthKm * 1000) / Math.max(1, raw.length)
+  const points = speedPoints.map((point, index) => {
+    let brakingSeverity = 0
+
+    for (let lookAhead = 1; lookAhead <= Math.min(14, speedPoints.length / 5); lookAhead += 1) {
+      const target = speedPoints[(index + lookAhead) % speedPoints.length]
+      const distanceMeters = Math.max(1, lookAhead * pointLengthMeters)
+      const currentMps = point.referenceSpeedKph / 3.6
+      const targetMps = target.referenceSpeedKph / 3.6
+      const requiredDeceleration = Math.max(
+        0,
+        (currentMps * currentMps - targetMps * targetMps) /
+          (2 * distanceMeters),
+      )
+
+      brakingSeverity = Math.max(
+        brakingSeverity,
+        clamp(requiredDeceleration / 13.5, 0, 1),
+      )
+    }
+    let straightLengthAheadMeters = 0
+
+    for (let lookAhead = 0; lookAhead < speedPoints.length / 3; lookAhead += 1) {
+      const candidate = speedPoints[(index + lookAhead) % speedPoints.length]
+
+      if (lookAhead > 1 && candidate.curvature >= 0.11) {
+        break
+      }
+
+      straightLengthAheadMeters += pointLengthMeters
+    }
+
+    const cornerClass: TrackDynamicPoint['cornerClass'] =
+      point.curvature < 0.055
+        ? 'straight'
+        : point.referenceSpeedKph < 155
+          ? 'low'
+          : point.referenceSpeedKph < 235
+            ? 'medium'
+            : 'high'
+
+    return {
+      ...point,
+      brakingSeverity,
+      cornerClass,
+      fullThrottle:
+        point.straightness > 0.88 && brakingSeverity < 0.08,
+      straightLengthAheadMeters,
+    }
+  })
 
   return { points }
 }
@@ -187,11 +241,6 @@ export function progressForSpeed(
   return Math.max(0, speedKph) * (deltaSeconds / 3600) / track.lengthKm
 }
 
-/**
- * Advances against the circuit's normalized speed profile. Unlike raw
- * distance/speed conversion, this stays calibrated to `baseLapTime` even
- * when source coordinates are sampled at uneven spatial intervals.
- */
 export function progressForProfileSpeed(
   track: TrackDefinition,
   progress: number,
@@ -202,22 +251,8 @@ export function progressForProfileSpeed(
   const localPaceRatio = clamp(
     Math.max(0, speedKph) / Math.max(1, referenceSpeedKph),
     0,
-    1.6,
+    2.2,
   )
 
   return (deltaSeconds / Math.max(1, track.baseLapTime)) * localPaceRatio
-}
-
-export function approachSpeed(
-  currentKph: number,
-  targetKph: number,
-  deltaSeconds: number,
-) {
-  const maximumDelta = deltaSeconds * (targetKph > currentKph ? 82 : 185)
-
-  if (Math.abs(targetKph - currentKph) <= maximumDelta) {
-    return targetKph
-  }
-
-  return currentKph + Math.sign(targetKph - currentKph) * maximumDelta
 }

@@ -24,6 +24,17 @@ export const FIA_2026_REGULATION_PROFILE = {
     label: '2026 Formula 1 Driving Standards Guidelines v01',
     url: 'https://www.fia.com/sites/default/files/2026_f1_driving_standards_guidelines.pdf',
   },
+  penaltyGuidelines: {
+    issue: '01',
+    label: '2026 Formula 1 Penalty Guidelines v01',
+    url: 'https://www.fia.com/sites/default/files/2026_f1_penalty_guidelines.pdf',
+  },
+  heatHazard: {
+    declarationThresholdHeatIndexC: 31,
+    declaredSessionMassIncreaseKg: 5,
+    otherSessionMassIncreaseKg: 2,
+    article: 'B1.5.10 / C4.6',
+  },
   activeAero: {
     fullActivationAllowedInLowGrip: false,
     partialActivationAllowedInLowGrip: true,

@@ -5,18 +5,36 @@ export const CURRENT_DRIVER_ABILITY_CEILING = 100
 export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0.55
 export const DRIVER_ABILITY_STATS = [
+  'rawPace',
   'qualifyingPace',
   'racePace',
-  'consistency',
+  'brakingSkill',
+  'lowSpeedCornerSkill',
+  'mediumSpeedCornerSkill',
+  'highSpeedCornerSkill',
+  'tractionControl',
+  'throttleControl',
   'tireManagement',
-  'overtaking',
-  'defense',
+  'tireWarmupSkill',
   'wetSkill',
-  'starts',
-  'braking',
-  'cornering',
-  'raceAwareness',
+  'intermediateSkill',
+  'overtakingSkill',
+  'defendingSkill',
+  'racecraft',
+  'consistency',
+  'mistakeResistance',
+  'pressureHandling',
+  'trafficManagement',
+  'dirtyAirManagement',
+  'fuelManagement',
+  'ersManagement',
+  'restartSkill',
+  'startSkill',
+  'confidence',
+  'precision',
   'adaptability',
+  'raceAwareness',
+  'carBalanceAdaptation',
 ] as const satisfies readonly DriverTunableStat[]
 
 export function clampDriverAbility(value: number): number {
@@ -34,57 +52,7 @@ export function driverAbilityValue(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  switch (stat) {
-    case 'qualifyingPace':
-      return clampDriverAbility(
-        driver.qualifyingPace ?? driver.speed * 0.78 + driver.consistency * 0.22,
-      )
-    case 'racePace':
-      return clampDriverAbility(
-        driver.racePace ??
-          driver.speed * 0.55 +
-            driver.consistency * 0.25 +
-            driver.tireManagement * 0.2,
-      )
-    case 'overtaking':
-      return clampDriverAbility(driver.overtaking ?? driver.speed)
-    case 'defense':
-      return clampDriverAbility(driver.defense ?? driver.consistency)
-    case 'wetSkill':
-      return clampDriverAbility(
-        driver.wetSkill ??
-          driver.consistency * 0.6 + driver.tireManagement * 0.4,
-      )
-    case 'starts':
-      return clampDriverAbility(
-        driver.starts ?? driver.speed * 0.55 + driver.consistency * 0.45,
-      )
-    case 'braking':
-      return clampDriverAbility(
-        driver.braking ?? driver.speed * 0.65 + driver.consistency * 0.35,
-      )
-    case 'cornering':
-      return clampDriverAbility(
-        driver.cornering ?? driver.speed * 0.78 + driver.consistency * 0.22,
-      )
-    case 'raceAwareness':
-      return clampDriverAbility(
-        driver.raceAwareness ??
-          driver.consistency * 0.7 + driver.tireManagement * 0.3,
-      )
-    case 'adaptability': {
-      const wetSkill =
-        driver.wetSkill ??
-        driver.consistency * 0.6 + driver.tireManagement * 0.4
-
-      return clampDriverAbility(
-        driver.adaptability ??
-          driver.consistency * 0.45 + wetSkill * 0.3 + driver.speed * 0.25,
-      )
-    }
-    default:
-      return clampDriverAbility(driver[stat])
-  }
+  return clampDriverAbility(driver.skills[stat])
 }
 
 export function driverOverallAbility(driver: Driver): number {
@@ -101,18 +69,40 @@ export function driverOverallAbilityPoints(driver: Driver): number {
 }
 
 /**
- * Domain skills remain the main signal while the 12-stat average contributes
- * to every outcome, so a driver's displayed overall rating is not cosmetic.
+ * Kept as the call-site API for domain skills. It deliberately returns only
+ * the requested skill: the OVR mean is display-only and never becomes a
+ * hidden all-purpose driver rating.
  */
 export function driverPerformanceAbility(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  return clampDriverAbility(
-    driverAbilityValue(driver, stat) * 0.72 + driverOverallAbility(driver) * 0.28,
-  )
+  return driverAbilityValue(driver, stat)
+}
+
+export function driverSkillBlend(
+  driver: Driver,
+  weights: Partial<Record<DriverTunableStat, number>>,
+) {
+  let weighted = 0
+  let totalWeight = 0
+
+  for (const [stat, weight] of Object.entries(weights) as Array<
+    [DriverTunableStat, number]
+  >) {
+    if (weight <= 0) {
+      continue
+    }
+
+    weighted += driverAbilityValue(driver, stat) * weight
+    totalWeight += weight
+  }
+
+  return totalWeight > 0
+    ? clampDriverAbility(weighted / totalWeight)
+    : DRIVER_ABILITY_INTERNAL_MIN
 }
 
 export function driverAbilityDeficit(value: number): number {
-  return Math.max(0, 1 - clampDriverAbility(value))
+  return Math.max(0, 1 - Math.min(1, clampDriverAbility(value)))
 }
