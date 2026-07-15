@@ -51,7 +51,9 @@ export function useRaceSimulation({
     setEngineError(null)
     manualPitRequestsRef.current.clear()
     manualPaceModesRef.current.clear()
+  }, [config, resetKey])
 
+  useEffect(() => {
     if (!workerSupported) {
       return
     }
@@ -76,6 +78,7 @@ export function useRaceSimulation({
         setSnapshot(message.snapshot)
       }
       worker.onerror = (event) => {
+        event.preventDefault()
         setEngineError(event.message || 'Race worker failed to start')
         setWorkerSupported(false)
       }
@@ -123,22 +126,32 @@ export function useRaceSimulation({
         return
       }
 
-      const nextSnapshot = advanceRace(
-        snapshotRef.current,
-        (RACE_WORKER_TICK_MS / 1000) * speed,
-        config,
-        manualPitRequestsRef.current,
-        manualPaceModesRef.current,
-      )
-      snapshotRef.current = nextSnapshot
-      const now = performance.now()
+      try {
+        const nextSnapshot = advanceRace(
+          snapshotRef.current,
+          (RACE_WORKER_TICK_MS / 1000) * speed,
+          config,
+          manualPitRequestsRef.current,
+          manualPaceModesRef.current,
+        )
+        snapshotRef.current = nextSnapshot
+        const now = performance.now()
 
-      if (
-        now - lastFallbackPublishRef.current >= raceWorkerPublishMsFor(speed) ||
-        nextSnapshot.sessionStatus === 'finished'
-      ) {
-        lastFallbackPublishRef.current = now
-        setSnapshot(nextSnapshot)
+        if (
+          now - lastFallbackPublishRef.current >=
+            raceWorkerPublishMsFor(speed) ||
+          nextSnapshot.sessionStatus === 'finished'
+        ) {
+          lastFallbackPublishRef.current = now
+          setSnapshot(nextSnapshot)
+        }
+      } catch (error) {
+        setEngineError(
+          error instanceof Error
+            ? `Main-thread race engine stopped: ${error.message}`
+            : 'Main-thread race engine stopped',
+        )
+        window.clearInterval(intervalId)
       }
     }, RACE_WORKER_TICK_MS)
 

@@ -7,16 +7,6 @@ export function registerAppUpdater() {
     return
   }
 
-  let reloadingForUpdate = false
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadingForUpdate) {
-      return
-    }
-
-    reloadingForUpdate = true
-    window.location.reload()
-  })
-
   const checkForUpdate = (registration: ServiceWorkerRegistration) => {
     if (!navigator.onLine) {
       return
@@ -29,6 +19,9 @@ export function registerAppUpdater() {
 
   registerSW({
     immediate: true,
+    // Let the new worker take control without interrupting a live race. The
+    // updated app is loaded on the next normal navigation or desktop launch.
+    onNeedReload: () => undefined,
     onRegisteredSW: (_scriptUrl, registration) => {
       if (!registration) {
         return

@@ -3,6 +3,7 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type { Driver, DriverSkillProfile } from '../types'
 import {
+  DRIVER_SEGMENT_RESPONSE,
   MACHINE_PACE_REFERENCE,
   MACHINE_PACE_SPREAD_FACTOR,
   MACHINE_SEGMENT_RESPONSE,
@@ -24,11 +25,12 @@ function driverAt(value: number): Driver {
 describe('multi-axis vehicle dynamics', () => {
   it('widens machine effects without changing the source rating', () => {
     expect(MACHINE_PACE_REFERENCE).toBe(0.86)
-    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.35)
-    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
+    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.18)
+    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.112)
+    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.055)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
-    expect(machinePaceRating(0.96)).toBeCloseTo(0.995, 10)
-    expect(machinePaceRating(0.62)).toBeCloseTo(0.536, 10)
+    expect(machinePaceRating(0.96)).toBeCloseTo(0.978, 10)
+    expect(machinePaceRating(0.62)).toBeCloseTo(0.5768, 10)
   })
 
   it('keeps the full configured driver scale monotonic against one machine', () => {
@@ -114,8 +116,8 @@ describe('multi-axis vehicle dynamics', () => {
     const monzaFieldSpreadSeconds =
       monzaResults[0].gain - monzaResults.at(-1)!.gain
 
-    expect(monzaFieldSpreadSeconds).toBeGreaterThan(4)
-    expect(monzaFieldSpreadSeconds).toBeLessThan(7)
+    expect(monzaFieldSpreadSeconds).toBeGreaterThan(2.5)
+    expect(monzaFieldSpreadSeconds).toBeLessThan(4.5)
   })
 
   it('produces team-relative terminal speeds from CSV power and drag axes', () => {
@@ -151,7 +153,7 @@ describe('multi-axis vehicle dynamics', () => {
     const terminalSpeedSpreadKph =
       Math.max(...terminalSpeeds) - Math.min(...terminalSpeeds)
 
-    expect(terminalSpeedSpreadKph).toBeGreaterThan(11)
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(9)
     expect(terminalSpeedSpreadKph).toBeLessThan(35)
   })
 
@@ -190,5 +192,9 @@ describe('multi-axis vehicle dynamics', () => {
     expect(dry.map((result) => result.code)).not.toEqual(
       wet.map((result) => result.code),
     )
+    const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
+
+    expect(dryFieldSpreadSeconds).toBeGreaterThan(2)
+    expect(dryFieldSpreadSeconds).toBeLessThan(3.8)
   })
 })
