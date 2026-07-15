@@ -9,6 +9,9 @@ driving game or a broadcast-video renderer.
 - 24 selectable circuit packs: 23 OpenF1-derived centerlines plus the official
   2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
   the Bahrain/Jeddah cancellation.
+- A canonical checked-in performance CSV supplies all 15 teams and 30 drivers.
+  Its values are retained verbatim; the only deliberate source correction is
+  Yuki Nakayama (`NAK`) changing from car number 1 to car number 31.
 - FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
   lap records, including aborted starts, pit-lane starts, and standing/rolling
@@ -17,7 +20,8 @@ driving game or a broadcast-video renderer.
   2026 active aero, Overtake, ERS, battery,
   brakes, expected-loss strategy, pit stops, flags, incidents, procedural
   penalties, and stewarding.
-- FIA 2026 public ERS power curves, 4 MJ usable SOC window, recharge limits,
+- FIA 2026 public ERS power curves, a physical 4 MJ usable Energy Store,
+  charge/discharge efficiency, thermal derating, recharge limits,
   wet Safety Car starts, full-wet mandates, blue-flag yielding, and a visible
   Safety Car leading the queue. See
   [`docs/FIA_2026_REGULATION_COVERAGE.md`](docs/FIA_2026_REGULATION_COVERAGE.md)
@@ -30,8 +34,8 @@ driving game or a broadcast-video renderer.
 - Independent S1/S2/S3 flag states for local yellow, double yellow, VSC, SC,
   and red phases, synchronized between pace control, OpenF1 race control,
   dashboard status, and the 3D circuit trace.
-- Driver abilities use a 150-point extensible scale; every configured 2026
-  driver remains at or below 100.
+- Driver abilities use the CSV's 150-point scale without silently clamping
+  source ratings. Machine and driver performance stay separate in the model.
 - Explicit SIM/HIST/LIVE modes for OpenF1 timing, telemetry, weather,
   race-control, position, pit/stint, radio,
   result, and championship enrichment with SIM/HIST/LIVE source separation.

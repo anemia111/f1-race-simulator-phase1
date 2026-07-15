@@ -81,6 +81,8 @@ type SetupPanelProps = {
 }
 
 const teamStats: Array<{ key: TeamStat; label: string }> = [
+  { key: 'qualifyingPace', label: 'Qualifying pace' },
+  { key: 'racePace', label: 'Race pace' },
   { key: 'lowSpeedCornerPerformance', label: 'Low-speed corner' },
   { key: 'mediumSpeedCornerPerformance', label: 'Mid-speed corner' },
   { key: 'highSpeedCornerPerformance', label: 'High-speed corner' },

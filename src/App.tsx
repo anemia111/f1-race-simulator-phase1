@@ -3772,7 +3772,7 @@ export default function App() {
                       <span className="timing-number">{tireTemperatureC}C</span>
                       <span
                         className="battery-cell"
-                        title={`Battery ${batteryPercent}% / estimated MGU-K deployment ${car.ersPowerKw} kW / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / harvested ${car.energyHarvestedThisLapMj.toFixed(2)} MJ / deployed ${car.energyDeployedThisLapMj.toFixed(2)} MJ / clipping ${Math.round(car.superClippingIntensity * 100)}% (${Math.round(car.superClippingRegenPowerKw)} kW recovery)`}
+                        title={`SOC ${batteryPercent}% / Energy Store ${car.energyStore.currentEnergyMJ.toFixed(2)} MJ (${car.energyStore.minimumUsableEnergyMJ.toFixed(2)}-${car.energyStore.maximumUsableEnergyMJ.toFixed(2)} MJ) / deployment ${Math.round(car.energyStore.actualDeploymentPowerKw)} of ${Math.round(car.energyStore.requestedDeploymentPowerKw)} kW / recovery ${Math.round(car.energyStore.actualRecoveryPowerKw)} of ${Math.round(car.energyStore.requestedRecoveryPowerKw)} kW / battery ${car.energyStore.batteryTemperatureC.toFixed(1)} C / MGU ${car.energyStore.motorGeneratorTemperatureC.toFixed(1)} C / inverter ${car.energyStore.inverterTemperatureC.toFixed(1)} C / conversion loss ${car.energyStore.conversionLossThisLapMJ.toFixed(2)} MJ / balance error ${car.energyStore.energyBalanceErrorMJ.toExponential(1)} MJ / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / clipping ${Math.round(car.superClippingIntensity * 100)}%`}
                       >
                         <span>{batteryPercent}%</span>
                         <span className="battery-meter" aria-hidden="true">

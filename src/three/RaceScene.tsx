@@ -239,12 +239,15 @@ function shouldUseStartingGridSlot(
   car: CarSnapshot,
   showStartingGridSlots: boolean,
 ) {
+  const expectedGridDistance = startingGridDistance(
+    Math.max(0, car.gridPosition - 1),
+  )
+
   return (
     showStartingGridSlots &&
     car.status === 'running' &&
     car.timedRunPhase === null &&
-    car.totalDistance >= startingGridDistance(23) &&
-    car.totalDistance <= 1.035
+    Math.abs(car.totalDistance - expectedGridDistance) <= 0.035
   )
 }
 
@@ -254,7 +257,7 @@ function displayLaneOffset(
   showStartingGridSlots: boolean,
 ) {
   if (shouldUseStartingGridSlot(car, showStartingGridSlots)) {
-    return startingGridSlotOffset(track, car.position)
+    return startingGridSlotOffset(track, car.gridPosition)
   }
 
   // Normal running uses one stable trace. Only grid staging and the pit lane
@@ -268,15 +271,16 @@ function displayPoseForCar(
   laneOffset: number,
   track: TrackDefinition,
   pitSlot: number,
+  pitBoxCount: number,
   garageBayIndex: number,
   elapsedSeconds: number,
 ) {
   const trackPose = poseOnTrack(curve, car.progress, laneOffset)
   const pitProgress =
-    car.pitLaneProgress ?? pitBoxProgress(track, pitSlot)
+    car.pitLaneProgress ?? pitBoxProgress(track, pitSlot, pitBoxCount)
   const garagePose = poseOnTrack(
     curve,
-    pitBoxProgress(track, pitSlot),
+    pitBoxProgress(track, pitSlot, pitBoxCount),
     pitLaneOffset(track) - 0.56,
   )
   garagePose.position.add(
@@ -356,9 +360,11 @@ function displayPoseForCar(
 
 function PitLane({
   curve,
+  teamCount,
   track,
 }: {
   curve: THREE.CatmullRomCurve3
+  teamCount: number
   track: TrackDefinition
 }) {
   const points = useMemo(
@@ -380,15 +386,18 @@ function PitLane({
   )
   const pitBoxes = useMemo(
     () =>
-      Array.from({ length: track.pitLane?.boxCount ?? 12 }, (_, index) => ({
+      Array.from(
+        { length: Math.max(track.pitLane?.boxCount ?? 12, teamCount) },
+        (_, index) => ({
         index,
         pose: poseOnTrack(
           curve,
-          pitBoxProgress(track, index),
+          pitBoxProgress(track, index, teamCount),
           pitLaneOffset(track) - 0.72,
         ),
-      })),
-    [curve, track],
+        }),
+      ),
+    [curve, teamCount, track],
   )
   const pitRoadGeometry = useMemo(() => {
     const pitCurve = new THREE.CatmullRomCurve3(
@@ -537,14 +546,16 @@ function RaceControlLines({
 
 function StartingGridSlots({
   curve,
+  slotCount,
   track,
 }: {
   curve: THREE.CatmullRomCurve3
+  slotCount: number
   track: TrackDefinition
 }) {
   const slots = useMemo(
     () =>
-      Array.from({ length: 22 }, (_, index) => {
+      Array.from({ length: slotCount }, (_, index) => {
         const position = index + 1
         const progress = (startingGridDistance(index) + 1) % 1
         const pose = poseOnTrack(
@@ -555,7 +566,7 @@ function StartingGridSlots({
 
         return { index, pose, position }
       }),
-    [curve, track],
+    [curve, slotCount, track],
   )
   const slotRef = useRef<THREE.InstancedMesh>(null)
   const lineRef = useRef<THREE.InstancedMesh>(null)
@@ -879,8 +890,16 @@ function TrackSurface({
       />
       <ActiveAeroZoneLines curve={curve} track={config.track} />
       <RaceControlLines curve={curve} track={config.track} />
-      <PitLane curve={curve} track={config.track} />
-      <StartingGridSlots curve={curve} track={config.track} />
+      <PitLane
+        curve={curve}
+        teamCount={config.teams.length}
+        track={config.track}
+      />
+      <StartingGridSlots
+        curve={curve}
+        slotCount={config.drivers.length}
+        track={config.track}
+      />
       {cameraMode === 'overview' ? (
         (config.track.corners ?? []).map((corner) => (
           <SpriteLabel
@@ -923,6 +942,7 @@ function CarMarker({
   index,
   isSelected,
   onSelectDriver,
+  pitBoxCount,
   showStartingGridSlots,
   snapshotElapsedSeconds,
   track,
@@ -933,6 +953,7 @@ function CarMarker({
   index: number
   isSelected: boolean
   onSelectDriver: (driverId: string) => void
+  pitBoxCount: number
   showStartingGridSlots: boolean
   snapshotElapsedSeconds: number
   track: TrackDefinition
@@ -976,6 +997,7 @@ function CarMarker({
       laneOffset,
       track,
       index,
+      pitBoxCount,
       garageBayIndex,
       snapshotElapsedSeconds,
     )
@@ -1241,6 +1263,7 @@ function CameraRig({
   curve,
   selectedCar,
   selectedGarageBayIndex,
+  pitBoxCount,
   selectedPitSlot,
   snapshotElapsedSeconds,
   track,
@@ -1249,6 +1272,7 @@ function CameraRig({
   curve: THREE.CatmullRomCurve3
   selectedCar: CarSnapshot
   selectedGarageBayIndex: number
+  pitBoxCount: number
   selectedPitSlot: number
   snapshotElapsedSeconds: number
   track: TrackDefinition
@@ -1303,6 +1327,7 @@ function CameraRig({
       0,
       track,
       selectedPitSlot,
+      pitBoxCount,
       selectedGarageBayIndex,
       snapshotElapsedSeconds,
     )
@@ -1451,6 +1476,7 @@ function SceneContents({
             isSelected={car.driverId === selectedDriverId}
             key={car.driverId}
             onSelectDriver={onSelectDriver}
+            pitBoxCount={config.teams.length}
             showStartingGridSlots={
               snapshot.startProcedure === 'grid' ||
               snapshot.startProcedure === 'lights'
@@ -1477,6 +1503,7 @@ function SceneContents({
         curve={curve}
         selectedCar={selectedCar}
         selectedGarageBayIndex={selectedGarageBayIndex}
+        pitBoxCount={config.teams.length}
         selectedPitSlot={selectedPitSlot}
         snapshotElapsedSeconds={snapshot.elapsedSeconds}
         track={config.track}

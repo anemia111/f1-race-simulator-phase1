@@ -24,7 +24,7 @@ describe('driver ability scale', () => {
     expect(driverAbilityPoints(1.5)).toBe(150)
   })
 
-  it('keeps every configured 2026 driver at or below 100', () => {
+  it('keeps every CSV-configured driver within the supported scale', () => {
     for (const driver of initialDrivers) {
       for (const stat of driverStats) {
         expect(driverAbilityPoints(driverAbilityValue(driver, stat))).toBeLessThanOrEqual(

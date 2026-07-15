@@ -1,7 +1,7 @@
 import type { Driver, DriverTunableStat } from '../types'
 
 export const DRIVER_ABILITY_SCALE_MAX = 150
-export const CURRENT_DRIVER_ABILITY_CEILING = 100
+export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_SCALE_MAX
 export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0.55
 export const DRIVER_ABILITY_STATS = [

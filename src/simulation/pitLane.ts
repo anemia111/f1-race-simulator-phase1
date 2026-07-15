@@ -8,15 +8,16 @@ export const PIT_SERVICE_END_FRACTION = 0.72
 export function pitBoxProgress(
   track: TrackDefinition,
   slot: number,
+  requiredBoxCount = 1,
 ): number {
   const lane = track.pitLane
-  const boxCount = lane?.boxCount ?? 12
+  const boxCount = Math.max(lane?.boxCount ?? 12, requiredBoxCount)
   const boxStart =
     lane?.boxStartProgress ?? DEFAULT_PIT_BOX_START_PROGRESS
   const spacing =
     lane?.boxSpacingProgress ?? DEFAULT_PIT_BOX_SPACING_PROGRESS
 
-  return (boxStart + (slot % boxCount) * spacing) % 1
+  return (boxStart + Math.min(Math.max(0, slot), boxCount - 1) * spacing) % 1
 }
 
 export function pitBoxSlotForTeam(
@@ -33,7 +34,11 @@ export function pitBoxProgressForTeam(
   teams: Pick<Team, 'id'>[],
   teamId: string,
 ): number {
-  return pitBoxProgress(track, pitBoxSlotForTeam(teams, teamId))
+  return pitBoxProgress(
+    track,
+    pitBoxSlotForTeam(teams, teamId),
+    teams.length,
+  )
 }
 
 export function wrappedProgressSpan(start: number, end: number): number {

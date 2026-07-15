@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
-import type { CarSetup } from '../types'
+import type { CarSetup, CarSnapshot } from '../types'
 import { createInitialRace } from './race'
 import {
   advanceSuperClipping,
@@ -40,6 +40,33 @@ const highDownforceSetup: CarSetup = {
   frontWing: 8,
   rearWing: 9,
   rideHeightMm: 38,
+}
+
+function carWithEnergyState(
+  car: CarSnapshot,
+  stateOfCharge: number,
+  harvestedThisLapMJ: number,
+  removedThisLapMJ: number,
+): CarSnapshot {
+  const currentEnergyMJ =
+    car.energyStore.minimumUsableEnergyMJ +
+    car.energyStore.usableEnergyMJ * stateOfCharge
+
+  return {
+    ...car,
+    energyDeployedThisLapMj: removedThisLapMJ,
+    energyHarvestedThisLapMj: harvestedThisLapMJ,
+    ersBatteryPercent: Math.round(stateOfCharge * 100),
+    energyStore: {
+      ...car.energyStore,
+      actualHarvestedThisLapMJ: harvestedThisLapMJ,
+      currentEnergyMJ,
+      energyRemovedThisLapMJ: removedThisLapMJ,
+      lapStartEnergyMJ:
+        currentEnergyMJ - harvestedThisLapMJ + removedThisLapMJ,
+      stateOfCharge,
+    },
+  }
 }
 
 type StraightTracePoint = {
@@ -322,10 +349,7 @@ describe('super clipping physical integration', () => {
       track,
     })
     const car = {
-      ...snapshot.cars[0],
-      energyDeployedThisLapMj: 3.4,
-      energyHarvestedThisLapMj: 0.4,
-      ersBatteryPercent: 7,
+      ...carWithEnergyState(snapshot.cars[0], 0.07, 0.4, 3.4),
       progress: straight.progress,
       racePaceMode: 'save' as const,
       speedKph: 300,
@@ -347,9 +371,7 @@ describe('super clipping physical integration', () => {
     })
     const healthyTelemetry = calculateCarTelemetry({
       car: {
-        ...car,
-        energyDeployedThisLapMj: 0.3,
-        ersBatteryPercent: 82,
+        ...carWithEnergyState(car, 0.82, 0.4, 0.3),
       },
       deltaSeconds: 0.5,
       driver,

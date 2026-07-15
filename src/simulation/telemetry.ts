@@ -16,6 +16,11 @@ import {
   overtakeStatusFor,
 } from './activeAero'
 import { driverSkillBlend } from './driverAbility'
+import {
+  advanceEnergyStore,
+  energyDeploymentRequestFor,
+  normalizeEnergyStoreState,
+} from './energySystem'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import { advanceSuperClipping } from './superClipping'
 import { tireOperatingWindowFor } from './tires'
@@ -69,6 +74,7 @@ type CalculatedTelemetry = {
   activeAeroMode: ActiveAeroMode
   brakePercent: number
   ersBatteryPercent: number
+  energyStore: CarSnapshot['energyStore']
   ersMode: ErsMode
   ersPowerKw: number
   gear: number
@@ -98,12 +104,14 @@ export function calculateCarTelemetry(options: {
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
   lowGripConditions: boolean
+  isFinalLap?: boolean
   maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
   regulatoryMassIncreaseKg?: number
   paceScale?: number
   raceLap: number
   sessionType?: 'race-distance' | 'limited-time'
+  timedRunPhase?: CarSnapshot['timedRunPhase']
   standingStartMguKRestricted?: boolean
   specifiedErsPowerSector?: boolean
   surfaceWaterMm?: number
@@ -112,6 +120,7 @@ export function calculateCarTelemetry(options: {
   track: TrackDefinition
   team: Team
   trackGrip: number
+  airTemperatureC?: number
   trackTemperatureC?: number
   weather: WeatherState
 }): CalculatedTelemetry {
@@ -123,12 +132,14 @@ export function calculateCarTelemetry(options: {
     phase,
     localFlagPaceScale = 1,
     lowGripConditions,
+    isFinalLap = false,
     maxRechargePerLapMj = FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
     raceControlOvertakeEnabled = true,
     regulatoryMassIncreaseKg = 0,
     paceScale = 1,
     raceLap,
     sessionType = 'race-distance',
+    timedRunPhase = car.timedRunPhase,
     standingStartMguKRestricted = false,
     specifiedErsPowerSector = false,
     surfaceWaterMm: providedSurfaceWaterMm,
@@ -137,6 +148,7 @@ export function calculateCarTelemetry(options: {
     track,
     team,
     trackGrip,
+    airTemperatureC = 25,
     trackTemperatureC = 30,
     weather,
   } = options
@@ -144,6 +156,12 @@ export function calculateCarTelemetry(options: {
     providedSurfaceWaterMm ??
     (weather === 'heavy-rain' ? 1.2 : weather === 'light-rain' ? 0.35 : 0)
   const dynamics = trackDynamicsAt(track, car.progress)
+  const energyStoreAtFrameStart = normalizeEnergyStoreState(
+    car.energyStore,
+    team,
+    car.ersBatteryPercent,
+  )
+  const batteryPercentAtFrameStart = energyStoreAtFrameStart.stateOfCharge * 100
   const massEquivalentFuelLoadKg =
     car.fuelLoadKg + Math.max(0, regulatoryMassIncreaseKg)
   const fuelEffects = fuelMassEffects({
@@ -159,6 +177,7 @@ export function calculateCarTelemetry(options: {
   })
   const machineCapability = machineSegmentCapability({
     dynamics,
+    session: sessionType === 'limited-time' ? 'qualifying' : 'race',
     team,
     weather,
   })
@@ -221,7 +240,7 @@ export function calculateCarTelemetry(options: {
     clamp(baseThrottle * controlThrottleScale, 0, 100),
   )
   const overtakeStatus = overtakeStatusFor({
-    batteryPercent: car.ersBatteryPercent,
+    batteryPercent: batteryPercentAtFrameStart,
     car,
     lowGripConditions,
     phase,
@@ -233,7 +252,7 @@ export function calculateCarTelemetry(options: {
   })
   const superClipping = advanceSuperClipping({
     battlePhase: car.battlePhase,
-    batteryPercent: car.ersBatteryPercent,
+    batteryPercent: batteryPercentAtFrameStart,
     brakePercent,
     currentIntensity: car.superClippingIntensity ?? 0,
     deltaSeconds,
@@ -255,16 +274,20 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
   })
   const requestedErsMode = ersModeFor({
-    batteryPercent: car.ersBatteryPercent,
+    batteryPercent: batteryPercentAtFrameStart,
     brakePercent,
     car,
     overtakeStatus,
     phase,
     straightness: dynamics.straightness,
   })
+  const isPreparationLap =
+    timedRunPhase === 'out-lap' ||
+    timedRunPhase === 'in-lap' ||
+    timedRunPhase === 'cooldown'
   const ersMode = standingStartMguKRestricted
     ? ('balanced' as const)
-    : superClipping.intensity >= 0.04
+    : isPreparationLap || superClipping.intensity >= 0.04
       ? ('harvest' as const)
       : requestedErsMode
   const ersCurve = lowGripConditions
@@ -272,83 +295,114 @@ export function calculateCarTelemetry(options: {
     : specifiedErsPowerSector
       ? ('specified-sector' as const)
       : ('standard' as const)
-  const ersPowerKw = ersDeploymentPowerKw({
-    curve: ersCurve,
-    ersMode,
-    overtakeStatus,
-    speedKph: car.speedKph,
-  })
+  const regulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
+    ? 0
+    : ersDeploymentPowerKw({
+        curve: ersCurve,
+        ersMode: 'deploy',
+        overtakeStatus,
+        speedKph: car.speedKph,
+      })
   const standardErsPowerKw = ersDeploymentPowerKw({
     curve: ersCurve,
     ersMode,
     overtakeStatus: 'available',
     speedKph: car.speedKph,
   })
-  const overtakeBoostPowerKw = Math.max(0, ersPowerKw - standardErsPowerKw)
-  const remainingRechargeMj = Math.max(
-    0,
-    maxRechargePerLapMj - car.energyHarvestedThisLapMj,
-  )
-  const recoveryControl = driverSkillBlend(driver, {
-    ersManagement: 0.65,
-    brakingSkill: 0.2,
-    raceAwareness: 0.15,
+  const driverErsManagement = driverSkillBlend(driver, {
+    ersManagement: 0.64,
+    raceAwareness: 0.22,
+    precision: 0.14,
   })
-  const brakingRegenerativePowerKw =
-    ersMode === 'harvest'
-      ? Math.min(
-          FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-          (brakePercent * 2.8 + Math.max(0, 80 - throttlePercent) * 0.32) *
-            team.machine.energyRecoveryEfficiency *
-            (0.82 + recoveryControl * 0.18),
+  const deploymentRequest = energyDeploymentRequestFor({
+    battlePhase: car.battlePhase,
+    driverErsManagement,
+    isFinalLap,
+    lapProgress: car.progress,
+    overtakeActive: overtakeStatus === 'active',
+    paceMode: car.racePaceMode,
+    phaseActive: phase !== null,
+    speedKph: car.speedKph,
+    state: energyStoreAtFrameStart,
+    straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
+    straightness: dynamics.straightness,
+    team,
+    throttlePercent,
+    timedRunPhase,
+  })
+  const effectiveDeploymentRequest =
+    standingStartMguKRestricted || ersMode === 'harvest'
+      ? 0
+      : ersMode === 'balanced'
+        ? deploymentRequest * 0.62
+        : deploymentRequest
+  const energyStep = advanceEnergyStore({
+    additionalRecoveryRequestKw:
+      superClipping.regenerativeResistancePowerKw,
+    ambientTemperatureC: airTemperatureC,
+    brakePercent,
+    deltaSeconds,
+    deploymentPowerLimitKw: regulatoryDeploymentPowerLimitKw,
+    deploymentRequest: effectiveDeploymentRequest,
+    driverErsManagement,
+    driverWetSkill: driverSkillBlend(driver, {
+      wetSkill: 0.68,
+      brakingSkill: 0.18,
+      adaptability: 0.14,
+    }),
+    gripMultiplier: localGrip,
+    maxRechargePerLapMj,
+    speedKph: car.speedKph,
+    state: energyStoreAtFrameStart,
+    surfaceWaterMm,
+    team,
+    throttlePercent,
+    tire: car.tire,
+    vehicleMassKg: 768 + massEquivalentFuelLoadKg,
+  })
+  const energyStore = energyStep.state
+  const ersPowerKw = energyStore.actualDeploymentPowerKw
+  const harvestedThisFrameMj = Math.max(
+    0,
+    energyStore.actualHarvestedThisLapMJ -
+      energyStoreAtFrameStart.actualHarvestedThisLapMJ,
+  )
+  const superClippingRecoveryShare =
+    energyStore.requestedRecoveryPowerKw > 0
+      ? clamp(
+          superClipping.regenerativeResistancePowerKw /
+            energyStore.requestedRecoveryPowerKw,
+          0,
+          1,
         )
       : 0
-  const regenerativePowerKw = Math.min(
-    FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-    brakingRegenerativePowerKw + superClipping.electricalRecoveryPowerKw,
-  )
-  const harvestedThisFrameMj = Math.min(
-    remainingRechargeMj,
-    (regenerativePowerKw * deltaSeconds) / 1000,
-  )
-  const harvestedEnergyMj = car.energyHarvestedThisLapMj + harvestedThisFrameMj
-  const superClippingHarvestedThisFrameMj = Math.min(
-    harvestedThisFrameMj,
-    (superClipping.electricalRecoveryPowerKw * deltaSeconds) / 1000,
-  )
+  const superClippingHarvestedThisFrameMj =
+    harvestedThisFrameMj * superClippingRecoveryShare
   const superClippingRecoveredThisLapMj =
     (car.superClippingRecoveredThisLapMj ?? 0) +
     superClippingHarvestedThisFrameMj
-  const deploymentEfficiency = clamp(
-    team.machine.electricalDeploymentEfficiency,
-    0.72,
-    1,
-  )
-  const deployedThisFrameMj =
-    (ersPowerKw * deltaSeconds) / (1000 * deploymentEfficiency)
-  const energyDeployedThisLapMj =
-    (car.energyDeployedThisLapMj ?? 0) + deployedThisFrameMj
+  const energyDeployedThisLapMj = energyStore.energyRemovedThisLapMJ
+  const overtakeBoostShare =
+    overtakeStatus === 'active' && regulatoryDeploymentPowerLimitKw > 0
+      ? clamp(
+          (regulatoryDeploymentPowerLimitKw - standardErsPowerKw) /
+            regulatoryDeploymentPowerLimitKw,
+          0,
+          1,
+        )
+      : 0
   const overtakeEnergyUsedMj =
     overtakeStatus === 'active'
       ? Math.min(
           car.overtakeEnergyRemainingMj,
-          (deltaSeconds * overtakeBoostPowerKw) / 1000,
+          (deltaSeconds * ersPowerKw * overtakeBoostShare) / 1000,
         )
       : 0
   const overtakeEnergyRemainingMj = Math.max(
     0,
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
   )
-  const ersBatteryPercent = Math.round(
-    clamp(
-      car.ersBatteryPercent +
-        ((harvestedThisFrameMj - deployedThisFrameMj) /
-          FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj) *
-          100,
-      0,
-      100,
-    ),
-  )
+  const ersBatteryPercent = Math.round(energyStore.stateOfCharge * 100)
   const towDragReduction = phase
     ? 0
     : towDragReductionFor({
@@ -372,7 +426,7 @@ export function calculateCarTelemetry(options: {
     gripMultiplier: localGrip,
     headwindMps,
     regenerativeResistancePowerKw:
-      superClipping.regenerativeResistancePowerKw,
+      energyStep.regenerativeResistancePowerKw,
     setup,
     team,
     throttlePercent,
@@ -462,6 +516,7 @@ export function calculateCarTelemetry(options: {
   return {
     activeAeroMode,
     brakePercent,
+    energyStore,
     ersBatteryPercent,
     ersMode,
     ersPowerKw,
@@ -473,11 +528,12 @@ export function calculateCarTelemetry(options: {
     tireTemperatureC,
     overtakeStatus,
     overtakeEnergyRemainingMj,
-    energyHarvestedThisLapMj: harvestedEnergyMj,
+    energyHarvestedThisLapMj: energyStore.actualHarvestedThisLapMJ,
     energyDeployedThisLapMj,
     superClippingIntensity: superClipping.intensity,
     superClippingDrivePowerScale: superClipping.drivePowerScale,
-    superClippingRegenPowerKw: superClipping.electricalRecoveryPowerKw,
+    superClippingRegenPowerKw:
+      energyStore.actualRecoveryPowerKw * superClippingRecoveryShare,
     superClippingRecoveredThisLapMj,
     superClippingStartedAtSeconds,
     superClippingStartedAtProgress,

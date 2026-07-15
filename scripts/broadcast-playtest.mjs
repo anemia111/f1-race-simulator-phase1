@@ -165,6 +165,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   await page.locator('.broadcast-sidebar button[title="Drivers"]').click()
   const driverRows = await page.locator('.driver-detail-table li').count()
+  const driverNumberLabels = await page
+    .locator('.driver-detail-table li strong')
+    .allInnerTexts()
   const driverScroll = await inspectScroll(page.locator('.driver-detail-table ol'))
 
   await page.locator('.broadcast-sidebar button[title="Messages"]').click()
@@ -340,6 +343,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     tyreRows,
     tyreScroll,
     driverRows,
+    driverNumberLabels,
     driverScroll,
   }
 }
@@ -357,7 +361,7 @@ try {
   for (const result of results) {
     const failures = []
 
-    if (result.leaderboardRows < 22) failures.push(`expected 22 leaderboard rows, saw ${result.leaderboardRows}`)
+    if (result.leaderboardRows !== 30) failures.push(`expected 30 leaderboard rows, saw ${result.leaderboardRows}`)
     if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
     if (!result.leaderboardHeader.includes('BAT')) failures.push('leaderboard battery column missing')
     if (result.overviewNavigationItems !== 0) failures.push('redundant overview navigation is still present')
@@ -370,7 +374,7 @@ try {
     if (result.activePitRows >= result.leaderboardRows / 2) failures.push(`implausible simultaneous pit wave: ${result.activePitRows} cars`)
     if (!result.headerText.includes('AUSTRALIAN GRAND PRIX 2026')) failures.push('official event name missing from header')
     if (!result.headerText.includes('km/h')) failures.push('broadcast wind speed must use km/h')
-    if (result.miniSectors < 240) failures.push(`expected timing mini sectors, saw ${result.miniSectors}`)
+    if (result.miniSectors < 720) failures.push(`expected 30 complete timing mini-sector rows, saw ${result.miniSectors}`)
     if (result.initialMiniSectorStates.colored !== 0 || result.initialMiniSectorStates.dim !== result.miniSectors) failures.push('initial mini sectors must all be pending')
     if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !label.includes('CLEAR'))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
     if (!result.sectorFlagAriaLabel?.includes('Sector 1 CLEAR') || !result.sectorFlagAriaLabel.includes('Sector 3 CLEAR')) failures.push('sector flag strip needs an accessible per-sector summary')
@@ -382,8 +386,9 @@ try {
     )
     if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
     if (result.driverAbilityMaxes.length !== 30 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability model must expose 30 independent sliders with the 150-point ceiling')
-    if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('configured driver abilities must remain at or below 100')
-    if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 100) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
+    if (result.driverAbilityValues.some((value) => Number(value) > 150)) failures.push('CSV-configured driver abilities exceed the 150-point scale')
+    if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 150) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
+    if (!result.driverNumberLabels.includes('#31 NAK')) failures.push(`NAK car number 31 is missing: ${result.driverNumberLabels.join(', ')}`)
     if (result.removedBottomPanelLabels.length > 0) failures.push(`removed bottom panels are still visible: ${result.removedBottomPanelLabels.join(', ')}`)
     if (result.centerMapLayout.mapHeightRatio < 0.55) failures.push(`track map did not expand into the removed panel space: ${JSON.stringify(result.centerMapLayout)}`)
     if (result.tireLifeValues.some((value) => !/^\d{1,3}$/u.test(value) || Number(value) < 0 || Number(value) > 100)) failures.push(`tyre life must be a 100-to-0 remaining value: ${result.tireLifeValues.join(', ')}`)

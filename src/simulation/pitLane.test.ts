@@ -50,6 +50,21 @@ describe('pit-lane geometry', () => {
     expect(firstMcLaren).not.toBe(ferrari)
   })
 
+  it('allocates 15 distinct team boxes inside every configured pit lane', () => {
+    for (const track of tracks) {
+      const boxes = initialTeams.map((team) =>
+        pitBoxProgressForTeam(track, initialTeams, team.id),
+      )
+      const entry = track.pitLane!.entryProgress
+      const laneSpan = wrappedProgressSpan(entry, track.pitLane!.exitProgress)
+
+      expect(new Set(boxes.map((box) => box.toFixed(8))).size).toBe(15)
+      boxes.forEach((box) => {
+        expect(wrappedProgressSpan(entry, box)).toBeLessThan(laneSpan)
+      })
+    }
+  })
+
   it('moves forward through a wrapped pit lane without reversing', () => {
     const entry = 0.94
     const box = 0.98

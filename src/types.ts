@@ -32,6 +32,11 @@ export type ActiveAeroMode = 'corner' | 'partial-straight' | 'straight'
 export type OvertakeStatus = 'disabled' | 'available' | 'active'
 export type RestartProcedure = 'none' | 'standing' | 'rolling'
 export type ErsMode = 'harvest' | 'balanced' | 'deploy'
+export type EnergyRecoveryMode =
+  | 'none'
+  | 'braking'
+  | 'lift-coast'
+  | 'super-clipping'
 export type RacePaceMode = 'push' | 'standard' | 'save' | 'defend'
 export type BattlePhase =
   | 'single-file'
@@ -121,6 +126,8 @@ export type DriverStyleProfile = {
 
 /** Fixed season-long physical characteristics shared by both team cars. */
 export type MachinePerformanceProfile = {
+  qualifyingPace: number
+  racePace: number
   lowSpeedCornerPerformance: number
   mediumSpeedCornerPerformance: number
   highSpeedCornerPerformance: number
@@ -408,6 +415,11 @@ export type Team = {
   color: string
   machine: MachinePerformanceProfile
   pitCrewSpeed: number
+  performanceSource?: {
+    fileName: string
+    overall: number
+    rawRatings: Record<string, number>
+  }
 }
 
 export type Driver = {
@@ -415,9 +427,15 @@ export type Driver = {
   teamId: string
   code: string
   name: string
+  carNumber: number
   skills: DriverSkillProfile
   style: DriverStyleProfile
   startOffset: number
+  performanceSource?: {
+    fileName: string
+    overall: number
+    rawRatings: Record<string, number>
+  }
   /** Starting tire compound. The live compound lives on CarSnapshot. */
   tire: TireCompound
 }
@@ -590,10 +608,51 @@ export type LapRecord = {
   invalidReason: string | null
 }
 
+/**
+ * Energy Store state is carried between ticks and laps. Percent is a derived
+ * UI value; every transfer is integrated in MJ from instantaneous kW.
+ */
+export type EnergyStoreState = {
+  usableEnergyMJ: number
+  currentEnergyMJ: number
+  minimumUsableEnergyMJ: number
+  maximumUsableEnergyMJ: number
+  stateOfCharge: number
+  chargePowerKw: number
+  dischargePowerKw: number
+  requestedDeploymentPowerKw: number
+  actualDeploymentPowerKw: number
+  requestedRecoveryPowerKw: number
+  actualRecoveryPowerKw: number
+  requestedBrakePowerKw: number
+  frictionBrakePowerKw: number
+  recoveryTorqueNm: number
+  motorMechanicalPowerKw: number
+  batteryChargePowerKw: number
+  batteryDischargePowerKw: number
+  batteryTemperatureC: number
+  motorGeneratorTemperatureC: number
+  inverterTemperatureC: number
+  harvestPotentialThisLapMJ: number
+  actualHarvestedThisLapMJ: number
+  deployedMechanicalEnergyThisLapMJ: number
+  energyRemovedThisLapMJ: number
+  conversionLossThisLapMJ: number
+  lapStartEnergyMJ: number
+  energyBalanceErrorMJ: number
+  thermalDerating: number
+  socPowerLimitKw: number
+  batteryAcceptancePowerKw: number
+  maximumDeploymentPowerKw: number
+  deploymentRequest: number
+  recoveryMode: EnergyRecoveryMode
+}
+
 export type CarSnapshot = {
   driverId: string
   teamId: string
   code: string
+  carNumber: number
   driverName: string
   teamName: string
   teamColor: string
@@ -651,6 +710,8 @@ export type CarSnapshot = {
   ersMode: ErsMode
   /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
   ersPowerKw: number
+  /** Conserved Energy Store, electrical machine, and thermal state. */
+  energyStore: EnergyStoreState
   ersBatteryPercent: number
   /** Continuous 0..1 high-speed energy-recovery severity. */
   superClippingIntensity: number

@@ -24,6 +24,11 @@ import {
 } from './driverAbility'
 import { setupPaceDeltaSeconds } from './engineering'
 import {
+  advanceEnergyStore,
+  createInitialEnergyStore,
+  startNextEnergyLap,
+} from './energySystem'
+import {
   advanceComponentWear,
   componentPacePenaltySeconds,
   createCarComponents,
@@ -89,6 +94,7 @@ import {
 } from './trackDynamics'
 import {
   compliesWithGrandPrixTireRule,
+  FIA_2026_REGULATION_PROFILE,
   maxRechargePerLapMjFor,
   nextLowGripCondition,
   sessionDistanceLapsFor,
@@ -616,9 +622,6 @@ function timedRunPaceFor(options: {
 
 function telemetryForTimedRunPhase<T extends {
   activeAeroMode: CarSnapshot['activeAeroMode']
-  ersBatteryPercent: number
-  ersMode: CarSnapshot['ersMode']
-  ersPowerKw: number
   overtakeStatus: CarSnapshot['overtakeStatus']
   rpm: number
   speedKph: number
@@ -636,9 +639,6 @@ function telemetryForTimedRunPhase<T extends {
   return {
     ...telemetry,
     activeAeroMode: 'corner',
-    ersBatteryPercent: Math.min(100, telemetry.ersBatteryPercent + 2),
-    ersMode: 'harvest',
-    ersPowerKw: 0,
     overtakeStatus: 'disabled',
     rpm: Math.round(telemetry.rpm * scale),
     speedKph: Math.round(telemetry.speedKph * scale),
@@ -1427,6 +1427,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       driverId: driver.id,
       teamId: team.id,
       code: driver.code,
+      carNumber: driver.carNumber,
       driverName: driver.name,
       teamName: team.name,
       teamColor: team.color,
@@ -1467,6 +1468,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       energyDeployedThisLapMj: 0,
       ersMode: 'balanced',
       ersPowerKw: 0,
+      energyStore: createInitialEnergyStore(team, 0.82),
       ersBatteryPercent: 82,
       superClippingIntensity: 0,
       superClippingDrivePowerScale: 1,
@@ -2168,9 +2170,6 @@ export function advanceRace(
         warningLightsUntilSeconds: lowPowerStart
           ? elapsedSeconds + 4
           : car.warningLightsUntilSeconds,
-        ersBatteryPercent: lowPowerStart
-          ? Math.max(5, car.ersBatteryPercent - 3)
-          : car.ersBatteryPercent,
       }
     })
 
@@ -2980,6 +2979,49 @@ export function advanceRace(
     }
 
     if (car.status === 'pit') {
+      const pitEnergyFields = (
+        speedKph: number,
+        throttlePercent: number,
+        brakePercent: number,
+      ) => {
+        const energyStore = advanceEnergyStore({
+          allowLiftCoastRecovery: false,
+          ambientTemperatureC: airTemperatureC,
+          brakePercent,
+          deltaSeconds,
+          deploymentPowerLimitKw: 0,
+          deploymentRequest: 0,
+          driverErsManagement: driverPerformanceAbility(
+            driver,
+            'ersManagement',
+          ),
+          driverWetSkill: driverPerformanceAbility(driver, 'wetSkill'),
+          gripMultiplier: trackGrip,
+          maxRechargePerLapMj:
+            FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
+          speedKph,
+          state: car.energyStore,
+          surfaceWaterMm:
+            snapshot.surfaceWaterMmBySector.reduce(
+              (sum, water) => sum + water,
+              0,
+            ) / snapshot.surfaceWaterMmBySector.length,
+          team,
+          throttlePercent,
+          tire: car.tire,
+          vehicleMassKg: 768 + car.fuelLoadKg,
+        }).state
+
+        return {
+          energyStore,
+          energyHarvestedThisLapMj:
+            energyStore.actualHarvestedThisLapMJ,
+          energyDeployedThisLapMj: energyStore.energyRemovedThisLapMJ,
+          ersBatteryPercent: Math.round(energyStore.stateOfCharge * 100),
+          ersPowerKw: energyStore.actualDeploymentPowerKw,
+        }
+      }
+
       if (
         car.pitUntilSeconds !== null &&
         elapsedSeconds >= car.pitUntilSeconds &&
@@ -2989,6 +3031,7 @@ export function advanceRace(
 
         return {
           ...car,
+          ...pitEnergyFields(0, 0, 100),
           brakePercent: 100,
           gear: 0,
           pitExitQueueSeconds:
@@ -3052,6 +3095,7 @@ export function advanceRace(
 
         return {
           ...car,
+          ...pitEnergyFields(80, 18, 0),
           status: 'running' as const,
           totalDistance,
           lap,
@@ -3082,7 +3126,6 @@ export function advanceRace(
           overtakeEligibility: null,
           ersMode: 'harvest' as const,
           ersPowerKw: 0,
-          ersBatteryPercent: Math.min(100, car.ersBatteryPercent + 10),
           speedKph: 80,
           throttlePercent: 18,
           brakePercent: 0,
@@ -3133,6 +3176,11 @@ export function advanceRace(
 
       return {
         ...car,
+        ...pitEnergyFields(
+          pitMotion.phase === 'box' ? 0 : pitSpeedLimit,
+          pitMotion.phase === 'box' ? 0 : 12,
+          0,
+        ),
         pitPhase: pitMotion.phase,
         pitLaneProgress: pitMotion.progress,
         speedKph: pitMotion.phase === 'box' ? 0 : pitSpeedLimit,
@@ -3145,10 +3193,6 @@ export function advanceRace(
         overtakeEligibility: null,
         ersMode: 'harvest' as const,
         ersPowerKw: 0,
-        ersBatteryPercent: Math.min(
-          100,
-          car.ersBatteryPercent + deltaSeconds * 0.6,
-        ),
         tireTemperatureC: Math.max(58, car.tireTemperatureC - deltaSeconds * 0.7),
         tireCarcassTemperatureC: Math.max(
           55,
@@ -3297,10 +3341,13 @@ export function advanceRace(
       phase: localControlPhase,
       localFlagPaceScale,
       lowGripConditions,
+      isFinalLap:
+        isRaceDistance && Math.floor(car.totalDistance) >= raceLaps - 1,
       maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
+      timedRunPhase: timedRun.phase,
       standingStartMguKRestricted,
       track: config.track,
       team,
@@ -3308,6 +3355,7 @@ export function advanceRace(
       setup: config.weekendContext?.setupByDriver?.[driver.id],
       headwindMps: simulatedHeadwindMpsAt(config, car.progress),
       trackGrip: localTrackGrip,
+      airTemperatureC,
       trackTemperatureC,
       weather: localWeather,
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
@@ -3533,10 +3581,23 @@ export function advanceRace(
       trackTemperatureC,
       weather: localWeather,
     })
+    const frictionBrakeShare =
+      displayTelemetry.energyStore.requestedBrakePowerKw > 1
+        ? Math.min(
+            1,
+            displayTelemetry.energyStore.frictionBrakePowerKw /
+              displayTelemetry.energyStore.requestedBrakePowerKw,
+          )
+        : displayTelemetry.brakePercent > 0
+          ? 1
+          : 0
     const brakeTemperatureTargetC = Math.min(
       1180,
       335 +
-        displayTelemetry.brakePercent * 9.3 * modeBrakeMultiplier[racePaceMode] +
+        displayTelemetry.brakePercent *
+          9.3 *
+          frictionBrakeShare *
+          modeBrakeMultiplier[racePaceMode] +
         displayTelemetry.speedKph * 0.28,
     )
     const brakeTemperatureResponse =
@@ -4003,6 +4064,7 @@ export function advanceRace(
         ...next,
         processedLap: lap,
         overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
+        energyStore: startNextEnergyLap(next.energyStore),
         energyHarvestedThisLapMj: 0,
         energyDeployedThisLapMj: 0,
         superClippingRecoveredThisLapMj: 0,

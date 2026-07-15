@@ -528,7 +528,11 @@ function LeftLeaderboard({
                   </span>
                 ))}
                 <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
-                <span title="ERS battery remaining (simulation estimate)">{row.batteryPercent}%</span>
+                <span
+                  title={`SOC ${row.batteryPercent}% / ${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW`}
+                >
+                  {row.batteryPercent}%
+                </span>
               </button>
             </li>
           )
@@ -551,7 +555,12 @@ function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
             <div>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
               <span>{row.speedKph}</span><span>{row.throttlePercent}%</span><span>{row.brakePercent}%</span>
-              <span>{row.gear}</span><span>{row.rpm}</span><span>{row.batteryPercent}%</span>
+              <span>{row.gear}</span><span>{row.rpm}</span>
+              <span
+                title={`${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW deploy / ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW recover / battery ${row.car.energyStore.batteryTemperatureC.toFixed(1)} C`}
+              >
+                {row.batteryPercent}%
+              </span>
               <span
                 title={
                   row.telemetrySource === 'simulation' &&
@@ -756,10 +765,10 @@ function CenterView({
   if (view === 'drivers') {
     return (
       <div className="center-table driver-detail-table">
-        <div className="center-table-head"><span>DRIVER</span><span>OVR</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
+        <div className="center-table-head"><span>NO / DRIVER</span><span>OVR</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
         <ol aria-label="All driver information" tabIndex={0}>{rows.map((row) => (
           <li key={row.car.driverId}><div>
-            <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><b>{row.driverOverallAbility || '--'}</b><span>{row.car.teamName}</span>
+            <strong style={{ color: row.car.teamColor }}>#{row.car.carNumber} {row.car.code}</strong><b>{row.driverOverallAbility || '--'}</b><span>{row.car.teamName}</span>
             <span>{row.car.gridPosition}</span><span>{row.displayPosition}</span><span>{row.car.gridPosition - row.displayPosition >= 0 ? '+' : ''}{row.car.gridPosition - row.displayPosition}</span>
             <span title={row.performanceSource === 'openf1-calibrated' ? 'OpenF1 clean-lap calibration' : 'Configured model'}>{row.performancePaceDeltaSeconds === null ? '--' : `+${row.performancePaceDeltaSeconds.toFixed(3)}s`}</span><span>{row.car.racePaceMode}</span><span>{terminalLabel(row.car) ?? 'RUN'}</span>
           </div></li>

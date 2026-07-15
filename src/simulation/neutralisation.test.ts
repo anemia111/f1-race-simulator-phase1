@@ -114,8 +114,9 @@ describe('FIA 2026 Safety Car unlapping procedure', () => {
     )
     expect(procedure.eligibleLappedDriverIds).toEqual([base[1].driverId])
     expect(procedure.greenLight).toBe(true)
-    expect(result.events.at(-1)?.message).toContain(base[1].code)
-    expect(result.events.at(-1)?.message).not.toContain(base[2].code)
+    const message = result.events.at(-1)?.message ?? ''
+    expect(message).toMatch(new RegExp(`\\b${base[1].code}\\b`, 'u'))
+    expect(message).not.toMatch(new RegExp(`\\b${base[2].code}\\b`, 'u'))
   })
 
   it('does not run the unlapping procedure when Race Control deems overtaking unsafe', () => {

@@ -22,7 +22,8 @@ export const WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
 export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
 export const SEASON_STORAGE_KEY = 'f1-sim-season-v3'
 export const LEGACY_SEASON_STORAGE_KEY = 'f1-sim-season-v2'
-export const DRIVER_RATINGS_STORAGE_KEY = 'f1-sim-driver-ratings-v1'
+export const DRIVER_RATINGS_STORAGE_KEY =
+  'f1-sim-driver-ratings-v2-performance-csv'
 
 const weekendStages: WeekendStage[] = [
   'fp1',

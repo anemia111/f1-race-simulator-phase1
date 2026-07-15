@@ -9,7 +9,10 @@ import type {
   WeatherState,
   WeekendStage,
 } from '../types'
-import { driverSkillBlend } from './driverAbility'
+import {
+  DRIVER_ABILITY_INTERNAL_MAX,
+  driverSkillBlend,
+} from './driverAbility'
 import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -122,10 +125,11 @@ function machineCornerScore(team: Team, dynamics: TrackDynamicPoint) {
 
 export function machineSegmentCapability(options: {
   dynamics: TrackDynamicPoint
+  session?: 'qualifying' | 'race'
   team: Team
   weather?: WeatherState
 }) {
-  const { dynamics, team, weather = 'clear' } = options
+  const { dynamics, session = 'race', team, weather = 'clear' } = options
   const machine = team.machine
   const cornerScore = machineCornerScore(team, dynamics)
   const brakingScore =
@@ -140,10 +144,13 @@ export function machineSegmentCapability(options: {
     cornerScore * (1 - dynamics.brakingSeverity * 0.3) +
     brakingScore * dynamics.brakingSeverity * 0.3
   const weatherAdjusted = localScore * 0.86 + wetScore * 0.14
+  const sessionPace =
+    session === 'qualifying' ? machine.qualifyingPace : machine.racePace
+  const sessionAdjusted = weatherAdjusted * 0.94 + sessionPace * 0.06
 
   // Machine differences alter the physical limit by less than two percent
   // over a representative lap, but the ordering changes with circuit type.
-  return clamp(1 + (weatherAdjusted - 0.86) * 0.105, 0.975, 1.018)
+  return clamp(1 + (sessionAdjusted - 0.86) * 0.105, 0.975, 1.018)
 }
 
 export function driverSegmentExecution(options: {
@@ -187,12 +194,12 @@ export function driverSegmentExecution(options: {
       wetSkill * 0.1 +
       driver.skills.pressureHandling * pressure * 0.08,
     0,
-    1,
+    DRIVER_ABILITY_INTERNAL_MAX,
   )
 
   // Drivers cannot create grip or power beyond the machine limit. Their
   // skills determine how closely and consistently they approach it.
-  return clamp(1 - (1 - skill) * 0.075, 0.94, 1)
+  return clamp(1 - (1 - skill) * 0.075, 0.94, 1.04)
 }
 
 export function dirtyAirDownforceMultiplier(options: {
@@ -385,6 +392,7 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
 export function vehicleSpeedPerformanceMultiplier(options: {
   driver: Driver
   dynamics: TrackDynamicPoint
+  session?: 'qualifying' | 'race'
   team: Team
   weather?: WeatherState
 }) {
@@ -393,6 +401,7 @@ export function vehicleSpeedPerformanceMultiplier(options: {
     driverSegmentExecution({
       driver: options.driver,
       dynamics: options.dynamics,
+      session: options.session,
       weather: options.weather,
     })
   )
@@ -412,6 +421,7 @@ export function performanceLapGainSeconds(options: {
   const modeledSeconds = samples.reduce((total, dynamics) => {
     const machine = machineSegmentCapability({
       dynamics,
+      session: options.session,
       team: options.team,
       weather: options.weather,
     })

@@ -7,8 +7,8 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 - Build a PC-first F1 observer, timing, and race-control simulator.
 - Keep the core race engine deterministic and testable outside Three.js.
 - Prefer factual OpenF1/FIA data when available and label every fallback.
-- Normal running uses one racing line. Cars move laterally only for a genuine
-  close attack or defence.
+- Cars remain on one racing line without artificial lateral attack, defence,
+  blocking, or overtaking animation.
 - Keep rendering light: Three.js primitives, no GLB cars, video, replay,
   multi-camera production, or expensive post-processing.
 - Mobile support is intentionally out of scope.
@@ -17,6 +17,8 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 
 - 24 verified tracks: 23 OpenF1-derived centerlines plus the official 2026
   MADRING organizer vector, with the amended 22-round championship status.
+- The canonical performance CSV supplies 15 teams and 30 drivers. Preserve
+  every supplied value; its only deliberate correction is `NAK` car number 31.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ
@@ -28,7 +30,7 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 - Sector boards, timing, OpenF1, race control, classification, and analysis
   start closed.
 - The simulation runs in a fixed-tick Web Worker with a main-thread fallback.
-- Verification baseline: build and lint pass; 109 Vitest tests pass; desktop
+- Verification baseline: build and lint pass; 249 Vitest tests pass; desktop
   playtest passes at 1440x900 and 1280x720.
 
 ## Commands
@@ -59,11 +61,15 @@ remain intentional, separate steps so unrelated work is never swept in.
 - `src/types.ts`: shared domain state.
 - `src/data/tracks.ts`: calendar and operational markers.
 - `src/data/realTrackLayouts.ts`: generated real layouts; do not hand-edit.
+- `src/data/f1Performance.csv`: canonical 15-team/30-driver performance data.
+- `src/data/performanceCsv.ts`: strict CSV validation and domain mapping.
 - `src/services/openF1.ts`: throttled, nullable OpenF1 data client.
 - `src/domain/dataMode.ts`: strict SIM/HIST/LIVE selection.
 - `src/persistence.ts`: V2 save migration.
 - `src/workers/raceWorker.ts`: fixed-tick worker engine.
 - `src/simulation/race.ts`: deterministic frame and lap progression.
+- `src/simulation/energySystem.ts`: Energy Store, recovery, deployment, and
+  thermal state.
 - `src/simulation/overtaking.ts`: close-battle outcomes and mapped DRS zones.
 - `src/simulation/strategy.ts`: pit decisions and strategy outlook.
 - `src/simulation/weather.ts`: continuous seeded rain/grip and forecast.

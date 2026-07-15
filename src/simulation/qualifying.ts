@@ -123,7 +123,10 @@ function wetSkill(driver: Driver): number {
 }
 
 function qualifyingCutSizes(driverCount: number) {
-  const q2Size = driverCount > 20 ? 16 : Math.min(15, driverCount)
+  const q2Size =
+    driverCount > 20
+      ? driverCount - Math.ceil((driverCount - 10) / 2)
+      : Math.min(15, driverCount)
   const q3Size = Math.min(10, q2Size)
 
   return { q2Size, q3Size }

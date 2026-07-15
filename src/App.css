@@ -2701,7 +2701,7 @@
 
 .driver-detail-table .center-table-head,
 .driver-detail-table li > div {
-  grid-template-columns: 42px 30px minmax(80px, 1fr) 28px 28px 40px 52px 58px 34px;
+  grid-template-columns: 62px 30px minmax(70px, 1fr) 28px 28px 40px 52px 58px 34px;
 }
 
 .center-table-head {

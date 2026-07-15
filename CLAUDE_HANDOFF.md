@@ -16,8 +16,8 @@ feel factual and operational rather than like an arcade driving game.
 - Mobile support is intentionally out of scope.
 - Use OpenF1/FIA data when it exists and label SIM, historical, live,
   fallback, and unavailable values truthfully.
-- Normal running is one racing line. A second lane appears only during a close
-  attack or defence.
+- Cars remain on one racing line without artificial lateral attack, defence,
+  blocking, or overtaking animation.
 - Keep rendering light: primitives, no GLB cars, no heavy post-processing, and
   no expensive per-frame domain calculations.
 
@@ -28,6 +28,9 @@ feel factual and operational rather than like an arcade driving game.
   but are visibly marked cancelled.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
+- `src/data/f1Performance.csv` is the canonical 15-team/30-driver source. Its
+  values match the supplied CSV except for the requested `NAK` car-number
+  correction from 1 to 31. Do not silently rebalance or deduplicate it.
 - MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
   corners. Its sector boundaries remain labelled derived until the FIA event
   circuit map is published, and it intentionally has no fabricated OpenF1
@@ -57,7 +60,8 @@ feel factual and operational rather than like an arcade driving game.
 - Sessions: FP1/FP2/FP3, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race.
 - Timed sessions start from pit boxes, distinguish out/attack/in laps, run the
   official Q/SQ clocks and breaks, freeze the clock during planned red flags,
-  and promote the measured top 16/top 10 rather than a precomputed order.
+  and reduce the 30-car field to the measured top 20/top 10 rather than a
+  precomputed order.
 - Timed-session adjudication includes deleted track-limit laps, double-yellow
   invalidation, impeding/grid penalties, serialized pit-exit queues, chequered
   lap completion, and Q1 107% checks with explicit steward exemptions.
@@ -71,8 +75,9 @@ feel factual and operational rather than like an arcade driving game.
   and driver-management effects. Strategy reads measured wear and brake heat.
 - Rain intensity and track grip transition continuously rather than jumping at
   four-minute boundaries. Inters and wets use different crossover ranges.
-- 2026 active aero and electrical Overtake are separate systems. ERS
-  deployment/harvest, battery, speed, throttle, brake, RPM, gear, tire
+- 2026 active aero and electrical Overtake are separate systems. The Energy
+  Store tracks MJ, SOC, charge/discharge power, conversion losses, recovery,
+  deployment, and component temperatures. Speed, throttle, brake, RPM, gear, tire
   temperature, wear, and brake temperature are live car state. OpenF1 `drs`
   remains visibly labelled as a raw historical/API field.
 - Strategy includes traffic, undercut/overcut, SC/VSC, weather forecast,
@@ -82,9 +87,9 @@ feel factual and operational rather than like an arcade driving game.
 - FIA 2026 tire allocations:
   - Standard: `H2/M3/S8/I5/W2`
   - Sprint: `H2/M4/S6/I6/W2`
-- Normal cars stay centered. At gaps below 0.72s, attacker/defender offsets
-  create a temporary battle lane. Battle outcomes are evaluated once per
-  1/12-lap segment and use actual mapped DRS-zone/sector position.
+- Cars stay centered on one racing line. Battle outcomes are evaluated once
+  per 1/12-lap segment and use actual mapped DRS-zone/sector position without
+  adding lateral presentation offsets.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
   owed penalties.
@@ -136,6 +141,8 @@ feel factual and operational rather than like an arcade driving game.
 - `src/data/calendar2026.ts`, `trackAudit.ts`, `sourceRegistry.ts`: amended
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
+- `src/data/f1Performance.csv`: canonical 15-team/30-driver source values.
+- `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
 - `scripts/generate-real-track-layouts.mjs`: layout generator.
 - `src/services/openF1.ts`: OpenF1 request/bundle logic.
 - `src/services/openF1Location.ts`: sample projection to track progress.
@@ -143,6 +150,7 @@ feel factual and operational rather than like an arcade driving game.
 - `src/services/openF1Timeline.ts`: coherent historical playback range/target.
 - `src/data/fiaEventPacks2026.ts`: FIA event document coverage ledger.
 - `src/simulation/race.ts`: core state advance loop.
+- `src/simulation/energySystem.ts`: physical Energy Store state and power flow.
 - `src/domain/sectorTiming.ts`: measured best/personal-best classification and
   timed-lap eligibility.
 - `src/workers/raceWorker.ts`: fixed-tick simulation ownership.
@@ -172,14 +180,14 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 184 passed across 22 files
+- Tests: 249 passed across 30 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow
 - Benchmark: records renderer identity and does not fail normal runs on
   Chromium SwiftShader; use `BENCHMARK_STRICT=1` only with real GPU rendering
 
-`npm run playtest` requires the Vite server. It locates weekend buttons by the
+`npm run playtest` starts an isolated preview server. It locates weekend buttons by the
 `Set weekend stage to X` title prefix, so preserve that prefix.
 
 ## Honest Remaining Limits

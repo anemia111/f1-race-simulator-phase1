@@ -39,6 +39,7 @@ describe('V2 persistence migration', () => {
 
   it('normalizes a legacy weekend against its saved track', () => {
     const track = tracks.find((candidate) => candidate.id === 'suzuka-approx')!
+    const driverId = initialDrivers[0].id
     const raw = JSON.stringify({
       trackId: track.id,
       stage: 'qualifying',
@@ -47,7 +48,7 @@ describe('V2 persistence migration', () => {
       weekendContext: {
         completed: ['fp1', 'invalid-stage'],
         componentConditionByDriver: {
-          norris: {
+          [driverId]: {
             ice: { allocationLimit: 4, allocationUsed: 2, conditionPercent: 63 },
           },
         },
@@ -58,15 +59,15 @@ describe('V2 persistence migration', () => {
     expect(restored?.version).toBe(2)
     expect(restored?.weekendContext.completed).toEqual(['fp1'])
     expect(
-      restored?.weekendContext.componentConditionByDriver.norris.ice
+      restored?.weekendContext.componentConditionByDriver[driverId].ice
         .conditionPercent,
     ).toBe(63)
     expect(
-      restored?.weekendContext.componentConditionByDriver.norris.exhaust
+      restored?.weekendContext.componentConditionByDriver[driverId].exhaust
         .allocationLimit,
     ).toBe(4)
     expect(
-      restored?.weekendContext.tireSetInventoryByDriver.norris.find(
+      restored?.weekendContext.tireSetInventoryByDriver[driverId].find(
         (set) => set.compound === 'H',
       )?.family,
     ).toBe(track.tireNomination?.H)

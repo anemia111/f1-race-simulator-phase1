@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
+import { beforeAll } from 'vitest'
 import { tracks } from '../data/tracks'
 import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import { flagFromRaceControl } from '../services/openF1Derived'
@@ -43,6 +44,7 @@ import {
   trackEvolutionLevel,
 } from './raceEvents'
 import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
+import { startingGridDistance } from './startingGrid'
 import {
   decidePitStop,
   estimatePitOpportunity,
@@ -236,10 +238,11 @@ describe('steward decisions', () => {
 describe('starting grid', () => {
   it('starts every car on the home-straight grid before the race unfolds', () => {
     const snapshot = createInitialRace(makeConfig('grid-start'))
-    const progress = snapshot.cars.map((car) => car.progress)
 
-    expect(progress[0]).toBe(0)
-    expect(progress.slice(1).every((value) => value > 0.94)).toBe(true)
+    snapshot.cars.forEach((car, index) => {
+      expect(car.totalDistance).toBeCloseTo(startingGridDistance(index), 10)
+      expect(car.progress).toBeCloseTo(startingGridDistance(index) % 1, 10)
+    })
     expect(snapshot.cars.every((car) => car.status === 'running')).toBe(true)
   })
 
@@ -520,28 +523,22 @@ describe('CPU timing lines', () => {
   })
 
   it('moves lap-one provisional purple from the first car to a faster follower', () => {
+    const skillsAt = (driver: (typeof initialDrivers)[number], value: number) =>
+      Object.fromEntries(
+        Object.keys(driver.skills).map((key) => [key, value]),
+      ) as typeof driver.skills
     const slowDriver = {
       ...initialDrivers[0],
-      skills: {
-        ...initialDrivers[0].skills,
-        consistency: 0.7,
-        rawPace: 0.65,
-        racePace: 0.65,
-      },
+      skills: skillsAt(initialDrivers[0], 0.9),
     }
     const fastDriver = {
       ...initialDrivers[2],
-      skills: {
-        ...initialDrivers[2].skills,
-        consistency: 1,
-        rawPace: 1,
-        racePace: 1,
-      },
+      skills: skillsAt(initialDrivers[2], 1),
     }
     const slowTeam = {
       ...initialTeams.find((team) => team.id === slowDriver.teamId)!,
       machine: Object.fromEntries(
-        Object.keys(initialTeams[0].machine).map((key) => [key, 0.7]),
+        Object.keys(initialTeams[0].machine).map((key) => [key, 0.9]),
       ) as Team['machine'],
     }
     const fastTeam = {
@@ -557,49 +554,91 @@ describe('CPU timing lines', () => {
       track: { ...tracks[0], rainProbability: 0 },
     }
     let snapshot = runThroughStart(config)
-    const targetMiniSectorIndex = 1
-    let firstCarId: string | null = null
-    let firstTime: number | null = null
+    const firstCrossingByMiniSector: Array<{
+      driverId: string
+      time: number
+    } | null> = Array.from({ length: 24 }, () => null)
+    let transition:
+      | { followerTime: number; leaderTime: number; miniSectorIndex: number }
+      | null = null
 
-    for (let step = 0; step < 5_000 && firstTime === null; step += 1) {
+    for (let tick = 0; tick < 10_000 && transition === null; tick += 1) {
       snapshot = advanceRace(snapshot, 0.01, config)
-      const measured = snapshot.cars.filter(
-        (car) =>
-          car.currentLapMiniSectorTimes[targetMiniSectorIndex] !== null,
-      )
+      const slowCar = snapshot.cars.find(
+        (car) => car.driverId === slowDriver.id,
+      )!
+      const fastCar = snapshot.cars.find(
+        (car) => car.driverId === fastDriver.id,
+      )!
 
-      if (measured.length === 1) {
-        firstCarId = measured[0].driverId
-        firstTime =
-          measured[0].currentLapMiniSectorTimes[targetMiniSectorIndex]
+      for (let miniSectorIndex = 0; miniSectorIndex < 24; miniSectorIndex += 1) {
+        const slowTime = slowCar.currentLapMiniSectorTimes[miniSectorIndex]
+        const fastTime = fastCar.currentLapMiniSectorTimes[miniSectorIndex]
+
+        if (firstCrossingByMiniSector[miniSectorIndex] === null) {
+          if (slowTime !== null && fastTime === null) {
+            firstCrossingByMiniSector[miniSectorIndex] = {
+              driverId: slowDriver.id,
+              time: slowTime,
+            }
+          } else if (fastTime !== null && slowTime === null) {
+            firstCrossingByMiniSector[miniSectorIndex] = {
+              driverId: fastDriver.id,
+              time: fastTime,
+            }
+          }
+        }
+
+        const first = firstCrossingByMiniSector[miniSectorIndex]
+
+        if (
+          first?.driverId === slowDriver.id &&
+          slowTime !== null &&
+          fastTime !== null &&
+          fastTime < slowTime
+        ) {
+          transition = {
+            followerTime: fastTime,
+            leaderTime: slowTime,
+            miniSectorIndex,
+          }
+          break
+        }
       }
     }
 
-    expect(firstCarId).toBe(slowDriver.id)
-    expect(firstTime).not.toBeNull()
-    expect(classifySectorTime(firstTime, firstTime, firstTime)).toBe(
+    expect(transition).not.toBeNull()
+    expect(transition!.miniSectorIndex).toBeGreaterThanOrEqual(0)
+    expect(
+      classifySectorTime(
+        transition!.leaderTime,
+        transition!.leaderTime,
+        transition!.leaderTime,
+      ),
+    ).toBe(
       'overall-best',
     )
+    const overallBest = bestSectorTime([
+      transition!.leaderTime,
+      transition!.followerTime,
+    ])
 
-    let followerTime: number | null = null
-
-    for (let step = 0; step < 2_000 && followerTime === null; step += 1) {
-      snapshot = advanceRace(snapshot, 0.01, config)
-      followerTime =
-        snapshot.cars.find((car) => car.driverId === fastDriver.id)
-          ?.currentLapMiniSectorTimes[targetMiniSectorIndex] ?? null
-    }
-
-    expect(followerTime).not.toBeNull()
-    expect(followerTime!).toBeLessThan(firstTime!)
-    const overallBest = bestSectorTime([firstTime, followerTime])
-
-    expect(classifySectorTime(firstTime, overallBest, firstTime)).toBe(
+    expect(
+      classifySectorTime(
+        transition!.leaderTime,
+        overallBest,
+        transition!.leaderTime,
+      ),
+    ).toBe(
       'personal-best',
     )
-    expect(classifySectorTime(followerTime, overallBest, followerTime)).toBe(
-      'overall-best',
-    )
+    expect(
+      classifySectorTime(
+        transition!.followerTime,
+        overallBest,
+        transition!.followerTime,
+      ),
+    ).toBe('overall-best')
   })
 })
 
@@ -620,10 +659,25 @@ describe('weekend grid penalties', () => {
 
 describe('full race', () => {
   const config = makeConfig('full-race')
-  const { snapshot: finished, seenEventKinds } = runToFinish(config)
+  let finished: RaceSnapshot
+  let seenEventKinds: Set<string>
+
+  beforeAll(() => {
+    const result = runToFinish(config)
+    finished = result.snapshot
+    seenEventKinds = result.seenEventKinds
+  }, 60_000)
 
   it('completes with every car finished or retired', () => {
     expect(finished.sessionStatus).toBe('finished')
+    const finishedDrivers = finished.cars.filter(
+      (car) => car.status === 'finished',
+    ).length
+    const dnfDrivers = finished.cars.length - finishedDrivers
+
+    expect(finished.cars).toHaveLength(30)
+    expect(new Set(finished.cars.map((car) => car.teamId)).size).toBe(15)
+    expect(finishedDrivers + dnfDrivers).toBe(30)
     for (const car of finished.cars) {
       expect(['finished', 'retired', 'disqualified']).toContain(car.status)
     }
@@ -2313,9 +2367,9 @@ describe('qualifying', () => {
 
     expect(session.segments.map((segment) => segment.name)).toEqual(['Q1', 'Q2', 'Q3'])
     expect(session.segments[0].results).toHaveLength(initialDrivers.length)
-    expect(session.segments[0].eliminatedDriverIds).toHaveLength(6)
-    expect(session.segments[1].results).toHaveLength(16)
-    expect(session.segments[1].eliminatedDriverIds).toHaveLength(6)
+    expect(session.segments[0].eliminatedDriverIds).toHaveLength(10)
+    expect(session.segments[1].results).toHaveLength(20)
+    expect(session.segments[1].eliminatedDriverIds).toHaveLength(10)
     expect(session.segments[2].results).toHaveLength(10)
     expect(session.classification).toHaveLength(initialDrivers.length)
     expect(session.classification.map((result) => result.position)).toEqual(
@@ -2479,7 +2533,8 @@ describe('incidents', () => {
       }
     }
 
-    // 22 cars x ~50 laps: expect some action but not a demolition derby.
+    // A 30-car field over a full distance should have action without attrition
+    // scaling mechanically with entry count.
     expect(incidents).toBeGreaterThan(0)
     expect(incidents).toBeLessThan(24)
     expect(retirements).toBeLessThanOrEqual(4)
@@ -2491,6 +2546,8 @@ describe('red-flag restart', () => {
 
   function scatteredField() {
     const snapshot = createInitialRace(makeConfig('red-restart'))
+    const oneLapDownIndex = snapshot.cars.length - 2
+    const twoLapsDownIndex = snapshot.cars.length - 1
 
     return snapshot.cars.map((car, index) => ({
       ...car,
@@ -2498,22 +2555,23 @@ describe('red-flag restart', () => {
       // Leader on lap 21 (total 20.6); the field scattered behind, with the
       // last two cars one and two whole laps down.
       totalDistance:
-        index === 20
+        index === oneLapDownIndex
           ? 19.55
-          : index === 21
+          : index === twoLapsDownIndex
             ? 18.35
-            : 20.6 - index * 0.04,
+            : 20.6 - index * 0.018,
       position: index + 1,
     }))
   }
 
   it('re-forms running cars nose to tail in classification order', () => {
     const cars = reformFieldForRedRestart(scatteredField(), spacingLaps)
+    const firstLappedIndex = cars.length - 2
 
     // Leader is untouched; everyone else queues behind at fixed spacing.
     expect(cars[0].totalDistance).toBeCloseTo(20.6, 6)
 
-    for (let index = 1; index < 20; index += 1) {
+    for (let index = 1; index < firstLappedIndex; index += 1) {
       expect(cars[index].totalDistance).toBeCloseTo(
         20.6 - index * spacingLaps,
         6,
@@ -2523,23 +2581,27 @@ describe('red-flag restart', () => {
 
   it('keeps lapped cars lapped while joining the queue on track', () => {
     const cars = reformFieldForRedRestart(scatteredField(), spacingLaps)
-    const lapDeficit20 = cars[0].totalDistance - cars[20].totalDistance
-    const lapDeficit21 = cars[0].totalDistance - cars[21].totalDistance
+    const oneLapDownIndex = cars.length - 2
+    const twoLapsDownIndex = cars.length - 1
+    const oneLapDeficit =
+      cars[0].totalDistance - cars[oneLapDownIndex].totalDistance
+    const twoLapDeficit =
+      cars[0].totalDistance - cars[twoLapsDownIndex].totalDistance
 
     // Whole-lap deficits survive the re-formation...
-    expect(Math.floor(lapDeficit20)).toBe(1)
-    expect(Math.floor(lapDeficit21)).toBe(2)
+    expect(Math.floor(oneLapDeficit)).toBe(1)
+    expect(Math.floor(twoLapDeficit)).toBe(2)
 
     // ...while their on-track position joins the restart queue.
-    const queuePosition20 = cars[20].totalDistance % 1
-    const queuePosition21 = cars[21].totalDistance % 1
+    const oneLapQueuePosition = cars[oneLapDownIndex].totalDistance % 1
+    const twoLapQueuePosition = cars[twoLapsDownIndex].totalDistance % 1
     const leaderPosition = cars[0].totalDistance % 1
 
-    expect(Math.abs(leaderPosition - queuePosition20)).toBeLessThan(
-      spacingLaps * 22,
+    expect(Math.abs(leaderPosition - oneLapQueuePosition)).toBeLessThan(
+      spacingLaps * cars.length,
     )
-    expect(Math.abs(leaderPosition - queuePosition21)).toBeLessThan(
-      spacingLaps * 22,
+    expect(Math.abs(leaderPosition - twoLapQueuePosition)).toBeLessThan(
+      spacingLaps * cars.length,
     )
   })
 
