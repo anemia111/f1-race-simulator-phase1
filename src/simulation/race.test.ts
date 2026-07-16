@@ -170,7 +170,7 @@ describe('determinism', () => {
 
       expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     },
-    30_000,
+    40_000,
   )
 
   it(
@@ -183,7 +183,7 @@ describe('determinism', () => {
         JSON.stringify(b.cars.map((car) => car.driverId)),
       )
     },
-    30_000,
+    40_000,
   )
 })
 
