@@ -34,7 +34,7 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
 
   if (message.type === 'initialize') {
     config = message.config
-    snapshot = createInitialRace(config)
+    snapshot = message.snapshot ?? createInitialRace(config)
     isPaused = message.isPaused
     speed = message.speed
     lastPublishedAt = performance.now()

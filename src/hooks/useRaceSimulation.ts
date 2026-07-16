@@ -14,6 +14,12 @@ import {
   type RaceWorkerInboundMessage,
   type RaceWorkerOutboundMessage,
 } from '../workers/raceWorkerProtocol'
+import {
+  activeRaceSessionFor,
+  restoreRaceCheckpoint,
+  saveRaceCheckpoint,
+  type ActiveRaceSession,
+} from './raceSession'
 
 type SimulationOptions = {
   config?: RaceConfig
@@ -28,9 +34,37 @@ export function useRaceSimulation({
   resetKey,
   speed,
 }: SimulationOptions) {
-  const [snapshot, setSnapshot] = useState<RaceSnapshot>(() =>
-    createInitialRace(config),
+  const sessionKey = resetKey ?? config.seed
+  const activeSessionRef = useRef<ActiveRaceSession>({
+    config,
+    key: sessionKey,
+  })
+  activeSessionRef.current = activeRaceSessionFor(
+    activeSessionRef.current,
+    sessionKey,
+    config,
   )
+  const activeConfig = activeSessionRef.current.config
+  const [initialState] = useState(() => {
+    const restored = restoreRaceCheckpoint(
+      window.localStorage,
+      sessionKey,
+      activeConfig,
+    )
+
+    return {
+      recovered: restored !== null,
+      snapshot: restored ?? createInitialRace(activeConfig),
+    }
+  })
+  const [snapshot, setSnapshot] = useState<RaceSnapshot>(initialState.snapshot)
+  const [snapshotSessionKey, setSnapshotSessionKey] = useState(sessionKey)
+  const [checkpointRecovered, setCheckpointRecovered] = useState(
+    initialState.recovered,
+  )
+  const [checkpointSaveStatus, setCheckpointSaveStatus] = useState<
+    'pending' | 'saved' | 'failed'
+  >('pending')
   const [workerSupported, setWorkerSupported] = useState(
     () => typeof Worker !== 'undefined',
   )
@@ -39,19 +73,40 @@ export function useRaceSimulation({
   const controlRef = useRef({ isPaused, speed })
   const workerRef = useRef<Worker | null>(null)
   const lastFallbackPublishRef = useRef(0)
+  const lastCheckpointAttemptAtRef = useRef(0)
+  const finishedCheckpointAttemptedRef = useRef(
+    initialState.recovered && initialState.snapshot.sessionStatus === 'finished',
+  )
+  const currentSessionKeyRef = useRef(sessionKey)
   const manualPitRequestsRef = useRef(new Map<string, TireCompound>())
   const manualPaceModesRef = useRef(new Map<string, RacePaceMode>())
   controlRef.current = { isPaused, speed }
 
   useEffect(() => {
-    const nextSnapshot = createInitialRace(config)
+    if (currentSessionKeyRef.current === sessionKey) {
+      return
+    }
+
+    currentSessionKeyRef.current = sessionKey
+    const restored = restoreRaceCheckpoint(
+      window.localStorage,
+      sessionKey,
+      activeConfig,
+    )
+    const nextSnapshot = restored ?? createInitialRace(activeConfig)
 
     snapshotRef.current = nextSnapshot
     setSnapshot(nextSnapshot)
+    setSnapshotSessionKey(sessionKey)
+    setCheckpointRecovered(restored !== null)
+    setCheckpointSaveStatus('pending')
     setEngineError(null)
+    lastCheckpointAttemptAtRef.current = 0
+    finishedCheckpointAttemptedRef.current =
+      restored?.sessionStatus === 'finished'
     manualPitRequestsRef.current.clear()
     manualPaceModesRef.current.clear()
-  }, [config, resetKey])
+  }, [activeConfig, sessionKey])
 
   useEffect(() => {
     if (!workerSupported) {
@@ -66,6 +121,10 @@ export function useRaceSimulation({
       })
       workerRef.current = worker
       worker.onmessage = (event: MessageEvent<RaceWorkerOutboundMessage>) => {
+        if (currentSessionKeyRef.current !== sessionKey) {
+          return
+        }
+
         const message = event.data
 
         if (message.type === 'error') {
@@ -76,6 +135,7 @@ export function useRaceSimulation({
 
         snapshotRef.current = message.snapshot
         setSnapshot(message.snapshot)
+        setSnapshotSessionKey(sessionKey)
       }
       worker.onerror = (event) => {
         event.preventDefault()
@@ -84,8 +144,9 @@ export function useRaceSimulation({
       }
       const initialize: RaceWorkerInboundMessage = {
         type: 'initialize',
-        config,
+        config: activeConfig,
         isPaused: controlRef.current.isPaused,
+        snapshot: snapshotRef.current,
         speed: controlRef.current.speed,
       }
       worker.postMessage(initialize)
@@ -103,7 +164,7 @@ export function useRaceSimulation({
         workerRef.current = null
       }
     }
-  }, [config, resetKey, workerSupported])
+  }, [activeConfig, sessionKey, workerSupported])
 
   useEffect(() => {
     const message: RaceWorkerInboundMessage = {
@@ -130,7 +191,7 @@ export function useRaceSimulation({
         const nextSnapshot = advanceRace(
           snapshotRef.current,
           (RACE_WORKER_TICK_MS / 1000) * speed,
-          config,
+          activeConfig,
           manualPitRequestsRef.current,
           manualPaceModesRef.current,
         )
@@ -144,6 +205,7 @@ export function useRaceSimulation({
         ) {
           lastFallbackPublishRef.current = now
           setSnapshot(nextSnapshot)
+          setSnapshotSessionKey(sessionKey)
         }
       } catch (error) {
         setEngineError(
@@ -156,7 +218,40 @@ export function useRaceSimulation({
     }, RACE_WORKER_TICK_MS)
 
     return () => window.clearInterval(intervalId)
-  }, [config, isPaused, speed, workerSupported])
+  }, [activeConfig, isPaused, sessionKey, speed, workerSupported])
+
+  useEffect(() => {
+    if (
+      snapshotSessionKey !== sessionKey ||
+      snapshot.elapsedSeconds <= 0
+    ) {
+      return
+    }
+
+    const now = Date.now()
+    const firstFinishedCheckpoint =
+      snapshot.sessionStatus === 'finished' &&
+      !finishedCheckpointAttemptedRef.current
+
+    if (
+      !firstFinishedCheckpoint &&
+      now - lastCheckpointAttemptAtRef.current < 5_000
+    ) {
+      return
+    }
+
+    lastCheckpointAttemptAtRef.current = now
+
+    if (snapshot.sessionStatus === 'finished') {
+      finishedCheckpointAttemptedRef.current = true
+    }
+
+    setCheckpointSaveStatus(
+      saveRaceCheckpoint(window.localStorage, sessionKey, snapshot, now)
+        ? 'saved'
+        : 'failed',
+    )
+  }, [sessionKey, snapshot, snapshotSessionKey])
 
   const requestPitStop = useCallback(
     (driverId: string, compound: TireCompound) => {
@@ -192,6 +287,8 @@ export function useRaceSimulation({
   )
 
   return {
+    checkpointRecovered,
+    checkpointSaveStatus,
     engineError,
     engineMode: workerSupported ? ('worker' as const) : ('main' as const),
     requestPitStop,

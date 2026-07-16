@@ -376,7 +376,7 @@ export function energyDeploymentRequestFor(
     state.stateOfCharge,
   )
   const paceMultiplier: Record<RacePaceMode, number> = {
-    push: 1.16,
+    push: 1.26,
     standard: 1,
     save: 0.54,
     defend: 1.22,

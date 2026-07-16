@@ -60,6 +60,7 @@ import {
   yellowFlagZoneForIncident,
 } from './raceEvents'
 import { hashChance } from './random'
+import { automaticRacePaceModeFor } from './racePace'
 import {
   advanceNeutralisationProcedure,
   controlProcedureStatusMessage,
@@ -3440,6 +3441,24 @@ export function advanceRace(
       car.progress,
       carSector,
     )
+    const racePaceMode =
+      requestedPaceMode ??
+      automaticRacePaceModeFor({
+        car,
+        gapBehindSeconds: frameCars[index + 1]?.gapToAhead ?? null,
+        isRaceDistance,
+        phaseActive: localControlPhase !== null,
+        pursuitSkill:
+          driver.skills.overtakingSkill * 0.32 +
+          driver.skills.ersManagement * 0.4 +
+          driver.skills.raceAwareness * 0.28,
+        raceLaps,
+        seed: config.seed,
+      })
+    const paceManagedCar =
+      racePaceMode === car.racePaceMode
+        ? car
+        : { ...car, racePaceMode }
     const safetyCarProcedure =
       phase?.flag === 'sc' &&
       phase.neutralisation?.kind === 'safety-car'
@@ -3477,7 +3496,7 @@ export function advanceRace(
     const lapTime = projectedLapTime(
       driver,
       team,
-      car,
+      paceManagedCar,
       config,
       elapsedSeconds,
       localControlPhase,
@@ -3489,7 +3508,7 @@ export function advanceRace(
       heatHazardMassIncreaseKg,
     )
     const timedRun = timedRunPaceFor({
-      car,
+      car: paceManagedCar,
       stage: weekendStage,
     })
     const performanceGain = performanceLapGainSeconds({
@@ -3535,7 +3554,7 @@ export function advanceRace(
       stage: weekendStage,
     })
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
-      car,
+      car: paceManagedCar,
       deltaSeconds,
       driver,
       elapsedSeconds,
@@ -3570,7 +3589,6 @@ export function advanceRace(
       telemetry,
       timedRun.phase,
     )
-    const racePaceMode = requestedPaceMode ?? car.racePaceMode
     const modeBrakeMultiplier: Record<RacePaceMode, number> = {
       defend: 1.08,
       push: 1.16,

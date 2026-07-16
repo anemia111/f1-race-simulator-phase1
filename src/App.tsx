@@ -1104,7 +1104,9 @@ export default function App() {
   const [openF1AccessToken, setOpenF1AccessToken] = useState<string | null>(null)
   const [openF1TokenDraft, setOpenF1TokenDraft] = useState('')
   const [historicalTimelineRatio, setHistoricalTimelineRatio] = useState(1)
-  const [seed, setSeed] = useState(createAutoScenarioSeed)
+  const [seed, setSeed] = useState(
+    () => persistedWeekend?.seed ?? createAutoScenarioSeed(),
+  )
   const [selectedTrackId, setSelectedTrackId] = useState(
     persistedWeekend?.trackId ?? defaultTrack.id,
   )
@@ -1487,13 +1489,30 @@ export default function App() {
       standardQualifying,
     ],
   )
+  const raceSessionKey = useMemo(
+    () =>
+      JSON.stringify([
+        normalizeSimulationSeed(seed),
+        selectedTrackId,
+        selectedWeekendStage,
+        gridSource,
+      ]),
+    [gridSource, seed, selectedTrackId, selectedWeekendStage],
+  )
   const {
+    checkpointRecovered,
+    checkpointSaveStatus,
     engineError,
     engineMode,
     snapshot,
     requestPitStop,
     setDriverPaceMode,
-  } = useRaceSimulation({ config: raceConfig, isPaused, speed })
+  } = useRaceSimulation({
+    config: raceConfig,
+    isPaused,
+    resetKey: raceSessionKey,
+    speed,
+  })
   const orderedCars = snapshot.cars
 
   useEffect(() => {
@@ -2497,7 +2516,21 @@ export default function App() {
     {
       label: 'Simulation engine',
       source: 'SIM',
-      value: engineError ? `Error: ${engineError}` : engineMode.toUpperCase(),
+      value: engineError
+        ? `Error: ${engineError}`
+        : `${engineMode.toUpperCase()}${checkpointRecovered ? ' / checkpoint restored' : ''}`,
+    },
+    {
+      label: 'Race checkpoint',
+      source: 'SIM',
+      value:
+        checkpointSaveStatus === 'failed'
+          ? 'Save unavailable - race continues'
+          : checkpointSaveStatus === 'saved'
+            ? 'Saved locally'
+            : checkpointRecovered
+              ? 'Restored; next save pending'
+              : 'First save pending',
     },
   ]
   const broadcastDataControl = (
@@ -2560,7 +2593,7 @@ export default function App() {
             LIVE: detectedDataMode === 'LIVE',
             SIM: true,
           }}
-          engineLabel={`ENGINE ${engineMode.toUpperCase()}`}
+          engineLabel={`ENGINE ${engineMode.toUpperCase()}${checkpointRecovered ? ' / RESUMED' : ''}${checkpointSaveStatus === 'failed' ? ' / SAVE ERROR' : ''}`}
           environment={environmentReadout}
           eventName={
             track.openF1?.meetingName ??

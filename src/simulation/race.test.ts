@@ -1937,6 +1937,35 @@ describe('manual strategy request', () => {
     expect(car.tireWearPercent).toBeGreaterThan(0)
     expect(car.brakeTemperatureC).toBeGreaterThan(260)
   })
+
+  it('automatically pushes when a healthy CPU car can catch the car ahead', () => {
+    const config = makeConfig('automatic-pursuit-pace')
+    let snapshot = runThroughStart(config)
+    const target = snapshot.cars.find((car) => car.position === 5)!
+
+    snapshot = {
+      ...snapshot,
+      cars: snapshot.cars.map((car) =>
+        car.driverId === target.driverId
+          ? {
+              ...car,
+              damage: 0,
+              ersBatteryPercent: 78,
+              gapToAhead: 1.8,
+              racePaceMode: 'standard' as const,
+              tireOverheatingPercent: 10,
+              tireWearPercent: 18,
+            }
+          : car,
+      ),
+    }
+    snapshot = advanceRace(snapshot, 0.1, config)
+    const pursuing = snapshot.cars.find(
+      (car) => car.driverId === target.driverId,
+    )!
+
+    expect(pursuing.racePaceMode).toBe('push')
+  })
 })
 
 describe('procedural penalty service', () => {

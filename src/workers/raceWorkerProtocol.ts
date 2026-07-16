@@ -21,6 +21,7 @@ export type RaceWorkerInboundMessage =
       type: 'initialize'
       config: RaceConfig
       isPaused: boolean
+      snapshot: RaceSnapshot
       speed: SpeedMultiplier
     }
   | { type: 'control'; isPaused: boolean; speed: SpeedMultiplier }

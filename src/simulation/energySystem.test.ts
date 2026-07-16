@@ -68,6 +68,22 @@ function deploymentRequest(
 }
 
 describe('physical Energy Store integration', () => {
+  it('requests more electrical deployment in push mode than standard mode', () => {
+    const state = createInitialEnergyStore(team, 0.62)
+    const standard = deploymentRequest(state, {
+      paceMode: 'standard',
+      straightLengthAheadMeters: 420,
+      straightness: 0.68,
+    })
+    const push = deploymentRequest(state, {
+      paceMode: 'push',
+      straightLengthAheadMeters: 420,
+      straightness: 0.68,
+    })
+
+    expect(push).toBeGreaterThan(standard)
+  })
+
   it('starts fully charged and spends stored energy through ERS deployment', () => {
     const initial = createInitialEnergyStore(team)
     const deployed = step(initial, {

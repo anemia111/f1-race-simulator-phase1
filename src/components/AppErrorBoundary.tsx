@@ -19,9 +19,9 @@ export class AppErrorBoundary extends Component<Props, State> {
       return (
         <main className="app-recovery" role="alert">
           <span>SIMULATOR RECOVERY</span>
-          <strong>Data update interrupted the display.</strong>
+          <strong>Display interrupted. Your latest race checkpoint is safe.</strong>
           <button onClick={() => window.location.reload()} type="button">
-            Reload race control
+            Reload last checkpoint
           </button>
         </main>
       )

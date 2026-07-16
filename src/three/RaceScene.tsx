@@ -278,6 +278,42 @@ function displayPoseForCar(
   elapsedSeconds: number,
 ) {
   const trackPose = poseOnTrack(curve, car.progress, laneOffset)
+  const displaysPitLane =
+    car.status === 'pit' ||
+    (car.status === 'running' && car.pitPhase === 'lane')
+
+  if (!displaysPitLane) {
+    if (
+      car.pitExitUntilSeconds !== null &&
+      elapsedSeconds < car.pitExitUntilSeconds
+    ) {
+      const remaining =
+        (car.pitExitUntilSeconds - elapsedSeconds) / PIT_ENTRY_VISUAL_SECONDS
+      const transition = Math.min(1, Math.max(0, remaining))
+      const exitPitPose = poseOnTrack(
+        curve,
+        car.progress,
+        pitLaneOffset(track),
+      )
+
+      return {
+        position: exitPitPose.position
+          .clone()
+          .lerp(trackPose.position, 1 - transition),
+        tangent: exitPitPose.tangent
+          .clone()
+          .lerp(trackPose.tangent, 1 - transition)
+          .normalize(),
+        normal: exitPitPose.normal
+          .clone()
+          .lerp(trackPose.normal, 1 - transition)
+          .normalize(),
+      }
+    }
+
+    return trackPose
+  }
+
   const pitProgress =
     car.pitLaneProgress ?? pitBoxProgress(track, pitSlot, pitBoxCount)
   const garagePose = poseOnTrack(
@@ -295,69 +331,37 @@ function displayPoseForCar(
       ? garagePose
       : poseOnTrack(curve, pitProgress, pitLaneOffset(track))
 
-  if (
-    car.status === 'pit' ||
-    (car.status === 'running' && car.pitPhase === 'lane')
-  ) {
-    if (car.pitStartedAtSeconds === null || car.pitPhase === 'box') {
-      return movingPitPose
-    }
-
-    if (car.pitPhase === 'entry' || car.pitPhase === 'lane') {
-      const entryTrackPose = poseOnTrack(curve, pitProgress, 0)
-      const transition = Math.min(
-        1,
-        Math.max(
-          0,
-          (elapsedSeconds - car.pitStartedAtSeconds) /
-            PIT_ENTRY_VISUAL_SECONDS,
-        ),
-      )
-
-      return {
-        position: entryTrackPose.position
-          .clone()
-          .lerp(movingPitPose.position, transition),
-        tangent: entryTrackPose.tangent
-          .clone()
-          .lerp(movingPitPose.tangent, transition)
-          .normalize(),
-        normal: entryTrackPose.normal
-          .clone()
-          .lerp(movingPitPose.normal, transition)
-          .normalize(),
-      }
-    }
-
+  if (car.pitStartedAtSeconds === null || car.pitPhase === 'box') {
     return movingPitPose
   }
 
-  if (
-    car.pitExitUntilSeconds !== null &&
-    elapsedSeconds < car.pitExitUntilSeconds
-  ) {
-    const remaining =
-      (car.pitExitUntilSeconds - elapsedSeconds) / PIT_ENTRY_VISUAL_SECONDS
-    const transition = Math.min(1, Math.max(0, remaining))
-
-    const exitPitPose = poseOnTrack(curve, car.progress, pitLaneOffset(track))
+  if (car.pitPhase === 'entry' || car.pitPhase === 'lane') {
+    const entryTrackPose = poseOnTrack(curve, pitProgress, 0)
+    const transition = Math.min(
+      1,
+      Math.max(
+        0,
+        (elapsedSeconds - car.pitStartedAtSeconds) /
+          PIT_ENTRY_VISUAL_SECONDS,
+      ),
+    )
 
     return {
-      position: exitPitPose.position
+      position: entryTrackPose.position
         .clone()
-        .lerp(trackPose.position, 1 - transition),
-      tangent: exitPitPose.tangent
+        .lerp(movingPitPose.position, transition),
+      tangent: entryTrackPose.tangent
         .clone()
-        .lerp(trackPose.tangent, 1 - transition)
+        .lerp(movingPitPose.tangent, transition)
         .normalize(),
-      normal: exitPitPose.normal
+      normal: entryTrackPose.normal
         .clone()
-        .lerp(trackPose.normal, 1 - transition)
+        .lerp(movingPitPose.normal, transition)
         .normalize(),
     }
   }
 
-  return trackPose
+  return movingPitPose
 }
 
 function PitLane({
@@ -1061,10 +1065,7 @@ function CarMarker({
       label: car.code,
     })
   }, [car.blueFlag, car.code, car.overtakeStatus, car.status, isSelected, markerColor])
-
-  useEffect(() => () => markerTexture.dispose(), [markerTexture])
-
-  useFrame(() => {
+  const markerTarget = useMemo(() => {
     const laneOffset = displayLaneOffset(track, car, showStartingGridSlots)
     const pose = displayPoseForCar(
       curve,
@@ -1076,24 +1077,39 @@ function CarMarker({
       garageBayIndex,
       snapshotElapsedSeconds,
     )
+
+    return pose.position.setY(0.54)
+  }, [
+    car,
+    curve,
+    garageBayIndex,
+    index,
+    pitBoxCount,
+    showStartingGridSlots,
+    snapshotElapsedSeconds,
+    track,
+  ])
+
+  useEffect(() => () => markerTexture.dispose(), [markerTexture])
+
+  useFrame(() => {
     const group = groupRef.current
 
     if (!group) {
       return
     }
 
-    const target = pose.position.setY(0.54)
-    const distanceToTarget = group.position.distanceToSquared(target)
+    const distanceToTarget = group.position.distanceToSquared(markerTarget)
 
     if (!markerPlacedRef.current || distanceToTarget > 2.25) {
-      group.position.copy(target)
+      group.position.copy(markerTarget)
       markerPlacedRef.current = true
       invalidate()
     } else if (distanceToTarget > 0.0004) {
-      group.position.lerp(target, 0.28)
+      group.position.lerp(markerTarget, 0.28)
       invalidate()
     } else {
-      group.position.copy(target)
+      group.position.copy(markerTarget)
     }
   })
 
@@ -1157,14 +1173,7 @@ function SafetyCarMarker({
       }),
     [greenLight, orangeLights],
   )
-
-  useEffect(() => () => markerTexture.dispose(), [markerTexture])
-
-  useFrame(() => {
-    const group = groupRef.current
-
-    if (!group) return
-
+  const markerTarget = useMemo(() => {
     let pose: ReturnType<typeof poseOnTrack>
 
     if (
@@ -1200,17 +1209,26 @@ function SafetyCarMarker({
         followsPitLane ? pitLaneOffset(track) : 0,
       )
     }
-    const target = pose.position.setY(0.5)
+
+    return pose.position.setY(0.5)
+  }, [curve, elapsedSeconds, leader.progress, procedure, track])
+
+  useEffect(() => () => markerTexture.dispose(), [markerTexture])
+
+  useFrame(() => {
+    const group = groupRef.current
+
+    if (!group) return
 
     if (!placedRef.current) {
-      group.position.copy(target)
+      group.position.copy(markerTarget)
       placedRef.current = true
       invalidate()
-    } else if (group.position.distanceToSquared(target) > 0.0003) {
-      group.position.lerp(target, 0.3)
+    } else if (group.position.distanceToSquared(markerTarget) > 0.0003) {
+      group.position.lerp(markerTarget, 0.3)
       invalidate()
     } else {
-      group.position.copy(target)
+      group.position.copy(markerTarget)
     }
   })
 
@@ -1395,8 +1413,7 @@ function CameraRig({
       ),
     }
   }, [camera, overviewFrame, size.height, size.width])
-
-  useFrame(() => {
+  const selectedCameraFrame = useMemo(() => {
     const pose = displayPoseForCar(
       curve,
       selectedCar,
@@ -1407,7 +1424,27 @@ function CameraRig({
       selectedGarageBayIndex,
       snapshotElapsedSeconds,
     )
-    const target = pose.position.clone().setY(0.5)
+    const target = pose.position.setY(0.5)
+
+    return {
+      chasePosition: target
+        .clone()
+        .add(pose.tangent.clone().multiplyScalar(-12))
+        .add(new THREE.Vector3(0, 7.2, 0)),
+      target,
+    }
+  }, [
+    curve,
+    pitBoxCount,
+    selectedCar,
+    selectedGarageBayIndex,
+    selectedPitSlot,
+    snapshotElapsedSeconds,
+    track,
+  ])
+
+  useFrame(() => {
+    const target = selectedCameraFrame.target
 
     if (cameraMode === 'overview') {
       camera.position.lerp(overviewCamera.position, 0.12)
@@ -1423,10 +1460,7 @@ function CameraRig({
     }
 
     if (cameraMode === 'chase') {
-      const chasePosition = target
-        .clone()
-        .add(pose.tangent.clone().multiplyScalar(-12))
-        .add(new THREE.Vector3(0, 7.2, 0))
+      const chasePosition = selectedCameraFrame.chasePosition
 
       camera.position.lerp(chasePosition, 0.28)
       targetRef.current.lerp(target, 0.4)
