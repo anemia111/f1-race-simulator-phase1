@@ -8,6 +8,7 @@ import {
   driverSkillBlend,
 } from './driverAbility'
 import { practiceSetupRecommendation } from './engineering'
+import { effectiveMachineReliability } from './machinePerformance'
 import { hashChance } from './random'
 import { tireDeltaSeconds } from './tires'
 import {
@@ -680,6 +681,9 @@ export function runPracticeSession(
     }
 
     const reliabilityRoll = hashChance(`${config.seed}:practice:${stage}:${driver.id}:laps`)
+    const machineReliability = effectiveMachineReliability(
+      team.machine.reliability,
+    )
     const adaptability = driverPerformanceAbility(driver, 'adaptability')
     const consistency = driverPerformanceAbility(driver, 'consistency')
     const wetPenalty =
@@ -700,7 +704,7 @@ export function runPracticeSession(
         Math.round(
           13 +
             reliabilityRoll * 10 +
-            team.machine.reliability * 4 +
+            machineReliability * 4 +
             consistency * 3 -
             (weather === 'heavy-rain' ? 4 : weather === 'light-rain' ? 1.5 : 0),
         ),
@@ -747,7 +751,7 @@ export function runPracticeSession(
             lapsCompleted * 1.45 +
             consistency * 13 +
             adaptability * 5 +
-            team.machine.reliability * 14 +
+            machineReliability * 14 +
             stageIndex * 5 -
             (weather === 'heavy-rain' ? 8 : weather === 'light-rain' ? 3 : 0) +
             hashChance(`${config.seed}:practice:${stage}:${driver.id}:setup`) * 9,

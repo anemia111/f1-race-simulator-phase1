@@ -1,6 +1,7 @@
 import type { Driver, RaceConfig, TireCompound } from '../types'
 import { tireNominationForTrack } from '../data/tireNominations2026'
 import { driverAbilityValue } from './driverAbility'
+import { effectiveMachineRating } from './machinePerformance'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
 import {
@@ -172,7 +173,9 @@ function weightedDryStartCompound(
 ): DryCompound {
   const team = config.teams.find((candidate) => candidate.id === driver.teamId)
   const driverManagement = driverAbilityValue(driver, 'tireManagement')
-  const machineManagement = team?.machine.tireDegManagement ?? 0.82
+  const machineManagement = team
+    ? effectiveMachineRating(team.machine.tireDegManagement)
+    : 0.82
   const combinedManagement = driverManagement * 0.65 + machineManagement * 0.35
   const normalizedManagement = clamp01((combinedManagement - 0.55) / 0.95)
   const nomination = config.track.tireNomination ?? tireNominationForTrack(config.track)

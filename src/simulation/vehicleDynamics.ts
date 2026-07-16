@@ -13,30 +13,23 @@ import {
   DRIVER_ABILITY_INTERNAL_MAX,
   driverSkillBlend,
 } from './driverAbility'
+import {
+  effectiveMachineRating,
+  MACHINE_PERFORMANCE_REFERENCE,
+  MACHINE_PERFORMANCE_SPREAD_FACTOR,
+} from './machinePerformance'
 import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-export const MACHINE_PACE_REFERENCE = 0.86
-export const MACHINE_PACE_SPREAD_FACTOR = 1.35
+export const MACHINE_PACE_REFERENCE = MACHINE_PERFORMANCE_REFERENCE
+export const MACHINE_PACE_SPREAD_FACTOR = MACHINE_PERFORMANCE_SPREAD_FACTOR
 export const MACHINE_SEGMENT_RESPONSE = 0.135
 export const DRIVER_SEGMENT_RESPONSE = 0.075
 export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
-/**
- * Expands the effect of a machine rating without mutating the factual CSV
- * value. A rating at the reference remains unchanged while strengths and
- * weaknesses have a clear influence on the physical pace model.
- */
-export function machinePaceRating(value: number): number {
-  return clamp(
-    MACHINE_PACE_REFERENCE +
-      (value - MACHINE_PACE_REFERENCE) * MACHINE_PACE_SPREAD_FACTOR,
-    0.45,
-    1.05,
-  )
-}
+export const machinePaceRating = effectiveMachineRating
 
 export type TrackLoadProfile = {
   accelerationShare: number
@@ -348,7 +341,7 @@ export function combustionPowerKwFor(team: Team) {
   // This fictional 420 km/h category retains F1-style energy deployment but
   // uses a higher combustion output. Aerodynamic drag, not a speed clamp,
   // determines whether a car can approach the category's headline speed.
-  return 575 + machinePaceRating(team.machine.puOutput) * 78
+  return 590 + machinePaceRating(team.machine.puOutput) * 78
 }
 
 export function internalPowerScaleAtSpeed(speedKph: number) {

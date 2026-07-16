@@ -7,6 +7,7 @@ import type {
   TimedRunPhase,
   TireCompound,
 } from '../types'
+import { effectiveMachineRating } from './machinePerformance'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -90,9 +91,19 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
   const usableEnergyMJ =
     FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
   const minimumUsableEnergyMJ = 0.36
-  const deploymentRating = clamp(machine.electricalDeploymentEfficiency, 0, 1)
-  const recoveryRating = clamp(machine.energyRecoveryEfficiency, 0, 1)
-  const coolingRating = clamp(machine.coolingEfficiency, 0, 1)
+  const deploymentRating = effectiveMachineRating(
+    machine.electricalDeploymentEfficiency,
+  )
+  const recoveryRating = effectiveMachineRating(machine.energyRecoveryEfficiency)
+  const coolingRating = effectiveMachineRating(machine.coolingEfficiency)
+  const powerUnitRating = effectiveMachineRating(machine.puOutput)
+  const activeAeroRating = effectiveMachineRating(machine.activeAeroEfficiency)
+  const brakingStabilityRating = effectiveMachineRating(
+    machine.brakingStability,
+  )
+  const brakingPerformanceRating = effectiveMachineRating(
+    machine.brakingPerformance,
+  )
 
   return {
     usableEnergyMJ,
@@ -100,7 +111,7 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
     maximumUsableEnergyMJ: minimumUsableEnergyMJ + usableEnergyMJ,
     maximumDeploymentPowerKw: Math.min(
       FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-      300 + 50 * clamp(machine.puOutput * 0.45 + deploymentRating * 0.55, 0, 1),
+      300 + 50 * clamp(powerUnitRating * 0.45 + deploymentRating * 0.55, 0, 1),
     ),
     maximumRecoveryPowerKw: Math.min(
       FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
@@ -117,20 +128,20 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
     coolingEfficiency: 0.72 + coolingRating * 0.28,
     thermalResistance: 1.14 - coolingRating * 0.24,
     energyManagementSoftwareQuality: clamp(
-      machine.activeAeroEfficiency * 0.32 +
+      activeAeroRating * 0.32 +
         deploymentRating * 0.38 +
         recoveryRating * 0.3,
       0,
       1,
     ),
     brakeByWireQuality: clamp(
-      machine.brakingStability * 0.62 + recoveryRating * 0.38,
+      brakingStabilityRating * 0.62 + recoveryRating * 0.38,
       0,
       1,
     ),
     regenBlendingQuality: clamp(
-      machine.brakingPerformance * 0.35 +
-        machine.brakingStability * 0.3 +
+      brakingPerformanceRating * 0.35 +
+        brakingStabilityRating * 0.3 +
         recoveryRating * 0.35,
       0,
       1,

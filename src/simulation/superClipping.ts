@@ -6,6 +6,7 @@ import type {
   Team,
 } from '../types'
 import { driverSkillBlend } from './driverAbility'
+import { effectiveMachineRating } from './machinePerformance'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import { setupDragAreaMultiplier } from './vehicleDynamics'
 
@@ -39,11 +40,16 @@ export type SuperClippingResult = SuperClippingPower & {
 export function superClippingSpeedWindowFor(team: Team, setup?: CarSetup) {
   const machine = team.machine
   const setupDrag = setupDragAreaMultiplier(setup)
+  const powerUnitRating = effectiveMachineRating(machine.puOutput)
+  const dragEfficiencyRating = effectiveMachineRating(machine.dragEfficiency)
+  const deploymentRating = effectiveMachineRating(
+    machine.electricalDeploymentEfficiency,
+  )
   const referenceTopSpeedKph = clamp(
     350 +
-      (machine.puOutput - 0.85) * 58 +
-      (machine.dragEfficiency - 0.85) * 68 +
-      (machine.electricalDeploymentEfficiency - 0.85) * 22 -
+      (powerUnitRating - 0.85) * 58 +
+      (dragEfficiencyRating - 0.85) * 68 +
+      (deploymentRating - 0.85) * 22 -
       (setupDrag - 1) * 58,
     342,
     405,
@@ -94,19 +100,20 @@ export function superClippingPowerForIntensity(options: {
   } = options
   const intensity = clamp(options.intensity, 0, 1)
   const deploymentEfficiency = clamp(
-    team.machine.electricalDeploymentEfficiency,
+    effectiveMachineRating(team.machine.electricalDeploymentEfficiency),
     0.72,
     1,
   )
   const recoveryEfficiency = clamp(
-    team.machine.energyRecoveryEfficiency,
+    effectiveMachineRating(team.machine.energyRecoveryEfficiency),
     0.68,
     1,
   )
+  const powerUnitRating = effectiveMachineRating(team.machine.puOutput)
   const systemSeverity =
     1 +
     (0.9 - deploymentEfficiency) * 0.35 +
-    (0.88 - team.machine.puOutput) * 0.12
+    (0.88 - powerUnitRating) * 0.12
   const drivePowerScale = clamp(
     1 - Math.pow(intensity, 1.08) * 0.315 * systemSeverity,
     0.61,
@@ -269,8 +276,10 @@ export function superClippingDemandFor(options: {
     speedKph,
   )
   const efficiencyPressure =
-    (1 - team.machine.electricalDeploymentEfficiency) * 0.16 +
-    (1 - team.machine.energyRecoveryEfficiency) * 0.11
+    (1 -
+      effectiveMachineRating(team.machine.electricalDeploymentEfficiency)) *
+      0.16 +
+    (1 - effectiveMachineRating(team.machine.energyRecoveryEfficiency)) * 0.11
   const fuelPressure = clamp(fuelLoadKg / 110, 0, 1) * 0.055
   const managementCorrection = (0.82 - ersManagement) * 0.24
   const severeScarcity = batteryPercent < 14 ? (14 - batteryPercent) * 0.025 : 0

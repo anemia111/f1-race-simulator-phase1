@@ -5,6 +5,7 @@
 
 import type { Driver, FlagState, Team, WeatherState } from '../types'
 import { driverSkillBlend } from './driverAbility'
+import { effectiveMachineReliability } from './machinePerformance'
 import { hashChance } from './random'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -95,7 +96,7 @@ export function incidentForLap(
 
   const mechanicalChance =
     incidentTuning.mechanicalBaseChance *
-    Math.max(0.025, 1 - team.machine.reliability) *
+    Math.max(0.025, 1 - effectiveMachineReliability(team.machine.reliability)) *
     riskMultiplier
 
   if (hashChance(`${seed}:mechanical:${driver.id}:${lap}`) < mechanicalChance) {

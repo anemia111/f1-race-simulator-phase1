@@ -23,6 +23,7 @@ import {
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
+import { effectiveMachineRating } from './machinePerformance'
 import {
   baselineSetupForTrack,
   setupPaceDeltaSeconds,
@@ -2052,9 +2053,12 @@ export function advanceRace(
         : startAbility
       const team = teams.get(car.teamId)
       const machineLaunch = team
-        ? (team.machine.traction * 0.52 +
-            team.machine.mechanicalGrip * 0.3 +
-            team.machine.electricalDeploymentEfficiency * 0.18)
+        ? (effectiveMachineRating(team.machine.traction) * 0.52 +
+            effectiveMachineRating(team.machine.mechanicalGrip) * 0.3 +
+            effectiveMachineRating(
+              team.machine.electricalDeploymentEfficiency,
+            ) *
+              0.18)
         : 0.82
       const launchExecution = clamp01(
         launchSkill * 0.72 +
