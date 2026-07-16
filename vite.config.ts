@@ -29,9 +29,10 @@ export default defineConfig({
         start_url: './',
         theme_color: '#050607',
       },
-      // Install updates in the background, then activate after the current
-      // race tab closes so a deployment can never reload a live session.
-      registerType: 'prompt',
+      // Activate new caches immediately. registerAppUpdater suppresses the
+      // automatic page reload, so an active race keeps running while the next
+      // desktop launch or navigation receives the latest published build.
+      registerType: 'autoUpdate',
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{css,html,js,json}'],
