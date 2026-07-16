@@ -919,8 +919,15 @@ export function BroadcastDashboard({
     activeSectorFlagIndex >= 0
       ? snapshot.sectorFlags[activeSectorFlagIndex]
       : null
+  const localMarshallingZoneActive = Boolean(
+    (snapshot.flagPhase?.flag === 'yellow' && snapshot.flagPhase.yellowZone) ||
+      (snapshot.flagPhase === null &&
+        snapshot.timedYellowUntilSeconds !== null &&
+        snapshot.timedYellowProgress !== null &&
+        snapshot.timedYellowProgress !== undefined),
+  )
   const controlFlagLabel = sectorFlagIsLocal && activeSectorFlag
-    ? `${sectorFlagLabels[activeSectorFlag]} S${activeSectorFlagIndex + 1}`
+    ? `${sectorFlagLabels[activeSectorFlag]}${localMarshallingZoneActive ? ' ZONE' : ''} S${activeSectorFlagIndex + 1}`
     : uniformSectorFlag
       ? sectorFlagLabels[uniformSectorFlag]
       : snapshot.flagLabel
@@ -1032,7 +1039,11 @@ export function BroadcastDashboard({
             <div
               className="sector-flag-strip"
               aria-label={snapshot.sectorFlags
-                .map((flag, index) => `Sector ${index + 1} ${sectorFlagLabels[flag]}`)
+                .map((flag, index) =>
+                  localMarshallingZoneActive && flag.includes('yellow')
+                    ? `Timing sector ${index + 1} contains a ${sectorFlagLabels[flag]} marshalling zone`
+                    : `Sector ${index + 1} ${sectorFlagLabels[flag]}`,
+                )
                 .join(', ')}
             >
               {snapshot.sectorFlags.map((flag, index) => (

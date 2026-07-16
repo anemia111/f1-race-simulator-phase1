@@ -389,13 +389,24 @@ export type NeutralisationProcedure =
  * hazard-clear time; SC and VSC phases still complete their formal withdrawal
  * procedures before racing resumes.
  */
+export type YellowFlagZone = {
+  /** Exact track-progress position of the incident or obstruction. */
+  incidentProgress: number
+  /** Light/flag post immediately before the incident, in race direction. */
+  startProgress: number
+  /** Green-light/flag post immediately after the incident. */
+  endProgress: number
+}
+
 export type ActiveFlagPhase = {
   id: string
   flag: Exclude<FlagState, 'clear'>
-  /** Affected sector (0-based). Only local yellows scope slowing to it. */
+  /** Timing sector containing the incident, retained for timing displays. */
   sector: number
   /** Double yellow is used while a major incident is being assessed. */
   yellowSeverity?: 'single' | 'double'
+  /** FIA marshalling sector controlled by a local yellow. */
+  yellowZone?: YellowFlagZone
   safetyCarUsesPitLane?: boolean
   startSeconds: number
   endSeconds: number
@@ -685,6 +696,8 @@ export type CarSnapshot = {
   bestLapLap: number | null
   /** Simulation clock at the most recent start/finish crossing. */
   lapStartedAtSeconds: number | null
+  /** True only after this timed lap physically passes a double-yellow zone. */
+  passedDoubleYellowThisLap: boolean
   /** Current-lap splits, written once when the CPU car crosses each sector line. */
   currentLapSectorTimes: [number | null, number | null, number | null]
   /** Current-lap 24-part timing, frozen as each mini-sector line is crossed. */
@@ -893,6 +906,8 @@ export type RaceSnapshot = {
   timedParticipantDriverIds: string[]
   timedYellowUntilSeconds: number | null
   timedYellowSector: number | null
+  /** Incident position used to create the timed-session marshalling sector. */
+  timedYellowProgress: number | null
   pitLaneOpen: boolean
   /** Separate SC operational signal; cars may enter while the exit is held. */
   pitExitOpen: boolean

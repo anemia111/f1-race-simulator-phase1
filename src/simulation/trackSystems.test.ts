@@ -10,12 +10,16 @@ import {
 import { createInitialRace } from './race'
 import {
   advanceVscMarshallingSectorTracking,
+  distanceRespectingLocalYellowOrder,
   flagPaceMultiplier,
-  flagPhaseForSector,
+  flagPhaseForProgress,
+  marshalPostProgressesForTrack,
   phaseThreeTuning,
+  progressIsInYellowFlagZone,
   sectorFlagStatesFor,
   vscPaceScaleForDelta,
   wearScaleForControlPhase,
+  yellowFlagZoneForIncident,
 } from './raceEvents'
 import { calculateCarTelemetry } from './telemetry'
 import {
@@ -30,31 +34,40 @@ import {
 } from './trackWater'
 
 describe('track-dependent systems', () => {
-  it('scopes a local yellow to its affected sector', () => {
+  it('scopes a local yellow to the marshalling sector around the incident', () => {
     const yellow = {
       id: 'local-yellow',
       flag: 'yellow' as const,
       sector: 1,
+      yellowSeverity: 'single' as const,
+      yellowZone: {
+        startProgress: 0.38,
+        incidentProgress: 0.42,
+        endProgress: 0.46,
+      },
       startSeconds: 20,
       endSeconds: 40,
       startMessage: 'Yellow flag',
       endMessage: 'Track clear',
     }
 
-    expect(flagPhaseForSector(yellow, 0)).toBeNull()
-    expect(flagPhaseForSector(yellow, 1)).toBe(yellow)
+    expect(flagPhaseForProgress(yellow, 0.37, 1)).toBeNull()
+    expect(flagPhaseForProgress(yellow, 0.4, 1)).toBe(yellow)
+    expect(flagPhaseForProgress(yellow, 0.45, 1)).toBe(yellow)
+    expect(flagPhaseForProgress(yellow, 0.46, 1)).toBeNull()
+    expect(flagPhaseForProgress(yellow, 0.5, 1)).toBeNull()
     expect(
-      flagPaceMultiplier(flagPhaseForSector(yellow, 0), 0, {
+      flagPaceMultiplier(flagPhaseForProgress(yellow, 0.37, 1), 1, {
         gapToAheadSeconds: 0.4,
         isLeader: false,
       }),
     ).toBe(1)
     expect(
-      flagPaceMultiplier(flagPhaseForSector(yellow, 1), 1, {
+      flagPaceMultiplier(flagPhaseForProgress(yellow, 0.4, 1), 1, {
         gapToAheadSeconds: 0.4,
         isLeader: false,
       }),
-    ).toBe(phaseThreeTuning.yellowSectorPace)
+    ).toBe(phaseThreeTuning.singleYellowMarshallingPace)
     expect(sectorFlagStatesFor('yellow', 1)).toEqual([
       'clear',
       'yellow',
@@ -71,6 +84,109 @@ describe('track-dependent systems', () => {
       'clear',
     ])
     expect(sectorFlagStatesFor('vsc', null)).toEqual(['vsc', 'vsc', 'vsc'])
+  })
+
+  it('builds the yellow-to-green zone from the posts surrounding an incident', () => {
+    const track = tracks[0]
+    const posts = marshalPostProgressesForTrack(track)
+    const zone = yellowFlagZoneForIncident(track, 0.417)
+    const forwardDistance = (from: number, to: number) =>
+      ((to - from) % 1 + 1) % 1
+
+    expect(posts.length).toBeGreaterThanOrEqual(2)
+    expect(posts).toContain(zone.startProgress)
+    expect(posts).toContain(zone.endProgress)
+    expect(progressIsInYellowFlagZone(zone.incidentProgress, zone)).toBe(true)
+    expect(forwardDistance(zone.startProgress, zone.incidentProgress)).toBeGreaterThan(0)
+    expect(forwardDistance(zone.incidentProgress, zone.endProgress)).toBeGreaterThan(0)
+    expect(
+      progressIsInYellowFlagZone(
+        (zone.startProgress - 0.001 + 1) % 1,
+        zone,
+      ),
+    ).toBe(false)
+  })
+
+  it('handles a marshalling zone that crosses the control line', () => {
+    const zone = {
+      endProgress: 0.03,
+      incidentProgress: 0.99,
+      startProgress: 0.96,
+    }
+
+    expect(progressIsInYellowFlagZone(0.98, zone)).toBe(true)
+    expect(progressIsInYellowFlagZone(0.01, zone)).toBe(true)
+    expect(progressIsInYellowFlagZone(0.03, zone)).toBe(false)
+    expect(progressIsInYellowFlagZone(0.5, zone)).toBe(false)
+  })
+
+  it('maps local-yellow zones on every configured circuit', () => {
+    const forwardDistance = (from: number, to: number) =>
+      ((to - from) % 1 + 1) % 1
+
+    for (const track of tracks) {
+      const posts = marshalPostProgressesForTrack(track)
+      expect(posts.length, track.id).toBeGreaterThanOrEqual(2)
+
+      for (const incidentProgress of [0.07, 0.31, 0.58, 0.84]) {
+        const zone = yellowFlagZoneForIncident(track, incidentProgress)
+        expect(
+          progressIsInYellowFlagZone(incidentProgress, zone),
+          `${track.id}@${incidentProgress}`,
+        ).toBe(true)
+        expect(
+          forwardDistance(zone.startProgress, zone.endProgress),
+          `${track.id}@${incidentProgress}`,
+        ).toBeGreaterThan(0)
+        expect(
+          forwardDistance(zone.startProgress, zone.endProgress),
+          `${track.id}@${incidentProgress}`,
+        ).toBeLessThan(0.25)
+      }
+    }
+  })
+
+  it('requires a larger pace reduction for double yellow than single yellow', () => {
+    const shared = {
+      endMessage: 'Track clear',
+      endSeconds: 40,
+      flag: 'yellow' as const,
+      id: 'yellow-severity',
+      sector: 1,
+      startMessage: 'Yellow flag',
+      startSeconds: 20,
+      yellowZone: {
+        endProgress: 0.46,
+        incidentProgress: 0.42,
+        startProgress: 0.38,
+      },
+    }
+    const options = { gapToAheadSeconds: 0.4, isLeader: false }
+
+    expect(
+      flagPaceMultiplier({ ...shared, yellowSeverity: 'double' }, 1, options),
+    ).toBeLessThan(
+      flagPaceMultiplier({ ...shared, yellowSeverity: 'single' }, 1, options),
+    )
+  })
+
+  it('prevents a speed differential from completing a pass under local yellow', () => {
+    const heldDistance = distanceRespectingLocalYellowOrder({
+      aheadProjectedDistance: 2.42,
+      currentDistance: 2.4,
+      projectedDistance: 2.43,
+      referenceLapTimeSeconds: 90,
+    })
+    const unaffectedDistance = distanceRespectingLocalYellowOrder({
+      aheadProjectedDistance: 2.42,
+      currentDistance: 2.4,
+      projectedDistance: 2.41,
+      referenceLapTimeSeconds: 90,
+    })
+
+    expect(heldDistance).toBeGreaterThanOrEqual(2.4)
+    expect(heldDistance).toBeLessThan(2.42)
+    expect(unaffectedDistance).toBe(2.41)
   })
 
   it('uses VSC delta as a pace controller instead of a fixed speed cap', () => {

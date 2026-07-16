@@ -996,7 +996,7 @@ describe('start procedure and persisted weekend', () => {
     expect(snapshot.restartProcedure).toBe('none')
   })
 
-  it('publishes a local yellow only for its affected sector', () => {
+  it('publishes a local yellow timing-sector summary for its marshalling zone', () => {
     const config = makeConfig('sector-yellow-snapshot')
     let snapshot = runThroughStart(config)
 
@@ -1004,7 +1004,7 @@ describe('start procedure and persisted weekend', () => {
       {
         ...snapshot,
         flag: 'yellow',
-        flagLabel: 'YELLOW S2',
+        flagLabel: 'YELLOW ZONE S2',
         flagPhase: {
           endMessage: 'Sector clear.',
           endSeconds: snapshot.elapsedSeconds + 20,
@@ -1013,13 +1013,19 @@ describe('start procedure and persisted weekend', () => {
           sector: 1,
           startMessage: 'Yellow flag in sector 2.',
           startSeconds: snapshot.elapsedSeconds,
+          yellowSeverity: 'single',
+          yellowZone: {
+            endProgress: 0.47,
+            incidentProgress: 0.44,
+            startProgress: 0.4,
+          },
         },
       },
       0.1,
       config,
     )
 
-    expect(snapshot.flagLabel).toBe('YELLOW S2')
+    expect(snapshot.flagLabel).toBe('YELLOW ZONE S2')
     expect(snapshot.sectorFlags).toEqual(['clear', 'yellow', 'clear'])
   })
 

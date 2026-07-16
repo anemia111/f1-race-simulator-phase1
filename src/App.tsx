@@ -2781,7 +2781,7 @@ export default function App() {
           <strong className={snapshot.timedYellowUntilSeconds === null ? undefined : 'flag-yellow'}>
             {snapshot.timedYellowUntilSeconds === null
               ? 'CLEAR'
-              : `S${(snapshot.timedYellowSector ?? 0) + 1} / ${Math.max(0, Math.ceil(snapshot.timedYellowUntilSeconds - snapshot.elapsedSeconds))}s`}
+              : `ZONE S${(snapshot.timedYellowSector ?? 0) + 1} / ${Math.max(0, Math.ceil(snapshot.timedYellowUntilSeconds - snapshot.elapsedSeconds))}s`}
           </strong>
           <span>Layout</span>
           <strong

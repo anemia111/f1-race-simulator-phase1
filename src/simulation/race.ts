@@ -44,10 +44,11 @@ import { overtakeForLap } from './overtaking'
 import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
   advanceVscMarshallingSectorTracking,
+  distanceRespectingLocalYellowOrder,
   dirtyAirDeltaSeconds,
   flagLabelFor,
   flagPaceMultiplier,
-  flagPhaseForSector,
+  flagPhaseForProgress,
   lapHasTrackLimitWarning,
   penaltyFromWarnings,
   phaseThreeTuning,
@@ -56,6 +57,7 @@ import {
   sectorIndexForProgress,
   vscPaceScaleForDelta,
   wearScaleForControlPhase,
+  yellowFlagZoneForIncident,
 } from './raceEvents'
 import { hashChance } from './random'
 import {
@@ -1246,47 +1248,78 @@ function fallbackTickerMessage(snapshot: RaceSnapshot) {
 }
 
 const phaseEndMessages: Record<Exclude<FlagState, 'clear'>, string> = {
-  yellow: 'Sector is clear again. Green flag.',
+  yellow: 'Marshalling zone is clear again. Green flag.',
   vsc: 'VSC hazard response complete. Withdrawal procedure begins.',
   sc: 'Safety Car hazard response complete. Withdrawal procedure begins.',
   red: 'Red flag lifted. The session restarts.',
 }
 
 const flagDeployMessages: Record<Exclude<FlagState, 'clear'>, (sector: number) => string> = {
-  yellow: (sector) => `Local yellow in sector ${sector + 1}.`,
+  yellow: (sector) => `Local yellow marshalling zone in sector ${sector + 1}.`,
   vsc: () => 'VSC DEPLOYED.',
   sc: () => 'SAFETY CAR DEPLOYED.',
   red: () => 'Red flag - session suspended.',
 }
 
+function incidentProgressWithinTimingSector(
+  track: RaceConfig['track'],
+  sector: number,
+  key: string,
+) {
+  const starts =
+    track.sectorMarks.length >= 3
+      ? track.sectorMarks.slice(0, 3)
+      : [0, 1 / 3, 2 / 3]
+  const boundedSector = Math.min(2, Math.max(0, sector))
+  const start = starts[boundedSector] ?? boundedSector / 3
+  const end = boundedSector === 2 ? 1 : (starts[boundedSector + 1] ?? 1)
+  const span = end > start ? end - start : end + 1 - start
+  const offset = 0.15 + hashChance(`${key}:incident-progress`) * 0.7
+
+  return (start + span * offset) % 1
+}
+
 function stagedFlagPhase(options: {
   durationSeconds: number
   id: string
+  incidentProgress?: number
   response: Exclude<FlagState, 'clear'>
   safetyCarUsesPitLane?: boolean
   sector: number
   startSeconds: number
+  track: RaceConfig['track']
 }) {
   const {
     durationSeconds,
     id,
+    incidentProgress: suppliedIncidentProgress,
     response,
     safetyCarUsesPitLane = false,
     sector,
     startSeconds,
+    track,
   } = options
+  const incidentProgress =
+    suppliedIncidentProgress ??
+    incidentProgressWithinTimingSector(track, sector, id)
+  const incidentSector = sectorIndexForProgress(
+    incidentProgress,
+    track.sectorMarks,
+  )
+  const yellowZone = yellowFlagZoneForIncident(track, incidentProgress)
   const hazardClearAtSeconds = startSeconds + durationSeconds
 
   if (response === 'yellow') {
     return {
       id,
       flag: response,
-      sector,
+      sector: incidentSector,
       yellowSeverity: 'single',
+      yellowZone,
       safetyCarUsesPitLane: false,
       startSeconds,
       endSeconds: hazardClearAtSeconds,
-      startMessage: flagDeployMessages[response](sector),
+      startMessage: flagDeployMessages[response](incidentSector),
       endMessage: phaseEndMessages[response],
     } satisfies ActiveFlagPhase
   }
@@ -1298,11 +1331,12 @@ function stagedFlagPhase(options: {
   return {
     id: `${id}-initial-yellow`,
     flag: 'yellow',
-    sector,
+    sector: incidentSector,
     yellowSeverity: 'double',
+    yellowZone,
     startSeconds,
     endSeconds: activateAtSeconds,
-    startMessage: `YELLOW FLAG in sector ${sector + 1}. Race Control is assessing the incident.`,
+    startMessage: `DOUBLE YELLOW marshalling zone in sector ${incidentSector + 1}. Race Control is assessing the incident.`,
     endMessage: phaseEndMessages.yellow,
     escalation: {
       activateAtSeconds,
@@ -1312,7 +1346,7 @@ function stagedFlagPhase(options: {
       id,
       safetyCarUsesPitLane:
         response === 'sc' ? safetyCarUsesPitLane : false,
-      startMessage: flagDeployMessages[response](sector),
+      startMessage: flagDeployMessages[response](incidentSector),
     },
   } satisfies ActiveFlagPhase
 }
@@ -1487,6 +1521,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       bestLapTimeSeconds: null,
       bestLapLap: null,
       lapStartedAtSeconds: null,
+      passedDoubleYellowThisLap: false,
       currentLapSectorTimes: emptyCurrentLapSectorTimes(),
       currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
       lapHistory: [],
@@ -1676,6 +1711,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       (isTimedSession ? config.drivers.map((driver) => driver.id) : []),
     timedYellowUntilSeconds: null,
     timedYellowSector: null,
+    timedYellowProgress: null,
     pitLaneOpen: true,
     pitExitOpen: true,
     stewardCases: [],
@@ -1859,6 +1895,15 @@ export function advanceRace(
   let timedParticipantDriverIds = snapshot.timedParticipantDriverIds
   let timedYellowUntilSeconds = snapshot.timedYellowUntilSeconds
   let timedYellowSector = snapshot.timedYellowSector
+  let timedYellowProgress =
+    snapshot.timedYellowProgress ??
+    (snapshot.timedYellowSector === null
+      ? null
+      : incidentProgressWithinTimingSector(
+          config.track,
+          snapshot.timedYellowSector,
+          `legacy-timed-yellow-${snapshot.timedYellowSector}`,
+        ))
 
   if (heatHazardDeclared && !snapshot.heatHazardDeclared) {
     newEvents.push(
@@ -1901,6 +1946,7 @@ export function advanceRace(
   ) {
     timedYellowUntilSeconds = null
     timedYellowSector = null
+    timedYellowProgress = null
     newEvents.push(
       makeEvent(
         `timed-yellow-clear-${Math.floor(elapsedSeconds)}`,
@@ -2097,6 +2143,7 @@ export function advanceRace(
           superClippingStartedAtProgress: null,
           superClippingDurationSeconds: 0,
           lapStartedAtSeconds: null,
+          passedDoubleYellowThisLap: false,
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
         }
@@ -2770,6 +2817,7 @@ export function advanceRace(
           pitExitUntilSeconds: null,
           pendingTire: null,
           lapStartedAtSeconds: null,
+          passedDoubleYellowThisLap: false,
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
           timedRunStartedAtSeconds: null,
@@ -2851,6 +2899,7 @@ export function advanceRace(
         pitExitUntilSeconds: null,
         pendingTire: null,
         lapStartedAtSeconds: null,
+        passedDoubleYellowThisLap: false,
         currentLapSectorTimes: emptyCurrentLapSectorTimes(),
         currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
         timedRunStartedAtSeconds: null,
@@ -3068,14 +3117,21 @@ export function advanceRace(
   )
 
   const timedYellowControlPhase: ActiveFlagPhase | null =
-    timedYellowUntilSeconds !== null && timedYellowSector !== null
+    timedYellowUntilSeconds !== null &&
+    timedYellowSector !== null &&
+    timedYellowProgress !== null
       ? {
           endMessage: 'Double yellow withdrawn.',
           endSeconds: timedYellowUntilSeconds,
           flag: 'yellow',
           id: `timed-double-yellow-${timedYellowSector}`,
           sector: timedYellowSector,
-          startMessage: `Double yellow in sector ${timedYellowSector + 1}.`,
+          yellowSeverity: 'double',
+          yellowZone: yellowFlagZoneForIncident(
+            config.track,
+            timedYellowProgress,
+          ),
+          startMessage: `Double yellow marshalling zone in sector ${timedYellowSector + 1}.`,
           startSeconds: Math.max(0, timedYellowUntilSeconds - 12),
         }
       : null
@@ -3250,6 +3306,9 @@ export function advanceRace(
             ? 'out-lap'
             : car.timedRunPhase,
           lapStartedAtSeconds: isTimedSession ? null : elapsedSeconds,
+          passedDoubleYellowThisLap: isTimedSession
+            ? false
+            : car.passedDoubleYellowThisLap,
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
           compoundsUsed,
@@ -3376,7 +3435,11 @@ export function advanceRace(
       surfaceWaterMm: trackWater.surfaceWaterMmBySector[carSector],
     }
     const controlPhase = phase ?? restartControlPhase ?? timedYellowControlPhase
-    const localControlPhase = flagPhaseForSector(controlPhase, carSector)
+    const localControlPhase = flagPhaseForProgress(
+      controlPhase,
+      car.progress,
+      carSector,
+    )
     const safetyCarProcedure =
       phase?.flag === 'sc' &&
       phase.neutralisation?.kind === 'safety-car'
@@ -3387,6 +3450,7 @@ export function advanceRace(
       safetyCarProcedure.eligibleLappedDriverIds.includes(car.driverId) &&
       !safetyCarProcedure.unlappingRejoinedDriverIds.includes(car.driverId)
     const paceMultiplier = flagPaceMultiplier(localControlPhase, carSector, {
+      carProgress: car.progress,
       isLeader: car.position === 1,
       gapToAheadSeconds: car.gapToAhead,
     })
@@ -3783,6 +3847,15 @@ export function advanceRace(
       }
     }
 
+    if (localControlPhase?.flag === 'yellow' && aheadTotal !== null) {
+      totalDistance = distanceRespectingLocalYellowOrder({
+        aheadProjectedDistance: aheadTotal,
+        currentDistance: car.totalDistance,
+        projectedDistance: totalDistance,
+        referenceLapTimeSeconds: baseLapTime,
+      })
+    }
+
     // No overtaking in the SC/VSC queue: hold a minimum spacing behind the
     // car ahead (ignoring cars in the pit lane or already finished).
     if (
@@ -3897,6 +3970,14 @@ export function advanceRace(
     let next: CarSnapshot = {
       ...car,
       totalDistance,
+      passedDoubleYellowThisLap:
+        car.passedDoubleYellowThisLap ||
+        Boolean(
+          isTimedSession &&
+            car.lapStartedAtSeconds !== null &&
+            localControlPhase?.flag === 'yellow' &&
+            localControlPhase.yellowSeverity === 'double',
+        ),
       currentLapSectorTimes,
       currentLapMiniSectorTimes,
       trackLateralOffset,
@@ -4169,6 +4250,8 @@ export function advanceRace(
                 safetyCarUsesPitLane: battle.safetyCarUsesPitLane,
                 sector: battle.sector,
                 startSeconds: elapsedSeconds,
+                incidentProgress: next.progress,
+                track: config.track,
               })
 
               if (
@@ -4275,10 +4358,7 @@ export function advanceRace(
                 1 - driverPerformanceAbility(driver, 'raceAwareness'),
               ) *
                 0.012
-          const activeDoubleYellow =
-            timedYellowUntilSeconds !== null &&
-            next.lapStartedAtSeconds! < timedYellowUntilSeconds &&
-            crossedAtSeconds >= timedYellowUntilSeconds - 12
+          const passedDoubleYellow = next.passedDoubleYellowThisLap
           const trackLimitDeleted =
             hashChance(
               `${config.seed}:timed-track-limit:${segmentKey}:${driver.id}:${completedRun}`,
@@ -4291,7 +4371,7 @@ export function advanceRace(
                 0.09
           const invalidReason = causedYellow
             ? 'Caused double yellow'
-            : activeDoubleYellow
+            : passedDoubleYellow
               ? `Double yellow S${(timedYellowSector ?? 0) + 1}`
               : trackLimitDeleted
                 ? `Track limits T${
@@ -4320,17 +4400,26 @@ export function advanceRace(
 
           if (causedYellow) {
             timedYellowUntilSeconds = crossedAtSeconds + 12
-            timedYellowSector = Math.floor(
+            const generatedSector = Math.floor(
               hashChance(
                 `${config.seed}:timed-yellow-sector:${segmentKey}:${driver.id}:${completedRun}`,
               ) * 3,
+            )
+            timedYellowProgress = incidentProgressWithinTimingSector(
+              config.track,
+              generatedSector,
+              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedRun}`,
+            )
+            timedYellowSector = sectorIndexForProgress(
+              timedYellowProgress,
+              config.track.sectorMarks,
             )
             newEvents.push(
               makeEvent(
                 `timed-yellow-${driver.id}-${segmentKey}-${completedRun}`,
                 'flag',
                 crossedAtSeconds,
-                `DOUBLE YELLOW in sector ${timedYellowSector + 1}; ${driver.code} is off line.`,
+                `DOUBLE YELLOW marshalling zone in sector ${timedYellowSector + 1}; ${driver.code} is off line.`,
               ),
             )
           }
@@ -4378,6 +4467,7 @@ export function advanceRace(
               : next.bestLapTimeSeconds,
             bestLapLap: isPersonalBest ? completedRun : next.bestLapLap,
             lapStartedAtSeconds: crossedAtSeconds,
+            passedDoubleYellowThisLap: false,
             currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             lapHistory: [
@@ -4495,6 +4585,7 @@ export function advanceRace(
                 }
               : next.tireSetsRemaining,
             lapStartedAtSeconds: null,
+            passedDoubleYellowThisLap: false,
             currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             timedRunStartedAtSeconds: null,
@@ -4505,6 +4596,7 @@ export function advanceRace(
           next = {
             ...next,
             lapStartedAtSeconds: crossedAtSeconds,
+            passedDoubleYellowThisLap: false,
             currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             timedRunPhase: 'attack-lap',
@@ -4652,6 +4744,7 @@ export function advanceRace(
               safetyCarUsesPitLane: incident.safetyCarUsesPitLane,
               sector: incident.sector,
               startSeconds: elapsedSeconds,
+              track: config.track,
             })
 
             // No active phase here (incidents only roll under green), so the
@@ -5616,6 +5709,7 @@ export function advanceRace(
     timedParticipantDriverIds,
     timedYellowUntilSeconds,
     timedYellowSector,
+    timedYellowProgress,
     pitLaneOpen,
     pitExitOpen,
     stewardCases,

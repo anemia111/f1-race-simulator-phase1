@@ -34,7 +34,11 @@ export const phaseThreeTuning = {
   trackLimitBaseChance: 0.026,
   trackLimitConsistencyWeight: 0.075,
   // Flag pace multipliers.
-  yellowSectorPace: 0.88,
+  singleYellowMarshallingPace: 0.88,
+  /** Double yellow requires a significant reduction and readiness to stop. */
+  doubleYellowMarshallingPace: 0.68,
+  /** Small ordering gap while overtaking is prohibited in a local-yellow zone. */
+  localYellowMinimumGapSeconds: 0.08,
   /** FIA minimum-time reference; drivers target slightly below this pace. */
   vscMinimumTimePace: 0.63,
   /** Initial target creates about 0.05s of positive delta before feedback settles. */
@@ -236,24 +240,190 @@ export function sectorIndexForProgress(
   return sector
 }
 
+const normalizedTrackProgress = (progress: number) =>
+  ((progress % 1) + 1) % 1
+
+function progressForTracksidePoint(
+  track: TrackDefinition,
+  point: TrackDefinition['centerline'][number],
+) {
+  if (track.centerline.length < 2) {
+    return 0
+  }
+
+  const segmentLengths = track.centerline.map((start, index) => {
+    const end = track.centerline[(index + 1) % track.centerline.length]
+    return Math.hypot(end[0] - start[0], end[2] - start[2])
+  })
+  const totalLength = segmentLengths.reduce((sum, length) => sum + length, 0)
+
+  if (totalLength <= 0) {
+    return 0
+  }
+
+  let bestDistanceSquared = Number.POSITIVE_INFINITY
+  let bestProgress = 0
+  let distanceBeforeSegment = 0
+
+  track.centerline.forEach((start, index) => {
+    const end = track.centerline[(index + 1) % track.centerline.length]
+    const dx = end[0] - start[0]
+    const dz = end[2] - start[2]
+    const lengthSquared = dx * dx + dz * dz
+    const projection =
+      lengthSquared > 0
+        ? clamp01(
+            ((point[0] - start[0]) * dx + (point[2] - start[2]) * dz) /
+              lengthSquared,
+          )
+        : 0
+    const projectedX = start[0] + dx * projection
+    const projectedZ = start[2] + dz * projection
+    const distanceSquared =
+      (point[0] - projectedX) ** 2 + (point[2] - projectedZ) ** 2
+
+    if (distanceSquared < bestDistanceSquared) {
+      bestDistanceSquared = distanceSquared
+      bestProgress =
+        (distanceBeforeSegment + segmentLengths[index] * projection) /
+        totalLength
+    }
+
+    distanceBeforeSegment += segmentLengths[index]
+  })
+
+  return normalizedTrackProgress(bestProgress)
+}
+
+/** Track progress of FIA light/flag posts, ordered in the racing direction. */
+export function marshalPostProgressesForTrack(track: TrackDefinition): number[] {
+  const measured = (track.marshalPosts ?? [])
+    .map((post) => progressForTracksidePoint(track, post))
+    .sort((left, right) => left - right)
+    .filter(
+      (progress, index, values) =>
+        index === 0 || progress - values[index - 1] > 0.001,
+    )
+
+  if (
+    measured.length > 2 &&
+    1 - measured[measured.length - 1] + measured[0] <= 0.001
+  ) {
+    measured.pop()
+  }
+
+  if (measured.length >= 2) {
+    return measured
+  }
+
+  // Appendix H recommends no more than 500 m between consecutive posts.
+  const fallbackPostCount = Math.max(8, Math.ceil(track.lengthKm / 0.5))
+  return Array.from(
+    { length: fallbackPostCount },
+    (_, index) => index / fallbackPostCount,
+  )
+}
+
+/**
+ * Local-yellow control zone: yellow at the post before the incident and green
+ * at the first post after it, including a wrap across the control line.
+ */
+export function yellowFlagZoneForIncident(
+  track: TrackDefinition,
+  incidentProgress: number,
+): NonNullable<ActiveFlagPhase['yellowZone']> {
+  const progress = normalizedTrackProgress(incidentProgress)
+  const posts = marshalPostProgressesForTrack(track)
+  const epsilon = 0.0001
+  let startProgress = posts[posts.length - 1]
+  let endProgress = posts[0]
+
+  for (const postProgress of posts) {
+    if (postProgress < progress - epsilon) {
+      startProgress = postProgress
+      continue
+    }
+
+    if (postProgress > progress + epsilon) {
+      endProgress = postProgress
+      break
+    }
+  }
+
+  if (endProgress <= progress + epsilon && progress >= posts[posts.length - 1]) {
+    endProgress = posts[0]
+  }
+
+  return { endProgress, incidentProgress: progress, startProgress }
+}
+
+export function progressIsInYellowFlagZone(
+  progress: number,
+  zone: NonNullable<ActiveFlagPhase['yellowZone']>,
+): boolean {
+  const current = normalizedTrackProgress(progress)
+  const start = normalizedTrackProgress(zone.startProgress)
+  const end = normalizedTrackProgress(zone.endProgress)
+
+  return start < end
+    ? current >= start && current < end
+    : current >= start || current < end
+}
+
+/** Preserve the on-track order from the yellow flag to the following green. */
+export function distanceRespectingLocalYellowOrder(options: {
+  aheadProjectedDistance: number
+  currentDistance: number
+  projectedDistance: number
+  referenceLapTimeSeconds: number
+}): number {
+  const minimumGapDistance =
+    phaseThreeTuning.localYellowMinimumGapSeconds /
+    Math.max(40, options.referenceLapTimeSeconds)
+
+  return Math.min(
+    options.projectedDistance,
+    Math.max(
+      options.currentDistance,
+      options.aheadProjectedDistance - minimumGapDistance,
+    ),
+  )
+}
+
 /**
  * Pace multiplier applied to a car's advance rate under the current flag.
- * Local yellows only slow cars inside the affected sector. Under the SC the
+ * Local yellows only slow cars inside the affected marshalling sector. Under the SC the
  * queue runs at SC pace while cars with a gap ahead run faster until they
  * catch the queue; this is what compresses the field. Red stops the session.
  */
 export function flagPaceMultiplier(
   phase: ActiveFlagPhase | null,
   carSector: number,
-  options: { isLeader: boolean; gapToAheadSeconds: number },
+  options: {
+    carProgress?: number
+    isLeader: boolean
+    gapToAheadSeconds: number
+  },
 ): number {
   if (!phase) {
     return 1
   }
 
   switch (phase.flag) {
-    case 'yellow':
-      return carSector === phase.sector ? phaseThreeTuning.yellowSectorPace : 1
+    case 'yellow': {
+      const isInsideControlledZone = phase.yellowZone
+        ? options.carProgress === undefined ||
+          progressIsInYellowFlagZone(options.carProgress, phase.yellowZone)
+        : carSector === phase.sector
+
+      if (!isInsideControlledZone) {
+        return 1
+      }
+
+      return phase.yellowSeverity === 'double'
+        ? phaseThreeTuning.doubleYellowMarshallingPace
+        : phaseThreeTuning.singleYellowMarshallingPace
+    }
     case 'vsc':
       return phaseThreeTuning.vscPace
     case 'sc':
@@ -287,12 +457,24 @@ export function flagPaceMultiplier(
   }
 }
 
-/** Local yellows only govern cars that are inside the affected sector. */
-export function flagPhaseForSector(
+/** Local yellows only govern cars between the yellow and following green post. */
+export function flagPhaseForProgress(
   phase: ActiveFlagPhase | null,
+  carProgress: number,
   carSector: number,
 ): ActiveFlagPhase | null {
-  return phase?.flag === 'yellow' && phase.sector !== carSector ? null : phase
+  if (phase?.flag !== 'yellow') {
+    return phase
+  }
+
+  if (phase.yellowZone) {
+    return progressIsInYellowFlagZone(carProgress, phase.yellowZone)
+      ? phase
+      : null
+  }
+
+  // Saved races from older versions did not carry a marshalling-zone range.
+  return phase.sector === carSector ? phase : null
 }
 
 export function wearScaleForControlPhase(
@@ -444,7 +626,7 @@ export function flagLabelFor(phase: ActiveFlagPhase | null): string {
 
   switch (phase.flag) {
     case 'yellow':
-      return `${phase.yellowSeverity === 'double' ? 'DOUBLE YELLOW' : 'YELLOW'} S${phase.sector + 1}`
+      return `${phase.yellowSeverity === 'double' ? 'DOUBLE YELLOW' : 'YELLOW'} ZONE S${phase.sector + 1}`
     case 'vsc':
       return phase.neutralisation?.kind === 'vsc' &&
         phase.neutralisation.stage === 'ending'

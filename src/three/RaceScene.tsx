@@ -9,7 +9,9 @@ import type {
   RaceConfig,
   RaceSnapshot,
   TrackDefinition,
+  YellowFlagZone,
 } from '../types'
+import { yellowFlagZoneForIncident } from '../simulation/raceEvents'
 import {
   forwardProgressBetween,
   pitBoxProgress,
@@ -794,10 +796,14 @@ function SectorPathLinesContent({
   curve,
   sectorFlags,
   track,
+  yellowSeverity,
+  yellowZone,
 }: {
   curve: THREE.CatmullRomCurve3
   sectorFlags: RaceSnapshot['sectorFlags']
   track: TrackDefinition
+  yellowSeverity: 'single' | 'double' | null
+  yellowZone: YellowFlagZone | null
 }) {
   const sectors = useMemo(() => {
     const starts = track.sectorMarks.length >= 3
@@ -822,11 +828,44 @@ function SectorPathLinesContent({
       return { labelPose, points }
     })
   }, [curve, track])
+  const localYellow = useMemo(() => {
+    if (!yellowZone || !yellowSeverity) {
+      return null
+    }
+
+    const start = ((yellowZone.startProgress % 1) + 1) % 1
+    const end = ((yellowZone.endProgress % 1) + 1) % 1
+    const span = end > start ? end - start : end + 1 - start
+    const sampleCount = Math.max(10, Math.ceil(span * 150))
+    const points = Array.from({ length: sampleCount }, (_, pointIndex) => {
+      const progress =
+        (start + (pointIndex / (sampleCount - 1)) * span) % 1
+
+      return poseOnTrack(curve, progress, 0).position.setY(0.2)
+    })
+    const labelProgress = (start + span * 0.48) % 1
+    const labelPose = poseOnTrack(
+      curve,
+      labelProgress,
+      presentationTrackWidth(track) / 2 + 1.05,
+    )
+    const incidentPose = poseOnTrack(
+      curve,
+      yellowZone.incidentProgress,
+      -presentationTrackWidth(track) / 2 - 0.84,
+    )
+
+    return { incidentPose, labelPose, points }
+  }, [curve, track, yellowSeverity, yellowZone])
+
   return (
     <group>
       {sectors.map((sector, index) => {
         const flag = sectorFlags[index]
-        const isControlled = flag !== 'clear'
+        const isLocalYellowSummary =
+          yellowZone !== null &&
+          (flag === 'yellow' || flag === 'double-yellow')
+        const isControlled = flag !== 'clear' && !isLocalYellowSummary
         const color = isControlled
           ? sectorFlagColors[flag]
           : sectorPathColors[index]
@@ -851,6 +890,29 @@ function SectorPathLinesContent({
           </group>
         )
       })}
+      {localYellow ? (
+        <group>
+          <Line
+            points={localYellow.points}
+            color="#ffe35a"
+            lineWidth={yellowSeverity === 'double' ? 5 : 4.2}
+          />
+          <SpriteLabel
+            color="#ffe35a"
+            fontSize={0.84}
+            outlineColor="#071019"
+            position={localYellow.labelPose.position.setY(0.68)}
+            text={yellowSeverity === 'double' ? 'DOUBLE YELLOW ZONE' : 'YELLOW ZONE'}
+          />
+          <SpriteLabel
+            color="#ffffff"
+            fontSize={0.6}
+            outlineColor="#b9162e"
+            position={localYellow.incidentPose.position.setY(0.62)}
+            text="INCIDENT"
+          />
+        </group>
+      ) : null}
     </group>
   )
 }
@@ -860,6 +922,10 @@ const SectorPathLines = memo(
   (previous, next) =>
     previous.curve === next.curve &&
     previous.track === next.track &&
+    previous.yellowSeverity === next.yellowSeverity &&
+    previous.yellowZone?.startProgress === next.yellowZone?.startProgress &&
+    previous.yellowZone?.endProgress === next.yellowZone?.endProgress &&
+    previous.yellowZone?.incidentProgress === next.yellowZone?.incidentProgress &&
     previous.sectorFlags.every(
       (flag, index) => flag === next.sectorFlags[index],
     ),
@@ -873,10 +939,16 @@ function TrackSurface({
   edgeRight,
   roadGeometry,
   sectorFlags,
+  yellowSeverity,
+  yellowZone,
 }: Pick<
   SceneContentsProps,
   'cameraMode' | 'config' | 'curve' | 'edgeLeft' | 'edgeRight' | 'roadGeometry'
-> & { sectorFlags: RaceSnapshot['sectorFlags'] }) {
+> & {
+  sectorFlags: RaceSnapshot['sectorFlags']
+  yellowSeverity: 'single' | 'double' | null
+  yellowZone: YellowFlagZone | null
+}) {
   return (
     <group>
       <mesh geometry={roadGeometry}>
@@ -888,6 +960,8 @@ function TrackSurface({
         curve={curve}
         sectorFlags={sectorFlags}
         track={config.track}
+        yellowSeverity={yellowSeverity}
+        yellowZone={yellowZone}
       />
       <ActiveAeroZoneLines curve={curve} track={config.track} />
       <RaceControlLines curve={curve} track={config.track} />
@@ -1440,6 +1514,39 @@ function SceneContents({
         (snapshot.formationBehindSafetyCar && snapshot.startProcedure === 'formation') ||
         snapshot.restartProcedure === 'rolling'),
   )
+  const activeYellowPresentation = useMemo(() => {
+    if (
+      snapshot.flagPhase?.flag === 'yellow' &&
+      snapshot.flagPhase.yellowZone
+    ) {
+      return {
+        severity: snapshot.flagPhase.yellowSeverity ?? ('single' as const),
+        zone: snapshot.flagPhase.yellowZone,
+      }
+    }
+
+    if (
+      snapshot.flagPhase === null &&
+      snapshot.timedYellowUntilSeconds !== null &&
+      snapshot.timedYellowProgress !== null &&
+      snapshot.timedYellowProgress !== undefined
+    ) {
+      return {
+        severity: 'double' as const,
+        zone: yellowFlagZoneForIncident(
+          config.track,
+          snapshot.timedYellowProgress,
+        ),
+      }
+    }
+
+    return { severity: null, zone: null }
+  }, [
+    config.track,
+    snapshot.flagPhase,
+    snapshot.timedYellowProgress,
+    snapshot.timedYellowUntilSeconds,
+  ])
 
   return (
     <>
@@ -1456,6 +1563,8 @@ function SceneContents({
         edgeRight={edgeRight}
         roadGeometry={roadGeometry}
         sectorFlags={snapshot.sectorFlags}
+        yellowSeverity={activeYellowPresentation.severity}
+        yellowZone={activeYellowPresentation.zone}
       />
       {safetyCarVisible && safetyCarLeader ? (
         <SafetyCarMarker
