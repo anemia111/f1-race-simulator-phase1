@@ -1,5 +1,5 @@
 /** Longitudinal spacing between consecutive legacy grid slots. */
-export const STARTING_GRID_SLOT_GAP = 0.00145
+export const STARTING_GRID_SLOT_GAP = 0.00105
 /** A complete left/right row stays compact enough for adjacent map labels. */
 export const STARTING_GRID_ROW_GAP = STARTING_GRID_SLOT_GAP * 2
 /** Even positions sit slightly behind the odd position in the same row. */

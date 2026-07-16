@@ -329,6 +329,35 @@ describe('physical Energy Store integration', () => {
     expect(attack).toBeGreaterThan(normal)
   })
 
+  it('moves deployment away from terminal speed without cutting the throttle', () => {
+    const state = createInitialEnergyStore(team, 0.9)
+    const accelerating = deploymentRequest(state, { speedKph: 410 })
+    const terminal = deploymentRequest(state, { speedKph: 432 })
+
+    expect(accelerating).toBeGreaterThan(terminal)
+    expect(terminal).toBeGreaterThan(0)
+  })
+
+  it('prioritizes the standing launch without delaying any grid row', () => {
+    const state = createInitialEnergyStore(team, 1)
+    const normal = deploymentRequest(state, {
+      speedKph: 115,
+      straightLengthAheadMeters: 260,
+      straightness: 0.62,
+      throttlePercent: 78,
+    })
+    const launch = deploymentRequest(state, {
+      speedKph: 115,
+      standingStartLaunchActive: true,
+      straightLengthAheadMeters: 260,
+      straightness: 0.62,
+      throttlePercent: 78,
+    })
+
+    expect(normal).toBeGreaterThan(0)
+    expect(launch).toBeGreaterThan(normal)
+  })
+
   it('ENERGY-11: spends more while defending and carries the SOC cost forward', () => {
     const initial = createInitialEnergyStore(team, 0.72)
     const normalRequest = deploymentRequest(initial)

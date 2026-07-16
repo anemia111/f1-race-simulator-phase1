@@ -274,6 +274,43 @@ describe('starting grid', () => {
     })
   })
 
+  it('launches every grid row on the same lights-out update', () => {
+    const base = makeConfig('simultaneous-grid-launch')
+    const config = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    let snapshot = createInitialRace(config)
+    const formationSeconds =
+      snapshot.formationLapDurationSeconds * snapshot.formationLapsPlanned
+
+    snapshot = advanceRace(snapshot, formationSeconds, config)
+    snapshot = advanceRace(snapshot, 8, config)
+    expect(snapshot.startProcedure).toBe('lights')
+    const lightsOut = advanceRace(snapshot, 5, config)
+    const onGrid = lightsOut.cars.filter((car) => !car.startsFromPitLane)
+
+    expect(lightsOut.startProcedure).toBe('racing')
+    expect(onGrid.every((car) => car.speedKph > 0)).toBe(true)
+    expect(
+      new Set(onGrid.map((car) => car.lapStartedAtSeconds)).size,
+    ).toBe(1)
+    expect(new Set(onGrid.map((car) => car.speedKph)).size).toBeGreaterThan(1)
+
+    const distanceAtLightsOut = new Map(
+      onGrid.map((car) => [car.driverId, car.totalDistance]),
+    )
+    const launched = advanceRace(lightsOut, 0.25, config)
+
+    launched.cars
+      .filter((car) => !car.startsFromPitLane)
+      .forEach((car) => {
+        expect(car.totalDistance).toBeGreaterThan(
+          distanceAtLightsOut.get(car.driverId)!,
+        )
+      })
+  })
+
   it('does not send cars straight into the pits on the opening tour', () => {
     const snapshot = runSteps(makeConfig('no-opening-pit'), 30, 0.5)
 

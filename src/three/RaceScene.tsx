@@ -446,7 +446,7 @@ function ActiveAeroZoneLines({
     () =>
       (track.aeroActivationZones ?? []).map((zone) => {
         const steps = 18
-        const span = Math.max(0.01, zone.end - zone.start)
+        const span = Math.max(0.01, (zone.end - zone.start + 1) % 1)
         const points = Array.from({ length: steps + 1 }, (_, index) => {
           const progress = (zone.start + (index / steps) * span) % 1
           const pose = poseOnTrack(
@@ -475,8 +475,9 @@ function ActiveAeroZoneLines({
           <Line points={zone.points} color="#43e76f" lineWidth={1.8} />
           <SpriteLabel
             color="#46d880"
-            fontSize={0.42}
-            position={zone.labelPose.position.setY(0.48)}
+            fontSize={0.68}
+            outlineColor="#03120a"
+            position={zone.labelPose.position.setY(0.54)}
             text={zone.label}
           />
         </group>
@@ -534,7 +535,7 @@ function RaceControlLines({
           </mesh>
           <SpriteLabel
             color={marker.color}
-            fontSize={0.34}
+            fontSize={0.44}
             position={[0, 0.3, presentationTrackWidth(track) * 0.72]}
             text={marker.label}
           />
@@ -839,8 +840,8 @@ function SectorPathLinesContent({
             />
             <SpriteLabel
               color={color}
-              fontSize={isControlled ? 0.64 : 0.56}
-              position={sector.labelPose.position.setY(0.5)}
+              fontSize={isControlled ? 0.82 : 0.72}
+              position={sector.labelPose.position.setY(0.56)}
               text={
                 isControlled
                   ? `${sectorFlagLabels[flag]} S${index + 1}`
@@ -1112,12 +1113,13 @@ function SafetyCarMarker({
         ? procedure.safetyCarDistance % 1
         : (leader.progress + 0.012) % 1
       const followsPitLane =
-        procedure?.pitLaneRouteRequired === true &&
-        progressWithinWrapped(
-          safetyCarProgress,
-          track.pitLane?.entryProgress ?? 0.965,
-          track.pitLane?.exitProgress ?? 0.13,
-        )
+        procedure?.stage === 'deployed' ||
+        (procedure?.pitLaneRouteRequired === true &&
+          progressWithinWrapped(
+            safetyCarProgress,
+            track.pitLane?.entryProgress ?? 0.965,
+            track.pitLane?.exitProgress ?? 0.13,
+          ))
       pose = poseOnTrack(
         curve,
         safetyCarProgress,

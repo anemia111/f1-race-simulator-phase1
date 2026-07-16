@@ -126,10 +126,17 @@ export function updateOvertakeEligibilityAfterTravel(options: {
 export function activeAeroZoneAt(
   track: TrackDefinition,
   progress: number,
+  lowGripConditions = false,
 ): AeroActivationZone | null {
   return (
     track.aeroActivationZones?.find((zone) =>
-      progressIsInZone(progress, zone.start, zone.end),
+      progressIsInZone(
+        progress,
+        lowGripConditions && zone.lowGripStart !== undefined
+          ? zone.lowGripStart
+          : zone.start,
+        zone.end,
+      ),
     ) ?? null
   )
 }
@@ -141,7 +148,7 @@ export function activeAeroModeFor(options: {
   track: TrackDefinition
 }): ActiveAeroMode {
   const { car, lowGripConditions, phase, track } = options
-  const zone = activeAeroZoneAt(track, car.progress)
+  const zone = activeAeroZoneAt(track, car.progress, lowGripConditions)
 
   if (!zone || car.status !== 'running' || phase?.flag === 'red') {
     return 'corner'

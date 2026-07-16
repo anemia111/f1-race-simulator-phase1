@@ -22,6 +22,7 @@ export const MACHINE_PACE_REFERENCE = 0.86
 export const MACHINE_PACE_SPREAD_FACTOR = 1.35
 export const MACHINE_SEGMENT_RESPONSE = 0.135
 export const DRIVER_SEGMENT_RESPONSE = 0.075
+export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
 /**
  * Expands the effect of a machine rating without mutating the factual CSV
@@ -173,11 +174,12 @@ export function machineSegmentCapability(options: {
   // Each axis decides where a car gains or loses time. The source data keeps
   // the lower field competitive while the response preserves visible car gaps.
   return clamp(
-    1 +
+    (1 +
       (sessionAdjusted - MACHINE_PACE_REFERENCE) *
-        MACHINE_SEGMENT_RESPONSE,
-    0.955,
-    1.022,
+        MACHINE_SEGMENT_RESPONSE) *
+      (1 + (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * 0.18),
+    0.96,
+    1.035,
   )
 }
 
@@ -265,9 +267,9 @@ export function towDragReductionFor(options: {
   return clamp(
     proximity *
       dynamics.straightness *
-      (0.09 + machinePaceRating(team.machine.towSensitivity) * 0.065),
+      (0.105 + machinePaceRating(team.machine.towSensitivity) * 0.075),
     0,
-    0.17,
+    0.19,
   )
 }
 
@@ -333,11 +335,11 @@ export function setupDragAreaMultiplier(setup?: CarSetup) {
 
   return clamp(
     1 +
-      (setup.frontWing - 5.5) * 0.015 +
-      (setup.rearWing - 5.5) * 0.025 +
+      (setup.frontWing - 5.5) * 0.02 +
+      (setup.rearWing - 5.5) * 0.035 +
       (setup.rideHeightMm - 28) * 0.004 +
       (setup.coolingPercent - 50) * 0.0015,
-    0.78,
+    0.68,
     1.25,
   )
 }
@@ -349,17 +351,26 @@ export function combustionPowerKwFor(team: Team) {
   return 575 + machinePaceRating(team.machine.puOutput) * 78
 }
 
+export function internalPowerScaleAtSpeed(speedKph: number) {
+  // Keep the requested field-wide performance uplift in acceleration zones,
+  // then blend it out before terminal velocity. This raises the cars without
+  // turning the internal scale into a hidden top-speed increase or limiter.
+  const highSpeedBlend = clamp((speedKph - 330) / 80, 0, 1)
+  return (
+    MACHINE_INTERNAL_PERFORMANCE_SCALE -
+    (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * highSpeedBlend
+  )
+}
+
 export function topGearPowerTransferEfficiency(speedKph: number, team: Team) {
   const efficientRangeEndKph =
-    390 + machinePaceRating(team.machine.straightLineEfficiency) * 38
+    394 + machinePaceRating(team.machine.straightLineEfficiency) * 24
   const overspeedKph = Math.max(0, speedKph - efficientRangeEndKph)
 
-  return clamp(0.992 - overspeedKph * 0.0025, 0.9, 0.992)
+  return clamp(0.992 - overspeedKph * 0.004, 0.82, 0.992)
 }
 
 export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
-  const speedMps = Math.max(0, input.currentSpeedKph / 3.6)
-  const airSpeedMps = Math.max(0, speedMps + (input.headwindMps ?? 0))
   const massKg = 768 + clamp(input.fuelLoadKg, 0, 120)
   const dragAreaM2 = vehicleDragAreaM2({
     activeAeroMode: input.activeAeroMode,
@@ -367,55 +378,69 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
     team: input.team,
     towDragReduction: input.towDragReduction,
   })
-  const dragForceN =
-    0.5 * input.airDensityKgM3 * dragAreaM2 * airSpeedMps * airSpeedMps
   const rollingForceN = massKg * 9.81 * 0.012
   const gradeForceN =
     massKg * 9.81 * clamp(input.dynamics.gradient * 0.025, -0.035, 0.035)
-  const powerKw =
-    (combustionPowerKwFor(input.team) +
-      Math.max(0, input.ersPowerKw) *
-        machinePaceRating(
-          input.team.machine.electricalDeploymentEfficiency,
-        )) *
-    clamp(input.drivePowerScale ?? 1, 0.45, 1) *
-    clamp(
-      input.gearEfficiency ??
-        topGearPowerTransferEfficiency(input.currentSpeedKph, input.team),
-      0.82,
-      1,
-    )
-  const requestedDriveForceN =
-    (powerKw * 1000 * clamp(input.throttlePercent / 100, 0, 1)) /
-    Math.max(18, speedMps)
-  const downforceTractionGain =
-    1 +
-    Math.min(1.5, (speedMps / 75) ** 2) *
-      machinePaceRating(input.team.machine.downforceGeneration) *
-      0.75
-  const tractionLimitN =
-    massKg *
-    9.81 *
-    clamp(input.gripMultiplier, 0.35, 1.15) *
-    (1.35 + machinePaceRating(input.team.machine.traction) * 0.42) *
-    downforceTractionGain
-  const driveForceN = Math.min(requestedDriveForceN, tractionLimitN)
-  const regenerativeResistanceForceN =
-    (Math.max(0, input.regenerativeResistancePowerKw ?? 0) * 1000) /
-    Math.max(25, speedMps)
   const brakeDecelerationMps2 =
     clamp(input.brakePercent / 100, 0, 1) *
     (9.8 + machinePaceRating(input.team.machine.brakingPerformance) * 4.8) *
-    clamp(input.gripMultiplier, 0.35, 1.08)
-  const accelerationMps2 =
-    (driveForceN -
-      regenerativeResistanceForceN -
-      dragForceN -
-      rollingForceN -
-      gradeForceN) /
-      massKg -
-    brakeDecelerationMps2
-  const nextMps = Math.max(0, speedMps + accelerationMps2 * input.deltaSeconds)
+    clamp(input.gripMultiplier, 0.35, 1.08) *
+    (1 + (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * 0.3)
+  const integrationSteps = Math.min(
+    120,
+    Math.max(1, Math.ceil(input.deltaSeconds / 0.25)),
+  )
+  const stepSeconds = input.deltaSeconds / integrationSteps
+  let nextMps = Math.max(0, input.currentSpeedKph / 3.6)
+
+  for (let step = 0; step < integrationSteps; step += 1) {
+    const speedKph = nextMps * 3.6
+    const airSpeedMps = Math.max(0, nextMps + (input.headwindMps ?? 0))
+    const dragForceN =
+      0.5 * input.airDensityKgM3 * dragAreaM2 * airSpeedMps * airSpeedMps
+    const powerKw =
+      (combustionPowerKwFor(input.team) * internalPowerScaleAtSpeed(speedKph) +
+        Math.max(0, input.ersPowerKw) *
+          machinePaceRating(
+            input.team.machine.electricalDeploymentEfficiency,
+          )) *
+      clamp(input.drivePowerScale ?? 1, 0.45, 1) *
+      clamp(
+        input.gearEfficiency ??
+          topGearPowerTransferEfficiency(speedKph, input.team),
+        0.82,
+        1,
+      )
+    const requestedDriveForceN =
+      (powerKw * 1000 * clamp(input.throttlePercent / 100, 0, 1)) /
+      Math.max(18, nextMps)
+    const downforceTractionGain =
+      1 +
+      Math.min(1.5, (nextMps / 75) ** 2) *
+        machinePaceRating(input.team.machine.downforceGeneration) *
+        0.75
+    const tractionLimitN =
+      massKg *
+      9.81 *
+      clamp(input.gripMultiplier, 0.35, 1.15) *
+      (1.35 + machinePaceRating(input.team.machine.traction) * 0.42) *
+      downforceTractionGain *
+      (1 + (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * 0.35)
+    const driveForceN = Math.min(requestedDriveForceN, tractionLimitN)
+    const regenerativeResistanceForceN =
+      (Math.max(0, input.regenerativeResistancePowerKw ?? 0) * 1000) /
+      Math.max(25, nextMps)
+    const accelerationMps2 =
+      (driveForceN -
+        regenerativeResistanceForceN -
+        dragForceN -
+        rollingForceN -
+        gradeForceN) /
+        massKg -
+      brakeDecelerationMps2
+
+    nextMps = Math.max(0, nextMps + accelerationMps2 * stepSeconds)
+  }
 
   // Numerical runaway guard only. Normal terminal velocity is the point where
   // drag balances power and remains below this value.

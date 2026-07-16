@@ -88,7 +88,7 @@ export function auditTrackCalendar(
       add(track, 'pitLane', 'error', 'Invalid pit-lane geometry or speed limit')
     }
 
-    if (!track.aeroActivationZones?.length) {
+    if (!track.aeroActivationZones?.length && !track.activeAeroUnavailable) {
       add(track, 'aeroActivationZones', 'error', 'Missing active-aero zones')
     }
 

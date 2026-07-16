@@ -7,10 +7,12 @@ import type {
 import { hashChance } from './random'
 
 const SAFETY_CAR_JOIN_SIGNAL_SECONDS = 2
-const SAFETY_CAR_QUEUE_GAP_SECONDS = 2.4
+const SAFETY_CAR_QUEUE_GAP_SECONDS = 0.65
 const SAFETY_CAR_PIT_ENTRY_PROGRESS = 0.965
 const SAFETY_CAR_LINE_EPSILON = 0.001
-export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.45
+export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.22
+const SAFETY_CAR_IN_THIS_LAP_PACE_SCALE = 0.82
+const finalCornerProgressCache = new WeakMap<TrackDefinition, number>()
 
 type SafetyCarProcedure = Extract<
   NeutralisationProcedure,
@@ -141,16 +143,67 @@ function leaderCollectionTarget(
   track: TrackDefinition,
 ) {
   const pitExitProgress = track.pitLane?.exitProgress ?? 0.13
-  let target = Math.floor(leaderDistance) + pitExitProgress
 
-  // The Safety Car joins from pit exit regardless of where the leader is.
-  // If it emerges behind the leader, the leader must complete the remainder
-  // of the lap before catching it.
-  while (target <= leaderDistance + 0.06) {
-    target += 1
+  // The Safety Car waits at pit exit and joins ahead of the leader after the
+  // leader rounds the final corner. Therefore its first on-track distance is
+  // always the pit exit on the leader's next passage of the control line.
+  return Math.floor(leaderDistance) + 1 + pitExitProgress
+}
+
+function finalCornerProgress(track: TrackDefinition) {
+  const cached = finalCornerProgressCache.get(track)
+
+  if (cached !== undefined) {
+    return cached
   }
 
-  return target
+  const finalCorner = track.corners?.reduce<
+    NonNullable<TrackDefinition['corners']>[number] | null
+  >(
+    (latest, corner) =>
+      !latest || corner.number > latest.number ? corner : latest,
+    null,
+  )
+
+  if (!finalCorner || track.centerline.length === 0) {
+    const pitEntryProgress =
+      track.pitLane?.entryProgress ?? SAFETY_CAR_PIT_ENTRY_PROGRESS
+    const fallback = (pitEntryProgress - 0.035 + 1) % 1
+
+    finalCornerProgressCache.set(track, fallback)
+    return fallback
+  }
+
+  let closestIndex = 0
+  let closestDistanceSquared = Number.POSITIVE_INFINITY
+
+  track.centerline.forEach((point, index) => {
+    const distanceSquared =
+      (point[0] - finalCorner.position[0]) ** 2 +
+      (point[2] - finalCorner.position[2]) ** 2
+
+    if (distanceSquared < closestDistanceSquared) {
+      closestIndex = index
+      closestDistanceSquared = distanceSquared
+    }
+  })
+
+  const progress = closestIndex / track.centerline.length
+
+  finalCornerProgressCache.set(track, progress)
+  return progress
+}
+
+function safetyCarReleaseLeaderDistance(
+  leaderDistanceAtDeployment: number,
+  track: TrackDefinition,
+) {
+  const finalCorner = finalCornerProgress(track)
+  const currentProgress = lapProgress(leaderDistanceAtDeployment)
+
+  return currentProgress + SAFETY_CAR_LINE_EPSILON >= finalCorner
+    ? leaderDistanceAtDeployment
+    : nextMarkerDistance(leaderDistanceAtDeployment, finalCorner)
 }
 
 function followingLapEndDistance(leaderDistance: number) {
@@ -200,7 +253,7 @@ function hasLeaderCaughtSafetyCar(
   leader: CarSnapshot,
 ) {
   const maximumGapLaps = Math.max(
-    0.003,
+    0.0015,
     SAFETY_CAR_LEADER_TARGET_GAP_SECONDS /
       Math.max(55, leader.projectedLapTime),
   )
@@ -269,6 +322,7 @@ function createProcedure(
     overtakingNotPermittedAtSeconds: null,
     pitExitClosed: false,
     pitLaneRouteRequired: phase.safetyCarUsesPitLane ?? false,
+    pitLaneRouteAnnouncedAtSeconds: null,
     returnNotBeforeLeaderDistance: null,
     inThisLapEarliestLeaderDistance: null,
     inThisLapAtSeconds: null,
@@ -656,8 +710,46 @@ function advanceSafetyCar(
       message: 'LOW VISIBILITY - MAXIMUM GAP TWENTY CAR LENGTHS.',
     })
   }
+  if (
+    procedure.pitLaneRouteRequired &&
+    procedure.pitLaneRouteAnnouncedAtSeconds == null &&
+    elapsedSeconds >= phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS
+  ) {
+    procedure = {
+      ...procedure,
+      pitLaneRouteAnnouncedAtSeconds: elapsedSeconds,
+    }
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-use-pit-lane-${phase.id}`,
+      message:
+        'SAFETY CAR AND ALL CARS MUST USE PIT LANE. No overtaking in Pit Entry or Pit Exit Road unless a car has an obvious problem.',
+    })
+  }
+  const releaseLeaderDistance = safetyCarReleaseLeaderDistance(
+    procedure.leaderDistanceAtDeployment,
+    track,
+  )
+
+  if (
+    procedure.stage === 'deployed' &&
+    elapsedSeconds >= phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS &&
+    leader.totalDistance + SAFETY_CAR_LINE_EPSILON >= releaseLeaderDistance
+  ) {
+    procedure = {
+      ...procedure,
+      stage: 'collecting-field',
+      safetyCarLastUpdatedAtSeconds: elapsedSeconds,
+    }
+    events.push({
+      atSeconds: elapsedSeconds,
+      id: `sc-on-track-${phase.id}`,
+      message:
+        'SAFETY CAR ON TRACK - LEAVING PIT EXIT. The leader is through the final corner and the field must form the queue behind it.',
+    })
+  }
   const leaderWasCollected = hasLeaderCaughtSafetyCar(
-    initialProcedure,
+    procedure,
     leader,
   )
   const safetyCarDeltaSeconds = Math.max(
@@ -668,10 +760,10 @@ function advanceSafetyCar(
     procedure.leaderCollectedAtSeconds === null
       ? 0.34
       : procedure.stage === 'in-this-lap'
-        ? 0.54
+        ? SAFETY_CAR_IN_THIS_LAP_PACE_SCALE
         : 0.5
 
-  if (procedure.stage !== 'pit-entry') {
+  if (procedure.stage !== 'deployed' && procedure.stage !== 'pit-entry') {
     const safetyCarDistance =
       procedure.safetyCarDistance +
       (safetyCarDeltaSeconds / Math.max(45, track.baseLapTime)) *
@@ -718,26 +810,6 @@ function advanceSafetyCar(
       message:
         'FINAL LAP UNDER SAFETY CAR. Orange lights extinguished approaching pit entry; yellow flags and SC boards remain, and no overtaking is permitted before the Line.',
     })
-  }
-
-  if (
-    procedure.stage === 'deployed' &&
-    elapsedSeconds >= phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS
-  ) {
-    procedure = { ...procedure, stage: 'collecting-field' }
-    events.push({
-      atSeconds: phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS,
-      id: `sc-on-track-${phase.id}`,
-      message: 'SAFETY CAR ON TRACK. Drivers reduce speed and form a queue behind it.',
-    })
-    if (procedure.pitLaneRouteRequired) {
-      events.push({
-        atSeconds: phase.startSeconds + SAFETY_CAR_JOIN_SIGNAL_SECONDS,
-        id: `sc-use-pit-lane-${phase.id}`,
-        message:
-          'SAFETY CAR AND ALL CARS MUST USE PIT LANE. No overtaking in Pit Entry or Pit Exit Road unless a car has an obvious problem.',
-      })
-    }
   }
 
   if (
@@ -1053,7 +1125,7 @@ export function controlProcedureStatusMessage(phase: ActiveFlagPhase) {
 
   switch (procedure.stage) {
     case 'deployed':
-      return 'SAFETY CAR DEPLOYED. Reduce speed and observe the FIA delta.'
+      return 'SAFETY CAR DEPLOYED. Reduce speed; the Safety Car is waiting at pit exit for the leader to round the final corner.'
     case 'collecting-field':
       return 'SAFETY CAR. The leader and remaining field are forming the queue.'
     case 'queue-formed':

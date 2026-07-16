@@ -4,7 +4,8 @@ import { tracks } from '../data/tracks'
 import type { CarSetup, CarSnapshot, TrackDefinition } from '../types'
 import { calculateCarTelemetry } from './telemetry'
 import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
-import { createInitialRace } from './race'
+import { advanceRace, createInitialRace } from './race'
+import { baselineSetupForTrack, idealSetupForTrack } from './engineering'
 
 function runSpeedTrace(
   track: TrackDefinition,
@@ -114,6 +115,44 @@ function runSpeedTrace(
   }
 }
 
+function runIntegratedRaceSpeedTrace(
+  track: TrackDefinition,
+  fullField = false,
+) {
+  const driver = initialDrivers.find((candidate) => candidate.teamId === 'ferrari')!
+  const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
+  const config = {
+    drivers: fullField ? initialDrivers : [driver],
+    seed: `integrated-speed:${track.id}:${fullField ? 'field' : 'solo'}`,
+    teams: fullField ? initialTeams : [team],
+    track: { ...track, rainProbability: 0 },
+  }
+  let snapshot = createInitialRace(config)
+  const formationSeconds =
+    snapshot.formationLapDurationSeconds * snapshot.formationLapsPlanned
+
+  snapshot = advanceRace(snapshot, formationSeconds, config)
+  snapshot = advanceRace(snapshot, 8, config)
+  snapshot = advanceRace(snapshot, 5, config)
+
+  let maximumSpeedKph = 0
+  let minimumBatteryPercent = 100
+
+  for (let step = 0; step < 480; step += 1) {
+    snapshot = advanceRace(snapshot, 0.25, config)
+    maximumSpeedKph = Math.max(
+      maximumSpeedKph,
+      ...snapshot.cars.map((car) => car.speedKph),
+    )
+    minimumBatteryPercent = Math.min(
+      minimumBatteryPercent,
+      ...snapshot.cars.map((car) => car.ersBatteryPercent),
+    )
+  }
+
+  return { maximumSpeedKph, minimumBatteryPercent, snapshot }
+}
+
 describe('on-track speed calibration', () => {
   it('smooths resampled layout noise without removing genuine slow corners', () => {
     const profileFor = (trackId: string) => {
@@ -137,6 +176,124 @@ describe('on-track speed calibration', () => {
     expect(monaco[Math.floor(monaco.length / 2)]).toBeGreaterThan(190)
   })
 
+  it('brakes through high-speed corners without snapping to a lower speed', () => {
+    const candidate = tracks
+      .flatMap((track) =>
+        track.centerline.map((_, index) => ({
+          dynamics: trackDynamicsAt(track, index / track.centerline.length),
+          progress: index / track.centerline.length,
+          track,
+        })),
+      )
+      .filter(
+        ({ dynamics }) =>
+          dynamics.cornerClass === 'high' &&
+          !dynamics.fullThrottle &&
+          dynamics.brakingSeverity > 0.08,
+      )
+      .sort(
+        (left, right) =>
+          right.dynamics.brakingSeverity - left.dynamics.brakingSeverity,
+      )[0]
+
+    expect(candidate).toBeDefined()
+
+    const driver = initialDrivers[0]
+    const team = initialTeams.find(({ id }) => id === driver.teamId)!
+    const snapshot = createInitialRace({
+      drivers: [driver],
+      seed: 'high-speed-corner-transition',
+      teams: [team],
+      track: candidate.track,
+    })
+    const entrySpeedKph = Math.min(
+      390,
+      Math.max(300, candidate.dynamics.referenceSpeedKph + 65),
+    )
+    const car = {
+      ...snapshot.cars[0],
+      gapToAhead: 10,
+      progress: candidate.progress,
+      speedKph: entrySpeedKph,
+      status: 'running' as const,
+      totalDistance: 1 + candidate.progress,
+    }
+    const telemetry = calculateCarTelemetry({
+      car,
+      deltaSeconds: 0.1,
+      driver,
+      elapsedSeconds: 30,
+      lowGripConditions: false,
+      phase: null,
+      raceLap: 2,
+      team,
+      track: candidate.track,
+      trackGrip: 1,
+      weather: 'clear',
+    })
+
+    expect(entrySpeedKph - telemetry.speedKph).toBeLessThanOrEqual(8)
+    expect(telemetry.speedKph).toBeGreaterThanOrEqual(235)
+  })
+
+  it('keeps full throttle on a straight until the modeled braking zone', () => {
+    const lasVegas = tracks.find(
+      (candidate) => candidate.id === 'las-vegas-approx',
+    )!
+    const candidate = lasVegas.centerline
+      .map((_, index) => ({
+        dynamics: trackDynamicsAt(lasVegas, index / lasVegas.centerline.length),
+        progress: index / lasVegas.centerline.length,
+      }))
+      .filter(
+        ({ dynamics }) =>
+          dynamics.fullThrottle &&
+          dynamics.referenceSpeedKph >= 360 &&
+          dynamics.brakingSeverity > 0.02,
+      )
+      .sort(
+        (left, right) =>
+          right.dynamics.brakingSeverity - left.dynamics.brakingSeverity,
+      )[0]
+
+    expect(candidate).toBeDefined()
+
+    const driver = initialDrivers.find(
+      (candidateDriver) => candidateDriver.teamId === 'ferrari',
+    )!
+    const team = initialTeams.find(({ id }) => id === driver.teamId)!
+    const snapshot = createInitialRace({
+      drivers: [driver],
+      seed: 'straight-throttle-commitment',
+      teams: [team],
+      track: lasVegas,
+    })
+    const telemetry = calculateCarTelemetry({
+      car: {
+        ...snapshot.cars[0],
+        gapToAhead: 10,
+        progress: candidate.progress,
+        speedKph: 410,
+        status: 'running',
+        totalDistance: 2 + candidate.progress,
+      },
+      deltaSeconds: 0.1,
+      driver,
+      elapsedSeconds: 80,
+      lowGripConditions: false,
+      phase: null,
+      raceLap: 3,
+      setup: idealSetupForTrack(lasVegas),
+      team,
+      track: lasVegas,
+      trackGrip: 1,
+      weather: 'clear',
+    })
+
+    expect(telemetry.brakePercent).toBe(0)
+    expect(telemetry.throttlePercent).toBe(100)
+  })
+
   it('keeps representative dry-running tracks above the old 260 km/h ceiling', () => {
     const albertPark = runSpeedTrace(
       tracks.find((candidate) => candidate.id === 'albert-park-approx')!,
@@ -149,9 +306,9 @@ describe('on-track speed calibration', () => {
     )
 
     expect(albertPark.maximumSpeedKph).toBeGreaterThanOrEqual(295)
-    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(325)
+    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(335)
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(330)
-    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(360)
+    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(370)
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(360)
     expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(390)
   })
@@ -177,7 +334,69 @@ describe('on-track speed calibration', () => {
       },
     )
 
-    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(395)
+    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(418)
     expect(result.maximumSpeedKph).toBeLessThanOrEqual(430)
   })
+
+  it('preserves a large setup-dependent speed difference at Las Vegas', () => {
+    const lasVegas = tracks.find(
+      (candidate) => candidate.id === 'las-vegas-approx',
+    )!
+    const common = {
+      fuelLoadKg: 18,
+      gapToAheadSeconds: 0.35,
+      sessionType: 'race-distance' as const,
+      teamId: 'ferrari',
+    }
+    const lowDrag = runSpeedTrace(lasVegas, {
+      ...common,
+      setup: idealSetupForTrack(lasVegas),
+    })
+    const highDownforce = runSpeedTrace(lasVegas, {
+      ...common,
+      setup: {
+        ...baselineSetupForTrack(lasVegas),
+        frontWing: 7,
+        rearWing: 8,
+        rideHeightMm: 34,
+      },
+    })
+
+    expect(lowDrag.maximumSpeedKph).toBeGreaterThanOrEqual(405)
+    expect(
+      lowDrag.maximumSpeedKph - highDownforce.maximumSpeedKph,
+    ).toBeGreaterThanOrEqual(20)
+  })
+
+  it('reaches representative top speeds through the complete race loop', () => {
+    const monza = runIntegratedRaceSpeedTrace(
+      tracks.find((candidate) => candidate.id === 'monza-approx')!,
+    )
+    const lasVegas = runIntegratedRaceSpeedTrace(
+      tracks.find((candidate) => candidate.id === 'las-vegas-approx')!,
+    )
+
+    expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(320)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(400)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(430)
+    expect(monza.minimumBatteryPercent).toBeLessThanOrEqual(65)
+    expect(lasVegas.minimumBatteryPercent).toBeLessThanOrEqual(78)
+    expect(monza.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
+    expect(lasVegas.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
+  })
+
+  it('keeps the speeds shown by a complete 30-car field in the calibrated range', () => {
+    const monza = runIntegratedRaceSpeedTrace(
+      tracks.find((candidate) => candidate.id === 'monza-approx')!,
+      true,
+    )
+    const lasVegas = runIntegratedRaceSpeedTrace(
+      tracks.find((candidate) => candidate.id === 'las-vegas-approx')!,
+      true,
+    )
+
+    expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(325)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(410)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(430)
+  }, 10_000)
 })

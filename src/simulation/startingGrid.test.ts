@@ -10,9 +10,9 @@ describe('starting grid', () => {
   it('keeps the 30-car field compact enough for slightly overlapping map labels', () => {
     const fieldDepth = startingGridDistance(0) - startingGridDistance(29)
 
-    expect(STARTING_GRID_SLOT_GAP).toBe(0.00145)
-    expect(fieldDepth).toBeLessThan(0.043)
-    expect(fieldDepth).toBeGreaterThan(0.04)
+    expect(STARTING_GRID_SLOT_GAP).toBe(0.00105)
+    expect(fieldDepth).toBeLessThan(0.031)
+    expect(fieldDepth).toBeGreaterThan(0.03)
   })
 
   it('stages each odd position slightly ahead of the paired even position', () => {

@@ -146,7 +146,10 @@ function buildProfile(track: TrackDefinition): CachedProfile {
     for (let lookAhead = 0; lookAhead < speedPoints.length / 3; lookAhead += 1) {
       const candidate = speedPoints[(index + lookAhead) % speedPoints.length]
 
-      if (lookAhead > 1 && candidate.curvature >= 0.11) {
+      // Gentle kinks remain flat in this category. Treat them as part of the
+      // same acceleration zone so long straights such as the Las Vegas Strip
+      // are not split by resampled-layout noise.
+      if (lookAhead > 1 && candidate.curvature >= 0.16) {
         break
       }
 

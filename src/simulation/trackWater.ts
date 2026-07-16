@@ -9,10 +9,31 @@ export type TrackWaterState = {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-export function createTrackWaterState(): TrackWaterState {
+export function initialSurfaceWaterMmForRain(rainIntensityMmH: number) {
+  if (rainIntensityMmH <= 0) {
+    return 0
+  }
+
+  return clamp(rainIntensityMmH * 0.28, 0.05, 4.5)
+}
+
+export function createTrackWaterState(
+  rainIntensityMmH = 0,
+): TrackWaterState {
+  const initialWaterMm = initialSurfaceWaterMmForRain(rainIntensityMmH)
+  const initialDryingLine = clamp(
+    1 - initialWaterMm / 3.5 - rainIntensityMmH / 18,
+    0,
+    1,
+  )
+
   return {
-    dryingLineBySector: [1, 1, 1],
-    surfaceWaterMmBySector: [0, 0, 0],
+    dryingLineBySector: [
+      initialDryingLine,
+      initialDryingLine,
+      initialDryingLine,
+    ],
+    surfaceWaterMmBySector: [initialWaterMm, initialWaterMm, initialWaterMm],
   }
 }
 

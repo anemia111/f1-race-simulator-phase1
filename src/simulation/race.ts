@@ -23,7 +23,10 @@ import {
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
-import { setupPaceDeltaSeconds } from './engineering'
+import {
+  baselineSetupForTrack,
+  setupPaceDeltaSeconds,
+} from './engineering'
 import {
   advanceEnergyStore,
   createInitialEnergyStore,
@@ -151,8 +154,10 @@ const EVENT_LOG_LIMIT = 100
 const TICKER_EVENT_WINDOW_SECONDS = 12
 /** Seconds after retirement before the wreck is cleared from the 3D track. */
 const WRECK_CLEAR_SECONDS = 25
-/** Minimum spacing (seconds) enforced inside the SC/VSC queue. */
-const QUEUE_MIN_GAP_SECONDS = 0.4
+/** Tight but non-overlapping spacing enforced inside an SC train. */
+const SAFETY_CAR_QUEUE_MIN_GAP_SECONDS = 0.22
+/** VSC cars retain their track gaps but cannot overlap while overtaking is banned. */
+const VSC_QUEUE_MIN_GAP_SECONDS = 0.4
 const GRAND_PRIX_TIME_LIMIT_SECONDS = 2 * 60 * 60
 const SPRINT_TIME_LIMIT_SECONDS = 60 * 60
 const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
@@ -724,10 +729,10 @@ function projectedLapTime(
         (0.42 + localDynamics.curvature * 1.18)
   const damageCost = car.damage * phaseThreeTuning.damageLapCostSeconds
   const restartLoss = restartGripLossSeconds(elapsedSeconds, restartUntilSeconds)
-  const configuredSetup = config.weekendContext?.setupByDriver?.[driver.id]
-  const setupPenalty = configuredSetup
-    ? setupPaceDeltaSeconds(config.track, configuredSetup)
-    : 0
+  const configuredSetup =
+    config.weekendContext?.setupByDriver?.[driver.id] ??
+    baselineSetupForTrack(config.track)
+  const setupPenalty = setupPaceDeltaSeconds(config.track, configuredSetup)
   const componentPenalty = componentPacePenaltySeconds(car.components)
   const modeDelta: Record<RacePaceMode, number> = {
     defend: -0.16,
@@ -1355,10 +1360,30 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     sessionDeclared: heatHazardDeclared,
   })
   const trackGrip = trackGripForWeather(config.seed, config.track, 0)
-  const initialWater = createTrackWaterState()
+  const initialRainIntensityMmH = weatherTrackStateFor(
+    config.seed,
+    config.track,
+    0,
+  ).rainIntensityMmH
+  const initialWater = createTrackWaterState(initialRainIntensityMmH)
+  const averageInitialSurfaceWaterMm =
+    initialWater.surfaceWaterMmBySector.reduce(
+      (sum, waterMm) => sum + waterMm,
+      0,
+    ) / initialWater.surfaceWaterMmBySector.length
+  const averageInitialDryingLine =
+    initialWater.dryingLineBySector.reduce(
+      (sum, dryingLine) => sum + dryingLine,
+      0,
+    ) / initialWater.dryingLineBySector.length
+  const initialTireTrackCondition: TireTrackCondition = {
+    dryingLine: averageInitialDryingLine,
+    rainIntensityMmH: initialRainIntensityMmH,
+    surfaceWaterMm: averageInitialSurfaceWaterMm,
+  }
   const initialRubber = createTrackRubberState()
   const lowGripConditions = nextLowGripCondition({
-    averageSurfaceWaterMm: 0,
+    averageSurfaceWaterMm: averageInitialSurfaceWaterMm,
     previous: false,
     trackGrip,
     weather,
@@ -1422,6 +1447,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       weather,
       trackGrip,
       wetWeatherTyresMandatory,
+      initialTireTrackCondition,
     )
     const regulationAllocation = weekendTireAllocation(config.track.isSprintWeekend)
     const initialTireSets = {
@@ -1970,6 +1996,25 @@ export function advanceRace(
       const raceAwareness = driver
         ? driverPerformanceAbility(driver, 'raceAwareness')
         : 0.8
+      const launchSkill = driver
+        ? driverSkillBlend(driver, {
+            startSkill: 0.58,
+            tractionControl: 0.27,
+            pressureHandling: 0.15,
+          })
+        : startAbility
+      const team = teams.get(car.teamId)
+      const machineLaunch = team
+        ? (team.machine.traction * 0.52 +
+            team.machine.mechanicalGrip * 0.3 +
+            team.machine.electricalDeploymentEfficiency * 0.18)
+        : 0.82
+      const launchExecution = clamp01(
+        launchSkill * 0.72 +
+          machineLaunch * 0.28 +
+          (hashChance(`${config.seed}:launch-execution:${car.driverId}`) - 0.5) *
+            0.045,
+      )
       const jumpStart =
         lightsOut &&
         !car.startsFromPitLane &&
@@ -2110,7 +2155,7 @@ export function advanceRace(
             : lightsOut
               ? lowPowerStart
                 ? 42
-                : Math.round(52 + (startAbility - 0.55) * 22)
+                : Math.round(50 + launchExecution * 16)
               : 0,
         throttlePercent:
           nextProcedure === 'lights'
@@ -2120,7 +2165,7 @@ export function advanceRace(
               : snapshot.formationBehindSafetyCar
                 ? 58
                 : lightsOut
-                  ? Math.round(44 + (startAbility - 0.55) * 30)
+                  ? Math.round(52 + launchExecution * 24)
                   : 0,
         tireTemperatureC: Math.min(104, car.tireTemperatureC + deltaSeconds * 0.35),
         tireCarcassTemperatureC: Math.min(
@@ -2896,7 +2941,7 @@ export function advanceRace(
         ? reformFieldForStandingRestart(strategicallyPreparedCars)
         : reformFieldForRedRestart(
             strategicallyPreparedCars,
-            QUEUE_MIN_GAP_SECONDS / baseLapTime,
+            SAFETY_CAR_QUEUE_MIN_GAP_SECONDS / baseLapTime,
           )
     newEvents.push(
       makeEvent(
@@ -3414,6 +3459,11 @@ export function advanceRace(
       ((snapshot.raceStartedAtSeconds !== null &&
         elapsedSeconds - snapshot.raceStartedAtSeconds < 12) ||
         restartUntilSeconds !== null)
+    const standingStartLaunchActive =
+      !snapshot.formationBehindSafetyCar &&
+      snapshot.raceStartedAtSeconds !== null &&
+      elapsedSeconds - snapshot.raceStartedAtSeconds < 4.5 &&
+      (car.progress >= 0.88 || car.progress <= 0.1)
     const maxRechargePerLapMj = maxRechargePerLapMjFor({
       behindSafetyCar: localControlPhase?.flag === 'sc',
       eventLimitMj: config.fiaEventRechargeLimitMj,
@@ -3436,11 +3486,15 @@ export function advanceRace(
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.phase,
+      standingStartLaunchActive,
       standingStartMguKRestricted,
       track: config.track,
+      trackCondition: localTireTrackCondition,
       team,
       surfaceWaterMm: trackWater.surfaceWaterMmBySector[carSector],
-      setup: config.weekendContext?.setupByDriver?.[driver.id],
+      setup:
+        config.weekendContext?.setupByDriver?.[driver.id] ??
+        baselineSetupForTrack(config.track),
       headwindMps: simulatedHeadwindMpsAt(config, car.progress),
       trackGrip: localTrackGrip,
       airTemperatureC,
@@ -3508,7 +3562,7 @@ export function advanceRace(
       safetyCarProcedure.stage !== 'pit-entry'
     ) {
       const safetyCarGapLaps = Math.max(
-        0.003,
+        0.0015,
         SAFETY_CAR_LEADER_TARGET_GAP_SECONDS /
           Math.max(55, car.projectedLapTime),
       )
@@ -3737,7 +3791,10 @@ export function advanceRace(
       aheadTotal !== null &&
       !mayUnlap
     ) {
-      const spacing = QUEUE_MIN_GAP_SECONDS / baseLapTime
+      const spacing =
+        (controlPhase.flag === 'sc'
+          ? SAFETY_CAR_QUEUE_MIN_GAP_SECONDS
+          : VSC_QUEUE_MIN_GAP_SECONDS) / baseLapTime
       totalDistance = Math.min(
         totalDistance,
         Math.max(car.totalDistance, aheadTotal - spacing),

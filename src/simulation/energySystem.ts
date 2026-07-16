@@ -50,6 +50,7 @@ export type EnergyDeploymentRequestOptions = {
   paceMode: RacePaceMode
   phaseActive: boolean
   speedKph: number
+  standingStartLaunchActive?: boolean
   state: EnergyStoreState
   straightLengthAheadMeters: number
   straightness: number
@@ -310,6 +311,7 @@ export function energyDeploymentRequestFor(
     paceMode,
     phaseActive,
     speedKph,
+    standingStartLaunchActive = false,
     state,
     straightLengthAheadMeters,
     straightness,
@@ -347,12 +349,12 @@ export function energyDeploymentRequestFor(
   )
   const sessionBudgetShare =
     timedRunPhase === 'attack-lap'
-      ? 0.98
+      ? 1
       : timedRunPhase === 'out-lap' ||
           timedRunPhase === 'in-lap' ||
           timedRunPhase === 'cooldown'
         ? 0.18
-      : 0.82
+        : 1
   const lapBudgetMJ = state.usableEnergyMJ * sessionBudgetShare
   const remainingBudgetMJ = Math.max(
     0,
@@ -366,11 +368,11 @@ export function energyDeploymentRequestFor(
     1.12,
   )
   const reserveSoc =
-    (timedRunPhase === 'attack-lap' ? 0.07 : 0.16) +
-    remainingLapShare * (0.06 + management * 0.04)
+    (timedRunPhase === 'attack-lap' ? 0.025 : 0.045) +
+    remainingLapShare * (0.025 + management * 0.02)
   const reserveFactor = smoothstep(
     reserveSoc,
-    Math.min(0.72, reserveSoc + 0.34),
+    Math.min(0.58, reserveSoc + 0.26),
     state.stateOfCharge,
   )
   const paceMultiplier: Record<RacePaceMode, number> = {
@@ -381,11 +383,11 @@ export function energyDeploymentRequestFor(
   }
   const battleMultiplier =
     battlePhase === 'attacking' || battlePhase === 'side-by-side'
-      ? 1.25
+      ? 1.38
       : battlePhase === 'defending'
-        ? 1.2
+        ? 1.32
         : battlePhase === 'following'
-          ? 1.08
+          ? 1.12
           : 1
   const timedMultiplier =
     timedRunPhase === 'attack-lap'
@@ -397,15 +399,22 @@ export function energyDeploymentRequestFor(
         : 1
   const lowSkillWaste = (1 - management) * (1 - straightValue) * 0.16
   const neutralisationMultiplier = phaseActive ? 0.12 : 1
+  const longStraightMultiplier =
+    1 + clamp((straightLengthAheadMeters - 500) / 900, 0, 1) * 0.18
+  const terminalSpeedAllocation =
+    1 - smoothstep(420, 432, speedKph) * 0.65
 
   return clamp(
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *
-      0.82 *
+      0.72 *
+      longStraightMultiplier *
       paceMultiplier[paceMode] *
       battleMultiplier *
       timedMultiplier *
-      (overtakeActive ? 1.22 : 1) *
+      (standingStartLaunchActive ? 1.34 : 1) *
+      (overtakeActive ? 1.28 : 1) *
       (isFinalLap ? 1.14 : 1) *
+      terminalSpeedAllocation *
       neutralisationMultiplier,
     0,
     1,

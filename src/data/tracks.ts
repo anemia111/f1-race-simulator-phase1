@@ -7,6 +7,11 @@ import { realTrackLayouts } from './realTrackLayouts'
 import { tireNominationForTrack } from './tireNominations2026'
 import { calendar2026ByTrackId } from './calendar2026'
 import { sourceRegistry } from './sourceRegistry'
+import {
+  officialTrackOperations2026,
+  type OfficialTrackAnchor,
+  type OfficialTrackOperations,
+} from './officialTrackOperations2026'
 
 const trackPool: Array<Omit<TrackDefinition, 'lengthKm' | 'lengthSource'>> = [
   {
@@ -687,7 +692,7 @@ const circuitLengthKm: Record<(typeof calendarTrackIds)[number], number> = {
   'monaco-approx': 3.337,
   'montreal-approx': 4.361,
   'monza-approx': 5.793,
-  'red-bull-ring-approx': 4.318,
+  'red-bull-ring-approx': 4.326,
   'shanghai-approx': 5.451,
   'silverstone-approx': 5.891,
   'singapore-approx': 4.94,
@@ -723,6 +728,7 @@ const fallbackTrackWidth = (track: Pick<TrackDefinition, 'id' | 'kind'>) => {
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+const wrapProgress = (value: number) => ((value % 1) + 1) % 1
 
 const pointDistance = (
   a: TrackDefinition['centerline'][number],
@@ -818,12 +824,168 @@ const deriveAeroActivationZones = (
   return usableRuns
     .map((run, index) => ({
       end: Number(clamp01(run.endIndex / centerline.length).toFixed(3)),
-      label: `AERO ${index + 1}`,
+      label: `SM A${index + 1}`,
       lowGripMode: 'partial' as const,
       source: 'derived' as const,
       start: Number(clamp01(run.startIndex / centerline.length).toFixed(3)),
     }))
 }
+
+const progressWithin = (progress: number, start: number, end: number) =>
+  start <= end
+    ? progress >= start && progress <= end
+    : progress >= start || progress <= end
+
+const forwardProgress = (from: number, to: number) =>
+  wrapProgress(to - from)
+
+const anchorProgress = (
+  centerline: TrackDefinition['centerline'],
+  corners: NonNullable<TrackDefinition['corners']>,
+  lengthKm: number,
+  anchor: OfficialTrackAnchor,
+) => {
+  const corner = corners.find(({ number }) => number === anchor.turn)
+
+  if (!corner) {
+    return null
+  }
+
+  let nearestIndex = 0
+  let nearestDistance = Number.POSITIVE_INFINITY
+
+  centerline.forEach((point, index) => {
+    const distance = pointDistance(point, corner.position)
+
+    if (distance < nearestDistance) {
+      nearestDistance = distance
+      nearestIndex = index
+    }
+  })
+
+  const referenceOffsetMeters =
+    anchor.reference === 'entry' ? -15 : anchor.reference === 'exit' ? 15 : 0
+
+  return wrapProgress(
+    nearestIndex / centerline.length +
+      (referenceOffsetMeters + anchor.offsetMeters) / (lengthKm * 1000),
+  )
+}
+
+const officialZoneEnd = (
+  start: number,
+  derivedZones: AeroActivationZone[],
+) => {
+  const containing = derivedZones.find((zone) =>
+    progressWithin(start, zone.start, zone.end),
+  )
+
+  if (containing && forwardProgress(start, containing.end) >= 0.012) {
+    return containing.end
+  }
+
+  const next = derivedZones
+    .map((zone) => ({ distance: forwardProgress(start, zone.start), zone }))
+    .filter(({ distance }) => distance <= 0.16)
+    .sort((left, right) => left.distance - right.distance)[0]?.zone
+
+  return next?.end ?? Number(wrapProgress(start + 0.08).toFixed(3))
+}
+
+const officialAeroActivationZones = (
+  centerline: TrackDefinition['centerline'],
+  corners: TrackDefinition['corners'],
+  operations: OfficialTrackOperations,
+  derivedZones: AeroActivationZone[],
+): AeroActivationZone[] | null => {
+  if (!corners) {
+    return null
+  }
+
+  const zones = operations.straightMode.flatMap((zone, index) => {
+    const start = anchorProgress(
+      centerline,
+      corners,
+      operations.centerlineLengthKm,
+      zone.normal,
+    )
+
+    if (start === null) {
+      return []
+    }
+
+    const lowGripStart = zone.lowGrip
+      ? anchorProgress(
+          centerline,
+          corners,
+          operations.centerlineLengthKm,
+          zone.lowGrip,
+        )
+      : null
+
+    return [
+      {
+        end: officialZoneEnd(start, derivedZones),
+        label: `SM A${index + 1}`,
+        ...(lowGripStart === null ? {} : { lowGripStart }),
+        lowGripMode: lowGripStart === null ? ('disabled' as const) : ('partial' as const),
+        source: 'official' as const,
+        start: Number(start.toFixed(6)),
+      },
+    ]
+  })
+
+  return zones.length === operations.straightMode.length ? zones : null
+}
+
+const officialOvertakeControlLines = (
+  centerline: TrackDefinition['centerline'],
+  corners: TrackDefinition['corners'],
+  operations: OfficialTrackOperations,
+): OvertakeControlLine[] | null => {
+  if (!corners || !operations.overtake) {
+    return operations.overtake ? null : []
+  }
+
+  const activationProgress = anchorProgress(
+    centerline,
+    corners,
+    operations.centerlineLengthKm,
+    operations.overtake.activation,
+  )
+  const detectionProgress = anchorProgress(
+    centerline,
+    corners,
+    operations.centerlineLengthKm,
+    operations.overtake.detection,
+  )
+
+  if (activationProgress === null || detectionProgress === null) {
+    return null
+  }
+
+  return [
+    {
+      activationProgress: Number(activationProgress.toFixed(6)),
+      detectionGapSeconds: 1,
+      detectionProgress: Number(detectionProgress.toFixed(6)),
+      source: 'official',
+    },
+  ]
+}
+
+const officialSectorMarks = (operations: OfficialTrackOperations) => [
+  0,
+  Number(
+    (operations.sectorLengthsKm[0] / operations.centerlineLengthKm).toFixed(6),
+  ),
+  Number(
+    (
+      (operations.sectorLengthsKm[0] + operations.sectorLengthsKm[1]) /
+      operations.centerlineLengthKm
+    ).toFixed(6),
+  ),
+]
 
 const derivePitLane = (track: Pick<TrackDefinition, 'id'>) => ({
   boxCount: 12,
@@ -870,10 +1032,31 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
   const centerline = realLayout?.centerline ?? track.centerline
 
   const pitLane = derivePitLane(track)
-  const aeroActivationZones = deriveAeroActivationZones(centerline, track.kind)
+  const derivedAeroActivationZones = deriveAeroActivationZones(
+    centerline,
+    track.kind,
+  )
+  const officialOperations = officialTrackOperations2026[id]
+  const officialAeroZones = officialOperations
+    ? officialAeroActivationZones(
+        centerline,
+        realLayout?.corners,
+        officialOperations,
+        derivedAeroActivationZones,
+      )
+    : null
+  const aeroActivationZones = officialAeroZones ?? derivedAeroActivationZones
+  const officialOvertakeLines = officialOperations
+    ? officialOvertakeControlLines(
+        centerline,
+        realLayout?.corners,
+        officialOperations,
+      )
+    : null
 
   return {
     ...track,
+    activeAeroUnavailable: officialOperations?.straightMode.length === 0,
     calendar2026: calendar2026ByTrackId[id],
     centerline,
     corners: realLayout?.corners,
@@ -894,18 +1077,23 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
           year: null,
         },
     locationProjection: realLayout?.projection,
-    lengthKm: circuitLengthKm[id],
+    lengthKm: officialOperations?.centerlineLengthKm ?? circuitLengthKm[id],
     lengthSource: 'official',
     baseLapTimeSource: 'estimated',
     marshalPosts: realLayout?.marshalPosts,
     name: displayTrackName(track.name),
     pitLane,
-    overtakeControlLines: deriveOvertakeControlLines(aeroActivationZones),
+    overtakeControlLines:
+      officialOvertakeLines ?? deriveOvertakeControlLines(aeroActivationZones),
     raceLaps: officialRaceLaps[id],
     raceLapsSource: officialRaceLaps[id] === undefined ? 'estimated' : 'official',
     safetyCarLines: deriveSafetyCarLines({ ...track, pitLane }),
-    sectorMarks: realLayout?.sectorMarks ?? track.sectorMarks,
-    sectorMarksSource: realLayout?.sectorMarksSource ?? 'fallback',
+    sectorMarks: officialOperations
+      ? officialSectorMarks(officialOperations)
+      : realLayout?.sectorMarks ?? track.sectorMarks,
+    sectorMarksSource: officialOperations
+      ? 'official'
+      : realLayout?.sectorMarksSource ?? 'fallback',
     tireNomination: tireNominationForTrack(track),
     width: realLayout?.width ?? fallbackTrackWidth(track),
   }

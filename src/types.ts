@@ -259,6 +259,7 @@ export type DataProvenance = {
 }
 
 export type AeroActivationZone = TrackProgressZone & {
+  lowGripStart?: number
   lowGripMode: 'partial' | 'disabled'
   source: OperationalDataSource
 }
@@ -370,6 +371,7 @@ export type NeutralisationProcedure =
       pitExitClosed: boolean
       /** B5.13.3 Race Director instruction for SC and every car to use pit lane. */
       pitLaneRouteRequired: boolean
+      pitLaneRouteAnnouncedAtSeconds?: number | null
       returnNotBeforeLeaderDistance: number | null
       inThisLapEarliestLeaderDistance: number | null
       inThisLapAtSeconds: number | null
@@ -480,6 +482,8 @@ export type TrackDefinition = {
   sectorMarksSource?: OperationalDataSource
   /** 2026 front/rear driver-adjustable bodywork activation zones. */
   aeroActivationZones?: AeroActivationZone[]
+  /** FIA event map explicitly lists Straight Mode as unavailable. */
+  activeAeroUnavailable?: boolean
   /** 2026 electrical Overtake detection and activation control lines. */
   overtakeControlLines?: OvertakeControlLine[]
   /** Safety-car timing lines used for the lightweight restart and pit logic. */

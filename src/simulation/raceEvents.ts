@@ -48,7 +48,7 @@ export const phaseThreeTuning = {
   /** Pace for cars still catching the SC queue (bunching). */
   scCatchUpPace: 0.86,
   /** Gap to the car ahead below which a car is considered "in the queue". */
-  scQueueGapSeconds: 1.2,
+  scQueueGapSeconds: 0.38,
   // Restart window after SC/VSC/red: cold tires and brakes.
   restartWindowSeconds: 8,
   restartMaxLossSeconds: 1.4,

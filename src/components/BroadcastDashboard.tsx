@@ -707,6 +707,11 @@ function CenterView({
       : track.aeroActivationZones?.some((zone) => zone.source === 'openf1')
         ? 'OBS'
         : 'CAL'
+    const overtakeSource = track.overtakeControlLines?.every(
+      (line) => line.source === 'official',
+    )
+      ? 'FIA'
+      : 'CAL'
 
     return (
       <div className="detail-grid track-detail-grid">
@@ -714,8 +719,8 @@ function CenterView({
         <span>Layout</span><strong>{layoutGeometryLabel(track)}</strong><SourceTag source={layoutSourceTag(track)} />
         <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? layoutSourceTag(track) : 'UNAVAILABLE'} />
         <span>Sector boundaries</span><strong>{track.sectorMarks.slice(1).map((mark) => `${Math.round(mark * 100)}%`).join(' / ')}</strong><SourceTag source={track.sectorMarksSource === 'official' ? 'FIA' : 'CAL'} />
-        <span>Active aero zones</span><strong>{track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={aeroSource} />
-        <span>Overtake detection lines</span><strong>{track.overtakeControlLines?.length ?? 0}</strong><SourceTag source="CAL" />
+        <span>Straight Mode zones</span><strong>{track.activeAeroUnavailable ? 'N/A' : track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={aeroSource} />
+        <span>Overtake detection lines</span><strong>{track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSource} />
         <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
         <span>Track evolution</span><strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong><SourceTag source="SIM" />
         <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
@@ -1004,7 +1009,7 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-track-panel">
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
-              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${track.aeroActivationZones?.length ?? 0} AERO ZONES`}
+              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${track.activeAeroUnavailable ? 'SM N/A' : `${track.aeroActivationZones?.length ?? 0} SM ZONES`}`}
               title={`Track Map - ${track.name}`}
             />
             <div className="broadcast-track-stage">

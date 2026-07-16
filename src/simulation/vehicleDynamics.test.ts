@@ -4,6 +4,8 @@ import { tracks } from '../data/tracks'
 import type { Driver, DriverSkillProfile } from '../types'
 import {
   DRIVER_SEGMENT_RESPONSE,
+  internalPowerScaleAtSpeed,
+  MACHINE_INTERNAL_PERFORMANCE_SCALE,
   MACHINE_PACE_REFERENCE,
   MACHINE_PACE_SPREAD_FACTOR,
   MACHINE_SEGMENT_RESPONSE,
@@ -28,6 +30,10 @@ describe('multi-axis vehicle dynamics', () => {
     expect(MACHINE_PACE_SPREAD_FACTOR).toBe(1.35)
     expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
     expect(DRIVER_SEGMENT_RESPONSE).toBe(0.075)
+    expect(MACHINE_INTERNAL_PERFORMANCE_SCALE).toBe(1.06)
+    expect(internalPowerScaleAtSpeed(300)).toBeCloseTo(1.06, 10)
+    expect(internalPowerScaleAtSpeed(370)).toBeCloseTo(1.03, 10)
+    expect(internalPowerScaleAtSpeed(420)).toBe(1)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
     expect(machinePaceRating(0.96)).toBeCloseTo(0.995, 10)
     expect(machinePaceRating(0.62)).toBeCloseTo(0.536, 10)
@@ -85,6 +91,39 @@ describe('multi-axis vehicle dynamics', () => {
 
     expect(speedKph).toBeGreaterThan(400)
     expect(speedKph).toBeLessThan(438)
+  })
+
+  it('keeps coarse simulation ticks close to fine-grained integration', () => {
+    const team = initialTeams[0]
+    const common = {
+      activeAeroMode: 'straight' as const,
+      airDensityKgM3: airDensityKgM3({ altitudeMeters: 650, temperatureC: 28 }),
+      brakePercent: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 350,
+      fuelLoadKg: 8,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      towDragReduction: 0,
+    }
+    const coarse = integrateVehicleSpeedKph({
+      ...common,
+      currentSpeedKph: 0,
+      deltaSeconds: 8,
+    })
+    let fine = 0
+
+    for (let step = 0; step < 80; step += 1) {
+      fine = integrateVehicleSpeedKph({
+        ...common,
+        currentSpeedKph: fine,
+        deltaSeconds: 0.1,
+      })
+    }
+
+    expect(coarse).toBeGreaterThan(0)
+    expect(Math.abs(coarse - fine)).toBeLessThan(3)
   })
 
   it('turns ERS deployment into acceleration and recovery into resistance', () => {

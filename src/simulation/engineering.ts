@@ -32,7 +32,18 @@ export function normalizeCarSetup(setup: CarSetup): CarSetup {
 }
 
 export function idealSetupForTrack(track: TrackDefinition): CarSetup {
-  if (track.id === 'monza-approx' || track.id === 'las-vegas-approx') {
+  if (track.id === 'las-vegas-approx') {
+    return {
+      frontWing: 1,
+      rearWing: 1,
+      rideHeightMm: 24,
+      brakeBiasPercent: 56.5,
+      differentialPercent: 60,
+      coolingPercent: 44,
+    }
+  }
+
+  if (track.id === 'monza-approx') {
     return {
       frontWing: 2,
       rearWing: 2,
@@ -73,6 +84,54 @@ export function idealSetupForTrack(track: TrackDefinition): CarSetup {
     differentialPercent: 52,
     coolingPercent: 55,
   }
+}
+
+/**
+ * Teams arrive with a circuit-specific simulator baseline, then refine it in
+ * practice. This prevents a generic high-downforce setup from being carried
+ * into Las Vegas while preserving a measurable FP setup gain.
+ */
+export function baselineSetupForTrack(track?: TrackDefinition): CarSetup {
+  if (!track) {
+    return { ...defaultCarSetup }
+  }
+
+  if (track.id === 'las-vegas-approx') {
+    return normalizeCarSetup({
+      frontWing: 1,
+      rearWing: 2,
+      rideHeightMm: 25,
+      brakeBiasPercent: 56.5,
+      differentialPercent: 59,
+      coolingPercent: 46,
+    })
+  }
+
+  const ideal = idealSetupForTrack(track)
+  const priorKnowledge = 0.68
+  const approach = (from: number, to: number) =>
+    from + (to - from) * priorKnowledge
+
+  return normalizeCarSetup({
+    frontWing: approach(defaultCarSetup.frontWing, ideal.frontWing),
+    rearWing: approach(defaultCarSetup.rearWing, ideal.rearWing),
+    rideHeightMm: approach(
+      defaultCarSetup.rideHeightMm,
+      ideal.rideHeightMm,
+    ),
+    brakeBiasPercent: approach(
+      defaultCarSetup.brakeBiasPercent,
+      ideal.brakeBiasPercent,
+    ),
+    differentialPercent: approach(
+      defaultCarSetup.differentialPercent,
+      ideal.differentialPercent,
+    ),
+    coolingPercent: approach(
+      defaultCarSetup.coolingPercent,
+      ideal.coolingPercent,
+    ),
+  })
 }
 
 function setupDistance(left: CarSetup, right: CarSetup) {

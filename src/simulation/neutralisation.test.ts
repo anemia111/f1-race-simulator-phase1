@@ -97,6 +97,158 @@ function beginUnlapping(overtakingPermitted = true) {
 }
 
 describe('FIA 2026 Safety Car unlapping procedure', () => {
+  it('waits at pit exit until the leader rounds the final corner', () => {
+    const base = createInitialRace(config).cars.slice(0, 3)
+    const deployedCars = [
+      atDistance(base[0], 10.05),
+      atDistance(base[1], 10.02),
+      atDistance(base[2], 9.99),
+    ]
+    const phase = ensureNeutralisationProcedure(
+      {
+        endMessage: 'Track clear.',
+        endSeconds: 80,
+        flag: 'sc',
+        id: 'sc-pit-exit-release',
+        sector: 1,
+        startMessage: 'SAFETY CAR DEPLOYED',
+        startSeconds: 0,
+      },
+      deployedCars,
+      config.track,
+    )
+    const createdProcedure = phase.neutralisation
+
+    if (!createdProcedure || createdProcedure.kind !== 'safety-car') {
+      throw new Error('Safety Car procedure was not created.')
+    }
+
+    const waitingDistance = createdProcedure.safetyCarDistance
+    const waiting = advanceNeutralisationProcedure({
+      cars: deployedCars.map((car, index) =>
+        atDistance(car, 10.4 - index * 0.02),
+      ),
+      elapsedSeconds: 30,
+      phase,
+      seed: config.seed,
+      track: config.track,
+    })
+
+    expect(waiting.phase?.neutralisation?.kind).toBe('safety-car')
+    expect(waiting.phase?.neutralisation?.stage).toBe('deployed')
+    if (waiting.phase?.neutralisation?.kind !== 'safety-car') {
+      throw new Error('Safety Car procedure ended unexpectedly.')
+    }
+    expect(waiting.phase.neutralisation.safetyCarDistance).toBe(
+      waitingDistance,
+    )
+
+    const leaderThroughFinalCorner = deployedCars.map((car, index) =>
+      atDistance(car, 10.999 - index * 0.02),
+    )
+    const released = advanceNeutralisationProcedure({
+      cars: leaderThroughFinalCorner,
+      elapsedSeconds: 30.1,
+      phase: waiting.phase!,
+      seed: config.seed,
+      track: config.track,
+    })
+
+    expect(released.phase?.neutralisation?.kind).toBe('safety-car')
+    expect(released.phase?.neutralisation?.stage).toBe('collecting-field')
+    expect(
+      released.events.some((event) =>
+        event.message.includes('LEAVING PIT EXIT'),
+      ),
+    ).toBe(true)
+    if (released.phase?.neutralisation?.kind !== 'safety-car') {
+      throw new Error('Safety Car was not released.')
+    }
+    expect(
+      released.phase.neutralisation.safetyCarDistance % 1,
+    ).toBeCloseTo(config.track.pitLane?.exitProgress ?? 0.13, 6)
+  })
+
+  it('accelerates away from the leader once IN THIS LAP is announced', () => {
+    const cars = createInitialRace(config).cars.slice(0, 3).map((car, index) =>
+      atDistance(car, 10.2 - index * 0.003),
+    )
+    const phase = ensureNeutralisationProcedure(
+      {
+        endMessage: 'Track clear.',
+        endSeconds: 1_000,
+        flag: 'sc',
+        id: 'sc-in-lap-acceleration',
+        sector: 0,
+        startMessage: 'SAFETY CAR DEPLOYED',
+        startSeconds: 0,
+      },
+      cars,
+      config.track,
+    )
+    const createdProcedure = phase.neutralisation
+
+    if (!createdProcedure || createdProcedure.kind !== 'safety-car') {
+      throw new Error('Safety Car procedure was not created.')
+    }
+
+    const safetyCarDistance = cars[0].totalDistance + 0.02
+    const normal = advanceNeutralisationProcedure({
+      cars,
+      elapsedSeconds: 101,
+      phase: {
+        ...phase,
+        neutralisation: {
+          ...createdProcedure,
+          leaderCollectedAtSeconds: 90,
+          safetyCarDistance,
+          safetyCarLastUpdatedAtSeconds: 100,
+          stage: 'collecting-field',
+        },
+      },
+      seed: config.seed,
+      track: config.track,
+    })
+    const inThisLap = advanceNeutralisationProcedure({
+      cars,
+      elapsedSeconds: 101,
+      phase: {
+        ...phase,
+        neutralisation: {
+          ...createdProcedure,
+          inThisLapAtSeconds: 100,
+          leaderCollectedAtSeconds: 90,
+          orangeLights: false,
+          pitEntrySafetyCarDistance: safetyCarDistance + 0.5,
+          restartLineDistance: 11,
+          safetyCarDistance,
+          safetyCarLastUpdatedAtSeconds: 100,
+          stage: 'in-this-lap',
+        },
+      },
+      seed: config.seed,
+      track: config.track,
+    })
+    const normalProcedure = normal.phase?.neutralisation
+    const inThisLapProcedure = inThisLap.phase?.neutralisation
+
+    expect(normalProcedure?.kind).toBe('safety-car')
+    expect(inThisLapProcedure?.kind).toBe('safety-car')
+    if (
+      !normalProcedure ||
+      normalProcedure.kind !== 'safety-car' ||
+      !inThisLapProcedure ||
+      inThisLapProcedure.kind !== 'safety-car'
+    ) {
+      throw new Error('Safety Car procedure ended unexpectedly.')
+    }
+    expect(
+      inThisLapProcedure.safetyCarDistance - safetyCarDistance,
+    ).toBeGreaterThan(
+      (normalProcedure.safetyCarDistance - safetyCarDistance) * 1.5,
+    )
+  })
+
   it('does not form the queue or withdraw until the leader reaches the Safety Car', () => {
     const cars = createInitialRace(config).cars.slice(0, 3)
     const leader = atDistance(cars[0], 5.4)

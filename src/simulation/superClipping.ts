@@ -108,13 +108,13 @@ export function superClippingPowerForIntensity(options: {
     (0.9 - deploymentEfficiency) * 0.35 +
     (0.88 - team.machine.puOutput) * 0.12
   const drivePowerScale = clamp(
-    1 - Math.pow(intensity, 1.08) * 0.285 * systemSeverity,
-    0.64,
+    1 - Math.pow(intensity, 1.08) * 0.315 * systemSeverity,
+    0.61,
     1,
   )
   const requestedResistancePowerKw =
     Math.pow(intensity, 1.3) *
-    (48 + (1 - recoveryEfficiency) * 65)
+    (58 + (1 - recoveryEfficiency) * 65)
   const requestedElectricalPowerKw =
     requestedResistancePowerKw * recoveryEfficiency
   const remainingLapRecoveryMj = Math.max(

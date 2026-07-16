@@ -23,7 +23,12 @@ import {
 } from './energySystem'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import { advanceSuperClipping } from './superClipping'
-import { tireOperatingWindowFor } from './tires'
+import {
+  effectiveLineWaterMm,
+  tireOperatingWindowFor,
+  tireTrackGripMultiplier,
+  type TireTrackCondition,
+} from './tires'
 import { trackDynamicsAt } from './trackDynamics'
 import {
   airDensityKgM3,
@@ -59,12 +64,12 @@ function ersModeFor(options: {
     straightness,
   } = options
 
-  if (phase || batteryPercent < 24 || brakePercent > 5) {
+  if (phase || batteryPercent < 14 || brakePercent > 5) {
     return batteryPercent < 96 ? ('harvest' satisfies ErsMode) : ('balanced' satisfies ErsMode)
   }
 
   if (
-    batteryPercent > 36 &&
+    batteryPercent > 22 &&
     car.status === 'running' &&
     (overtakeStatus === 'active' ||
       car.gapToAhead < 1.4 ||
@@ -120,9 +125,11 @@ export function calculateCarTelemetry(options: {
   raceLap: number
   sessionType?: 'race-distance' | 'limited-time'
   timedRunPhase?: CarSnapshot['timedRunPhase']
+  standingStartLaunchActive?: boolean
   standingStartMguKRestricted?: boolean
   specifiedErsPowerSector?: boolean
   surfaceWaterMm?: number
+  trackCondition?: TireTrackCondition
   setup?: CarSetup
   headwindMps?: number
   track: TrackDefinition
@@ -148,9 +155,11 @@ export function calculateCarTelemetry(options: {
     raceLap,
     sessionType = 'race-distance',
     timedRunPhase = car.timedRunPhase,
+    standingStartLaunchActive = false,
     standingStartMguKRestricted = false,
     specifiedErsPowerSector = false,
     surfaceWaterMm: providedSurfaceWaterMm,
+    trackCondition: providedTrackCondition,
     setup,
     headwindMps = 0,
     track,
@@ -163,7 +172,18 @@ export function calculateCarTelemetry(options: {
   const surfaceWaterMm =
     providedSurfaceWaterMm ??
     (weather === 'heavy-rain' ? 1.2 : weather === 'light-rain' ? 0.35 : 0)
-  const dynamics = trackDynamicsAt(track, car.progress)
+  const trackCondition =
+    providedTrackCondition ??
+    ({
+      dryingLine: weather === 'clear' ? 1 : 0,
+      rainIntensityMmH: 0,
+      surfaceWaterMm,
+    } satisfies TireTrackCondition)
+  const effectiveWaterMm = effectiveLineWaterMm(trackCondition)
+  const dynamics = trackDynamicsAt(
+    track,
+    standingStartLaunchActive && car.progress >= 0.88 ? 0 : car.progress,
+  )
   const energyStoreAtFrameStart = normalizeEnergyStoreState(
     car.energyStore,
     team,
@@ -202,15 +222,30 @@ export function calculateCarTelemetry(options: {
         gapSeconds: car.gapToAhead,
         team,
       })
-  const waterGrip = clamp(1 - surfaceWaterMm * 0.055, 0.72, 1)
-  const localGrip = clamp(trackGrip * waterGrip, 0.38, 1.08)
+  const waterGrip = clamp(1 - effectiveWaterMm * 0.055, 0.72, 1)
+  const compoundGrip = tireTrackGripMultiplier(car.tire, trackCondition)
+  const localGrip = clamp(trackGrip * waterGrip * compoundGrip, 0.34, 1.08)
+  const gripSpeedMultiplier = clamp(
+    1 -
+      Math.max(0, 1 - localGrip) *
+        (0.24 + dynamics.curvature * 0.76),
+    0.54,
+    1.04,
+  )
+  const longStraightOpportunity = Math.max(
+    clamp((dynamics.straightLengthAheadMeters - 650) / 1_150, 0, 1),
+    clamp((dynamics.referenceSpeedKph - 340) / 55, 0, 1),
+  )
+  const longStraightTargetHeadroomKph =
+    38 * longStraightOpportunity * Math.pow(dynamics.straightness, 1.5)
   const targetSpeedKph =
-    dynamics.referenceSpeedKph *
+    (dynamics.referenceSpeedKph + longStraightTargetHeadroomKph) *
     clamp(paceScale, 0.42, 1.14) *
     clamp(localFlagPaceScale, 0.42, 1) *
     machineCapability *
     driverExecution *
     dirtyAirMultiplier *
+    gripSpeedMultiplier *
     fuelEffects.cornerSpeedMultiplier
   const speedExcess = Math.max(0, car.speedKph - targetSpeedKph)
   const brakingActivation = clamp(
@@ -219,11 +254,14 @@ export function calculateCarTelemetry(options: {
     1,
   )
   const profileBrakeDemand =
-    dynamics.brakingSeverity * 91 * brakingActivation +
-    speedExcess * (0.7 + dynamics.brakingSeverity * 0.65) +
-    (phase?.flag === 'yellow'
-      ? (phase.yellowSeverity === 'double' ? 11 : 7) + car.speedKph * 0.01
-      : 0)
+    dynamics.fullThrottle && !phase
+      ? 0
+      : dynamics.brakingSeverity * 91 * brakingActivation +
+        speedExcess * (0.7 + dynamics.brakingSeverity * 0.65) +
+        (phase?.flag === 'yellow'
+          ? (phase.yellowSeverity === 'double' ? 11 : 7) +
+            car.speedKph * 0.01
+          : 0)
   const brakeControl = driverSkillBlend(driver, {
     brakingSkill: 0.58,
     precision: 0.24,
@@ -343,6 +381,7 @@ export function calculateCarTelemetry(options: {
     paceMode: car.racePaceMode,
     phaseActive: phase !== null,
     speedKph: car.speedKph,
+    standingStartLaunchActive,
     state: energyStoreAtFrameStart,
     straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
     straightness: dynamics.straightness,
@@ -354,7 +393,7 @@ export function calculateCarTelemetry(options: {
     standingStartMguKRestricted || ersMode === 'harvest'
       ? 0
       : ersMode === 'balanced'
-        ? deploymentRequest * 0.62
+        ? deploymentRequest * 0.72
         : deploymentRequest
   const energyStep = advanceEnergyStore({
     additionalRecoveryRequestKw:
@@ -423,7 +462,7 @@ export function calculateCarTelemetry(options: {
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
   )
   const ersBatteryPercent = Math.round(energyStore.stateOfCharge * 100)
-  const towDragReduction = phase
+  const towDragReduction = phase || car.position <= 1 || car.gapToAhead <= 0
     ? 0
     : towDragReductionFor({
         dynamics,
@@ -465,10 +504,23 @@ export function calculateCarTelemetry(options: {
           Math.min(car.speedKph, targetSpeedKph * 0.96),
         )
       : physicallyIntegratedSpeedKph
+  const profileConvergenceRateKphPerSecond = phase
+    ? phase.flag === 'red'
+      ? Number.POSITIVE_INFINITY
+      : 96
+    : dynamics.cornerClass === 'high'
+      ? 34
+      : dynamics.cornerClass === 'medium'
+        ? 52
+        : 72
+  const rateLimitedProfileCeilingKph = Math.max(
+    targetSpeedKph * 1.035,
+    car.speedKph - profileConvergenceRateKphPerSecond * deltaSeconds,
+  )
   const cornerLimitedSpeedKph =
     dynamics.fullThrottle && !phase
       ? brakeModulatedSpeedKph
-      : Math.min(brakeModulatedSpeedKph, targetSpeedKph * 1.035)
+      : Math.min(brakeModulatedSpeedKph, rateLimitedProfileCeilingKph)
   const pitSpeedKph =
     car.pitPhase === 'box'
       ? 0

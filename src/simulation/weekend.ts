@@ -14,7 +14,7 @@ import type {
   QualifyingSegment,
 } from './qualifying'
 import { weekendTireAllocation } from './weekendTires'
-import { defaultCarSetup } from './engineering'
+import { baselineSetupForTrack } from './engineering'
 import { createCarComponents } from './components'
 
 const allCompounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
@@ -22,7 +22,7 @@ const allCompounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 export function createWeekendContext(
   drivers: Driver[],
   isSprintWeekend = false,
-  track?: Pick<TrackDefinition, 'tireNomination'>,
+  track?: TrackDefinition,
 ): WeekendContext {
   const tireSetsByDriver: WeekendContext['tireSetsByDriver'] = {}
   const tireSetInventoryByDriver: WeekendContext['tireSetInventoryByDriver'] = {}
@@ -44,7 +44,7 @@ export function createWeekendContext(
 
   for (const driver of drivers) {
     tireSetsByDriver[driver.id] = { ...allocation }
-    setupByDriver[driver.id] = { ...defaultCarSetup }
+    setupByDriver[driver.id] = baselineSetupForTrack(track)
     setupConfidenceByDriver[driver.id] = 0
     parcFermeLockedByDriver[driver.id] = false
     componentConditionByDriver[driver.id] = createCarComponents()

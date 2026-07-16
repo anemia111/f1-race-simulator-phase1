@@ -3,7 +3,11 @@ import { tireNominationForTrack } from '../data/tireNominations2026'
 import { driverAbilityValue } from './driverAbility'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
-import { effectiveCliffLaps } from './tires'
+import {
+  effectiveCliffLaps,
+  preferredTireCategoryFor,
+  type TireTrackCondition,
+} from './tires'
 import {
   trackGripForWeather,
   weatherFor,
@@ -133,8 +137,23 @@ export function legalStartCompoundForConditions(
   weather: ReturnType<typeof weatherFor>,
   trackGrip: number,
   wetWeatherTyresMandatory = false,
+  trackCondition?: TireTrackCondition,
 ): TireCompound {
-  if (wetWeatherTyresMandatory || weather === 'heavy-rain' || trackGrip < 0.76) {
+  if (wetWeatherTyresMandatory) {
+    return 'W'
+  }
+
+  if (trackCondition) {
+    const preferred = preferredTireCategoryFor(trackCondition)
+
+    if (preferred === 'W' || preferred === 'I') {
+      return preferred
+    }
+
+    return dryCompounds.has(planned) ? planned : 'M'
+  }
+
+  if (weather === 'heavy-rain' || trackGrip < 0.76) {
     return 'W'
   }
 

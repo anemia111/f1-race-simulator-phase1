@@ -505,7 +505,12 @@ export function decidePitStop(options: {
       ? (['S', 'M', 'H', 'I', 'W'] as TireCompound[]).find(
           (candidate) =>
             (availableCompounds[candidate] ?? 0) > 0 &&
-            compoundMatchesWeather(candidate, strategicWeather, strategicGrip),
+            compoundMatchesWeather(
+              candidate,
+              strategicWeather,
+              strategicGrip,
+              forecastIsActionable ? undefined : trackCondition,
+            ),
         ) ?? preferredCompound
       : preferredCompound
   const closeAhead =

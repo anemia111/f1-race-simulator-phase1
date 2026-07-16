@@ -209,7 +209,7 @@ describe('track-dependent systems', () => {
     const car = {
       ...snapshot.cars[1],
       gapToAhead: 0.6,
-      progress: zone.start,
+      progress: zone.lowGripStart ?? zone.start,
       status: 'running' as const,
     }
 
