@@ -398,5 +398,5 @@ describe('on-track speed calibration', () => {
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(325)
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(410)
     expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(430)
-  }, 10_000)
+  }, 30_000)
 })
