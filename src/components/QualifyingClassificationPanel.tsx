@@ -20,6 +20,13 @@ const formatLapTime = (seconds: number | null | undefined) => {
   return `${minutes}:${remainder}`
 }
 
+const releaseStrategyLabels = {
+  'bank-lap': 'BANK',
+  'traffic-gap': 'GAP',
+  'track-evolution': 'EVO',
+  'weather-priority': 'RAIN',
+} as const
+
 export function QualifyingClassificationPanel({
   onClose,
   snapshot,
@@ -32,6 +39,8 @@ export function QualifyingClassificationPanel({
     ? ([12, 10, 8] as const)
     : ([18, 15, 13] as const)
   const { q2Size, q3Size } = qualifyingCutSizes(snapshot.cars.length)
+  const q1Eliminated = snapshot.cars.length - q2Size
+  const q2Eliminated = q2Size - q3Size
   const activeParticipants = useMemo(
     () => new Set(snapshot.timedParticipantDriverIds),
     [snapshot.timedParticipantDriverIds],
@@ -68,8 +77,13 @@ export function QualifyingClassificationPanel({
     const car = snapshot.cars[index]
 
     if (car.status === 'disqualified') return 'DSQ'
+    if (car.qualifyingClassificationStatus === 'no-time') {
+      return car.stewardsGrantedStart ? 'PERMIT' : 'NO TIME'
+    }
+    if (car.qualifyingClassificationStatus === 'deleted') {
+      return car.stewardsGrantedStart ? 'PERMIT' : 'DELETED'
+    }
     if (car.status === 'dns') return 'DNS'
-    if (car.outside107Percent && !car.stewardsGrantedStart) return '107%'
     if (isFinal) {
       if (index < q3Size) return segments[2]
       if (index < q2Size) return `OUT ${segments[1]}`
@@ -77,7 +91,22 @@ export function QualifyingClassificationPanel({
     }
     if (activeParticipants.has(driverId)) {
       if (car.timedRunPhase === 'attack-lap') return 'FLYING'
-      return car.status === 'pit' ? 'PIT' : activeSegment
+      if (car.timedRunPhase === 'out-lap') return 'OUT LAP'
+      if (car.timedRunPhase === 'in-lap') return 'IN LAP'
+      if (car.status === 'pit') {
+        const releaseLabel = car.timedReleaseStrategy
+          ? releaseStrategyLabels[car.timedReleaseStrategy]
+          : null
+        const releaseIn =
+          car.pitUntilSeconds === null
+            ? null
+            : Math.max(0, Math.ceil(car.pitUntilSeconds - snapshot.elapsedSeconds))
+
+        return releaseLabel && releaseIn !== null
+          ? `${releaseLabel} ${releaseIn}s`
+          : 'PIT'
+      }
+      return activeSegment
     }
     if (currentSegmentIndex <= 0) return index < q2Size ? 'Q2' : 'DROP'
     if (currentSegmentIndex === 1 && index < q2Size) {
@@ -108,6 +137,10 @@ export function QualifyingClassificationPanel({
       <div className="classification-summary">
         <span>Format</span>
         <strong>{segments[0]} {durations[0]} / {segments[1]} {durations[1]} / {segments[2]} {durations[2]} min</strong>
+        <span>Field</span>
+        <strong>{snapshot.cars.length} → {q2Size} → {q3Size}</strong>
+        <span>Eliminated</span>
+        <strong>{segments[0]} {q1Eliminated} / {segments[1]} {q2Eliminated}</strong>
         <span>{isFinal ? 'Pole' : `Best ${referenceSegment}`}</span>
         <strong>
           {fastestReference
@@ -161,7 +194,7 @@ export function QualifyingClassificationPanel({
       </ol>
       <footer>
         <Flag aria-hidden="true" size={13} />
-        <span>Q1/Q2 times reset for advancing cars; ties retain the earlier lap.</span>
+        <span>FIA 2026 B2.4 · exact tie: earlier lap first</span>
       </footer>
     </section>
   )

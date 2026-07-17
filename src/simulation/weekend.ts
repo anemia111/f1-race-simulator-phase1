@@ -249,7 +249,11 @@ export function completeQualifyingSession(
     }
 
     if (stage === 'qualifying') {
-      qualificationStatusByDriver[car.driverId] = car.outside107Percent
+      const requiresPermission =
+        car.qualifyingClassificationStatus === 'no-time' ||
+        car.qualifyingClassificationStatus === 'deleted'
+
+      qualificationStatusByDriver[car.driverId] = requiresPermission
         ? car.stewardsGrantedStart
           ? 'exempt'
           : 'not-qualified'

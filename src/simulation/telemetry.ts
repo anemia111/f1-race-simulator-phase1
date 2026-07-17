@@ -337,10 +337,13 @@ export function calculateCarTelemetry(options: {
     timedRunPhase === 'out-lap' ||
     timedRunPhase === 'in-lap' ||
     timedRunPhase === 'cooldown'
+  const isQualifyingAttack = timedRunPhase === 'attack-lap'
   const ersMode = standingStartMguKRestricted
     ? ('balanced' as const)
     : isPreparationLap || superClipping.intensity >= 0.04
       ? ('harvest' as const)
+      : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
+        ? ('deploy' as const)
       : requestedErsMode
   const keyAccelerationZone =
     specifiedErsPowerSector ||
@@ -411,6 +414,13 @@ export function calculateCarTelemetry(options: {
     }),
     gripMultiplier: localGrip,
     maxRechargePerLapMj,
+    recoveryRequestScale: isQualifyingAttack
+      ? batteryPercentAtFrameStart < 18
+        ? 0.82
+        : batteryPercentAtFrameStart < 35
+          ? 0.56
+          : 0.32
+      : 1,
     speedKph: car.speedKph,
     state: energyStoreAtFrameStart,
     surfaceWaterMm,

@@ -53,6 +53,18 @@ export function RaceInsightsPanel({
   onSetDriverPaceMode,
 }: RaceInsightsPanelProps) {
   const [requestedCompound, setRequestedCompound] = useState<CarSnapshot['tire']>(car.tire)
+  const qualifyingClassificationStatus =
+    car.qualifyingClassificationStatus ?? 'classified'
+  const qualifyingClassificationLabel =
+    qualifyingClassificationStatus === 'no-time'
+      ? car.stewardsGrantedStart
+        ? 'PERMITTED'
+        : 'NO TIME'
+      : qualifyingClassificationStatus === 'deleted'
+        ? car.stewardsGrantedStart
+          ? 'PERMITTED'
+          : 'DELETED'
+        : 'CLASSIFIED'
   const tireManagement = driverAbilityValue(driver, 'tireManagement')
   const tireCondition = useMemo(
     () =>
@@ -335,7 +347,7 @@ export function RaceInsightsPanel({
           <span>Grid change</span><strong>{car.gridPosition - car.position > 0 ? '+' : ''}{car.gridPosition - car.position}</strong>
           <span>Penalties</span><strong>{car.penaltyLaps > 0 ? `${car.penaltyLaps}L + ` : ''}{car.penaltySeconds + car.servedPenaltySeconds}s / {car.penaltyPoints} PP / {car.trackLimitWarnings} TL</strong>
           <span>Deleted laps</span><strong>{car.deletedLapCount} / {car.impedingWarnings} impeding</strong>
-          <span>107% status</span><strong className={car.outside107Percent && !car.stewardsGrantedStart ? 'flag-red' : 'flag-clear'}>{car.outside107Percent ? (car.stewardsGrantedStart ? 'EXEMPT' : 'OUT') : 'CLEAR'}</strong>
+          <span>Q1 classification</span><strong className={qualifyingClassificationStatus !== 'classified' && !car.stewardsGrantedStart ? 'flag-red' : 'flag-clear'}>{qualifyingClassificationLabel}</strong>
           <span>Race events</span><strong>{relevantEvents.length}</strong>
           <span>Weekend</span><strong>{weekendContext.completed.length} complete</strong>
         </div>

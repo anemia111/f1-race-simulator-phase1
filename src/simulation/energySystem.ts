@@ -72,6 +72,7 @@ export type AdvanceEnergyStoreOptions = {
   driverWetSkill: number
   gripMultiplier: number
   maxRechargePerLapMj: number
+  recoveryRequestScale?: number
   speedKph: number
   state: EnergyStoreState
   surfaceWaterMm: number
@@ -331,8 +332,11 @@ export function energyDeploymentRequestFor(
     timedRunPhase,
   } = options
 
+  const minimumDeploymentThrottle =
+    timedRunPhase === 'attack-lap' ? 18 : 52
+
   if (
-    throttlePercent < 52 ||
+    throttlePercent < minimumDeploymentThrottle ||
     timedRunPhase === 'garage' ||
     state.stateOfCharge <= 0.01
   ) {
@@ -379,7 +383,7 @@ export function energyDeploymentRequestFor(
     1.12,
   )
   const reserveSoc =
-    (timedRunPhase === 'attack-lap' ? 0.025 : 0.045) +
+    (timedRunPhase === 'attack-lap' ? 0.012 : 0.045) +
     remainingLapShare * (0.025 + management * 0.02)
   const reserveFactor = smoothstep(
     reserveSoc,
@@ -402,7 +406,7 @@ export function energyDeploymentRequestFor(
           : 1
   const timedMultiplier =
     timedRunPhase === 'attack-lap'
-      ? 1.32
+      ? 1.52
       : timedRunPhase === 'out-lap' ||
           timedRunPhase === 'in-lap' ||
           timedRunPhase === 'cooldown'
@@ -415,7 +419,7 @@ export function energyDeploymentRequestFor(
   const terminalSpeedAllocation =
     1 - smoothstep(420, 432, speedKph) * 0.65
 
-  return clamp(
+  const strategicRequest =
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *
       0.72 *
       longStraightMultiplier *
@@ -426,7 +430,17 @@ export function energyDeploymentRequestFor(
       (overtakeActive ? 1.28 : 1) *
       (isFinalLap ? 1.14 : 1) *
       terminalSpeedAllocation *
-      neutralisationMultiplier,
+      neutralisationMultiplier
+  const qualifyingAttackMinimum =
+    timedRunPhase === 'attack-lap'
+      ? (0.88 + straightValue * 0.12) *
+        smoothstep(18, 72, throttlePercent) *
+        terminalSpeedAllocation *
+        neutralisationMultiplier
+      : 0
+
+  return clamp(
+    Math.max(strategicRequest, qualifyingAttackMinimum),
     0,
     1,
   )
@@ -475,13 +489,15 @@ function advanceEnergyStoreSubstep(
   const rearAxleRecoveryShare = 0.56
   const driverRecoveryControl =
     0.82 + clamp(options.driverErsManagement, 0, 1) * 0.18
+  const recoveryRequestScale = clamp(options.recoveryRequestScale ?? 1, 0, 1.25)
   const brakeRecoveryRequestKw =
     requestedBrakePowerKw *
     (1 - aerodynamicLossShare) *
     rearAxleRecoveryShare *
     wetStability *
     driverRecoveryControl *
-    (0.84 + parameters.regenBlendingQuality * 0.16)
+    (0.84 + parameters.regenBlendingQuality * 0.16) *
+    recoveryRequestScale
   const liftRecoveryRequestKw =
     options.allowLiftCoastRecovery !== false &&
     brakeRequest < 0.04 &&
@@ -493,7 +509,7 @@ function advanceEnergyStoreSubstep(
             (58 + 32 * parameters.energyManagementSoftwareQuality),
           0,
           90,
-        )
+        ) * recoveryRequestScale
       : 0
   const additionalRecoveryRequestKw = Math.max(
     0,

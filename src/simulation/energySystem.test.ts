@@ -457,6 +457,29 @@ describe('physical Energy Store integration', () => {
     ).toBeGreaterThan(dry.frictionBrakePowerKw / dry.requestedBrakePowerKw)
   })
 
+  it('uses a qualifying recovery map without changing the recharge ceiling', () => {
+    const initial = createInitialEnergyStore(team, 0.45)
+    const normalRecovery = step(initial, {
+      brakePercent: 54,
+      recoveryRequestScale: 1,
+      speedKph: 285,
+      throttlePercent: 0,
+    }).state
+    const qualifyingRecovery = step(initial, {
+      brakePercent: 54,
+      recoveryRequestScale: 0.32,
+      speedKph: 285,
+      throttlePercent: 0,
+    }).state
+
+    expect(qualifyingRecovery.actualHarvestedThisLapMJ).toBeLessThan(
+      normalRecovery.actualHarvestedThisLapMJ,
+    )
+    expect(qualifyingRecovery.stateOfCharge).toBeLessThan(
+      normalRecovery.stateOfCharge,
+    )
+  })
+
   it('ENERGY-14: excessive early deployment creates real clipping recovery demand', () => {
     let state = createInitialEnergyStore(team, 0.88)
 

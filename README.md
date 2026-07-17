@@ -12,7 +12,10 @@ driving game or a broadcast-video renderer.
 - A canonical checked-in performance CSV supplies all 15 teams and 30 drivers.
   Its values are retained verbatim, including Yuki Nakayama (`NAK`) at car
   number 31 and the `RB` team identity.
-- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows.
+- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. The 30-car
+  qualifying field runs 18/15/13-minute periods and cuts to 20, then 10.
+  Each dry qualifying attempt uses a Soft-tyre out lap, full-attack lap, and
+  in lap before returning to the garage, with attack-specific ERS deployment.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
   lap records, including aborted starts, pit-lane starts, and standing/rolling
   red-flag restarts.
@@ -64,7 +67,7 @@ driving game or a broadcast-video renderer.
   bounded and schema-checked, so stale or corrupted browser data falls back
   without freezing startup or contaminating standings and calibration.
 - Qualifying lap deletion, double-yellow invalidation, impeding, pit-exit
-  queues, 107% checks, and steward exemptions.
+  queues, no-time classification, and steward permissions.
 - Historical OpenF1 timeline scrubbing and observed sector, pit-transit,
   maximum-speed, and tire-degradation calibration.
 - Date-bounded 2026 OpenF1 standings snapshots through the British Grand Prix

@@ -23,6 +23,7 @@ export function buildTimedSessionPlan(
         cursor + segment.sessionDurationSeconds + segment.suspensionSeconds
       const plan: TimedSessionSegmentPlan = {
         compound: segment.results[0]?.compound ?? 'S',
+        declaredWet: segment.weather !== 'clear',
         endsAtSeconds,
         name: segment.name,
         participantDriverIds: segment.results.map((result) => result.driverId),
@@ -62,4 +63,3 @@ export function timedSessionStateAt(
 
   return { segment, suspended }
 }
-

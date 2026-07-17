@@ -74,6 +74,19 @@ export type PenaltyKind =
   | 'pit-lane-start'
   | 'disqualification'
 export type TimedRunPhase = 'garage' | 'out-lap' | 'attack-lap' | 'in-lap' | 'cooldown'
+export type TimedSegmentAttemptStatus =
+  | 'garage'
+  | 'left-pits'
+  | 'flying-lap'
+export type QualifyingReleaseStrategy =
+  | 'bank-lap'
+  | 'traffic-gap'
+  | 'track-evolution'
+  | 'weather-priority'
+export type QualifyingClassificationStatus =
+  | 'classified'
+  | 'no-time'
+  | 'deleted'
 export type WeekendStage =
   | 'fp1'
   | 'fp2'
@@ -565,6 +578,8 @@ export type RaceConfig = {
 
 export type TimedSessionSegmentPlan = {
   compound: TireCompound
+  /** True when race control treats the segment as wet for run planning. */
+  declaredWet?: boolean
   endsAtSeconds: number
   name: string
   participantDriverIds: string[]
@@ -773,9 +788,14 @@ export type CarSnapshot = {
   timedRunPhase: TimedRunPhase | null
   timedRunsCompleted: number
   timedSegmentBestSeconds: Record<string, number | null>
+  /** Clock time of each segment best; exact ties favour the earlier lap. */
+  timedSegmentBestSetAtSeconds?: Record<string, number | null>
+  /** FIA no-time ordering evidence, reset at the start of each segment. */
+  timedSegmentAttemptStatus?: Record<string, TimedSegmentAttemptStatus>
+  timedReleaseStrategy?: QualifyingReleaseStrategy | null
+  qualifyingClassificationStatus?: QualifyingClassificationStatus
   deletedLapCount: number
   impedingWarnings: number
-  outside107Percent: boolean
   stewardsGrantedStart: boolean
   pitExitQueueSeconds: number
   // --- race state (phase 3-B) ---

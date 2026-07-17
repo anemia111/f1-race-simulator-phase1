@@ -60,6 +60,7 @@ import {
   yellowFlagZoneForIncident,
 } from './raceEvents'
 import { hashChance } from './random'
+import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { automaticRacePaceModeFor } from './racePace'
 import {
   advanceNeutralisationProcedure,
@@ -99,6 +100,7 @@ import {
 import { updateOvertakeEligibilityAfterTravel } from './activeAero'
 import {
   advanceTireDynamicState,
+  preferredTireCategoryFor,
   tireDeltaSeconds,
   tireWearPercentPerLap,
   type TireTrackCondition,
@@ -492,7 +494,7 @@ function addDeferredBattleEffect(
   })
 }
 
-function timedSessionPitReleaseSeconds(
+function timedSessionReleasePlan(
   config: RaceConfig,
   driver: Driver,
   gridIndex: number,
@@ -500,22 +502,44 @@ function timedSessionPitReleaseSeconds(
   segment?: TimedSessionSegmentPlan | null,
   runIndex = 0,
 ) {
+  if (
+    segment &&
+    (stage === 'qualifying' || stage === 'sprintQualifying')
+  ) {
+    const slot = buildQualifyingReleaseSchedule({
+      config,
+      participantDriverIds: segment.participantDriverIds,
+      runIndex,
+      segment,
+      stage,
+    }).find((candidate) => candidate.driverId === driver.id)
+
+    if (slot) {
+      return {
+        pitExitAtSeconds: slot.pitExitAtSeconds,
+        strategy: slot.strategy,
+      }
+    }
+  }
+
   if (segment) {
     const releaseWindow = Math.min(
       78,
       Math.max(24, (segment.endsAtSeconds - segment.startsAtSeconds) * 0.12),
     )
 
-    return (
-      segment.startsAtSeconds +
-      18 +
-      gridIndex * 0.8 +
-      runIndex * 6 +
-      hashChance(
-        `${config.seed}:segment-release:${segment.name}:${driver.id}:${runIndex}`,
-      ) *
-        releaseWindow
-    )
+    return {
+      pitExitAtSeconds:
+        segment.startsAtSeconds +
+        18 +
+        gridIndex * 0.8 +
+        runIndex * 6 +
+        hashChance(
+          `${config.seed}:segment-release:${segment.name}:${driver.id}:${runIndex}`,
+        ) *
+          releaseWindow,
+      strategy: null,
+    }
   }
 
   const isQualifyingStyle =
@@ -525,12 +549,14 @@ function timedSessionPitReleaseSeconds(
     stage === 'sprintQualifying' ? 150 : stage === 'qualifying' ? 250 : 980
   const garageSpacingSeconds = isQualifyingStyle ? 4 : 7
 
-  return (
-    baseSeconds +
-    gridIndex * garageSpacingSeconds +
-    hashChance(`${config.seed}:session-release:${stage}:${driver.id}`) *
-      spreadSeconds
-  )
+  return {
+    pitExitAtSeconds:
+      baseSeconds +
+      gridIndex * garageSpacingSeconds +
+      hashChance(`${config.seed}:session-release:${stage}:${driver.id}`) *
+        spreadSeconds,
+    strategy: null,
+  }
 }
 
 function timedRunLimit(stage: WeekendStage, segmentLabel: string | null) {
@@ -546,14 +572,29 @@ function timedRunCompound(
   runIndex: number,
   plannedCompound: TireCompound | null,
   weather: WeatherState,
-  trackGrip: number,
+  trackCondition?: TireTrackCondition,
 ): TireCompound {
-  if (weather === 'heavy-rain' || trackGrip < 0.76) {
+  const preferred = trackCondition
+    ? preferredTireCategoryFor(trackCondition)
+    : weather === 'heavy-rain'
+      ? 'W'
+      : weather === 'light-rain'
+        ? 'I'
+        : null
+
+  if (preferred === 'W') {
     return 'W'
   }
 
-  if (weather === 'light-rain' || trackGrip < 0.93) {
+  if (preferred === 'I') {
     return 'I'
+  }
+
+  // Grand Prix qualifying runs are built around the fastest dry compound.
+  // Keep the segment plan from accidentally carrying a race/practice tyre
+  // into Q1-Q3; Sprint Qualifying retains its prescribed M/M/S plan.
+  if (stage === 'qualifying') {
+    return 'S'
   }
 
   if (plannedCompound) {
@@ -591,25 +632,9 @@ function timedSessionStartingTire(
   stage: WeekendStage,
   fallback: TireCompound,
   weather: ReturnType<typeof weatherFor>,
-  trackGrip: number,
+  trackCondition: TireTrackCondition,
 ): TireCompound {
-  if (weather === 'heavy-rain' || trackGrip < 0.76) {
-    return 'W'
-  }
-
-  if (weather === 'light-rain' || trackGrip < 0.93) {
-    return 'I'
-  }
-
-  if (stage === 'qualifying') {
-    return 'S'
-  }
-
-  if (stage === 'sprintQualifying') {
-    return 'M'
-  }
-
-  return fallback
+  return timedRunCompound(stage, 0, fallback, weather, trackCondition)
 }
 
 function timedRunPaceFor(options: {
@@ -654,15 +679,19 @@ function telemetryForTimedRunPhase<T extends {
     return telemetry
   }
 
-  const scale = phase === 'in-lap' ? 0.66 : phase === 'out-lap' ? 0.74 : 0.82
+  const rpmScale = phase === 'in-lap' ? 0.88 : phase === 'out-lap' ? 0.92 : 0.94
+  const throttleCeiling =
+    phase === 'in-lap' ? 68 : phase === 'out-lap' ? 82 : 76
 
   return {
     ...telemetry,
     activeAeroMode: 'corner',
     overtakeStatus: 'disabled',
-    rpm: Math.round(telemetry.rpm * scale),
-    speedKph: Math.round(telemetry.speedKph * scale),
-    throttlePercent: Math.round(telemetry.throttlePercent * scale),
+    rpm: Math.round(telemetry.rpm * rpmScale),
+    throttlePercent: Math.min(
+      throttleCeiling,
+      telemetry.throttlePercent,
+    ),
   }
 }
 
@@ -970,6 +999,10 @@ function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
       return {
         groupIndex: car.bestLapTimeSeconds === null ? -1 : 0,
         groupLabel: null,
+        noTimeCategory: 2,
+        previousSetAt: null,
+        previousTime: null,
+        setAt: null,
         time: car.bestLapTimeSeconds,
       }
     }
@@ -987,13 +1020,41 @@ function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
       }
     }
 
+    const segmentName = groupIndex >= 0 ? segmentNames[groupIndex] : null
+    const attemptStatus = segmentName
+      ? car.timedSegmentAttemptStatus?.[segmentName] ??
+        (car.timedRunPhase === 'attack-lap' ||
+        car.timedRunPhase === 'in-lap' ||
+        car.timedRunsCompleted > 0
+          ? 'flying-lap'
+          : car.status === 'running'
+            ? 'left-pits'
+            : 'garage')
+      : 'garage'
+    const previousSegmentName =
+      groupIndex > 0 ? segmentNames[groupIndex - 1] : null
+
     return {
       groupIndex,
-      groupLabel: groupIndex >= 0 ? segmentNames[groupIndex] : null,
-      time:
-        groupIndex >= 0
-          ? (car.timedSegmentBestSeconds[segmentNames[groupIndex]] ?? null)
-          : null,
+      groupLabel: segmentName,
+      noTimeCategory:
+        attemptStatus === 'flying-lap'
+          ? 0
+          : attemptStatus === 'left-pits'
+            ? 1
+            : 2,
+      previousSetAt: previousSegmentName
+        ? (car.timedSegmentBestSetAtSeconds?.[previousSegmentName] ?? null)
+        : null,
+      previousTime: previousSegmentName
+        ? (car.timedSegmentBestSeconds[previousSegmentName] ?? null)
+        : null,
+      setAt: segmentName
+        ? (car.timedSegmentBestSetAtSeconds?.[segmentName] ?? null)
+        : null,
+      time: segmentName
+        ? (car.timedSegmentBestSeconds[segmentName] ?? null)
+        : null,
     }
   }
   const eligible = cars.filter(
@@ -1019,6 +1080,60 @@ function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
         return left.time - right.time
       }
 
+      if (left.time !== null && right.time !== null) {
+        if (left.setAt === null && right.setAt !== null) {
+          return 1
+        }
+        if (left.setAt !== null && right.setAt === null) {
+          return -1
+        }
+        if (
+          left.setAt !== null &&
+          right.setAt !== null &&
+          left.setAt !== right.setAt
+        ) {
+          return left.setAt - right.setAt
+        }
+      }
+
+      if (
+        left.time === null &&
+        right.time === null &&
+        left.noTimeCategory !== right.noTimeCategory
+      ) {
+        return left.noTimeCategory - right.noTimeCategory
+      }
+
+      if (left.time === null && right.time === null) {
+        if (left.previousTime === null && right.previousTime !== null) {
+          return 1
+        }
+        if (left.previousTime !== null && right.previousTime === null) {
+          return -1
+        }
+        if (
+          left.previousTime !== null &&
+          right.previousTime !== null &&
+          left.previousTime !== right.previousTime
+        ) {
+          return left.previousTime - right.previousTime
+        }
+
+        if (left.previousSetAt === null && right.previousSetAt !== null) {
+          return 1
+        }
+        if (left.previousSetAt !== null && right.previousSetAt === null) {
+          return -1
+        }
+        if (
+          left.previousSetAt !== null &&
+          right.previousSetAt !== null &&
+          left.previousSetAt !== right.previousSetAt
+        ) {
+          return left.previousSetAt - right.previousSetAt
+        }
+      }
+
       return left.car.gridPosition - right.car.gridPosition
     })
   const excluded = cars
@@ -1035,6 +1150,10 @@ function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
       car,
       groupIndex: -2,
       groupLabel: null,
+      noTimeCategory: 2,
+      previousSetAt: null,
+      previousTime: null,
+      setAt: null,
       time: null,
     })),
   ]
@@ -1460,8 +1579,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       weekendStage === 'race' &&
       config.weekendContext?.qualificationStatusByDriver[driver.id] ===
         'not-qualified'
-    const pitReleaseAtSeconds = isTimedSession
-      ? timedSessionPitReleaseSeconds(
+    const timedReleasePlan = isTimedSession
+      ? timedSessionReleasePlan(
           config,
           driver,
           gridIndex,
@@ -1469,12 +1588,13 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
           initialTimedSegment,
         )
       : null
+    const pitReleaseAtSeconds = timedReleasePlan?.pitExitAtSeconds ?? null
     const plannedStartingTire = isTimedSession
       ? timedSessionStartingTire(
           weekendStage,
           initialTimedSegment?.compound ?? driver.tire,
           weather,
-          trackGrip,
+          initialTireTrackCondition,
         )
       : driver.tire
     const startingTire = legalStartCompoundForConditions(
@@ -1581,9 +1701,18 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         initialTimedSegment?.participantDriverIds.includes(driver.id)
           ? { [initialTimedSegment.name]: null }
           : {},
+      timedSegmentBestSetAtSeconds:
+        initialTimedSegment?.participantDriverIds.includes(driver.id)
+          ? { [initialTimedSegment.name]: null }
+          : {},
+      timedSegmentAttemptStatus:
+        initialTimedSegment?.participantDriverIds.includes(driver.id)
+          ? { [initialTimedSegment.name]: 'garage' }
+          : {},
+      timedReleaseStrategy: timedReleasePlan?.strategy ?? null,
+      qualifyingClassificationStatus: 'classified',
       deletedLapCount: 0,
       impedingWarnings: 0,
-      outside107Percent: false,
       stewardsGrantedStart: false,
       pitExitQueueSeconds: 0,
       status: didNotQualify
@@ -2778,6 +2907,10 @@ export function advanceRace(
           (candidate) => candidate.name === segment.name,
         )
       : -1
+    const previousSegmentName =
+      segmentIndex > 0
+        ? config.timedSessionPlan.segments[segmentIndex - 1]?.name ?? null
+        : null
     timedParticipantDriverIds = segment
       ? timedSegmentChanged && segmentIndex > 0
         ? snapshot.cars
@@ -2785,7 +2918,10 @@ export function advanceRace(
               (car) =>
                 car.status !== 'retired' &&
                 car.status !== 'disqualified' &&
-                car.status !== 'dns',
+                car.status !== 'dns' &&
+                previousSegmentName !== null &&
+                typeof car.timedSegmentBestSeconds[previousSegmentName] ===
+                  'number',
             )
             .slice(0, segment.participantDriverIds.length)
             .map((car) => car.driverId)
@@ -2794,6 +2930,26 @@ export function advanceRace(
           : snapshot.timedParticipantDriverIds
       : []
     const participantIds = new Set(timedParticipantDriverIds)
+    const justEndedSegment = !segment
+      ? config.timedSessionPlan.segments.findLast(
+          (candidate) => candidate.endsAtSeconds <= elapsedSeconds,
+        ) ?? null
+      : null
+    const releaseScheduleSegment = segment
+      ? {
+          ...segment,
+          participantDriverIds: timedParticipantDriverIds,
+          ...(timedSuspensionChanged &&
+          !timedSessionState.suspended &&
+          !timedSegmentChanged
+            ? {
+                startsAtSeconds: elapsedSeconds,
+                suspensionEndsAtSeconds: null,
+                suspensionStartsAtSeconds: null,
+              }
+            : {}),
+        }
+      : null
     frameCars = snapshot.cars.map((car, index) => {
       if (
         car.status === 'retired' ||
@@ -2812,10 +2968,10 @@ export function advanceRace(
       const mayCompleteChequeredLap =
         !segment &&
         !timedSessionState.suspended &&
-        timedSessionDurationSeconds !== null &&
+        justEndedSegment !== null &&
         car.timedRunPhase === 'attack-lap' &&
         car.lapStartedAtSeconds !== null &&
-        car.lapStartedAtSeconds < timedSessionDurationSeconds
+        car.lapStartedAtSeconds < justEndedSegment.endsAtSeconds
 
       if (mayCompleteChequeredLap) {
         return car
@@ -2847,6 +3003,7 @@ export function advanceRace(
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
           timedRunStartedAtSeconds: null,
           timedRunPhase: 'garage' as const,
+          timedReleaseStrategy: null,
         }
       }
 
@@ -2864,26 +3021,37 @@ export function advanceRace(
             completedRuns,
             segment.compound,
             weather,
-            trackGrip,
+            {
+              dryingLine:
+                trackWater.dryingLineBySector.reduce(
+                  (sum, value) => sum + value,
+                  0,
+                ) / trackWater.dryingLineBySector.length,
+              rainIntensityMmH,
+              surfaceWaterMm:
+                trackWater.surfaceWaterMmBySector.reduce(
+                  (sum, value) => sum + value,
+                  0,
+                ) / trackWater.surfaceWaterMmBySector.length,
+            },
           )
         : car.tire
-      const plannedRelease = timedSessionPitReleaseSeconds(
+      const plannedRelease = timedSessionReleasePlan(
         config,
         driver,
         index,
         weekendStage,
-        segment,
+        releaseScheduleSegment,
         completedRuns,
       )
       const releaseAtSeconds = Math.max(
-        plannedRelease,
-        elapsedSeconds +
-          8 +
-          hashChance(
-            `${config.seed}:timed-resume:${segment.name}:${car.driverId}:${completedRuns}`,
-          ) *
-            28,
+        plannedRelease.pitExitAtSeconds,
+        elapsedSeconds + 2,
       )
+      const estimatedOutLapSeconds =
+        config.track.baseLapTime * (segment.declaredWet ? 1.9 : 1.6)
+      const canStartFlyingLap =
+        releaseAtSeconds + estimatedOutLapSeconds < segment.endsAtSeconds
       const tireSetsRemaining = startsNewSegment
         ? {
             ...car.tireSetsRemaining,
@@ -2920,7 +3088,7 @@ export function advanceRace(
         pitPhase: 'box' as const,
         pitLaneProgress: pitBox,
         pitStartedAtSeconds: null,
-        pitUntilSeconds: releaseAtSeconds,
+        pitUntilSeconds: canStartFlyingLap ? releaseAtSeconds : null,
         pitExitUntilSeconds: null,
         pendingTire: null,
         lapStartedAtSeconds: null,
@@ -2930,12 +3098,30 @@ export function advanceRace(
         timedRunStartedAtSeconds: null,
         timedRunPhase: 'garage' as const,
         timedRunsCompleted: completedRuns,
+        timedReleaseStrategy: canStartFlyingLap
+          ? plannedRelease.strategy
+          : null,
         timedSegmentBestSeconds: startsNewSegment
           ? {
               ...car.timedSegmentBestSeconds,
               [segment.name]: null,
             }
           : car.timedSegmentBestSeconds,
+        timedSegmentBestSetAtSeconds: startsNewSegment
+          ? {
+              ...car.timedSegmentBestSetAtSeconds,
+              [segment.name]: null,
+            }
+          : car.timedSegmentBestSetAtSeconds,
+        timedSegmentAttemptStatus: startsNewSegment
+          ? {
+              ...car.timedSegmentAttemptStatus,
+              [segment.name]: 'garage' as const,
+            }
+          : car.timedSegmentAttemptStatus,
+        qualifyingClassificationStatus: startsNewSegment
+          ? 'classified' as const
+          : car.qualifyingClassificationStatus,
         processedLap: Math.floor(car.totalDistance),
       }
     })
@@ -3330,6 +3516,13 @@ export function advanceRace(
           timedRunPhase: isTimedLapSession(weekendStage)
             ? 'out-lap'
             : car.timedRunPhase,
+          timedSegmentAttemptStatus:
+            isTimedSession && timedSessionState.segment
+              ? {
+                  ...car.timedSegmentAttemptStatus,
+                  [timedSessionState.segment.name]: 'left-pits' as const,
+                }
+              : car.timedSegmentAttemptStatus,
           lapStartedAtSeconds: isTimedSession ? null : elapsedSeconds,
           passedDoubleYellowThisLap: isTimedSession
             ? false
@@ -3465,8 +3658,18 @@ export function advanceRace(
       car.progress,
       carSector,
     )
+    const timedPaceMode = isTimedSession
+      ? car.timedRunPhase === 'attack-lap'
+        ? ('push' as const)
+        : car.timedRunPhase === 'out-lap' ||
+            car.timedRunPhase === 'in-lap' ||
+            car.timedRunPhase === 'cooldown'
+          ? ('save' as const)
+          : ('standard' as const)
+      : null
     const racePaceMode =
       requestedPaceMode ??
+      timedPaceMode ??
       automaticRacePaceModeFor({
         car,
         gapBehindSeconds: frameCars[index + 1]?.gapToAhead ?? null,
@@ -4368,6 +4571,12 @@ export function advanceRace(
           const completedRun = next.timedRunsCompleted + 1
           const segmentKey =
             timedSessionState.segment?.name ??
+            config.timedSessionPlan?.segments.findLast((segment) =>
+              Object.prototype.hasOwnProperty.call(
+                next.timedSegmentBestSeconds,
+                segment.name,
+              ),
+            )?.name ??
             snapshot.timedSegmentLabel ??
             weekendStageLabelFor(weekendStage)
           const rawLapTime = Math.max(
@@ -4543,6 +4752,16 @@ export function advanceRace(
                 ? recordedLapTime
                 : previousSegmentBest,
             },
+            timedSegmentBestSetAtSeconds: {
+              ...next.timedSegmentBestSetAtSeconds,
+              [segmentKey]: isSegmentBest
+                ? crossedAtSeconds
+                : (next.timedSegmentBestSetAtSeconds?.[segmentKey] ?? null),
+            },
+            timedSegmentAttemptStatus: {
+              ...next.timedSegmentAttemptStatus,
+              [segmentKey]: 'flying-lap',
+            },
           }
         } else if (timedInLapCompleted) {
           const activeSegment = timedSessionState.segment
@@ -4565,23 +4784,39 @@ export function advanceRace(
               : activeSegment?.endsAtSeconds ??
                 timedSessionDurationSeconds ??
                 crossedAtSeconds
-          const releaseAtSeconds =
-            crossedAtSeconds +
-            28 +
-            hashChance(
-              `${config.seed}:next-run:${weekendStage}:${activeSegment?.name ?? 'practice'}:${driver.id}:${nextRunIndex}`,
-            ) *
-              58
+          const releasePlan = timedSessionReleasePlan(
+            config,
+            driver,
+            index,
+            weekendStage,
+            activeSegment
+              ? {
+                  ...activeSegment,
+                  participantDriverIds: [...participantIds],
+                }
+              : null,
+            nextRunIndex,
+          )
+          const releaseAtSeconds = Math.max(
+            crossedAtSeconds + 28,
+            releasePlan.pitExitAtSeconds,
+          )
+          const estimatedOutLapSeconds =
+            baseLapTime *
+            (activeSegment?.declaredWet || localWeather !== 'clear'
+              ? 1.9
+              : 1.6)
           const hasTimeForAnotherRun =
+            (activeSegment !== null || !config.timedSessionPlan) &&
             participantIds.has(driver.id) &&
             nextRunIndex < runLimit &&
-            releaseAtSeconds + baseLapTime * 2.55 < activeWindowEndsAt
+            releaseAtSeconds + estimatedOutLapSeconds < activeWindowEndsAt
           const plannedCompound = timedRunCompound(
             weekendStage,
             nextRunIndex,
             activeSegment?.compound ?? null,
             localWeather,
-            localTrackGrip,
+            localTireTrackCondition,
           )
           const useFreshSet =
             hasTimeForAnotherRun &&
@@ -4632,9 +4867,23 @@ export function advanceRace(
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             timedRunStartedAtSeconds: null,
             timedRunPhase: 'garage',
+            timedReleaseStrategy: hasTimeForAnotherRun
+              ? releasePlan.strategy
+              : null,
           }
           break
         } else if (next.lapStartedAtSeconds === null) {
+          const segmentKey =
+            timedSessionState.segment?.name ??
+            config.timedSessionPlan?.segments.findLast((segment) =>
+              Object.prototype.hasOwnProperty.call(
+                next.timedSegmentBestSeconds,
+                segment.name,
+              ),
+            )?.name ??
+            snapshot.timedSegmentLabel ??
+            weekendStageLabelFor(weekendStage)
+
           next = {
             ...next,
             lapStartedAtSeconds: crossedAtSeconds,
@@ -4642,6 +4891,10 @@ export function advanceRace(
             currentLapSectorTimes: emptyCurrentLapSectorTimes(),
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             timedRunPhase: 'attack-lap',
+            timedSegmentAttemptStatus: {
+              ...next.timedSegmentAttemptStatus,
+              [segmentKey]: 'flying-lap',
+            },
           }
         }
       }
@@ -5570,56 +5823,95 @@ export function advanceRace(
   let classifiedCars = rankedCars
 
   if (timedSessionDone && weekendStage === 'qualifying') {
-    const q1Times = rankedCars
-      .map((car) => car.timedSegmentBestSeconds.Q1)
-      .filter((time): time is number => typeof time === 'number')
-    const q1Reference = q1Times.length > 0 ? Math.min(...q1Times) : null
-
-    if (q1Reference !== null) {
-      classifiedCars = rankCars(
-        rankedCars.map((car) => {
-          const q1Time = car.timedSegmentBestSeconds.Q1
-          const outside107Percent =
-            typeof q1Time !== 'number' || q1Time > q1Reference * 1.07
-          const stewardsGrantedStart =
-            outside107Percent &&
-            hashChance(`${config.seed}:107-exemption:${car.driverId}`) < 0.72
-
-          if (outside107Percent) {
-            newEvents.push(
-              makeEvent(
-                `107-percent-${car.driverId}`,
-                stewardsGrantedStart ? 'info' : 'penalty',
-                elapsedSeconds,
-                stewardsGrantedStart
-                  ? `${car.code} is outside 107% in Q1 but receives permission to start based on practice pace.`
-                  : `${car.code} is outside 107% in Q1 and has not qualified for the race.`,
-              ),
+    classifiedCars = rankCars(
+      rankedCars.map((car) => {
+        const q1Time = car.timedSegmentBestSeconds.Q1
+        const hasQ1Time = typeof q1Time === 'number'
+        const qualifyingClassificationStatus = !hasQ1Time
+          ? car.deletedLapCount > 0
+            ? ('deleted' as const)
+            : ('no-time' as const)
+          : ('classified' as const)
+        const requiresStewardPermission =
+          qualifyingClassificationStatus !== 'classified'
+        const driver = drivers.get(car.driverId)
+        const team = teams.get(car.teamId)
+        const completedPractice =
+          config.weekendContext?.completed.some(
+            (stage) => stage === 'fp1' || stage === 'fp2' || stage === 'fp3',
+          ) ?? false
+        const setupConfidence = Math.min(
+          1,
+          Math.max(
+            0,
+            config.weekendContext?.setupConfidenceByDriver[car.driverId] ?? 0,
+          ),
+        )
+        const generalPerformanceEvidence = driver
+          ? Math.min(
+              1,
+              driverPerformanceAbility(driver, 'qualifyingPace') / 1.5,
             )
-          }
+          : 0
+        const machineEvidence = team
+          ? Math.min(1, effectiveMachineRating(team.machine.qualifyingPace) / 1.5)
+          : 0
+        const evidenceScore =
+          (completedPractice ? 0.18 : 0) +
+          setupConfidence * 0.42 +
+          generalPerformanceEvidence * 0.25 +
+          machineEvidence * 0.15 -
+          0.08
+        const evidenceThreshold =
+          0.37 +
+          hashChance(
+            `${config.seed}:qualifying-permission:${qualifyingClassificationStatus}:${car.driverId}`,
+          ) *
+            0.2
+        const stewardsGrantedStart =
+          requiresStewardPermission && evidenceScore >= evidenceThreshold
 
-          return {
-            ...car,
-            outside107Percent,
-            stewardsGrantedStart,
-            status:
-              outside107Percent && !stewardsGrantedStart
-                ? ('dns' as const)
-                : car.status,
-            stewardStatus:
-              outside107Percent && !stewardsGrantedStart
-                ? ('penalty' as const)
-                : car.stewardStatus,
-            stewardNote: outside107Percent
-              ? stewardsGrantedStart
-                ? '107% exemption granted'
-                : 'Outside 107%'
-              : car.stewardNote,
-          }
-        }),
-        config,
-      )
-    }
+        if (requiresStewardPermission) {
+          const reason =
+            qualifyingClassificationStatus === 'deleted'
+              ? 'without a Q1 time after all laps were deleted'
+              : 'without setting a Q1 time'
+
+          newEvents.push(
+            makeEvent(
+              `qualifying-permission-${car.driverId}`,
+              stewardsGrantedStart ? 'info' : 'penalty',
+              elapsedSeconds,
+              stewardsGrantedStart
+                ? `${car.code} finished ${reason} but receives permission to start on practice and general-performance evidence.`
+                : `${car.code} finished ${reason} and has not qualified for the race.`,
+            ),
+          )
+        }
+
+        return {
+          ...car,
+          qualifyingClassificationStatus,
+          stewardsGrantedStart,
+          status:
+            requiresStewardPermission && !stewardsGrantedStart
+              ? ('dns' as const)
+              : car.status,
+          stewardStatus:
+            requiresStewardPermission && !stewardsGrantedStart
+              ? ('penalty' as const)
+              : car.stewardStatus,
+          stewardNote: requiresStewardPermission
+            ? stewardsGrantedStart
+              ? 'Permission to start granted'
+              : qualifyingClassificationStatus === 'deleted'
+                ? 'All Q1 laps deleted'
+                : 'No Q1 time'
+            : car.stewardNote,
+        }
+      }),
+      config,
+    )
   }
   const greenFlagLaps =
     snapshot.greenFlagLaps +

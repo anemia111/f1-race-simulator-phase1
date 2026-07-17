@@ -1,7 +1,15 @@
 // Timed weekend sessions: practice builds setup confidence, qualifying runs
 // pit-release plans and ranks legal flying laps for the race grid.
 
-import type { CarSetup, Driver, RaceConfig, Team, TireCompound, WeatherState } from '../types'
+import type {
+  CarSetup,
+  Driver,
+  RaceConfig,
+  Team,
+  TimedSessionSegmentPlan,
+  TireCompound,
+  WeatherState,
+} from '../types'
 import {
   driverPerformanceAbility,
   driverSkillBlend,
@@ -9,6 +17,10 @@ import {
 import { practiceSetupRecommendation } from './engineering'
 import { effectiveMachineReliability } from './machinePerformance'
 import { hashChance } from './random'
+import {
+  buildQualifyingReleaseSchedule,
+  type QualifyingReleaseSlot,
+} from './qualifyingStrategy'
 import { tireDeltaSeconds } from './tires'
 import {
   fuelMassEffects,
@@ -54,7 +66,7 @@ export type QualifyingResult = {
   trafficLossSeconds: number
   weather: WeatherState
   weatherLabel: string
-  classificationStatus: 'classified' | '107-percent' | 'no-time' | 'deleted'
+  classificationStatus: 'classified' | 'no-time' | 'deleted'
 }
 
 export type QualifyingSegment = {
@@ -160,13 +172,12 @@ function segmentEvolutionFor(segment: QualifyingSegmentName) {
 function compoundForQualifyingSegment(
   segment: QualifyingSegmentName,
   weather: WeatherState,
-  trackGrip: number,
 ): TireCompound {
-  if (weather === 'heavy-rain' || trackGrip < 0.76) {
+  if (weather === 'heavy-rain') {
     return 'W'
   }
 
-  if (weather === 'light-rain' || trackGrip < 0.93) {
+  if (weather === 'light-rain') {
     return 'I'
   }
 
@@ -262,9 +273,10 @@ function qualifyingRunsForDriver(
   config: RaceConfig,
   weather: WeatherState,
   trackGrip: number,
+  releaseSlots: QualifyingReleaseSlot[],
 ): QualifyingRun[] {
   const sessionDurationSeconds = durationForSegment(segment)
-  const compound = compoundForQualifyingSegment(segment, weather, trackGrip)
+  const compound = compoundForQualifyingSegment(segment, weather)
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
   const awareness = driverPerformanceAbility(driver, 'raceAwareness')
 
@@ -299,20 +311,18 @@ function qualifyingRunsForDriver(
       config.track.baseLapTime *
       rainMultiplier *
       (1.42 + hashChance(`${runKey}:in`) * 0.28)
-    const windowLength = sessionDurationSeconds / maxRuns
-    const windowStart = 24 + run * windowLength
-    const latestPitExit = sessionDurationSeconds - outLapTimeSeconds - lapTimeSeconds - 4
-    const windowEnd = Math.min(latestPitExit, windowStart + windowLength - 18)
-    const span = Math.max(0, windowEnd - windowStart)
+    const releaseSlot = releaseSlots[run]
+    const latestPitExit = Math.max(0, sessionDurationSeconds - outLapTimeSeconds - 1)
     const pitExitAtSeconds = Math.min(
       latestPitExit,
-      windowStart + hashChance(`${seed}:pit-release:${segment}:${driver.id}:${run}`) * span,
+      releaseSlot?.pitExitAtSeconds ??
+        24 + run * (sessionDurationSeconds / maxRuns),
     )
     const flyingLapStartedAtSeconds = pitExitAtSeconds + outLapTimeSeconds
     const flyingLapCompletedAtSeconds = flyingLapStartedAtSeconds + lapTimeSeconds
     const pitReturnAtSeconds = flyingLapCompletedAtSeconds + inLapTimeSeconds
     const isValid =
-      !aborted && !deleted && flyingLapCompletedAtSeconds <= sessionDurationSeconds
+      !aborted && !deleted && flyingLapStartedAtSeconds < sessionDurationSeconds
 
     return {
       aborted,
@@ -411,10 +421,7 @@ function withCausalTraffic(
   return {
     ...run,
     flyingLapCompletedAtSeconds,
-    isValid:
-      !run.aborted &&
-      !run.deleted &&
-      flyingLapCompletedAtSeconds <= sessionDurationSeconds,
+    isValid: run.isValid && run.flyingLapStartedAtSeconds < sessionDurationSeconds,
     lapTimeSeconds,
     pitReturnAtSeconds,
     trafficLossSeconds,
@@ -432,6 +439,36 @@ function runQualifyingSegment(
   const weather = weatherFor(weatherSeed, config.track, elapsedSeconds)
   const trackGrip = trackGripForWeather(weatherSeed, config.track, elapsedSeconds)
   const sessionDurationSeconds = durationForSegment(segment)
+  const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
+  const stage = segment.startsWith('SQ')
+    ? ('sprintQualifying' as const)
+    : ('qualifying' as const)
+  const segmentPlan: TimedSessionSegmentPlan = {
+    compound: compoundForQualifyingSegment(segment, weather),
+    declaredWet: weather !== 'clear',
+    endsAtSeconds: sessionDurationSeconds,
+    name: segment,
+    participantDriverIds: participants.map((driver) => driver.id),
+    startsAtSeconds: 0,
+    suspensionEndsAtSeconds: null,
+    suspensionStartsAtSeconds: null,
+  }
+  const releaseSlotsByDriver = new Map<string, QualifyingReleaseSlot[]>()
+
+  for (let runIndex = 0; runIndex < maxRuns; runIndex += 1) {
+    for (const slot of buildQualifyingReleaseSchedule({
+      config,
+      participantDriverIds: segmentPlan.participantDriverIds,
+      runIndex,
+      segment: segmentPlan,
+      stage,
+    })) {
+      const driverSlots = releaseSlotsByDriver.get(slot.driverId) ?? []
+
+      driverSlots[runIndex] = slot
+      releaseSlotsByDriver.set(slot.driverId, driverSlots)
+    }
+  }
   const schedule = participants.map<ScheduledDriverRuns>((driver) => {
     const team = teams.get(driver.teamId)
 
@@ -443,13 +480,14 @@ function runQualifyingSegment(
       driver,
       team,
       runs: qualifyingRunsForDriver(
-      config.seed,
-      segment,
-      driver,
-      team,
-      config,
-      weather,
-      trackGrip,
+        config.seed,
+        segment,
+        driver,
+        team,
+        config,
+        weather,
+        trackGrip,
+        releaseSlotsByDriver.get(driver.id) ?? [],
       ),
     }
   })
@@ -474,7 +512,7 @@ function runQualifyingSegment(
       ({
         aborted: true,
         deleted: false,
-        compound: compoundForQualifyingSegment(segment, weather, trackGrip),
+        compound: compoundForQualifyingSegment(segment, weather),
         pitExitAtSeconds: 0,
         outLapTimeSeconds: config.track.baseLapTime * 1.5,
         flyingLapStartedAtSeconds: 0,
@@ -498,13 +536,25 @@ function runQualifyingSegment(
     }
   })
 
-  classified.sort((a, b) =>
-    a.lapTimeSeconds === b.lapTimeSeconds
-      ? a.flyingLapCompletedAtSeconds - b.flyingLapCompletedAtSeconds
-      : a.lapTimeSeconds - b.lapTimeSeconds,
+  const priorOrder = new Map(
+    participants.map((driver, index) => [driver.id, index]),
   )
+  classified.sort((a, b) => {
+    if ((a.validRunCount > 0) !== (b.validRunCount > 0)) {
+      return a.validRunCount > 0 ? -1 : 1
+    }
 
-  const poleTime = classified[0]?.lapTimeSeconds ?? 0
+    if (a.validRunCount > 0 && b.validRunCount > 0) {
+      return a.lapTimeSeconds === b.lapTimeSeconds
+        ? a.flyingLapCompletedAtSeconds - b.flyingLapCompletedAtSeconds
+        : a.lapTimeSeconds - b.lapTimeSeconds
+    }
+
+    return (priorOrder.get(a.driver.id) ?? 0) - (priorOrder.get(b.driver.id) ?? 0)
+  })
+
+  const poleTime =
+    classified.find((entry) => entry.validRunCount > 0)?.lapTimeSeconds ?? 0
 
   return classified.map(({
     driver,
@@ -541,11 +591,7 @@ function runQualifyingSegment(
         ? deletedRunCount > 0
           ? 'deleted'
           : 'no-time'
-        : (segment === 'Q1' || segment === 'SQ1') &&
-            weather === 'clear' &&
-            lapTimeSeconds > poleTime * 1.07
-          ? '107-percent'
-          : 'classified',
+        : 'classified',
   }))
 }
 
@@ -595,8 +641,15 @@ function runKnockoutSession(
     segments[1],
     secondElapsed,
   )
-  const secondSurvivors = second.slice(0, q3Size)
-  const secondEliminated = second.slice(q3Size)
+  const secondSurvivors = second
+    .filter((result) => result.validRunCount > 0)
+    .slice(0, q3Size)
+  const secondSurvivorIds = new Set(
+    secondSurvivors.map((result) => result.driverId),
+  )
+  const secondEliminated = second.filter(
+    (result) => !secondSurvivorIds.has(result.driverId),
+  )
   const thirdDrivers = secondSurvivors
     .map((result) => config.drivers.find((driver) => driver.id === result.driverId))
     .filter((driver): driver is Driver => driver !== undefined)
