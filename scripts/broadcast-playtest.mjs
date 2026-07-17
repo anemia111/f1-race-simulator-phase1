@@ -243,9 +243,16 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.locator('.broadcast-sidebar .sidebar-settings').click()
   await page.waitForSelector('.setup-panel')
   const setupVisible = await page.locator('.setup-panel').isVisible()
-  const driverAbilityMaxes = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('input[type="range"]').evaluateAll((inputs) => inputs.map((input) => input.getAttribute('max')))
-  const driverAbilityValues = await page.locator('.setup-section').filter({ hasText: 'Driver tune' }).locator('.slider-row strong').allInnerTexts()
+  const driverTunePanel = page.locator('.setup-section').filter({ hasText: 'Driver tune' })
+  const driverAbilitySliders = driverTunePanel.locator('input[type="range"]')
+  const driverAbilityMaxes = await driverAbilitySliders.evaluateAll((inputs) => inputs.map((input) => input.getAttribute('max')))
+  const driverAbilityValues = await driverTunePanel.locator('.slider-row strong').allInnerTexts()
   const driverOverallAbility = await page.locator('.driver-overall-rating strong').innerText()
+  const firstAbilityValue = await driverAbilitySliders.first().inputValue()
+  await driverAbilitySliders.first().fill(firstAbilityValue === '0.55' ? '1.5' : '0.55')
+  const editedDriverOverallAbility = await page.locator('.driver-overall-rating strong').innerText()
+  const driverAbilityControlChanged = editedDriverOverallAbility !== driverOverallAbility
+  await driverAbilitySliders.first().fill(firstAbilityValue)
   await page.getByLabel('close setup').click()
 
   await page.getByTitle('Classification').click()
@@ -319,6 +326,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     messagesRestored,
     miniSectors,
     driverAbilityMaxes,
+    driverAbilityControlChanged,
     driverOverallAbility,
     driverAbilityValues,
     initialMiniSectorStates,
@@ -395,7 +403,8 @@ try {
         !['retired', 'disqualified', 'dns'].includes(row.status),
     )
     if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
-    if (result.driverAbilityMaxes.length !== 30 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver ability model must expose 30 independent sliders with the 150-point ceiling')
+    if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityValues.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver editor must expose 12 grouped sliders with the 150-point ceiling')
+    if (!result.driverAbilityControlChanged) failures.push('grouped driver ability control did not update the calculated overall rating')
     if (result.driverAbilityValues.some((value) => Number(value) > 150)) failures.push('CSV-configured driver abilities exceed the 150-point scale')
     if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 150) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
     if (!result.driverNumberLabels.includes('#31 NAK')) failures.push(`NAK car number 31 is missing: ${result.driverNumberLabels.join(', ')}`)

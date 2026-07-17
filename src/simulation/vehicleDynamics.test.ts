@@ -31,7 +31,7 @@ function driverAt(value: number): Driver {
 describe('multi-axis vehicle dynamics', () => {
   it('compresses machine effects without changing the source rating', () => {
     expect(MACHINE_PACE_REFERENCE).toBe(0.86)
-    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(0.9)
+    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(0.7)
     expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
     expect(DRIVER_SEGMENT_RESPONSE).toBe(0.075)
     expect(MACHINE_INTERNAL_PERFORMANCE_SCALE).toBe(1.06)
@@ -39,8 +39,8 @@ describe('multi-axis vehicle dynamics', () => {
     expect(internalPowerScaleAtSpeed(370)).toBeCloseTo(1.03, 10)
     expect(internalPowerScaleAtSpeed(420)).toBe(1)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
-    expect(machinePaceRating(0.96)).toBeCloseTo(0.95, 10)
-    expect(machinePaceRating(0.62)).toBeCloseTo(0.644, 10)
+    expect(machinePaceRating(0.96)).toBeCloseTo(0.93, 10)
+    expect(machinePaceRating(0.62)).toBeCloseTo(0.692, 10)
     expect(machinePaceRating(0.96) - machinePaceRating(0.62)).toBeLessThan(
       0.96 - 0.62,
     )
@@ -225,8 +225,8 @@ describe('multi-axis vehicle dynamics', () => {
     const monzaFieldSpreadSeconds =
       monzaResults[0].gain - monzaResults.at(-1)!.gain
 
-    expect(monzaFieldSpreadSeconds).toBeGreaterThan(2.5)
-    expect(monzaFieldSpreadSeconds).toBeLessThan(4)
+    expect(monzaFieldSpreadSeconds).toBeGreaterThan(2)
+    expect(monzaFieldSpreadSeconds).toBeLessThan(3)
   })
 
   it('places Alpine ahead of Audi on representative aggregate pace', () => {
@@ -327,7 +327,7 @@ describe('multi-axis vehicle dynamics', () => {
     )
     const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
 
-    expect(dryFieldSpreadSeconds).toBeGreaterThan(3)
-    expect(dryFieldSpreadSeconds).toBeLessThan(6.5)
+    expect(dryFieldSpreadSeconds).toBeGreaterThan(0.7)
+    expect(dryFieldSpreadSeconds).toBeLessThan(1.4)
   })
 })

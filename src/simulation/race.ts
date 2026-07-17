@@ -19,7 +19,6 @@ import type {
 } from '../types'
 import { flagSeverityRank, incidentForLap } from './incidents'
 import {
-  driverAbilityValue,
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
@@ -704,7 +703,7 @@ function projectedLapTime(
   const tireDelta = tireDeltaSeconds(
     car.tire,
     car.tireAgeLaps,
-    driverAbilityValue(driver, 'tireManagement'),
+    driverPerformanceAbility(driver, 'tireManagement'),
     weather,
     trackGrip,
     car.tireTemperatureC,
@@ -1775,6 +1774,27 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
   }
 
   return snapshot
+}
+
+export function skipFormationLap(
+  snapshot: RaceSnapshot,
+  config: RaceConfig = phaseOneConfig,
+): RaceSnapshot {
+  if (
+    snapshot.startProcedure !== 'formation' ||
+    !isRaceDistanceSession(config.weekendStage ?? 'race')
+  ) {
+    return snapshot
+  }
+
+  const gridStartsAt =
+    snapshot.formationLapDurationSeconds * snapshot.formationLapsPlanned
+  const secondsToGrid = Math.max(
+    0.001,
+    gridStartsAt - snapshot.elapsedSeconds,
+  )
+
+  return advanceRace(snapshot, secondsToGrid, config)
 }
 
 export function advanceRace(
@@ -3453,9 +3473,9 @@ export function advanceRace(
         isRaceDistance,
         phaseActive: localControlPhase !== null,
         pursuitSkill:
-          driver.skills.overtakingSkill * 0.32 +
-          driver.skills.ersManagement * 0.4 +
-          driver.skills.raceAwareness * 0.28,
+          driverPerformanceAbility(driver, 'overtakingSkill') * 0.32 +
+          driverPerformanceAbility(driver, 'ersManagement') * 0.4 +
+          driverPerformanceAbility(driver, 'raceAwareness') * 0.28,
         raceLaps,
         seed: config.seed,
       })
@@ -3765,7 +3785,7 @@ export function advanceRace(
     const trackLateralOffset = 0
     const wearPercentPerLap = tireWearPercentPerLap(
       car.tire,
-      driverAbilityValue(driver, 'tireManagement'),
+      driverPerformanceAbility(driver, 'tireManagement'),
       config.track.tireNomination,
       {
         degradationPerLapSeconds:

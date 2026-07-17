@@ -10,7 +10,8 @@ import type {
   WeekendStage,
 } from '../types'
 import {
-  DRIVER_ABILITY_INTERNAL_MAX,
+  DRIVER_PERFORMANCE_INTERNAL_MAX,
+  driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
 import {
@@ -192,32 +193,36 @@ export function driverSegmentExecution(options: {
   } = options
   const cornerSkill =
     dynamics.cornerClass === 'low'
-      ? driver.skills.lowSpeedCornerSkill
+      ? driverPerformanceAbility(driver, 'lowSpeedCornerSkill')
       : dynamics.cornerClass === 'medium'
-        ? driver.skills.mediumSpeedCornerSkill
+        ? driverPerformanceAbility(driver, 'mediumSpeedCornerSkill')
         : dynamics.cornerClass === 'high'
-          ? driver.skills.highSpeedCornerSkill
-          : driver.skills.throttleControl
+          ? driverPerformanceAbility(driver, 'highSpeedCornerSkill')
+          : driverPerformanceAbility(driver, 'throttleControl')
   const wetSkill =
     weather === 'heavy-rain'
-      ? driver.skills.wetSkill
+      ? driverPerformanceAbility(driver, 'wetSkill')
       : weather === 'light-rain'
-        ? driver.skills.intermediateSkill
+        ? driverPerformanceAbility(driver, 'intermediateSkill')
         : 0.9
   const sessionPace =
     session === 'qualifying'
-      ? driver.skills.qualifyingPace
-      : driver.skills.racePace
+      ? driverPerformanceAbility(driver, 'qualifyingPace')
+      : driverPerformanceAbility(driver, 'racePace')
   const skill = clamp(
     sessionPace * 0.24 +
       cornerSkill * 0.22 +
-      driver.skills.precision * 0.12 +
-      driver.skills.brakingSkill * dynamics.brakingSeverity * 0.14 +
-      driver.skills.tractionControl * (1 - dynamics.straightness) * 0.1 +
+      driverPerformanceAbility(driver, 'precision') * 0.12 +
+      driverPerformanceAbility(driver, 'brakingSkill') *
+        dynamics.brakingSeverity *
+        0.14 +
+      driverPerformanceAbility(driver, 'tractionControl') *
+        (1 - dynamics.straightness) *
+        0.1 +
       wetSkill * 0.1 +
-      driver.skills.pressureHandling * pressure * 0.08,
+      driverPerformanceAbility(driver, 'pressureHandling') * pressure * 0.08,
     0,
-    DRIVER_ABILITY_INTERNAL_MAX,
+    DRIVER_PERFORMANCE_INTERNAL_MAX,
   )
 
   // Drivers cannot create grip or power beyond the machine limit. Their

@@ -38,6 +38,7 @@ import {
   formationLapsPlannedFor,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
+  skipFormationLap,
 } from './race'
 import {
   dirtyAirDeltaSeconds,
@@ -272,6 +273,38 @@ describe('starting grid', () => {
         )
       })
     })
+  })
+
+  it('skips the remaining formation lap into the normal grid and lights sequence', () => {
+    const base = makeConfig('skip-formation')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const initial = createInitialRace(config)
+    const partiallyCompleted = advanceRace(initial, 12, config)
+    const skipped = skipFormationLap(partiallyCompleted, config)
+
+    expect(partiallyCompleted.startProcedure).toBe('formation')
+    expect(skipped.startProcedure).toBe('grid')
+    expect(skipped.formationLapsCompleted).toBe(skipped.formationLapsPlanned)
+    expect(skipped.raceStartedAtSeconds).toBeNull()
+    expect(skipped.cars.every((car) => car.lapHistory.length === 0)).toBe(true)
+    skipped.cars.forEach((car, index) => {
+      expect(car.totalDistance).toBeCloseTo(startingGridDistance(index), 10)
+      expect(car.speedKph).toBe(0)
+    })
+
+    const lights = advanceRace(skipped, 8, config)
+    expect(lights.startProcedure).toBe('lights')
+    expect(advanceRace(lights, 5, config).startProcedure).toBe('racing')
+  })
+
+  it('ignores formation skipping after the race has started', () => {
+    const config = makeConfig('skip-formation-idempotent')
+    const racing = runThroughStart(config)
+
+    expect(skipFormationLap(racing, config)).toBe(racing)
   })
 
   it('launches every grid row on the same lights-out update', () => {

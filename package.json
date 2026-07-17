@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "generate:tracks": "node scripts/generate-real-track-layouts.mjs",
     "lint": "oxlint",
-    "test": "vitest run",
+    "test": "vitest run --no-file-parallelism",
     "playtest": "node scripts/run-built-playtest.mjs",
     "playtest:dev": "node scripts/broadcast-playtest.mjs",
     "benchmark": "node scripts/benchmark.mjs",

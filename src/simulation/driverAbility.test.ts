@@ -3,16 +3,20 @@ import { initialDrivers } from '../data/grid2026'
 import type { DriverTunableStat } from '../types'
 import {
   CURRENT_DRIVER_ABILITY_CEILING,
+  DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
   DRIVER_ABILITY_STATS,
+  DRIVER_PERFORMANCE_INTERNAL_MAX,
   clampDriverAbility,
+  driverAbilityGroupValue,
   driverAbilityPoints,
   driverAbilityValue,
   driverConfiguredOverallAbilityPoints,
   driverOverallAbility,
   driverOverallAbilityPoints,
   driverPerformanceAbility,
+  driverPerformanceValue,
 } from './driverAbility'
 
 const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
@@ -23,6 +27,10 @@ describe('driver ability scale', () => {
     expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.5)
     expect(clampDriverAbility(2)).toBe(1.5)
     expect(driverAbilityPoints(1.5)).toBe(150)
+    expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBe(1)
+    expect(driverPerformanceValue(0.55)).toBe(0.55)
+    expect(driverPerformanceValue(1.5)).toBe(1)
+    expect(driverPerformanceValue(1.45)).toBeCloseTo(0.9763157895, 10)
   })
 
   it('keeps every CSV-configured driver within the supported scale', () => {
@@ -38,7 +46,16 @@ describe('driver ability scale', () => {
     }
   })
 
-  it('uses the arithmetic mean of all 30 skills as display ability', () => {
+  it('groups all 30 detailed skills exactly once into 12 editable abilities', () => {
+    const groupedStats = DRIVER_ABILITY_GROUPS.flatMap((group) => group.stats)
+
+    expect(DRIVER_ABILITY_GROUPS).toHaveLength(12)
+    expect(groupedStats).toHaveLength(30)
+    expect(new Set(groupedStats).size).toBe(30)
+    expect([...groupedStats].sort()).toEqual([...driverStats].sort())
+  })
+
+  it('uses the equal-weight mean of the 12 displayed groups as overall ability', () => {
     const driver = {
       ...initialDrivers[0],
       skills: {
@@ -56,10 +73,11 @@ describe('driver ability scale', () => {
       },
     }
     const expectedMean =
-      driverStats.reduce(
-        (total, stat) => total + driverAbilityValue(driver, stat),
+      DRIVER_ABILITY_GROUPS.reduce(
+        (total, group) =>
+          total + driverAbilityGroupValue(driver, group.stats),
         0,
-      ) / driverStats.length
+      ) / DRIVER_ABILITY_GROUPS.length
 
     expect(driverStats).toHaveLength(30)
     expect(driverOverallAbility(driver)).toBeCloseTo(expectedMean, 10)
@@ -72,9 +90,9 @@ describe('driver ability scale', () => {
     const max = initialDrivers.find((driver) => driver.code === 'VER')!
     const withoutSource = { ...max, performanceSource: undefined }
 
-    expect(driverConfiguredOverallAbilityPoints(max)).toBe(130)
-    expect(driverOverallAbilityPoints(max)).toBe(95)
-    expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(95)
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(145)
+    expect(driverOverallAbilityPoints(max)).toBe(145)
+    expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(145)
   })
 
   it('keeps domain performance independent from the display-only mean', () => {

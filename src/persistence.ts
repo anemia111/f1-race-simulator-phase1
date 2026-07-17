@@ -28,7 +28,7 @@ export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
 export const SEASON_STORAGE_KEY = 'f1-sim-season-v3'
 export const LEGACY_SEASON_STORAGE_KEY = 'f1-sim-season-v2'
 export const DRIVER_RATINGS_STORAGE_KEY =
-  'f1-sim-driver-ratings-v2-performance-csv'
+  'f1-sim-driver-ratings-v3-grouped-baseline'
 
 const weekendStages: WeekendStage[] = [
   'fp1',
@@ -52,7 +52,7 @@ export type PersistedWeekend = {
 }
 
 export type PersistedDriverRatings = {
-  version: 2
+  version: 3
   ratingsByDriver: Record<
     string,
     Partial<Record<DriverTunableStat, number>>
@@ -179,7 +179,9 @@ export function parsePersistedDriverRatings(
 
     if (
       !isRecord(parsed) ||
-      (parsed.version !== 1 && parsed.version !== 2) ||
+      (parsed.version !== 1 &&
+        parsed.version !== 2 &&
+        parsed.version !== 3) ||
       !isRecord(parsed.ratingsByDriver)
     ) {
       return baseDrivers.map((driver) => ({
@@ -231,7 +233,7 @@ export function serializeDriverRatings(
   drivers: Driver[],
 ): PersistedDriverRatings {
   return {
-    version: 2,
+    version: 3,
     ratingsByDriver: Object.fromEntries(
       drivers.map((driver) => [
         driver.id,

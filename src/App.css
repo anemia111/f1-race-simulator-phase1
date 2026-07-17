@@ -3044,3 +3044,113 @@
   .broadcast-sidebar { grid-template-rows: 34px minmax(0, 1fr) 46px; }
   .broadcast-sidebar nav { grid-template-rows: repeat(10, minmax(36px, 1fr)); }
 }
+
+.broadcast-session-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 46px);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--broadcast-border);
+  border-radius: 4px;
+  background: #07111a;
+}
+
+.broadcast-session-switch button {
+  height: 23px;
+  border: 0;
+  border-radius: 2px;
+  color: var(--broadcast-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.broadcast-session-switch button[aria-pressed='true'] {
+  color: #ffffff;
+  background: #176de5;
+}
+
+.broadcast-session-switch button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.broadcast-phase-label {
+  min-width: 74px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.footer-controls .formation-skip-control {
+  min-width: 105px;
+  padding: 0 7px;
+  border-color: #176de5;
+  color: #ffffff;
+  background: #0d2742;
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.qualifying-classification-panel {
+  width: min(650px, calc(50vw - 28px));
+}
+
+.qualifying-table-head,
+.qualifying-classification-panel li.qualifying-result-row {
+  display: grid;
+  grid-template-columns: 28px minmax(110px, 1fr) repeat(3, 74px) 58px;
+  gap: 7px;
+  align-items: center;
+}
+
+.qualifying-table-head {
+  padding: 8px 6px 3px;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.qualifying-table-head span:nth-child(n + 3) {
+  text-align: right;
+}
+
+.qualifying-classification-panel li.qualifying-result-row {
+  min-height: 34px;
+}
+
+.qualifying-time {
+  overflow: hidden;
+  color: var(--accent-gold);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qualifying-time-pending {
+  color: var(--text-muted);
+}
+
+.qualifying-status {
+  overflow: hidden;
+  color: var(--accent-cyan);
+  font-size: 9px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qualifying-classification-panel li.qualifying-cut-marker {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 18px;
+  border: 0;
+  border-top: 1px solid rgba(255, 210, 31, 0.44);
+  padding: 2px 6px 0;
+  color: var(--accent-gold);
+  background: transparent;
+  font-size: 8px;
+  font-weight: 900;
+}

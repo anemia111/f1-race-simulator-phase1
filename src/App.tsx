@@ -24,6 +24,7 @@ import {
   type BroadcastDataDetail,
 } from './components/BroadcastDashboard'
 import { RaceClassificationPanel } from './components/RaceClassificationPanel'
+import { QualifyingClassificationPanel } from './components/QualifyingClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
 import { SetupPanel } from './components/SetupPanel'
 import { initialDrivers, initialTeams } from './data/grid2026'
@@ -1507,6 +1508,8 @@ export default function App() {
     snapshot,
     requestPitStop,
     setDriverPaceMode,
+    skipFormationLap,
+    snapshotIsCurrent,
   } = useRaceSimulation({
     config: raceConfig,
     isPaused,
@@ -1517,12 +1520,16 @@ export default function App() {
 
   useEffect(() => {
     if (
+      snapshotIsCurrent &&
       snapshot.sessionStatus === 'finished' &&
-      (selectedWeekendStage === 'race' || selectedWeekendStage === 'sprint')
+      (selectedWeekendStage === 'race' ||
+        selectedWeekendStage === 'sprint' ||
+        selectedWeekendStage === 'qualifying' ||
+        selectedWeekendStage === 'sprintQualifying')
     ) {
       setIsClassificationOpen(true)
     }
-  }, [selectedWeekendStage, snapshot.sessionStatus])
+  }, [selectedWeekendStage, snapshot.sessionStatus, snapshotIsCurrent])
 
   useEffect(() => {
     setIsClassificationOpen(false)
@@ -1533,6 +1540,7 @@ export default function App() {
   // A finished race-distance session counts as weekend progress.
   useEffect(() => {
     if (
+      !snapshotIsCurrent ||
       snapshot.sessionStatus !== 'finished' ||
       (selectedWeekendStage !== 'race' && selectedWeekendStage !== 'sprint')
     ) {
@@ -1558,6 +1566,40 @@ export default function App() {
     snapshot.greenFlagLaps,
     snapshot.raceLaps,
     snapshot.sessionStatus,
+    snapshotIsCurrent,
+  ])
+
+  useEffect(() => {
+    if (
+      !snapshotIsCurrent ||
+      snapshot.sessionStatus !== 'finished' ||
+      (selectedWeekendStage !== 'qualifying' &&
+        selectedWeekendStage !== 'sprintQualifying')
+    ) {
+      return
+    }
+
+    const knockout =
+      selectedWeekendStage === 'qualifying'
+        ? standardQualifying
+        : sprintShootout
+
+    setWeekendContext((current) =>
+      completeQualifyingSession(
+        current,
+        selectedWeekendStage,
+        knockout.classification,
+        knockout.segments,
+        snapshot.cars,
+      ),
+    )
+  }, [
+    selectedWeekendStage,
+    snapshot.cars,
+    snapshot.sessionStatus,
+    snapshotIsCurrent,
+    sprintShootout,
+    standardQualifying,
   ])
   const weatherTrackState = useMemo(
     () =>
@@ -1668,6 +1710,9 @@ export default function App() {
     ],
   )
   const isRaceProgressSession = isRaceDistanceSession(selectedWeekendStage)
+  const isQualifyingSession =
+    selectedWeekendStage === 'qualifying' ||
+    selectedWeekendStage === 'sprintQualifying'
   const selectedSessionDurationSeconds =
     raceConfig.timedSessionPlan?.totalDurationSeconds ??
     sessionDurationSecondsFor(selectedWeekendStage)
@@ -2614,9 +2659,16 @@ export default function App() {
           }}
           onOpenSetup={() => setIsSetupOpen(true)}
           onPauseChange={() => setIsPaused((paused) => !paused)}
+          onSkipFormationLap={skipFormationLap}
           onSpeedChange={setSpeed}
+          onStageChange={jumpToWeekendStage}
           raceControlLog={raceControlLog}
           selectedCar={selectedCar}
+          sessionPhaseLabel={
+            isRaceProgressSession
+              ? selectedWeekendStage.toUpperCase()
+              : timedPhaseLabel
+          }
           sessionProgressLabel={broadcastSessionProgressLabel}
           snapshot={broadcastSnapshot}
           speed={speed}
@@ -2689,6 +2741,14 @@ export default function App() {
           <RaceClassificationPanel
             onClose={() => setIsClassificationOpen(false)}
             snapshot={snapshot}
+          />
+        ) : null}
+
+        {isClassificationOpen && isQualifyingSession ? (
+          <QualifyingClassificationPanel
+            onClose={() => setIsClassificationOpen(false)}
+            snapshot={snapshot}
+            stage={selectedWeekendStage}
           />
         ) : null}
 
@@ -3903,6 +3963,14 @@ export default function App() {
         <RaceClassificationPanel
           onClose={() => setIsClassificationOpen(false)}
           snapshot={snapshot}
+        />
+      ) : null}
+
+      {isClassificationOpen && isQualifyingSession ? (
+        <QualifyingClassificationPanel
+          onClose={() => setIsClassificationOpen(false)}
+          snapshot={snapshot}
+          stage={selectedWeekendStage}
         />
       ) : null}
 

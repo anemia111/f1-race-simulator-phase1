@@ -25,6 +25,7 @@ export type RaceWorkerInboundMessage =
       speed: SpeedMultiplier
     }
   | { type: 'control'; isPaused: boolean; speed: SpeedMultiplier }
+  | { type: 'skip-formation' }
   | { type: 'pit-request'; driverId: string; compound: TireCompound }
   | { type: 'pace-mode'; driverId: string; mode: RacePaceMode }
 

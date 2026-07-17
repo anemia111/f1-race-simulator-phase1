@@ -15,6 +15,7 @@ import {
   Route,
   Settings2,
   ShieldAlert,
+  StepForward,
   Thermometer,
   Timer,
   Trophy,
@@ -120,9 +121,12 @@ type BroadcastDashboardProps = {
   onOpenInsights: () => void
   onOpenSetup: () => void
   onPauseChange: () => void
+  onSkipFormationLap: () => void
   onSpeedChange: (speed: SpeedMultiplier) => void
+  onStageChange: (stage: Extract<WeekendStage, 'qualifying' | 'race'>) => void
   raceControlLog: BroadcastRaceControlEntry[]
   selectedCar: CarSnapshot
+  sessionPhaseLabel: string
   sessionProgressLabel: string
   snapshot: RaceSnapshot
   speed: SpeedMultiplier
@@ -488,12 +492,14 @@ function LeftLeaderboard({
   onModeChange,
   rows,
   selectedDriverId,
+  title,
 }: {
   mode: 'live' | 'gap'
   onFocusDriver: (driverId: string) => void
   onModeChange: (mode: 'live' | 'gap') => void
   rows: BroadcastTimingRow[]
   selectedDriverId: string
+  title: string
 }) {
   return (
     <section className="broadcast-panel broadcast-leaderboard">
@@ -513,14 +519,14 @@ function LeftLeaderboard({
             ))}
           </div>
         }
-        title="Race Leaderboard"
+        title={title}
       />
       <div className="leaderboard-column-head" aria-hidden="true">
         <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
         <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span><span>SPD</span><span>BAT</span>
       </div>
       <ol
-        aria-label="All drivers race leaderboard"
+        aria-label={`All drivers ${title.toLowerCase()}`}
         className="leaderboard-rows"
         tabIndex={0}
       >
@@ -856,9 +862,12 @@ export function BroadcastDashboard({
   onOpenInsights,
   onOpenSetup,
   onPauseChange,
+  onSkipFormationLap,
   onSpeedChange,
+  onStageChange,
   raceControlLog,
   selectedCar,
+  sessionPhaseLabel,
   sessionProgressLabel,
   snapshot,
   speed,
@@ -934,6 +943,9 @@ export function BroadcastDashboard({
   const controlFlagClass = activeSectorFlag?.includes('yellow')
     ? 'yellow'
     : (activeSectorFlag ?? snapshot.flag)
+  const isQualifyingStage =
+    stage === 'qualifying' || stage === 'sprintQualifying'
+  const isRaceStage = stage === 'race' || stage === 'sprint'
 
   return (
     <div className="broadcast-app">
@@ -941,9 +953,37 @@ export function BroadcastDashboard({
         <div className="broadcast-brand"><Gauge aria-hidden="true" size={29} /><div><strong>{trackTitle}</strong><span>{track.name}</span></div></div>
         <div className="broadcast-session-core">
           <span className={`broadcast-live-mode mode-${dataMode.toLowerCase()}`}>{dataMode}</span>
-          <strong>{stage.toUpperCase()}</strong>
+          <div aria-label="Session mode" className="broadcast-session-switch" role="group">
+            <button
+              aria-pressed={stage === 'qualifying'}
+              onClick={() => onStageChange('qualifying')}
+              type="button"
+            >
+              QUALI
+            </button>
+            <button
+              aria-pressed={stage === 'race'}
+              disabled={stage === 'qualifying' && snapshot.sessionStatus !== 'finished'}
+              onClick={() => onStageChange('race')}
+              title={
+                stage === 'qualifying' && snapshot.sessionStatus !== 'finished'
+                  ? 'Complete Q1, Q2 and Q3 before starting the race'
+                  : 'Open race session'
+              }
+              type="button"
+            >
+              RACE
+            </button>
+          </div>
+          <strong className="broadcast-phase-label">{sessionPhaseLabel}</strong>
           <span>{sessionProgressLabel}</span>
-          <time>{formatClock(snapshot.raceClockSeconds)}</time>
+          <time>
+            {formatClock(
+              isRaceStage
+                ? snapshot.raceClockSeconds
+                : snapshot.elapsedSeconds,
+            )}
+          </time>
         </div>
         <div className="broadcast-weather-strip">
           <div><span>TRACK TEMP</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong></div>
@@ -984,6 +1024,7 @@ export function BroadcastDashboard({
             onModeChange={setLeaderboardMode}
             rows={timingRows}
             selectedDriverId={selectedCar.driverId}
+            title={isQualifyingStage ? 'Qualifying Leaderboard' : 'Race Leaderboard'}
           />
           <div className="broadcast-left-analytics">
             <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} /></section>
@@ -1070,6 +1111,17 @@ export function BroadcastDashboard({
         <div className="footer-race-control"><Radio size={14}/><strong>RACE CONTROL</strong><time>{raceControlLog[0]?.timeLabel ?? snapshot.elapsedLabel}</time><span>{raceControlLog[0]?.message ?? snapshot.eventMessage}</span></div>
         <div className="footer-controls">
           <button aria-label={isPaused ? 'Resume simulation' : 'Pause simulation'} onClick={onPauseChange} title={isPaused ? 'Resume' : 'Pause'} type="button">{isPaused ? <Play size={14}/> : <Pause size={14}/>}</button>
+          {snapshot.startProcedure === 'formation' ? (
+            <button
+              aria-label="Skip formation lap"
+              className="formation-skip-control"
+              onClick={onSkipFormationLap}
+              title="Skip formation lap and return to the starting grid"
+              type="button"
+            >
+              <StepForward size={14}/><span>SKIP FORMATION</span>
+            </button>
+          ) : null}
           {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
           <button onClick={onOpenInsights} title="Selected driver analysis" type="button"><Activity size={14}/>{selectedCar.code}</button>
           <button onClick={onOpenClassification} title="Classification" type="button"><Trophy size={14}/></button>

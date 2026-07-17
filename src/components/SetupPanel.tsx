@@ -16,10 +16,11 @@ import {
   normalizeCarComponents,
 } from '../simulation/components'
 import {
+  DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
+  driverAbilityGroupValue,
   driverAbilityPoints,
-  driverAbilityValue,
   driverConfiguredOverallAbilityPoints,
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
@@ -116,39 +117,6 @@ const teamStats: Array<{ key: TeamStat; label: string }> = [
   { key: 'fuelEfficiency', label: 'Fuel efficiency' },
   { key: 'reliability', label: 'Reliability' },
   { key: 'pitCrewSpeed', label: 'Pit crew' },
-]
-
-const driverStats: Array<{ key: DriverStat; label: string }> = [
-  { key: 'qualifyingPace', label: 'Qualifying' },
-  { key: 'racePace', label: 'Race pace' },
-  { key: 'rawPace', label: 'Raw pace' },
-  { key: 'brakingSkill', label: 'Braking' },
-  { key: 'lowSpeedCornerSkill', label: 'Low-speed corner' },
-  { key: 'mediumSpeedCornerSkill', label: 'Mid-speed corner' },
-  { key: 'highSpeedCornerSkill', label: 'High-speed corner' },
-  { key: 'tractionControl', label: 'Traction' },
-  { key: 'throttleControl', label: 'Throttle' },
-  { key: 'consistency', label: 'Consistency' },
-  { key: 'tireManagement', label: 'Tire mgmt' },
-  { key: 'tireWarmupSkill', label: 'Tire warmup' },
-  { key: 'overtakingSkill', label: 'Overtake' },
-  { key: 'defendingSkill', label: 'Defense' },
-  { key: 'racecraft', label: 'Racecraft' },
-  { key: 'wetSkill', label: 'Wet skill' },
-  { key: 'intermediateSkill', label: 'Intermediate' },
-  { key: 'mistakeResistance', label: 'Mistake resistance' },
-  { key: 'pressureHandling', label: 'Pressure' },
-  { key: 'trafficManagement', label: 'Traffic' },
-  { key: 'dirtyAirManagement', label: 'Dirty air' },
-  { key: 'fuelManagement', label: 'Fuel management' },
-  { key: 'ersManagement', label: 'ERS management' },
-  { key: 'restartSkill', label: 'Restarts' },
-  { key: 'startSkill', label: 'Starts' },
-  { key: 'confidence', label: 'Confidence' },
-  { key: 'precision', label: 'Precision' },
-  { key: 'raceAwareness', label: 'Awareness' },
-  { key: 'adaptability', label: 'Adaptability' },
-  { key: 'carBalanceAdaptation', label: 'Balance adaptation' },
 ]
 
 function teamStatValue(team: Team, stat: TeamStat) {
@@ -618,7 +586,10 @@ export function SetupPanel({
       <div className="setup-section">
         <div className="section-title">
           <span>Driver tune</span>
-          <small>MAX {DRIVER_ABILITY_SCALE_MAX}</small>
+          <small>
+            {DRIVER_ABILITY_GROUPS.length} GROUPS / MAX{' '}
+            {DRIVER_ABILITY_SCALE_MAX}
+          </small>
         </div>
         <label className="field-block">
           <span>Driver</span>
@@ -635,19 +606,24 @@ export function SetupPanel({
         </label>
         <div className="driver-overall-rating">
           <span>Overall ability</span>
-          <strong>{driverConfiguredOverallAbilityPoints(selectedDriver)}</strong>
+          <strong>{driverOverallAbilityPoints(selectedDriver)}</strong>
           <small>
-            CSV rating · 30-skill mean {driverOverallAbilityPoints(selectedDriver)}
+            Source OVR {driverConfiguredOverallAbilityPoints(selectedDriver)} /
+            12-group mean
           </small>
         </div>
         <div className="driver-ability-grid">
-          {driverStats.map((stat) => (
+          {DRIVER_ABILITY_GROUPS.map((group) => (
             <SliderRow
-              key={stat.key}
-              label={stat.label}
+              key={group.key}
+              label={group.label}
               max={DRIVER_ABILITY_INTERNAL_MAX}
-              onChange={(value) => onDriverStatChange(selectedDriver.id, stat.key, value)}
-              value={driverAbilityValue(selectedDriver, stat.key)}
+              onChange={(value) => {
+                for (const stat of group.stats) {
+                  onDriverStatChange(selectedDriver.id, stat, value)
+                }
+              }}
+              value={driverAbilityGroupValue(selectedDriver, group.stats)}
             />
           ))}
         </div>

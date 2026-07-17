@@ -1,6 +1,10 @@
 /// <reference lib="webworker" />
 
-import { advanceRace, createInitialRace } from '../simulation/race'
+import {
+  advanceRace,
+  createInitialRace,
+  skipFormationLap,
+} from '../simulation/race'
 import type {
   RaceConfig,
   RacePaceMode,
@@ -47,6 +51,14 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
   if (message.type === 'control') {
     isPaused = message.isPaused
     speed = message.speed
+    return
+  }
+
+  if (message.type === 'skip-formation') {
+    if (config && snapshot) {
+      snapshot = skipFormationLap(snapshot, config)
+      publish({ type: 'snapshot', snapshot })
+    }
     return
   }
 

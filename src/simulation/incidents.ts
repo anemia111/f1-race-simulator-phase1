@@ -4,7 +4,10 @@
 // Pure TypeScript, all randomness derived from the race seed.
 
 import type { Driver, FlagState, Team, WeatherState } from '../types'
-import { driverSkillBlend } from './driverAbility'
+import {
+  driverPerformanceAbility,
+  driverSkillBlend,
+} from './driverAbility'
 import { effectiveMachineReliability } from './machinePerformance'
 import { hashChance } from './random'
 
@@ -125,9 +128,10 @@ export function incidentForLap(
   })
   const weatherRisk =
     context.weather === 'heavy-rain'
-      ? 1.7 - driver.skills.wetSkill * 0.55
+      ? 1.7 - driverPerformanceAbility(driver, 'wetSkill') * 0.55
       : context.weather === 'light-rain'
-        ? 1.35 - driver.skills.intermediateSkill * 0.3
+        ? 1.35 -
+          driverPerformanceAbility(driver, 'intermediateSkill') * 0.3
         : 1
   const tireRisk = 1 + Math.max(0, (context.tireWearPercent ?? 0) - 75) / 70
   const pressureRisk = 1 + clamp(context.pressure ?? 0.45, 0, 1) * 0.2

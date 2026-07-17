@@ -4,13 +4,18 @@ import { tracks } from '../data/tracks'
 import type { RaceConfig, TimedSessionPlan } from '../types'
 import { advanceRace, createInitialRace } from './race'
 import { phaseOneConfig } from '../data/phaseOne'
-import { runKnockoutQualifying } from './qualifying'
+import { qualifyingCutSizes, runKnockoutQualifying } from './qualifying'
 import {
   buildTimedSessionPlan,
   timedSessionStateAt,
 } from './timedSessionPlan'
 
 describe('timed session plan', () => {
+  it('scales the official knockout structure to the 30-car field', () => {
+    expect(qualifyingCutSizes(22)).toEqual({ q2Size: 16, q3Size: 10 })
+    expect(qualifyingCutSizes(30)).toEqual({ q2Size: 20, q3Size: 10 })
+  })
+
   it('keeps Q1/Q2/Q3 participants and seven-minute breaks on one clock', () => {
     const qualifying = runKnockoutQualifying(phaseOneConfig)
     const plan = buildTimedSessionPlan(qualifying)

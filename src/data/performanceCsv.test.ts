@@ -45,7 +45,7 @@ describe('CSV performance source of truth', () => {
     expect(yuki?.skills.rawPace).toBe(1.5)
   })
 
-  it('preserves the supplied headline rating separately from detailed skills', () => {
+  it('uses Verstappen as the 145 baseline while preserving Nakayama at 150', () => {
     const yuki = initialDrivers.find((driver) => driver.code === 'NAK')!
     const max = initialDrivers.find((driver) => driver.code === 'VER')!
     const remainingDrivers = initialDrivers.filter(
@@ -53,9 +53,17 @@ describe('CSV performance source of truth', () => {
     )
 
     expect(driverOverallAbilityPoints(yuki)).toBe(150)
-    expect(driverOverallAbilityPoints(max)).toBe(95)
-    expect(driverConfiguredOverallAbilityPoints(max)).toBe(130)
-    expect(max.performanceSource?.overall).toBe(130)
+    expect(driverOverallAbilityPoints(max)).toBe(145)
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(145)
+    expect(max.performanceSource?.overall).toBe(145)
+    const maxAbilityRatings = Object.entries(
+      max.performanceSource?.rawRatings ?? {},
+    )
+      .filter(([column]) => column !== 'Car Number')
+      .map(([, rating]) => rating)
+    expect(
+      maxAbilityRatings.every((rating) => rating === 145),
+    ).toBe(true)
     expect(
       initialDrivers.every(
         (driver) =>
@@ -65,7 +73,14 @@ describe('CSV performance source of truth', () => {
     ).toBe(true)
     expect(
       remainingDrivers.every(
-        (driver) => (driver.performanceSource?.overall ?? 0) < 130,
+        (driver) => (driver.performanceSource?.overall ?? 0) < 145,
+      ),
+    ).toBe(true)
+    expect(
+      remainingDrivers.every((driver) =>
+        Object.entries(driver.performanceSource?.rawRatings ?? {})
+          .filter(([column]) => column !== 'Car Number')
+          .every(([, rating]) => rating <= 145),
       ),
     ).toBe(true)
   })

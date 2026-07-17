@@ -13,7 +13,6 @@ import type {
 } from '../types'
 import { hashChance } from './random'
 import {
-  driverAbilityValue,
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
@@ -207,7 +206,7 @@ export function battleDynamicsFor(
   const attackerTireDelta = tireDeltaSeconds(
     attackerCar.tire,
     attackerCar.tireAgeLaps,
-    driverAbilityValue(attacker, 'tireManagement'),
+    driverPerformanceAbility(attacker, 'tireManagement'),
     weather,
     trackGrip,
     attackerCar.tireTemperatureC,
@@ -225,7 +224,7 @@ export function battleDynamicsFor(
   const defenderTireDelta = tireDeltaSeconds(
     defenderCar.tire,
     defenderCar.tireAgeLaps,
-    driverAbilityValue(defender, 'tireManagement'),
+    driverPerformanceAbility(defender, 'tireManagement'),
     weather,
     trackGrip,
     defenderCar.tireTemperatureC,

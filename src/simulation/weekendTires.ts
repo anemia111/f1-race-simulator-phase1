@@ -1,6 +1,6 @@
 import type { Driver, RaceConfig, TireCompound } from '../types'
 import { tireNominationForTrack } from '../data/tireNominations2026'
-import { driverAbilityValue } from './driverAbility'
+import { driverPerformanceAbility } from './driverAbility'
 import { effectiveMachineRating } from './machinePerformance'
 import type { KnockoutQualifying, QualifyingResult } from './qualifying'
 import { hashChance } from './random'
@@ -116,7 +116,9 @@ function wetStartCompound(
     forecast.confidence >= 0.65
       ? 1
       : 0
-  const wetSkill = clamp01((driverAbilityValue(driver, 'wetSkill') - 0.55) / 0.95)
+  const wetSkill = clamp01(
+    (driverPerformanceAbility(driver, 'wetSkill') - 0.55) / 0.45,
+  )
   const conservativeTeamBias =
     1 - hashChance(`${config.seed}:${session}-wet-risk:${driver.teamId}`)
   const fullWetProbability = clamp01(
@@ -172,12 +174,12 @@ function weightedDryStartCompound(
   session: 'race' | 'sprint',
 ): DryCompound {
   const team = config.teams.find((candidate) => candidate.id === driver.teamId)
-  const driverManagement = driverAbilityValue(driver, 'tireManagement')
+  const driverManagement = driverPerformanceAbility(driver, 'tireManagement')
   const machineManagement = team
     ? effectiveMachineRating(team.machine.tireDegManagement)
     : 0.82
   const combinedManagement = driverManagement * 0.65 + machineManagement * 0.35
-  const normalizedManagement = clamp01((combinedManagement - 0.55) / 0.95)
+  const normalizedManagement = clamp01((combinedManagement - 0.55) / 0.45)
   const nomination = config.track.tireNomination ?? tireNominationForTrack(config.track)
   const grandPrixLaps =
     config.track.raceLaps ?? Math.max(35, Math.round(305 / config.track.lengthKm))

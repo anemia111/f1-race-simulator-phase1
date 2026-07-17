@@ -3,7 +3,6 @@
 
 import type { CarSetup, Driver, RaceConfig, Team, TireCompound, WeatherState } from '../types'
 import {
-  driverAbilityValue,
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
@@ -123,7 +122,7 @@ function wetSkill(driver: Driver): number {
   )
 }
 
-function qualifyingCutSizes(driverCount: number) {
+export function qualifyingCutSizes(driverCount: number) {
   const q2Size =
     driverCount > 20
       ? driverCount - Math.ceil((driverCount - 10) / 2)
@@ -729,7 +728,7 @@ export function runPracticeSession(
     const longRunTireDelta = tireDeltaSeconds(
       'M',
       8,
-      driverAbilityValue(driver, 'tireManagement'),
+      driverPerformanceAbility(driver, 'tireManagement'),
       weather,
       trackGrip,
       96,

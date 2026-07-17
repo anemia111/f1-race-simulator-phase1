@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { phaseOneConfig } from '../data/phaseOne'
-import { advanceRace, createInitialRace } from '../simulation/race'
+import {
+  advanceRace,
+  createInitialRace,
+  skipFormationLap as skipFormationLapState,
+} from '../simulation/race'
 import type {
   RaceConfig,
   RacePaceMode,
@@ -285,6 +289,22 @@ export function useRaceSimulation({
     },
     [],
   )
+  const skipFormationLap = useCallback(() => {
+    const message: RaceWorkerInboundMessage = { type: 'skip-formation' }
+
+    if (workerRef.current) {
+      workerRef.current.postMessage(message)
+      return
+    }
+
+    const nextSnapshot = skipFormationLapState(
+      snapshotRef.current,
+      activeConfig,
+    )
+    snapshotRef.current = nextSnapshot
+    setSnapshot(nextSnapshot)
+    setSnapshotSessionKey(sessionKey)
+  }, [activeConfig, sessionKey])
 
   return {
     checkpointRecovered,
@@ -293,6 +313,8 @@ export function useRaceSimulation({
     engineMode: workerSupported ? ('worker' as const) : ('main' as const),
     requestPitStop,
     setDriverPaceMode,
+    skipFormationLap,
     snapshot,
+    snapshotIsCurrent: snapshotSessionKey === sessionKey,
   }
 }

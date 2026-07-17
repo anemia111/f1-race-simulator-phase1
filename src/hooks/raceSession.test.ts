@@ -63,7 +63,12 @@ describe('race session continuity', () => {
     const now = 1_800_000_000_000
     let snapshot = createInitialRace(config)
 
-    for (let step = 0; step < 120; step += 1) {
+    for (
+      let step = 0;
+      step < 240 &&
+      !snapshot.cars.some((car) => car.lapHistory.length >= 2);
+      step += 1
+    ) {
       snapshot = advanceRace(snapshot, 3, config)
     }
 
