@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialDrivers } from './data/grid2026'
+import { initialDrivers, initialTeams } from './data/grid2026'
 import { tracks } from './data/tracks'
 import {
   parsePersistedDriverRatings,
@@ -9,6 +9,8 @@ import {
   serializeDriverRatings,
 } from './persistence'
 import { MAX_SIMULATION_SEED_LENGTH } from './simulation/random'
+import { createInitialRace } from './simulation/race'
+import { createSeasonState, recordSeasonRound } from './simulation/season'
 
 describe('V2 persistence migration', () => {
   it('round-trips the explicit 30-skill driver profile', () => {
@@ -58,7 +60,8 @@ describe('V2 persistence migration', () => {
     })
     const restored = parsePersistedWeekend(raw, tracks, initialDrivers)
 
-    expect(restored?.version).toBe(2)
+    expect(restored?.version).toBe(3)
+    expect(restored?.seriesId).toBe('f1-custom')
     expect(restored?.weekendContext.completed).toEqual(['fp1'])
     expect(
       restored?.weekendContext.componentConditionByDriver[driverId].ice
@@ -73,6 +76,32 @@ describe('V2 persistence migration', () => {
         (set) => set.compound === 'H',
       )?.family,
     ).toBe(track.tireNomination?.H)
+  })
+
+  it('retains a safe calendar event identity for repeated-track rounds', () => {
+    const track = tracks.find((candidate) => candidate.id === 'suzuka-approx')!
+    const restored = parsePersistedWeekend(
+      JSON.stringify({
+        eventId: 'sf-11',
+        gridSource: 'qualifying',
+        seed: 'repeated-round',
+        stage: 'race2',
+        trackId: track.id,
+        weekendContext: {
+          gridByStage: {
+            race2: initialDrivers.map((driver) => driver.id),
+          },
+        },
+      }),
+      tracks,
+      initialDrivers,
+    )
+
+    expect(restored?.eventId).toBe('sf-11')
+    expect(restored?.stage).toBe('race2')
+    expect(restored?.weekendContext.gridByStage.race2).toHaveLength(
+      initialDrivers.length,
+    )
   })
 
   it('rejects unknown tracks and repairs malformed season data', () => {
@@ -97,6 +126,7 @@ describe('V2 persistence migration', () => {
         componentsByDriver: {},
         pendingGridPenaltyByDriver: {},
       },
+      resultArchive: [],
       teamPoints: {},
       teamResults: {},
     })
@@ -126,6 +156,37 @@ describe('V2 persistence migration', () => {
     expect(restored.garage.componentsByDriver.norris.ice.conditionPercent).toBe(44)
     expect(restored.garage.componentsByDriver.norris.mguK.allocationLimit).toBe(3)
     expect(restored.garage.pendingGridPenaltyByDriver.norris).toBe(10)
+  })
+
+  it('preserves immutable race-day driver and machine snapshots', () => {
+    const race = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'archive-persistence',
+      teams: initialTeams,
+      track: tracks[0],
+    })
+    const recorded = recordSeasonRound(createSeasonState(), {
+      cars: race.cars.map((car, index) => ({
+        ...car,
+        position: index + 1,
+        status: 'finished' as const,
+        totalDistance: race.raceLaps,
+      })),
+      drivers: initialDrivers,
+      roundId: 'archive-race:race',
+      stage: 'race',
+      teams: initialTeams,
+    })
+    const restored = parsePersistedSeason(JSON.stringify(recorded))
+    const archivedLeader = recorded.resultArchive[0].entries[0]
+
+    expect(restored.resultArchive).toHaveLength(1)
+    expect(restored.resultArchive[0].entries[0].driverSnapshot?.name).toBe(
+      initialDrivers.find((driver) => driver.id === archivedLeader.driverId)?.name,
+    )
+    expect(restored.resultArchive[0].entries[0].teamSnapshot?.name).toBe(
+      initialTeams.find((team) => team.id === archivedLeader.teamId)?.name,
+    )
   })
 
   it('repairs corrupted season standings before they reach countback', () => {

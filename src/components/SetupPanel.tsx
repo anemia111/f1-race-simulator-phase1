@@ -6,11 +6,9 @@ import type {
 } from '../simulation/qualifying'
 import type { PracticeSetupSummary } from '../simulation/practiceSetup'
 import { MAX_SIMULATION_SEED_LENGTH } from '../simulation/random'
-import {
-  compactSessionDurationLabel,
-  isPracticeStage,
-} from '../simulation/sessionRules'
+import { isPracticeStage } from '../simulation/sessionRules'
 import type { WeekendTirePlan } from '../simulation/weekendTires'
+import type { SeriesCalendarEvent } from '../series/types'
 import {
   componentAllocationSource,
   normalizeCarComponents,
@@ -41,6 +39,7 @@ type TeamStat = MachineTunableStat | 'pitCrewSpeed'
 type DriverStat = DriverTunableStat
 
 type SetupPanelProps = {
+  calendarEvents: SeriesCalendarEvent[]
   drivers: Driver[]
   isOpen: boolean
   onApplyTeamPreset: (preset: 'top' | 'mid' | 'back') => void
@@ -66,17 +65,20 @@ type SetupPanelProps = {
   onTeamChange: (teamId: string) => void
   onTeamStatChange: (teamId: string, stat: TeamStat, value: number) => void
   onToggle: () => void
-  onTrackChange: (trackId: string) => void
+  onEventChange: (eventId: string) => void
   seed: string
   selectedDriverId: string
+  selectedEventId: string
   selectedTeamId: string
   selectedTrackId: string
   gridSource: GridSource
+  gridReferenceLabel: string | null
   knockoutQualifying: KnockoutQualifying
   practiceResults: PracticeSessionResult[]
   practiceSetup: PracticeSetupSummary
   qualifyingResults: QualifyingResult[]
   selectedWeekendStage: WeekendStage
+  sessionFormatLabel: string
   teams: Team[]
   weekendTirePlan: WeekendTirePlan
   weekendContext: WeekendContext
@@ -229,27 +231,32 @@ export function SetupPanel({
   onTeamChange,
   onTeamStatChange,
   onToggle,
-  onTrackChange,
+  onEventChange,
   seed,
   selectedDriverId,
+  selectedEventId,
   selectedTeamId,
   selectedTrackId,
   gridSource,
+  gridReferenceLabel,
   knockoutQualifying,
   practiceResults,
   practiceSetup,
   qualifyingResults,
   selectedWeekendStage,
+  sessionFormatLabel,
   teams,
   weekendTirePlan,
   weekendContext,
   tracks,
+  calendarEvents,
 }: SetupPanelProps) {
   const selectedTeam = teams.find((team) => team.id === selectedTeamId) ?? teams[0]
   const selectedDriver =
     drivers.find((driver) => driver.id === selectedDriverId) ?? drivers[0]
   const selectedTrack =
     tracks.find((track) => track.id === selectedTrackId) ?? tracks[0]
+  const tracksById = new Map(tracks.map((track) => [track.id, track]))
   const selectedCarSetup = weekendContext.setupByDriver[selectedDriver.id]
   const selectedComponents = normalizeCarComponents(
     weekendContext.componentConditionByDriver[selectedDriver.id],
@@ -280,18 +287,20 @@ export function SetupPanel({
       </div>
 
       <label className="field-block">
-        <span>Track</span>
+        <span>Championship round</span>
         <select
-          onChange={(event) => onTrackChange(event.target.value)}
-          value={selectedTrackId}
+          onChange={(event) => onEventChange(event.target.value)}
+          value={selectedEventId}
         >
-          {tracks.map((track) => (
-            <option key={track.id} value={track.id}>
-              {track.calendar2026?.championshipRound
-                ? `R${track.calendar2026.championshipRound} `
-                : ''}
-              {track.name}
-              {track.calendar2026?.status === 'cancelled' ? ' (cancelled)' : ''}
+          {calendarEvents.map((event) => (
+            <option
+              disabled={event.cancelled}
+              key={event.id}
+              value={event.id}
+            >
+              R{event.round} {tracksById.get(event.trackId)?.name ?? event.trackId}
+              {event.raceCount > 1 ? ` / ${event.raceCount} races` : ''}
+              {event.cancelled ? ' (cancelled)' : ''}
             </option>
           ))}
         </select>
@@ -343,7 +352,7 @@ export function SetupPanel({
             {gridSource === 'openf1'
               ? openF1GridStatus
               : gridSource === 'qualifying'
-                ? `Pole: ${qualifyingResults[0]?.code ?? '---'} (${qualifyingResults[0]?.weatherLabel ?? 'CLEAR'})`
+                ? `${gridReferenceLabel ? `${gridReferenceLabel} / ` : ''}Pole: ${qualifyingResults[0]?.code ?? '---'} (${qualifyingResults[0]?.weatherLabel ?? 'CLEAR'})`
                 : 'Use the supplied start order and stagger.'}
           </small>
         </label>
@@ -366,7 +375,7 @@ export function SetupPanel({
           <div className="session-preview">
             <div className="section-title compact-title">
               <span>Practice setup</span>
-              <small>{compactSessionDurationLabel(selectedWeekendStage)}</small>
+              <small>{sessionFormatLabel}</small>
             </div>
             <ol className="qualifying-preview" aria-label="practice setup top five">
               {practiceResults.slice(0, 5).map((result) => (
@@ -422,15 +431,18 @@ export function SetupPanel({
           </ol>
         </div>
         {selectedWeekendStage === 'qualifying' ||
+        selectedWeekendStage === 'qualifying2' ||
         selectedWeekendStage === 'sprintQualifying' ? (
           <div className="session-preview">
             <div className="section-title compact-title">
               <span>
                 {selectedWeekendStage === 'sprintQualifying'
                   ? 'Sprint qualifying'
-                  : 'Qualifying runs'}
+                  : selectedWeekendStage === 'qualifying2'
+                    ? 'Qualifying 2 runs'
+                    : 'Qualifying runs'}
               </span>
-              <small>{compactSessionDurationLabel(selectedWeekendStage)}</small>
+              <small>{sessionFormatLabel}</small>
             </div>
             <div className="knockout-strip" aria-label="qualifying segments">
               {knockoutQualifying.segments.map((segment) => (

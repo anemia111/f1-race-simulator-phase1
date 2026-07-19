@@ -1,9 +1,10 @@
 import type { Driver, DriverTunableStat } from '../types'
 
-export const DRIVER_ABILITY_SCALE_MAX = 150
+export const DRIVER_ABILITY_SCALE_MAX = 100
 export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_SCALE_MAX
 export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
-export const DRIVER_ABILITY_INTERNAL_MIN = 0.55
+export const DRIVER_ABILITY_INTERNAL_MIN = 0
+export const DRIVER_PERFORMANCE_INTERNAL_MIN = 0.55
 export const DRIVER_PERFORMANCE_INTERNAL_MAX = 1
 export const DRIVER_ABILITY_STATS = [
   'rawPace',
@@ -140,9 +141,9 @@ export function driverPerformanceValue(value: number): number {
     (DRIVER_ABILITY_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
 
   return (
-    DRIVER_ABILITY_INTERNAL_MIN +
+    DRIVER_PERFORMANCE_INTERNAL_MIN +
     normalized *
-      (DRIVER_PERFORMANCE_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
+      (DRIVER_PERFORMANCE_INTERNAL_MAX - DRIVER_PERFORMANCE_INTERNAL_MIN)
   )
 }
 
@@ -192,9 +193,9 @@ export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
 }
 
 /**
- * Converts the 55-150 editor scale into the 0.55-1.00 execution range used by
- * the physics and strategy models. A rating of 150 means ideal execution, not
- * 150% grip, power, tire life, or reliability.
+ * Converts the 0-100 source/editor scale into the 0.55-1.00 execution range
+ * used by the physics and strategy models. A rating of 100 means ideal
+ * execution, not extra grip, power, tire life, or reliability.
  */
 export function driverPerformanceAbility(
   driver: Driver,

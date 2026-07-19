@@ -10,7 +10,7 @@ export default defineConfig({
       manifest: {
         background_color: '#050607',
         description:
-          'PC-first Formula 1 race control, timing, strategy, and 3D simulation.',
+          'PC-first F1, F2, F3, and SUPER FORMULA race control, timing, strategy, and 3D simulation.',
         display: 'standalone',
         icons: [
           {
@@ -22,10 +22,10 @@ export default defineConfig({
         ],
         id: './',
         lang: 'ja',
-        name: 'F1 Race Simulator',
+        name: 'Formula Race Simulator',
         orientation: 'landscape',
         scope: './',
-        short_name: 'F1 Simulator',
+        short_name: 'Formula Simulator',
         start_url: './',
         theme_color: '#050607',
       },

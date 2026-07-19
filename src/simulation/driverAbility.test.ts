@@ -22,15 +22,15 @@ import {
 const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
 
 describe('driver ability scale', () => {
-  it('supports a 150-point ceiling', () => {
-    expect(DRIVER_ABILITY_SCALE_MAX).toBe(150)
-    expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.5)
-    expect(clampDriverAbility(2)).toBe(1.5)
-    expect(driverAbilityPoints(1.5)).toBe(150)
+  it('uses the specification-wide 0-100 source and editor scale', () => {
+    expect(DRIVER_ABILITY_SCALE_MAX).toBe(100)
+    expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1)
+    expect(clampDriverAbility(2)).toBe(1)
+    expect(driverAbilityPoints(1)).toBe(100)
     expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBe(1)
-    expect(driverPerformanceValue(0.55)).toBe(0.55)
-    expect(driverPerformanceValue(1.5)).toBe(1)
-    expect(driverPerformanceValue(1.45)).toBeCloseTo(0.9763157895, 10)
+    expect(driverPerformanceValue(0)).toBe(0.55)
+    expect(driverPerformanceValue(0.55)).toBeCloseTo(0.7975, 10)
+    expect(driverPerformanceValue(1)).toBe(1)
   })
 
   it('keeps every CSV-configured driver within the supported scale', () => {
@@ -90,9 +90,11 @@ describe('driver ability scale', () => {
     const max = initialDrivers.find((driver) => driver.code === 'VER')!
     const withoutSource = { ...max, performanceSource: undefined }
 
-    expect(driverConfiguredOverallAbilityPoints(max)).toBe(145)
-    expect(driverOverallAbilityPoints(max)).toBe(145)
-    expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(145)
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(98)
+    expect(driverOverallAbilityPoints(max)).toBeGreaterThanOrEqual(98)
+    expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(
+      driverOverallAbilityPoints(withoutSource),
+    )
   })
 
   it('keeps domain performance independent from the display-only mean', () => {

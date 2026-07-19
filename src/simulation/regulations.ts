@@ -1,4 +1,5 @@
 import type {
+  CategoryRaceFormat,
   CarSnapshot,
   TrackDefinition,
   WeekendStage,
@@ -163,8 +164,34 @@ export function sprintLapsFor(track: TrackDefinition) {
 export function sessionDistanceLapsFor(
   track: TrackDefinition,
   stage: WeekendStage,
+  categoryFormat?: CategoryRaceFormat,
 ) {
-  return stage === 'sprint' ? sprintLapsFor(track) : raceLapsFor(track)
+  if (stage === 'sprint') {
+    const distanceKm =
+      categoryFormat?.sprintDistanceOverridesKm[track.id] ??
+      categoryFormat?.sprintDistanceKm
+
+    if (typeof distanceKm === 'number') {
+      return Math.floor(distanceKm / track.lengthKm) + 1
+    }
+
+    if (typeof categoryFormat?.sprintLapsRatio === 'number') {
+      return Math.max(
+        1,
+        Math.round(raceLapsFor(track) * categoryFormat.sprintLapsRatio),
+      )
+    }
+
+    return sprintLapsFor(track)
+  }
+
+  const distanceKm =
+    categoryFormat?.featureDistanceOverridesKm[track.id] ??
+    categoryFormat?.featureDistanceKm
+
+  return typeof distanceKm === 'number'
+    ? Math.floor(distanceKm / track.lengthKm) + 1
+    : raceLapsFor(track)
 }
 
 export function compliesWithGrandPrixTireRule(

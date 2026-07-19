@@ -9,6 +9,7 @@
     "generate:tracks": "node scripts/generate-real-track-layouts.mjs",
     "lint": "oxlint",
     "test": "vitest run --no-file-parallelism",
+    "validate:montecarlo": "vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts",
     "playtest": "node scripts/run-built-playtest.mjs",
     "playtest:dev": "node scripts/broadcast-playtest.mjs",
     "benchmark": "node scripts/benchmark.mjs",

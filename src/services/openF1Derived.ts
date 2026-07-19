@@ -224,7 +224,9 @@ function stageLabel(stage: WeekendStage) {
     fp3: 'FP3',
     sprintQualifying: 'Sprint Qualifying',
     qualifying: 'Qualifying',
+    qualifying2: 'Qualifying 2',
     race: 'Race',
+    race2: 'Race 2',
     sprint: 'Sprint',
   }[stage]
 }

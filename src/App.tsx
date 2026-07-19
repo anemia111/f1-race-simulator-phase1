@@ -27,10 +27,15 @@ import { RaceClassificationPanel } from './components/RaceClassificationPanel'
 import { QualifyingClassificationPanel } from './components/QualifyingClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
 import { SetupPanel } from './components/SetupPanel'
-import { initialDrivers, initialTeams } from './data/grid2026'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
+import {
+  SERIES_CONFIGURATION_STORAGE_KEY,
+  parsePersistedSeriesConfiguration,
+  serializeSeriesConfiguration,
+  type SeriesConfigurationSnapshot,
+} from './data/seriesConfiguration'
 import { sourceRegistry } from './data/sourceRegistry'
-import { defaultTrack, tracks } from './data/tracks'
+import { tracks } from './data/tracks'
 import { auditTrackCalendar } from './data/trackAudit'
 import {
   classifyObservedDataMode,
@@ -49,8 +54,10 @@ import { useOpenF1SeasonStandings } from './hooks/useOpenF1SeasonStandings'
 import { useRaceSimulation } from './hooks/useRaceSimulation'
 import {
   DRIVER_RATINGS_STORAGE_KEY,
+  LEGACY_DRIVER_RATINGS_STORAGE_KEY,
   LEGACY_SEASON_STORAGE_KEY,
   LEGACY_WEEKEND_STORAGE_KEY,
+  OLDER_WEEKEND_STORAGE_KEY,
   SEASON_STORAGE_KEY,
   WEEKEND_STORAGE_KEY,
   parsePersistedSeason,
@@ -62,8 +69,9 @@ import {
 } from './persistence'
 import {
   applyQualifyingGrid,
-  runKnockoutQualifying,
+  reversedSprintGrid,
   runPracticeSession,
+  runSeriesQualifying,
   runSprintShootoutQualifying,
   type QualifyingResult,
 } from './simulation/qualifying'
@@ -74,8 +82,12 @@ import {
 import { replaceCarComponent } from './simulation/components'
 import {
   compactSessionDurationLabel,
+  isFeatureRaceStage,
   isPracticeStage,
+  isQualifyingStage,
   isRaceDistanceSession,
+  isStandardQualifyingStage,
+  simulationStageFor,
   type PracticeSessionName,
   sessionDurationSecondsFor,
 } from './simulation/sessionRules'
@@ -104,6 +116,7 @@ import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
   recordSeasonRound,
+  recordQualifyingPoints,
   seasonSessionId,
   updateSeasonGarageFromCars,
   updateSeasonGarageReplacement,
@@ -141,6 +154,14 @@ import {
   driverConfiguredOverallAbilityPoints,
 } from './simulation/driverAbility'
 import { normalizeSimulationSeed } from './simulation/random'
+import {
+  defaultSeriesPackage,
+  driverAssignments2026,
+  driverPool2026,
+  seriesPackageById,
+  seriesPackages,
+} from './series/seriesRegistry'
+import type { SeriesId, SeriesPackage } from './series/types'
 
 const cameraModes: Array<{
   mode: CameraMode
@@ -156,9 +177,15 @@ const cameraModes: Array<{
 const RaceScene = lazy(() =>
   import('./three/RaceScene').then((module) => ({ default: module.RaceScene })),
 )
+const SeriesDataManager = lazy(() =>
+  import('./components/SeriesDataManager').then((module) => ({
+    default: module.SeriesDataManager,
+  })),
+)
 
 const speedOptions: SpeedMultiplier[] = [1, 5, 20, 60]
 const dataModeOptions: DataMode[] = ['SIM', 'HIST', 'LIVE']
+const SERIES_STORAGE_KEY = 'race-sim-selected-series-v1'
 const emptyOpenF1CarDataByCode = new Map<string, OpenF1CarData>()
 const trackCalendarAudit = auditTrackCalendar(tracks)
 const microSectorCount = 8
@@ -169,7 +196,9 @@ const weekendStageLabels: Record<WeekendStage, string> = {
   fp3: 'FP3',
   sprintQualifying: 'SQ',
   qualifying: 'Quali',
+  qualifying2: 'Quali 2',
   race: 'Race',
+  race2: 'Race 2',
   sprint: 'Sprint',
 }
 
@@ -178,23 +207,80 @@ const weekendStageLabels: Record<WeekendStage, string> = {
  * accumulated session effects). Anything malformed or referencing unknown
  * tracks is discarded so a stale save can never break startup.
  */
-function loadPersistedWeekend(): PersistedWeekend | null {
+const isSeriesId = (value: string | null): value is SeriesId =>
+  seriesPackages.some((series) => series.id === value)
+
+function loadSelectedSeriesId(): SeriesId {
+  try {
+    const selected = window.localStorage.getItem(SERIES_STORAGE_KEY)
+
+    if (isSeriesId(selected)) {
+      return selected
+    }
+
+    const weekendRaw = window.localStorage.getItem(WEEKEND_STORAGE_KEY)
+    if (weekendRaw) {
+      const weekend = JSON.parse(weekendRaw) as { seriesId?: string }
+      const storedSeriesId = weekend.seriesId ?? null
+      if (isSeriesId(storedSeriesId)) {
+        return storedSeriesId
+      }
+    }
+  } catch {
+    // A blocked storage API should never prevent the simulator from starting.
+  }
+
+  return defaultSeriesPackage.id
+}
+
+const initialSeriesId = loadSelectedSeriesId()
+const initialSeriesPackage =
+  seriesPackageById.get(initialSeriesId) ?? defaultSeriesPackage
+const initialTrack = initialSeriesPackage.tracks[0]
+
+function loadPersistedWeekend(
+  series: SeriesPackage,
+): PersistedWeekend | null {
   return parsePersistedWeekend(
     readFirstAvailableStorageValue(
-      [WEEKEND_STORAGE_KEY, LEGACY_WEEKEND_STORAGE_KEY],
+      [
+        WEEKEND_STORAGE_KEY,
+        LEGACY_WEEKEND_STORAGE_KEY,
+        OLDER_WEEKEND_STORAGE_KEY,
+      ],
       (key) => window.localStorage.getItem(key),
     ),
-    tracks,
-    initialDrivers,
+    series.tracks,
+    series.drivers,
+    series.id,
+    series.rules.tires.standardAllocation,
   )
 }
 
-const persistedWeekend = loadPersistedWeekend()
+const persistedWeekend = loadPersistedWeekend(initialSeriesPackage)
+const initialCalendarEvent =
+  initialSeriesPackage.calendar.find(
+    (event) => event.id === persistedWeekend?.eventId,
+  ) ??
+  initialSeriesPackage.calendar.find(
+    (event) => event.trackId === (persistedWeekend?.trackId ?? initialTrack.id),
+  ) ??
+  initialSeriesPackage.calendar.find((event) => !event.cancelled) ??
+  initialSeriesPackage.calendar[0]
 
-function loadPersistedSeason(): SeasonState {
+const scopedStorageKey = (base: string, seriesId: SeriesId) =>
+  `${base}:${seriesId}`
+
+function loadPersistedSeason(seriesId: SeriesId): SeasonState {
   return parsePersistedSeason(
     readFirstAvailableStorageValue(
-      [SEASON_STORAGE_KEY, LEGACY_SEASON_STORAGE_KEY],
+      seriesId === 'f1-custom'
+        ? [
+            scopedStorageKey(SEASON_STORAGE_KEY, seriesId),
+            SEASON_STORAGE_KEY,
+            LEGACY_SEASON_STORAGE_KEY,
+          ]
+        : [scopedStorageKey(SEASON_STORAGE_KEY, seriesId)],
       (key) => window.localStorage.getItem(key),
     ),
   )
@@ -338,20 +424,78 @@ const copyDrivers = (drivers: Driver[]) =>
     style: { ...driver.style },
   }))
 
-function loadPersistedDrivers(): Driver[] {
+function loadPersistedDrivers(series: SeriesPackage): Driver[] {
   return parsePersistedDriverRatings(
     readFirstAvailableStorageValue(
-      [DRIVER_RATINGS_STORAGE_KEY],
+      series.id === 'f1-custom'
+        ? [
+            scopedStorageKey(DRIVER_RATINGS_STORAGE_KEY, series.id),
+            DRIVER_RATINGS_STORAGE_KEY,
+            LEGACY_DRIVER_RATINGS_STORAGE_KEY,
+          ]
+        : [scopedStorageKey(DRIVER_RATINGS_STORAGE_KEY, series.id)],
       (key) => window.localStorage.getItem(key),
     ),
-    initialDrivers,
+    series.drivers,
   )
 }
 
-const weekendStagesFor = (track: RaceConfig['track']): WeekendStage[] =>
-  track.isSprintWeekend
+function loadSeriesConfiguration(
+  series: SeriesPackage,
+): SeriesConfigurationSnapshot {
+  const configured = parsePersistedSeriesConfiguration(
+    readFirstAvailableStorageValue(
+      [scopedStorageKey(SERIES_CONFIGURATION_STORAGE_KEY, series.id)],
+      (key) => window.localStorage.getItem(key),
+    ),
+    series,
+  )
+
+  if (configured) return configured
+
+  return {
+    calendar: JSON.parse(JSON.stringify(series.calendar)) as SeriesPackage['calendar'],
+    drivers: loadPersistedDrivers(series),
+    migrationHistory: [],
+    rules: JSON.parse(JSON.stringify(series.rules)) as SeriesPackage['rules'],
+    teams: copyTeams(series.teams),
+  }
+}
+
+const initialSeriesConfiguration = loadSeriesConfiguration(
+  initialSeriesPackage,
+)
+
+const weekendStagesFor = (
+  series: SeriesPackage,
+  track: RaceConfig['track'],
+  eventId?: string,
+): WeekendStage[] => {
+  const matchingEvents = series.calendar.filter(
+    (event) => event.trackId === track.id,
+  )
+  const eventOverride =
+    (eventId
+      ? series.calendar.find((event) => event.id === eventId)
+      : matchingEvents.length === 1
+        ? matchingEvents[0]
+        : undefined)?.weekendStages
+
+  if (eventOverride) return eventOverride
+
+  return series.id === 'f1-custom' && track.isSprintWeekend
     ? ['fp1', 'sprintQualifying', 'sprint', 'qualifying', 'race']
-    : ['fp1', 'fp2', 'fp3', 'qualifying', 'race']
+    : series.rules.weekendStages
+}
+
+const tireAllocationFor = (
+  series: SeriesPackage,
+  isSprintWeekend: boolean,
+) => ({
+  ...(isSprintWeekend && series.rules.tires.sprintAllocation
+    ? series.rules.tires.sprintAllocation
+    : series.rules.tires.standardAllocation),
+})
 
 const hashUnit = (value: string) => {
   let hash = 2166136261
@@ -729,6 +873,8 @@ const telemetryForCar = (
   return {
     aeroOvertakeLabel: hasOpenF1Telemetry
       ? openF1AeroLabel(openF1Sample.drs)
+      : car.otsRemainingSeconds !== undefined
+        ? `OTS ${car.overtakeStatus === 'active' ? 'ON' : car.overtakeStatus === 'available' ? 'RDY' : 'OFF'} ${Math.ceil(car.otsRemainingSeconds)}s`
       : `${car.activeAeroMode === 'straight' ? 'F' : car.activeAeroMode === 'partial-straight' ? 'P' : 'C'}${
           car.overtakeStatus === 'active'
             ? '+OVT'
@@ -1090,10 +1236,31 @@ const openF1GridResultsFor = (
 }
 
 export default function App() {
+  const [selectedSeriesId, setSelectedSeriesId] =
+    useState<SeriesId>(initialSeriesId)
+  const registrySeriesPackage = useMemo(
+    () => seriesPackageById.get(selectedSeriesId) ?? defaultSeriesPackage,
+    [selectedSeriesId],
+  )
+  const [configuredRules, setConfiguredRules] = useState(
+    () => initialSeriesConfiguration.rules,
+  )
+  const [configuredCalendar, setConfiguredCalendar] = useState(
+    () => initialSeriesConfiguration.calendar,
+  )
+  const seriesPackage = useMemo<SeriesPackage>(
+    () => ({
+      ...registrySeriesPackage,
+      calendar: configuredCalendar,
+      rules: configuredRules,
+    }),
+    [configuredCalendar, configuredRules, registrySeriesPackage],
+  )
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview')
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [isPaused, setIsPaused] = useState(false)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
+  const [isDataManagerOpen, setIsDataManagerOpen] = useState(false)
   const [areSectorBoardsOpen, setAreSectorBoardsOpen] = useState(false)
   const [isLiveTimingOpen, setIsLiveTimingOpen] = useState(false)
   const [isClassificationOpen, setIsClassificationOpen] = useState(false)
@@ -1109,7 +1276,10 @@ export default function App() {
     () => persistedWeekend?.seed ?? createAutoScenarioSeed(),
   )
   const [selectedTrackId, setSelectedTrackId] = useState(
-    persistedWeekend?.trackId ?? defaultTrack.id,
+    persistedWeekend?.trackId ?? initialTrack.id,
+  )
+  const [selectedEventId, setSelectedEventId] = useState(
+    initialCalendarEvent.id,
   )
   const [selectedWeekendStage, setSelectedWeekendStage] =
     useState<WeekendStage>(() => {
@@ -1118,42 +1288,73 @@ export default function App() {
       }
 
       const persistedTrack =
-        tracks.find((candidate) => candidate.id === persistedWeekend.trackId) ??
-        defaultTrack
+        initialSeriesPackage.tracks.find(
+          (candidate) => candidate.id === persistedWeekend.trackId,
+        ) ?? initialTrack
 
-      return weekendStagesFor(persistedTrack).includes(persistedWeekend.stage)
+      return weekendStagesFor(
+        initialSeriesPackage,
+        persistedTrack,
+        initialCalendarEvent.id,
+      ).includes(persistedWeekend.stage)
         ? persistedWeekend.stage
         : 'race'
     })
   const [gridSource, setGridSource] = useState<GridSource>(
     persistedWeekend?.gridSource ?? 'qualifying',
   )
-  const [teams, setTeams] = useState<Team[]>(() => copyTeams(initialTeams))
-  const [drivers, setDrivers] = useState<Driver[]>(loadPersistedDrivers)
-  const [selectedTeamId, setSelectedTeamId] = useState(initialTeams[0].id)
-  const [selectedDriverId, setSelectedDriverId] = useState(initialDrivers[0].id)
-  const [season, setSeason] = useState<SeasonState>(loadPersistedSeason)
+  const [teams, setTeams] = useState<Team[]>(() =>
+    copyTeams(initialSeriesConfiguration.teams),
+  )
+  const [drivers, setDrivers] = useState<Driver[]>(() =>
+    copyDrivers(initialSeriesConfiguration.drivers),
+  )
+  const [configurationMigrationHistory, setConfigurationMigrationHistory] =
+    useState<string[]>(() => initialSeriesConfiguration.migrationHistory)
+  const [selectedTeamId, setSelectedTeamId] = useState(
+    initialSeriesPackage.teams[0].id,
+  )
+  const [selectedDriverId, setSelectedDriverId] = useState(
+    initialSeriesPackage.drivers[0].id,
+  )
+  const [season, setSeason] = useState<SeasonState>(() =>
+    loadPersistedSeason(initialSeriesId),
+  )
   const [weekendContext, setWeekendContext] = useState(() =>
     persistedWeekend
       ? persistedWeekend.weekendContext
       : applySeasonGarageToWeekend(
           createWeekendContext(
-            initialDrivers,
-            defaultTrack.isSprintWeekend,
-            defaultTrack,
+            initialSeriesConfiguration.drivers,
+            initialTrack.isSprintWeekend,
+            initialTrack,
+            tireAllocationFor(
+              initialSeriesPackage,
+              initialTrack.isSprintWeekend,
+            ),
           ),
           season,
-          initialDrivers,
+          initialSeriesConfiguration.drivers,
         ),
   )
 
   // Save/load: the local weekend survives reloads until the track changes.
   useEffect(() => {
     try {
+      window.localStorage.setItem(SERIES_STORAGE_KEY, selectedSeriesId)
+    } catch {
+      // Category selection remains usable when storage is unavailable.
+    }
+  }, [selectedSeriesId])
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(
         WEEKEND_STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 3,
+          seriesId: selectedSeriesId,
+          eventId: selectedEventId,
           trackId: selectedTrackId,
           stage: selectedWeekendStage,
           seed,
@@ -1164,33 +1365,88 @@ export default function App() {
     } catch {
       // Storage may be unavailable (private mode, quota); persistence is optional.
     }
-  }, [gridSource, seed, selectedTrackId, selectedWeekendStage, weekendContext])
+  }, [
+    gridSource,
+    seed,
+    selectedSeriesId,
+    selectedEventId,
+    selectedTrackId,
+    selectedWeekendStage,
+    weekendContext,
+  ])
 
   useEffect(() => {
     try {
       window.localStorage.setItem(
-        DRIVER_RATINGS_STORAGE_KEY,
+        scopedStorageKey(DRIVER_RATINGS_STORAGE_KEY, selectedSeriesId),
         JSON.stringify(serializeDriverRatings(drivers)),
       )
     } catch {
       // Driver tuning remains usable when browser storage is unavailable.
     }
-  }, [drivers])
+  }, [drivers, selectedSeriesId])
 
   useEffect(() => {
     try {
       window.localStorage.setItem(
-        SEASON_STORAGE_KEY,
+        scopedStorageKey(
+          SERIES_CONFIGURATION_STORAGE_KEY,
+          selectedSeriesId,
+        ),
+        JSON.stringify(
+          serializeSeriesConfiguration(
+            selectedSeriesId,
+            teams,
+            drivers,
+            configurationMigrationHistory,
+            configuredRules,
+            configuredCalendar,
+          ),
+        ),
+      )
+    } catch {
+      // The simulator remains usable when browser storage is unavailable.
+    }
+  }, [
+    configurationMigrationHistory,
+    configuredCalendar,
+    configuredRules,
+    drivers,
+    selectedSeriesId,
+    teams,
+  ])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        scopedStorageKey(SEASON_STORAGE_KEY, selectedSeriesId),
         JSON.stringify({ version: 3, ...season }),
       )
     } catch {
       // Championship persistence is optional when storage is unavailable.
     }
-  }, [season])
+  }, [season, selectedSeriesId])
 
   const track = useMemo(
-    () => tracks.find((candidate) => candidate.id === selectedTrackId) ?? defaultTrack,
-    [selectedTrackId],
+    () =>
+      seriesPackage.tracks.find(
+        (candidate) => candidate.id === selectedTrackId,
+      ) ?? seriesPackage.tracks[0],
+    [selectedTrackId, seriesPackage.tracks],
+  )
+  const selectedEvent = useMemo(
+    () =>
+      seriesPackage.calendar.find((event) => event.id === selectedEventId) ??
+      seriesPackage.calendar.find((event) => event.trackId === track.id) ??
+      seriesPackage.calendar[0],
+    [selectedEventId, seriesPackage.calendar, track.id],
+  )
+  const activeSeriesRules = useMemo(
+    () =>
+      selectedEvent.qualifying
+        ? { ...seriesPackage.rules, qualifying: selectedEvent.qualifying }
+        : seriesPackage.rules,
+    [selectedEvent.qualifying, seriesPackage.rules],
   )
   const fiaEventPack = useMemo(
     () => fiaEventPackFor(selectedTrackId),
@@ -1201,6 +1457,7 @@ export default function App() {
     selectedWeekendStage,
     2026,
     openF1AccessToken,
+    seriesPackage.rules.supportsOpenF1,
   )
   const openF1Bundle = openF1State.data
   const openF1Timeline = useMemo(
@@ -1215,6 +1472,7 @@ export default function App() {
   const seasonStandings = useOpenF1SeasonStandings(
     2026,
     track.calendar2026?.dateStart ?? track.openF1?.dateStart ?? null,
+    seriesPackage.rules.supportsOpenF1,
   )
   const fieldCalibration = useMemo(
     () =>
@@ -1247,31 +1505,68 @@ export default function App() {
   const baseConfig: RaceConfig = useMemo(
     () => ({
       drivers: fieldCalibration.drivers,
+      featureRaceMandatoryPitStop:
+        selectedEvent.featureRaceMandatoryPitStop ??
+        seriesPackage.rules.featureRaceMandatoryPitStop,
+      featureRaceTwoDryCompounds:
+        seriesPackage.rules.featureRaceTwoDryCompounds,
+      overtakeActivation: seriesPackage.rules.overtakeActivation,
+      overtakeSystem: seriesPackage.rules.overtakeSystem,
+      categoryRaceFormat: seriesPackage.rules.race,
       seed: normalizeSimulationSeed(seed),
+      seriesId: selectedSeriesId,
       teams: fieldCalibration.teams,
+      tireSupplier: seriesPackage.rules.tireSupplier,
+      tireAllocation: tireAllocationFor(
+        seriesPackage,
+        track.isSprintWeekend,
+      ),
+      qualifyingDryCompound:
+        seriesPackage.rules.tires.qualifyingDryCompound,
+      sessionOverallTimeLimitSecondsOverride:
+        isRaceDistanceSession(selectedWeekendStage)
+          ? (selectedEvent.raceOverallTimeLimitSeconds ?? null)
+          : null,
+      sessionRaceLapsOverride:
+        isFeatureRaceStage(selectedWeekendStage)
+          ? (selectedEvent.raceLaps ?? null)
+          : null,
+      sessionRaceTimeLimitSecondsOverride:
+        isFeatureRaceStage(selectedWeekendStage)
+          ? (selectedEvent.raceTimeLimitSeconds ?? null)
+          : null,
       track: calibratedTrack,
-      weekendStage: selectedWeekendStage,
+      weekendStage: simulationStageFor(selectedWeekendStage),
       weekendContext,
     }),
-    [calibratedTrack, fieldCalibration, seed, selectedWeekendStage, weekendContext],
+    [
+      calibratedTrack,
+      fieldCalibration,
+      seed,
+      selectedEvent,
+      selectedSeriesId,
+      selectedWeekendStage,
+      seriesPackage,
+      track.isSprintWeekend,
+      weekendContext,
+    ],
   )
   const weekendPracticeStages = useMemo<PracticeSessionName[]>(
     () => {
-      if (track.isSprintWeekend) {
-        return ['fp1']
-      }
+      const available = weekendStagesFor(
+        seriesPackage,
+        track,
+        selectedEventId,
+      ).filter(isPracticeStage)
+      const selectedIndex = available.indexOf(
+        selectedWeekendStage as PracticeSessionName,
+      )
 
-      if (selectedWeekendStage === 'fp1') {
-        return ['fp1']
-      }
-
-      if (selectedWeekendStage === 'fp2') {
-        return ['fp1', 'fp2']
-      }
-
-      return ['fp1', 'fp2', 'fp3']
+      return selectedIndex >= 0
+        ? available.slice(0, selectedIndex + 1)
+        : available
     },
-    [selectedWeekendStage, track.isSprintWeekend],
+    [selectedEventId, selectedWeekendStage, seriesPackage, track],
   )
   const practiceSetup = useMemo(
     () => buildPracticeSetupSummary(baseConfig, weekendPracticeStages),
@@ -1284,29 +1579,87 @@ export default function App() {
         : applyPracticeSetup(baseConfig, practiceSetup),
     [baseConfig, practiceSetup, selectedWeekendStage],
   )
+  const qualifyingBaseConfig = useMemo(() => {
+    const referenceTrack = selectedEvent.gridSourceTrackId
+      ? seriesPackage.tracks.find(
+          (candidate) => candidate.id === selectedEvent.gridSourceTrackId,
+        )
+      : null
+
+    return referenceTrack
+      ? { ...preparedBaseConfig, track: referenceTrack }
+      : preparedBaseConfig
+  }, [preparedBaseConfig, selectedEvent.gridSourceTrackId, seriesPackage.tracks])
   const standardQualifying = useMemo(
-    () => runKnockoutQualifying(preparedBaseConfig),
-    [preparedBaseConfig],
+    () => runSeriesQualifying(qualifyingBaseConfig, activeSeriesRules),
+    [activeSeriesRules, qualifyingBaseConfig],
+  )
+  const secondaryQualifying = useMemo(
+    () =>
+      runSeriesQualifying(
+        {
+          ...qualifyingBaseConfig,
+          seed: `${qualifyingBaseConfig.seed}:qualifying2`,
+        },
+        activeSeriesRules,
+      ),
+    [activeSeriesRules, qualifyingBaseConfig],
   )
   const sprintShootout = useMemo(
     () => runSprintShootoutQualifying(preparedBaseConfig),
     [preparedBaseConfig],
+  )
+  const classificationSegments = useMemo(
+    () =>
+      selectedWeekendStage === 'sprintQualifying'
+        ? sprintShootout.segments.map((segment, index, segments) => ({
+            advanceCount:
+              index < segments.length - 1
+                ? segment.results.length - segment.eliminatedDriverIds.length
+                : null,
+            durationSeconds: segment.sessionDurationSeconds,
+            name: segment.name,
+          }))
+        : activeSeriesRules.qualifying.segments,
+    [
+      selectedWeekendStage,
+      activeSeriesRules.qualifying.segments,
+      sprintShootout.segments,
+    ],
   )
   const weekendTirePlan = useMemo(
     () =>
       buildWeekendTirePlan(
         preparedBaseConfig,
         standardQualifying,
-        track.isSprintWeekend ? sprintShootout : null,
+        weekendStagesFor(seriesPackage, track, selectedEventId).includes(
+          'sprintQualifying',
+        )
+          ? sprintShootout
+          : null,
       ),
-    [preparedBaseConfig, sprintShootout, standardQualifying, track.isSprintWeekend],
+    [
+      preparedBaseConfig,
+      selectedEventId,
+      seriesPackage,
+      sprintShootout,
+      standardQualifying,
+      track,
+    ],
   )
   const knockoutQualifying = useMemo(
     () =>
       selectedWeekendStage === 'sprintQualifying'
         ? sprintShootout
-        : standardQualifying,
-    [selectedWeekendStage, sprintShootout, standardQualifying],
+        : selectedWeekendStage === 'qualifying2'
+          ? secondaryQualifying
+          : standardQualifying,
+    [
+      secondaryQualifying,
+      selectedWeekendStage,
+      sprintShootout,
+      standardQualifying,
+    ],
   )
   const qualifyingResults = knockoutQualifying.classification
   const practiceResults = useMemo(
@@ -1391,11 +1744,21 @@ export default function App() {
     openF1TrackProgress.latestSampleDate,
   )
   const openF1TrackProgressAvailable = openF1TrackProgress.cars.length > 0
-  const weekendStages = useMemo(() => weekendStagesFor(track), [track])
+  const weekendStages = useMemo(
+    () => weekendStagesFor(seriesPackage, track, selectedEventId),
+    [selectedEventId, seriesPackage, track],
+  )
   const stageGridResults =
     selectedWeekendStage === 'sprint'
-      ? sprintShootout.classification
-      : standardQualifying.classification
+      ? seriesPackage.rules.sprintGridReverseCount > 0
+        ? reversedSprintGrid(
+            standardQualifying.classification,
+            seriesPackage.rules.sprintGridReverseCount,
+          )
+        : sprintShootout.classification
+      : selectedWeekendStage === 'race2'
+        ? secondaryQualifying.classification
+        : standardQualifying.classification
   const tirePlansByDriver = useMemo(
     () =>
       new Map(
@@ -1406,7 +1769,7 @@ export default function App() {
   const raceDrivers = useMemo(
     () => {
       const persistedGrid =
-        selectedWeekendStage === 'race' || selectedWeekendStage === 'sprint'
+        isRaceDistanceSession(selectedWeekendStage)
           ? applyWeekendGrid(
               preparedBaseConfig.drivers,
               weekendContext,
@@ -1421,7 +1784,7 @@ export default function App() {
             : preparedBaseConfig.drivers
       const ordered =
         persistedGrid ??
-        (selectedWeekendStage === 'race' || selectedWeekendStage === 'sprint'
+        (isRaceDistanceSession(selectedWeekendStage)
           ? applyGridPenalties(
               fallbackGrid,
               weekendContext,
@@ -1433,7 +1796,7 @@ export default function App() {
         const plan = tirePlansByDriver.get(driver.id)
         const openF1StartingTire =
           gridSource === 'openf1' &&
-          (selectedWeekendStage === 'race' || selectedWeekendStage === 'sprint')
+          isRaceDistanceSession(selectedWeekendStage)
             ? openF1StartingTiresByCode.get(driver.code)
             : null
 
@@ -1445,7 +1808,7 @@ export default function App() {
           return driver
         }
 
-        if (selectedWeekendStage === 'race') {
+        if (isFeatureRaceStage(selectedWeekendStage)) {
           return { ...driver, tire: plan.raceStartCompound }
         }
 
@@ -1470,8 +1833,14 @@ export default function App() {
   const raceConfig: RaceConfig = useMemo(
     () => {
       const timedSessionPlan =
-        selectedWeekendStage === 'qualifying'
-          ? buildTimedSessionPlan(standardQualifying)
+        isStandardQualifyingStage(selectedWeekendStage)
+          ? buildTimedSessionPlan(
+              selectedWeekendStage === 'qualifying2'
+                ? secondaryQualifying
+                : standardQualifying,
+              activeSeriesRules.qualifying.breakSeconds,
+              activeSeriesRules.qualifying.format,
+            )
           : selectedWeekendStage === 'sprintQualifying'
             ? buildTimedSessionPlan(sprintShootout)
             : undefined
@@ -1479,6 +1848,9 @@ export default function App() {
       return {
         ...preparedBaseConfig,
         drivers: raceDrivers,
+        sessionDurationSeconds: isPracticeStage(selectedWeekendStage)
+          ? seriesPackage.rules.freePracticeDurationSeconds
+          : null,
         timedSessionPlan,
       }
     },
@@ -1486,6 +1858,10 @@ export default function App() {
       preparedBaseConfig,
       raceDrivers,
       selectedWeekendStage,
+      activeSeriesRules.qualifying.breakSeconds,
+      activeSeriesRules.qualifying.format,
+      seriesPackage.rules.freePracticeDurationSeconds,
+      secondaryQualifying,
       sprintShootout,
       standardQualifying,
     ],
@@ -1494,11 +1870,20 @@ export default function App() {
     () =>
       JSON.stringify([
         normalizeSimulationSeed(seed),
+        selectedSeriesId,
+        selectedEventId,
         selectedTrackId,
         selectedWeekendStage,
         gridSource,
       ]),
-    [gridSource, seed, selectedTrackId, selectedWeekendStage],
+    [
+      gridSource,
+      seed,
+      selectedEventId,
+      selectedSeriesId,
+      selectedTrackId,
+      selectedWeekendStage,
+    ],
   )
   const {
     checkpointRecovered,
@@ -1522,10 +1907,8 @@ export default function App() {
     if (
       snapshotIsCurrent &&
       snapshot.sessionStatus === 'finished' &&
-      (selectedWeekendStage === 'race' ||
-        selectedWeekendStage === 'sprint' ||
-        selectedWeekendStage === 'qualifying' ||
-        selectedWeekendStage === 'sprintQualifying')
+      (isRaceDistanceSession(selectedWeekendStage) ||
+        isQualifyingStage(selectedWeekendStage))
     ) {
       setIsClassificationOpen(true)
     }
@@ -1535,14 +1918,14 @@ export default function App() {
     setIsClassificationOpen(false)
     setIsInsightsOpen(false)
     setHistoricalTimelineRatio(1)
-  }, [selectedTrackId, selectedWeekendStage])
+  }, [selectedEventId, selectedTrackId, selectedWeekendStage])
 
   // A finished race-distance session counts as weekend progress.
   useEffect(() => {
     if (
       !snapshotIsCurrent ||
       snapshot.sessionStatus !== 'finished' ||
-      (selectedWeekendStage !== 'race' && selectedWeekendStage !== 'sprint')
+      !isRaceDistanceSession(selectedWeekendStage)
     ) {
       return
     }
@@ -1553,36 +1936,59 @@ export default function App() {
     setSeason((current) =>
       recordSeasonRound(current, {
         cars: snapshot.cars,
+        drivers,
         greenFlagLaps: snapshot.greenFlagLaps,
-        roundId: seasonSessionId(selectedTrackId, selectedWeekendStage),
+        roundId: seasonSessionId(selectedEventId, selectedWeekendStage),
         scheduledLaps: snapshot.raceLaps,
         stage: selectedWeekendStage,
+        pointsTable:
+          selectedWeekendStage === 'sprint'
+            ? seriesPackage.rules.points.sprint
+            : (selectedEvent.featurePoints ??
+              seriesPackage.rules.points.feature),
+        reducedPointsTables: seriesPackage.rules.points.reduced
+          ? selectedWeekendStage === 'sprint'
+            ? seriesPackage.rules.points.reduced.sprint
+            : seriesPackage.rules.points.reduced.feature
+          : null,
+        fastestLapRule: seriesPackage.rules.points.fastestLap,
+        teamScoring: seriesPackage.rules.championshipTeamScoring,
+        teams,
       }),
     )
   }, [
-    selectedTrackId,
+    selectedEvent.featurePoints,
+    selectedEventId,
     selectedWeekendStage,
     snapshot.cars,
     snapshot.greenFlagLaps,
     snapshot.raceLaps,
     snapshot.sessionStatus,
     snapshotIsCurrent,
+    drivers,
+    seriesPackage.rules.championshipTeamScoring,
+    seriesPackage.rules.points.fastestLap,
+    seriesPackage.rules.points.feature,
+    seriesPackage.rules.points.reduced,
+    seriesPackage.rules.points.sprint,
+    teams,
   ])
 
   useEffect(() => {
     if (
       !snapshotIsCurrent ||
       snapshot.sessionStatus !== 'finished' ||
-      (selectedWeekendStage !== 'qualifying' &&
-        selectedWeekendStage !== 'sprintQualifying')
+      !isQualifyingStage(selectedWeekendStage)
     ) {
       return
     }
 
     const knockout =
-      selectedWeekendStage === 'qualifying'
-        ? standardQualifying
-        : sprintShootout
+      selectedWeekendStage === 'sprintQualifying'
+        ? sprintShootout
+        : selectedWeekendStage === 'qualifying2'
+          ? secondaryQualifying
+          : standardQualifying
 
     setWeekendContext((current) =>
       completeQualifyingSession(
@@ -1593,11 +1999,25 @@ export default function App() {
         snapshot.cars,
       ),
     )
+    if (isStandardQualifyingStage(selectedWeekendStage)) {
+      setSeason((current) =>
+        recordQualifyingPoints(current, {
+          classification: knockout.classification,
+          pointsTable: seriesPackage.rules.points.qualifying,
+          roundId: `${selectedEventId}:${selectedWeekendStage}`,
+          teamScoring: seriesPackage.rules.championshipTeamScoring,
+        }),
+      )
+    }
   }, [
     selectedWeekendStage,
     snapshot.cars,
     snapshot.sessionStatus,
     snapshotIsCurrent,
+    selectedEventId,
+    seriesPackage.rules.championshipTeamScoring,
+    seriesPackage.rules.points.qualifying,
+    secondaryQualifying,
     sprintShootout,
     standardQualifying,
   ])
@@ -1710,12 +2130,49 @@ export default function App() {
     ],
   )
   const isRaceProgressSession = isRaceDistanceSession(selectedWeekendStage)
-  const isQualifyingSession =
-    selectedWeekendStage === 'qualifying' ||
-    selectedWeekendStage === 'sprintQualifying'
+  const isQualifyingSession = isQualifyingStage(selectedWeekendStage)
   const selectedSessionDurationSeconds =
     raceConfig.timedSessionPlan?.totalDurationSeconds ??
+    raceConfig.sessionDurationSeconds ??
     sessionDurationSecondsFor(selectedWeekendStage)
+  const configuredRaceDistanceKm =
+    selectedWeekendStage === 'sprint'
+      ? (seriesPackage.rules.race.sprintDistanceOverridesKm[track.id] ??
+        seriesPackage.rules.race.sprintDistanceKm)
+      : (seriesPackage.rules.race.featureDistanceOverridesKm[track.id] ??
+        seriesPackage.rules.race.featureDistanceKm)
+  const configuredRaceTimeLimitSeconds =
+    isFeatureRaceStage(selectedWeekendStage) &&
+    selectedEvent.raceTimeLimitSeconds !== undefined
+      ? selectedEvent.raceTimeLimitSeconds
+      : selectedWeekendStage === 'sprint'
+      ? seriesPackage.rules.race.sprintTimeLimitSeconds
+      : seriesPackage.rules.race.featureTimeLimitSeconds
+  const categoryRaceFormatLabel = [
+    configuredRaceDistanceKm === null
+      ? null
+      : `${configuredRaceDistanceKm} km+`,
+    `${snapshot.raceLaps} laps`,
+    configuredRaceTimeLimitSeconds === null
+      ? null
+      : `${Math.round(configuredRaceTimeLimitSeconds / 60)}m max`,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(' / ')
+  const categorySessionFormatLabel = isPracticeStage(selectedWeekendStage)
+    ? `${Math.round(seriesPackage.rules.freePracticeDurationSeconds / 60)}m practice`
+    : isStandardQualifyingStage(selectedWeekendStage)
+      ? activeSeriesRules.qualifying.segments
+          .map(
+            (segment, index) =>
+              activeSeriesRules.qualifying.format === 'grouped' && index === 0
+                ? `${segment.name} A/B ${Math.round(segment.durationSeconds / 120)}m each`
+                : `${segment.name} ${Math.round(segment.durationSeconds / 60)}m`,
+          )
+          .join(' / ')
+      : isRaceProgressSession
+        ? categoryRaceFormatLabel
+        : compactSessionDurationLabel(selectedWeekendStage)
   const activeTimedSegment = raceConfig.timedSessionPlan?.segments.find(
     (segment) =>
       snapshot.elapsedSeconds >= segment.startsAtSeconds &&
@@ -1766,7 +2223,7 @@ export default function App() {
         : snapshot.timedSessionSuspended
           ? `${snapshot.timedSegmentLabel ?? 'SESSION'} RED`
           : activeTimedSegment && timedSegmentRemainingSeconds !== null
-            ? `${activeTimedSegment.name} ${formatShortDuration(timedSegmentRemainingSeconds)}`
+            ? `${activeTimedSegment.displayLabel ?? activeTimedSegment.name} ${formatShortDuration(timedSegmentRemainingSeconds)}`
             : nextTimedSegment
               ? `INTERVAL ${formatShortDuration(
                   Math.max(
@@ -1909,9 +2366,10 @@ export default function App() {
             fieldCalibration.teamPaceDeltaSeconds[car.teamId] ?? null,
           performanceSource: fieldCalibration.source,
           tireModelSource:
-            tireSampleCount >= 4
+            selectedSeriesId === 'f1-custom' && tireSampleCount >= 4
               ? ('openf1-calibrated' as const)
-              : isDryCompound(car.tire) &&
+              : selectedSeriesId === 'f1-custom' &&
+                  isDryCompound(car.tire) &&
                   raceConfig.track.tireNomination?.source === 'pirelli'
                 ? ('pirelli' as const)
                 : ('simulation' as const),
@@ -2098,6 +2556,7 @@ export default function App() {
       openF1TimingSources,
       fieldCalibration,
       raceConfig,
+      selectedSeriesId,
       snapshot.dryingLineBySector,
       snapshot.elapsedSeconds,
       snapshot.surfaceWaterMmBySector,
@@ -2152,9 +2611,71 @@ export default function App() {
     [openF1Bundle],
   )
 
-  const changeTrack = (trackId: string) => {
-    const nextTrack = tracks.find((candidate) => candidate.id === trackId) ?? defaultTrack
-    const stages = weekendStagesFor(nextTrack)
+  const changeSeries = (seriesId: SeriesId) => {
+    if (seriesId === selectedSeriesId) {
+      return
+    }
+
+    const nextRegistrySeries =
+      seriesPackageById.get(seriesId) ?? defaultSeriesPackage
+    const nextConfiguration = loadSeriesConfiguration(nextRegistrySeries)
+    const nextSeries: SeriesPackage = {
+      ...nextRegistrySeries,
+      calendar: nextConfiguration.calendar,
+      rules: nextConfiguration.rules,
+    }
+    const nextEvent =
+      nextSeries.calendar.find((event) => !event.cancelled) ??
+      nextSeries.calendar[0]
+    const nextTrack =
+      nextSeries.tracks.find((track) => track.id === nextEvent.trackId) ??
+      nextSeries.tracks[0]
+    const nextDrivers = nextConfiguration.drivers
+    const nextSeason = loadPersistedSeason(nextSeries.id)
+    const nextStages = weekendStagesFor(nextSeries, nextTrack, nextEvent.id)
+    const nextStage = nextStages.includes('race')
+      ? 'race'
+      : nextStages.at(-1) ?? 'race'
+
+    setSelectedSeriesId(nextSeries.id)
+    setConfiguredRules(nextConfiguration.rules)
+    setConfiguredCalendar(nextConfiguration.calendar)
+    setSelectedEventId(nextEvent.id)
+    setSelectedTrackId(nextTrack.id)
+    setSelectedWeekendStage(nextStage)
+    setTeams(copyTeams(nextConfiguration.teams))
+    setDrivers(copyDrivers(nextDrivers))
+    setConfigurationMigrationHistory(nextConfiguration.migrationHistory)
+    setSelectedTeamId(nextSeries.teams[0].id)
+    setSelectedDriverId(nextSeries.drivers[0].id)
+    setSeason(nextSeason)
+    setGridSource('qualifying')
+    setRequestedDataMode('SIM')
+    setSeed(createAutoScenarioSeed())
+    setWeekendContext(
+      applySeasonGarageToWeekend(
+        createWeekendContext(
+          nextDrivers,
+          nextTrack.isSprintWeekend,
+          nextTrack,
+          tireAllocationFor(nextSeries, nextTrack.isSprintWeekend),
+        ),
+        nextSeason,
+        nextDrivers,
+      ),
+    )
+  }
+
+  const changeEvent = (eventId: string) => {
+    const nextEvent =
+      seriesPackage.calendar.find((event) => event.id === eventId) ??
+      seriesPackage.calendar[0]
+    const nextTrack =
+      seriesPackage.tracks.find(
+        (candidate) => candidate.id === nextEvent.trackId,
+      ) ??
+      seriesPackage.tracks[0]
+    const stages = weekendStagesFor(seriesPackage, nextTrack, nextEvent.id)
 
     const seasonWithCurrentWear = updateSeasonGarageFromCars(
       season,
@@ -2162,11 +2683,17 @@ export default function App() {
     )
 
     setSeason(seasonWithCurrentWear)
-    setSelectedTrackId(trackId)
+    setSelectedEventId(nextEvent.id)
+    setSelectedTrackId(nextTrack.id)
     setSeed(createAutoScenarioSeed())
     setWeekendContext(
       applySeasonGarageToWeekend(
-        createWeekendContext(drivers, nextTrack.isSprintWeekend, nextTrack),
+        createWeekendContext(
+          drivers,
+          nextTrack.isSprintWeekend,
+          nextTrack,
+          tireAllocationFor(seriesPackage, nextTrack.isSprintWeekend),
+        ),
         seasonWithCurrentWear,
         drivers,
       ),
@@ -2197,12 +2724,14 @@ export default function App() {
           practiceSetup.sessionResults[stage] ?? runPracticeSession(baseConfig, stage)
 
         next = completePracticeSession(next, stage, results)
-      } else if (stage === 'qualifying') {
+      } else if (isStandardQualifyingStage(stage)) {
+        const qualifying =
+          stage === 'qualifying2' ? secondaryQualifying : standardQualifying
         next = completeQualifyingSession(
           next,
-          'qualifying',
-          standardQualifying.classification,
-          standardQualifying.segments,
+          stage,
+          qualifying.classification,
+          qualifying.segments,
         )
       } else if (stage === 'sprintQualifying') {
         next = completeQualifyingSession(
@@ -2243,13 +2772,17 @@ export default function App() {
           snapshot.cars,
         ),
       )
-    } else if (selectedWeekendStage === 'qualifying') {
+    } else if (isStandardQualifyingStage(selectedWeekendStage)) {
+      const qualifying =
+        selectedWeekendStage === 'qualifying2'
+          ? secondaryQualifying
+          : standardQualifying
       setWeekendContext((current) =>
         completeQualifyingSession(
           current,
-          'qualifying',
-          standardQualifying.classification,
-          standardQualifying.segments,
+          selectedWeekendStage,
+          qualifying.classification,
+          qualifying.segments,
           snapshot.cars,
         ),
       )
@@ -2440,18 +2973,85 @@ export default function App() {
   }
 
   const resetGrid = () => {
-    setTeams(copyTeams(initialTeams))
-    setDrivers(copyDrivers(initialDrivers))
-    setSelectedTeamId(initialTeams[0].id)
-    setSelectedDriverId(initialDrivers[0].id)
+    const resetDrivers = copyDrivers(registrySeriesPackage.drivers)
+
+    setTeams(copyTeams(registrySeriesPackage.teams))
+    setDrivers(resetDrivers)
+    setConfiguredRules(
+      JSON.parse(
+        JSON.stringify(registrySeriesPackage.rules),
+      ) as SeriesPackage['rules'],
+    )
+    setConfiguredCalendar(
+      JSON.parse(
+        JSON.stringify(registrySeriesPackage.calendar),
+      ) as SeriesPackage['calendar'],
+    )
+    setConfigurationMigrationHistory((history) => [
+      ...history,
+      `official-baseline-reset:${new Date().toISOString()}`,
+    ].slice(-20))
+    setSelectedTeamId(registrySeriesPackage.teams[0].id)
+    setSelectedDriverId(resetDrivers[0].id)
     setSeed(createAutoScenarioSeed())
     setWeekendContext(
       applySeasonGarageToWeekend(
-        createWeekendContext(initialDrivers, track.isSprintWeekend, track),
+        createWeekendContext(
+          resetDrivers,
+          track.isSprintWeekend,
+          track,
+          tireAllocationFor(registrySeriesPackage, track.isSprintWeekend),
+        ),
         season,
-        initialDrivers,
+        resetDrivers,
       ),
     )
+  }
+
+  const applySeriesConfiguration = (
+    nextTeams: Team[],
+    nextDrivers: Driver[],
+    historyEntry?: string,
+    importedMigrationHistory?: string[],
+    nextRules?: SeriesPackage['rules'],
+    nextCalendar?: SeriesPackage['calendar'],
+  ) => {
+    setTeams(copyTeams(nextTeams))
+    setDrivers(copyDrivers(nextDrivers))
+    if (nextRules) setConfiguredRules(nextRules)
+    if (nextCalendar) setConfiguredCalendar(nextCalendar)
+    setSelectedTeamId((current) =>
+      nextTeams.some((team) => team.id === current)
+        ? current
+        : nextTeams[0]?.id ?? '',
+    )
+    setSelectedDriverId((current) =>
+      nextDrivers.some((driver) => driver.id === current)
+        ? current
+        : nextDrivers[0]?.id ?? '',
+    )
+
+    if (importedMigrationHistory) {
+      setConfigurationMigrationHistory([
+        ...importedMigrationHistory,
+        ...(historyEntry
+          ? [`${new Date().toISOString()}:${historyEntry}`]
+          : []),
+      ].slice(-20))
+    } else if (
+      historyEntry &&
+      /import|rollback|equalis|baseline|migration|seat updated|role updated/i.test(
+        historyEntry,
+      )
+    ) {
+      setConfigurationMigrationHistory((history) =>
+        [
+          ...history,
+          `${new Date().toISOString()}:${historyEntry}`,
+        ].slice(-20),
+      )
+    }
+    setSeed(createAutoScenarioSeed())
   }
 
   const randomSeed = () => {
@@ -2473,7 +3073,7 @@ export default function App() {
         ? 'OBS'
         : 'SIM'
 
-  const broadcastDataDetails: BroadcastDataDetail[] = [
+  const baselineBroadcastDataDetails: BroadcastDataDetail[] = [
     {
       label: 'OpenF1 link',
       source: openF1Bundle?.meeting ? 'OBS' : 'UNAVAILABLE',
@@ -2578,7 +3178,53 @@ export default function App() {
               : 'First save pending',
     },
   ]
-  const broadcastDataControl = (
+  const f1OnlyDataLabels = new Set([
+    'OpenF1 link',
+    'Session status',
+    'API endpoints',
+    'Newest sample',
+    'Timing rows',
+    'Telemetry rows',
+    '2026 rulebook',
+    'Heat Hazard',
+    'Grip declaration',
+    'ERS limits',
+    'Low-grip ERS curve',
+    'FIA event pack',
+  ])
+  const broadcastDataDetails = seriesPackage.rules.supportsOpenF1
+    ? baselineBroadcastDataDetails
+    : [
+        ...seriesPackage.sources.map<BroadcastDataDetail>((source) => ({
+          label: source.label,
+          source: 'OFF',
+          value: `Verified ${source.sourceDate}`,
+        })),
+        {
+          label: 'Category format',
+          source: 'FIA' as const,
+          value: categorySessionFormatLabel,
+        },
+        {
+          label: 'Tire package',
+          source: 'OFF' as const,
+          value: `${seriesPackage.rules.tireSupplier} / ${Object.entries(
+            seriesPackage.rules.tires.standardAllocation,
+          )
+            .filter(([, count]) => count > 0)
+            .map(([compound, count]) => `${compound}${count}`)
+            .join(' ')}`,
+        },
+        {
+          label: 'Overtake system',
+          source: 'FIA' as const,
+          value: seriesPackage.rules.overtakeSystem.toUpperCase(),
+        },
+        ...baselineBroadcastDataDetails.filter(
+          (detail) => !f1OnlyDataLabels.has(detail.label),
+        ),
+      ]
+  const broadcastDataControl = seriesPackage.rules.supportsOpenF1 ? (
     <form
       className="broadcast-data-control"
       onSubmit={(event) => {
@@ -2620,7 +3266,18 @@ export default function App() {
       >
         {observedMapActive ? 'Hide' : 'Show'} OpenF1 positions
       </button>
+      <button onClick={() => setIsDataManagerOpen(true)} type="button">
+        Manage series data
+      </button>
     </form>
+  ) : (
+    <div className="broadcast-data-control">
+      <strong>{seriesPackage.label}</strong>
+      <span>Official registry package. OpenF1 is F1-only.</span>
+      <button onClick={() => setIsDataManagerOpen(true)} type="button">
+        Manage series data
+      </button>
+    </div>
   )
   const legacyLayoutRequested =
     new URLSearchParams(window.location.search).get('layout') === 'legacy'
@@ -2641,9 +3298,11 @@ export default function App() {
           engineLabel={`ENGINE ${engineMode.toUpperCase()}${checkpointRecovered ? ' / RESUMED' : ''}${checkpointSaveStatus === 'failed' ? ' / SAVE ERROR' : ''}`}
           environment={environmentReadout}
           eventName={
-            track.openF1?.meetingName ??
-            fiaEventPack?.eventName ??
-            `${track.location} Grand Prix`
+            seriesPackage.rules.supportsOpenF1
+              ? (track.openF1?.meetingName ??
+                fiaEventPack?.eventName ??
+                `${track.location} ${seriesPackage.shortLabel}`)
+              : `${seriesPackage.shortLabel} ROUND ${selectedEvent.round} / ${track.location}`
           }
           isPaused={isPaused}
           onCameraModeChange={setCameraMode}
@@ -2659,10 +3318,12 @@ export default function App() {
           }}
           onOpenSetup={() => setIsSetupOpen(true)}
           onPauseChange={() => setIsPaused((paused) => !paused)}
+          onSeriesChange={changeSeries}
           onSkipFormationLap={skipFormationLap}
           onSpeedChange={setSpeed}
           onStageChange={jumpToWeekendStage}
           raceControlLog={raceControlLog}
+          raceLabel={seriesPackage.rules.raceLabel}
           selectedCar={selectedCar}
           sessionPhaseLabel={
             isRaceProgressSession
@@ -2673,6 +3334,15 @@ export default function App() {
           snapshot={broadcastSnapshot}
           speed={speed}
           stage={selectedWeekendStage}
+          seriesId={selectedSeriesId}
+          seriesLabel={seriesPackage.label}
+          seriesOptions={seriesPackages.map(({ id, label }) => ({ id, label }))}
+          tireLabels={{
+            ...seriesPackage.rules.tires.dryLabels,
+            I: 'Intermediate',
+            W: 'Wet',
+          }}
+          overtakeSystem={seriesPackage.rules.overtakeSystem}
           timingRows={timingRows}
           track={raceConfig.track}
           trackScene={
@@ -2699,12 +3369,19 @@ export default function App() {
               />
             </Suspense>
           }
+          weekendStages={weekendStages}
         />
 
         <SetupPanel
+          calendarEvents={seriesPackage.calendar}
           componentReplacementDisabled={!isPaused}
           drivers={drivers}
           gridSource={gridSource}
+          gridReferenceLabel={
+            selectedEvent.gridSourceTrackId
+              ? `${qualifyingBaseConfig.track.name} R${selectedEvent.round} qualifying reference`
+              : null
+          }
           isOpen={isSetupOpen}
           knockoutQualifying={knockoutQualifying}
           onApplyTeamPreset={applyTeamPreset}
@@ -2720,7 +3397,7 @@ export default function App() {
           onTeamChange={setSelectedTeamId}
           onTeamStatChange={updateTeamStat}
           onToggle={() => setIsSetupOpen((isOpen) => !isOpen)}
-          onTrackChange={changeTrack}
+          onEventChange={changeEvent}
           openF1GridAvailable={openF1GridResults.length > 0}
           openF1GridStatus={openF1GridStatus}
           practiceResults={practiceResults}
@@ -2728,14 +3405,33 @@ export default function App() {
           qualifyingResults={qualifyingResults}
           seed={seed}
           selectedDriverId={selectedDriverId}
+          selectedEventId={selectedEventId}
           selectedTeamId={selectedTeamId}
           selectedTrackId={selectedTrackId}
           selectedWeekendStage={selectedWeekendStage}
+          sessionFormatLabel={categorySessionFormatLabel}
           teams={teams}
-          tracks={tracks}
+          tracks={seriesPackage.tracks}
           weekendContext={weekendContext}
           weekendTirePlan={weekendTirePlan}
         />
+
+        {isDataManagerOpen ? (
+          <Suspense fallback={null}>
+            <SeriesDataManager
+              assignments={driverAssignments2026}
+              driverPool={driverPool2026}
+              drivers={drivers}
+              isOpen={isDataManagerOpen}
+              migrationHistory={configurationMigrationHistory}
+              onApply={applySeriesConfiguration}
+              onClose={() => setIsDataManagerOpen(false)}
+              onReset={resetGrid}
+              series={seriesPackage}
+              teams={teams}
+            />
+          </Suspense>
+        ) : null}
 
         {isClassificationOpen && isRaceProgressSession ? (
           <RaceClassificationPanel
@@ -2747,6 +3443,7 @@ export default function App() {
         {isClassificationOpen && isQualifyingSession ? (
           <QualifyingClassificationPanel
             onClose={() => setIsClassificationOpen(false)}
+            segments={classificationSegments}
             snapshot={snapshot}
             stage={selectedWeekendStage}
           />
@@ -2929,13 +3626,13 @@ export default function App() {
           <strong
             title={
               isRaceProgressSession
-                ? `${raceConfig.track.raceLapsSource === 'official' ? 'Official' : 'Estimated'} race distance`
-                : compactSessionDurationLabel(selectedWeekendStage)
+                ? categoryRaceFormatLabel
+                : categorySessionFormatLabel
             }
           >
             {isRaceProgressSession
-              ? `${raceConfig.track.raceLapsSource === 'official' ? 'Official' : 'Est.'} distance`
-              : compactSessionDurationLabel(selectedWeekendStage)}
+              ? categoryRaceFormatLabel
+              : categorySessionFormatLabel}
           </strong>
           <span>Pace ref</span>
           <strong
@@ -3277,7 +3974,13 @@ export default function App() {
       </section>
 
       <SetupPanel
+        calendarEvents={seriesPackage.calendar}
         drivers={drivers}
+        gridReferenceLabel={
+          selectedEvent.gridSourceTrackId
+            ? `${qualifyingBaseConfig.track.name} R${selectedEvent.round} qualifying reference`
+            : null
+        }
         isOpen={isSetupOpen}
         onApplyTeamPreset={applyTeamPreset}
         onDriverChange={focusDriver}
@@ -3295,9 +3998,10 @@ export default function App() {
         onTeamChange={setSelectedTeamId}
         onTeamStatChange={updateTeamStat}
         onToggle={() => setIsSetupOpen((isOpen) => !isOpen)}
-        onTrackChange={changeTrack}
+        onEventChange={changeEvent}
         seed={seed}
         selectedDriverId={selectedDriverId}
+        selectedEventId={selectedEventId}
         selectedTeamId={selectedTeamId}
         selectedTrackId={selectedTrackId}
         gridSource={gridSource}
@@ -3306,11 +4010,29 @@ export default function App() {
         practiceSetup={practiceSetup}
         qualifyingResults={qualifyingResults}
         selectedWeekendStage={selectedWeekendStage}
+        sessionFormatLabel={categorySessionFormatLabel}
         teams={teams}
         weekendTirePlan={weekendTirePlan}
         weekendContext={weekendContext}
-        tracks={tracks}
+        tracks={seriesPackage.tracks}
       />
+
+      {isDataManagerOpen ? (
+        <Suspense fallback={null}>
+          <SeriesDataManager
+            assignments={driverAssignments2026}
+            driverPool={driverPool2026}
+            drivers={drivers}
+            isOpen={isDataManagerOpen}
+            migrationHistory={configurationMigrationHistory}
+            onApply={applySeriesConfiguration}
+            onClose={() => setIsDataManagerOpen(false)}
+            onReset={resetGrid}
+            series={seriesPackage}
+            teams={teams}
+          />
+        </Suspense>
+      ) : null}
 
       {isOpenF1PanelOpen ? (
       <section className="hud openf1-panel" aria-label="OpenF1 data">
@@ -3969,6 +4691,7 @@ export default function App() {
       {isClassificationOpen && isQualifyingSession ? (
         <QualifyingClassificationPanel
           onClose={() => setIsClassificationOpen(false)}
+          segments={classificationSegments}
           snapshot={snapshot}
           stage={selectedWeekendStage}
         />

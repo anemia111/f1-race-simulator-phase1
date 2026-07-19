@@ -7,38 +7,104 @@ import type {
 
 export function buildTimedSessionPlan(
   qualifying: KnockoutQualifying,
+  breakSeconds = QUALIFYING_BREAK_SECONDS,
+  format: 'knockout' | 'single-session' | 'grouped' = 'knockout',
 ): TimedSessionPlan {
   let cursor = 0
-  const segments = qualifying.segments.map<TimedSessionSegmentPlan>(
-    (segment, index) => {
+  const segments: TimedSessionSegmentPlan[] = []
+
+  const appendSegment = (
+    segment: KnockoutQualifying['segments'][number],
+    options: {
+      displayLabel?: string
+      durationSeconds?: number
+      id?: string
+      participantDriverIds?: string[]
+      promotionGroups?: TimedSessionSegmentPlan['promotionGroups']
+      selectFromPrevious?: boolean
+      suspensionSeconds?: number
+    } = {},
+  ) => {
+      const durationSeconds =
+        options.durationSeconds ?? segment.sessionDurationSeconds
+      const suspensionSeconds =
+        options.suspensionSeconds ?? segment.suspensionSeconds
       const suspensionStartsAtSeconds =
-        segment.suspensionSeconds > 0
-          ? cursor + segment.sessionDurationSeconds * 0.55
+        suspensionSeconds > 0
+          ? cursor + durationSeconds * 0.55
           : null
       const suspensionEndsAtSeconds =
         suspensionStartsAtSeconds === null
           ? null
-          : suspensionStartsAtSeconds + segment.suspensionSeconds
+          : suspensionStartsAtSeconds + suspensionSeconds
       const endsAtSeconds =
-        cursor + segment.sessionDurationSeconds + segment.suspensionSeconds
+        cursor + durationSeconds + suspensionSeconds
       const plan: TimedSessionSegmentPlan = {
         compound: segment.results[0]?.compound ?? 'S',
         declaredWet: segment.weather !== 'clear',
+        displayLabel: options.displayLabel,
         endsAtSeconds,
+        id: options.id ?? segment.name,
         name: segment.name,
-        participantDriverIds: segment.results.map((result) => result.driverId),
+        participantDriverIds:
+          options.participantDriverIds ??
+          segment.results.map((result) => result.driverId),
+        promotionGroups: options.promotionGroups,
+        selectFromPrevious: options.selectFromPrevious,
         startsAtSeconds: cursor,
         suspensionEndsAtSeconds,
         suspensionStartsAtSeconds,
       }
 
-      cursor =
-        endsAtSeconds +
-        (index < qualifying.segments.length - 1 ? QUALIFYING_BREAK_SECONDS : 0)
+      cursor = endsAtSeconds
+      segments.push(plan)
+  }
 
-      return plan
-    },
-  )
+  qualifying.segments.forEach((segment, index) => {
+    if (format === 'grouped' && index === 0) {
+      const groups = ['A', 'B'] as const
+      const groupDurationSeconds = segment.sessionDurationSeconds / groups.length
+
+      groups.forEach((group, groupIndex) => {
+        appendSegment(segment, {
+          displayLabel: `${segment.name} GROUP ${group}`,
+          durationSeconds: groupDurationSeconds,
+          id: `${segment.name}-${group}`,
+          participantDriverIds: segment.results
+            .filter((result) => result.qualifyingGroup === group)
+            .map((result) => result.driverId),
+          selectFromPrevious: false,
+          suspensionSeconds: groupIndex === 0 ? segment.suspensionSeconds : 0,
+        })
+      })
+    } else {
+      const openingSegment = qualifying.segments[0]
+      const nextParticipantIds = new Set(
+        segment.results.map((result) => result.driverId),
+      )
+      const promotionGroups =
+        format === 'grouped' && index === 1
+          ? (['A', 'B'] as const).map((group) => {
+              const participantDriverIds = openingSegment.results
+                .filter((result) => result.qualifyingGroup === group)
+                .map((result) => result.driverId)
+
+              return {
+                advanceCount: participantDriverIds.filter((driverId) =>
+                  nextParticipantIds.has(driverId),
+                ).length,
+                participantDriverIds,
+              }
+            })
+          : undefined
+
+      appendSegment(segment, { promotionGroups })
+    }
+
+    if (index < qualifying.segments.length - 1) {
+      cursor += breakSeconds
+    }
+  })
 
   return { segments, totalDurationSeconds: cursor }
 }

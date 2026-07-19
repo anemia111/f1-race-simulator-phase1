@@ -14,9 +14,9 @@ import {
 } from './performanceCsv'
 
 describe('CSV performance source of truth', () => {
-  it('CSV-1/2/3: loads the audited 15-team, 30-driver field', () => {
+  it('CSV-1/2/3: loads the specified 10-team, 30-car field', () => {
     expect(performanceCsvAudit.fileName).toBe(PERFORMANCE_CSV_FILE)
-    expect(initialTeams).toHaveLength(15)
+    expect(initialTeams).toHaveLength(10)
     expect(initialDrivers).toHaveLength(30)
     expect(performanceCsvAudit.teamIds).toEqual(
       initialTeams.map((team) => team.id),
@@ -25,45 +25,48 @@ describe('CSV performance source of truth', () => {
       initialDrivers.map((driver) => driver.id),
     )
     expect(performanceCsvAudit.machineColumns).toContain('ERS recovery')
-    expect(performanceCsvAudit.driverColumns).toContain('ERS management')
+    expect(performanceCsvAudit.driverColumns).toContain('Technical feedback')
     expect(Object.values(performanceCsvAudit.teamDriverCounts)).toEqual(
-      Array.from({ length: 15 }, () => 2),
+      Array.from({ length: 10 }, () => 3),
     )
   })
 
-  it('keeps the updated NAK source data intact, including car number 31', () => {
-    const yuki = initialDrivers.find((driver) => driver.code === 'NAK')
+  it('keeps Nakayama distinct from Tsunoda and fixed to Ferrari number 31', () => {
+    const nakayama = initialDrivers.find(
+      (driver) => driver.id === 'yuki_nakayama',
+    )
+    const tsunoda = initialDrivers.find(
+      (driver) => driver.id === 'yuki_tsunoda',
+    )
 
-    expect(yuki).toBeDefined()
-    expect(yuki).toMatchObject({
+    expect(nakayama).toMatchObject({
       carNumber: 31,
-      name: '中山裕樹',
+      code: 'NAK',
+      name: '\u4e2d\u5c71 \u88d5\u6a39',
+      seatRole: 'third_car',
       teamId: 'ferrari',
     })
-    expect(yuki?.performanceSource?.overall).toBe(150)
-    expect(yuki?.performanceSource?.rawRatings['Raw pace']).toBe(150)
-    expect(yuki?.skills.rawPace).toBe(1.5)
+    expect(tsunoda?.id).not.toBe(nakayama?.id)
+    expect(nakayama?.performanceSource?.overall).toBe(100)
+    expect(nakayama?.potential).toBe(1)
+    expect(
+      Object.values(nakayama?.performanceSource?.rawRatings ?? {}).every(
+        (rating) => rating === 100,
+      ),
+    ).toBe(true)
+    expect(Object.values(nakayama?.skills ?? {}).every((skill) => skill === 1)).toBe(
+      true,
+    )
   })
 
-  it('uses Verstappen as the 145 baseline while preserving Nakayama at 150', () => {
-    const yuki = initialDrivers.find((driver) => driver.code === 'NAK')!
-    const max = initialDrivers.find((driver) => driver.code === 'VER')!
-    const remainingDrivers = initialDrivers.filter(
-      (driver) => driver.code !== 'NAK' && driver.code !== 'VER',
-    )
+  it('uses the common 0-100 scale without a hidden category subtraction', () => {
+    const nakayama = initialDrivers.find((driver) => driver.code === 'NAK')!
+    const verstappen = initialDrivers.find((driver) => driver.code === 'VER')!
 
-    expect(driverOverallAbilityPoints(yuki)).toBe(150)
-    expect(driverOverallAbilityPoints(max)).toBe(145)
-    expect(driverConfiguredOverallAbilityPoints(max)).toBe(145)
-    expect(max.performanceSource?.overall).toBe(145)
-    const maxAbilityRatings = Object.entries(
-      max.performanceSource?.rawRatings ?? {},
-    )
-      .filter(([column]) => column !== 'Car Number')
-      .map(([, rating]) => rating)
-    expect(
-      maxAbilityRatings.every((rating) => rating === 145),
-    ).toBe(true)
+    expect(driverOverallAbilityPoints(nakayama)).toBe(100)
+    expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(100)
+    expect(driverOverallAbilityPoints(verstappen)).toBe(99)
+    expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(98)
     expect(
       initialDrivers.every(
         (driver) =>
@@ -72,54 +75,50 @@ describe('CSV performance source of truth', () => {
       ),
     ).toBe(true)
     expect(
-      remainingDrivers.every(
-        (driver) => (driver.performanceSource?.overall ?? 0) < 145,
-      ),
-    ).toBe(true)
-    expect(
-      remainingDrivers.every((driver) =>
-        Object.entries(driver.performanceSource?.rawRatings ?? {})
-          .filter(([column]) => column !== 'Car Number')
-          .every(([, rating]) => rating <= 145),
+      initialDrivers.every((driver) =>
+        Object.values(driver.performanceSource?.rawRatings ?? {}).every(
+          (rating) => rating >= 0 && rating <= 100,
+        ),
       ),
     ).toBe(true)
   })
 
-  it('loads the supplied identities and revised machine ordering', () => {
-    const lawson = initialDrivers.find((driver) => driver.code === 'LAW')
-    const rb = initialTeams.find((team) => team.id === 'rb')
-    const audi = initialTeams.find((team) => team.id === 'audi')
-    const alpine = initialTeams.find((team) => team.id === 'alpine')
-    const mercedes = initialTeams.find((team) => team.id === 'mercedes')
-    const mclaren = initialTeams.find((team) => team.id === 'mclaren')
-
-    expect(initialTeams.some((team) => team.id === 'alphatauri')).toBe(false)
-    expect(lawson?.teamId).toBe('rb')
-    expect(rb?.name).toBe('RB')
-    expect(rb?.performanceSource?.overall).toBe(81)
-    expect(audi?.performanceSource?.overall).toBe(80)
-    expect(alpine?.performanceSource?.overall).toBe(84)
-    expect(alpine!.performanceSource!.overall).toBeGreaterThan(
-      audi!.performanceSource!.overall,
+  it('loads the ten specified constructors and their machine hierarchy', () => {
+    expect(initialTeams.map((team) => team.id)).toEqual([
+      'mercedes',
+      'ferrari',
+      'mclaren',
+      'red-bull-racing',
+      'alpine',
+      'racing-bulls',
+      'haas-f1-team',
+      'williams',
+      'audi',
+      'aston-martin',
+    ])
+    expect(
+      initialTeams.map((team) => team.performanceSource?.overall),
+    ).toEqual([96, 94, 91, 89, 82, 81, 75, 72, 69, 66])
+    expect(initialTeams.some((team) => team.id === 'cadillac')).toBe(false)
+    expect(initialDrivers.find((driver) => driver.code === 'OCO')?.carNumber).toBe(
+      67,
     )
-    expect(mercedes?.performanceSource?.overall).toBe(96)
-    expect(mclaren?.performanceSource?.overall).toBe(91)
   })
 
   it('CSV-4: preserves raw ratings and uses one monotonic normalization', () => {
-    const ferrari = initialTeams.find((team) => team.id === 'ferrari')
-    const hyundai = initialTeams.find((team) => team.id === 'hyundai')
+    const ferrari = initialTeams.find((team) => team.id === 'ferrari')!
+    const astonMartin = initialTeams.find((team) => team.id === 'aston-martin')!
 
-    expect(normalizeCsvAbility(150)).toBe(1.5)
+    expect(normalizeCsvAbility(100)).toBe(1)
     expect(normalizeCsvAbility(96)).toBe(0.96)
-    expect(ferrari?.performanceSource?.rawRatings['Top speed']).toBe(96)
-    expect(ferrari?.machine.dragEfficiency).toBe(0.96)
-    expect(ferrari?.machine.qualifyingPace).toBe(0.94)
-    expect(ferrari?.machine.racePace).toBe(0.93)
-    expect(hyundai?.performanceSource?.rawRatings['Top speed']).toBe(70)
-    expect(hyundai?.machine.dragEfficiency).toBe(0.7)
-    expect(ferrari!.machine.dragEfficiency).toBeGreaterThan(
-      hyundai!.machine.dragEfficiency,
+    expect(ferrari.performanceSource?.rawRatings['Top speed']).toBe(95)
+    expect(ferrari.machine.dragEfficiency).toBe(0.95)
+    expect(ferrari.machine.qualifyingPace).toBe(0.95)
+    expect(ferrari.machine.racePace).toBe(0.95)
+    expect(astonMartin.performanceSource?.rawRatings['Top speed']).toBe(82)
+    expect(astonMartin.machine.dragEfficiency).toBe(0.82)
+    expect(ferrari.machine.dragEfficiency).toBeGreaterThan(
+      astonMartin.machine.dragEfficiency,
     )
   })
 
@@ -133,36 +132,46 @@ describe('CSV performance source of truth', () => {
 
   it('rejects unknown teams instead of inventing a fallback machine', () => {
     const malformed = performanceCsv.replace(
-      'Ferrari,中山裕樹,NAK,31',
-      'Unknown Team,中山裕樹,NAK,31',
+      'yuki_nakayama,Ferrari,',
+      'yuki_nakayama,Unknown Team,',
     )
 
     expect(() => loadPerformanceCsv(malformed, 'unknown-team.csv')).toThrow(
-      /unknown-team\.csv row 2, column "Team".*machine section/u,
+      /unknown-team\.csv row \d+, column "Team".*machine section/u,
     )
   })
 
-  it('rejects duplicate driver IDs and invalid numeric ratings', () => {
-    const duplicate = performanceCsv.replace(
-      'Ferrari,Charles Leclerc,LEC,16',
-      'Ferrari,Charles Leclerc,NAK,16',
+  it('rejects duplicate IDs, codes, car numbers, and invalid ratings', () => {
+    const duplicateId = performanceCsv.replace(
+      'charles_leclerc,Ferrari,',
+      'yuki_nakayama,Ferrari,',
     )
+    const duplicateCode = performanceCsv.replace(',LEC,16,', ',NAK,16,')
+    const duplicateNumber = performanceCsv.replace(',LEC,16,', ',LEC,31,')
     const invalid = performanceCsv.replace(
-      'Ferrari,中山裕樹,NAK,31,150',
-      'Ferrari,中山裕樹,NAK,31,not-a-number',
+      /^(yuki_nakayama,[^\r\n]*?,third_car,)100,/mu,
+      '$1not-a-number,',
     )
 
-    expect(() => loadPerformanceCsv(duplicate, 'duplicate.csv')).toThrow(
-      /duplicate\.csv row 3, column "Code".*unique driver code/u,
+    expect(() => loadPerformanceCsv(duplicateId, 'duplicate-id.csv')).toThrow(
+      /duplicate-id\.csv row \d+, column "Driver ID".*unique driver ID/u,
+    )
+    expect(() => loadPerformanceCsv(duplicateCode, 'duplicate-code.csv')).toThrow(
+      /duplicate-code\.csv row \d+, column "Code".*unique driver code/u,
+    )
+    expect(() =>
+      loadPerformanceCsv(duplicateNumber, 'duplicate-number.csv'),
+    ).toThrow(
+      /duplicate-number\.csv row \d+, column "Car Number".*unique car number/u,
     )
     expect(() => loadPerformanceCsv(invalid, 'invalid.csv')).toThrow(
-      /invalid\.csv row 2, column "Overall".*finite number/u,
+      /invalid\.csv row \d+, column "Overall".*finite number/u,
     )
   })
 
-  it('rejects incomplete fields and non-two-car teams', () => {
+  it('rejects incomplete 30-car fields', () => {
     const missingDriverRow = performanceCsv.replace(
-      /Ferrari,Charles Leclerc,LEC,16[^\r\n]*(?:\r?\n)/u,
+      /^charles_leclerc,[^\r\n]*(?:\r?\n)/mu,
       '',
     )
 

@@ -5,11 +5,11 @@ editing. This file remains as a compatibility entry point for older prompts.
 
 ## Snapshot
 
-- Product: PC-first F1 observer and race-control simulator.
+- Product: PC-first F1/F2/F3/SUPER FORMULA observer and race-control simulator.
 - Stack: React 19, TypeScript, Vite, Three.js, React Three Fiber, OpenF1.
 - Tracks: 23 OpenF1-derived layouts plus the official 2026 MADRING vector.
-- Field: canonical CSV-backed 15 teams and 30 drivers, including `NAK` car
-  number 31 and the `RB` team identity.
+- Fields: F1 10 teams/30 cars, F2 11/22, F3 10/30, and SUPER FORMULA
+  16/24, backed by a 110-person relational pool. Ferrari `NAK` is car 31.
 - Sessions: FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, Race.
 - Model: tires, continuous weather/grip, telemetry, active aero/Overtake/ERS, strategy, pits,
   sector-scoped yellow/double-yellow control, incidents, penalties,
@@ -29,8 +29,7 @@ npm run playtest
 npm run benchmark
 ```
 
-The current unit baseline is 260 passing tests across 31 files. `playtest`
-starts an isolated preview server for the latest production build.
+`playtest` starts an isolated preview server for the latest production build.
 
 ## Known Constraints
 

@@ -99,11 +99,11 @@ export function baselineSetupForTrack(track?: TrackDefinition): CarSetup {
   if (track.id === 'las-vegas-approx') {
     return normalizeCarSetup({
       frontWing: 1,
-      rearWing: 2,
-      rideHeightMm: 25,
+      rearWing: 1,
+      rideHeightMm: 24,
       brakeBiasPercent: 56.5,
-      differentialPercent: 59,
-      coolingPercent: 46,
+      differentialPercent: 60,
+      coolingPercent: 44,
     })
   }
 

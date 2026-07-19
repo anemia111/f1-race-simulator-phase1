@@ -51,6 +51,7 @@ export type LongitudinalStepInput = {
   dynamics: Pick<TrackDynamicPoint, 'gradient' | 'straightness'>
   drivePowerScale?: number
   ersPowerKw: number
+  extraDrivePowerKw?: number
   fuelLoadKg: number
   gearEfficiency?: number
   gripMultiplier: number
@@ -154,11 +155,16 @@ export function machineSegmentCapability(options: {
       ? machinePaceRating(machine.wetPerformance)
       : weather === 'light-rain'
         ? machinePaceRating(machine.intermediatePerformance)
-        : MACHINE_PACE_REFERENCE
+        : machinePaceRating(machine.racePace)
   const localScore =
     cornerScore * (1 - dynamics.brakingSeverity * 0.3) +
     brakingScore * dynamics.brakingSeverity * 0.3
-  const weatherAdjusted = localScore * 0.86 + wetScore * 0.14
+  const weatherSpecialtyWeight =
+    weather === 'heavy-rain' ? 0.78 : weather === 'light-rain' ? 0.48 : 0
+  const wetSpecialty =
+    wetScore - machinePaceRating(machine.racePace)
+  const weatherAdjusted =
+    localScore + wetSpecialty * weatherSpecialtyWeight
   const sessionPace =
     machinePaceRating(
       session === 'qualifying' ? machine.qualifyingPace : machine.racePace,
@@ -398,6 +404,7 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
       0.5 * input.airDensityKgM3 * dragAreaM2 * airSpeedMps * airSpeedMps
     const powerKw =
       (combustionPowerKwFor(input.team) * internalPowerScaleAtSpeed(speedKph) +
+        Math.max(0, input.extraDrivePowerKw ?? 0) +
         Math.max(0, input.ersPowerKw) *
           machinePaceRating(
             input.team.machine.electricalDeploymentEfficiency,

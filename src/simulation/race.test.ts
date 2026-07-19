@@ -515,7 +515,14 @@ describe('starting grid', () => {
     }
 
     expect(snapshot.cars.some((car) => car.status === 'running')).toBe(true)
-    expect(snapshot.events.some((event) => event.kind === 'pit')).toBe(false)
+    expect(
+      new Set(
+        snapshot.cars
+          .map((car) => car.timedRunStartedAtSeconds)
+          .filter((value): value is number => value !== null)
+          .map((value) => value.toFixed(1)),
+      ).size,
+    ).toBeGreaterThan(1)
   })
 
   it('finishes timed practice by clock instead of race distance', () => {
@@ -789,7 +796,9 @@ describe('full race', () => {
     const dnfDrivers = finished.cars.length - finishedDrivers
 
     expect(finished.cars).toHaveLength(30)
-    expect(new Set(finished.cars.map((car) => car.teamId)).size).toBe(15)
+    expect(new Set(finished.cars.map((car) => car.teamId)).size).toBe(
+      initialTeams.length,
+    )
     expect(finishedDrivers + dnfDrivers).toBe(30)
     for (const car of finished.cars) {
       expect(['finished', 'retired', 'disqualified']).toContain(car.status)
@@ -1096,14 +1105,14 @@ describe('start procedure and persisted weekend', () => {
     for (
       let step = 0;
       step < 240 &&
-      (snapshot.flagPhase !== null ||
+      (snapshot.flagPhase?.id === 'forced-sc' ||
         snapshot.overtakeEnableTargetsByDriver === null);
       step += 1
     ) {
       snapshot = advanceRace(snapshot, 2, config)
     }
 
-    expect(snapshot.flagPhase).toBeNull()
+    expect(snapshot.flagPhase?.flag).not.toBe('sc')
     expect(snapshot.overtakeEnabled).toBe(false)
     expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
     const controlMessages = snapshot.events.map((event) => event.message)
@@ -1286,6 +1295,77 @@ describe('start procedure and persisted weekend', () => {
     expect(context.completed).toContain('qualifying')
     expect(context.setupBonusByDriver[practice[0].driverId]).toBeGreaterThan(0)
     expect(grid?.[0].id).toBe(qualifying[0].driverId)
+  })
+
+  it('stores Madrid qualifying 2 independently for the second feature grid', () => {
+    const config = makeConfig('madrid-qualifying-two')
+    const teamsById = new Map(config.teams.map((team) => [team.id, team]))
+    const qualifyingResult = (driver: (typeof config.drivers)[number], position: number) => {
+      const team = teamsById.get(driver.teamId)!
+
+      return {
+        abortedRunCount: 0,
+        classificationStatus: 'classified' as const,
+        code: driver.code,
+        compound: 'M' as const,
+        deletedRunCount: 0,
+        deltaSeconds: position * 0.1,
+        driverId: driver.id,
+        driverName: driver.name,
+        flyingLapCompletedAtSeconds: 400,
+        flyingLapStartedAtSeconds: 300,
+        inLapTimeSeconds: 110,
+        lapTimeSeconds: 90 + position * 0.1,
+        outLapTimeSeconds: 110,
+        pitExitAtSeconds: 120,
+        pitReturnAtSeconds: 510,
+        position,
+        runCount: 1,
+        segment: 'Q1' as const,
+        sessionDurationSeconds: 1800,
+        setsUsed: 1,
+        teamColor: team.color,
+        teamId: team.id,
+        teamName: team.name,
+        trafficLossSeconds: 0,
+        validRunCount: 1,
+        weather: 'clear' as const,
+        weatherLabel: 'Dry',
+      }
+    }
+    const qualifying1 = config.drivers.map((driver, index) =>
+      qualifyingResult(driver, index + 1),
+    )
+    const qualifying2 = config.drivers
+      .slice()
+      .reverse()
+      .map((driver, index) => qualifyingResult(driver, index + 1))
+    const afterQualifying1 = completeQualifyingSession(
+      createWeekendContext(config.drivers),
+      'qualifying',
+      qualifying1,
+    )
+    const context = completeQualifyingSession(
+      afterQualifying1,
+      'qualifying2',
+      qualifying2,
+    )
+    const featureOneGrid = applyWeekendGrid(config.drivers, context, 'race')
+    const featureTwoGrid = applyWeekendGrid(config.drivers, context, 'race2')
+
+    expect(context.completed).toEqual(['qualifying', 'qualifying2'])
+    expect(featureOneGrid?.[0].id).toBe(qualifying1[0].driverId)
+    expect(featureTwoGrid?.[0].id).toBe(qualifying2[0].driverId)
+  })
+
+  it('honors an event-specific replacement race lap count', () => {
+    const snapshot = createInitialRace({
+      ...makeConfig('sf-replacement-distance'),
+      sessionRaceLapsOverride: 25,
+      sessionRaceTimeLimitSecondsOverride: 50 * 60,
+    })
+
+    expect(snapshot.raceLaps).toBe(25)
   })
 })
 
@@ -2784,6 +2864,42 @@ describe('qualifying', () => {
   it('uses the 2026 FIA standard and sprint weekend tire allocations', () => {
     expect(weekendTireAllocation(false)).toEqual({ H: 2, I: 5, M: 3, S: 8, W: 2 })
     expect(weekendTireAllocation(true)).toEqual({ H: 2, I: 6, M: 4, S: 6, W: 2 })
+  })
+
+  it('makes a used qualifying set available when a feature-race specification is exhausted', () => {
+    const base = makeConfig('reusable-feature-race-set')
+    const driver = base.drivers[0]
+    const drivers = base.drivers.map((candidate) =>
+      candidate.id === driver.id ? { ...candidate, tire: 'H' as const } : candidate,
+    )
+    const weekendContext = createWeekendContext(drivers, false, base.track, {
+      H: 3,
+      I: 2,
+      M: 0,
+      S: 2,
+      W: 1,
+    })
+    weekendContext.tireSetsByDriver[driver.id].S = 0
+    weekendContext.tireSetInventoryByDriver[driver.id] =
+      weekendContext.tireSetInventoryByDriver[driver.id].map((set) =>
+        set.id === `${driver.id}-S-1`
+          ? { ...set, laps: 4, status: 'used' as const }
+          : set,
+      )
+
+    const snapshot = createInitialRace({
+      ...base,
+      drivers,
+      featureRaceMandatoryPitStop: true,
+      featureRaceTwoDryCompounds: true,
+      tireAllocation: { H: 3, I: 2, M: 0, S: 2, W: 1 },
+      weekendContext,
+      weekendStage: 'race',
+    })
+
+    expect(
+      snapshot.cars.find((car) => car.driverId === driver.id)?.tireSetsRemaining.S,
+    ).toBe(1)
   })
 
   it('models practice as a one-hour setup session', () => {

@@ -8,7 +8,12 @@ import type {
 } from '../types'
 import { advanceRace, createInitialRace } from './race'
 import { phaseOneConfig } from '../data/phaseOne'
-import { qualifyingCutSizes, runKnockoutQualifying } from './qualifying'
+import { seriesPackageById } from '../series/seriesRegistry'
+import {
+  qualifyingCutSizes,
+  runKnockoutQualifying,
+  runSeriesQualifying,
+} from './qualifying'
 import {
   buildTimedSessionPlan,
   timedSessionStateAt,
@@ -32,6 +37,148 @@ describe('timed session plan', () => {
     expect(plan.segments[0].participantDriverIds).toHaveLength(phaseOneConfig.drivers.length)
     expect(plan.segments[1].startsAtSeconds - plan.segments[0].endsAtSeconds).toBe(420)
     expect(timedSessionStateAt(plan, plan.segments[0].endsAtSeconds + 10).segment).toBeNull()
+  })
+
+  it('runs Super Formula Q1 as separate ten-minute groups with six advancing from each', () => {
+    const series = seriesPackageById.get('super-formula')!
+    const qualifying = runSeriesQualifying(
+      {
+        drivers: series.drivers,
+        qualifyingDryCompound: series.rules.tires.qualifyingDryCompound,
+        seed: 'sf-grouped-live-plan',
+        teams: series.teams,
+        tireAllocation: series.rules.tires.standardAllocation,
+        track: series.tracks[0],
+        weekendStage: 'qualifying',
+      },
+      series.rules,
+    )
+    const plan = buildTimedSessionPlan(
+      qualifying,
+      series.rules.qualifying.breakSeconds,
+      series.rules.qualifying.format,
+    )
+
+    expect(plan.segments.map((segment) => segment.id)).toEqual([
+      'Q1-A',
+      'Q1-B',
+      'Q2',
+    ])
+    expect(
+      plan.segments.slice(0, 2).map(
+        (segment) => segment.endsAtSeconds - segment.startsAtSeconds,
+      ),
+    ).toEqual([600, 600])
+    expect(
+      plan.segments.slice(0, 2).map(
+        (segment) => segment.participantDriverIds.length,
+      ),
+    ).toEqual([12, 12])
+    expect(
+      plan.segments[2].promotionGroups?.map((group) => group.advanceCount),
+    ).toEqual([6, 6])
+    expect(plan.segments[2].participantDriverIds).toHaveLength(12)
+  })
+
+  it('uses official odd/even groups and alternating grids at Monaco', () => {
+    const series = seriesPackageById.get('f2')!
+    const event = series.calendar.find((candidate) => candidate.id === 'f2-04')!
+    const rules = { ...series.rules, qualifying: event.qualifying! }
+    const qualifying = runSeriesQualifying(
+      {
+        drivers: series.drivers,
+        qualifyingDryCompound: rules.tires.qualifyingDryCompound,
+        seed: 'f2-monaco-groups',
+        teams: series.teams,
+        tireAllocation: rules.tires.standardAllocation,
+        track: series.tracks.find((track) => track.id === event.trackId)!,
+        weekendStage: 'qualifying',
+      },
+      rules,
+    )
+    const driversById = new Map(
+      series.drivers.map((driver) => [driver.id, driver]),
+    )
+    const plan = buildTimedSessionPlan(
+      qualifying,
+      rules.qualifying.breakSeconds,
+      rules.qualifying.format,
+    )
+
+    expect(plan.segments.map((segment) => segment.id)).toEqual(['Q1-A', 'Q1-B'])
+    expect(
+      plan.segments.map(
+        (segment) => segment.endsAtSeconds - segment.startsAtSeconds,
+      ),
+    ).toEqual([960, 960])
+    expect(
+      qualifying.segments[0].results.every((result) => {
+        const number = driversById.get(result.driverId)!.carNumber
+        return result.qualifyingGroup === (number % 2 === 0 ? 'A' : 'B')
+      }),
+    ).toBe(true)
+    expect(
+      driversById.get(qualifying.classification[0].driverId)!.carNumber % 2,
+    ).not.toBe(
+      driversById.get(qualifying.classification[1].driverId)!.carNumber % 2,
+    )
+  })
+
+  it('opens the second qualifying group for its assigned cars, not group A leaders', () => {
+    const drivers = initialDrivers.slice(0, 4)
+    const groupBIds = drivers.slice(2).map((driver) => driver.id)
+    const plan: TimedSessionPlan = {
+      segments: [
+        {
+          compound: 'S',
+          endsAtSeconds: 10,
+          id: 'Q1-A',
+          name: 'Q1',
+          participantDriverIds: drivers.slice(0, 2).map((driver) => driver.id),
+          selectFromPrevious: false,
+          startsAtSeconds: 0,
+          suspensionEndsAtSeconds: null,
+          suspensionStartsAtSeconds: null,
+        },
+        {
+          compound: 'S',
+          endsAtSeconds: 20,
+          id: 'Q1-B',
+          name: 'Q1',
+          participantDriverIds: groupBIds,
+          selectFromPrevious: false,
+          startsAtSeconds: 10,
+          suspensionEndsAtSeconds: null,
+          suspensionStartsAtSeconds: null,
+        },
+      ],
+      totalDurationSeconds: 20,
+    }
+    const config: RaceConfig = {
+      drivers,
+      seed: 'sf-group-window-transition',
+      teams: initialTeams,
+      timedSessionPlan: plan,
+      track: tracks[0],
+      weekendStage: 'qualifying',
+    }
+    const initial = createInitialRace(config)
+    const snapshot = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) => ({
+          ...car,
+          pitUntilSeconds: null,
+          timedSegmentBestSeconds: { Q1: index < 2 ? 80 + index : null },
+        })),
+        elapsedSeconds: 9.9,
+      },
+      0.2,
+      config,
+    )
+
+    expect(snapshot.timedSegmentId).toBe('Q1-B')
+    expect(snapshot.timedParticipantDriverIds).toEqual(groupBIds)
   })
 
   it('runs a dry qualifying attempt as a Soft out-attack-in cycle with aggressive ERS use', () => {
@@ -464,6 +611,7 @@ describe('timed session plan', () => {
         })),
         elapsedSeconds: 25,
         timedParticipantDriverIds: q2Drivers.map((driver) => driver.id),
+        timedSegmentId: 'Q2',
         timedSegmentLabel: 'Q2',
       },
       0.1,

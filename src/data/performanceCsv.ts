@@ -1,11 +1,11 @@
 import type {
   Driver,
-  DriverSkillProfile,
   DriverStyleProfile,
   MachinePerformanceProfile,
   Team,
 } from '../types'
 import performanceCsv from './f1Performance.csv?raw'
+import { expandedDriverSkills } from './driverProfiles'
 
 export const PERFORMANCE_CSV_FILE = 'src/data/f1Performance.csv'
 
@@ -29,41 +29,27 @@ export type PerformanceCsvAudit = {
 }
 
 const DRIVER_COLUMNS = [
+  'Driver ID',
   'Team',
   'Driver',
   'Code',
   'Car Number',
+  'Nationality',
+  'Seat Role',
   'Overall',
-  'Qualifying',
+  'Potential',
+  'Qualifying pace',
   'Race pace',
-  'Raw pace',
-  'Braking',
-  'Low-speed corner',
-  'Mid-speed corner',
-  'High-speed corner',
-  'Traction',
-  'Throttle',
   'Consistency',
-  'Tire mgmt',
-  'Tire warmup',
-  'Overtake',
-  'Defense',
-  'Racecraft',
+  'Tyre management',
   'Wet skill',
-  'Intermediate',
-  'Mistake resistance',
-  'Pressure',
-  'Traffic',
-  'Dirty air',
-  'Fuel management',
-  'ERS management',
-  'Restarts',
-  'Starts',
-  'Confidence',
-  'Precision',
-  'Awareness',
+  'Race start',
+  'Overtaking',
+  'Defending',
+  'Technical feedback',
   'Adaptability',
-  'Balance adaptation',
+  'Experience',
+  'Error control',
 ] as const
 
 const MACHINE_COLUMNS = [
@@ -94,54 +80,16 @@ const MACHINE_COLUMNS = [
 
 const TEAM_COLORS: Record<string, string> = {
   'Aston Martin': '#229971',
-  RB: '#6692ff',
+  'Racing Bulls': '#6692ff',
   Alpine: '#2293d1',
   Audi: '#c8ccd0',
-  BMW: '#4ea1ff',
-  Cadillac: '#d7b56d',
   Ferrari: '#dc0000',
-  Haas: '#b6babd',
-  Honda: '#e11b22',
-  Hyundai: '#00aad2',
+  'Haas F1 Team': '#b6babd',
   McLaren: '#ff8700',
   Mercedes: '#27f4d2',
-  'Red Bull': '#3671c6',
-  Toyota: '#eb0a1e',
+  'Red Bull Racing': '#3671c6',
   Williams: '#64c4ff',
 }
-
-const DRIVER_SKILL_COLUMNS = {
-  rawPace: 'Raw pace',
-  qualifyingPace: 'Qualifying',
-  racePace: 'Race pace',
-  brakingSkill: 'Braking',
-  lowSpeedCornerSkill: 'Low-speed corner',
-  mediumSpeedCornerSkill: 'Mid-speed corner',
-  highSpeedCornerSkill: 'High-speed corner',
-  tractionControl: 'Traction',
-  throttleControl: 'Throttle',
-  tireManagement: 'Tire mgmt',
-  tireWarmupSkill: 'Tire warmup',
-  wetSkill: 'Wet skill',
-  intermediateSkill: 'Intermediate',
-  overtakingSkill: 'Overtake',
-  defendingSkill: 'Defense',
-  racecraft: 'Racecraft',
-  consistency: 'Consistency',
-  mistakeResistance: 'Mistake resistance',
-  pressureHandling: 'Pressure',
-  trafficManagement: 'Traffic',
-  dirtyAirManagement: 'Dirty air',
-  fuelManagement: 'Fuel management',
-  ersManagement: 'ERS management',
-  restartSkill: 'Restarts',
-  startSkill: 'Starts',
-  confidence: 'Confidence',
-  precision: 'Precision',
-  adaptability: 'Adaptability',
-  raceAwareness: 'Awareness',
-  carBalanceAdaptation: 'Balance adaptation',
-} as const satisfies Record<keyof DriverSkillProfile, string>
 
 const NEUTRAL_DRIVER_STYLE: DriverStyleProfile = {
   frontEndPreference: 0,
@@ -318,7 +266,16 @@ function rawNumericRatings(
 ) {
   return Object.fromEntries(
     columns
-      .filter((column) => column !== 'Team' && column !== 'Driver' && column !== 'Code')
+      .filter(
+        (column) =>
+          column !== 'Driver ID' &&
+          column !== 'Team' &&
+          column !== 'Driver' &&
+          column !== 'Code' &&
+          column !== 'Car Number' &&
+          column !== 'Nationality' &&
+          column !== 'Seat Role',
+      )
       .map((column) => [
         column,
         requiredNumber(record, column, fileName, 0, maximum),
@@ -433,13 +390,13 @@ export function loadPerformanceCsv(
     )
   }
 
-  if (machineRecords.length !== 15) {
+  if (machineRecords.length !== 10) {
     validationError(
       fileName,
       machineHeader.lineNumber,
       '<team count>',
       machineRecords.length,
-      'exactly 15 machine rows',
+      'exactly 10 machine rows',
     )
   }
 
@@ -473,6 +430,8 @@ export function loadPerformanceCsv(
   })
   const teamIdByName = new Map(teams.map((team) => [team.name, team.id]))
   const driverIds = new Set<string>()
+  const driverCodes = new Set<string>()
+  const carNumbers = new Set<number>()
   const drivers = driverRecords.map((record, index) => {
     const teamName = requiredText(record, 'Team', fileName)
     const teamId = teamIdByName.get(teamName)
@@ -488,29 +447,60 @@ export function loadPerformanceCsv(
     }
 
     const code = requiredText(record, 'Code', fileName).toUpperCase()
-    const id = code.toLowerCase()
+    const id = requiredText(record, 'Driver ID', fileName)
+    const carNumber = requiredNumber(record, 'Car Number', fileName, 0, 999)
 
     if (driverIds.has(id)) {
+      validationError(fileName, record.lineNumber, 'Driver ID', id, 'a unique driver ID')
+    }
+    if (driverCodes.has(code)) {
       validationError(fileName, record.lineNumber, 'Code', code, 'a unique driver code')
     }
+    if (carNumbers.has(carNumber)) {
+      validationError(fileName, record.lineNumber, 'Car Number', carNumber, 'a unique car number')
+    }
     driverIds.add(id)
+    driverCodes.add(code)
+    carNumbers.add(carNumber)
 
-    const rawRatings = rawNumericRatings(record, DRIVER_COLUMNS, fileName, 150)
-    const skills = Object.fromEntries(
-      Object.entries(DRIVER_SKILL_COLUMNS).map(([skill, column]) => [
-        skill,
-        normalizeCsvAbility(
-          requiredNumber(record, column, fileName, 0, 150),
-        ),
-      ]),
-    ) as DriverSkillProfile
+    const rawRatings = rawNumericRatings(record, DRIVER_COLUMNS, fileName, 100)
+    const rating = (column: (typeof DRIVER_COLUMNS)[number]) =>
+      normalizeCsvAbility(requiredNumber(record, column, fileName, 0, 100))
+    const skills = expandedDriverSkills({
+      adaptability: rating('Adaptability'),
+      consistency: rating('Consistency'),
+      defending: rating('Defending'),
+      errorControl: rating('Error control'),
+      experience: rating('Experience'),
+      overtaking: rating('Overtaking'),
+      qualifyingPace: rating('Qualifying pace'),
+      racePace: rating('Race pace'),
+      raceStart: rating('Race start'),
+      technicalFeedback: rating('Technical feedback'),
+      tyreManagement: rating('Tyre management'),
+      wetSkill: rating('Wet skill'),
+    })
+    const seatRole = requiredText(record, 'Seat Role', fileName)
+
+    if (seatRole !== 'regular' && seatRole !== 'third_car') {
+      validationError(
+        fileName,
+        record.lineNumber,
+        'Seat Role',
+        seatRole,
+        'regular or third_car',
+      )
+    }
 
     return {
       id,
       teamId,
       code,
       name: requiredText(record, 'Driver', fileName),
-      carNumber: requiredNumber(record, 'Car Number', fileName, 0, 999),
+      carNumber,
+      nationality: requiredText(record, 'Nationality', fileName),
+      potential: rating('Potential'),
+      seatRole,
       skills,
       style: { ...NEUTRAL_DRIVER_STYLE },
       startOffset: -index * 0.018,
@@ -530,13 +520,13 @@ export function loadPerformanceCsv(
   )
 
   for (const team of teams) {
-    if (teamDriverCounts[team.id] !== 2) {
+    if (teamDriverCounts[team.id] !== 3) {
       validationError(
         fileName,
         machineHeader.lineNumber,
         'Team',
         team.name,
-        `exactly 2 linked drivers; received ${teamDriverCounts[team.id]}`,
+        `exactly 3 linked drivers; received ${teamDriverCounts[team.id]}`,
       )
     }
   }

@@ -1475,6 +1475,15 @@ function proposedFlagSeverity(phase: ActiveFlagPhase | null) {
   return flagSeverityRank(phase?.escalation?.flag ?? phase?.flag ?? null)
 }
 
+function initialOvertakeEnableDistance(config: RaceConfig, leaderDistance: number) {
+  const detectionProgress =
+    config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
+  const completedLapsRequired =
+    config.overtakeActivation === 'after-one-lap' ? 1 : 0
+
+  return Math.floor(leaderDistance) + completedLapsRequired + detectionProgress
+}
+
 const weekendOrderFor = (config: RaceConfig): WeekendStage[] =>
   config.track.isSprintWeekend
     ? ['fp1', 'sprintQualifying', 'sprint', 'qualifying', 'race']
@@ -1484,7 +1493,13 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
   const teams = byId(config.teams)
   const weekendStage = config.weekendStage ?? 'race'
   const isRaceDistance = isRaceDistanceSession(weekendStage)
-  const scheduledRaceLaps = sessionDistanceLapsFor(config.track, weekendStage)
+  const scheduledRaceLaps =
+    config.sessionRaceLapsOverride ??
+    sessionDistanceLapsFor(
+      config.track,
+      weekendStage,
+      config.categoryRaceFormat,
+    )
   const weather = weatherFor(config.seed, config.track, 0)
   const currentTemperatures = simulatedTemperaturesFor(
     config.seed,
@@ -1604,13 +1619,31 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       wetWeatherTyresMandatory,
       initialTireTrackCondition,
     )
-    const regulationAllocation = weekendTireAllocation(config.track.isSprintWeekend)
+    const regulationAllocation = weekendTireAllocation(
+      config.track.isSprintWeekend,
+      config.tireAllocation,
+    )
     const initialTireSets = {
       H: config.weekendContext?.tireSetsByDriver[driver.id]?.H ?? regulationAllocation.H,
       I: config.weekendContext?.tireSetsByDriver[driver.id]?.I ?? regulationAllocation.I,
       M: config.weekendContext?.tireSetsByDriver[driver.id]?.M ?? regulationAllocation.M,
       S: config.weekendContext?.tireSetsByDriver[driver.id]?.S ?? regulationAllocation.S,
       W: config.weekendContext?.tireSetsByDriver[driver.id]?.W ?? regulationAllocation.W,
+    }
+    if (weekendStage === 'race' && config.featureRaceTwoDryCompounds) {
+      const detailedInventory =
+        config.weekendContext?.tireSetInventoryByDriver[driver.id] ?? []
+
+      for (const compound of ['H', 'M', 'S'] as const) {
+        if (
+          initialTireSets[compound] === 0 &&
+          detailedInventory.some(
+            (set) => set.compound === compound && set.status === 'used',
+          )
+        ) {
+          initialTireSets[compound] = 1
+        }
+      }
     }
     initialTireSets[startingTire] = Math.max(0, initialTireSets[startingTire] - 1)
     const totalDistance = startsFromPitLane
@@ -1662,6 +1695,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       overtakeStatus: 'disabled',
       overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
+      otsRemainingSeconds: config.overtakeSystem === 'ots' ? 200 : undefined,
       energyHarvestedThisLapMj: 0,
       energyDeployedThisLapMj: 0,
       ersMode: 'balanced',
@@ -1765,13 +1799,12 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     return car
   })
   const startMessage = isTimedSession
-    ? `${weekendStageLabelFor(weekendStage)} green. Cars start in the pit lane and choose their own release windows for ${compactSessionDurationLabel(weekendStage)}.`
+    ? `${weekendStageLabelFor(weekendStage)} green. Cars start in the pit lane and choose their own release windows for ${config.sessionDurationSeconds ? `${Math.round(config.sessionDurationSeconds / 60)}m` : compactSessionDurationLabel(weekendStage)}.`
     : formationBehindSafetyCar
       ? `Formation laps behind the Safety Car. ${wetWeatherTyresMandatory ? 'Wet-weather tyres are compulsory.' : 'Tyre choice remains free.'}`
       : `${weekendStage === 'sprint' ? 'Sprint start' : 'Lights out'}! ${raceLaps} laps at ${config.track.name}.`
 
-  const initialOvertakeDetectionProgress =
-    config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
+  const overtakeIsImmediate = config.overtakeActivation === 'immediate'
   const snapshot: RaceSnapshot = {
     elapsedSeconds: 0,
     elapsedLabel: '0:00',
@@ -1791,9 +1824,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     restartProcedure: 'none',
     restartProcedureUntilSeconds: null,
     overtakeEnabled: !isRaceDistance && !lowGripConditions,
-    overtakeEnableAtLeaderDistance: isRaceDistance
-      ? 1 + initialOvertakeDetectionProgress
-      : null,
+    overtakeEnableAtLeaderDistance:
+      isRaceDistance && !overtakeIsImmediate
+        ? initialOvertakeEnableDistance(config, 1)
+        : null,
     overtakeEnableTargetsByDriver: null,
     cars: rankCars(cars, config),
     eventMessage: isRaceDistance
@@ -1834,6 +1868,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     raceEndedEarly: false,
     checkeredLapTarget: null,
     timeLimitReachedAtSeconds: null,
+    timedSegmentId:
+      initialTimedSegment?.id ?? initialTimedSegment?.name ?? null,
     timedSegmentLabel: initialTimedSegment?.name ?? null,
     timedSessionSuspended: false,
     timedParticipantDriverIds:
@@ -2010,6 +2046,7 @@ export function advanceRace(
   const isTimedSession = isTimedLapSession(weekendStage)
   const timedSessionDurationSeconds =
     config.timedSessionPlan?.totalDurationSeconds ??
+    config.sessionDurationSeconds ??
     sessionDurationSecondsFor(weekendStage)
   const timedSessionState = timedSessionStateAt(
     config.timedSessionPlan,
@@ -2037,9 +2074,12 @@ export function advanceRace(
     weather,
   })
   const timedSegmentLabel = timedSessionState.segment?.name ?? null
+  const timedSegmentId = timedSessionState.segment
+    ? timedSessionState.segment.id ?? timedSessionState.segment.name
+    : null
   const timedSegmentChanged =
     config.timedSessionPlan !== undefined &&
-    timedSegmentLabel !== snapshot.timedSegmentLabel
+    timedSegmentId !== snapshot.timedSegmentId
   const timedSuspensionChanged =
     config.timedSessionPlan !== undefined &&
     timedSessionState.suspended !== snapshot.timedSessionSuspended
@@ -2458,12 +2498,18 @@ export function advanceRace(
       raceStartedAtSeconds: raceStartTriggered
         ? elapsedSeconds
         : snapshot.raceStartedAtSeconds,
-      overtakeEnabled: false,
+      overtakeEnabled:
+        raceStartTriggered &&
+        config.overtakeActivation === 'immediate' &&
+        !lowGripConditions,
       overtakeEnableAtLeaderDistance:
-        raceStartTriggered && snapshot.formationBehindSafetyCar
-          ? Math.floor(cars[0]?.totalDistance ?? 1) +
-            1 +
-            (config.track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2)
+        raceStartTriggered && config.overtakeActivation === 'immediate'
+          ? null
+          : raceStartTriggered && snapshot.formationBehindSafetyCar
+            ? initialOvertakeEnableDistance(
+                config,
+                Math.floor(cars[0]?.totalDistance ?? 1) + 1,
+              )
           : snapshot.overtakeEnableAtLeaderDistance,
       flag:
         snapshot.formationBehindSafetyCar && nextProcedure === 'formation'
@@ -2873,17 +2919,19 @@ export function advanceRace(
     (timedSegmentChanged || timedSuspensionChanged)
   ) {
     const segment = timedSessionState.segment
+    const segmentDisplayLabel =
+      segment?.displayLabel ?? segment?.name ?? 'Timed session'
 
     if (timedSegmentChanged) {
       newEvents.push(
         makeEvent(
           segment
-            ? `timed-segment-${segment.name}`
-            : `timed-break-${snapshot.timedSegmentLabel ?? 'session'}`,
+            ? `timed-segment-${segment.id ?? segment.name}`
+            : `timed-break-${snapshot.timedSegmentId ?? 'session'}`,
           'info',
           elapsedSeconds,
           segment
-            ? `${segment.name} begins. ${segment.participantDriverIds.length} cars may leave the pit lane on ${segment.compound}.`
+            ? `${segmentDisplayLabel} begins. ${segment.participantDriverIds.length} cars may leave the pit lane on ${segment.compound}.`
             : `${snapshot.timedSegmentLabel ?? 'Timed segment'} is complete. Cars return to the garages for the session interval.`,
         ),
       )
@@ -2892,43 +2940,64 @@ export function advanceRace(
     if (timedSuspensionChanged) {
       newEvents.push(
         makeEvent(
-          `timed-${timedSessionState.suspended ? 'red' : 'resume'}-${segment?.name ?? 'session'}`,
+          `timed-${timedSessionState.suspended ? 'red' : 'resume'}-${segment?.id ?? segment?.name ?? 'session'}`,
           'flag',
           elapsedSeconds,
           timedSessionState.suspended
-            ? `Red flag in ${segment?.name ?? 'the timed session'}. The session clock is suspended and cars return to the pits.`
-            : `${segment?.name ?? 'Timed session'} resumes. Pit exit is open for eligible cars.`,
+            ? `Red flag in ${segmentDisplayLabel}. The session clock is suspended and cars return to the pits.`
+            : `${segmentDisplayLabel} resumes. Pit exit is open for eligible cars.`,
         ),
       )
     }
 
     const segmentIndex = segment
       ? config.timedSessionPlan.segments.findIndex(
-          (candidate) => candidate.name === segment.name,
+          (candidate) =>
+            (candidate.id ?? candidate.name) ===
+            (segment.id ?? segment.name),
         )
       : -1
     const previousSegmentName =
       segmentIndex > 0
         ? config.timedSessionPlan.segments[segmentIndex - 1]?.name ?? null
         : null
-    timedParticipantDriverIds = segment
-      ? timedSegmentChanged && segmentIndex > 0
-        ? snapshot.cars
-            .filter(
-              (car) =>
-                car.status !== 'retired' &&
-                car.status !== 'disqualified' &&
-                car.status !== 'dns' &&
-                previousSegmentName !== null &&
-                typeof car.timedSegmentBestSeconds[previousSegmentName] ===
-                  'number',
-            )
-            .slice(0, segment.participantDriverIds.length)
-            .map((car) => car.driverId)
-        : timedSegmentChanged
-          ? segment.participantDriverIds
-          : snapshot.timedParticipantDriverIds
-      : []
+    if (!segment) {
+      timedParticipantDriverIds = []
+    } else if (!timedSegmentChanged) {
+      timedParticipantDriverIds = snapshot.timedParticipantDriverIds
+    } else if (segmentIndex <= 0 || segment.selectFromPrevious === false) {
+      timedParticipantDriverIds = segment.participantDriverIds
+    } else {
+      const eligibleCars = snapshot.cars.filter(
+        (car) =>
+          car.status !== 'retired' &&
+          car.status !== 'disqualified' &&
+          car.status !== 'dns' &&
+          previousSegmentName !== null &&
+          typeof car.timedSegmentBestSeconds[previousSegmentName] === 'number',
+      )
+
+      if (segment.promotionGroups && segment.promotionGroups.length > 0) {
+        const promotedIds = new Set(
+          segment.promotionGroups.flatMap((group) => {
+            const groupIds = new Set(group.participantDriverIds)
+
+            return eligibleCars
+              .filter((car) => groupIds.has(car.driverId))
+              .slice(0, group.advanceCount)
+              .map((car) => car.driverId)
+          }),
+        )
+
+        timedParticipantDriverIds = eligibleCars
+          .filter((car) => promotedIds.has(car.driverId))
+          .map((car) => car.driverId)
+      } else {
+        timedParticipantDriverIds = eligibleCars
+          .slice(0, segment.participantDriverIds.length)
+          .map((car) => car.driverId)
+      }
+    }
     const participantIds = new Set(timedParticipantDriverIds)
     const justEndedSegment = !segment
       ? config.timedSessionPlan.segments.findLast(
@@ -3151,7 +3220,9 @@ export function advanceRace(
         car,
         driver,
         lap: Math.floor(car.totalDistance),
-        mandatoryTwoDryCompounds: weekendStage === 'race',
+        mandatoryTwoDryCompounds:
+          weekendStage === 'race' &&
+          (config.featureRaceTwoDryCompounds ?? true),
         raceLaps,
         seed: config.seed,
         tireNomination: config.track.tireNomination,
@@ -3793,6 +3864,7 @@ export function advanceRace(
         isRaceDistance && Math.floor(car.totalDistance) >= raceLaps - 1,
       maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
+      overtakeSystem: config.overtakeSystem,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.phase,
@@ -4961,22 +5033,32 @@ export function advanceRace(
         const finishedAtSeconds = next.lapStartedAtSeconds ?? elapsedSeconds
 
         const tireRuleViolation =
-          weekendStage === 'race' && !compliesWithGrandPrixTireRule(next)
+          weekendStage === 'race' &&
+          (config.featureRaceTwoDryCompounds ?? true) &&
+          !compliesWithGrandPrixTireRule(next)
+        const mandatoryPitStopViolation =
+          weekendStage === 'race' &&
+          (config.featureRaceMandatoryPitStop ?? false) &&
+          next.pitStops === 0
 
-        if (tireRuleViolation) {
+        if (tireRuleViolation || mandatoryPitStopViolation) {
           next = {
             ...next,
             status: 'disqualified',
             finishedAtSeconds,
             stewardStatus: 'penalty',
-            stewardNote: 'Mandatory dry-tyre rule',
+            stewardNote: tireRuleViolation
+              ? 'Mandatory dry-tyre rule'
+              : 'Mandatory pit stop',
           }
           newEvents.push(
             makeEvent(
               `tire-rule-dsq-${driver.id}`,
               'penalty',
               elapsedSeconds,
-              `${driver.code} is disqualified for failing to use two dry tyre specifications.`,
+              tireRuleViolation
+                ? `${driver.code} is disqualified for failing to use two dry tyre specifications.`
+                : `${driver.code} is disqualified for missing the mandatory pit stop.`,
             ),
           )
           break
@@ -5407,7 +5489,12 @@ export function advanceRace(
               teammateInPit,
               pitLaneOccupancy,
               tireNomination: config.track.tireNomination,
-              mandatoryTwoDryCompounds: weekendStage === 'race',
+              mandatoryPitStop:
+                weekendStage === 'race' &&
+                (config.featureRaceMandatoryPitStop ?? false),
+              mandatoryTwoDryCompounds:
+                weekendStage === 'race' &&
+                (config.featureRaceTwoDryCompounds ?? true),
               observedCalibration: config.track.observedCalibration,
               trackCondition: localTireTrackCondition,
             })
@@ -5763,13 +5850,19 @@ export function advanceRace(
     elapsedSeconds - (snapshot.raceStartedAtSeconds ?? elapsedSeconds),
   )
   const sessionTimeLimitSeconds =
-    weekendStage === 'sprint'
-      ? SPRINT_TIME_LIMIT_SECONDS
-      : GRAND_PRIX_TIME_LIMIT_SECONDS
+    config.sessionRaceTimeLimitSecondsOverride ??
+    (weekendStage === 'sprint'
+      ? (config.categoryRaceFormat?.sprintTimeLimitSeconds ??
+        SPRINT_TIME_LIMIT_SECONDS)
+      : (config.categoryRaceFormat?.featureTimeLimitSeconds ??
+        GRAND_PRIX_TIME_LIMIT_SECONDS))
   const overallWindowSeconds =
-    weekendStage === 'sprint'
-      ? SPRINT_OVERALL_WINDOW_SECONDS
-      : GRAND_PRIX_OVERALL_WINDOW_SECONDS
+    config.sessionOverallTimeLimitSecondsOverride ??
+    (weekendStage === 'sprint'
+      ? (config.categoryRaceFormat?.sprintOverallTimeLimitSeconds ??
+        SPRINT_OVERALL_WINDOW_SECONDS)
+      : (config.categoryRaceFormat?.featureOverallTimeLimitSeconds ??
+        GRAND_PRIX_OVERALL_WINDOW_SECONDS))
   const raceClockSeconds =
     snapshot.raceClockSeconds +
     (isRaceDistance &&
@@ -6038,6 +6131,7 @@ export function advanceRace(
     raceEndedEarly,
     checkeredLapTarget,
     timeLimitReachedAtSeconds,
+    timedSegmentId,
     timedSegmentLabel,
     timedSessionSuspended: timedSessionState.suspended,
     timedParticipantDriverIds,

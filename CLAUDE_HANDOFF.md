@@ -1,4 +1,4 @@
-# F1 Race Simulator Handoff
+# Formula Race Simulator Handoff
 
 ## Project
 
@@ -8,8 +8,9 @@
 
 ## User Intent
 
-Build a PC-first F1 observer, timing, and race-control simulator. It should
-feel factual and operational rather than like an arcade driving game.
+Build a PC-first F1/F2/F3/SUPER FORMULA observer, timing, and race-control
+simulator. It should feel factual and operational rather than like an arcade
+driving game.
 
 - Do not add onboard cameras, replay, radio playback, highlights, video, or a
   multi-camera broadcast-production layer.
@@ -28,9 +29,11 @@ feel factual and operational rather than like an arcade driving game.
   but are visibly marked cancelled.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
-- `src/data/f1Performance.csv` is the canonical 15-team/30-driver source. Its
-  values exactly match the supplied updated CSV, including `NAK` car number 31
-  and the `RB` identity. Do not silently rebalance or deduplicate it.
+- `src/data/f1Performance.csv` is the canonical F1 10-team/30-driver source on
+  a 0-100 scale. It includes Ferrari `NAK` car number 31.
+- `src/data/motorsportSeries2026.json` is the versioned F2/F3/SF field,
+  calendar, tire, points, and qualifying source. The validated relational pool
+  contains 110 unique people; do not apply category subtraction at runtime.
 - MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
   corners. Its sector boundaries remain labelled derived until the FIA event
   circuit map is published, and it intentionally has no fabricated OpenF1
@@ -84,9 +87,12 @@ feel factual and operational rather than like an arcade driving game.
   tire-condition, brake-cooling, damage, and manual calls. A short-horizon
   expected-loss model compares degradation, control-phase savings, rejoin
   traffic, and double-stacking once per lap.
-- FIA 2026 tire allocations:
+- F1 FIA 2026 tire allocations:
   - Standard: `H2/M3/S8/I5/W2`
   - Sprint: `H2/M4/S6/I6/W2`
+- F2 uses Prime/Option (`H3/S2`), F3 uses four sets of one dry specification,
+  and SUPER FORMULA uses one Yokohama dry specification. Category labels and
+  inventory are defined by the series registry, not inferred from F1.
 - Cars stay centered on one racing line. Battle outcomes are evaluated once
   per 1/12-lap segment and use actual mapped DRS-zone/sector position without
   adding lateral presentation offsets.
@@ -143,7 +149,9 @@ feel factual and operational rather than like an arcade driving game.
 - `src/data/calendar2026.ts`, `trackAudit.ts`, `sourceRegistry.ts`: amended
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
-- `src/data/f1Performance.csv`: canonical 15-team/30-driver source values.
+- `src/data/f1Performance.csv`: canonical F1 10-team/30-driver source values.
+- `src/data/motorsportSeries2026.json`: F2/F3/SF data and category rules.
+- `src/series/seriesRegistry.ts`: validated packages, pool, and assignments.
 - `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
 - `scripts/generate-real-track-layouts.mjs`: layout generator.
 - `src/services/openF1.ts`: OpenF1 request/bundle logic.

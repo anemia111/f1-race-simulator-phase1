@@ -1,18 +1,22 @@
-# F1 Race Simulator
+# Formula Race Simulator
 
-PC-first F1 race-control and timing simulator built with React, TypeScript,
-Vite, Three.js, and React Three Fiber. It is an observer simulation, not a
-driving game or a broadcast-video renderer.
+PC-first F1, Formula 2, Formula 3, and SUPER FORMULA race-control and timing
+simulator built with React, TypeScript, Vite, Three.js, and React Three Fiber.
+It is an observer simulation, not a driving game or a broadcast-video renderer.
 
 ## Current Features
 
-- 24 selectable circuit packs: 23 OpenF1-derived centerlines plus the official
+- Four selectable 2026 categories with independent fields, calendars,
+  qualifying, points, tire rules, overtake systems, and saved championships.
+  The relational driver pool contains 110 unique people.
+- 24 selectable F1 circuit packs: 23 OpenF1-derived centerlines plus the official
   2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
   the Bahrain/Jeddah cancellation.
-- A canonical checked-in performance CSV supplies all 15 teams and 30 drivers.
-  Its values are retained verbatim, including Yuki Nakayama (`NAK`) at car
-  number 31 and the `RB` team identity.
-- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. The 30-car
+- A canonical checked-in F1 performance CSV supplies 10 teams and 30 drivers.
+  Its 0-100 values are retained verbatim, including Yuki Nakayama (`NAK`) at
+  Ferrari car number 31. F2/F3/SF fields live in the versioned series registry.
+- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. Madrid F3 adds a
+  second qualifying and second Feature Race with independent grids. The 30-car
   qualifying field runs 18/15/13-minute periods and cuts to 20, then 10.
   Each dry qualifying attempt uses a Soft-tyre out lap, full-attack lap, and
   in lap before returning to the garage, with attack-specific ERS deployment.
@@ -49,8 +53,8 @@ driving game or a broadcast-video renderer.
 - Integrated acceleration now produces representative dry maxima above the old
   260 km/h plateau, while 420-class speed remains limited to favorable long
   straights with low drag, low fuel, tow, and ERS deployment.
-- Driver abilities use the CSV's 150-point scale without silently clamping
-  source ratings. Machine and driver performance stay separate in the model.
+- Driver abilities use one 0-100 source scale across all categories without
+  runtime category subtraction. Machine and driver performance stay separate.
 - Machine pace axes keep their CSV values for display and auditing. The
   physical simulation expands axis deviations by 35% around the reference car
   and applies a wider local response so team differences are clearer in
@@ -58,14 +62,22 @@ driving game or a broadcast-video renderer.
 - Explicit SIM/HIST/LIVE modes for OpenF1 timing, telemetry, weather,
   race-control, position, pit/stint, radio,
   result, and championship enrichment with SIM/HIST/LIVE source separation.
-- FIA 2026 standard/sprint tire allocations, 90% race classification, and
-  championship race-result countback. PU/gearbox condition and replacement
-  penalties carry across rounds.
+- FIA 2026 standard/sprint tire allocations, 90% race classification, support
+  series reduced-distance and fastest-lap points, and championship race-result
+  countback. Calendar-event save keys keep repeated SUPER FORMULA rounds
+  separate; its replacement Round 3 is 25 laps at Fuji using the Autopolis
+  qualifying reference. PU/gearbox condition and replacement penalties carry
+  across rounds.
 - Grid tire choices vary by available sets, stint demand, team/driver risk,
   and the wet crossover while remaining legal for the current track state.
 - Versioned weekend, championship, driver-rating, and OpenF1 cache inputs are
   bounded and schema-checked, so stale or corrupted browser data falls back
   without freezing startup or contaminating standings and calibration.
+- Desktop series-data manager for the 110-person relational directory,
+  individual and filtered bulk ability edits, full machine edits, team/seat
+  changes, validated driver/machine CSV, versioned JSON backup, import rollback,
+  machine equalisation, and official-baseline restore. Complete editable
+  configurations persist separately for each category.
 - Qualifying lap deletion, double-yellow invalidation, impeding, pit-exit
   queues, no-time classification, and steward permissions.
 - Historical OpenF1 timeline scrubbing and observed sector, pit-transit,
@@ -106,6 +118,7 @@ npm run lint
 npm run build
 npm test
 npm run playtest
+npm run validate:montecarlo
 npm run benchmark
 ```
 
@@ -123,10 +136,16 @@ threshold run.
 The race-engine suite also runs full-distance stability checks at Monaco,
 Monza, and Singapore to catch non-finite state, broken ordering, and races
 that fail to finish under contrasting circuit and weather demands.
+The dedicated Monte Carlo acceptance suite runs 10,000 matched-condition
+samples through production pace, tyre, incident, reliability, overtaking, and
+defending functions, including one-make field-spread and weather-specialty
+checks.
 
 ## Data Truthfulness
 
 - The race engine always remains `SIM`.
+- OpenF1 enrichment is enabled only for the F1 category; support categories
+  use their own registry sources and explicitly labelled simulation values.
 - OpenF1 samples are separately labelled `LIVE`, `HIST`, or `SIM` fallback.
 - Bundled standings are labelled `SNAP`; API standings are labelled `CAL`.
 - Layouts are labelled `Real` or `Fallback`.
@@ -140,3 +159,5 @@ that fail to finish under contrasting circuit and weather demands.
 Read `CLAUDE_HANDOFF.md` before editing with Claude Code or another agent.
 `CLAUDE.md` contains the short editing contract, and
 `docs/CLAUDE_START_PROMPT.md` contains a ready-to-send handoff prompt.
+The multi-series source and rule boundary is documented in
+[`docs/MULTI_SERIES_2026.md`](docs/MULTI_SERIES_2026.md).

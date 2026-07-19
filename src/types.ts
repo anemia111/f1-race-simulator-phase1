@@ -3,6 +3,20 @@ import type { Vector3Tuple } from 'three'
 export type CameraMode = 'overview' | 'chase' | 'orbit'
 export type SpeedMultiplier = 1 | 5 | 20 | 60
 export type TireCompound = 'S' | 'M' | 'H' | 'I' | 'W'
+export type DryTireCompound = Extract<TireCompound, 'S' | 'M' | 'H'>
+export type TireSetAllocation = Record<TireCompound, number>
+
+export type CategoryRaceFormat = {
+  featureDistanceKm: number | null
+  featureDistanceOverridesKm: Record<string, number>
+  featureOverallTimeLimitSeconds: number | null
+  featureTimeLimitSeconds: number | null
+  sprintDistanceKm: number | null
+  sprintDistanceOverridesKm: Record<string, number>
+  sprintLapsRatio: number | null
+  sprintOverallTimeLimitSeconds: number | null
+  sprintTimeLimitSeconds: number | null
+}
 
 export type TirePerformanceState =
   | 'cold'
@@ -94,7 +108,9 @@ export type WeekendStage =
   | 'sprintQualifying'
   | 'sprint'
   | 'qualifying'
+  | 'qualifying2'
   | 'race'
+  | 'race2'
 
 /** Independent driver skills. The displayed overall is informational only. */
 export type DriverSkillProfile = {
@@ -459,6 +475,9 @@ export type Driver = {
   code: string
   name: string
   carNumber: number
+  nationality?: string
+  potential?: number
+  seatRole?: 'regular' | 'third_car' | 'reserve' | 'development'
   skills: DriverSkillProfile
   style: DriverStyleProfile
   startOffset: number
@@ -568,6 +587,22 @@ export type RaceConfig = {
   teams: Team[]
   drivers: Driver[]
   seed: string
+  /** Category identity keeps checkpoints and category-specific assists isolated. */
+  seriesId?: 'f1-custom' | 'f2' | 'f3' | 'super-formula'
+  overtakeSystem?: 'active-aero' | 'drs' | 'ots'
+  overtakeActivation?: 'first-detection' | 'after-one-lap' | 'immediate'
+  tireSupplier?: 'Pirelli' | 'Yokohama'
+  tireAllocation?: TireSetAllocation
+  qualifyingDryCompound?: DryTireCompound
+  /** Category rulebook duration for single timed sessions such as FP. */
+  sessionDurationSeconds?: number | null
+  /** Event bulletin override for one-off replacement or shortened races. */
+  sessionRaceLapsOverride?: number | null
+  sessionRaceTimeLimitSecondsOverride?: number | null
+  sessionOverallTimeLimitSecondsOverride?: number | null
+  featureRaceMandatoryPitStop?: boolean
+  featureRaceTwoDryCompounds?: boolean
+  categoryRaceFormat?: CategoryRaceFormat
   weekendStage?: WeekendStage
   /** FIA event directive override; public regulations otherwise expose 8.5 MJ. */
   fiaEventRechargeLimitMj?: number | null
@@ -580,9 +615,20 @@ export type TimedSessionSegmentPlan = {
   compound: TireCompound
   /** True when race control treats the segment as wet for run planning. */
   declaredWet?: boolean
+  /** Human-readable label when multiple windows share one classification key. */
+  displayLabel?: string
   endsAtSeconds: number
+  /** Stable identity for grouped sessions whose windows share the same name. */
+  id?: string
   name: string
   participantDriverIds: string[]
+  /** Group quotas used to promote measured times into the next segment. */
+  promotionGroups?: Array<{
+    advanceCount: number
+    participantDriverIds: string[]
+  }>
+  /** False for parallel/group windows that use a predetermined participant list. */
+  selectFromPrevious?: boolean
   startsAtSeconds: number
   suspensionEndsAtSeconds: number | null
   suspensionStartsAtSeconds: number | null
@@ -595,7 +641,7 @@ export type TimedSessionPlan = {
 
 export type WeekendContext = {
   completed: WeekendStage[]
-  gridByStage: Partial<Record<'sprint' | 'race', string[]>>
+  gridByStage: Partial<Record<'sprint' | 'race' | 'race2', string[]>>
   setupBonusByDriver: Record<string, number>
   setupByDriver: Record<string, CarSetup>
   setupConfidenceByDriver: Record<string, number>
@@ -740,6 +786,8 @@ export type CarSnapshot = {
   overtakeEligibility: OvertakeEligibility | null
   /** Additional electrical energy available to 2026 Overtake this lap. */
   overtakeEnergyRemainingMj: number
+  /** Super Formula OTS allocation; absent for categories using DRS/aero overtake. */
+  otsRemainingSeconds?: number
   /** ERS-K recharge accumulated on the current lap for regulation limits. */
   energyHarvestedThisLapMj: number
   /** Battery energy spent by the MGU-K on the current lap. */
@@ -921,6 +969,7 @@ export type RaceSnapshot = {
   /** Target completed lap after a time limit, null for scheduled distance. */
   checkeredLapTarget: number | null
   timeLimitReachedAtSeconds: number | null
+  timedSegmentId: string | null
   timedSegmentLabel: string | null
   timedSessionSuspended: boolean
   timedParticipantDriverIds: string[]

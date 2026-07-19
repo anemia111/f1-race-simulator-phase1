@@ -20,6 +20,7 @@ const refreshMs = 60 * 60_000
 export function useOpenF1SeasonStandings(
   year = 2026,
   asOfIso?: string | null,
+  enabled = true,
 ): StandingsState {
   const cutoffKey = asOfIso ? asOfIso.slice(0, 10) : 'latest'
   const cacheKey = `${year}:${cutoffKey}`
@@ -31,6 +32,11 @@ export function useOpenF1SeasonStandings(
   })
 
   useEffect(() => {
+    if (!enabled) {
+      setState({ data: null, status: 'idle' })
+      return
+    }
+
     const controller = new AbortController()
     const bundledFallback =
       year === 2026 ? bundledOpenF1StandingsFor(asOfIso) : null
@@ -67,7 +73,7 @@ export function useOpenF1SeasonStandings(
       controller.abort()
       window.clearInterval(timer)
     }
-  }, [asOfIso, cacheKey, year])
+  }, [asOfIso, cacheKey, enabled, year])
 
   return state
 }

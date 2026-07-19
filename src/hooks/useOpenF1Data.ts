@@ -163,6 +163,7 @@ export function useOpenF1Data(
   stage: WeekendStage,
   year = 2026,
   accessToken: string | null = null,
+  enabled = true,
 ): OpenF1DataState {
   const [state, setState] = useState<OpenF1DataState>({
     status: 'idle',
@@ -171,6 +172,11 @@ export function useOpenF1Data(
   })
 
   useEffect(() => {
+    if (!enabled) {
+      setState({ status: 'idle', data: null, error: null })
+      return
+    }
+
     const cacheKey = `${year}:${trackId}:${stage}:${accessToken ? 'auth' : 'public'}`
     const cached = bundleCache.get(cacheKey) ?? restoreBundle(cacheKey)
 
@@ -250,7 +256,7 @@ export function useOpenF1Data(
         window.clearTimeout(timeoutId)
       }
     }
-  }, [accessToken, stage, trackId, year])
+  }, [accessToken, enabled, stage, trackId, year])
 
   return state
 }

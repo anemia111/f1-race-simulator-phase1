@@ -38,6 +38,7 @@ import type {
   TrackDefinition,
   WeekendStage,
 } from '../types'
+import type { SeriesId } from '../series/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
@@ -121,19 +122,27 @@ type BroadcastDashboardProps = {
   onOpenInsights: () => void
   onOpenSetup: () => void
   onPauseChange: () => void
+  onSeriesChange: (seriesId: SeriesId) => void
   onSkipFormationLap: () => void
   onSpeedChange: (speed: SpeedMultiplier) => void
-  onStageChange: (stage: Extract<WeekendStage, 'qualifying' | 'race'>) => void
+  onStageChange: (stage: WeekendStage) => void
   raceControlLog: BroadcastRaceControlEntry[]
+  raceLabel: string
   selectedCar: CarSnapshot
   sessionPhaseLabel: string
   sessionProgressLabel: string
   snapshot: RaceSnapshot
   speed: SpeedMultiplier
   stage: WeekendStage
+  seriesId: SeriesId
+  seriesLabel: string
+  seriesOptions: Array<{ id: SeriesId; label: string }>
+  tireLabels: Record<CarSnapshot['tire'], string>
+  overtakeSystem: 'active-aero' | 'drs' | 'ots'
   timingRows: BroadcastTimingRow[]
   track: TrackDefinition
   trackScene: ReactNode
+  weekendStages: WeekendStage[]
 }
 
 function StartSignal({ snapshot }: { snapshot: RaceSnapshot }) {
@@ -193,7 +202,7 @@ const dashboardViews: Array<{
   { Icon: Database, id: 'data', label: 'Data' },
 ]
 
-const tireLabels: Record<CarSnapshot['tire'], string> = {
+const defaultTireLabels: Record<CarSnapshot['tire'], string> = {
   H: 'Hard',
   I: 'Intermediate',
   M: 'Medium',
@@ -388,7 +397,13 @@ function Sparkline({
   )
 }
 
-function TireUsage({ cars }: { cars: CarSnapshot[] }) {
+function TireUsage({
+  cars,
+  labels,
+}: {
+  cars: CarSnapshot[]
+  labels: Record<CarSnapshot['tire'], string>
+}) {
   const usage = useMemo(() => {
     const counts = new Map<CarSnapshot['tire'], number>()
 
@@ -428,7 +443,7 @@ function TireUsage({ cars }: { cars: CarSnapshot[] }) {
         {usage.map(([compound, count]) => (
           <div key={compound}>
             <span className={`broadcast-tire tire-${compound}`}>{compound}</span>
-            <span>{tireLabels[compound]}</span>
+            <span>{labels[compound]}</span>
             <strong>{count}</strong>
             <small>{Math.round((count / total) * 100)}%</small>
           </div>
@@ -487,6 +502,7 @@ function GapHistory({ rows }: { rows: BroadcastTimingRow[] }) {
 }
 
 function LeftLeaderboard({
+  labels,
   mode,
   onFocusDriver,
   onModeChange,
@@ -494,6 +510,7 @@ function LeftLeaderboard({
   selectedDriverId,
   title,
 }: {
+  labels: Record<CarSnapshot['tire'], string>
   mode: 'live' | 'gap'
   onFocusDriver: (driverId: string) => void
   onModeChange: (mode: 'live' | 'gap') => void
@@ -558,9 +575,9 @@ function LeftLeaderboard({
                   )}
                 </span>
                 <span
-                  aria-label={`${tireLabels[row.car.tire]} tyre, ${tireLife}% life remaining`}
+                  aria-label={`${labels[row.car.tire]} tyre, ${tireLife}% life remaining`}
                   className={`broadcast-tire leaderboard-tire-life tire-${row.car.tire}`}
-                  title={`${tireLabels[row.car.tire]} tyre: ${tireLife}% life remaining`}
+                  title={`${labels[row.car.tire]} tyre: ${tireLife}% life remaining`}
                 >
                   {tireLife}
                 </span>
@@ -687,19 +704,25 @@ function CenterView({
   dataControl,
   dataDetails,
   environment,
+  labels,
+  overtakeSystem,
   raceControlLog,
   rows,
   snapshot,
   track,
+  useF1TireNomination,
   view,
 }: {
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   environment: EnvironmentReadout
+  labels: Record<CarSnapshot['tire'], string>
+  overtakeSystem: 'active-aero' | 'drs' | 'ots'
   raceControlLog: BroadcastRaceControlEntry[]
   rows: BroadcastTimingRow[]
   snapshot: RaceSnapshot
   track: TrackDefinition
+  useF1TireNomination: boolean
   view: DashboardView
 }) {
   if (view === 'timing') return <TimingDetail rows={rows} />
@@ -725,8 +748,8 @@ function CenterView({
         <span>Layout</span><strong>{layoutGeometryLabel(track)}</strong><SourceTag source={layoutSourceTag(track)} />
         <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? layoutSourceTag(track) : 'UNAVAILABLE'} />
         <span>Sector boundaries</span><strong>{track.sectorMarks.slice(1).map((mark) => `${Math.round(mark * 100)}%`).join(' / ')}</strong><SourceTag source={track.sectorMarksSource === 'official' ? 'FIA' : 'CAL'} />
-        <span>Straight Mode zones</span><strong>{track.activeAeroUnavailable ? 'N/A' : track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={aeroSource} />
-        <span>Overtake detection lines</span><strong>{track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSource} />
+        <span>{overtakeSystem === 'active-aero' ? 'Straight Mode zones' : overtakeSystem === 'drs' ? 'DRS zones' : 'OTS allocation'}</span><strong>{overtakeSystem === 'ots' ? '200 seconds' : track.activeAeroUnavailable ? 'N/A' : track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : aeroSource} />
+        <span>{overtakeSystem === 'ots' ? 'Activation model' : 'Overtake detection lines'}</span><strong>{overtakeSystem === 'ots' ? 'Driver controlled' : track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : overtakeSource} />
         <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
         <span>Track evolution</span><strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong><SourceTag source="SIM" />
         <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
@@ -751,9 +774,8 @@ function CenterView({
         <span>Forecast</span><strong>{snapshot.weatherForecastLabel}</strong><SourceTag source="SIM" />
         <span>Rain Hazard</span><strong>{snapshot.rainHazardDeclared ? 'DECLARED' : 'NOT DECLARED'}</strong><SourceTag source="SIM" />
         <span>Grip declaration</span><strong>{snapshot.lowGripConditions ? 'LOW GRIP' : 'NORMAL GRIP'}</strong><SourceTag source="SIM" />
-        <span>Active aero</span><strong>{snapshot.lowGripConditions ? 'PARTIAL FRONT ONLY' : 'FULL ZONES'}</strong><SourceTag source="FIA" />
-        <span>Overtake</span><strong>{snapshot.lowGripConditions ? 'DISABLED' : snapshot.overtakeEnabled ? 'ENABLED' : 'CONTROLLED'}</strong><SourceTag source="FIA" />
-        <span>Low-grip ERS curve</span><strong>{snapshot.lowGripConditions ? 'CONSERVATIVE EST.' : 'PUBLIC C5.2.8'}</strong><SourceTag source={snapshot.lowGripConditions ? 'UNAVAILABLE' : 'FIA'} />
+        <span>{overtakeSystem === 'active-aero' ? 'Active aero' : overtakeSystem.toUpperCase()}</span><strong>{snapshot.lowGripConditions ? 'DISABLED' : snapshot.overtakeEnabled ? 'ENABLED' : 'CONTROLLED'}</strong><SourceTag source="FIA" />
+        {overtakeSystem === 'active-aero' ? <><span>Low-grip ERS curve</span><strong>{snapshot.lowGripConditions ? 'CONSERVATIVE EST.' : 'PUBLIC C5.2.8'}</strong><SourceTag source={snapshot.lowGripConditions ? 'UNAVAILABLE' : 'FIA'} /></> : null}
       </div>
     )
   }
@@ -766,7 +788,7 @@ function CenterView({
           {rows.map((row) => (
             <li key={row.car.driverId}><div>
               <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
-              <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {row.car.tire === 'S' || row.car.tire === 'M' || row.car.tire === 'H' ? track.tireNomination?.[row.car.tire] ?? tireLabels[row.car.tire] : tireLabels[row.car.tire]}</span>
+              <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {useF1TireNomination && (row.car.tire === 'S' || row.car.tire === 'M' || row.car.tire === 'H') ? `${labels[row.car.tire]} (${track.tireNomination?.[row.car.tire] ?? 'nomination pending'})` : labels[row.car.tire]}</span>
               <span>{row.car.tireAgeLaps} L</span><span>{clamp(Math.round(row.tireLifePercent), 0, 100)}%</span>
               <span>{row.tirePaceDeltaSeconds >= 0 ? '+' : ''}{row.tirePaceDeltaSeconds.toFixed(2)}s</span>
               <span>{row.tireTemperatureC} C</span><span>{row.car.tireSetsRemaining[row.car.tire] ?? 0}</span><span>{row.car.pitStops}</span>
@@ -862,19 +884,27 @@ export function BroadcastDashboard({
   onOpenInsights,
   onOpenSetup,
   onPauseChange,
+  onSeriesChange,
   onSkipFormationLap,
   onSpeedChange,
   onStageChange,
   raceControlLog,
+  raceLabel,
   selectedCar,
   sessionPhaseLabel,
   sessionProgressLabel,
   snapshot,
   speed,
   stage,
+  seriesId,
+  seriesLabel,
+  seriesOptions,
+  tireLabels = defaultTireLabels,
+  overtakeSystem,
   timingRows,
   track,
   trackScene,
+  weekendStages,
 }: BroadcastDashboardProps) {
   const [activeView, setActiveView] = useState<DashboardView>('timing')
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
@@ -914,6 +944,12 @@ export function BroadcastDashboard({
         timeLabel: event.timeLabel,
       }))
   const trackTitle = `${eventName.replace(/\s+20\d{2}$/u, '')} 2026`
+  const overtakeLabel =
+    overtakeSystem === 'active-aero'
+      ? 'ACTIVE AERO'
+      : overtakeSystem === 'drs'
+        ? 'DRS'
+        : 'OTS'
   const averageWater = snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
   const activeSectorFlagIndex = snapshot.sectorFlags.findIndex(
     (flag) => flag !== 'clear',
@@ -944,36 +980,57 @@ export function BroadcastDashboard({
     ? 'yellow'
     : (activeSectorFlag ?? snapshot.flag)
   const isQualifyingStage =
-    stage === 'qualifying' || stage === 'sprintQualifying'
-  const isRaceStage = stage === 'race' || stage === 'sprint'
+    stage === 'qualifying' ||
+    stage === 'qualifying2' ||
+    stage === 'sprintQualifying'
+  const isRaceStage =
+    stage === 'race' || stage === 'race2' || stage === 'sprint'
 
   return (
     <div className="broadcast-app">
       <header className="broadcast-topbar">
-        <div className="broadcast-brand"><Gauge aria-hidden="true" size={29} /><div><strong>{trackTitle}</strong><span>{track.name}</span></div></div>
+        <div className="broadcast-brand">
+          <Gauge aria-hidden="true" size={29} />
+          <div>
+            <strong>{trackTitle}</strong>
+            <span>{seriesLabel} / {track.name}</span>
+          </div>
+          <select
+            aria-label="Racing series"
+            className="broadcast-series-select"
+            onChange={(event) => onSeriesChange(event.target.value as SeriesId)}
+            value={seriesId}
+          >
+            {seriesOptions.map((series) => (
+              <option key={series.id} value={series.id}>{series.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="broadcast-session-core">
           <span className={`broadcast-live-mode mode-${dataMode.toLowerCase()}`}>{dataMode}</span>
-          <div aria-label="Session mode" className="broadcast-session-switch" role="group">
-            <button
-              aria-pressed={stage === 'qualifying'}
-              onClick={() => onStageChange('qualifying')}
-              type="button"
+          <div className="broadcast-session-switch">
+            <select
+              aria-label="Weekend session"
+              onChange={(event) => onStageChange(event.target.value as WeekendStage)}
+              title="Weekend session"
+              value={stage}
             >
-              QUALI
-            </button>
-            <button
-              aria-pressed={stage === 'race'}
-              disabled={stage === 'qualifying' && snapshot.sessionStatus !== 'finished'}
-              onClick={() => onStageChange('race')}
-              title={
-                stage === 'qualifying' && snapshot.sessionStatus !== 'finished'
-                  ? 'Complete Q1, Q2 and Q3 before starting the race'
-                  : 'Open race session'
-              }
-              type="button"
-            >
-              RACE
-            </button>
+              {weekendStages.map((weekendStage) => (
+                <option key={weekendStage} value={weekendStage}>
+                  {weekendStage === 'qualifying'
+                    ? 'QUALIFYING'
+                    : weekendStage === 'qualifying2'
+                      ? 'QUALIFYING 2'
+                    : weekendStage === 'sprintQualifying'
+                      ? 'SPRINT QUALIFYING'
+                      : weekendStage === 'race'
+                        ? raceLabel.toUpperCase()
+                        : weekendStage === 'race2'
+                          ? `${raceLabel.toUpperCase()} 2`
+                        : weekendStage.toUpperCase()}
+                </option>
+              ))}
+            </select>
           </div>
           <strong className="broadcast-phase-label">{sessionPhaseLabel}</strong>
           <span>{sessionProgressLabel}</span>
@@ -1019,6 +1076,7 @@ export function BroadcastDashboard({
       <main className="broadcast-workspace">
         <div className="broadcast-left-column">
           <LeftLeaderboard
+            labels={tireLabels}
             mode={leaderboardMode}
             onFocusDriver={onFocusDriver}
             onModeChange={setLeaderboardMode}
@@ -1027,7 +1085,7 @@ export function BroadcastDashboard({
             title={isQualifyingStage ? 'Qualifying Leaderboard' : 'Race Leaderboard'}
           />
           <div className="broadcast-left-analytics">
-            <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} /></section>
+            <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} labels={tireLabels} /></section>
             <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div aria-label="All drivers pit stops" className="pit-stop-list" role="table" tabIndex={0}><div role="row"><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).map((row) => <div key={row.car.driverId} role="row"><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
             <section className="broadcast-panel gap-history-panel"><PanelHeader eyebrow="COMPLETED LAPS" title="Gap To Leader" /><GapHistory rows={timingRows} /></section>
           </div>
@@ -1045,10 +1103,13 @@ export function BroadcastDashboard({
                 dataControl={dataControl}
                 dataDetails={dataDetails}
                 environment={environment}
+                labels={tireLabels}
+                overtakeSystem={overtakeSystem}
                 raceControlLog={raceControlLog}
                 rows={timingRows}
                 snapshot={snapshot}
                 track={track}
+                useF1TireNomination={seriesId === 'f1-custom'}
                 view={activeView}
               />
             ) : <button className="restore-panel" onClick={() => setShowLiveTiming(true)} type="button"><Timer size={14} /> Restore live timing</button>}
@@ -1057,7 +1118,7 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-track-panel">
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
-              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${track.activeAeroUnavailable ? 'SM N/A' : `${track.aeroActivationZones?.length ?? 0} SM ZONES`}`}
+              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${overtakeSystem === 'ots' ? 'OTS ENABLED' : track.activeAeroUnavailable ? `${overtakeLabel} N/A` : `${track.aeroActivationZones?.length ?? 0} ${overtakeLabel} ZONES`}`}
               title={`Track Map - ${track.name}`}
             />
             <div className="broadcast-track-stage">
@@ -1066,7 +1127,7 @@ export function BroadcastDashboard({
               <StartSignal snapshot={snapshot} />
               <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={layoutSourceTag(track)} /></div>
               <div className="track-map-legend">
-                {(Object.keys(tireLabels) as CarSnapshot['tire'][]).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}
+                {(Object.keys(tireLabels) as CarSnapshot['tire'][]).filter((compound) => !tireLabels[compound].startsWith('Not ')).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}
               </div>
             </div>
           </section>
@@ -1076,7 +1137,7 @@ export function BroadcastDashboard({
         <aside className="broadcast-right-column">
           <section className="broadcast-panel race-control-panel">
             <PanelHeader eyebrow={snapshot.lowGripConditions ? 'LOW GRIP / OVERTAKE OFF' : controlFlagLabel === 'CLEAR' ? 'TRACK CLEAR' : controlFlagLabel} title="Race Control" />
-            <div className="track-status-grid"><div><span>TRACK STATUS</span><strong className={`flag-${controlFlagClass}`}>{snapshot.lowGripConditions ? `LOW ${Math.round(snapshot.trackGrip * 100)}%` : controlFlagLabel}</strong></div><div><span>ACTIVE AERO</span><strong>{snapshot.lowGripConditions ? 'PARTIAL' : 'FULL ZONES'}</strong></div><div><span>OVERTAKE</span><strong>{snapshot.lowGripConditions ? 'OFF' : snapshot.overtakeEnabled ? 'ON' : 'CONTROL'}</strong></div></div>
+            <div className="track-status-grid"><div><span>TRACK STATUS</span><strong className={`flag-${controlFlagClass}`}>{snapshot.lowGripConditions ? `LOW ${Math.round(snapshot.trackGrip * 100)}%` : controlFlagLabel}</strong></div><div><span>{overtakeLabel}</span><strong>{snapshot.lowGripConditions ? 'OFF' : overtakeSystem === 'ots' ? '200S ALLOCATION' : 'FULL ZONES'}</strong></div><div><span>OVERTAKE</span><strong>{snapshot.lowGripConditions ? 'OFF' : snapshot.overtakeEnabled ? 'ON' : 'CONTROL'}</strong></div></div>
             <div
               className="sector-flag-strip"
               aria-label={snapshot.sectorFlags

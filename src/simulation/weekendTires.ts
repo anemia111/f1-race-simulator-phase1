@@ -1,4 +1,9 @@
-import type { Driver, RaceConfig, TireCompound } from '../types'
+import type {
+  Driver,
+  RaceConfig,
+  TireCompound,
+  TireSetAllocation,
+} from '../types'
 import { tireNominationForTrack } from '../data/tireNominations2026'
 import { driverPerformanceAbility } from './driverAbility'
 import { effectiveMachineRating } from './machinePerformance'
@@ -55,9 +60,11 @@ const sprintWeekendAllocation: WeekendTireAllocation = {
 
 export function weekendTireAllocation(
   isSprintWeekend: boolean,
+  categoryAllocation?: TireSetAllocation,
 ): WeekendTireAllocation {
   return {
-    ...(isSprintWeekend ? sprintWeekendAllocation : standardWeekendAllocation),
+    ...(categoryAllocation ??
+      (isSprintWeekend ? sprintWeekendAllocation : standardWeekendAllocation)),
   }
 }
 
@@ -297,7 +304,10 @@ export function buildWeekendTirePlan(
     }
   }
 
-  const allocation = weekendTireAllocation(sprintShootout !== null)
+  const allocation = weekendTireAllocation(
+    sprintShootout !== null,
+    config.tireAllocation,
+  )
   const baseDrySets: DrySetInventory = {
     H: allocation.H,
     M: allocation.M,
@@ -312,6 +322,21 @@ export function buildWeekendTirePlan(
       remaining.S = Math.max(0, remaining.S - qualifyingUsed.S)
       remaining.M = Math.max(0, remaining.M - qualifyingUsed.M)
       remaining.H = Math.max(0, remaining.H - qualifyingUsed.H)
+
+      if (config.featureRaceTwoDryCompounds) {
+        for (const compound of dryCompoundOrder) {
+          // A used qualifying set is still a physical set. Keep one reusable
+          // set available when consuming fresh sets would otherwise make the
+          // category's two-specification feature-race rule impossible.
+          if (
+            baseDrySets[compound] > 0 &&
+            qualifyingUsed[compound] > 0 &&
+            remaining[compound] === 0
+          ) {
+            remaining[compound] = 1
+          }
+        }
+      }
 
       return {
         code: driver.code,

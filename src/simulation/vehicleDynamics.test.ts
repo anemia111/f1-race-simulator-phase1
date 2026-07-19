@@ -73,13 +73,13 @@ describe('multi-axis vehicle dynamics', () => {
     }
   })
 
-  it('keeps the full configured driver scale monotonic against one machine', () => {
+  it('keeps the configured 0-100 driver scale monotonic against one machine', () => {
     const team = initialTeams.find(
       (candidate) => candidate.id === initialDrivers[0].teamId,
     )!
     const lowerDriver = driverAt(0.7)
     const higherDriver = driverAt(1)
-    const exceptionalDriver = driverAt(1.5)
+    const outOfRangeDriver = driverAt(1.5)
     const higherGain = performanceLapGainSeconds({
       driver: higherDriver,
       team,
@@ -95,11 +95,11 @@ describe('multi-axis vehicle dynamics', () => {
     )
     expect(
       performanceLapGainSeconds({
-        driver: exceptionalDriver,
+        driver: outOfRangeDriver,
         team,
         track: tracks[0],
       }),
-    ).toBeGreaterThan(higherGain)
+    ).toBe(higherGain)
   })
 
   it('uses drag-limited acceleration instead of adding a fixed top speed', () => {
@@ -196,7 +196,7 @@ describe('multi-axis vehicle dynamics', () => {
     expect(harvesting).toBeLessThan(combustionOnly)
   })
 
-  it('compares all 15 CSV machines with one identical reference driver', () => {
+  it('compares all 10 CSV machines with one identical reference driver', () => {
     const referenceDriver = driverAt(1)
     const monza = tracks.find((track) => track.id === 'monza-approx')!
     const monaco = tracks.find((track) => track.id === 'monaco-approx')!
@@ -215,17 +215,17 @@ describe('multi-axis vehicle dynamics', () => {
     const monzaResults = resultFor(monza)
     const monacoResults = resultFor(monaco)
 
-    expect(monzaResults).toHaveLength(15)
+    expect(monzaResults).toHaveLength(10)
     expect(
       new Set(monzaResults.map((result) => result.gain.toFixed(5))).size,
-    ).toBeGreaterThan(10)
-    expect(monzaResults.map((result) => result.teamId)).not.toEqual(
-      monacoResults.map((result) => result.teamId),
+    ).toBeGreaterThan(7)
+    expect(monzaResults.map((result) => result.gain.toFixed(5))).not.toEqual(
+      monacoResults.map((result) => result.gain.toFixed(5)),
     )
     const monzaFieldSpreadSeconds =
       monzaResults[0].gain - monzaResults.at(-1)!.gain
 
-    expect(monzaFieldSpreadSeconds).toBeGreaterThan(2)
+    expect(monzaFieldSpreadSeconds).toBeGreaterThan(1.5)
     expect(monzaFieldSpreadSeconds).toBeLessThan(3)
   })
 
@@ -286,8 +286,8 @@ describe('multi-axis vehicle dynamics', () => {
     const terminalSpeedSpreadKph =
       Math.max(...terminalSpeeds) - Math.min(...terminalSpeeds)
 
-    expect(terminalSpeedSpreadKph).toBeGreaterThan(9)
-    expect(terminalSpeedSpreadKph).toBeLessThan(20)
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(7)
+    expect(terminalSpeedSpreadKph).toBeLessThan(15)
   })
 
   it('compares all 30 CSV drivers in one identical machine without sorting by OVR', () => {
@@ -327,7 +327,7 @@ describe('multi-axis vehicle dynamics', () => {
     )
     const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
 
-    expect(dryFieldSpreadSeconds).toBeGreaterThan(0.7)
-    expect(dryFieldSpreadSeconds).toBeLessThan(1.4)
+    expect(dryFieldSpreadSeconds).toBeGreaterThan(0.25)
+    expect(dryFieldSpreadSeconds).toBeLessThan(0.8)
   })
 })

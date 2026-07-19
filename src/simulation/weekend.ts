@@ -3,6 +3,7 @@ import type {
   CarSnapshot,
   TireNomination,
   TireSet,
+  TireSetAllocation,
   TrackDefinition,
   TireCompound,
   WeekendContext,
@@ -16,6 +17,10 @@ import type {
 import { weekendTireAllocation } from './weekendTires'
 import { baselineSetupForTrack } from './engineering'
 import { createCarComponents } from './components'
+import {
+  isFeatureRaceStage,
+  isStandardQualifyingStage,
+} from './sessionRules'
 
 const allCompounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 
@@ -23,6 +28,7 @@ export function createWeekendContext(
   drivers: Driver[],
   isSprintWeekend = false,
   track?: TrackDefinition,
+  categoryTireAllocation?: TireSetAllocation,
 ): WeekendContext {
   const tireSetsByDriver: WeekendContext['tireSetsByDriver'] = {}
   const tireSetInventoryByDriver: WeekendContext['tireSetInventoryByDriver'] = {}
@@ -32,7 +38,10 @@ export function createWeekendContext(
   const componentConditionByDriver: WeekendContext['componentConditionByDriver'] = {}
   const pitLaneStartByDriver: WeekendContext['pitLaneStartByDriver'] = {}
   const qualificationStatusByDriver: WeekendContext['qualificationStatusByDriver'] = {}
-  const allocation = weekendTireAllocation(isSprintWeekend)
+  const allocation = weekendTireAllocation(
+    isSprintWeekend,
+    categoryTireAllocation,
+  )
   const nomination: TireNomination =
     track?.tireNomination ?? {
       H: 'C2',
@@ -198,7 +207,10 @@ export function completePracticeSession(
 
 export function completeQualifyingSession(
   previous: WeekendContext,
-  stage: Extract<WeekendStage, 'qualifying' | 'sprintQualifying'>,
+  stage: Extract<
+    WeekendStage,
+    'qualifying' | 'qualifying2' | 'sprintQualifying'
+  >,
   results: QualifyingResult[],
   segments?: QualifyingSegment[],
   cars?: CarSnapshot[],
@@ -248,7 +260,7 @@ export function completeQualifyingSession(
         (gridPenaltyByDriver[car.driverId] ?? 0) + gridDrop
     }
 
-    if (stage === 'qualifying') {
+    if (isStandardQualifyingStage(stage)) {
       const requiresPermission =
         car.qualifyingClassificationStatus === 'no-time' ||
         car.qualifyingClassificationStatus === 'deleted'
@@ -261,7 +273,12 @@ export function completeQualifyingSession(
     }
   }
 
-  const gridKey = stage === 'sprintQualifying' ? 'sprint' : 'race'
+  const gridKey =
+    stage === 'sprintQualifying'
+      ? 'sprint'
+      : stage === 'qualifying2'
+        ? 'race2'
+        : 'race'
   const measuredClassificationAvailable =
     cars?.some((car) => car.bestLapTimeSeconds !== null) ?? false
   const orderedIds = measuredClassificationAvailable
@@ -287,7 +304,10 @@ export function completeQualifyingSession(
     gridByStage: { ...previous.gridByStage, [gridKey]: orderedIds },
     gridPenaltyByDriver,
     qualificationStatusByDriver,
-    notes: [...previous.notes, `${stage === 'qualifying' ? 'Qualifying' : 'Sprint Shootout'} grid locked`].slice(-8),
+    notes: [
+      ...previous.notes,
+      `${stage === 'sprintQualifying' ? 'Sprint Shootout' : stage === 'qualifying2' ? 'Qualifying 2' : 'Qualifying'} grid locked`,
+    ].slice(-8),
     parcFermeLockedByDriver,
     tireSetInventoryByDriver,
     tireSetsByDriver,
@@ -301,7 +321,7 @@ export function completeQualifyingSession(
  */
 export function completeRaceSession(
   previous: WeekendContext,
-  stage: Extract<WeekendStage, 'sprint' | 'race'>,
+  stage: Extract<WeekendStage, 'sprint' | 'race' | 'race2'>,
   cars?: CarSnapshot[],
 ): WeekendContext {
   if (previous.completed.includes(stage)) {
@@ -318,7 +338,7 @@ export function completeRaceSession(
     completed: [...previous.completed, stage],
     notes: [
       ...previous.notes,
-      `${stage === 'sprint' ? 'Sprint' : 'Race'} classification recorded`,
+      `${stage === 'sprint' ? 'Sprint' : stage === 'race2' ? 'Race 2' : 'Race'} classification recorded`,
     ].slice(-8),
   }
 }
@@ -326,7 +346,7 @@ export function completeRaceSession(
 export function applyWeekendGrid(
   drivers: Driver[],
   context: WeekendContext | undefined,
-  stage: 'sprint' | 'race',
+  stage: 'sprint' | 'race' | 'race2',
 ): Driver[] | null {
   const grid = context?.gridByStage[stage]
 
@@ -349,11 +369,11 @@ export function applyWeekendGrid(
 export function applyGridPenalties(
   drivers: Driver[],
   context: WeekendContext | undefined,
-  stage: 'sprint' | 'race',
+  stage: 'sprint' | 'race' | 'race2',
 ) {
   const orderedDrivers = [...drivers]
 
-  if (stage === 'race') {
+  if (isFeatureRaceStage(stage)) {
     for (const driver of drivers) {
       const penalty = Math.max(
         0,

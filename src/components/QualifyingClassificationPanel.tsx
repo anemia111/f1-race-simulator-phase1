@@ -1,10 +1,17 @@
 import { Flag, Timer, X } from 'lucide-react'
-import { Fragment, useMemo } from 'react'
-import { qualifyingCutSizes } from '../simulation/qualifying'
+import { Fragment, useMemo, type CSSProperties } from 'react'
+import type { QualifyingSegmentName } from '../simulation/qualifying'
 import type { RaceSnapshot, WeekendStage } from '../types'
+
+type ClassificationSegment = {
+  advanceCount: number | null
+  durationSeconds: number
+  name: QualifyingSegmentName
+}
 
 type QualifyingClassificationPanelProps = {
   onClose: () => void
+  segments: readonly ClassificationSegment[]
   snapshot: RaceSnapshot
   stage: WeekendStage
 }
@@ -29,39 +36,48 @@ const releaseStrategyLabels = {
 
 export function QualifyingClassificationPanel({
   onClose,
+  segments: configuredSegments,
   snapshot,
   stage,
 }: QualifyingClassificationPanelProps) {
-  const segments = stage === 'sprintQualifying'
-    ? (['SQ1', 'SQ2', 'SQ3'] as const)
-    : (['Q1', 'Q2', 'Q3'] as const)
-  const durations = stage === 'sprintQualifying'
-    ? ([12, 10, 8] as const)
-    : ([18, 15, 13] as const)
-  const { q2Size, q3Size } = qualifyingCutSizes(snapshot.cars.length)
-  const q1Eliminated = snapshot.cars.length - q2Size
-  const q2Eliminated = q2Size - q3Size
+  const segments =
+    configuredSegments.length > 0
+      ? configuredSegments
+      : [
+          {
+            advanceCount: null,
+            durationSeconds: 18 * 60,
+            name: 'Q1' as const,
+          },
+        ]
+  const participantCounts = segments.map((_, index) => {
+    if (index === 0) return snapshot.cars.length
+
+    return segments[index - 1].advanceCount ?? snapshot.cars.length
+  })
+  const finalParticipantCount =
+    participantCounts[participantCounts.length - 1] ?? snapshot.cars.length
   const activeParticipants = useMemo(
     () => new Set(snapshot.timedParticipantDriverIds),
     [snapshot.timedParticipantDriverIds],
   )
   const activeSegment = snapshot.timedSegmentLabel ?? 'INTERVAL'
   const currentSegmentIndex = segments.findIndex(
-    (segment) => segment === snapshot.timedSegmentLabel,
+    (segment) => segment.name === snapshot.timedSegmentLabel,
   )
   const isFinal = snapshot.sessionStatus === 'finished'
   const referenceSegment = isFinal
-    ? segments[2]
+    ? segments[segments.length - 1].name
     : currentSegmentIndex >= 0
-      ? segments[currentSegmentIndex]
-      : segments.findLast((segment) =>
+      ? segments[currentSegmentIndex].name
+      : (segments.findLast((segment) =>
           snapshot.cars.some((car) =>
             Object.prototype.hasOwnProperty.call(
               car.timedSegmentBestSeconds,
-              segment,
+              segment.name,
             ),
           ),
-        ) ?? segments[0]
+        )?.name ?? segments[0].name)
   const fastestReference = snapshot.cars
     .map((car) => ({
       car,
@@ -85,9 +101,21 @@ export function QualifyingClassificationPanel({
     }
     if (car.status === 'dns') return 'DNS'
     if (isFinal) {
-      if (index < q3Size) return segments[2]
-      if (index < q2Size) return `OUT ${segments[1]}`
-      return `OUT ${segments[0]}`
+      if (index < finalParticipantCount) {
+        return segments[segments.length - 1].name
+      }
+
+      for (
+        let segmentIndex = segments.length - 2;
+        segmentIndex >= 0;
+        segmentIndex -= 1
+      ) {
+        if (index < participantCounts[segmentIndex]) {
+          return `OUT ${segments[segmentIndex].name}`
+        }
+      }
+
+      return `OUT ${segments[0].name}`
     }
     if (activeParticipants.has(driverId)) {
       if (car.timedRunPhase === 'attack-lap') return 'FLYING'
@@ -100,7 +128,10 @@ export function QualifyingClassificationPanel({
         const releaseIn =
           car.pitUntilSeconds === null
             ? null
-            : Math.max(0, Math.ceil(car.pitUntilSeconds - snapshot.elapsedSeconds))
+            : Math.max(
+                0,
+                Math.ceil(car.pitUntilSeconds - snapshot.elapsedSeconds),
+              )
 
         return releaseLabel && releaseIn !== null
           ? `${releaseLabel} ${releaseIn}s`
@@ -108,20 +139,42 @@ export function QualifyingClassificationPanel({
       }
       return activeSegment
     }
-    if (currentSegmentIndex <= 0) return index < q2Size ? 'Q2' : 'DROP'
-    if (currentSegmentIndex === 1 && index < q2Size) {
-      return index < q3Size ? 'Q3' : 'DROP'
+
+    if (currentSegmentIndex < 0) {
+      return segments[0].name
     }
-    return index < q3Size ? segments[2] : 'OUT'
+
+    for (
+      let segmentIndex = 0;
+      segmentIndex < currentSegmentIndex;
+      segmentIndex += 1
+    ) {
+      const advanceCount = segments[segmentIndex].advanceCount
+
+      if (advanceCount !== null && index >= advanceCount) {
+        return `OUT ${segments[segmentIndex].name}`
+      }
+    }
+
+    return segments[Math.min(currentSegmentIndex + 1, segments.length - 1)]
+      .name
   }
+
+  const gridStyle = {
+    '--qualifying-segment-count': segments.length,
+  } as CSSProperties
 
   return (
     <section
       aria-label="qualifying classification"
       className="hud classification-panel qualifying-classification-panel"
+      style={gridStyle}
     >
       <header>
-        <span><Timer aria-hidden="true" size={14} />Qualifying classification</span>
+        <span>
+          <Timer aria-hidden="true" size={14} />
+          {stage === 'qualifying2' ? 'Qualifying 2' : 'Qualifying'} classification
+        </span>
         <strong className={isFinal ? 'flag-clear' : 'flag-yellow'}>
           {isFinal ? 'Final' : activeSegment}
         </strong>
@@ -136,11 +189,30 @@ export function QualifyingClassificationPanel({
       </header>
       <div className="classification-summary">
         <span>Format</span>
-        <strong>{segments[0]} {durations[0]} / {segments[1]} {durations[1]} / {segments[2]} {durations[2]} min</strong>
+        <strong>
+          {segments
+            .map(
+              (segment) =>
+                `${segment.name} ${Math.round(segment.durationSeconds / 60)}m`,
+            )
+            .join(' / ')}
+        </strong>
         <span>Field</span>
-        <strong>{snapshot.cars.length} → {q2Size} → {q3Size}</strong>
+        <strong>{participantCounts.join(' -> ')}</strong>
         <span>Eliminated</span>
-        <strong>{segments[0]} {q1Eliminated} / {segments[1]} {q2Eliminated}</strong>
+        <strong>
+          {segments.length === 1
+            ? 'Single classification'
+            : segments
+                .slice(0, -1)
+                .map((segment, index) => {
+                  const nextCount =
+                    segment.advanceCount ?? participantCounts[index]
+
+                  return `${segment.name} ${participantCounts[index] - nextCount}`
+                })
+                .join(' / ')}
+        </strong>
         <span>{isFinal ? 'Pole' : `Best ${referenceSegment}`}</span>
         <strong>
           {fastestReference
@@ -149,8 +221,11 @@ export function QualifyingClassificationPanel({
         </strong>
       </div>
       <div className="qualifying-table-head" aria-hidden="true">
-        <span>POS</span><span>DRIVER</span>
-        {segments.map((segment) => <span key={segment}>{segment}</span>)}
+        <span>POS</span>
+        <span>DRIVER</span>
+        {segments.map((segment) => (
+          <span key={segment.name}>{segment.name}</span>
+        ))}
         <span>STATUS</span>
       </div>
       <ol>
@@ -170,31 +245,43 @@ export function QualifyingClassificationPanel({
               {segments.map((segment) => (
                 <strong
                   className={
-                    typeof car.timedSegmentBestSeconds[segment] === 'number'
+                    typeof car.timedSegmentBestSeconds[segment.name] ===
+                    'number'
                       ? 'qualifying-time'
                       : 'qualifying-time qualifying-time-pending'
                   }
-                  key={segment}
+                  key={segment.name}
                 >
-                  {formatLapTime(car.timedSegmentBestSeconds[segment])}
+                  {formatLapTime(car.timedSegmentBestSeconds[segment.name])}
                 </strong>
               ))}
               <b className="qualifying-status">
                 {statusFor(index, car.driverId)}
               </b>
             </li>
-            {index + 1 === q3Size ? (
-              <li className="qualifying-cut-marker"><span>{segments[2]} CUT - TOP {q3Size}</span></li>
-            ) : null}
-            {index + 1 === q2Size ? (
-              <li className="qualifying-cut-marker"><span>{segments[1]} CUT - TOP {q2Size}</span></li>
-            ) : null}
+            {segments.slice(0, -1).map((segment, segmentIndex) =>
+              segment.advanceCount !== null &&
+              index + 1 === segment.advanceCount ? (
+                <li
+                  className="qualifying-cut-marker"
+                  key={`${segment.name}-cut`}
+                >
+                  <span>
+                    {segments[segmentIndex + 1].name} CUT - TOP{' '}
+                    {segment.advanceCount}
+                  </span>
+                </li>
+              ) : null,
+            )}
           </Fragment>
         ))}
       </ol>
       <footer>
         <Flag aria-hidden="true" size={13} />
-        <span>FIA 2026 B2.4 · exact tie: earlier lap first</span>
+        <span>
+          {stage === 'sprintQualifying' ? 'Sprint ' : ''}classification: exact
+          tie uses the earlier lap
+        </span>
       </footer>
     </section>
   )

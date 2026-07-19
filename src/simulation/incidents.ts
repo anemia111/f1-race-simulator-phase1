@@ -43,7 +43,7 @@ export type IncidentOutcome = {
 
 export const incidentTuning = {
   /** Per-lap mechanical failure chance factor (scaled by 1 - reliability). */
-  mechanicalBaseChance: 0.006,
+  mechanicalBaseChance: 0.003,
   /** Per-lap driver error chance factor (scaled by 1 - consistency). */
   errorBaseChance: 0.02,
   /** Error severity split: first minor, then damage, otherwise a crash. */

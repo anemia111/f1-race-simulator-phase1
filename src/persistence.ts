@@ -1,12 +1,15 @@
 import type {
   Driver,
+  DriverSkillProfile,
   DriverTunableStat,
   GridSource,
   TireCompound,
   TireSet,
+  TireSetAllocation,
   TrackDefinition,
   WeekendContext,
   WeekendStage,
+  MachinePerformanceProfile,
 } from './types'
 import { normalizeCarComponents } from './simulation/components'
 import {
@@ -14,7 +17,11 @@ import {
   clampDriverAbility,
   driverAbilityValue,
 } from './simulation/driverAbility'
-import type { SeasonState } from './simulation/season'
+import type {
+  SeasonResultSnapshot,
+  SeasonState,
+} from './simulation/season'
+import type { SeriesId } from './series/types'
 import {
   canonicalSeasonSessionId,
   createSeasonState,
@@ -23,11 +30,14 @@ import { createWeekendContext } from './simulation/weekend'
 import { normalizeCarSetup } from './simulation/engineering'
 import { normalizeSimulationSeed } from './simulation/random'
 
-export const WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
-export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
+export const WEEKEND_STORAGE_KEY = 'race-sim-weekend-v3-multi-series'
+export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
+export const OLDER_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
 export const SEASON_STORAGE_KEY = 'f1-sim-season-v3'
 export const LEGACY_SEASON_STORAGE_KEY = 'f1-sim-season-v2'
 export const DRIVER_RATINGS_STORAGE_KEY =
+  'race-sim-driver-ratings-v4-100-scale'
+export const LEGACY_DRIVER_RATINGS_STORAGE_KEY =
   'f1-sim-driver-ratings-v3-grouped-baseline'
 
 const weekendStages: WeekendStage[] = [
@@ -37,13 +47,17 @@ const weekendStages: WeekendStage[] = [
   'sprintQualifying',
   'sprint',
   'qualifying',
+  'qualifying2',
   'race',
+  'race2',
 ]
 const gridSources: GridSource[] = ['brief', 'qualifying', 'openf1']
 const compounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 
 export type PersistedWeekend = {
-  version: 2
+  version: 3
+  seriesId: SeriesId
+  eventId?: string
   trackId: string
   stage: WeekendStage
   seed: string
@@ -52,7 +66,7 @@ export type PersistedWeekend = {
 }
 
 export type PersistedDriverRatings = {
-  version: 3
+  version: 4
   ratingsByDriver: Record<
     string,
     Partial<Record<DriverTunableStat, number>>
@@ -71,6 +85,7 @@ const MAX_PERSISTED_RESULT_POSITION = 100
 const MAX_PERSISTED_RESULTS_PER_ENTRY = 100
 const MAX_PERSISTED_COMPLETED_ROUNDS = 64
 const MAX_PERSISTED_TIRE_SETS_PER_DRIVER = 40
+const MAX_PERSISTED_RESULT_ARCHIVE = 64
 
 const isSafeStorageKey = (value: string) =>
   /^[a-zA-Z0-9_.:-]{1,160}$/.test(value) &&
@@ -145,6 +160,216 @@ function normalizeResultsRecord(value: unknown): Record<string, number[]> {
   )
 }
 
+const archivedStatuses = new Set([
+  'running',
+  'pit',
+  'finished',
+  'retired',
+  'disqualified',
+  'dns',
+])
+
+type ArchivedDriverSnapshot = NonNullable<
+  SeasonResultSnapshot['entries'][number]['driverSnapshot']
+>
+type ArchivedTeamSnapshot = NonNullable<
+  SeasonResultSnapshot['entries'][number]['teamSnapshot']
+>
+
+const isDriverSeatRole = (
+  value: unknown,
+): value is Exclude<Driver['seatRole'], undefined> =>
+  value === 'regular' ||
+  value === 'third_car' ||
+  value === 'reserve' ||
+  value === 'development'
+
+function normalizeArchivedDriver(
+  value: unknown,
+): ArchivedDriverSnapshot | null {
+  if (!isRecord(value)) return null
+
+  const rawSkills = value.skills
+  if (!isRecord(rawSkills)) return null
+
+  if (
+    typeof value.id !== 'string' ||
+    !isSafeStorageKey(value.id) ||
+    typeof value.teamId !== 'string' ||
+    !isSafeStorageKey(value.teamId) ||
+    typeof value.code !== 'string' ||
+    value.code.length < 1 ||
+    value.code.length > 5 ||
+    typeof value.name !== 'string' ||
+    value.name.length < 1 ||
+    value.name.length > 80
+  ) {
+    return null
+  }
+
+  const skills = Object.fromEntries(
+    DRIVER_ABILITY_STATS.flatMap((stat) => {
+      const rating = rawSkills[stat]
+      return typeof rating === 'number' &&
+        Number.isFinite(rating) &&
+        rating >= 0 &&
+        rating <= 1
+        ? [[stat, rating] as const]
+        : []
+    }),
+  ) as Partial<DriverSkillProfile>
+
+  if (Object.keys(skills).length !== DRIVER_ABILITY_STATS.length) return null
+
+  const role = value.seatRole
+  if (role !== undefined && !isDriverSeatRole(role)) {
+    return null
+  }
+
+  return {
+    carNumber: Math.floor(finiteNumber(value.carNumber, 0)),
+    code: value.code.slice(0, 5),
+    id: value.id,
+    name: value.name.slice(0, 80),
+    nationality:
+      typeof value.nationality === 'string'
+        ? value.nationality.slice(0, 40)
+        : undefined,
+    potential: Math.min(1, Math.max(0, finiteNumber(value.potential, 0))),
+    seatRole: role,
+    skills: skills as DriverSkillProfile,
+    teamId: value.teamId,
+  }
+}
+
+function normalizeArchivedTeam(value: unknown): ArchivedTeamSnapshot | null {
+  if (!isRecord(value) || !isRecord(value.machine)) return null
+  if (
+    typeof value.id !== 'string' ||
+    !isSafeStorageKey(value.id) ||
+    typeof value.name !== 'string' ||
+    value.name.length < 1 ||
+    value.name.length > 80 ||
+    typeof value.color !== 'string' ||
+    !/^#[0-9a-f]{6}$/i.test(value.color)
+  ) {
+    return null
+  }
+
+  const machineEntries = Object.entries(value.machine)
+  if (
+    machineEntries.length < 30 ||
+    machineEntries.some(
+      ([key, rating]) =>
+        !isSafeStorageKey(key) ||
+        typeof rating !== 'number' ||
+        !Number.isFinite(rating) ||
+        rating < 0.55 ||
+        rating > 1,
+    )
+  ) {
+    return null
+  }
+
+  return {
+    color: value.color,
+    id: value.id,
+    machine: Object.fromEntries(machineEntries) as MachinePerformanceProfile,
+    name: value.name.slice(0, 80),
+    pitCrewSpeed: Math.min(
+      1,
+      Math.max(0.55, finiteNumber(value.pitCrewSpeed, 0.55)),
+    ),
+  }
+}
+
+function normalizeResultArchive(value: unknown): SeasonResultSnapshot[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .slice(-MAX_PERSISTED_RESULT_ARCHIVE)
+    .flatMap((candidate) => {
+      if (
+        !isRecord(candidate) ||
+        typeof candidate.roundId !== 'string' ||
+        !isSafeStorageKey(candidate.roundId) ||
+        (candidate.stage !== 'race' &&
+          candidate.stage !== 'race2' &&
+          candidate.stage !== 'sprint') ||
+        !Array.isArray(candidate.entries)
+      ) {
+        return []
+      }
+
+      const entries = candidate.entries
+        .slice(0, MAX_PERSISTED_ENTRIES)
+        .flatMap((entry) => {
+          if (
+            !isRecord(entry) ||
+            typeof entry.driverId !== 'string' ||
+            !isSafeStorageKey(entry.driverId) ||
+            typeof entry.teamId !== 'string' ||
+            !isSafeStorageKey(entry.teamId) ||
+            typeof entry.code !== 'string' ||
+            !archivedStatuses.has(String(entry.status))
+          ) {
+            return []
+          }
+
+          const driverSnapshot = normalizeArchivedDriver(entry.driverSnapshot)
+          const teamSnapshot = normalizeArchivedTeam(entry.teamSnapshot)
+
+          return [{
+            carNumber: Math.max(
+              0,
+              Math.min(999, Math.floor(finiteNumber(entry.carNumber, 0))),
+            ),
+            code: entry.code.slice(0, 5),
+            completedLaps: Math.max(
+              0,
+              Math.min(1_000, Math.floor(finiteNumber(entry.completedLaps, 0))),
+            ),
+            driverId: entry.driverId,
+            driverOverall:
+              entry.driverOverall === null
+                ? null
+                : Math.max(
+                    0,
+                    Math.min(100, finiteNumber(entry.driverOverall, 0)),
+                  ),
+            driverSnapshot,
+            machineOverall:
+              entry.machineOverall === null
+                ? null
+                : Math.max(
+                    0,
+                    Math.min(100, finiteNumber(entry.machineOverall, 0)),
+                  ),
+            pointsAwarded: Math.max(
+              0,
+              Math.min(1_000, finiteNumber(entry.pointsAwarded, 0)),
+            ),
+            position: Math.max(
+              1,
+              Math.min(
+                MAX_PERSISTED_RESULT_POSITION,
+                Math.floor(finiteNumber(entry.position, 1)),
+              ),
+            ),
+            status: entry.status as SeasonResultSnapshot['entries'][number]['status'],
+            teamId: entry.teamId,
+            teamSnapshot,
+          }]
+        })
+
+      return [{
+        entries,
+        roundId: canonicalSeasonSessionId(candidate.roundId),
+        stage: candidate.stage,
+      } satisfies SeasonResultSnapshot]
+    })
+}
+
 function normalizeCompletedRounds(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return []
@@ -181,7 +406,8 @@ export function parsePersistedDriverRatings(
       !isRecord(parsed) ||
       (parsed.version !== 1 &&
         parsed.version !== 2 &&
-        parsed.version !== 3) ||
+        parsed.version !== 3 &&
+        parsed.version !== 4) ||
       !isRecord(parsed.ratingsByDriver)
     ) {
       return baseDrivers.map((driver) => ({
@@ -192,6 +418,7 @@ export function parsePersistedDriverRatings(
     }
 
     const ratingsByDriver = parsed.ratingsByDriver
+    const usesLegacy150Scale = parsed.version !== 4
 
     return baseDrivers.map((driver) => {
       const candidate = ratingsByDriver[driver.id]
@@ -209,7 +436,12 @@ export function parsePersistedDriverRatings(
           const value = candidate[stat]
 
           return typeof value === 'number' && Number.isFinite(value)
-            ? [[stat, clampDriverAbility(value)]]
+            ? [[
+                stat,
+                clampDriverAbility(
+                  usesLegacy150Scale ? value / 1.5 : value,
+                ),
+              ]]
             : []
         }),
       ) as Partial<Record<DriverTunableStat, number>>
@@ -233,7 +465,7 @@ export function serializeDriverRatings(
   drivers: Driver[],
 ): PersistedDriverRatings {
   return {
-    version: 3,
+    version: 4,
     ratingsByDriver: Object.fromEntries(
       drivers.map((driver) => [
         driver.id,
@@ -251,6 +483,10 @@ export function serializeDriverRatings(
 
 const isWeekendStage = (value: unknown): value is WeekendStage =>
   typeof value === 'string' && weekendStages.includes(value as WeekendStage)
+
+const seriesIds: SeriesId[] = ['f1-custom', 'f2', 'f3', 'super-formula']
+const isSeriesId = (value: unknown): value is SeriesId =>
+  typeof value === 'string' && seriesIds.includes(value as SeriesId)
 
 function normalizeTireSet(value: unknown): TireSet | null {
   if (!isRecord(value)) {
@@ -293,11 +529,13 @@ function normalizeWeekendContext(
   value: unknown,
   drivers: Driver[],
   track: TrackDefinition,
+  tireAllocation?: TireSetAllocation,
 ): WeekendContext {
   const base = createWeekendContext(
     drivers,
     track.isSprintWeekend,
     track,
+    tireAllocation,
   )
 
   if (!isRecord(value)) {
@@ -328,12 +566,16 @@ function normalizeWeekendContext(
   const gridByStage: WeekendContext['gridByStage'] = {}
   const sprintGrid = normalizeGrid(source.gridByStage?.sprint)
   const raceGrid = normalizeGrid(source.gridByStage?.race)
+  const race2Grid = normalizeGrid(source.gridByStage?.race2)
 
   if (sprintGrid) {
     gridByStage.sprint = sprintGrid
   }
   if (raceGrid) {
     gridByStage.race = raceGrid
+  }
+  if (race2Grid) {
+    gridByStage.race2 = race2Grid
   }
 
   for (const driver of drivers) {
@@ -439,6 +681,8 @@ export function parsePersistedWeekend(
   raw: string | null,
   tracks: TrackDefinition[],
   drivers: Driver[],
+  expectedSeriesId?: SeriesId,
+  tireAllocation?: TireSetAllocation,
 ): PersistedWeekend | null {
   if (!raw) {
     return null
@@ -451,10 +695,14 @@ export function parsePersistedWeekend(
       return null
     }
 
+    const seriesId = isSeriesId(parsed.seriesId)
+      ? parsed.seriesId
+      : 'f1-custom'
     const track = tracks.find((candidate) => candidate.id === parsed.trackId)
 
     if (
       !track ||
+      (expectedSeriesId !== undefined && seriesId !== expectedSeriesId) ||
       typeof parsed.seed !== 'string' ||
       !isWeekendStage(parsed.stage) ||
       typeof parsed.gridSource !== 'string' ||
@@ -464,7 +712,12 @@ export function parsePersistedWeekend(
     }
 
     return {
-      version: 2,
+      version: 3,
+      seriesId,
+      eventId:
+        typeof parsed.eventId === 'string' && isSafeStorageKey(parsed.eventId)
+          ? parsed.eventId
+          : undefined,
       trackId: track.id,
       stage: parsed.stage,
       seed: normalizeSimulationSeed(parsed.seed),
@@ -473,6 +726,7 @@ export function parsePersistedWeekend(
         parsed.weekendContext,
         drivers,
         track,
+        tireAllocation,
       ),
     }
   } catch {
@@ -545,6 +799,7 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
       teamPoints,
       driverResults,
       teamResults,
+      resultArchive: normalizeResultArchive(parsed.resultArchive),
       garage,
     }
   } catch {

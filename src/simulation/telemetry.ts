@@ -98,6 +98,7 @@ type CalculatedTelemetry = {
   tireTemperatureC: number
   overtakeStatus: OvertakeStatus
   overtakeEnergyRemainingMj: number
+  otsRemainingSeconds?: number
   energyHarvestedThisLapMj: number
   energyDeployedThisLapMj: number
   superClippingIntensity: number
@@ -120,6 +121,7 @@ export function calculateCarTelemetry(options: {
   isFinalLap?: boolean
   maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
+  overtakeSystem?: 'active-aero' | 'drs' | 'ots'
   regulatoryMassIncreaseKg?: number
   paceScale?: number
   raceLap: number
@@ -150,6 +152,7 @@ export function calculateCarTelemetry(options: {
     isFinalLap = false,
     maxRechargePerLapMj = FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
     raceControlOvertakeEnabled = true,
+    overtakeSystem = 'active-aero',
     regulatoryMassIncreaseKg = 0,
     paceScale = 1,
     raceLap,
@@ -197,12 +200,15 @@ export function calculateCarTelemetry(options: {
     localDynamics: dynamics,
     track,
   })
-  const activeAeroMode = activeAeroModeFor({
-    car,
-    lowGripConditions,
-    phase,
-    track,
-  })
+  const activeAeroMode =
+    overtakeSystem === 'ots'
+      ? ('corner' as const)
+      : activeAeroModeFor({
+          car,
+          lowGripConditions,
+          phase,
+          track,
+        })
   const machineCapability = machineSegmentCapability({
     dynamics,
     session: sessionType === 'limited-time' ? 'qualifying' : 'race',
@@ -288,17 +294,41 @@ export function calculateCarTelemetry(options: {
   const throttlePercent = Math.round(
     clamp(baseThrottle * controlThrottleScale, 0, 100),
   )
-  const overtakeStatus = overtakeStatusFor({
-    batteryPercent: batteryPercentAtFrameStart,
-    car,
-    lowGripConditions,
-    phase,
-    raceControlEnabled: raceControlOvertakeEnabled,
-    raceLap,
-    overtakeEnergyRemainingMj: car.overtakeEnergyRemainingMj,
-    sessionType,
-    track,
-  })
+  const otsAvailable =
+    overtakeSystem === 'ots' &&
+    sessionType === 'race-distance' &&
+    raceControlOvertakeEnabled &&
+    !phase &&
+    !lowGripConditions &&
+    car.status === 'running' &&
+    (car.otsRemainingSeconds ?? 0) > 0
+  const otsActive =
+    otsAvailable &&
+    brakePercent <= 3 &&
+    throttlePercent >= 88 &&
+    dynamics.straightness >= 0.72 &&
+    (car.gapToAhead > 0 && car.gapToAhead < 2.2 ||
+      car.battlePhase !== 'single-file' ||
+      car.racePaceMode === 'push' ||
+      isFinalLap)
+  const overtakeStatus =
+    overtakeSystem === 'ots'
+      ? otsActive
+        ? ('active' as const)
+        : otsAvailable
+          ? ('available' as const)
+          : ('disabled' as const)
+      : overtakeStatusFor({
+          batteryPercent: batteryPercentAtFrameStart,
+          car,
+          lowGripConditions,
+          phase,
+          raceControlEnabled: raceControlOvertakeEnabled,
+          raceLap,
+          overtakeEnergyRemainingMj: car.overtakeEnergyRemainingMj,
+          sessionType,
+          track,
+        })
   const superClipping = advanceSuperClipping({
     battlePhase: car.battlePhase,
     batteryPercent: batteryPercentAtFrameStart,
@@ -491,6 +521,7 @@ export function calculateCarTelemetry(options: {
     drivePowerScale: superClipping.drivePowerScale,
     dynamics,
     ersPowerKw,
+    extraDrivePowerKw: otsActive ? 50 : 0,
     fuelLoadKg: car.fuelLoadKg,
     gripMultiplier: localGrip,
     headwindMps,
@@ -596,6 +627,10 @@ export function calculateCarTelemetry(options: {
     ? (superClippingWasActive ? car.superClippingDurationSeconds ?? 0 : 0) +
       deltaSeconds
     : 0
+  const otsRemainingSeconds =
+    overtakeSystem === 'ots'
+      ? Math.max(0, (car.otsRemainingSeconds ?? 200) - (otsActive ? deltaSeconds : 0))
+      : car.otsRemainingSeconds
 
   return {
     activeAeroMode,
@@ -612,6 +647,7 @@ export function calculateCarTelemetry(options: {
     tireTemperatureC,
     overtakeStatus,
     overtakeEnergyRemainingMj,
+    otsRemainingSeconds,
     energyHarvestedThisLapMj: energyStore.actualHarvestedThisLapMJ,
     energyDeployedThisLapMj,
     superClippingIntensity: superClipping.intensity,

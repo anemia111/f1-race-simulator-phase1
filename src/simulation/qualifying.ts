@@ -10,6 +10,7 @@ import type {
   TireCompound,
   WeatherState,
 } from '../types'
+import type { SeriesRules } from '../series/types'
 import {
   driverPerformanceAbility,
   driverSkillBlend,
@@ -64,6 +65,7 @@ export type QualifyingResult = {
   inLapTimeSeconds: number
   pitReturnAtSeconds: number
   trafficLossSeconds: number
+  qualifyingGroup?: 'A' | 'B'
   weather: WeatherState
   weatherLabel: string
   classificationStatus: 'classified' | 'no-time' | 'deleted'
@@ -144,7 +146,18 @@ export function qualifyingCutSizes(driverCount: number) {
   return { q2Size, q3Size }
 }
 
-function durationForSegment(segment: QualifyingSegmentName) {
+function durationForSegment(
+  segment: QualifyingSegmentName,
+  rules?: SeriesRules,
+) {
+  const configuredDuration = rules?.qualifying.segments.find(
+    (candidate) => candidate.name === segment,
+  )?.durationSeconds
+
+  if (configuredDuration !== undefined) {
+    return configuredDuration
+  }
+
   return segment.startsWith('SQ')
     ? SPRINT_QUALIFYING_SEGMENT_DURATIONS_SECONDS[
         segment as keyof typeof SPRINT_QUALIFYING_SEGMENT_DURATIONS_SECONDS
@@ -172,6 +185,7 @@ function segmentEvolutionFor(segment: QualifyingSegmentName) {
 function compoundForQualifyingSegment(
   segment: QualifyingSegmentName,
   weather: WeatherState,
+  configuredDryCompound?: RaceConfig['qualifyingDryCompound'],
 ): TireCompound {
   if (weather === 'heavy-rain') {
     return 'W'
@@ -185,7 +199,7 @@ function compoundForQualifyingSegment(
     return 'M'
   }
 
-  return 'S'
+  return configuredDryCompound ?? 'S'
 }
 
 function qualifyingCompoundPenalty(compound: TireCompound) {
@@ -274,9 +288,13 @@ function qualifyingRunsForDriver(
   weather: WeatherState,
   trackGrip: number,
   releaseSlots: QualifyingReleaseSlot[],
+  sessionDurationSeconds: number,
 ): QualifyingRun[] {
-  const sessionDurationSeconds = durationForSegment(segment)
-  const compound = compoundForQualifyingSegment(segment, weather)
+  const compound = compoundForQualifyingSegment(
+    segment,
+    weather,
+    config.qualifyingDryCompound,
+  )
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
   const awareness = driverPerformanceAbility(driver, 'raceAwareness')
 
@@ -434,17 +452,21 @@ function runQualifyingSegment(
   participants: Driver[],
   segment: QualifyingSegmentName,
   elapsedSeconds: number,
+  sessionDurationSeconds = durationForSegment(segment),
 ): QualifyingResult[] {
   const weatherSeed = `${config.seed}:qualifying`
   const weather = weatherFor(weatherSeed, config.track, elapsedSeconds)
   const trackGrip = trackGripForWeather(weatherSeed, config.track, elapsedSeconds)
-  const sessionDurationSeconds = durationForSegment(segment)
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
   const stage = segment.startsWith('SQ')
     ? ('sprintQualifying' as const)
     : ('qualifying' as const)
   const segmentPlan: TimedSessionSegmentPlan = {
-    compound: compoundForQualifyingSegment(segment, weather),
+    compound: compoundForQualifyingSegment(
+      segment,
+      weather,
+      config.qualifyingDryCompound,
+    ),
     declaredWet: weather !== 'clear',
     endsAtSeconds: sessionDurationSeconds,
     name: segment,
@@ -488,6 +510,7 @@ function runQualifyingSegment(
         weather,
         trackGrip,
         releaseSlotsByDriver.get(driver.id) ?? [],
+        sessionDurationSeconds,
       ),
     }
   })
@@ -512,7 +535,11 @@ function runQualifyingSegment(
       ({
         aborted: true,
         deleted: false,
-        compound: compoundForQualifyingSegment(segment, weather),
+        compound: compoundForQualifyingSegment(
+          segment,
+          weather,
+          config.qualifyingDryCompound,
+        ),
         pitExitAtSeconds: 0,
         outLapTimeSeconds: config.track.baseLapTime * 1.5,
         flyingLapStartedAtSeconds: 0,
@@ -702,6 +729,201 @@ function runKnockoutSession(
   }
 }
 
+function qualifyingSegmentSummary(
+  config: RaceConfig,
+  name: QualifyingSegmentName,
+  results: QualifyingResult[],
+  eliminatedDriverIds: string[],
+  durationSeconds: number,
+): QualifyingSegment {
+  return {
+    eliminatedDriverIds,
+    name,
+    results,
+    sessionDurationSeconds: durationSeconds,
+    suspensionSeconds: qualifyingSuspensionSeconds(config, name),
+    weather: results[0]?.weather ?? 'clear',
+    weatherLabel: results[0]?.weatherLabel ?? 'CLEAR',
+  }
+}
+
+function driversForResults(config: RaceConfig, results: QualifyingResult[]) {
+  const drivers = byId(config.drivers)
+
+  return results
+    .map((result) => drivers.get(result.driverId))
+    .filter((driver): driver is Driver => driver !== undefined)
+}
+
+/**
+ * Runs the category's configured 2026 qualifying format. F1 uses three-stage
+ * knockout qualifying, F2/F3 use one timed session, and Super Formula splits
+ * the opening session into independent groups before its final segment.
+ */
+export function runSeriesQualifying(
+  baseConfig: RaceConfig,
+  rules: SeriesRules,
+): KnockoutQualifying {
+  const config: RaceConfig = {
+    ...baseConfig,
+    qualifyingDryCompound:
+      baseConfig.qualifyingDryCompound ?? rules.tires.qualifyingDryCompound,
+  }
+  const segmentRules = rules.qualifying.segments
+
+  if (segmentRules.length === 0) {
+    return { classification: [], segments: [] }
+  }
+
+  const teams = byId(config.teams)
+  const segments: QualifyingSegment[] = []
+  const eliminatedByRound: QualifyingResult[][] = []
+  let participants = config.drivers
+  let elapsedSeconds = 0
+  let finalResults: QualifyingResult[] = []
+  let firstRuleIndex = 0
+
+  if (rules.qualifying.format === 'grouped') {
+    const openingRule = segmentRules[0]
+    const groups =
+      rules.qualifying.grouping === 'car-number-parity'
+        ? [
+            config.drivers.filter((driver) => driver.carNumber % 2 === 0),
+            config.drivers.filter((driver) => driver.carNumber % 2 !== 0),
+          ]
+        : [
+            config.drivers.filter((_, index) => index % 2 === 0),
+            config.drivers.filter((_, index) => index % 2 === 1),
+          ]
+    const groupDurationSeconds = openingRule.durationSeconds / groups.length
+    const groupResults = groups.map((group, index) =>
+      runQualifyingSegment(
+        { ...config, seed: `${config.seed}:group-${index + 1}` },
+        teams,
+        group,
+        openingRule.name,
+        elapsedSeconds + groupDurationSeconds * index,
+        groupDurationSeconds,
+      ).map((result) => ({
+        ...result,
+        qualifyingGroup: (index === 0 ? 'A' : 'B') as 'A' | 'B',
+      })),
+    )
+    const isStandaloneGroupedSession =
+      openingRule.advanceCount === null && segmentRules.length === 1
+    const advanceTotal = openingRule.advanceCount ?? config.drivers.length
+    const advanceByGroup = groups.map((_, index) =>
+      Math.floor(advanceTotal / groups.length) +
+      (index < advanceTotal % groups.length ? 1 : 0),
+    )
+    const advancing = groupResults.flatMap((results, index) =>
+      results
+        .filter((result) => result.validRunCount > 0)
+        .slice(0, advanceByGroup[index]),
+    )
+    const advancingIds = new Set(advancing.map((result) => result.driverId))
+    const combined = withFinalPositions(
+      groupResults
+        .flat()
+        .slice()
+        .sort((left, right) => {
+          if ((left.validRunCount > 0) !== (right.validRunCount > 0)) {
+            return left.validRunCount > 0 ? -1 : 1
+          }
+          return left.lapTimeSeconds - right.lapTimeSeconds
+        }),
+    )
+    const eliminated = isStandaloneGroupedSession
+      ? []
+      : combined.filter((result) => !advancingIds.has(result.driverId))
+
+    segments.push(
+      qualifyingSegmentSummary(
+        config,
+        openingRule.name,
+        combined,
+        eliminated.map((result) => result.driverId),
+        openingRule.durationSeconds,
+      ),
+    )
+    if (eliminated.length > 0) eliminatedByRound.push(eliminated)
+    participants = driversForResults(config, advancing)
+    if (isStandaloneGroupedSession) {
+      const firstGroupIndex =
+        (groupResults[0][0]?.lapTimeSeconds ?? Number.POSITIVE_INFINITY) <=
+        (groupResults[1][0]?.lapTimeSeconds ?? Number.POSITIVE_INFINITY)
+          ? 0
+          : 1
+      const orderedGroups = [
+        groupResults[firstGroupIndex],
+        groupResults[1 - firstGroupIndex],
+      ]
+      finalResults = Array.from(
+        { length: Math.max(...orderedGroups.map((group) => group.length)) },
+        (_, index) => orderedGroups.flatMap((group) => group[index] ?? []),
+      ).flat()
+    } else {
+      finalResults = advancing
+    }
+    elapsedSeconds =
+      openingRule.durationSeconds + rules.qualifying.breakSeconds
+    firstRuleIndex = 1
+  }
+
+  for (let index = firstRuleIndex; index < segmentRules.length; index += 1) {
+    const rule = segmentRules[index]
+    const results = runQualifyingSegment(
+      config,
+      teams,
+      participants,
+      rule.name,
+      elapsedSeconds,
+      rule.durationSeconds,
+    )
+    const isLast = index === segmentRules.length - 1
+    const advanceCount = isLast
+      ? null
+      : Math.min(rule.advanceCount ?? results.length, results.length)
+    const advancing =
+      advanceCount === null
+        ? results
+        : results
+            .filter((result) => result.validRunCount > 0)
+            .slice(0, advanceCount)
+    const advancingIds = new Set(
+      advancing.map((result) => result.driverId),
+    )
+    const eliminated =
+      advanceCount === null
+        ? []
+        : results.filter((result) => !advancingIds.has(result.driverId))
+
+    segments.push(
+      qualifyingSegmentSummary(
+        config,
+        rule.name,
+        results,
+        eliminated.map((result) => result.driverId),
+        rule.durationSeconds,
+      ),
+    )
+    if (eliminated.length > 0) {
+      eliminatedByRound.push(eliminated)
+    }
+    finalResults = advancing
+    participants = driversForResults(config, advancing)
+    elapsedSeconds += rule.durationSeconds + rules.qualifying.breakSeconds
+  }
+
+  return {
+    classification: withFinalPositions([
+      ...finalResults,
+      ...eliminatedByRound.reverse().flat(),
+    ]),
+    segments,
+  }
+}
+
 export function runKnockoutQualifying(config: RaceConfig): KnockoutQualifying {
   return runKnockoutSession(config, ['Q1', 'Q2', 'Q3'])
 }
@@ -712,6 +934,25 @@ export function runSprintShootoutQualifying(config: RaceConfig): KnockoutQualify
 
 export function runQualifying(config: RaceConfig): QualifyingResult[] {
   return runKnockoutQualifying(config).classification
+}
+
+export function reversedSprintGrid(
+  classification: QualifyingResult[],
+  reverseCount: number,
+): QualifyingResult[] {
+  const count = Math.min(
+    Math.max(0, Math.floor(reverseCount)),
+    classification.length,
+  )
+  const ordered = [
+    ...classification.slice(0, count).reverse(),
+    ...classification.slice(count),
+  ]
+
+  return ordered.map((result, index) => ({
+    ...result,
+    position: index + 1,
+  }))
 }
 
 export function runPracticeSession(

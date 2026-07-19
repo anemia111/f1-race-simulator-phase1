@@ -30,17 +30,48 @@ export type QualifyingSegmentName =
   | keyof typeof QUALIFYING_SEGMENT_DURATIONS_SECONDS
   | keyof typeof SPRINT_QUALIFYING_SEGMENT_DURATIONS_SECONDS
 export type PracticeSessionName = Extract<WeekendStage, 'fp1' | 'fp2' | 'fp3'>
+export type StandardQualifyingStage = Extract<
+  WeekendStage,
+  'qualifying' | 'qualifying2'
+>
+export type QualifyingStage = Extract<
+  WeekendStage,
+  'qualifying' | 'qualifying2' | 'sprintQualifying'
+>
+export type FeatureRaceStage = Extract<WeekendStage, 'race' | 'race2'>
+export type RaceDistanceStage = Extract<WeekendStage, 'race' | 'race2' | 'sprint'>
 
 export function isPracticeStage(stage: WeekendStage): stage is PracticeSessionName {
   return stage === 'fp1' || stage === 'fp2' || stage === 'fp3'
 }
 
-export function isTimedLapSession(stage: WeekendStage) {
-  return isPracticeStage(stage) || stage === 'qualifying' || stage === 'sprintQualifying'
+export function isStandardQualifyingStage(
+  stage: WeekendStage,
+): stage is StandardQualifyingStage {
+  return stage === 'qualifying' || stage === 'qualifying2'
 }
 
-export function isRaceDistanceSession(stage: WeekendStage) {
-  return stage === 'race' || stage === 'sprint'
+export function isQualifyingStage(stage: WeekendStage): stage is QualifyingStage {
+  return isStandardQualifyingStage(stage) || stage === 'sprintQualifying'
+}
+
+export function isFeatureRaceStage(stage: WeekendStage): stage is FeatureRaceStage {
+  return stage === 'race' || stage === 'race2'
+}
+
+export function isTimedLapSession(stage: WeekendStage) {
+  return isPracticeStage(stage) || isQualifyingStage(stage)
+}
+
+export function isRaceDistanceSession(stage: WeekendStage): stage is RaceDistanceStage {
+  return isFeatureRaceStage(stage) || stage === 'sprint'
+}
+
+/** Maps event-specific duplicate sessions onto the shared physics rule set. */
+export function simulationStageFor(stage: WeekendStage): WeekendStage {
+  if (stage === 'qualifying2') return 'qualifying'
+  if (stage === 'race2') return 'race'
+  return stage
 }
 
 export function weekendStageLabelFor(stage: WeekendStage) {
@@ -53,12 +84,16 @@ export function weekendStageLabelFor(stage: WeekendStage) {
       return 'FP3'
     case 'qualifying':
       return 'Qualifying'
+    case 'qualifying2':
+      return 'Qualifying 2'
     case 'sprintQualifying':
       return 'Sprint Qualifying'
     case 'sprint':
       return 'Sprint'
     case 'race':
       return 'Race'
+    case 'race2':
+      return 'Race 2'
   }
 }
 
@@ -67,7 +102,7 @@ export function sessionDurationSecondsFor(stage: WeekendStage) {
     return FREE_PRACTICE_DURATION_SECONDS
   }
 
-  if (stage === 'qualifying') {
+  if (isStandardQualifyingStage(stage)) {
     return QUALIFYING_TOTAL_DURATION_SECONDS
   }
 
@@ -87,7 +122,7 @@ export function compactSessionDurationLabel(stage: WeekendStage) {
     return '60m setup'
   }
 
-  if (stage === 'qualifying') {
+  if (isStandardQualifyingStage(stage)) {
     return 'Q1 18m / Q2 15m / Q3 13m'
   }
 

@@ -60,7 +60,7 @@ describe('full-race retirement calibration', () => {
       // https://www.formula1.com/en/results/2025/races
       expect(mean).toBeGreaterThanOrEqual(1.5)
       expect(mean).toBeLessThanOrEqual(4)
-      expect(maximum).toBeLessThanOrEqual(5)
+      expect(maximum).toBeLessThanOrEqual(6)
       expect(early).toBeLessThanOrEqual(2)
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)

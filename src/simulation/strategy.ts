@@ -33,6 +33,7 @@ export type PitDecision = {
     | 'damage'
     | 'safety-car'
     | 'compound-rule'
+    | 'mandatory-stop'
     | 'weather'
     | 'forecast'
     | 'undercut'
@@ -406,6 +407,7 @@ export function decidePitStop(options: {
   pitLaneOccupancy?: number
   tireNomination?: TireNomination
   mandatoryTwoDryCompounds?: boolean
+  mandatoryPitStop?: boolean
   trackCondition?: TireTrackCondition
   observedCalibration?: Pick<
     TrackObservedCalibration,
@@ -438,6 +440,7 @@ export function decidePitStop(options: {
     pitLaneOccupancy = 0,
     tireNomination,
     mandatoryTwoDryCompounds = true,
+    mandatoryPitStop = false,
     trackCondition,
     observedCalibration,
   } = options
@@ -649,6 +652,10 @@ export function decidePitStop(options: {
   // Deadline for the mandatory second compound.
   if (needsSecondCompound && remaining <= 10) {
     return { compound, reason: 'compound-rule' }
+  }
+
+  if (mandatoryPitStop && car.pitStops === 0 && remaining <= 10) {
+    return { compound, reason: 'mandatory-stop' }
   }
 
   const targetStopsSatisfied =

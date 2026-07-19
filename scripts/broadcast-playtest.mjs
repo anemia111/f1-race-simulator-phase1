@@ -177,6 +177,45 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const dataDetails = await page.locator('.data-detail-grid > div').count()
   const tokenInputVisible = await page.locator('.broadcast-data-control input').isVisible()
 
+  await page.getByRole('button', { name: 'Manage series data' }).click()
+  await page.waitForSelector('.series-data-manager')
+  await page.getByLabel('Filter series').selectOption('all')
+  await page.waitForFunction(
+    () => document.querySelectorAll('.driver-directory-list li').length === 110,
+  )
+  const dataManagerDriverRows = await page.locator('.driver-directory-list li').count()
+  const dataManagerDriverScroll = await inspectScroll(page.locator('.driver-directory-list'))
+  if (name === 'desktop') {
+    await page.screenshot({
+      path: join(artifactDirectory, 'series-data-manager-drivers.png'),
+      fullPage: true,
+    })
+  }
+  await page.getByRole('button', { name: /^Teams /u }).click()
+  const dataManagerTeamRows = await page.locator('.team-data-list button').count()
+  await page.getByRole('button', { name: 'Rules' }).click()
+  const dataManagerRuleRows = await page.locator('.event-rule-table > div').count()
+  const dataManagerRuleInputs = await page.locator('.rule-editor-controls input, .rule-editor-controls select, .qualifying-rule-editor input').count()
+  const dataManagerQualifyingRows = await page.locator('.qualifying-rule-editor > div').count()
+  await page.locator('.event-rule-table button', { hasText: 'f1-16' }).click()
+  const dataManagerEventInputs = await page.locator('.event-rule-editor input, .event-rule-editor select').count()
+  const dataManagerSelectedEvent = await page.locator('.event-rule-editor header').innerText()
+  if (name === 'desktop') {
+    await page.screenshot({
+      path: join(artifactDirectory, 'series-data-manager-rules.png'),
+      fullPage: true,
+    })
+  }
+  await page.getByRole('button', { name: 'Backup' }).click()
+  const dataManagerAudit = await page.locator('.configuration-audit-grid').innerText()
+  const dataManagerLayout = await page.locator('.series-data-manager').evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    clientWidth: element.clientWidth,
+    scrollHeight: element.scrollHeight,
+    scrollWidth: element.scrollWidth,
+  }))
+  await page.getByLabel('Close data manager').click()
+
   const liveClose = page.locator('.broadcast-live-timing .panel-close')
   await liveClose.click()
   const liveTimingClosed = await page.locator('.broadcast-live-timing .restore-panel').isVisible()
@@ -249,7 +288,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const driverAbilityValues = await driverTunePanel.locator('.slider-row strong').allInnerTexts()
   const driverOverallAbility = await page.locator('.driver-overall-rating strong').innerText()
   const firstAbilityValue = await driverAbilitySliders.first().inputValue()
-  await driverAbilitySliders.first().fill(firstAbilityValue === '0.55' ? '1.5' : '0.55')
+  await driverAbilitySliders.first().fill(firstAbilityValue === '0.55' ? '1' : '0.55')
   const editedDriverOverallAbility = await page.locator('.driver-overall-rating strong').innerText()
   const driverAbilityControlChanged = editedDriverOverallAbility !== driverOverallAbility
   await driverAbilitySliders.first().fill(firstAbilityValue)
@@ -307,6 +346,16 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     chaseSelected,
     classificationVisible,
     dataDetails,
+    dataManagerAudit,
+    dataManagerDriverRows,
+    dataManagerDriverScroll,
+    dataManagerEventInputs,
+    dataManagerLayout,
+    dataManagerQualifyingRows,
+    dataManagerRuleInputs,
+    dataManagerRuleRows,
+    dataManagerSelectedEvent,
+    dataManagerTeamRows,
     headerText,
     initialFastestText,
     initialSectorStatuses,
@@ -365,6 +414,90 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   }
 }
 
+async function inspectSeriesModes(browser) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const pageErrors = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  await page.route('https://api.openf1.org/**', (route) => route.abort())
+  await page.goto(appUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.broadcast-app')
+
+  const seriesSelector = page.getByLabel('Racing series')
+  const seriesOptions = await seriesSelector.locator('option').evaluateAll((options) =>
+    options.map((option) => option.value),
+  )
+  const results = {}
+
+  for (const [seriesId, expectedCars] of [
+    ['f2', 22],
+    ['f3', 30],
+    ['super-formula', 24],
+  ]) {
+    await seriesSelector.selectOption(seriesId)
+    await page.waitForFunction(
+      (count) => document.querySelectorAll('.leaderboard-rows li').length === count,
+      expectedCars,
+    )
+    results[seriesId] = {
+      cars: await page.locator('.leaderboard-rows li').count(),
+      eventName: await page.locator('.broadcast-brand strong').innerText(),
+      timingTitle: await page
+        .locator('.broadcast-live-timing .broadcast-panel-header')
+        .innerText(),
+    }
+
+    if (seriesId === 'f3') {
+      await page.locator('.broadcast-sidebar .sidebar-settings').click()
+      await page.waitForSelector('.setup-panel')
+      const eventSelector = page.getByLabel('Championship round')
+      await eventSelector.selectOption('f3-09')
+      await page.waitForFunction(
+        () =>
+          Array.from(
+            document.querySelectorAll('select[aria-label="Weekend session"] option'),
+          ).some((option) => option.value === 'race2'),
+      )
+      results.f3.madridSessions = await page
+        .getByLabel('Weekend session')
+        .locator('option')
+        .evaluateAll((options) => options.map((option) => option.value))
+      results.f3.madridScreenshot = join(
+        artifactDirectory,
+        'broadcast-f3-madrid.png',
+      )
+      await page.screenshot({ path: results.f3.madridScreenshot, fullPage: true })
+      await page.getByLabel('close setup').click()
+    }
+  }
+
+  await page.locator('.broadcast-sidebar .sidebar-settings').click()
+  await page.waitForSelector('.setup-panel')
+  await page.getByLabel('Championship round').selectOption('sf-03-replacement')
+  await page.waitForFunction(
+    () =>
+      document.querySelector('select[aria-label="Weekend session"]')?.value ===
+      'race',
+  )
+  results['super-formula'].replacementSessions = await page
+    .getByLabel('Weekend session')
+    .locator('option')
+    .evaluateAll((options) => options.map((option) => option.value))
+  results['super-formula'].replacementProgress = await page
+    .locator('.broadcast-session-core')
+    .innerText()
+  results['super-formula'].replacementScreenshot = join(
+    artifactDirectory,
+    'broadcast-sf-replacement.png',
+  )
+  await page.screenshot({
+    path: results['super-formula'].replacementScreenshot,
+    fullPage: true,
+  })
+  await page.close()
+
+  return { pageErrors, results, seriesOptions }
+}
+
 const browser = await chromium.launch({ headless: true })
 
 try {
@@ -372,8 +505,9 @@ try {
     await runViewport(browser, 'desktop', { width: 1440, height: 900 }, join(artifactDirectory, 'broadcast-desktop.png')),
     await runViewport(browser, 'desktop-compact', { width: 1280, height: 720 }, join(artifactDirectory, 'broadcast-compact.png')),
   ]
+  const seriesModes = await inspectSeriesModes(browser)
 
-  console.log(JSON.stringify(results, null, 2))
+  console.log(JSON.stringify({ seriesModes, viewports: results }, null, 2))
 
   for (const result of results) {
     const failures = []
@@ -403,10 +537,10 @@ try {
         !['retired', 'disqualified', 'dns'].includes(row.status),
     )
     if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
-    if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityValues.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1.5')) failures.push('driver editor must expose 12 grouped sliders with the 150-point ceiling')
+    if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityValues.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1')) failures.push('driver editor must expose 12 grouped sliders with the 100-point ceiling')
     if (!result.driverAbilityControlChanged) failures.push('grouped driver ability control did not update the calculated overall rating')
-    if (result.driverAbilityValues.some((value) => Number(value) > 150)) failures.push('CSV-configured driver abilities exceed the 150-point scale')
-    if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 150) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
+    if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('CSV-configured driver abilities exceed the 100-point scale')
+    if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 100) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
     if (!result.driverNumberLabels.includes('#31 NAK')) failures.push(`NAK car number 31 is missing: ${result.driverNumberLabels.join(', ')}`)
     if (result.removedBottomPanelLabels.length > 0) failures.push(`removed bottom panels are still visible: ${result.removedBottomPanelLabels.join(', ')}`)
     if (result.centerMapLayout.mapHeightRatio < 0.55) failures.push(`track map did not expand into the removed panel space: ${JSON.stringify(result.centerMapLayout)}`)
@@ -437,6 +571,14 @@ try {
     }
     if (!result.tyreHeader.includes('PACE DELTA') || !result.tyreHeader.includes('SOURCE')) failures.push('tyre model provenance is missing')
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
+    if (result.dataManagerDriverRows !== 110) failures.push(`data manager rendered ${result.dataManagerDriverRows}/110 pool drivers`)
+    if (result.dataManagerDriverScroll.maxScrollTop <= 0 || !result.dataManagerDriverScroll.reachedBottom) failures.push(`driver directory cannot scroll: ${JSON.stringify(result.dataManagerDriverScroll)}`)
+    if (result.dataManagerTeamRows !== 10) failures.push(`data manager rendered ${result.dataManagerTeamRows}/10 F1 teams`)
+    if (result.dataManagerRuleRows !== 25) failures.push(`data manager rendered ${result.dataManagerRuleRows - 1}/24 F1 events`)
+    if (result.dataManagerRuleInputs < 10 || result.dataManagerQualifyingRows !== 4) failures.push(`rule editor is incomplete: ${result.dataManagerRuleInputs} inputs / ${result.dataManagerQualifyingRows - 1} segments`)
+    if (result.dataManagerEventInputs < 7 || !result.dataManagerSelectedEvent.includes('f1-16')) failures.push(`event override editor is incomplete: ${result.dataManagerEventInputs} inputs / ${result.dataManagerSelectedEvent}`)
+    if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes('30 / 30') || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes('110')) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
+    if (result.dataManagerLayout.scrollWidth !== result.dataManagerLayout.clientWidth || result.dataManagerLayout.scrollHeight !== result.dataManagerLayout.clientHeight) failures.push(`data manager overflows its frame: ${JSON.stringify(result.dataManagerLayout)}`)
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
     if (!result.messagesClosed || !result.messagesRestored) failures.push('message close/restore failed')
     if (result.selectedRows !== 1) failures.push(`expected one selected timing row, saw ${result.selectedRows}`)
@@ -451,6 +593,34 @@ try {
     if (result.layout.workspace?.bottom > result.layout.footer?.top + 1) failures.push('workspace overlaps footer')
 
     if (failures.length > 0) throw new Error(`${result.name} failed:\n- ${failures.join('\n- ')}`)
+  }
+
+  const expectedCars = { f2: 22, f3: 30, 'super-formula': 24 }
+  const seriesFailures = []
+  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,f2,f3,super-formula') {
+    seriesFailures.push(`series selector is incomplete: ${seriesModes.seriesOptions.join(', ')}`)
+  }
+  for (const [seriesId, carCount] of Object.entries(expectedCars)) {
+    const result = seriesModes.results[seriesId]
+    if (result.cars !== carCount) seriesFailures.push(`${seriesId} rendered ${result.cars}/${carCount} cars`)
+    if (!result.timingTitle.includes(`ALL ${carCount}`)) seriesFailures.push(`${seriesId} timing title is stale: ${result.timingTitle}`)
+  }
+  const madridSessions = seriesModes.results.f3.madridSessions ?? []
+  if (madridSessions.join(',') !== 'fp1,qualifying,qualifying2,sprint,race,race2') {
+    seriesFailures.push(`Madrid session order is wrong: ${madridSessions.join(', ')}`)
+  }
+  const replacement = seriesModes.results['super-formula']
+  if (replacement.replacementSessions?.join(',') !== 'race') {
+    seriesFailures.push(`SF replacement event has extra sessions: ${replacement.replacementSessions?.join(', ')}`)
+  }
+  if (!/1\s*\/\s*25/u.test(replacement.replacementProgress)) {
+    seriesFailures.push(`SF replacement event is not 25 laps: ${replacement.replacementProgress}`)
+  }
+  if (seriesModes.pageErrors.length > 0) {
+    seriesFailures.push(`series mode page errors: ${seriesModes.pageErrors.join('; ')}`)
+  }
+  if (seriesFailures.length > 0) {
+    throw new Error(`multi-series failed:\n- ${seriesFailures.join('\n- ')}`)
   }
 } finally {
   await browser.close()
