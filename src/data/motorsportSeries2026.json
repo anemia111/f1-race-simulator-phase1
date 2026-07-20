@@ -4,10 +4,10 @@
   "series": [
     {
       "id": "f1-custom",
-      "label": "F1 Custom 10x3",
+      "label": "F1 Custom 10x2",
       "shortLabel": "F1",
       "teamCount": 10,
-      "carCount": 30,
+      "carCount": 20,
       "calendar": [
         { "id": "f1-01", "round": 1, "trackId": "albert-park-approx", "raceCount": 1 },
         { "id": "f1-02", "round": 2, "trackId": "shanghai-approx", "raceCount": 1, "sprint": true },
@@ -64,7 +64,7 @@
           "breakSeconds": 420,
           "format": "knockout",
           "segments": [
-            { "name": "Q1", "durationSeconds": 1080, "advanceCount": 20 },
+            { "name": "Q1", "durationSeconds": 1080, "advanceCount": 15 },
             { "name": "Q2", "durationSeconds": 900, "advanceCount": 10 },
             { "name": "Q3", "durationSeconds": 780, "advanceCount": null }
           ]
@@ -178,48 +178,48 @@
       ],
       "teams": [
         { "id": "f2-invicta", "name": "Invicta Racing", "color": "#f2cf18", "operations": 91, "drivers": [
-          { "id": "rafael_camara", "code": "CAM", "name": "Rafael Camara", "number": 1, "nationality": "BRA", "overall": 85, "potential": 97 },
-          { "id": "joshua_duerksen", "code": "DUE", "name": "Joshua Duerksen", "number": 2, "nationality": "PRY", "overall": 80, "potential": 90 }
+          { "id": "rafael_camara", "code": "CAM", "name": "Rafael Camara", "number": 1, "nationality": "BRA", "overall": 75, "potential": 97 },
+          { "id": "joshua_duerksen", "code": "DUE", "name": "Joshua Duerksen", "number": 2, "nationality": "PRY", "overall": 70, "potential": 90 }
         ]},
         { "id": "f2-hitech", "name": "Hitech", "color": "#8a9199", "operations": 88, "drivers": [
-          { "id": "ritomo_miyata", "code": "MIY", "name": "Ritomo Miyata", "number": 3, "nationality": "JPN", "overall": 81, "potential": 88 },
-          { "id": "colton_herta", "code": "HER", "name": "Colton Herta", "number": 4, "nationality": "USA", "overall": 84, "potential": 91 }
+          { "id": "ritomo_miyata", "code": "MIY", "name": "Ritomo Miyata", "number": 3, "nationality": "JPN", "overall": 71, "potential": 88 },
+          { "id": "colton_herta", "code": "HER", "name": "Colton Herta", "number": 4, "nationality": "USA", "overall": 74, "potential": 91 }
         ]},
         { "id": "f2-campos", "name": "Campos Racing", "color": "#f4cc16", "operations": 90, "drivers": [
-          { "id": "noel_leon", "code": "LEO", "name": "Noel Leon", "number": 5, "nationality": "MEX", "overall": 78, "potential": 91 },
-          { "id": "nikola_tsolov", "code": "TSO", "name": "Nikola Tsolov", "number": 6, "nationality": "BGR", "overall": 82, "potential": 96 }
+          { "id": "noel_leon", "code": "LEO", "name": "Noel Leon", "number": 5, "nationality": "MEX", "overall": 68, "potential": 91 },
+          { "id": "nikola_tsolov", "code": "TSO", "name": "Nikola Tsolov", "number": 6, "nationality": "BGR", "overall": 72, "potential": 96 }
         ]},
         { "id": "f2-dams", "name": "DAMS Lucas Oil", "color": "#2f63bd", "operations": 86, "drivers": [
-          { "id": "dino_beganovic", "code": "BEG", "name": "Dino Beganovic", "number": 7, "nationality": "SWE", "overall": 81, "potential": 93 },
-          { "id": "roman_bilinski", "code": "BIL", "name": "Roman Bilinski", "number": 8, "nationality": "POL", "overall": 76, "potential": 89 }
+          { "id": "dino_beganovic", "code": "BEG", "name": "Dino Beganovic", "number": 7, "nationality": "SWE", "overall": 71, "potential": 93 },
+          { "id": "roman_bilinski", "code": "BIL", "name": "Roman Bilinski", "number": 8, "nationality": "POL", "overall": 66, "potential": 89 }
         ]},
         { "id": "f2-mp", "name": "MP Motorsport", "color": "#f06a21", "operations": 87, "drivers": [
-          { "id": "gabriele_mini", "code": "MIN", "name": "Gabriele Mini", "number": 9, "nationality": "ITA", "overall": 82, "potential": 94 },
-          { "id": "oliver_goethe", "code": "GOE", "name": "Oliver Goethe", "number": 10, "nationality": "DEU", "overall": 80, "potential": 92 }
+          { "id": "gabriele_mini", "code": "MIN", "name": "Gabriele Mini", "number": 9, "nationality": "ITA", "overall": 72, "potential": 94 },
+          { "id": "oliver_goethe", "code": "GOE", "name": "Oliver Goethe", "number": 10, "nationality": "DEU", "overall": 70, "potential": 92 }
         ]},
         { "id": "f2-prema", "name": "PREMA Racing", "color": "#e31b23", "operations": 89, "drivers": [
-          { "id": "sebastian_montoya", "code": "MON", "name": "Sebastian Montoya", "number": 11, "nationality": "COL", "overall": 79, "potential": 92 },
-          { "id": "mari_boya", "code": "BOY", "name": "Mari Boya", "number": 12, "nationality": "ESP", "overall": 80, "potential": 92 }
+          { "id": "sebastian_montoya", "code": "MON", "name": "Sebastian Montoya", "number": 11, "nationality": "COL", "overall": 69, "potential": 92 },
+          { "id": "mari_boya", "code": "BOY", "name": "Mari Boya", "number": 12, "nationality": "ESP", "overall": 70, "potential": 92 }
         ]},
         { "id": "f2-rodin", "name": "Rodin Motorsport", "color": "#69b7e6", "operations": 84, "drivers": [
-          { "id": "martinius_stenshorne", "code": "STE", "name": "Martinius Stenshorne", "number": 14, "nationality": "NOR", "overall": 79, "potential": 93 },
-          { "id": "alexander_dunne", "code": "DUN", "name": "Alexander Dunne", "number": 15, "nationality": "IRL", "overall": 84, "potential": 96 }
+          { "id": "martinius_stenshorne", "code": "STE", "name": "Martinius Stenshorne", "number": 14, "nationality": "NOR", "overall": 69, "potential": 93 },
+          { "id": "alexander_dunne", "code": "DUN", "name": "Alexander Dunne", "number": 15, "nationality": "IRL", "overall": 74, "potential": 96 }
         ]},
         { "id": "f2-art", "name": "ART Grand Prix", "color": "#202b36", "operations": 88, "drivers": [
-          { "id": "kush_maini", "code": "MAI", "name": "Kush Maini", "number": 16, "nationality": "IND", "overall": 81, "potential": 87 },
-          { "id": "tasanapol_inthraphuvasak", "code": "INT", "name": "Tasanapol Inthraphuvasak", "number": 17, "nationality": "THA", "overall": 77, "potential": 90 }
+          { "id": "kush_maini", "code": "MAI", "name": "Kush Maini", "number": 16, "nationality": "IND", "overall": 71, "potential": 87 },
+          { "id": "tasanapol_inthraphuvasak", "code": "INT", "name": "Tasanapol Inthraphuvasak", "number": 17, "nationality": "THA", "overall": 67, "potential": 90 }
         ]},
         { "id": "f2-aix", "name": "AIX Racing", "color": "#2a86c7", "operations": 80, "drivers": [
-          { "id": "enzo_fittipaldi", "code": "FIT", "name": "Enzo Fittipaldi", "number": 20, "nationality": "BRA", "overall": 82, "potential": 88 },
-          { "id": "cian_shields", "code": "SHI", "name": "Cian Shields", "number": 21, "nationality": "GBR", "overall": 75, "potential": 88 }
+          { "id": "enzo_fittipaldi", "code": "FIT", "name": "Enzo Fittipaldi", "number": 20, "nationality": "BRA", "overall": 72, "potential": 88 },
+          { "id": "cian_shields", "code": "SHI", "name": "Cian Shields", "number": 21, "nationality": "GBR", "overall": 65, "potential": 88 }
         ]},
         { "id": "f2-var", "name": "Van Amersfoort Racing", "color": "#e85a24", "operations": 82, "drivers": [
-          { "id": "nicolas_varrone", "code": "VAR", "name": "Nicolas Varrone", "number": 22, "nationality": "ARG", "overall": 79, "potential": 87 },
-          { "id": "rafael_villagomez", "code": "VIL", "name": "Rafael Villagomez", "number": 23, "nationality": "MEX", "overall": 76, "potential": 86 }
+          { "id": "nicolas_varrone", "code": "VAR", "name": "Nicolas Varrone", "number": 22, "nationality": "ARG", "overall": 69, "potential": 87 },
+          { "id": "rafael_villagomez", "code": "VIL", "name": "Rafael Villagomez", "number": 23, "nationality": "MEX", "overall": 66, "potential": 86 }
         ]},
         { "id": "f2-trident", "name": "TRIDENT", "color": "#245bb5", "operations": 83, "drivers": [
-          { "id": "laurens_van_hoepen", "code": "VHO", "name": "Laurens van Hoepen", "number": 24, "nationality": "NLD", "overall": 79, "potential": 92 },
-          { "id": "john_bennett", "code": "BEN", "name": "John Bennett", "number": 25, "nationality": "GBR", "overall": 76, "potential": 89 }
+          { "id": "laurens_van_hoepen", "code": "VHO", "name": "Laurens van Hoepen", "number": 24, "nationality": "NLD", "overall": 69, "potential": 92 },
+          { "id": "john_bennett", "code": "BEN", "name": "John Bennett", "number": 25, "nationality": "GBR", "overall": 66, "potential": 89 }
         ]}
       ]
     },
@@ -327,54 +327,54 @@
       ],
       "teams": [
         { "id": "f3-campos", "name": "Campos Racing", "color": "#f4cc16", "operations": 91, "drivers": [
-          { "id": "theophile_nael", "code": "NAE", "name": "Theophile Nael", "number": 1, "nationality": "FRA", "overall": 79, "potential": 97 },
-          { "id": "ugo_ugochukwu", "code": "UGO", "name": "Ugo Ugochukwu", "number": 2, "nationality": "USA", "overall": 78, "potential": 97 },
-          { "id": "ernesto_rivera", "code": "RIV", "name": "Ernesto Rivera", "number": 3, "nationality": "MEX", "overall": 73, "potential": 93 }
+          { "id": "theophile_nael", "code": "NAE", "name": "Theophile Nael", "number": 1, "nationality": "FRA", "overall": 64, "potential": 97 },
+          { "id": "ugo_ugochukwu", "code": "UGO", "name": "Ugo Ugochukwu", "number": 2, "nationality": "USA", "overall": 63, "potential": 97 },
+          { "id": "ernesto_rivera", "code": "RIV", "name": "Ernesto Rivera", "number": 3, "nationality": "MEX", "overall": 58, "potential": 93 }
         ]},
         { "id": "f3-trident", "name": "TRIDENT", "color": "#245bb5", "operations": 87, "drivers": [
-          { "id": "noah_stromsted", "code": "STR", "name": "Noah Stromsted", "number": 4, "nationality": "DNK", "overall": 77, "potential": 96 },
-          { "id": "freddie_slater", "code": "SLA", "name": "Freddie Slater", "number": 5, "nationality": "GBR", "overall": 81, "potential": 100 },
-          { "id": "matteo_de_palo", "code": "DEP", "name": "Matteo De Palo", "number": 6, "nationality": "ITA", "overall": 77, "potential": 96 }
+          { "id": "noah_stromsted", "code": "STR", "name": "Noah Stromsted", "number": 4, "nationality": "DNK", "overall": 62, "potential": 96 },
+          { "id": "freddie_slater", "code": "SLA", "name": "Freddie Slater", "number": 5, "nationality": "GBR", "overall": 66, "potential": 100 },
+          { "id": "matteo_de_palo", "code": "DEP", "name": "Matteo De Palo", "number": 6, "nationality": "ITA", "overall": 62, "potential": 96 }
         ]},
         { "id": "f3-mp", "name": "MP Motorsport", "color": "#f06a21", "operations": 84, "drivers": [
-          { "id": "mattia_colnaghi", "code": "COL", "name": "Mattia Colnaghi", "number": 7, "nationality": "ITA", "overall": 76, "potential": 96 },
-          { "id": "tuukka_taponen", "code": "TAP", "name": "Tuukka Taponen", "number": 8, "nationality": "FIN", "overall": 79, "potential": 97 },
-          { "id": "alessandro_giusti", "code": "GIU", "name": "Alessandro Giusti", "number": 9, "nationality": "FRA", "overall": 76, "potential": 95 }
+          { "id": "mattia_colnaghi", "code": "COL", "name": "Mattia Colnaghi", "number": 7, "nationality": "ITA", "overall": 61, "potential": 96 },
+          { "id": "tuukka_taponen", "code": "TAP", "name": "Tuukka Taponen", "number": 8, "nationality": "FIN", "overall": 64, "potential": 97 },
+          { "id": "alessandro_giusti", "code": "GIU", "name": "Alessandro Giusti", "number": 9, "nationality": "FRA", "overall": 61, "potential": 95 }
         ]},
         { "id": "f3-art", "name": "ART Grand Prix", "color": "#202b36", "operations": 86, "drivers": [
-          { "id": "taito_kato", "code": "KAT", "name": "Taito Kato", "number": 10, "nationality": "JPN", "overall": 75, "potential": 95 },
-          { "id": "tim_tramnitz_gladysz", "code": "GLA", "name": "Tymek Gladysz", "number": 11, "nationality": "POL", "overall": 74, "potential": 94 },
-          { "id": "kanato_le", "code": "LEK", "name": "Kanato Le", "number": 12, "nationality": "JPN", "overall": 72, "potential": 94 }
+          { "id": "taito_kato", "code": "KAT", "name": "Taito Kato", "number": 10, "nationality": "JPN", "overall": 60, "potential": 95 },
+          { "id": "tim_tramnitz_gladysz", "code": "GLA", "name": "Tymek Gladysz", "number": 11, "nationality": "POL", "overall": 59, "potential": 94 },
+          { "id": "kanato_le", "code": "LEK", "name": "Kanato Le", "number": 12, "nationality": "JPN", "overall": 57, "potential": 94 }
         ]},
         { "id": "f3-var", "name": "Van Amersfoort Racing", "color": "#e85a24", "operations": 89, "drivers": [
-          { "id": "hiyu_yamakoshi", "code": "YAM", "name": "Hiyu Yamakoshi", "number": 14, "nationality": "JPN", "overall": 78, "potential": 96 },
-          { "id": "enzo_deligny", "code": "DEL", "name": "Enzo Deligny", "number": 15, "nationality": "FRA", "overall": 76, "potential": 96 },
-          { "id": "bruno_del_pino", "code": "DPI", "name": "Bruno del Pino", "number": 16, "nationality": "ESP", "overall": 74, "potential": 94 }
+          { "id": "hiyu_yamakoshi", "code": "YAM", "name": "Hiyu Yamakoshi", "number": 14, "nationality": "JPN", "overall": 63, "potential": 96 },
+          { "id": "enzo_deligny", "code": "DEL", "name": "Enzo Deligny", "number": 15, "nationality": "FRA", "overall": 61, "potential": 96 },
+          { "id": "bruno_del_pino", "code": "DPI", "name": "Bruno del Pino", "number": 16, "nationality": "ESP", "overall": 59, "potential": 94 }
         ]},
         { "id": "f3-rodin", "name": "Rodin Motorsport", "color": "#69b7e6", "operations": 88, "drivers": [
-          { "id": "pedro_clerot", "code": "CLE", "name": "Pedro Clerot", "number": 17, "nationality": "BRA", "overall": 77, "potential": 95 },
-          { "id": "brando_badoer", "code": "BAD", "name": "Brando Badoer", "number": 18, "nationality": "ITA", "overall": 76, "potential": 96 },
-          { "id": "christian_ho", "code": "CHO", "name": "Christian Ho", "number": 19, "nationality": "SGP", "overall": 77, "potential": 95 }
+          { "id": "pedro_clerot", "code": "CLE", "name": "Pedro Clerot", "number": 17, "nationality": "BRA", "overall": 62, "potential": 95 },
+          { "id": "brando_badoer", "code": "BAD", "name": "Brando Badoer", "number": 18, "nationality": "ITA", "overall": 61, "potential": 96 },
+          { "id": "christian_ho", "code": "CHO", "name": "Christian Ho", "number": 19, "nationality": "SGP", "overall": 62, "potential": 95 }
         ]},
         { "id": "f3-prema", "name": "PREMA Racing", "color": "#e31b23", "operations": 83, "drivers": [
-          { "id": "louis_sharp", "code": "SHA", "name": "Louis Sharp", "number": 20, "nationality": "NZL", "overall": 77, "potential": 96 },
-          { "id": "james_wharton", "code": "WHA", "name": "James Wharton", "number": 21, "nationality": "AUS", "overall": 76, "potential": 95 },
-          { "id": "jose_garfias", "code": "GAR", "name": "Jose Garfias", "number": 22, "nationality": "MEX", "overall": 72, "potential": 92 }
+          { "id": "louis_sharp", "code": "SHA", "name": "Louis Sharp", "number": 20, "nationality": "NZL", "overall": 62, "potential": 96 },
+          { "id": "james_wharton", "code": "WHA", "name": "James Wharton", "number": 21, "nationality": "AUS", "overall": 61, "potential": 95 },
+          { "id": "jose_garfias", "code": "GAR", "name": "Jose Garfias", "number": 22, "nationality": "MEX", "overall": 57, "potential": 92 }
         ]},
         { "id": "f3-hitech", "name": "Hitech", "color": "#8a9199", "operations": 82, "drivers": [
-          { "id": "woohyun_shin", "code": "WSH", "name": "Woohyun Shin", "number": 23, "nationality": "KOR", "overall": 74, "potential": 94 },
-          { "id": "fionn_mclaughlin", "code": "MCL", "name": "Fionn McLaughlin", "number": 24, "nationality": "IRL", "overall": 72, "potential": 94 },
-          { "id": "jin_nakamura", "code": "JIN", "name": "Jin Nakamura", "number": 25, "nationality": "JPN", "overall": 75, "potential": 95 }
+          { "id": "woohyun_shin", "code": "WSH", "name": "Woohyun Shin", "number": 23, "nationality": "KOR", "overall": 59, "potential": 94 },
+          { "id": "fionn_mclaughlin", "code": "MCL", "name": "Fionn McLaughlin", "number": 24, "nationality": "IRL", "overall": 57, "potential": 94 },
+          { "id": "jin_nakamura", "code": "JIN", "name": "Jin Nakamura", "number": 25, "nationality": "JPN", "overall": 60, "potential": 95 }
         ]},
         { "id": "f3-aix", "name": "AIX Racing", "color": "#2a86c7", "operations": 78, "drivers": [
-          { "id": "ricardo_escotto", "code": "ESC", "name": "Ricardo Escotto", "number": 26, "nationality": "MEX", "overall": 72, "potential": 91 },
-          { "id": "yevan_david", "code": "DAV", "name": "Yevan David", "number": 27, "nationality": "LKA", "overall": 72, "potential": 93 },
-          { "id": "fernando_barrichello", "code": "BAR", "name": "Fernando Barrichello", "number": 28, "nationality": "BRA", "overall": 73, "potential": 94 }
+          { "id": "ricardo_escotto", "code": "ESC", "name": "Ricardo Escotto", "number": 26, "nationality": "MEX", "overall": 57, "potential": 91 },
+          { "id": "yevan_david", "code": "DAV", "name": "Yevan David", "number": 27, "nationality": "LKA", "overall": 57, "potential": 93 },
+          { "id": "fernando_barrichello", "code": "BAR", "name": "Fernando Barrichello", "number": 28, "nationality": "BRA", "overall": 58, "potential": 94 }
         ]},
         { "id": "f3-dams", "name": "DAMS Lucas Oil", "color": "#2f63bd", "operations": 80, "drivers": [
-          { "id": "nicola_lacorte", "code": "LAC", "name": "Nicola Lacorte", "number": 29, "nationality": "ITA", "overall": 72, "potential": 92 },
-          { "id": "nandhavud_bhirombhakdi", "code": "BHI", "name": "Nandhavud Bhirombhakdi", "number": 30, "nationality": "THA", "overall": 69, "potential": 89 },
-          { "id": "gerrard_xie", "code": "XIE", "name": "Gerrard Xie", "number": 31, "nationality": "CHN", "overall": 71, "potential": 91 }
+          { "id": "nicola_lacorte", "code": "LAC", "name": "Nicola Lacorte", "number": 29, "nationality": "ITA", "overall": 57, "potential": 92 },
+          { "id": "nandhavud_bhirombhakdi", "code": "BHI", "name": "Nandhavud Bhirombhakdi", "number": 30, "nationality": "THA", "overall": 54, "potential": 89 },
+          { "id": "gerrard_xie", "code": "XIE", "name": "Gerrard Xie", "number": 31, "nationality": "CHN", "overall": 56, "potential": 91 }
         ]}
       ]
     },
@@ -464,60 +464,60 @@
       ],
       "teams": [
         { "id": "sf-mugen", "name": "TEAM MUGEN AUTOBACS", "color": "#e31b23", "operations": 91, "drivers": [
-          { "id": "ayumu_iwasa", "code": "IWA", "name": "Ayumu Iwasa", "number": 1, "nationality": "JPN", "overall": 88, "potential": 94 },
-          { "id": "tomoki_nojiri", "code": "NOJ", "name": "Tomoki Nojiri", "number": 16, "nationality": "JPN", "overall": 87, "potential": 88 }
+          { "id": "ayumu_iwasa", "code": "IWA", "name": "Ayumu Iwasa", "number": 1, "nationality": "JPN", "overall": 78, "potential": 94 },
+          { "id": "tomoki_nojiri", "code": "NOJ", "name": "Tomoki Nojiri", "number": 16, "nationality": "JPN", "overall": 77, "potential": 88 }
         ]},
         { "id": "sf-kondo", "name": "REALIZE KONDO RACING", "color": "#245bb5", "operations": 87, "drivers": [
-          { "id": "luke_browning", "code": "BRO", "name": "Luke Browning", "number": 3, "nationality": "GBR", "overall": 82, "potential": 95 },
-          { "id": "ukyo_sasahara", "code": "SAS", "name": "Ukyo Sasahara", "number": 4, "nationality": "JPN", "overall": 82, "potential": 85 }
+          { "id": "luke_browning", "code": "BRO", "name": "Luke Browning", "number": 3, "nationality": "GBR", "overall": 72, "potential": 95 },
+          { "id": "ukyo_sasahara", "code": "SAS", "name": "Ukyo Sasahara", "number": 4, "nationality": "JPN", "overall": 72, "potential": 85 }
         ]},
         { "id": "sf-dandelion", "name": "DOCOMO TEAM DANDELION RACING", "color": "#f6f6f6", "operations": 93, "drivers": [
-          { "id": "tadasuke_makino", "code": "MAK", "name": "Tadasuke Makino", "number": 5, "nationality": "JPN", "overall": 87, "potential": 89 },
-          { "id": "kakunoshin_ohta", "code": "OTA", "name": "Kakunoshin Ohta", "number": 6, "nationality": "JPN", "overall": 89, "potential": 94 }
+          { "id": "tadasuke_makino", "code": "MAK", "name": "Tadasuke Makino", "number": 5, "nationality": "JPN", "overall": 77, "potential": 89 },
+          { "id": "kakunoshin_ohta", "code": "OTA", "name": "Kakunoshin Ohta", "number": 6, "nationality": "JPN", "overall": 79, "potential": 94 }
         ]},
         { "id": "sf-kcmg", "name": "KCMG", "color": "#174a97", "operations": 84, "drivers": [
-          { "id": "kenta_yamashita", "code": "KEN", "name": "Kenta Yamashita", "number": 8, "nationality": "JPN", "overall": 84, "potential": 86 },
-          { "id": "giuliano_alesi", "code": "ALE", "name": "Giuliano Alesi", "number": 9, "nationality": "FRA", "overall": 80, "potential": 84 }
+          { "id": "kenta_yamashita", "code": "KEN", "name": "Kenta Yamashita", "number": 8, "nationality": "JPN", "overall": 74, "potential": 86 },
+          { "id": "giuliano_alesi", "code": "ALE", "name": "Giuliano Alesi", "number": 9, "nationality": "FRA", "overall": 70, "potential": 84 }
         ]},
         { "id": "sf-tgmgp", "name": "KDDI TGMGP TGR-DC", "color": "#e31b23", "operations": 88, "drivers": [
-          { "id": "kamui_kobayashi", "code": "KOB", "name": "Kamui Kobayashi", "number": 7, "nationality": "JPN", "overall": 85, "potential": 85 },
-          { "id": "rikuto_kobayashi", "code": "RIK", "name": "Rikuto Kobayashi", "number": 28, "nationality": "JPN", "overall": 78, "potential": 94 }
+          { "id": "kamui_kobayashi", "code": "KOB", "name": "Kamui Kobayashi", "number": 7, "nationality": "JPN", "overall": 75, "potential": 85 },
+          { "id": "rikuto_kobayashi", "code": "RIK", "name": "Rikuto Kobayashi", "number": 28, "nationality": "JPN", "overall": 68, "potential": 94 }
         ]},
         { "id": "sf-triple-tree", "name": "HAZAMA ANDO Triple Tree Racing", "color": "#6c2b87", "operations": 78, "drivers": [
-          { "id": "juju_noda", "code": "JUJ", "name": "Juju", "number": 10, "nationality": "JPN", "overall": 76, "potential": 87 }
+          { "id": "juju_noda", "code": "JUJ", "name": "Juju", "number": 10, "nationality": "JPN", "overall": 66, "potential": 87 }
         ]},
         { "id": "sf-threebond", "name": "ThreeBond Racing", "color": "#b51f2a", "operations": 80, "drivers": [
-          { "id": "syun_koide", "code": "KOI", "name": "Syun Koide", "number": 12, "nationality": "JPN", "overall": 78, "potential": 90 }
+          { "id": "syun_koide", "code": "KOI", "name": "Syun Koide", "number": 12, "nationality": "JPN", "overall": 68, "potential": 90 }
         ]},
         { "id": "sf-rookie", "name": "NTT docomo Business ROOKIE", "color": "#f05a28", "operations": 90, "drivers": [
-          { "id": "nirei_fukuzumi", "code": "FUK", "name": "Nirei Fukuzumi", "number": 14, "nationality": "JPN", "overall": 86, "potential": 88 }
+          { "id": "nirei_fukuzumi", "code": "FUK", "name": "Nirei Fukuzumi", "number": 14, "nationality": "JPN", "overall": 76, "potential": 88 }
         ]},
         { "id": "sf-impul", "name": "TEAM IMPUL", "color": "#245bb5", "operations": 82, "drivers": [
-          { "id": "zak_osullivan", "code": "OSU", "name": "Zak O'Sullivan", "number": 19, "nationality": "GBR", "overall": 80, "potential": 92 }
+          { "id": "zak_osullivan", "code": "OSU", "name": "Zak O'Sullivan", "number": 19, "nationality": "GBR", "overall": 70, "potential": 92 }
         ]},
         { "id": "sf-delightworks", "name": "DELiGHTWORKS RACING", "color": "#d7b56d", "operations": 79, "drivers": [
-          { "id": "nobuharu_matsushita", "code": "MAT", "name": "Nobuharu Matsushita", "number": 22, "nationality": "JPN", "overall": 82, "potential": 84 }
+          { "id": "nobuharu_matsushita", "code": "MAT", "name": "Nobuharu Matsushita", "number": 22, "nationality": "JPN", "overall": 72, "potential": 84 }
         ]},
         { "id": "sf-toms", "name": "VANTELIN TEAM TOM'S", "color": "#e31b23", "operations": 92, "drivers": [
-          { "id": "sho_tsuboi", "code": "TSU", "name": "Sho Tsuboi", "number": 36, "nationality": "JPN", "overall": 88, "potential": 90 },
-          { "id": "sacha_fenestraz", "code": "FEN", "name": "Sacha Fenestraz", "number": 37, "nationality": "ARG", "overall": 85, "potential": 89 }
+          { "id": "sho_tsuboi", "code": "TSU", "name": "Sho Tsuboi", "number": 36, "nationality": "JPN", "overall": 78, "potential": 90 },
+          { "id": "sacha_fenestraz", "code": "FEN", "name": "Sacha Fenestraz", "number": 37, "nationality": "ARG", "overall": 75, "potential": 89 }
         ]},
         { "id": "sf-inging", "name": "SANKI VERTEX PARTNERS CERUMO INGING", "color": "#1d4f91", "operations": 89, "drivers": [
-          { "id": "sena_sakaguchi", "code": "SAK", "name": "Sena Sakaguchi", "number": 38, "nationality": "JPN", "overall": 85, "potential": 89 },
-          { "id": "toshiki_oyu", "code": "OYU", "name": "Toshiki Oyu", "number": 39, "nationality": "JPN", "overall": 84, "potential": 88 }
+          { "id": "sena_sakaguchi", "code": "SAK", "name": "Sena Sakaguchi", "number": 38, "nationality": "JPN", "overall": 75, "potential": 89 },
+          { "id": "toshiki_oyu", "code": "OYU", "name": "Toshiki Oyu", "number": 39, "nationality": "JPN", "overall": 74, "potential": 88 }
         ]},
         { "id": "sf-bmax", "name": "San-Ei Gen with B-Max", "color": "#4a4a4a", "operations": 77, "drivers": [
-          { "id": "yuto_nomura", "code": "NOM", "name": "Yuto Nomura", "number": 50, "nationality": "JPN", "overall": 77, "potential": 92 }
+          { "id": "yuto_nomura", "code": "NOM", "name": "Yuto Nomura", "number": 50, "nationality": "JPN", "overall": 67, "potential": 92 }
         ]},
         { "id": "sf-goh", "name": "TEAM GOH", "color": "#df2d33", "operations": 78, "drivers": [
-          { "id": "charlie_wurz", "code": "WUR", "name": "Charlie Wurz", "number": 53, "nationality": "AUT", "overall": 77, "potential": 92 }
+          { "id": "charlie_wurz", "code": "WUR", "name": "Charlie Wurz", "number": 53, "nationality": "AUT", "overall": 67, "potential": 92 }
         ]},
         { "id": "sf-nakajima", "name": "PONOS NAKAJIMA RACING", "color": "#1b6fb5", "operations": 86, "drivers": [
-          { "id": "ren_sato", "code": "REN", "name": "Ren Sato", "number": 64, "nationality": "JPN", "overall": 82, "potential": 88 },
-          { "id": "igor_fraga", "code": "FRA", "name": "Igor Omura Fraga", "number": 65, "nationality": "BRA", "overall": 81, "potential": 87 }
+          { "id": "ren_sato", "code": "REN", "name": "Ren Sato", "number": 64, "nationality": "JPN", "overall": 72, "potential": 88 },
+          { "id": "igor_fraga", "code": "FRA", "name": "Igor Omura Fraga", "number": 65, "nationality": "BRA", "overall": 71, "potential": 87 }
         ]},
         { "id": "sf-buzz", "name": "Buzz MK RACING", "color": "#dfd100", "operations": 76, "drivers": [
-          { "id": "roman_stanek", "code": "STA", "name": "Roman Stanek", "number": 97, "nationality": "CZE", "overall": 80, "potential": 89 }
+          { "id": "roman_stanek", "code": "STA", "name": "Roman Stanek", "number": 97, "nationality": "CZE", "overall": 70, "potential": 89 }
         ]}
       ]
     }

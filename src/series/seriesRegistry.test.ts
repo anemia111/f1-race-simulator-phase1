@@ -20,7 +20,7 @@ describe('2026 multi-series registry', () => {
         carCount,
       })),
     ).toEqual([
-      { id: 'f1-custom', teamCount: 10, carCount: 30 },
+      { id: 'f1-custom', teamCount: 10, carCount: 20 },
       { id: 'f2', teamCount: 11, carCount: 22 },
       { id: 'f3', teamCount: 10, carCount: 30 },
       { id: 'super-formula', teamCount: 16, carCount: 24 },
@@ -87,7 +87,7 @@ describe('2026 multi-series registry', () => {
     expect(f1.calendar).toHaveLength(24)
     expect(f1.calendar.filter((event) => !event.cancelled)).toHaveLength(22)
     expect(f1.rules.qualifying.segments.map((segment) => segment.advanceCount)).toEqual([
-      20,
+      15,
       10,
       null,
     ])
@@ -208,7 +208,7 @@ describe('2026 multi-series registry', () => {
       qualifyingBySeries
         .get('f1-custom')!
         .segments.map((segment) => segment.results.length),
-    ).toEqual([30, 20, 10])
+    ).toEqual([20, 15, 10])
     expect(qualifyingBySeries.get('f2')!.segments).toHaveLength(1)
     expect(qualifyingBySeries.get('f2')!.classification).toHaveLength(22)
     expect(

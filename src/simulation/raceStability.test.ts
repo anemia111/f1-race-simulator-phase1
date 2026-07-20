@@ -56,9 +56,9 @@ describe('multi-circuit race stability', () => {
         const snapshot = runScenario(label, trackId)
 
         expect(snapshot.sessionStatus, label).toBe('finished')
-        expect(snapshot.cars, label).toHaveLength(30)
+        expect(snapshot.cars, label).toHaveLength(initialDrivers.length)
         expect(snapshot.cars.map((car) => car.position), label).toEqual(
-          Array.from({ length: 30 }, (_, index) => index + 1),
+          Array.from({ length: initialDrivers.length }, (_, index) => index + 1),
         )
 
         for (const car of snapshot.cars) {

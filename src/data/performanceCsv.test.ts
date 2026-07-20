@@ -11,13 +11,14 @@ import {
   loadPerformanceCsv,
   normalizeCsvAbility,
   performanceCsvAudit,
+  reserveDrivers,
 } from './performanceCsv'
 
 describe('CSV performance source of truth', () => {
-  it('CSV-1/2/3: loads the specified 10-team, 30-car field', () => {
+  it('CSV-1/2/3: loads the specified 10-team, 20-car field', () => {
     expect(performanceCsvAudit.fileName).toBe(PERFORMANCE_CSV_FILE)
     expect(initialTeams).toHaveLength(10)
-    expect(initialDrivers).toHaveLength(30)
+    expect(initialDrivers).toHaveLength(20)
     expect(performanceCsvAudit.teamIds).toEqual(
       initialTeams.map((team) => team.id),
     )
@@ -27,8 +28,25 @@ describe('CSV performance source of truth', () => {
     expect(performanceCsvAudit.machineColumns).toContain('ERS recovery')
     expect(performanceCsvAudit.driverColumns).toContain('Technical feedback')
     expect(Object.values(performanceCsvAudit.teamDriverCounts)).toEqual(
-      Array.from({ length: 10 }, () => 3),
+      Array.from({ length: 10 }, () => 2),
     )
+  })
+
+  it('keeps reserves out of the field while retaining their authored axes', () => {
+    expect(reserveDrivers.length).toBeGreaterThan(0)
+    expect(performanceCsvAudit.reserveIds).toEqual(
+      reserveDrivers.map((driver) => driver.id),
+    )
+
+    for (const reserve of reserveDrivers) {
+      expect(reserve.seatRole).toBe('reserve')
+      expect(initialDrivers.some((driver) => driver.id === reserve.id)).toBe(
+        false,
+      )
+      expect(
+        reserve.performanceSource?.rawRatings['Qualifying pace'],
+      ).toBeGreaterThan(0)
+    }
   })
 
   it('keeps Nakayama distinct from Tsunoda and fixed to Ferrari number 31', () => {
@@ -43,7 +61,7 @@ describe('CSV performance source of truth', () => {
       carNumber: 31,
       code: 'NAK',
       name: '\u4e2d\u5c71 \u88d5\u6a39',
-      seatRole: 'third_car',
+      seatRole: 'regular',
       teamId: 'ferrari',
     })
     expect(tsunoda?.id).not.toBe(nakayama?.id)
@@ -143,13 +161,13 @@ describe('CSV performance source of truth', () => {
 
   it('rejects duplicate IDs, codes, car numbers, and invalid ratings', () => {
     const duplicateId = performanceCsv.replace(
-      'charles_leclerc,Ferrari,',
-      'yuki_nakayama,Ferrari,',
+      'charles_leclerc,Aston Martin,',
+      'yuki_nakayama,Aston Martin,',
     )
     const duplicateCode = performanceCsv.replace(',LEC,16,', ',NAK,16,')
     const duplicateNumber = performanceCsv.replace(',LEC,16,', ',LEC,31,')
     const invalid = performanceCsv.replace(
-      /^(yuki_nakayama,[^\r\n]*?,third_car,)100,/mu,
+      /^(yuki_nakayama,[^\r\n]*?,regular,)100,/mu,
       '$1not-a-number,',
     )
 
@@ -169,7 +187,7 @@ describe('CSV performance source of truth', () => {
     )
   })
 
-  it('rejects incomplete 30-car fields', () => {
+  it('rejects a team left short of its two fielded seats', () => {
     const missingDriverRow = performanceCsv.replace(
       /^charles_leclerc,[^\r\n]*(?:\r?\n)/mu,
       '',
@@ -177,6 +195,23 @@ describe('CSV performance source of truth', () => {
 
     expect(() =>
       loadPerformanceCsv(missingDriverRow, 'incomplete-grid.csv'),
-    ).toThrow(/incomplete-grid\.csv row 1, column "<driver count>".*30/u)
+    ).toThrow(/incomplete-grid\.csv row \d+, column "Team".*2 fielded drivers/u)
+  })
+
+  it('rejects a field that cannot fill the grid at all', () => {
+    const lines = performanceCsv.split(/\r?\n/u)
+    const sectionIndex = lines.findIndex((line) =>
+      line.startsWith('TEAM MACHINE ABILITIES'),
+    )
+    // Header, five driver rows, then the untouched machine section.
+    const truncated = [
+      lines[0],
+      ...lines.slice(1, 6),
+      ...lines.slice(sectionIndex - 1),
+    ].join('\n')
+
+    expect(() => loadPerformanceCsv(truncated, 'tiny-grid.csv')).toThrow(
+      /tiny-grid\.csv row 1, column "<driver count>".*at least 20 driver rows/u,
+    )
   })
 })

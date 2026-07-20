@@ -3545,6 +3545,60 @@
 .configuration-audit-grid span,
 .series-rule-summary span { color: #718da1; }
 
+/* Signing a pool driver into the current category. */
+.seat-signing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  border-top: 1px solid var(--manager-line);
+  padding: 12px 14px;
+}
+
+.seat-signing label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.seat-signing label span {
+  color: #718da1;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.seat-signing select {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid var(--manager-line);
+  border-radius: 3px;
+  padding: 0 7px;
+  color: #e8f1f7;
+  background: #0b1a24;
+}
+
+.seat-signing button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #176de5;
+  border-radius: 3px;
+  padding: 0 12px;
+  color: #ffffff;
+  background: #0d2742;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.seat-signing button:hover:not(:disabled) { background: #144170; }
+.seat-signing button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.seat-signing small {
+  grid-column: 1 / -1;
+  color: #718da1;
+  line-height: 1.5;
+}
+
 .data-editor-actions {
   display: flex;
   align-items: center;

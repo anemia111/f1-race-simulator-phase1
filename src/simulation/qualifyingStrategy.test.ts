@@ -15,7 +15,7 @@ const q1Segment = (): TimedSessionSegmentPlan => ({
 })
 
 describe('qualifying release strategy', () => {
-  it('allocates a deterministic traffic gap to all 30 Q1 cars', () => {
+  it('allocates a deterministic traffic gap to every Q1 car', () => {
     const options = {
       config: phaseOneConfig,
       participantDriverIds: q1Segment().participantDriverIds,
@@ -29,8 +29,9 @@ describe('qualifying release strategy', () => {
     )
 
     expect(schedule).toEqual(buildQualifyingReleaseSchedule(options))
-    expect(schedule).toHaveLength(30)
-    expect(new Set(schedule.map((slot) => slot.driverId)).size).toBe(30)
+    const fieldSize = phaseOneConfig.drivers.length
+    expect(schedule).toHaveLength(fieldSize)
+    expect(new Set(schedule.map((slot) => slot.driverId)).size).toBe(fieldSize)
     expect(schedule.every((slot) => slot.strategy === 'bank-lap')).toBe(true)
     expect(
       schedule.every(

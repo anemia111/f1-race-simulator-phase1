@@ -795,11 +795,11 @@ describe('full race', () => {
     ).length
     const dnfDrivers = finished.cars.length - finishedDrivers
 
-    expect(finished.cars).toHaveLength(30)
+    expect(finished.cars).toHaveLength(initialDrivers.length)
     expect(new Set(finished.cars.map((car) => car.teamId)).size).toBe(
       initialTeams.length,
     )
-    expect(finishedDrivers + dnfDrivers).toBe(30)
+    expect(finishedDrivers + dnfDrivers).toBe(initialDrivers.length)
     for (const car of finished.cars) {
       expect(['finished', 'retired', 'disqualified']).toContain(car.status)
     }
@@ -1261,7 +1261,11 @@ describe('start procedure and persisted weekend', () => {
     )
     expect(snapshot.flagPhase).toBeNull()
     expect(snapshot.greenLightUntilSeconds).not.toBeNull()
-    expect(snapshot.eventMessage).toContain('GREEN FLAG')
+    // Racing events raised in the same tick can take the headline, so assert
+    // the green flag was announced rather than that it was announced last.
+    expect(
+      snapshot.events.some((event) => event.message.includes('GREEN FLAG')),
+    ).toBe(true)
     expect(
       snapshot.cars
         .find((car) => car.driverId === violatingDriverId)
@@ -2706,10 +2710,11 @@ describe('qualifying', () => {
     const session = runKnockoutQualifying(config)
 
     expect(session.segments.map((segment) => segment.name)).toEqual(['Q1', 'Q2', 'Q3'])
+    // A 20-car field runs the official 20 -> 15 -> 10 knockout.
     expect(session.segments[0].results).toHaveLength(initialDrivers.length)
-    expect(session.segments[0].eliminatedDriverIds).toHaveLength(10)
-    expect(session.segments[1].results).toHaveLength(20)
-    expect(session.segments[1].eliminatedDriverIds).toHaveLength(10)
+    expect(session.segments[0].eliminatedDriverIds).toHaveLength(5)
+    expect(session.segments[1].results).toHaveLength(15)
+    expect(session.segments[1].eliminatedDriverIds).toHaveLength(5)
     expect(session.segments[2].results).toHaveLength(10)
     expect(session.classification).toHaveLength(initialDrivers.length)
     expect(session.classification.map((result) => result.position)).toEqual(
@@ -2803,7 +2808,11 @@ describe('qualifying', () => {
     )
     const bottomTenCompounds = new Set(
       plan.driverPlans
-        .filter((driverPlan) => (positions.get(driverPlan.driverId) ?? 0) >= 21)
+        .filter(
+          (driverPlan) =>
+            (positions.get(driverPlan.driverId) ?? 0) >
+            initialDrivers.length / 2,
+        )
         .map((driverPlan) => driverPlan.raceStartCompound),
     )
     expect(topTenCompounds.size).toBeGreaterThan(1)

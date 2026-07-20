@@ -30,7 +30,7 @@ import type {
   SeriesPackage,
   SeriesRules,
 } from '../series/types'
-import { validateSeriesPackage } from '../series/seriesRegistry'
+import { seatedDriverFrom, validateSeriesPackage } from '../series/seriesRegistry'
 import type {
   Driver,
   MachinePerformanceProfile,
@@ -227,6 +227,8 @@ export function SeriesDataManager({
     firstCalendarEventId,
   )
   const [search, setSearch] = useState('')
+  const [seatTargetId, setSeatTargetId] = useState('')
+  const [swapPartnerId, setSwapPartnerId] = useState('')
   const [seriesFilter, setSeriesFilter] = useState<'all' | SeriesId>(series.id)
   const [teamFilter, setTeamFilter] = useState('all')
   const [nationalityFilter, setNationalityFilter] = useState('all')
@@ -388,6 +390,15 @@ export function SeriesDataManager({
   const selectedDirectoryDriver =
     directory.find((driver) => driver.id === selectedDriverId) ?? directory[0]
   const selectedDriver = selectedDirectoryDriver?.currentDriver ?? null
+  const seatTarget =
+    drivers.find((driver) => driver.id === seatTargetId) ?? drivers[0] ?? null
+  const swapCandidates = drivers.filter(
+    (driver) => driver.id !== selectedDriver?.id,
+  )
+  const swapPartner =
+    swapCandidates.find((driver) => driver.id === swapPartnerId) ??
+    swapCandidates[0] ??
+    null
   const selectedTeam =
     teams.find((team) => team.id === selectedTeamId) ?? teams[0]
   const selectedRuleEvent =
@@ -452,6 +463,60 @@ export function SeriesDataManager({
       ),
       label,
     )
+  }
+
+  // Exchanges two seats already inside this category. Car numbers belong to the
+  // driver, so only the team assignment moves, which keeps every team balanced.
+  const swapDriverSeats = (partnerId: string) => {
+    const partner = drivers.find((driver) => driver.id === partnerId)
+
+    if (!selectedDriver || !partner || partner.id === selectedDriver.id) return
+
+    const moving = selectedDriver
+
+    applyConfiguration(
+      teams,
+      drivers.map((driver) => {
+        if (driver.id === moving.id) {
+          return { ...driver, teamId: partner.teamId }
+        }
+
+        if (driver.id === partner.id) {
+          return { ...driver, teamId: moving.teamId }
+        }
+
+        return driver
+      }),
+      `${moving.code} and ${partner.code} swap seats`,
+      true,
+    )
+  }
+
+  // Every category runs a fixed field, so signing a pool driver takes an
+  // existing seat rather than growing the grid. The incoming driver inherits
+  // the seat's car number and team, which keeps car numbers unique.
+  const signDriverToSeat = (outgoingDriverId: string) => {
+    const poolRecord = driverPool.find(
+      (record) => record.id === selectedDirectoryDriver?.id,
+    )
+    const outgoing = drivers.find((driver) => driver.id === outgoingDriverId)
+
+    if (!poolRecord || !outgoing || poolRecord.id === outgoing.id) return
+
+    const incoming = seatedDriverFrom(poolRecord, {
+      carNumber: outgoing.carNumber,
+      seatRole: outgoing.seatRole ?? 'regular',
+      startOffset: outgoing.startOffset,
+      teamId: outgoing.teamId,
+    })
+
+    applyConfiguration(
+      teams,
+      drivers.map((driver) => (driver.id === outgoing.id ? incoming : driver)),
+      `${incoming.code} replaces ${outgoing.code}`,
+      true,
+    )
+    setSelectedDriverId(incoming.id)
   }
 
   const updateDriverGroup = (groupKey: string, value: number) => {
@@ -768,6 +833,24 @@ export function SeriesDataManager({
                         <label><span>Potential</span><input max={100} min={0} onChange={(event) => updateDriver({ potential: Number(event.target.value) / 100 }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
                         <label><span>Source</span><output>{selectedDriver.performanceSource?.fileName ?? 'series registry'}</output></label>
                       </div>
+                      <div className="seat-signing seat-swap">
+                        <label>
+                          <span>Swap seats with</span>
+                          <select onChange={(event) => setSwapPartnerId(event.target.value)} value={swapPartner?.id ?? ''}>
+                            {swapCandidates.map((driver) => (
+                              <option key={driver.id} value={driver.id}>
+                                #{driver.carNumber} {driver.code} / {teams.find((team) => team.id === driver.teamId)?.name ?? driver.teamId}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button disabled={!swapPartner} onClick={() => { if (swapPartner) swapDriverSeats(swapPartner.id) }} type="button">
+                          Swap
+                        </button>
+                        <small>
+                          {selectedDriver.code} and the chosen driver trade teams inside {series.shortLabel}. Both keep their own car number, and every team keeps its seat count.
+                        </small>
+                      </div>
                       <div className="ability-editor-grid">
                         {DRIVER_ABILITY_GROUPS.map((group) => {
                           const value = Math.round(driverAbilityGroupValue(selectedDriver, group.stats) * 100)
@@ -782,11 +865,32 @@ export function SeriesDataManager({
                       </div>
                     </>
                   ) : (
-                    <div className="read-only-driver-record">
-                      <span>Nationality</span><strong>{selectedDirectoryDriver.nationality}</strong>
-                      <span>Potential</span><strong>{selectedDirectoryDriver.potential}</strong>
-                      <span>Registry</span><strong>2026 driver pool</strong>
-                    </div>
+                    <>
+                      <div className="read-only-driver-record">
+                        <span>Nationality</span><strong>{selectedDirectoryDriver.nationality}</strong>
+                        <span>Overall</span><strong>{selectedDirectoryDriver.overall}</strong>
+                        <span>Potential</span><strong>{selectedDirectoryDriver.potential}</strong>
+                        <span>Registry</span><strong>2026 driver pool</strong>
+                      </div>
+                      <div className="seat-signing">
+                        <label>
+                          <span>Replace seat</span>
+                          <select onChange={(event) => setSeatTargetId(event.target.value)} value={seatTarget?.id ?? ''}>
+                            {drivers.map((driver) => (
+                              <option key={driver.id} value={driver.id}>
+                                #{driver.carNumber} {driver.code} / {teams.find((team) => team.id === driver.teamId)?.name ?? driver.teamId}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button disabled={!seatTarget} onClick={() => { if (seatTarget) signDriverToSeat(seatTarget.id) }} type="button">
+                          Sign to {series.shortLabel}
+                        </button>
+                        <small>
+                          {selectedDirectoryDriver.code} takes the seat's car number and team. The field stays at {series.carCount} cars, and ratings carry over unchanged.
+                        </small>
+                      </div>
+                    </>
                   )}
                 </>
               ) : null}

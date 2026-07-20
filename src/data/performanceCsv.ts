@@ -24,9 +24,14 @@ export type PerformanceCsvAudit = {
   driverColumns: string[]
   driverIds: string[]
   machineColumns: string[]
+  reserveIds: string[]
   teamDriverCounts: Record<string, number>
   teamIds: string[]
 }
+
+/** Fielded seats per team. Rows marked `reserve` sit outside this count. */
+const DRIVERS_PER_TEAM = 2
+const EXPECTED_TEAMS = 10
 
 const DRIVER_COLUMNS = [
   'Driver ID',
@@ -342,6 +347,7 @@ export function loadPerformanceCsv(
 ): {
   audit: PerformanceCsvAudit
   drivers: Driver[]
+  reserves: Driver[]
   teams: Team[]
 } {
   const rows = parseCsvRows(csv, fileName)
@@ -380,23 +386,26 @@ export function loadPerformanceCsv(
   const machineHeaderIndex = rows.indexOf(machineHeader)
   const machineRecords = recordsFor(rows.slice(machineHeaderIndex + 1), machineHeader)
 
-  if (driverRecords.length !== 30) {
+  // Reserve rows are optional and unbounded, so the file only has to carry
+  // enough rows to fill the grid. The per-team check below is what actually
+  // pins the field size.
+  if (driverRecords.length < EXPECTED_TEAMS * DRIVERS_PER_TEAM) {
     validationError(
       fileName,
       driverHeader.lineNumber,
       '<driver count>',
       driverRecords.length,
-      'exactly 30 driver rows',
+      `at least ${EXPECTED_TEAMS * DRIVERS_PER_TEAM} driver rows`,
     )
   }
 
-  if (machineRecords.length !== 10) {
+  if (machineRecords.length !== EXPECTED_TEAMS) {
     validationError(
       fileName,
       machineHeader.lineNumber,
       '<team count>',
       machineRecords.length,
-      'exactly 10 machine rows',
+      `exactly ${EXPECTED_TEAMS} machine rows`,
     )
   }
 
@@ -482,13 +491,17 @@ export function loadPerformanceCsv(
     })
     const seatRole = requiredText(record, 'Seat Role', fileName)
 
-    if (seatRole !== 'regular' && seatRole !== 'third_car') {
+    if (
+      seatRole !== 'regular' &&
+      seatRole !== 'third_car' &&
+      seatRole !== 'reserve'
+    ) {
       validationError(
         fileName,
         record.lineNumber,
         'Seat Role',
         seatRole,
-        'regular or third_car',
+        'regular, third_car, or reserve',
       )
     }
 
@@ -512,33 +525,39 @@ export function loadPerformanceCsv(
       },
     } satisfies Driver
   })
+  // Reserve rows stay in the file so a driver keeps their authored axes while
+  // out of the race field. Only the fielded seats form the championship grid.
+  const fieldedDrivers = drivers.filter((driver) => driver.seatRole !== 'reserve')
+  const reserveDrivers = drivers.filter((driver) => driver.seatRole === 'reserve')
   const teamDriverCounts = Object.fromEntries(
     teams.map((team) => [
       team.id,
-      drivers.filter((driver) => driver.teamId === team.id).length,
+      fieldedDrivers.filter((driver) => driver.teamId === team.id).length,
     ]),
   )
 
   for (const team of teams) {
-    if (teamDriverCounts[team.id] !== 3) {
+    if (teamDriverCounts[team.id] !== DRIVERS_PER_TEAM) {
       validationError(
         fileName,
         machineHeader.lineNumber,
         'Team',
         team.name,
-        `exactly 3 linked drivers; received ${teamDriverCounts[team.id]}`,
+        `exactly ${DRIVERS_PER_TEAM} fielded drivers; received ${teamDriverCounts[team.id]}`,
       )
     }
   }
 
   return {
     teams,
-    drivers,
+    drivers: fieldedDrivers,
+    reserves: reserveDrivers,
     audit: {
       fileName,
       driverColumns: DRIVER_COLUMNS.slice(),
-      driverIds: drivers.map((driver) => driver.id),
+      driverIds: fieldedDrivers.map((driver) => driver.id),
       machineColumns: MACHINE_COLUMNS.slice(),
+      reserveIds: reserveDrivers.map((driver) => driver.id),
       teamDriverCounts,
       teamIds: teams.map((team) => team.id),
     },
@@ -549,4 +568,5 @@ const loadedPerformance = loadPerformanceCsv(performanceCsv)
 
 export const initialTeams = loadedPerformance.teams
 export const initialDrivers = loadedPerformance.drivers
+export const reserveDrivers = loadedPerformance.reserves
 export const performanceCsvAudit = loadedPerformance.audit

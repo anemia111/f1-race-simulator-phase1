@@ -1,34 +1,34 @@
 Driver ID,Team,Driver,Code,Car Number,Nationality,Seat Role,Overall,Potential,Qualifying pace,Race pace,Consistency,Tyre management,Wet skill,Race start,Overtaking,Defending,Technical feedback,Adaptability,Experience,Error control
 lando_norris,McLaren,Lando Norris,NOR,1,GBR,regular,95,97,96,95,93,93,92,92,94,91,92,95,93,92
 oscar_piastri,McLaren,Oscar Piastri,PIA,81,AUS,regular,94,98,95,95,94,94,91,93,94,92,91,95,91,94
-leonardo_fornaroli,McLaren,Leonardo Fornaroli,FOR,25,ITA,third_car,84,94,85,84,84,82,80,84,83,84,88,80,85,84
+leonardo_fornaroli,McLaren,Leonardo Fornaroli,FOR,25,ITA,reserve,84,94,85,84,84,82,80,84,83,84,88,80,85,84
 george_russell,Mercedes,George Russell,RUS,63,GBR,regular,95,96,96,95,94,94,94,93,94,94,95,95,94,95
 kimi_antonelli,Mercedes,Kimi Antonelli,ANT,12,ITA,regular,90,99,92,89,85,86,87,91,89,87,88,94,82,86
-valtteri_bottas,Mercedes,Valtteri Bottas,BOT,77,FIN,third_car,90,90,91,89,93,90,90,88,88,90,94,92,97,93
-charles_leclerc,Ferrari,Charles Leclerc,LEC,16,MON,regular,96,98,98,96,93,92,94,94,95,93,94,96,94,93
+valtteri_bottas,Mercedes,Valtteri Bottas,BOT,77,FIN,reserve,90,90,91,89,93,90,90,88,88,90,94,92,97,93
+charles_leclerc,Aston Martin,Charles Leclerc,LEC,16,MON,regular,96,98,98,96,93,92,94,94,95,93,94,96,94,93
 lewis_hamilton,Ferrari,Lewis Hamilton,HAM,44,GBR,regular,94,94,94,95,94,95,97,92,96,94,95,94,100,94
-yuki_nakayama,Ferrari,中山 裕樹,NAK,31,JPN,third_car,100,100,100,100,100,100,100,100,100,100,100,100,100,100
+yuki_nakayama,Ferrari,中山 裕樹,NAK,31,JPN,regular,100,100,100,100,100,100,100,100,100,100,100,100,100,100
 max_verstappen,Red Bull Racing,Max Verstappen,VER,3,NLD,regular,98,99,99,99,98,98,99,99,99,99,96,99,98,99
-isack_hadjar,Red Bull Racing,Isack Hadjar,HAD,6,FRA,regular,89,96,91,89,86,87,88,91,89,87,87,94,83,86
-sergio_perez,Red Bull Racing,Sergio Perez,PER,11,MEX,third_car,89,89,88,90,89,91,91,91,92,90,92,88,96,89
+isack_hadjar,Racing Bulls,Isack Hadjar,HAD,6,FRA,regular,89,96,91,89,86,87,88,91,89,87,87,94,83,86
+sergio_perez,Red Bull Racing,Sergio Perez,PER,11,MEX,reserve,89,89,88,90,89,91,91,91,92,90,92,88,96,89
 pierre_gasly,Alpine,Pierre Gasly,GAS,10,FRA,regular,90,92,91,90,91,91,91,91,89,90,91,92,94,91
 franco_colapinto,Alpine,Franco Colapinto,COL,43,ARG,regular,84,94,85,85,82,82,82,87,85,83,84,92,81,82
-paul_aron,Alpine,Paul Aron,ARO,97,EST,third_car,83,94,85,83,84,83,81,84,82,83,87,91,80,84
+paul_aron,Alpine,Paul Aron,ARO,97,EST,reserve,83,94,85,83,84,83,81,84,82,83,87,91,80,84
 liam_lawson,Racing Bulls,Liam Lawson,LAW,30,NZL,regular,86,92,87,86,86,85,87,89,87,86,86,91,86,86
-arvid_lindblad,Racing Bulls,Arvid Lindblad,LIN,41,GBR,regular,83,98,85,82,80,80,82,86,84,81,84,94,76,80
-yuki_tsunoda,Racing Bulls,Yuki Tsunoda,TSU,22,JPN,third_car,89,91,90,89,87,88,89,91,90,88,89,91,91,87
+arvid_lindblad,Racing Bulls,Arvid Lindblad,LIN,41,GBR,reserve,83,98,85,82,80,80,82,86,84,81,84,94,76,80
+yuki_tsunoda,Red Bull Racing,Yuki Tsunoda,TSU,22,JPN,regular,89,91,90,89,87,88,89,91,90,88,89,91,91,87
 esteban_ocon,Haas F1 Team,Esteban Ocon,OCO,67,FRA,regular,88,89,88,89,91,89,90,90,88,91,91,88,96,91
 oliver_bearman,Haas F1 Team,Oliver Bearman,BEA,87,GBR,regular,87,97,89,87,85,85,85,89,88,84,86,93,81,85
-jack_doohan,Haas F1 Team,Jack Doohan,DOO,7,AUS,third_car,82,91,83,82,80,81,82,85,82,81,84,90,78,80
+jack_doohan,Haas F1 Team,Jack Doohan,DOO,7,AUS,reserve,82,91,83,82,80,81,82,85,82,81,84,90,78,80
 carlos_sainz,Williams,Carlos Sainz,SAI,55,ESP,regular,92,93,92,93,95,94,93,92,91,94,97,92,98,95
 alexander_albon,Williams,Alexander Albon,ALB,23,THA,regular,90,92,92,90,91,90,91,90,91,89,91,92,94,91
-luke_browning,Williams,Luke Browning,BRO,46,GBR,third_car,83,96,85,83,82,82,80,84,83,82,86,92,79,82
+luke_browning,Williams,Luke Browning,BRO,46,GBR,reserve,83,96,85,83,82,82,80,84,83,82,86,92,79,82
 nico_hulkenberg,Audi,Nico Hulkenberg,HUL,27,DEU,regular,89,89,91,88,93,89,91,88,87,91,94,89,99,93
 gabriel_bortoleto,Audi,Gabriel Bortoleto,BOR,5,BRA,regular,86,97,88,86,85,84,83,87,86,84,86,94,80,85
-zhou_guanyu,Audi,Zhou Guanyu,ZHO,24,CHN,third_car,84,87,83,85,88,87,86,86,83,85,91,86,93,88
+zhou_guanyu,Audi,Zhou Guanyu,ZHO,24,CHN,reserve,84,87,83,85,88,87,86,86,83,85,91,86,93,88
 fernando_alonso,Aston Martin,Fernando Alonso,ALO,14,ESP,regular,95,95,94,96,98,97,99,94,96,98,99,94,100,98
-lance_stroll,Aston Martin,Lance Stroll,STR,18,CAN,regular,82,84,81,83,84,85,87,85,84,85,86,83,91,84
-jak_crawford,Aston Martin,Jak Crawford,CRA,8,USA,third_car,84,95,86,84,83,82,82,85,85,83,86,93,80,83
+lance_stroll,Aston Martin,Lance Stroll,STR,18,CAN,reserve,82,84,81,83,84,85,87,85,84,85,86,83,91,84
+jak_crawford,Aston Martin,Jak Crawford,CRA,8,USA,reserve,84,95,86,84,83,82,82,85,85,83,86,93,80,83
 
 TEAM MACHINE ABILITIES
 Team,Overall,Qualifying pace,Race pace,Top speed,Acceleration,Power unit,ERS deployment,ERS recovery,Fuel efficiency,Low-speed downforce,Mid-speed downforce,High-speed downforce,Mechanical grip,Traction,Braking stability,Tire preservation,Tire warmup,Dirty air resistance,Wet performance,Reliability,Setup window,Development potential

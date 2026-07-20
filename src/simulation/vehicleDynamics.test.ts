@@ -290,7 +290,7 @@ describe('multi-axis vehicle dynamics', () => {
     expect(terminalSpeedSpreadKph).toBeLessThan(15)
   })
 
-  it('compares all 30 CSV drivers in one identical machine without sorting by OVR', () => {
+  it('compares every CSV driver in one identical machine without sorting by OVR', () => {
     const referenceTeam = initialTeams.find((team) => team.id === 'mclaren')!
     const track = tracks[0]
     const dry = initialDrivers
@@ -318,10 +318,11 @@ describe('multi-axis vehicle dynamics', () => {
       }))
       .sort((left, right) => right.gain - left.gain)
 
-    expect(dry).toHaveLength(30)
-    expect(new Set(dry.map((result) => result.gain.toFixed(5))).size).toBeGreaterThan(
-      20,
-    )
+    expect(dry).toHaveLength(initialDrivers.length)
+    // Most of the field should separate rather than tie on identical machinery.
+    expect(
+      new Set(dry.map((result) => result.gain.toFixed(5))).size,
+    ).toBeGreaterThanOrEqual(Math.ceil(initialDrivers.length * 0.7))
     expect(dry.map((result) => result.code)).not.toEqual(
       wet.map((result) => result.code),
     )

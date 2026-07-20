@@ -18,12 +18,14 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   is written out, and every one currently lands within 0.9%. Regenerate with
   `npm run generate:support-tracks`. Track geometry is © OpenStreetMap
   contributors under the ODbL.
-- A canonical checked-in F1 performance CSV supplies 10 teams and 30 drivers.
-  Its 0-100 values are retained verbatim, including Yuki Nakayama (`NAK`) at
-  Ferrari car number 31. F2/F3/SF fields live in the versioned series registry.
+- A canonical checked-in F1 performance CSV supplies 10 teams and a 20-car
+  field, two per team. Its 0-100 values are retained verbatim, including Yuki
+  Nakayama (`NAK`) at Ferrari car number 31. Drivers without a seat stay in the
+  file as `reserve` rows, so they keep their authored ability axes and remain
+  available in the pool. F2/F3/SF fields live in the versioned series registry.
 - FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. Madrid F3 adds a
-  second qualifying and second Feature Race with independent grids. The 30-car
-  qualifying field runs 18/15/13-minute periods and cuts to 20, then 10.
+  second qualifying and second Feature Race with independent grids. The 20-car
+  F1 qualifying field runs 18/15/13-minute periods and cuts to 15, then 10.
   Each dry qualifying attempt uses a Soft-tyre out lap, full-attack lap, and
   in lap before returning to the garage, with attack-specific ERS deployment.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
@@ -61,6 +63,14 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   straights with low drag, low fuel, tow, and ERS deployment.
 - Driver abilities use one 0-100 source scale across all categories without
   runtime category subtraction. Machine and driver performance stay separate.
+  The stored support-series ratings are already rebased against the F1 field, so
+  the ladder reads F1 78-100, SUPER FORMULA 66-79, F2 65-75, and F3 54-66. A
+  driver carries their own rating into whichever category they race in.
+- Any of the 110 pool drivers can be signed into any category from the data
+  manager. Each field is fixed at its `carCount`, so signing replaces an
+  existing seat and the incoming driver inherits that car number and team.
+  Drivers who already hold a rated seat keep their authored ability axes rather
+  than having them re-estimated from `overall`.
 - Machine pace axes keep their CSV values for display and auditing. The
   physical simulation expands axis deviations by 35% around the reference car
   and applies a wider local response so team differences are clearer in

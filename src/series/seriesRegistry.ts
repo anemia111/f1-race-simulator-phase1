@@ -1,6 +1,7 @@
 import seriesDataJson from '../data/motorsportSeries2026.json'
 import { expandedDriverSkills, type CompactDriverRatings } from '../data/driverProfiles'
 import { initialDrivers, initialTeams } from '../data/grid2026'
+import { reserveDrivers } from '../data/performanceCsv'
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks as f1Tracks } from '../data/tracks'
 import type {
@@ -600,7 +601,13 @@ export const defaultSeriesPackage = seriesPackageById.get('f1-custom')!
 
 const poolById = new Map<string, DriverPoolRecord>()
 
-for (const series of seriesPackages) {
+// F1 reserves are named in the performance CSV but hold no race seat, so they
+// are pooled alongside the fielded grids instead of through the JSON reserve
+// list, which keeps their authored ability axes available.
+for (const series of [
+  ...seriesPackages,
+  { drivers: reserveDrivers, id: 'f1-custom' as const },
+]) {
   for (const driver of series.drivers) {
     const candidate: DriverPoolRecord = {
       code: driver.code,
@@ -642,6 +649,87 @@ if (driverPool2026.length !== 110) {
   throw new Error(
     `${DATA_FILE}: expected 110 unique drivers, received ${driverPool2026.length}`,
   )
+}
+
+// Keeps the fully-rated record for every pool member so a driver can take a
+// seat in another category without being rebuilt from `overall` alone. The F1
+// field carries twelve authored axes from the CSV, and re-deriving them would
+// quietly flatten that detail.
+const ratedDriverById = new Map<string, Driver>()
+
+for (const series of [...seriesPackages, { drivers: reserveDrivers }]) {
+  for (const driver of series.drivers) {
+    const current = ratedDriverById.get(driver.id)
+
+    if (
+      !current ||
+      (driver.performanceSource?.overall ?? 0) >
+        (current.performanceSource?.overall ?? 0)
+    ) {
+      ratedDriverById.set(driver.id, driver)
+    }
+  }
+}
+
+export type SeatAssignment = {
+  carNumber: number
+  seatRole?: NonNullable<Driver['seatRole']>
+  startOffset?: number
+  teamId: string
+}
+
+/**
+ * Builds the driver record for a pool member taking a seat in any series.
+ * Ratings are absolute across categories, so the driver keeps their own values
+ * wherever they race. Reserves exist only as pool records, so their axes are
+ * estimated from `overall` the same way the support-series fields are.
+ */
+export function seatedDriverFrom(
+  poolDriver: DriverPoolRecord,
+  seat: SeatAssignment,
+): Driver {
+  const rated = ratedDriverById.get(poolDriver.id)
+
+  if (rated) {
+    return {
+      ...rated,
+      carNumber: seat.carNumber,
+      seatRole: seat.seatRole ?? rated.seatRole ?? 'regular',
+      startOffset: seat.startOffset ?? rated.startOffset,
+      teamId: seat.teamId,
+    }
+  }
+
+  const raw: RawDriver = {
+    code: poolDriver.code,
+    id: poolDriver.id,
+    name: poolDriver.name,
+    nationality: poolDriver.nationality,
+    number: seat.carNumber,
+    overall: poolDriver.overall,
+    potential: poolDriver.potential,
+  }
+  const ratings = compactRatingsFor(raw)
+
+  return {
+    carNumber: seat.carNumber,
+    code: poolDriver.code,
+    id: poolDriver.id,
+    name: poolDriver.name,
+    nationality: poolDriver.nationality,
+    performanceSource: {
+      fileName: DATA_FILE,
+      overall: poolDriver.overall,
+      rawRatings: rawRatingsFor(raw, ratings),
+    },
+    potential: poolDriver.potential / 100,
+    seatRole: seat.seatRole ?? 'regular',
+    skills: expandedDriverSkills(ratings),
+    startOffset: seat.startOffset ?? 0,
+    style: { ...neutralDriverStyle },
+    teamId: seat.teamId,
+    tire: 'M',
+  }
 }
 
 export const driverAssignments2026: DriverAssignmentRecord[] = [

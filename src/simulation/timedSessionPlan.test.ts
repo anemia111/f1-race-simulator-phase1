@@ -390,7 +390,7 @@ describe('timed session plan', () => {
     )
   })
 
-  it('fills the 20 Q2 places only with cars that set a valid Q1 time', () => {
+  it('fills the Q2 places only with cars that set a valid Q1 time', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
@@ -406,8 +406,9 @@ describe('timed session plan', () => {
           compound: 'S',
           endsAtSeconds: 40,
           name: 'Q2',
+          // Fewer places than valid Q1 runners, so the cut has something to do.
           participantDriverIds: initialDrivers
-            .slice(0, 20)
+            .slice(0, 15)
             .map((driver) => driver.id),
           startsAtSeconds: 20,
           suspensionEndsAtSeconds: null,
@@ -445,7 +446,7 @@ describe('timed session plan', () => {
 
     snapshot = advanceRace(snapshot, 5, config)
 
-    expect(snapshot.timedParticipantDriverIds).toHaveLength(20)
+    expect(snapshot.timedParticipantDriverIds).toHaveLength(15)
     expect(snapshot.timedParticipantDriverIds).not.toContain(noTimeDriverId)
   })
 

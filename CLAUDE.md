@@ -17,10 +17,19 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 
 - 24 verified tracks: 23 OpenF1-derived centerlines plus the official 2026
   MADRING organizer vector, with the amended 22-round championship status.
-- The canonical F1 performance CSV supplies 10 teams and 30 drivers on a
-  0-100 scale. Preserve every supplied value, including Ferrari `NAK` #31.
+- The canonical F1 performance CSV supplies 10 teams and a 20-car field, two
+  cars per team, on a 0-100 scale. Preserve every supplied value, including
+  Ferrari `NAK` #31. Drivers without a seat stay in the file as `reserve` rows
+  so their authored axes survive; they are pooled but never fielded.
 - `motorsportSeries2026.json` supplies the F2/F3/SF fields and rule packages;
   preserve the 110-person relational pool and never subtract ratings at runtime.
+- Driver `overall` is one absolute scale shared by every category, so a driver
+  keeps their own rating wherever they race. The support-series fields are
+  stored already rebased against F1: F1 78-100, SF 66-79, F2 65-75, F3 54-66.
+  Rebase in the JSON if the ladder needs adjusting, never at runtime.
+- Any pool driver can take a seat in any category from the data manager. Fields
+  are fixed at `carCount`, so signing replaces a seat rather than adding one and
+  the incoming driver inherits that seat's car number and team.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ
