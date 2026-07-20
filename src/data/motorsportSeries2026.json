@@ -4,7 +4,7 @@
   "series": [
     {
       "id": "f1-custom",
-      "label": "F1 Custom 10x2",
+      "label": "F1",
       "shortLabel": "F1",
       "teamCount": 10,
       "carCount": 20,
