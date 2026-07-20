@@ -229,7 +229,9 @@ export function SeriesDataManager({
   const [search, setSearch] = useState('')
   const [seatTargetId, setSeatTargetId] = useState('')
   const [swapPartnerId, setSwapPartnerId] = useState('')
-  const [seriesFilter, setSeriesFilter] = useState<'all' | SeriesId>(series.id)
+  // Defaults to the whole pool so a driver from another category is one click
+  // away; narrowing to the current category is still a filter change.
+  const [seriesFilter, setSeriesFilter] = useState<'all' | SeriesId>('all')
   const [teamFilter, setTeamFilter] = useState('all')
   const [nationalityFilter, setNationalityFilter] = useState('all')
   const [roleFilter, setRoleFilter] = useState<DriverRoleFilter>('all')
@@ -255,7 +257,7 @@ export function SeriesDataManager({
     setSelectedDriverId('')
     setSelectedTeamId('')
     setSelectedRuleEventId(firstCalendarEventId)
-    setSeriesFilter(series.id)
+    setSeriesFilter('all')
     setTeamFilter('all')
     setStatus('Configuration validated')
     setRollback(null)
@@ -308,6 +310,10 @@ export function SeriesDataManager({
         }
         if (currentAssignmentIndex >= 0) affiliations[currentAssignmentIndex] = currentAssignment
         else affiliations.push(currentAssignment)
+      } else if (currentAssignmentIndex >= 0) {
+        // The registry still lists this seat, but the edited field no longer
+        // does, so the driver has been replaced and is out of this category.
+        affiliations.splice(currentAssignmentIndex, 1)
       }
 
       return {
@@ -887,6 +893,9 @@ export function SeriesDataManager({
                           Sign to {series.shortLabel}
                         </button>
                         <small>
+                          {selectedDirectoryDriver.affiliations.length > 0
+                            ? `Currently racing in ${[...new Set(selectedDirectoryDriver.affiliations.map((assignment) => seriesLabels[assignment.seriesId]))].join(', ')}. `
+                            : 'Currently without a seat. '}
                           {selectedDirectoryDriver.code} takes the seat's car number and team. The field stays at {series.carCount} cars, and ratings carry over unchanged.
                         </small>
                       </div>
