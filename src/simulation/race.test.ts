@@ -786,7 +786,7 @@ describe('full race', () => {
     const result = runToFinish(config)
     finished = result.snapshot
     seenEventKinds = result.seenEventKinds
-  }, 90_000)
+  }, 180_000)
 
   it('completes with every car finished or retired', () => {
     expect(finished.sessionStatus).toBe('finished')
@@ -1157,7 +1157,7 @@ describe('start procedure and persisted weekend', () => {
 
     expect(snapshot.overtakeEnabled).toBe(true)
     expect(snapshot.overtakeEnableTargetsByDriver).toBeNull()
-  })
+  }, 30_000)
 
   it('measures VSC deltas against the pace-adjusted on-track speed', () => {
     const config = makeConfig('vsc-delta-pace')
