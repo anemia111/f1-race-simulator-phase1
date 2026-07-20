@@ -4,6 +4,9 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
+// The F1 category this playtest loads runs ten teams of two cars.
+const EXPECTED_FIELD_SIZE = 20
+const MINI_SECTORS_PER_DRIVER = 24
 const artifactDirectory = resolve(
   process.env.QA_ARTIFACT_DIR?.trim() || join(tmpdir(), 'f1-simulator-qa'),
 )
@@ -512,7 +515,7 @@ try {
   for (const result of results) {
     const failures = []
 
-    if (result.leaderboardRows !== 30) failures.push(`expected 30 leaderboard rows, saw ${result.leaderboardRows}`)
+    if (result.leaderboardRows !== EXPECTED_FIELD_SIZE) failures.push(`expected ${EXPECTED_FIELD_SIZE} leaderboard rows, saw ${result.leaderboardRows}`)
     if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
     if (!result.leaderboardHeader.includes('BAT')) failures.push('leaderboard battery column missing')
     if (result.overviewNavigationItems !== 0) failures.push('redundant overview navigation is still present')
@@ -525,7 +528,8 @@ try {
     if (result.activePitRows >= result.leaderboardRows / 2) failures.push(`implausible simultaneous pit wave: ${result.activePitRows} cars`)
     if (!result.headerText.includes('AUSTRALIAN GRAND PRIX 2026')) failures.push('official event name missing from header')
     if (!result.headerText.includes('km/h')) failures.push('broadcast wind speed must use km/h')
-    if (result.miniSectors < 720) failures.push(`expected 30 complete timing mini-sector rows, saw ${result.miniSectors}`)
+    const expectedMiniSectors = EXPECTED_FIELD_SIZE * MINI_SECTORS_PER_DRIVER
+    if (result.miniSectors < expectedMiniSectors) failures.push(`expected ${expectedMiniSectors} complete timing mini-sector cells, saw ${result.miniSectors}`)
     if (result.initialMiniSectorStates.colored !== 0 || result.initialMiniSectorStates.dim !== result.miniSectors) failures.push('initial mini sectors must all be pending')
     const validSectorFlag = /(CLEAR|YELLOW|DOUBLE YELLOW|VSC|SC|RED)/u
     if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !validSectorFlag.test(label))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
@@ -567,7 +571,10 @@ try {
       ['drivers', result.driverScroll],
       ['live gap', result.liveGapScroll],
     ]) {
-      if (metrics.maxScrollTop <= 0 || !metrics.reachedBottom) failures.push(`${name} list cannot scroll through all drivers: ${JSON.stringify(metrics)}`)
+      // A list that already shows every driver has nothing to scroll, which is
+      // still every driver reachable.
+      const fitsWithoutScrolling = metrics.scrollHeight <= metrics.clientHeight + 1
+      if (!fitsWithoutScrolling && (metrics.maxScrollTop <= 0 || !metrics.reachedBottom)) failures.push(`${name} list cannot scroll through all drivers: ${JSON.stringify(metrics)}`)
     }
     if (!result.tyreHeader.includes('PACE DELTA') || !result.tyreHeader.includes('SOURCE')) failures.push('tyre model provenance is missing')
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
@@ -577,7 +584,7 @@ try {
     if (result.dataManagerRuleRows !== 25) failures.push(`data manager rendered ${result.dataManagerRuleRows - 1}/24 F1 events`)
     if (result.dataManagerRuleInputs < 10 || result.dataManagerQualifyingRows !== 4) failures.push(`rule editor is incomplete: ${result.dataManagerRuleInputs} inputs / ${result.dataManagerQualifyingRows - 1} segments`)
     if (result.dataManagerEventInputs < 7 || !result.dataManagerSelectedEvent.includes('f1-16')) failures.push(`event override editor is incomplete: ${result.dataManagerEventInputs} inputs / ${result.dataManagerSelectedEvent}`)
-    if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes('30 / 30') || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes('110')) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
+    if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes(`${EXPECTED_FIELD_SIZE} / ${EXPECTED_FIELD_SIZE}`) || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes('110')) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
     if (result.dataManagerLayout.scrollWidth !== result.dataManagerLayout.clientWidth || result.dataManagerLayout.scrollHeight !== result.dataManagerLayout.clientHeight) failures.push(`data manager overflows its frame: ${JSON.stringify(result.dataManagerLayout)}`)
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
     if (!result.messagesClosed || !result.messagesRestored) failures.push('message close/restore failed')
