@@ -12,6 +12,12 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - 24 selectable F1 circuit packs: 23 OpenF1-derived centerlines plus the official
   2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
   the Bahrain/Jeddah cancellation.
+- The domestic support-series circuits (Motegi, Autopolis, Fuji, SUGO) use
+  surveyed OpenStreetMap centerlines rather than placeholder vectors. Each
+  generated chain is length-checked against the published lap distance before it
+  is written out, and every one currently lands within 0.9%. Regenerate with
+  `npm run generate:support-tracks`. Track geometry is © OpenStreetMap
+  contributors under the ODbL.
 - A canonical checked-in F1 performance CSV supplies 10 teams and 30 drivers.
   Its 0-100 values are retained verbatim, including Yuki Nakayama (`NAK`) at
   Ferrari car number 31. F2/F3/SF fields live in the versioned series registry.

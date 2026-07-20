@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "generate:tracks": "node scripts/generate-real-track-layouts.mjs",
+    "generate:support-tracks": "node scripts/generate-support-track-layouts.mjs",
     "lint": "oxlint",
     "test": "vitest run --no-file-parallelism",
     "validate:montecarlo": "vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts",

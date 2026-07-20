@@ -304,7 +304,8 @@ const layoutSourceTag = (
 ): BroadcastDataDetail['source'] =>
   track.layoutSource?.provider === 'official'
     ? 'OFF'
-    : track.layoutSource?.provider === 'openf1'
+    : track.layoutSource?.provider === 'openf1' ||
+        track.layoutSource?.provider === 'openstreetmap'
       ? 'OBS'
       : 'SIM'
 
@@ -313,7 +314,9 @@ const layoutGeometryLabel = (track: TrackDefinition) =>
     ? 'Official vector geometry'
     : track.layoutSource?.provider === 'openf1'
       ? 'Observed geometry'
-      : 'Fallback geometry'
+      : track.layoutSource?.provider === 'openstreetmap'
+        ? 'Surveyed map geometry'
+        : 'Fallback geometry'
 
 const miniSectorStateLabels: Record<MiniSectorState, string> = {
   dim: 'not completed',

@@ -552,7 +552,7 @@ export type TrackDefinition = {
   layoutSource?: {
     detail: 'real' | 'fallback'
     label: string
-    provider: 'openf1' | 'official' | 'fallback'
+    provider: 'openf1' | 'official' | 'openstreetmap' | 'fallback'
     url: string | null
     year: number | null
   }

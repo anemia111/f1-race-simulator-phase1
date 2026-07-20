@@ -3069,7 +3069,8 @@ export default function App() {
   const trackGeometrySource: BroadcastDataDetail['source'] =
     raceConfig.track.layoutSource?.provider === 'official'
       ? 'OFF'
-      : raceConfig.track.layoutSource?.provider === 'openf1'
+      : raceConfig.track.layoutSource?.provider === 'openf1' ||
+          raceConfig.track.layoutSource?.provider === 'openstreetmap'
         ? 'OBS'
         : 'SIM'
 

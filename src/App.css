@@ -2162,7 +2162,9 @@
   display: grid;
   grid-template-columns: 76px minmax(1100px, 1fr);
   grid-template-rows: 52px minmax(0, 1fr) 42px;
-  width: 100vw;
+  /* 100% rather than 100vw so a page scrollbar cannot push the grid wider
+     than the space actually available and force a second, horizontal bar. */
+  width: 100%;
   min-width: 1180px;
   height: 100vh;
   min-height: 680px;
@@ -2948,6 +2950,24 @@
   scrollbar-color: #5f89a7 #050c13;
   scrollbar-gutter: stable;
   scrollbar-width: auto;
+}
+
+/* The leaderboard only shows about half of a 30-car field, so its scrollbar
+   has to read as an obvious control rather than a dark sliver. Chrome ignores
+   the ::-webkit-scrollbar rules below once scrollbar-color is set, so the
+   contrast has to come from the standard properties. */
+.leaderboard-rows {
+  scrollbar-color: #7fb4d8 #0b1a24;
+}
+
+.leaderboard-rows::-webkit-scrollbar-thumb {
+  border: 1px solid #0b1a24;
+  border-radius: 3px;
+  background: #7fb4d8;
+}
+
+.leaderboard-rows::-webkit-scrollbar-thumb:hover {
+  background: #a6d2ef;
 }
 
 :is(

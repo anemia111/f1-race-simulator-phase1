@@ -1,4 +1,27 @@
 import type { TrackDefinition } from '../types'
+import { supportSeriesTrackLayouts } from './supportSeriesTrackLayouts'
+
+// The domestic circuits have no OpenF1 layout feed, so their geometry comes
+// from surveyed OpenStreetMap ways instead of a hand-drawn placeholder. Each
+// generated chain is length-checked against the published lap distance.
+const layoutFor = (trackId: string) => {
+  const layout = supportSeriesTrackLayouts[trackId]
+
+  if (!layout) {
+    throw new Error(`Missing generated layout for support track ${trackId}`)
+  }
+
+  return {
+    centerline: layout.centerline,
+    layoutSource: {
+      detail: 'real' as const,
+      label: `Surveyed centerline, ${layout.measuredKm} km measured (${layout.source.attribution})`,
+      provider: 'openstreetmap' as const,
+      url: layout.source.officialUrl,
+      year: 2026,
+    },
+  }
+}
 
 const commonTrackData = {
   activeAeroUnavailable: false,
@@ -54,22 +77,10 @@ export const supportSeriesTracks: TrackDefinition[] = [
     ...commonTrackData,
     ...operationalData(0.955, 0.075, [0.08, 0.49]),
     baseLapTime: 87,
-    centerline: [
-      [-25, 0, 11], [-18, 0, 17], [-6, 0, 18], [7, 0, 18], [19, 0, 14],
-      [24, 0, 7], [19, 0, 2], [8, 0, 4], [2, 0, 10], [-7, 0, 10],
-      [-14, 0, 6], [-10, 0, 0], [2, 0, -2], [17, 0, -5], [23, 0, -12],
-      [15, 0, -18], [1, 0, -17], [-11, 0, -14], [-22, 0, -8], [-26, 0, 1],
-    ],
+    ...layoutFor('motegi-sf'),
     feature: 'Stop-start layout with four major braking zones',
     id: 'motegi-sf',
     isSprintWeekend: false,
-    layoutSource: {
-      detail: 'fallback',
-      label: 'Official length; local vector pending verification',
-      provider: 'fallback',
-      url: 'https://www.mr-motegi.jp/eng/course/road_course/',
-      year: 2026,
-    },
     lengthKm: 4.801,
     location: 'Japan',
     name: 'Mobility Resort Motegi',
@@ -80,22 +91,10 @@ export const supportSeriesTracks: TrackDefinition[] = [
     ...operationalData(0.93, 0.08, [0.09]),
     altitudeMeters: 820,
     baseLapTime: 90,
-    centerline: [
-      [-24, 0, 7], [-15, 2, 14], [-2, 5, 17], [12, 7, 14], [23, 8, 6],
-      [20, 5, -2], [10, 1, -5], [1, -2, 1], [-8, -3, 7], [-17, -1, 3],
-      [-21, 2, -6], [-14, 5, -14], [-2, 8, -17], [10, 10, -13], [19, 8, -8],
-      [14, 5, 0], [3, 2, 4], [-8, 0, -1], [-18, -1, -5], [-26, 0, 0],
-    ],
+    ...layoutFor('autopolis-sf'),
     feature: 'High-elevation technical circuit with linked medium-speed bends',
     id: 'autopolis-sf',
     isSprintWeekend: false,
-    layoutSource: {
-      detail: 'fallback',
-      label: 'Official length; local vector pending verification',
-      provider: 'fallback',
-      url: 'https://autopolis.jp/ap/course/',
-      year: 2026,
-    },
     lengthKm: 4.674,
     location: 'Japan',
     name: 'Autopolis',
@@ -106,22 +105,10 @@ export const supportSeriesTracks: TrackDefinition[] = [
     ...operationalData(0.945, 0.09, [0.095]),
     altitudeMeters: 550,
     baseLapTime: 80,
-    centerline: [
-      [-27, 0, 12], [-12, 0, 16], [5, 0, 16], [22, 0, 14], [28, 0, 8],
-      [22, 0, 2], [11, 0, 2], [5, 0, 8], [-3, 0, 8], [-9, 0, 2],
-      [-4, 0, -5], [7, 0, -7], [18, 0, -12], [13, 0, -18], [1, 0, -19],
-      [-12, 0, -16], [-23, 0, -11], [-28, 0, -3], [-21, 0, 4], [-29, 0, 8],
-    ],
+    ...layoutFor('fuji-sf'),
     feature: '1.5 km main straight followed by a technical final sector',
     id: 'fuji-sf',
     isSprintWeekend: false,
-    layoutSource: {
-      detail: 'fallback',
-      label: 'Official length; local vector pending verification',
-      provider: 'fallback',
-      url: 'https://www.fsw.tv/en/guide/course.html',
-      year: 2026,
-    },
     lengthKm: 4.563,
     location: 'Japan',
     name: 'Fuji Speedway',
@@ -132,22 +119,10 @@ export const supportSeriesTracks: TrackDefinition[] = [
     ...operationalData(0.92, 0.085, [0.09]),
     altitudeMeters: 110,
     baseLapTime: 64.5,
-    centerline: [
-      [-20, 0, 10], [-8, 1, 15], [5, 2, 14], [16, 3, 10], [21, 4, 3],
-      [17, 3, -3], [8, 1, -4], [2, 0, 1], [-7, -1, 2], [-15, 0, -2],
-      [-18, 2, -10], [-9, 5, -14], [3, 7, -13], [14, 8, -9], [19, 7, -2],
-      [13, 5, 4], [4, 3, 6], [-5, 1, 3], [-14, 0, 5], [-21, 0, 7],
-    ],
+    ...layoutFor('sugo-sf'),
     feature: 'Short narrow lap with elevation and a steep final climb',
     id: 'sugo-sf',
     isSprintWeekend: false,
-    layoutSource: {
-      detail: 'fallback',
-      label: 'Official length; local vector pending verification',
-      provider: 'fallback',
-      url: 'https://www.sportsland-sugo.co.jp/facility/racingcourse/',
-      year: 2026,
-    },
     lengthKm: 3.586,
     location: 'Japan',
     name: 'Sportsland SUGO',
