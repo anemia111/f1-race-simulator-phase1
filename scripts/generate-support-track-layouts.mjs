@@ -202,22 +202,6 @@ function rotateToStart(points, startIndex) {
   return [...points.slice(startIndex), ...points.slice(0, startIndex)]
 }
 
-function nearestIndex(points, target) {
-  let bestIndex = 0
-  let bestDistance = Number.POSITIVE_INFINITY
-
-  points.forEach((point, index) => {
-    const distance = Math.hypot(point.east - target.east, point.north - target.north)
-
-    if (distance < bestDistance) {
-      bestDistance = distance
-      bestIndex = index
-    }
-  })
-
-  return bestIndex
-}
-
 function resampleClosedLoop(points, sampleCount) {
   const loop = [...points, points[0]]
   const cumulative = [0]
@@ -280,6 +264,123 @@ function pointsLiteral(points) {
     .join('\n')}\n    ]`
 }
 
+/** Midpoint of a way measured along its length, not by node count. */
+function arcMidpoint(geometry) {
+  let total = 0
+  const cumulative = [0]
+
+  for (let index = 1; index < geometry.length; index += 1) {
+    total += metresBetween(geometry[index - 1], geometry[index])
+    cumulative.push(total)
+  }
+
+  for (let index = 1; index < geometry.length; index += 1) {
+    if (cumulative[index] >= total / 2) {
+      return geometry[index]
+    }
+  }
+
+  return geometry[0]
+}
+
+/**
+ * Longest run of samples that holds a near-constant heading. On these circuits
+ * that is the pit straight, which is where the start line sits.
+ */
+function longestStraight(samples) {
+  const count = samples.length
+  const headingAt = (index) => {
+    const current = samples[index]
+    const next = samples[(index + 1) % count]
+
+    return Math.atan2(next.north - current.north, next.east - current.east)
+  }
+  let best = { length: 1, startIndex: 0 }
+
+  for (let start = 0; start < count; start += 1) {
+    let heading = headingAt(start)
+    let length = 1
+
+    for (let step = 1; step < count; step += 1) {
+      const index = (start + step) % count
+      let change = Math.abs(headingAt(index) - heading)
+
+      if (change > Math.PI) change = 2 * Math.PI - change
+      if (change > 0.1) break
+
+      heading = headingAt(index)
+      length += 1
+    }
+
+    if (length > best.length) {
+      best = { length, startIndex: start }
+    }
+  }
+
+  return best
+}
+
+/**
+ * Timing sectors are placed where the lap splits into three roughly equal
+ * stretches of running time, which is how circuits tend to position their
+ * lines. Distance thirds would put every boundary in the same place regardless
+ * of layout, so the pace proxy below weights corners by their curvature: a
+ * tight section takes far longer to cover than the same distance of straight.
+ *
+ * This is still derived geometry, not a published timing-line position.
+ */
+function sectorMarksFor(samples) {
+  const count = samples.length
+  const curvatureAt = (index) => {
+    const previous = samples[(index - 1 + count) % count]
+    const current = samples[index]
+    const next = samples[(index + 1) % count]
+    const inbound = Math.atan2(current.north - previous.north, current.east - previous.east)
+    const outbound = Math.atan2(next.north - current.north, next.east - current.east)
+    let turn = Math.abs(outbound - inbound)
+
+    if (turn > Math.PI) turn = 2 * Math.PI - turn
+
+    return turn
+  }
+
+  // Smooth the heading change so a single noisy survey node cannot dominate.
+  const smoothed = samples.map((_, index) =>
+    (curvatureAt((index - 1 + count) % count) +
+      curvatureAt(index) * 2 +
+      curvatureAt((index + 1) % count)) /
+    4,
+  )
+  const durations = samples.map((point, index) => {
+    const next = samples[(index + 1) % count]
+    const distance = Math.hypot(next.east - point.east, next.north - point.north)
+    // Relative pace only; the constant sets how hard corners are penalised.
+    const speed = 1 / (1 + smoothed[index] * 6)
+
+    return distance / speed
+  })
+  const total = durations.reduce((sum, value) => sum + value, 0)
+  const marks = [0]
+  let running = 0
+
+  for (let index = 0; index < count; index += 1) {
+    const before = running / total
+    running += durations[index]
+    const after = running / total
+
+    for (const target of [1 / 3, 2 / 3]) {
+      if (before < target && after >= target) {
+        marks.push(Number(((index + 1) / count).toFixed(3)))
+      }
+    }
+  }
+
+  // Fall back to even thirds if the scan somehow missed a boundary.
+  while (marks.length < 3) marks.push(Number((marks.length / 3).toFixed(3)))
+
+  return marks.slice(0, 3)
+}
+
 const wayIds = circuits.flatMap((circuit) =>
   circuit.pitLaneWayId === null
     ? circuit.osmWayIds
@@ -317,34 +418,59 @@ for (const circuit of circuits) {
     local = [local[0], ...local.slice(1).reverse()]
   }
 
-  // Anchor progress 0 on the start/finish straight. The pit lane runs beside
-  // it, so its midpoint projects onto the straight.
+  // Anchor progress 0 on the start/finish straight. Every one of these
+  // circuits starts on its longest straight, so that stretch is found from the
+  // geometry first; the pit lane then picks the point along it, since the boxes
+  // sit beside the line. Taking the pit lane on its own is not enough because
+  // its slip roads pull the midpoint away from the boxes and into a corner.
+  const evenlySpaced = resampleClosedLoop(local, SAMPLE_COUNT)
+  const straight = longestStraight(evenlySpaced)
   const pitLane = circuit.pitLaneWayId === null ? null : wayById.get(circuit.pitLaneWayId)
-  let startIndex = 0
+  let startIndex = straight.startIndex + Math.floor(straight.length / 2)
 
   if (pitLane) {
-    const pitPoints = pitLane.geometry
-    const pitMid = pitPoints[Math.floor(pitPoints.length / 2)]
     const originLat = chain[0].lat
     const originLon = chain[0].lon
     const meanLat = chain.reduce((total, point) => total + point.lat, 0) / chain.length
-    startIndex = nearestIndex(local, {
+    const pitMid = arcMidpoint(pitLane.geometry)
+    const target = {
       east: (pitMid.lon - originLon) * 111319.49 * Math.cos((meanLat * Math.PI) / 180),
       north: (pitMid.lat - originLat) * 111132.92,
-    })
+    }
+    const candidates = Array.from({ length: straight.length }, (_, offset) => ({
+      index: (straight.startIndex + offset) % evenlySpaced.length,
+      point: evenlySpaced[(straight.startIndex + offset) % evenlySpaced.length],
+    }))
+    let best = candidates[0]
+    let bestDistance = Number.POSITIVE_INFINITY
+
+    for (const candidate of candidates) {
+      const distance = Math.hypot(
+        candidate.point.east - target.east,
+        candidate.point.north - target.north,
+      )
+
+      if (distance < bestDistance) {
+        bestDistance = distance
+        best = candidate
+      }
+    }
+
+    startIndex = best.index
   }
 
-  const centerline = normalize(
-    resampleClosedLoop(rotateToStart(local, startIndex), SAMPLE_COUNT),
-  )
+  const resampled = rotateToStart(evenlySpaced, startIndex)
+  const centerline = normalize(resampled)
+  const sectorMarks = sectorMarksFor(resampled)
 
   report.push(
-    `${circuit.id.padEnd(14)} measured ${measuredKm.toFixed(3)} km / published ${circuit.officialKm} km (${(deviation * 100).toFixed(2)}% off), ${chain.length} OSM nodes -> ${SAMPLE_COUNT} samples`,
+    `${circuit.id.padEnd(14)} measured ${measuredKm.toFixed(3)} km / published ${circuit.officialKm} km (${(deviation * 100).toFixed(2)}% off), ${chain.length} OSM nodes -> ${SAMPLE_COUNT} samples, sectors ${sectorMarks.join(' / ')}`,
   )
 
   entries.push(`  ${JSON.stringify(circuit.id)}: {
     centerline: ${pointsLiteral(centerline)} as Array<[number, number, number]>,
     measuredKm: ${Number(measuredKm.toFixed(3))},
+    sectorMarks: [${sectorMarks.join(', ')}] as [number, number, number],
     source: {
       attribution: '© OpenStreetMap contributors (ODbL)',
       kind: 'openstreetmap',
@@ -366,6 +492,12 @@ export type SupportTrackLayout = {
   centerline: Array<[number, number, number]>
   /** Lap length measured along the surveyed OSM centerline, in kilometres. */
   measuredKm: number
+  /**
+   * Progress of each timing sector boundary, derived by splitting the lap into
+   * three roughly equal stretches of running time. Not a published timing-line
+   * position.
+   */
+  sectorMarks: [number, number, number]
   source: {
     attribution: string
     kind: 'openstreetmap'

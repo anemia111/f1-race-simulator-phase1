@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import {
   DRIVER_SEGMENT_RESPONSE,
+  DRIVER_SKILL_REFERENCE,
   internalPowerScaleAtSpeed,
   MACHINE_INTERNAL_PERFORMANCE_SCALE,
   MACHINE_PACE_REFERENCE,
@@ -33,7 +34,8 @@ describe('multi-axis vehicle dynamics', () => {
     expect(MACHINE_PACE_REFERENCE).toBe(0.86)
     expect(MACHINE_PACE_SPREAD_FACTOR).toBe(0.7)
     expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
-    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.075)
+    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.14)
+    expect(DRIVER_SKILL_REFERENCE).toBe(0.9175)
     expect(MACHINE_INTERNAL_PERFORMANCE_SCALE).toBe(1.06)
     expect(internalPowerScaleAtSpeed(300)).toBeCloseTo(1.06, 10)
     expect(internalPowerScaleAtSpeed(370)).toBeCloseTo(1.03, 10)

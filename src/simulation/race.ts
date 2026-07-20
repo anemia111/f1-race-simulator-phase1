@@ -4655,7 +4655,10 @@ export function advanceRace(
             1,
             crossedAtSeconds - next.lapStartedAtSeconds!,
           )
-          const closestSlowerCar = snapshot.cars
+          // Impeding needs a car genuinely in the way, not merely somewhere on
+          // the same stretch of track. Cars stream back to the pits while
+          // others attack, so a wide window reports most of the field.
+          const obstructingCar = snapshot.cars
             .filter((candidate) => {
               const distanceAhead = candidate.totalDistance - car.totalDistance
 
@@ -4663,7 +4666,7 @@ export function advanceRace(
                 candidate.driverId !== car.driverId &&
                 candidate.status === 'running' &&
                 distanceAhead > 0 &&
-                distanceAhead < 0.035 &&
+                distanceAhead < 0.012 &&
                 candidate.timedRunPhase !== 'attack-lap'
               )
             })
@@ -4671,6 +4674,15 @@ export function advanceRace(
               (left, right) =>
                 left.totalDistance - right.totalDistance,
             )[0]
+          // Stewards take no further action on most impeding reports, so only a
+          // minority of obstructions become a grid drop.
+          const closestSlowerCar =
+            obstructingCar !== undefined &&
+            hashChance(
+              `${config.seed}:impeding-penalty:${segmentKey}:${driver.id}:${completedRun}`,
+            ) < 0.18
+              ? obstructingCar
+              : undefined
           const causedYellow =
             hashChance(
               `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedRun}`,

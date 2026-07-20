@@ -27,7 +27,13 @@ const clamp = (value: number, min: number, max: number) =>
 export const MACHINE_PACE_REFERENCE = MACHINE_PERFORMANCE_REFERENCE
 export const MACHINE_PACE_SPREAD_FACTOR = MACHINE_PERFORMANCE_SPREAD_FACTOR
 export const MACHINE_SEGMENT_RESPONSE = 0.135
-export const DRIVER_SEGMENT_RESPONSE = 0.075
+export const DRIVER_SEGMENT_RESPONSE = 0.14
+/**
+ * Blended skill of a front-running driver. Pace deviations are measured from
+ * here, so the leaders stay on their calibrated lap time while the response
+ * factor controls how far the rest of the field falls back.
+ */
+export const DRIVER_SKILL_REFERENCE = 0.9175
 export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
 export const machinePaceRating = effectiveMachineRating
@@ -231,9 +237,18 @@ export function driverSegmentExecution(options: {
     DRIVER_PERFORMANCE_INTERNAL_MAX,
   )
 
-  // Drivers cannot create grip or power beyond the machine limit. Their
-  // skills determine how closely and consistently they approach it.
-  return clamp(1 - (1 - skill) * DRIVER_SEGMENT_RESPONSE, 0.94, 1.04)
+  // Drivers cannot create grip or power beyond the machine limit. Their skills
+  // determine how closely and consistently they approach it. Deviations are
+  // measured from a front-running reference rather than a perfect score, so
+  // raising the response separates the field without slowing every car.
+  // The floor has to clear the bottom of the shared rating scale, which now
+  // reaches into the junior categories, so a weak driver is not silently
+  // lifted to midfield pace.
+  return clamp(
+    1 - (DRIVER_SKILL_REFERENCE - skill) * DRIVER_SEGMENT_RESPONSE,
+    0.9,
+    1.04,
+  )
 }
 
 export function dirtyAirDownforceMultiplier(options: {

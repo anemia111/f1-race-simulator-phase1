@@ -13,6 +13,9 @@ const layoutFor = (trackId: string) => {
 
   return {
     centerline: layout.centerline,
+    // Overrides the shared placeholder split so each circuit gets boundaries
+    // that follow its own layout.
+    sectorMarks: layout.sectorMarks,
     layoutSource: {
       detail: 'real' as const,
       label: `Surveyed centerline, ${layout.measuredKm} km measured (${layout.source.attribution})`,
