@@ -23,6 +23,12 @@ const SAMPLE_COUNT = 156
 // The published lap length and the surveyed OSM centerline are measured
 // differently, so allow a small deviation before treating a chain as wrong.
 const LENGTH_TOLERANCE = 0.04
+/**
+ * How far along the pit straight the start line sits. These circuits place the
+ * grid just after the final corner so the run to turn one is ahead of the line,
+ * not behind it. Reviewed placement, not a surveyed timing-line position.
+ */
+const START_LINE_STRAIGHT_FRACTION = 0.2
 
 // Way ids were selected by listing every `highway=raceway` way around each
 // venue and keeping the chain that forms the car racing course. `ways` is in
@@ -33,7 +39,6 @@ const circuits = [
     name: 'Mobility Resort Motegi',
     officialKm: 4.801,
     osmWayIds: [28213529, 28213530],
-    pitLaneWayId: 229813464,
     url: 'https://www.mr-motegi.jp/eng/course/road_course/',
   },
   {
@@ -41,7 +46,6 @@ const circuits = [
     name: 'Autopolis',
     officialKm: 4.674,
     osmWayIds: [115069063],
-    pitLaneWayId: null,
     url: 'https://autopolis.jp/ap/course/',
   },
   {
@@ -49,7 +53,6 @@ const circuits = [
     name: 'Fuji Speedway',
     officialKm: 4.563,
     osmWayIds: [148622740],
-    pitLaneWayId: 148621414,
     url: 'https://www.fsw.tv/en/guide/course.html',
   },
   {
@@ -59,7 +62,6 @@ const circuits = [
     // racing distance is the figure the series now runs to.
     officialKm: 3.586,
     osmWayIds: [107580877, 107581644, 107581031, 107580358],
-    pitLaneWayId: 573824372,
     url: 'https://www.sportsland-sugo.co.jp/course/c-racing/',
   },
 ]
@@ -264,25 +266,6 @@ function pointsLiteral(points) {
     .join('\n')}\n    ]`
 }
 
-/** Midpoint of a way measured along its length, not by node count. */
-function arcMidpoint(geometry) {
-  let total = 0
-  const cumulative = [0]
-
-  for (let index = 1; index < geometry.length; index += 1) {
-    total += metresBetween(geometry[index - 1], geometry[index])
-    cumulative.push(total)
-  }
-
-  for (let index = 1; index < geometry.length; index += 1) {
-    if (cumulative[index] >= total / 2) {
-      return geometry[index]
-    }
-  }
-
-  return geometry[0]
-}
-
 /**
  * Longest run of samples that holds a near-constant heading. On these circuits
  * that is the pit straight, which is where the start line sits.
@@ -381,11 +364,7 @@ function sectorMarksFor(samples) {
   return marks.slice(0, 3)
 }
 
-const wayIds = circuits.flatMap((circuit) =>
-  circuit.pitLaneWayId === null
-    ? circuit.osmWayIds
-    : [...circuit.osmWayIds, circuit.pitLaneWayId],
-)
+const wayIds = circuits.flatMap((circuit) => circuit.osmWayIds)
 const response = await overpass(`[out:json][timeout:120];
 way(id:${wayIds.join(',')});
 out geom;`)
@@ -418,46 +397,21 @@ for (const circuit of circuits) {
     local = [local[0], ...local.slice(1).reverse()]
   }
 
-  // Anchor progress 0 on the start/finish straight. Every one of these
-  // circuits starts on its longest straight, so that stretch is found from the
-  // geometry first; the pit lane then picks the point along it, since the boxes
-  // sit beside the line. Taking the pit lane on its own is not enough because
-  // its slip roads pull the midpoint away from the boxes and into a corner.
+  // Anchor progress 0 on the start/finish straight, which on every one of these
+  // circuits is the longest straight, so it is located from the geometry.
+  //
+  // The line then goes early on that straight. All four put the pit complex and
+  // the grid just after the final corner and leave the long run down to turn
+  // one ahead of the line, which is exactly what makes Fuji's 1.5 km blast
+  // famous. An earlier attempt aimed at the pit lane's midpoint instead, but
+  // OSM pit lane ways carry their approach and exit roads, so the midpoint sat
+  // far past the boxes and left the line almost on top of turn one.
   const evenlySpaced = resampleClosedLoop(local, SAMPLE_COUNT)
   const straight = longestStraight(evenlySpaced)
-  const pitLane = circuit.pitLaneWayId === null ? null : wayById.get(circuit.pitLaneWayId)
-  let startIndex = straight.startIndex + Math.floor(straight.length / 2)
-
-  if (pitLane) {
-    const originLat = chain[0].lat
-    const originLon = chain[0].lon
-    const meanLat = chain.reduce((total, point) => total + point.lat, 0) / chain.length
-    const pitMid = arcMidpoint(pitLane.geometry)
-    const target = {
-      east: (pitMid.lon - originLon) * 111319.49 * Math.cos((meanLat * Math.PI) / 180),
-      north: (pitMid.lat - originLat) * 111132.92,
-    }
-    const candidates = Array.from({ length: straight.length }, (_, offset) => ({
-      index: (straight.startIndex + offset) % evenlySpaced.length,
-      point: evenlySpaced[(straight.startIndex + offset) % evenlySpaced.length],
-    }))
-    let best = candidates[0]
-    let bestDistance = Number.POSITIVE_INFINITY
-
-    for (const candidate of candidates) {
-      const distance = Math.hypot(
-        candidate.point.east - target.east,
-        candidate.point.north - target.north,
-      )
-
-      if (distance < bestDistance) {
-        bestDistance = distance
-        best = candidate
-      }
-    }
-
-    startIndex = best.index
-  }
+  const startIndex =
+    (straight.startIndex +
+      Math.round(straight.length * START_LINE_STRAIGHT_FRACTION)) %
+    evenlySpaced.length
 
   const resampled = rotateToStart(evenlySpaced, startIndex)
   const centerline = normalize(resampled)

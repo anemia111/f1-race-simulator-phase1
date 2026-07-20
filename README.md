@@ -15,11 +15,12 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - The domestic support-series circuits (Motegi, Autopolis, Fuji, SUGO) use
   surveyed OpenStreetMap centerlines rather than placeholder vectors. Each
   generated chain is length-checked against the published lap distance before it
-  is written out, and every one currently lands within 0.9%. Progress 0 is
-  anchored on the pit straight, located from the geometry and then placed beside
-  the pit boxes, and each circuit derives its own timing sectors by splitting the
-  lap into three roughly equal stretches of running time. Both are derived
-  values, not published timing-line positions. Regenerate with
+  is written out, and every one currently lands within 0.9%. Progress 0 sits
+  early on the pit straight, which is located from the geometry, so the run down
+  to turn one is ahead of the line as it is on all four circuits. Each circuit
+  derives its own timing sectors by splitting the lap into three roughly equal
+  stretches of running time. Both are derived values, not published timing-line
+  positions. Regenerate with
   `npm run generate:support-tracks`. Track geometry is © OpenStreetMap
   contributors under the ODbL.
 - A canonical checked-in F1 performance CSV supplies 10 teams and a 20-car
