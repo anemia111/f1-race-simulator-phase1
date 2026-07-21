@@ -69,6 +69,14 @@ describe('timed session plan', () => {
         (segment) => segment.endsAtSeconds - segment.startsAtSeconds,
       ),
     ).toEqual([600, 600])
+    // A gap between the groups lets Group A's flying laps finish before Group B
+    // is released, and leaves no active segment during it.
+    expect(plan.segments[1].startsAtSeconds - plan.segments[0].endsAtSeconds).toBe(
+      180,
+    )
+    expect(
+      timedSessionStateAt(plan, plan.segments[0].endsAtSeconds + 10).segment,
+    ).toBeNull()
     expect(
       plan.segments.slice(0, 2).map(
         (segment) => segment.participantDriverIds.length,

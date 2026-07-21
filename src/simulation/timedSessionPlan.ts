@@ -5,6 +5,13 @@ import type {
   TimedSessionSegmentPlan,
 } from '../types'
 
+// Gap between the two groups of a grouped session (SUPER FORMULA). The groups
+// run separately, and this window has no active segment, so a car still on its
+// flying lap when its group's clock expires keeps the chequered-lap grace and
+// completes the lap before the next group is released. It only needs to clear
+// one flying lap on these circuits.
+const GROUP_TRANSITION_SECONDS = 180
+
 export function buildTimedSessionPlan(
   qualifying: KnockoutQualifying,
   breakSeconds = QUALIFYING_BREAK_SECONDS,
@@ -66,6 +73,12 @@ export function buildTimedSessionPlan(
       const groupDurationSeconds = segment.sessionDurationSeconds / groups.length
 
       groups.forEach((group, groupIndex) => {
+        if (groupIndex > 0) {
+          // Let the previous group's in-progress flying laps finish before the
+          // next group goes out.
+          cursor += GROUP_TRANSITION_SECONDS
+        }
+
         appendSegment(segment, {
           displayLabel: `${segment.name} GROUP ${group}`,
           durationSeconds: groupDurationSeconds,

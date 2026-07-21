@@ -502,6 +502,13 @@ function timedSessionReleasePlan(
   segment?: TimedSessionSegmentPlan | null,
   runIndex = 0,
 ) {
+  // A grouped session only sends one group out at a time. A driver who is not
+  // in this segment's group stays in the garage until their own group runs, so
+  // they get no release here rather than falling through to the default below.
+  if (segment && !segment.participantDriverIds.includes(driver.id)) {
+    return { pitExitAtSeconds: null, strategy: null }
+  }
+
   if (
     segment &&
     (stage === 'qualifying' || stage === 'sprintQualifying')
@@ -1751,16 +1758,22 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       pitExitQueueSeconds: 0,
       status: didNotQualify
         ? 'dns'
-        : pitReleaseAtSeconds === null && !startsFromPitLane
-          ? 'running'
-          : 'pit',
+        : // Timed-session cars all start in the garage; a null release means a
+          // driver waiting for a later group, not a car already on track.
+          isTimedSession
+          ? 'pit'
+          : pitReleaseAtSeconds === null && !startsFromPitLane
+            ? 'running'
+            : 'pit',
       processedLap: isRaceDistance ? 1 : lap,
       processedBattleSegment: -1,
       tire: startingTire,
       tireAgeLaps: 0,
       pitStops: 0,
       pitPhase:
-        pitReleaseAtSeconds === null && !startsFromPitLane ? 'none' : 'box',
+        !isTimedSession && pitReleaseAtSeconds === null && !startsFromPitLane
+          ? 'none'
+          : 'box',
       pitServiceKind: null,
       pitLaneProgress: startsFromPitLane
         ? pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
@@ -3114,7 +3127,9 @@ export function advanceRace(
         completedRuns,
       )
       const releaseAtSeconds = Math.max(
-        plannedRelease.pitExitAtSeconds,
+        // A null release keeps the car parked: the infinity makes canStart
+        // FlyingLap false below, so pitUntilSeconds stays null.
+        plannedRelease.pitExitAtSeconds ?? Number.POSITIVE_INFINITY,
         elapsedSeconds + 2,
       )
       const estimatedOutLapSeconds =
@@ -4883,7 +4898,8 @@ export function advanceRace(
           )
           const releaseAtSeconds = Math.max(
             crossedAtSeconds + 28,
-            releasePlan.pitExitAtSeconds,
+            // Null release (a non-participant) yields no further run below.
+            releasePlan.pitExitAtSeconds ?? Number.POSITIVE_INFINITY,
           )
           const estimatedOutLapSeconds =
             baseLapTime *
