@@ -24,11 +24,16 @@ const SAMPLE_COUNT = 156
 // differently, so allow a small deviation before treating a chain as wrong.
 const LENGTH_TOLERANCE = 0.04
 /**
- * How far along the pit straight the start line sits. These circuits place the
- * grid just after the final corner so the run to turn one is ahead of the line,
- * not behind it. Reviewed placement, not a surveyed timing-line position.
+ * How far along the pit straight the start line sits.
+ *
+ * Calibrated against the official Fuji Speedway layout, whose distance profile
+ * puts turn one (TGR corner) about 0.5 km after the line on a 1.475 km
+ * straight, so the line sits roughly two thirds of the way down it: most of the
+ * straight is behind the grid, and the run to turn one is the shorter part.
+ * Applied to all four circuits, which share that pit-complex-after-the-final-
+ * corner layout. A derived position, not a surveyed timing line.
  */
-const START_LINE_STRAIGHT_FRACTION = 0.2
+const START_LINE_STRAIGHT_FRACTION = 0.66
 
 // Way ids were selected by listing every `highway=raceway` way around each
 // venue and keeping the chain that forms the car racing course. `ways` is in
