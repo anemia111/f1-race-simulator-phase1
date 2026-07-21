@@ -754,7 +754,6 @@ function CenterView({
         <span>{overtakeSystem === 'active-aero' ? 'Straight Mode zones' : overtakeSystem === 'drs' ? 'DRS zones' : 'OTS allocation'}</span><strong>{overtakeSystem === 'ots' ? '200 seconds' : track.activeAeroUnavailable ? 'N/A' : track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : aeroSource} />
         <span>{overtakeSystem === 'ots' ? 'Activation model' : 'Overtake detection lines'}</span><strong>{overtakeSystem === 'ots' ? 'Driver controlled' : track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : overtakeSource} />
         <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
-        <span>Track evolution</span><strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong><SourceTag source="SIM" />
         <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
       </div>
     )
@@ -929,14 +928,6 @@ export function BroadcastDashboard({
         (right.car.bestLapTimeSeconds ?? Number.POSITIVE_INFINITY),
       )[0] ?? null,
     [timingRows],
-  )
-  const trackEvolution = useMemo(
-    () => Array.from({ length: 18 }, (_, index) => {
-      const progress = index / 17
-      const wave = Math.sin(index * 1.6) * 0.018
-      return clamp(0.22 + snapshot.trackEvolutionLevel * progress + wave, 0, 1)
-    }),
-    [snapshot.trackEvolutionLevel],
   )
   const displayedFeed = feedMode === 'control'
     ? raceControlLog
@@ -1159,7 +1150,6 @@ export function BroadcastDashboard({
               ))}
             </div>
           </section>
-          <section className="broadcast-panel evolution-panel"><PanelHeader eyebrow="SIM MODEL" title="Track Evolution" /><Sparkline values={trackEvolution} /><div className="evolution-axis"><span>LOW</span><span>LAP {snapshot.leaderLap}</span><span>HIGH</span></div></section>
           <section className="broadcast-panel conditions-panel"><PanelHeader title="Current Conditions" /><div className="conditions-grid"><div><Thermometer size={15}/><span>AIR TEMP</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong></div><div><Gauge size={15}/><span>TRACK TEMP</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong></div><div><Droplets size={15}/><span>WATER</span><strong>{averageWater.toFixed(2)} mm</strong></div><div><Wind size={15}/><span>WIND</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong></div><div><CloudRain size={15}/><span>RAIN</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong></div></div></section>
           <section className="broadcast-panel messages-panel">
             <PanelHeader action={<button aria-label={showRaceFeed ? 'Hide messages' : 'Show messages'} className="panel-close" onClick={() => setShowRaceFeed((value) => !value)} title={showRaceFeed ? 'Hide messages' : 'Show messages'} type="button"><X size={13}/></button>} title="Messages" />

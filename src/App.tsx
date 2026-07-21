@@ -3657,8 +3657,6 @@ export default function App() {
           <strong className={`flag-${displayedFlag}`}>{displayedFlagLabel}</strong>
           <span>Fuel effect</span>
           <strong>+{snapshot.fuelEffectSeconds.toFixed(1)}s</strong>
-          <span>Track evo</span>
-          <strong>{Math.round(snapshot.trackEvolutionLevel * 100)}%</strong>
           <span>Weather</span>
           <strong>{snapshot.weatherLabel}</strong>
           <span>Rain</span>

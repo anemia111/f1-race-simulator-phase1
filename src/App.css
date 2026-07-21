@@ -2404,7 +2404,7 @@
 
 .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 220px; }
 .broadcast-center-column { grid-template-rows: 220px minmax(250px, 1fr); }
-.broadcast-right-column { grid-template-rows: 90px 90px 116px minmax(150px, 1fr) 70px minmax(130px, 1fr); }
+.broadcast-right-column { grid-template-rows: 90px 116px minmax(150px, 1fr) 70px minmax(130px, 1fr); }
 
 .broadcast-panel {
   min-width: 0;
@@ -2884,13 +2884,11 @@
 .track-map-legend .broadcast-tire { width: 12px; height: 12px; font-size: 5.5px; }
 
 .race-control-panel,
-.evolution-panel,
 .conditions-panel,
 .messages-panel,
 .live-gap-panel { display: grid; grid-template-rows: 30px minmax(0, 1fr); }
 .race-control-panel { grid-template-rows: 30px auto minmax(0, 1fr); }
 .race-control-panel .broadcast-panel-header,
-.evolution-panel .broadcast-panel-header,
 .conditions-panel .broadcast-panel-header,
 .messages-panel .broadcast-panel-header,
 .live-gap-panel .broadcast-panel-header { min-height: 30px; }
@@ -2913,8 +2911,6 @@
 .sector-flag-sc strong { color: #ffd21f; }
 .sector-flag-red { border-color: #7e1725; background: #21070c; }
 .sector-flag-red strong { color: #ff5267; }
-.evolution-panel .broadcast-sparkline { min-height: 36px; padding: 2px 8px 0; }
-.evolution-axis { display: flex; justify-content: space-between; padding: 0 8px 4px; color: var(--broadcast-muted); font-size: 6px; }
 .conditions-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 0; padding: 8px 5px; }
 .conditions-grid div { display: grid; place-items: center; align-content: center; gap: 3px; min-width: 0; border-right: 1px solid #132331; }
 .conditions-grid div:last-child { border-right: 0; }
@@ -3075,7 +3071,7 @@
   .broadcast-center-column { grid-template-rows: 176px minmax(220px, 1fr); }
   .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 176px; }
   .broadcast-left-analytics { grid-template-rows: 88px minmax(0, 1fr); }
-  .broadcast-right-column { grid-template-rows: 78px 76px 96px minmax(120px, 1fr) 60px minmax(106px, 1fr); }
+  .broadcast-right-column { grid-template-rows: 78px 96px minmax(120px, 1fr) 60px minmax(106px, 1fr); }
   .track-status-grid { padding-top: 2px; }
   .sector-flag-strip { padding-bottom: 3px; }
   .tyre-donut { width: 50px; height: 50px; }
