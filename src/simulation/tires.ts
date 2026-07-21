@@ -664,6 +664,41 @@ export function preferredTireCategoryFor(condition: TireTrackCondition) {
   return 'I' satisfies TireCompound
 }
 
+/**
+ * Water margin, in millimetres on the racing line, that a fitted tyre keeps
+ * beyond its ideal range before a change is worth a stop.
+ *
+ * Water drifts back and forth across a threshold in unsettled rain. Judging the
+ * fitted tyre by the same knife edge that picks a new one makes the call flip
+ * every time it crosses, and a car pits again a few laps later to undo it. The
+ * margin leaves a band where the tyre already on the car is simply left alone.
+ */
+export const TIRE_CROSSOVER_MARGIN_MM = 0.25
+
+/**
+ * Whether the tyre already fitted is good enough to stay out on, as opposed to
+ * `preferredTireCategoryFor`, which picks the best tyre for a fresh set.
+ */
+export function compoundStillViable(
+  compound: TireCompound,
+  condition: TireTrackCondition,
+): boolean {
+  const waterMm = effectiveLineWaterMm(condition)
+
+  if (isDryCompound(compound)) {
+    return waterMm <= SLICK_WATER_MAX_MM + TIRE_CROSSOVER_MARGIN_MM
+  }
+
+  if (compound === 'I') {
+    return (
+      waterMm >= SLICK_WATER_MAX_MM - TIRE_CROSSOVER_MARGIN_MM &&
+      waterMm <= WET_WATER_MIN_MM + TIRE_CROSSOVER_MARGIN_MM
+    )
+  }
+
+  return waterMm >= WET_WATER_MIN_MM - TIRE_CROSSOVER_MARGIN_MM
+}
+
 export function tireTrackGripMultiplier(
   compound: TireCompound,
   condition: TireTrackCondition,

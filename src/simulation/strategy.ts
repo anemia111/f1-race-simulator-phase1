@@ -16,6 +16,7 @@ import { driverPerformanceAbility, driverSkillBlend } from './driverAbility'
 import {
   chooseCompound,
   compoundMatchesWeather,
+  compoundStillViable,
   effectiveCliffLaps,
   isDryCompound,
   preferredTireCategoryFor,
@@ -503,7 +504,7 @@ export function decidePitStop(options: {
     strategicGrip,
     forecastIsActionable ? undefined : trackCondition,
   )
-  const compound =
+  const availableCompound =
     availableCompounds && (availableCompounds[preferredCompound] ?? 0) <= 0
       ? (['S', 'M', 'H', 'I', 'W'] as TireCompound[]).find(
           (candidate) =>
@@ -516,6 +517,17 @@ export function decidePitStop(options: {
             ),
         ) ?? preferredCompound
       : preferredCompound
+  // A forecast may bring a car forward onto a wet tyre, but the track still has
+  // the final say on how wet. Full wets are for standing water: taking them off
+  // a heavy-rain label while the line holds a millimetre wastes the stop and
+  // leaves the car on far too much tread. Anticipation can still reach for
+  // intermediates early.
+  const compound =
+    availableCompound === 'W' &&
+    trackCondition &&
+    preferredTireCategoryFor(trackCondition) !== 'W'
+      ? 'I'
+      : availableCompound
   const closeAhead =
     typeof gapToAheadSeconds === 'number' &&
     gapToAheadSeconds > 0 &&
@@ -526,12 +538,12 @@ export function decidePitStop(options: {
     gapBehindSeconds < 1.25
   const frontRunner = (position ?? 99) <= 6
   const inPitWindow = age >= strategicCliff - 4
-  const weatherMismatch = !compoundMatchesWeather(
-    car.tire,
-    weather,
-    trackGrip,
-    trackCondition,
-  )
+  // Judge the fitted tyre with a margin so a car is not called in every time
+  // the water drifts across the crossover; only pick a fresh compound on the
+  // exact preference.
+  const weatherMismatch = trackCondition
+    ? !compoundStillViable(car.tire, trackCondition)
+    : !compoundMatchesWeather(car.tire, weather, trackGrip, trackCondition)
   const preferredTrackCategory = trackCondition
     ? preferredTireCategoryFor(trackCondition)
     : weather === 'heavy-rain' || trackGrip < 0.74
