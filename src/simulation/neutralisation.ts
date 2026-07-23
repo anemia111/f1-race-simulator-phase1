@@ -7,11 +7,27 @@ import type {
 import { hashChance } from './random'
 
 const SAFETY_CAR_JOIN_SIGNAL_SECONDS = 2
+/**
+ * Ten car lengths, expressed as a time gap. The sporting regulations set the
+ * same maximum for the safety car to the leader and for each car to the one
+ * ahead, so both are measured against this.
+ */
 const SAFETY_CAR_QUEUE_GAP_SECONDS = 0.65
 const SAFETY_CAR_PIT_ENTRY_PROGRESS = 0.965
 const SAFETY_CAR_LINE_EPSILON = 0.001
-export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = 0.22
+export const SAFETY_CAR_LEADER_TARGET_GAP_SECONDS = SAFETY_CAR_QUEUE_GAP_SECONDS
 const SAFETY_CAR_IN_THIS_LAP_PACE_SCALE = 0.82
+/**
+ * Safety car pace once it is leading the queue, as a fraction of racing pace.
+ *
+ * It has to sit under the pace the field actually manages while neutralised.
+ * The cars run through the vehicle model and lose more to slow corners than a
+ * flat fraction of a racing lap suggests, so a safety car circulating at the
+ * queue's nominal 0.5 creeps away a few tenths every lap and the field is never
+ * able to close up behind it. Driving marginally slower lets the leader arrive,
+ * settle on the target gap, and hold there.
+ */
+const SAFETY_CAR_QUEUE_PACE_SCALE = 0.45
 const finalCornerProgressCache = new WeakMap<TrackDefinition, number>()
 
 type SafetyCarProcedure = Extract<
@@ -761,13 +777,35 @@ function advanceSafetyCar(
       ? 0.34
       : procedure.stage === 'in-this-lap'
         ? SAFETY_CAR_IN_THIS_LAP_PACE_SCALE
-        : 0.5
+        : SAFETY_CAR_QUEUE_PACE_SCALE
 
   if (procedure.stage !== 'deployed' && procedure.stage !== 'pit-entry') {
+    // Once the leader is behind it, the safety car trims its pace to hold the
+    // ten-car-length maximum the regulations set for that gap. The cars run
+    // through the vehicle model and cover a neutralised lap a little slower
+    // than a flat fraction of a racing lap implies, so a safety car left to its
+    // own pace keeps gaining and the field is strung out behind it.
+    //
+    // This adjusts speed, not position. Clamping the safety car to a fixed
+    // distance ahead of the leader looks right but throttles the whole field:
+    // the leader may not pass the safety car, so tying the two together frame
+    // by frame caps how far the leader can travel and the queue crawls.
+    const lapSeconds = Math.max(55, leader.projectedLapTime)
+    const holdsStationWithLeader =
+      procedure.leaderCollectedAtSeconds !== null &&
+      procedure.stage !== 'in-this-lap'
+    const gapErrorSeconds = holdsStationWithLeader
+      ? (procedure.safetyCarDistance - leader.totalDistance) * lapSeconds -
+        SAFETY_CAR_LEADER_TARGET_GAP_SECONDS
+      : 0
+    const paceCorrection = Math.min(
+      0.08,
+      Math.max(-0.08, -gapErrorSeconds * 0.02),
+    )
     const safetyCarDistance =
       procedure.safetyCarDistance +
       (safetyCarDeltaSeconds / Math.max(45, track.baseLapTime)) *
-        safetyCarPaceScale
+        (safetyCarPaceScale + paceCorrection)
     procedure = {
       ...procedure,
       leaderCollectionTargetDistance: safetyCarDistance,
