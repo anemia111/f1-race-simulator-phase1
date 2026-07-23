@@ -137,6 +137,36 @@ const machineKeys = [
   'reliability',
 ] as const satisfies readonly (keyof MachinePerformanceProfile)[]
 
+// The full profile keeps 32 engineering axes for the simulation, CSV, the
+// field mean, and equalisation. The team editor only exposes a compact set of
+// high-level strength dials so tuning a team stays quick; every other axis
+// keeps its registry value.
+const editableMachineKeys = [
+  'qualifyingPace',
+  'racePace',
+  'highSpeedCornerPerformance',
+  'mechanicalGrip',
+  'traction',
+  'brakingPerformance',
+  'straightLineEfficiency',
+  'puOutput',
+  'tireDegManagement',
+  'reliability',
+] as const satisfies readonly (keyof MachinePerformanceProfile)[]
+
+const machineKeyLabels: Partial<Record<keyof MachinePerformanceProfile, string>> = {
+  qualifyingPace: 'Qualifying pace',
+  racePace: 'Race pace',
+  highSpeedCornerPerformance: 'Cornering',
+  mechanicalGrip: 'Mechanical grip',
+  traction: 'Traction',
+  brakingPerformance: 'Braking',
+  straightLineEfficiency: 'Straight-line speed',
+  puOutput: 'Power unit',
+  tireDegManagement: 'Tyre management',
+  reliability: 'Reliability',
+}
+
 const tireCompounds = ['S', 'M', 'H', 'I', 'W'] as const
 
 const humanize = (value: string) =>
@@ -929,9 +959,9 @@ export function SeriesDataManager({
                   <output>{selectedTeam.performanceSource?.fileName ?? 'series registry'}</output>
                 </div>
                 <div className="machine-editor-grid">
-                  {machineKeys.map((key) => (
+                  {editableMachineKeys.map((key) => (
                     <label key={key}>
-                      <span>{humanize(key)}</span>
+                      <span>{machineKeyLabels[key] ?? humanize(key)}</span>
                       <input max={100} min={55} onChange={(event) => updateTeam({ machine: { ...selectedTeam.machine, [key]: Number(event.target.value) / 100 } }, `${selectedTeam.id} ${key} updated`)} step={1} type="range" value={Math.round(selectedTeam.machine[key] * 100)} />
                       <strong>{Math.round(selectedTeam.machine[key] * 100)}</strong>
                     </label>
