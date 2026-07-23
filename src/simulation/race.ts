@@ -1732,6 +1732,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
       otsRemainingSeconds: config.overtakeSystem === 'ots' ? 200 : undefined,
+      otsCooldownUntilSeconds: config.overtakeSystem === 'ots' ? 0 : undefined,
       energyHarvestedThisLapMj: 0,
       energyDeployedThisLapMj: 0,
       ersMode: 'balanced',

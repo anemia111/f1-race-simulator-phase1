@@ -788,6 +788,12 @@ export type CarSnapshot = {
   overtakeEnergyRemainingMj: number
   /** Super Formula OTS allocation; absent for categories using DRS/aero overtake. */
   otsRemainingSeconds?: number
+  /**
+   * Race time until which OTS may not be reactivated after a use. Super Formula
+   * enforces a per-circuit lockout (about 120 s at Fuji/Motegi, 110 s at SUGO,
+   * 100 s at Suzuka/Autopolis) so the allocation cannot be spent in one burst.
+   */
+  otsCooldownUntilSeconds?: number
   /** ERS-K recharge accumulated on the current lap for regulation limits. */
   energyHarvestedThisLapMj: number
   /** Battery energy spent by the MGU-K on the current lap. */

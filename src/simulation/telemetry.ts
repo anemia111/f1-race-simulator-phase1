@@ -40,6 +40,26 @@ import {
   towDragReductionFor,
 } from './vehicleDynamics'
 
+/**
+ * Super Formula OTS lockout after a use, per circuit. The series publishes 120 s
+ * at Fuji and Motegi, 110 s at SUGO, and 100 s at Suzuka and Autopolis; others
+ * fall back to the shortest published figure.
+ */
+function otsCooldownSecondsFor(track: TrackDefinition): number {
+  switch (track.id) {
+    case 'fuji-sf':
+    case 'motegi-sf':
+      return 120
+    case 'sugo-sf':
+      return 110
+    case 'suzuka-approx':
+    case 'autopolis-sf':
+      return 100
+    default:
+      return 100
+  }
+}
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
@@ -99,6 +119,7 @@ type CalculatedTelemetry = {
   overtakeStatus: OvertakeStatus
   overtakeEnergyRemainingMj: number
   otsRemainingSeconds?: number
+  otsCooldownUntilSeconds?: number
   energyHarvestedThisLapMj: number
   energyDeployedThisLapMj: number
   superClippingIntensity: number
@@ -302,7 +323,8 @@ export function calculateCarTelemetry(options: {
     !phase &&
     !lowGripConditions &&
     car.status === 'running' &&
-    (car.otsRemainingSeconds ?? 0) > 0
+    (car.otsRemainingSeconds ?? 0) > 0 &&
+    elapsedSeconds >= (car.otsCooldownUntilSeconds ?? 0)
   const otsActive =
     otsAvailable &&
     brakePercent <= 3 &&
@@ -633,6 +655,16 @@ export function calculateCarTelemetry(options: {
     overtakeSystem === 'ots'
       ? Math.max(0, (car.otsRemainingSeconds ?? 200) - (otsActive ? deltaSeconds : 0))
       : car.otsRemainingSeconds
+  // A use starts the circuit lockout when the driver comes off OTS, so the
+  // allocation is spent in several bursts rather than one continuous run.
+  const otsJustReleased =
+    overtakeSystem === 'ots' && car.overtakeStatus === 'active' && !otsActive
+  const otsCooldownUntilSeconds =
+    overtakeSystem === 'ots'
+      ? otsJustReleased
+        ? elapsedSeconds + otsCooldownSecondsFor(track)
+        : car.otsCooldownUntilSeconds
+      : car.otsCooldownUntilSeconds
 
   return {
     activeAeroMode,
@@ -650,6 +682,7 @@ export function calculateCarTelemetry(options: {
     overtakeStatus,
     overtakeEnergyRemainingMj,
     otsRemainingSeconds,
+    otsCooldownUntilSeconds,
     energyHarvestedThisLapMj: energyStore.actualHarvestedThisLapMJ,
     energyDeployedThisLapMj,
     superClippingIntensity: superClipping.intensity,
