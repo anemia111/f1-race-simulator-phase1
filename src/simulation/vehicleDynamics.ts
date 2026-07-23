@@ -67,6 +67,12 @@ export type LongitudinalStepInput = {
   team: Team
   throttlePercent: number
   towDragReduction?: number
+  /**
+   * Extra aerodynamic drag for junior categories, so their terminal speed drops
+   * to the real machine's without touching cornering or lap pace. Drag rises
+   * with v², so it bites at top speed and barely changes corner speeds. 1 = F1.
+   */
+  categoryDragScale?: number
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
@@ -416,7 +422,12 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
     const speedKph = nextMps * 3.6
     const airSpeedMps = Math.max(0, nextMps + (input.headwindMps ?? 0))
     const dragForceN =
-      0.5 * input.airDensityKgM3 * dragAreaM2 * airSpeedMps * airSpeedMps
+      0.5 *
+      input.airDensityKgM3 *
+      dragAreaM2 *
+      clamp(input.categoryDragScale ?? 1, 1, 3.5) *
+      airSpeedMps *
+      airSpeedMps
     const powerKw =
       (combustionPowerKwFor(input.team) * internalPowerScaleAtSpeed(speedKph) +
         Math.max(0, input.extraDrivePowerKw ?? 0) +

@@ -67,6 +67,10 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - Integrated acceleration now produces representative dry maxima above the old
   260 km/h plateau, while 420-class speed remains limited to favorable long
   straights with low drag, low fuel, tow, and ERS deployment.
+- Each category tops out near its real machine. Extra straight-line drag, which
+  rises with speed and so bites only at the top end, brings race top speeds to
+  roughly F1 360, F2 335, SUPER FORMULA 315, and F3 300 km/h without changing
+  the cornering pace the lap-time multipliers already set.
 - Driver abilities use one 0-100 source scale across all categories without
   runtime category subtraction. Machine and driver performance stay separate.
   The stored support-series ratings are already rebased against the F1 field, so

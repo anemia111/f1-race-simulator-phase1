@@ -134,6 +134,7 @@ export function calculateCarTelemetry(options: {
   trackCondition?: TireTrackCondition
   setup?: CarSetup
   headwindMps?: number
+  categoryDragScale?: number
   track: TrackDefinition
   team: Team
   trackGrip: number
@@ -516,6 +517,7 @@ export function calculateCarTelemetry(options: {
       temperatureC: trackTemperatureC,
     }),
     brakePercent,
+    categoryDragScale: options.categoryDragScale,
     currentSpeedKph: car.speedKph,
     deltaSeconds,
     drivePowerScale: superClipping.drivePowerScale,

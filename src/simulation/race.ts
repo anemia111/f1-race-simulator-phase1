@@ -160,6 +160,35 @@ const TICKER_EVENT_WINDOW_SECONDS = 12
 /** Seconds after retirement before the wreck is cleared from the 3D track. */
 const WRECK_CLEAR_SECONDS = 25
 /** Tight but non-overlapping spacing enforced inside an SC train. */
+/**
+ * Extra straight-line drag for the junior categories, so each field tops out
+ * near its real machine instead of matching F1. F1 keeps this simulation's
+ * designed 400-class terminal speed (1). Junior cars run less power and more
+ * drag, so their top speed is lower; drag rises with v², biting only at the top
+ * end and leaving cornering pace to the lap-time multiplier. Tuned so top
+ * speeds land near each real machine: F1 360, SUPER FORMULA 315, F2 335,
+ * F3 300.
+ *
+ * A config with no category (the raw physics tests and calibration helpers)
+ * keeps 1, the uncapped car; the drag applies only to an explicit series.
+ */
+function categoryDragScaleFor(
+  seriesId: RaceConfig['seriesId'],
+): number {
+  switch (seriesId) {
+    case 'f1-custom':
+      return 1.9
+    case 'f2':
+      return 2.55
+    case 'f3':
+      return 3.4
+    case 'super-formula':
+      return 2.4
+    default:
+      return 1
+  }
+}
+
 const SAFETY_CAR_QUEUE_MIN_GAP_SECONDS = 0.22
 /** VSC cars retain their track gaps but cannot overlap while overtaking is banned. */
 const VSC_QUEUE_MIN_GAP_SECONDS = 0.4
@@ -3868,6 +3897,7 @@ export function advanceRace(
     })
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
+      categoryDragScale: categoryDragScaleFor(config.seriesId),
       deltaSeconds,
       driver,
       elapsedSeconds,
