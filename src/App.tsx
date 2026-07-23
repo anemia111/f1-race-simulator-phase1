@@ -2021,6 +2021,38 @@ export default function App() {
     sprintShootout,
     standardQualifying,
   ])
+
+  // Once a knockout qualifying session finishes, roll straight into the feature
+  // race it just set the grid for. The effect above has already locked the
+  // qualifying result into the weekend context, so the race opens on that grid.
+  // Only advance when the very next stage is the feature race (race/race2); a
+  // weekend that runs a sprint between qualifying and the feature is left for
+  // the manual advance so the sprint is never skipped.
+  useEffect(() => {
+    if (
+      !snapshotIsCurrent ||
+      snapshot.sessionStatus !== 'finished' ||
+      !isStandardQualifyingStage(selectedWeekendStage)
+    ) {
+      return
+    }
+
+    const stageIndex = weekendStages.indexOf(selectedWeekendStage)
+    const nextStage = stageIndex >= 0 ? weekendStages[stageIndex + 1] : undefined
+
+    if (!nextStage || !isFeatureRaceStage(nextStage)) {
+      return
+    }
+
+    setSeed(createAutoScenarioSeed())
+    setSelectedWeekendStage(nextStage)
+  }, [
+    selectedWeekendStage,
+    snapshot.sessionStatus,
+    snapshotIsCurrent,
+    weekendStages,
+  ])
+
   const weatherTrackState = useMemo(
     () =>
       weatherTrackStateFor(
