@@ -569,6 +569,14 @@ function LeftLeaderboard({
                 <span className="leaderboard-driver">
                   <i style={{ backgroundColor: row.car.teamColor }} />
                   <strong>{row.car.code}</strong>
+                  {row.car.penaltySeconds > 0 ? (
+                    <small
+                      className="penalty-pending-label"
+                      title={`Outstanding time penalty: +${row.car.penaltySeconds}s (applied at the finish unless served in the pits)`}
+                    >
+                      +{row.car.penaltySeconds}s
+                    </small>
+                  ) : null}
                   {row.car.blueFlag ? (
                     <small className="blue-flag-label" title="Blue flag">
                       <Flag aria-hidden="true" size={7} /> BLUE

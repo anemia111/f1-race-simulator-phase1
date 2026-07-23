@@ -1271,11 +1271,16 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   }
 
   const lapTime = config.track.baseLapTime
-  // Time penalties are folded into the classification so a penalized car's
-  // on-screen gap already reflects what it owes. (Real F1 serves penalties
-  // at stops or after the race; simplified for now.)
+  // The running order still folds an outstanding time penalty in, so the
+  // physical battle order and the eventual result stay consistent with what a
+  // car owes. The LIVE gap shown to the viewer, however, is measured on track
+  // (see trackGap): the penalty is surfaced separately as a pending "+Ns" chip
+  // and only bites the classification at the finish, or is cleared earlier when
+  // the car serves it at a pit stop.
   const classified = (car: CarSnapshot) =>
     car.totalDistance - car.penaltyLaps - car.penaltySeconds / lapTime
+  // On-track order with no pending penalty applied — used for the live gap.
+  const trackGap = (car: CarSnapshot) => car.totalDistance - car.penaltyLaps
   // Finished cars are classified by real crossing time plus penalties, not
   // by frozen distance (which collapses at the line).
   const finishTime = (car: CarSnapshot) =>
@@ -1327,6 +1332,8 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
       }
     }
 
+    // Physics gap (penalty folded in) — drives dirty air, battle triggers and
+    // overtakes, so it must stay identical to the running order.
     const gapToLeader =
       index === 0
         ? 0
@@ -1340,6 +1347,21 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
         : car.status === 'finished' && ahead.status === 'finished'
           ? finishTime(car) - finishTime(ahead)
           : (classified(ahead) - classified(car)) * lapTime
+    // Live display gap (penalty NOT applied) — what the viewer sees on the
+    // timing sheet while the pending penalty rides alongside as a chip. Finished
+    // cars keep the penalty in the gap so the result reflects the sum.
+    const liveGapToLeader =
+      index === 0
+        ? 0
+        : car.status === 'finished' && leader.status === 'finished'
+          ? finishTime(car) - finishTime(leader)
+          : (trackGap(leader) - trackGap(car)) * lapTime
+    const liveGapToAhead =
+      !ahead || ahead.status === 'retired'
+        ? 0
+        : car.status === 'finished' && ahead.status === 'finished'
+          ? finishTime(car) - finishTime(ahead)
+          : (trackGap(ahead) - trackGap(car)) * lapTime
 
     return {
       ...car,
@@ -1351,8 +1373,8 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
           ? car.status === 'finished'
             ? 'Winner'
             : 'Leader'
-          : formatGap(gapToLeader),
-      gapToAheadLabel: index === 0 ? '0.0s' : `+${gapToAhead.toFixed(1)}s`,
+          : formatGap(liveGapToLeader),
+      gapToAheadLabel: index === 0 ? '0.0s' : `+${liveGapToAhead.toFixed(1)}s`,
     }
   })
 }
