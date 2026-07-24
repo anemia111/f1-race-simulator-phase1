@@ -85,38 +85,20 @@ type SetupPanelProps = {
   tracks: TrackDefinition[]
 }
 
+// A compact set of high-level strength dials rather than every one of the 32
+// engineering axes, so tuning a team stays quick. Untouched axes keep their
+// registry value; the simulation still reads the full machine profile. Kept in
+// step with SeriesDataManager's editableMachineKeys.
 const teamStats: Array<{ key: TeamStat; label: string }> = [
   { key: 'qualifyingPace', label: 'Qualifying pace' },
   { key: 'racePace', label: 'Race pace' },
-  { key: 'lowSpeedCornerPerformance', label: 'Low-speed corner' },
-  { key: 'mediumSpeedCornerPerformance', label: 'Mid-speed corner' },
-  { key: 'highSpeedCornerPerformance', label: 'High-speed corner' },
+  { key: 'highSpeedCornerPerformance', label: 'Cornering' },
   { key: 'mechanicalGrip', label: 'Mechanical grip' },
   { key: 'traction', label: 'Traction' },
-  { key: 'brakingStability', label: 'Brake stability' },
-  { key: 'brakingPerformance', label: 'Braking force' },
-  { key: 'aerodynamicEfficiency', label: 'Aero efficiency' },
-  { key: 'downforceGeneration', label: 'Downforce' },
-  { key: 'dragEfficiency', label: 'Drag efficiency' },
-  { key: 'straightLineEfficiency', label: 'Straight efficiency' },
-  { key: 'activeAeroEfficiency', label: 'Active aero' },
-  { key: 'towSensitivity', label: 'Tow response' },
-  { key: 'dirtyAirTolerance', label: 'Dirty-air tolerance' },
-  { key: 'tireWarmup', label: 'Tire warmup' },
-  { key: 'tireDegManagement', label: 'Tire degradation' },
-  { key: 'frontTireManagement', label: 'Front tire load' },
-  { key: 'rearTireManagement', label: 'Rear tire load' },
-  { key: 'wetPerformance', label: 'Wet performance' },
-  { key: 'intermediatePerformance', label: 'Intermediate perf.' },
-  { key: 'kerbHandling', label: 'Kerb handling' },
-  { key: 'rideCompliance', label: 'Ride compliance' },
-  { key: 'bumpTolerance', label: 'Bump tolerance' },
-  { key: 'coolingEfficiency', label: 'Cooling' },
-  { key: 'brakeCooling', label: 'Brake cooling' },
-  { key: 'puOutput', label: 'PU output' },
-  { key: 'electricalDeploymentEfficiency', label: 'ERS deployment' },
-  { key: 'energyRecoveryEfficiency', label: 'Energy recovery' },
-  { key: 'fuelEfficiency', label: 'Fuel efficiency' },
+  { key: 'brakingPerformance', label: 'Braking' },
+  { key: 'straightLineEfficiency', label: 'Straight-line speed' },
+  { key: 'puOutput', label: 'Power unit' },
+  { key: 'tireDegManagement', label: 'Tyre management' },
   { key: 'reliability', label: 'Reliability' },
   { key: 'pitCrewSpeed', label: 'Pit crew' },
 ]
