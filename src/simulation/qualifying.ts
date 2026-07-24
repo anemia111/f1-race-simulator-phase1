@@ -333,14 +333,11 @@ function qualifyingRunsForDriver(
         0.008 + Math.max(0, 1 - awareness) * 0.035
     const lapTimeSeconds = rawLapTimeSeconds + trafficLossSeconds
     const rainMultiplier = weather === 'heavy-rain' ? 1.18 : weather === 'light-rain' ? 1.08 : 1
-    const outLapTimeSeconds =
-      config.track.baseLapTime *
-      rainMultiplier *
-      (1.35 + hashChance(`${runKey}:out`) * 0.22)
-    const inLapTimeSeconds =
-      config.track.baseLapTime *
-      rainMultiplier *
-      (1.42 + hashChance(`${runKey}:in`) * 0.28)
+    // Every car runs the out and in laps at the same measured pace, so the gap
+    // set by the pit-release wave is preserved and nobody reels in the car ahead
+    // on their flying lap.
+    const outLapTimeSeconds = config.track.baseLapTime * rainMultiplier * 1.46
+    const inLapTimeSeconds = config.track.baseLapTime * rainMultiplier * 1.56
     const releaseSlot = releaseSlots[run]
     const latestPitExit = Math.max(0, sessionDurationSeconds - outLapTimeSeconds - 1)
     const pitExitAtSeconds = Math.min(

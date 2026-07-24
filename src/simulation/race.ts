@@ -718,12 +718,19 @@ function telemetryForTimedRunPhase<T extends {
   const rpmScale = phase === 'in-lap' ? 0.88 : phase === 'out-lap' ? 0.92 : 0.94
   const throttleCeiling =
     phase === 'in-lap' ? 68 : phase === 'out-lap' ? 82 : 76
+  // Out and in laps run to a controlled delta pace, not flat out. Capping the
+  // speed to a common ceiling keeps every car at the same measured out-lap pace
+  // so the pit-release spacing holds and nobody reels in the car ahead before
+  // their flying lap.
+  const speedCeilingKph =
+    phase === 'in-lap' ? 150 : phase === 'out-lap' ? 175 : 190
 
   return {
     ...telemetry,
     activeAeroMode: 'corner',
     overtakeStatus: 'disabled',
     rpm: Math.round(telemetry.rpm * rpmScale),
+    speedKph: Math.min(telemetry.speedKph, speedCeilingKph),
     throttlePercent: Math.min(
       throttleCeiling,
       telemetry.throttlePercent,
