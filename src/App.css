@@ -2584,6 +2584,12 @@
 .leaderboard-driver small { color: var(--broadcast-muted); font-size: 6px; }
 .leaderboard-driver .blue-flag-label { display: flex; align-items: center; gap: 1px; color: #54a7ff; font-weight: 900; }
 .leaderboard-driver .penalty-pending-label { display: inline-flex; align-items: center; padding: 0 3px; border-radius: 3px; background: rgba(255, 107, 124, 0.16); color: #ff6b7c; font-weight: 900; letter-spacing: -0.02em; }
+.setup-completeness { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 8px; margin-bottom: 8px; font-size: 11px; }
+.setup-completeness > span { color: #9aa4ae; }
+.setup-completeness > strong { color: #45df7a; font-weight: 900; font-variant-numeric: tabular-nums; }
+.setup-completeness > small { grid-column: 1 / -1; color: #68727d; }
+.setup-completeness-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.setup-completeness-bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #45df7a, #7be6a4); border-radius: 3px; }
 .status-value { color: #ff6b7c; font-weight: 900; }
 .sector-value { color: #68727d; }
 .sector-value.sector-status-pending,

@@ -149,6 +149,53 @@ export function setupPaceDeltaSeconds(track: TrackDefinition, setup: CarSetup) {
   return clamp(setupDistance(normalizeCarSetup(setup), idealSetupForTrack(track)) * 2.4, 0, 2.4)
 }
 
+/**
+ * How good a driver is at feeding back to the engineers and dialling the car in
+ * — a blend of car-balance feel and adaptability. Drives how complete a setup a
+ * driver reaches in practice and how much they extract from it in one lap.
+ */
+export function driverSetupFeedback(driver: Driver): number {
+  return clamp(
+    driverPerformanceAbility(driver, 'carBalanceAdaptation') * 0.6 +
+      driverPerformanceAbility(driver, 'adaptability') * 0.4,
+    0,
+    1,
+  )
+}
+
+/**
+ * Setup completeness on a 0-100% scale: how close the car is to its ideal
+ * setup, lifted by the driver's feedback ability. 100% is a perfectly dialled
+ * car in the hands of a driver who nails the balance.
+ */
+export function setupCompletenessPercent(
+  track: TrackDefinition,
+  setup: CarSetup,
+  driver: Driver,
+): number {
+  const setupState =
+    1 - clamp(setupDistance(normalizeCarSetup(setup), idealSetupForTrack(track)), 0, 1)
+  const feedback = driverSetupFeedback(driver)
+
+  return Math.round(clamp(setupState * 80 + feedback * 20, 0, 100))
+}
+
+// Peak lap time a fully unresolved setup costs in qualifying — a single
+// flat-out lap, so an imperfect balance bites hard. The race already prices
+// setup through setupPaceDeltaSeconds over the stint.
+const QUALIFYING_SETUP_MAX_SECONDS = 1.1
+
+/** Qualifying single-lap penalty from an incomplete setup. */
+export function qualifyingSetupPenaltySeconds(
+  track: TrackDefinition,
+  setup: CarSetup,
+  driver: Driver,
+): number {
+  const completeness = setupCompletenessPercent(track, setup, driver)
+
+  return clamp((1 - completeness / 100) * QUALIFYING_SETUP_MAX_SECONDS, 0, QUALIFYING_SETUP_MAX_SECONDS)
+}
+
 export function practiceSetupRecommendation(options: {
   config: RaceConfig
   driver: Driver
@@ -161,12 +208,13 @@ export function practiceSetupRecommendation(options: {
   const current =
     config.weekendContext?.setupByDriver?.[driver.id] ?? defaultCarSetup
   const stageFactor = stage === 'fp1' ? 0.48 : stage === 'fp2' ? 0.7 : 0.86
-  const adaptability = driverPerformanceAbility(driver, 'adaptability')
+  // A driver who feeds back well converges the setup toward the ideal faster.
+  const feedback = driverSetupFeedback(driver)
   const confidence = clamp(
     lapsCompleted / 28 * 0.57 +
       setupScore / 100 * 0.25 +
       stageFactor * 0.1 +
-      adaptability * 0.08,
+      feedback * 0.08,
     0.18,
     0.96,
   )

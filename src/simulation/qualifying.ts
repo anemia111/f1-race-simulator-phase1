@@ -15,7 +15,11 @@ import {
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
-import { practiceSetupRecommendation } from './engineering'
+import {
+  baselineSetupForTrack,
+  practiceSetupRecommendation,
+  qualifyingSetupPenaltySeconds,
+} from './engineering'
 import { effectiveMachineReliability } from './machinePerformance'
 import { hashChance } from './random'
 import {
@@ -265,6 +269,10 @@ function qualifyingRunLapTime(
     hashChance(`${key}:mistake`) < mistakeChance
       ? 0.35 + hashChance(`${key}:mistake-loss`) * 3.8
       : 0
+  const setup =
+    config.weekendContext?.setupByDriver?.[driver.id] ??
+    baselineSetupForTrack(config.track)
+  const setupPenalty = qualifyingSetupPenaltySeconds(config.track, setup, driver)
 
   return Math.max(
     55,
@@ -275,7 +283,8 @@ function qualifyingRunLapTime(
       wetPenalty +
       variance +
       trafficLoss +
-      mistake,
+      mistake +
+      setupPenalty,
   )
 }
 

@@ -14,6 +14,11 @@ import {
   normalizeCarComponents,
 } from '../simulation/components'
 import {
+  baselineSetupForTrack,
+  driverSetupFeedback,
+  setupCompletenessPercent,
+} from '../simulation/engineering'
+import {
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
@@ -240,6 +245,12 @@ export function SetupPanel({
     tracks.find((track) => track.id === selectedTrackId) ?? tracks[0]
   const tracksById = new Map(tracks.map((track) => [track.id, track]))
   const selectedCarSetup = weekendContext.setupByDriver[selectedDriver.id]
+  const setupCompleteness = setupCompletenessPercent(
+    selectedTrack,
+    selectedCarSetup ?? baselineSetupForTrack(selectedTrack),
+    selectedDriver,
+  )
+  const setupFeedbackRating = Math.round(driverSetupFeedback(selectedDriver) * 100)
   const selectedComponents = normalizeCarComponents(
     weekendContext.componentConditionByDriver[selectedDriver.id],
   )
@@ -564,6 +575,14 @@ export function SetupPanel({
         <div className="section-title">
           <span>Car setup</span>
           <small>{parcFermeLocked ? 'PARC FERME' : `confidence ${Math.round((weekendContext.setupConfidenceByDriver[selectedDriver.id] ?? 0) * 100)}%`}</small>
+        </div>
+        <div className="setup-completeness">
+          <span>Setup completeness</span>
+          <div className="setup-completeness-bar">
+            <i style={{ width: `${setupCompleteness}%` }} />
+          </div>
+          <strong>{setupCompleteness}%</strong>
+          <small>feedback {setupFeedbackRating} · affects quali &amp; race pace</small>
         </div>
         {selectedCarSetup ? (
           <>
