@@ -171,16 +171,19 @@ function durationForSegment(
       ]
 }
 
+// Track rubbers in through the session, so the same lap is worth more time in
+// each later segment. The steps are deliberately clear so Q1 > Q2 > Q3 pace
+// reads on the timing screen (in dry running).
 function segmentEvolutionFor(segment: QualifyingSegmentName) {
   switch (segment) {
     case 'Q3':
-      return 0.42
+      return 0.85
     case 'Q2':
-      return 0.2
+      return 0.4
     case 'SQ3':
-      return 0.24
+      return 0.5
     case 'SQ2':
-      return 0.12
+      return 0.24
     default:
       return 0
   }
