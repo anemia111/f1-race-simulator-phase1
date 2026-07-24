@@ -27,7 +27,7 @@ FIA when the corresponding competition document is not public or normalized.
 | Recharge | C5.2.10, FIA 2026 refinement | Public 8.5 MJ per-lap maximum by default, optional event override, 7 MJ qualifying recharge, and no recharge limit behind the Safety Car in Low Grip. |
 | Standing start ERS | C5.2.12 | MGU-K deployment is blocked below 50 km/h, except for the existing SECU low-power-start safety state. |
 | Race and Sprint distance | B2.3/B2.5 | Sprint exceeds 100 km; Grand Prix uses the official event lap count and time limits. |
-| Qualifying format | B2.4, B4.3 | Q1/Q2/Q3 run for 18/15/13 minutes with seven-minute intervals. The regulation's larger-field progression is extended to the fictional 30-car entry as 30 to 20 to 10. Exact ties favour the earlier lap, Q2/Q3 no-time ordering uses flying-lap/left-pits/garage groups and the prior period, and a lap started before zero may finish. Team release waves target traffic gaps and avoid consecutive team-mate releases. Dry attempts use Soft tyres and execute an out lap, attack lap and in lap; the attack map targets a low end-of-lap SOC while preserving the published power and recharge ceilings. |
+| Qualifying format | B2.4, B4.3 | Q1/Q2/Q3 run for 18/15/13 minutes with seven-minute intervals. The regulation's larger-field progression scales with the fielded entry: the default 20-car field runs 20 to 15 to 10, and a larger custom entry (for example 30 cars) extends to 30 to 20 to 10. Exact ties favour the earlier lap, Q2/Q3 no-time ordering uses flying-lap/left-pits/garage groups and the prior period, and a lap started before zero may finish. Team release waves target traffic gaps and avoid consecutive team-mate releases. Dry attempts use Soft tyres and execute an out lap, attack lap and in lap; the attack map targets a low end-of-lap SOC while preserving the published power and recharge ceilings. |
 | Sprint Qualifying | B2.2, B6.3.9 | SQ1/SQ2 use Medium and SQ3 uses Soft in dry conditions. |
 | Tyre allocation | B6.2.4 | Standard H2/M3/S8/I5/W2 and alternative H2/M4/S6/I6/W2 allocations. |
 | Race tyre rule | B6.3.6 | Two dry specifications are required unless Intermediate or Wet tyres were used. |
@@ -51,7 +51,7 @@ FIA when the corresponding competition document is not public or normalized.
 
 ## Public-data boundaries
 
-- Product rule: the fictional 30-car championship does not apply a 107%
+- Product rule: the fictional custom championship does not apply a 107%
   cutoff. A valid Q1 time remains classified regardless of deficit; no-time
   and all-laps-deleted cases still require permission to start.
 

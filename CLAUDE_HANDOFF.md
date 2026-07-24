@@ -30,7 +30,8 @@ driving game.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
 - `src/data/f1Performance.csv` is the canonical F1 10-team/30-driver source on
-  a 0-100 scale. It includes Ferrari `NAK` car number 31.
+  a 0-100 scale (20 fielded seats, two per team; the rest are `reserve` rows).
+  It includes Ferrari `NAK` car number 31.
 - `src/data/motorsportSeries2026.json` is the versioned F2/F3/SF field,
   calendar, tire, points, and qualifying source. The validated relational pool
   contains 110 unique people; do not apply category subtraction at runtime.
@@ -63,7 +64,7 @@ driving game.
 - Sessions: FP1/FP2/FP3, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race.
 - Timed sessions start from pit boxes, distinguish out/attack/in laps, run the
   official Q/SQ clocks and breaks, freeze the clock during planned red flags,
-  and reduce the 30-car field to the measured top 20/top 10 rather than a
+  and reduce the 20-car field to the measured top 15/top 10 rather than a
   precomputed order.
 - Timed-session adjudication includes deleted track-limit laps, double-yellow
   invalidation, impeding/grid penalties, serialized pit-exit queues, chequered
@@ -191,7 +192,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 260 passed across 31 files
+- Tests: 391 passed across 44 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow

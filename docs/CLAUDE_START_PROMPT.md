@@ -18,9 +18,9 @@ Important constraints:
   transitions; never recolor from projected lap time.
 - Preserve independent S1/S2/S3 yellow and double-yellow state in SIM and
   observed OpenF1 modes.
-- Preserve the canonical CSV-backed 15-team/30-driver field and its requested
-  `NAK` car number 31 and `RB` identity; do not silently alter the supplied
-  performance values.
+- Preserve the canonical CSV-backed 10-team field (20 fielded cars from a
+  30-driver CSV with reserves) and its requested `NAK` car number 31 and `RB`
+  identity; do not silently alter the supplied performance values.
 - Qualifying promotion and grids must use measured Q1/Q2/Q3 or SQ results.
 - Keep cars on one racing line without artificial lateral battle movement.
 - Do not add onboard/replay/radio playback/multi-camera broadcast features.

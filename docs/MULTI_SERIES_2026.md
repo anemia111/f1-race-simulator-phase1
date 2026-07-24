@@ -4,7 +4,7 @@
 
 | Category | Teams | Cars | Qualifying | Race format | Overtake |
 | --- | ---: | ---: | --- | --- | --- |
-| F1 Custom | 10 | 30 | Q1 18m: 30 to 20; Q2 15m: 20 to 10; Q3 13m | Grand Prix; sprint weekends where configured | 2026 active aero and Overtake |
+| F1 Custom | 10 | 20 | Q1 18m: 20 to 15; Q2 15m: 15 to 10; Q3 13m | Grand Prix; sprint weekends where configured | 2026 active aero and Overtake |
 | FIA Formula 2 | 11 | 22 | One 30-minute session; Monaco uses odd/even 16-minute groups | Reverse top 10 sprint; feature race with mandatory stop and both dry specs | DRS |
 | FIA Formula 3 | 10 | 30 | One 30-minute session; Monaco/Monza use odd/even groups; Madrid has two sessions | Reverse top 12 sprint; no routine mandatory stop; Madrid has two feature races | DRS |
 | SUPER FORMULA | 16 | 24 | Q1 groups A/B (10m each), top six from each to Q2 | JAF points; best two team cars score | 200-second OTS, available from the opening lap |
