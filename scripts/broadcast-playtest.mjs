@@ -300,7 +300,11 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByTitle('Classification').click()
   await page.waitForSelector('.classification-panel')
   const classificationVisible = await page.locator('.classification-panel').isVisible()
-  await page.locator('.classification-panel header button').click()
+  await page.getByLabel('Show lap chart').click()
+  await page.waitForSelector('.lap-chart svg polyline')
+  const lapChartLineCount = await page.locator('.lap-chart svg polyline').count()
+  await page.getByLabel('Hide lap chart').click()
+  await page.getByLabel('hide classification').click()
 
   await page.getByTitle('Selected driver analysis').click()
   await page.waitForSelector('.insights-panel')
@@ -348,6 +352,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     centerMapLayout,
     chaseSelected,
     classificationVisible,
+    lapChartLineCount,
     dataDetails,
     dataManagerAudit,
     dataManagerDriverRows,
@@ -592,6 +597,7 @@ try {
     if (result.speed60Selected !== 'true' || !result.resumeVisible) failures.push('playback controls failed')
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')
     if (!result.setupVisible || !result.classificationVisible || !result.insightsVisible || !result.strategyControlsVisible) failures.push('secondary functional panels failed')
+    if (result.lapChartLineCount < EXPECTED_FIELD_SIZE) failures.push(`lap chart drew ${result.lapChartLineCount} of ${EXPECTED_FIELD_SIZE} car lines`)
     if (!result.canvas?.ok) failures.push(`canvas pixels invalid: ${JSON.stringify(result.canvas)}`)
     if (result.pageErrors.length > 0) failures.push(`page errors: ${result.pageErrors.join('; ')}`)
     if (result.layout.documentWidth !== result.layout.viewportWidth || result.layout.documentHeight !== result.layout.viewportHeight) failures.push(`viewport overflow ${result.layout.documentWidth}x${result.layout.documentHeight}`)

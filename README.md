@@ -100,6 +100,9 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   per driver rebuilt from measured lap records, split at pit stops (including
   same-compound changes), with the live stint marked and stop counts alongside
   the per-car tyre table.
+- The classification overlay includes a toggleable position-by-lap chart drawn
+  from each car's measured lap-line crossings, grid slot included, with the
+  second team car dashed so teammates sharing a colour stay readable.
 - Versioned weekend, championship, driver-rating, and OpenF1 cache inputs are
   bounded and schema-checked, so stale or corrupted browser data falls back
   without freezing startup or contaminating standings and calibration.

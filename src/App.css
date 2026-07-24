@@ -1133,7 +1133,7 @@
 
 .classification-panel header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
   min-height: 24px;
@@ -1141,6 +1141,29 @@
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.classification-panel header button[aria-pressed='true'] {
+  color: var(--accent-cyan);
+  background: rgba(84, 199, 255, 0.16);
+}
+
+.lap-chart {
+  margin: 0;
+  padding: 8px 0 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.lap-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lap-chart figcaption {
+  padding-top: 3px;
+  color: var(--text-muted);
+  font-size: 7px;
 }
 
 .classification-panel header > span {
