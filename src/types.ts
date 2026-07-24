@@ -772,6 +772,12 @@ export type CarSnapshot = {
   /** Completed lap history; sampled at the timing line, never per frame. */
   lapHistory: LapRecord[]
   position: number
+  /**
+   * On-track running order for the live timing screen. Unlike `position`, a
+   * pending time penalty is not folded in here, so a penalised car holds station
+   * until the penalty lands on the classification at the finish.
+   */
+  liveDisplayPosition?: number
   gapToLeader: number
   gapToAhead: number
   gapToLeaderLabel: string

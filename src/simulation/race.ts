@@ -1310,25 +1310,85 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   const ordered = [...finished, ...active, ...retired, ...excluded]
   const leader = ordered[0]
 
+  // Live timing-screen order: a pending time penalty is NOT folded into
+  // position, gap or interval — it rides alongside as a chip and only lands on
+  // the classification at the finish. Finished cars keep their result order
+  // (crossing time plus penalty), so once the race ends the board equals the
+  // final result. The physics order above is left untouched.
+  const isExcludedStatus = (car: CarSnapshot) =>
+    car.status === 'retired' ||
+    car.status === 'disqualified' ||
+    car.status === 'dns'
+  const liveOrdered = [
+    ...finished,
+    ...active.slice().sort((a, b) => trackGap(b) - trackGap(a)),
+    ...retired,
+    ...excluded,
+  ]
+  const liveLeader = liveOrdered[0]
+  const liveTimingById = new Map(
+    liveOrdered.map((car, index) => {
+      if (isExcludedStatus(car)) {
+        const label =
+          car.status === 'disqualified'
+            ? 'DSQ'
+            : car.status === 'dns'
+              ? 'DNS'
+              : 'OUT'
+
+        return [
+          car.driverId,
+          {
+            liveDisplayPosition: index + 1,
+            gapToLeaderLabel: label,
+            gapToAheadLabel: label,
+          },
+        ] as const
+      }
+
+      const gapToLeaderOnTrack =
+        index === 0
+          ? 0
+          : car.status === 'finished' && liveLeader.status === 'finished'
+            ? finishTime(car) - finishTime(liveLeader)
+            : (trackGap(liveLeader) - trackGap(car)) * lapTime
+      const liveAhead = index === 0 ? null : liveOrdered[index - 1]
+      const gapToAheadOnTrack =
+        !liveAhead || liveAhead.status === 'retired'
+          ? 0
+          : car.status === 'finished' && liveAhead.status === 'finished'
+            ? finishTime(car) - finishTime(liveAhead)
+            : (trackGap(liveAhead) - trackGap(car)) * lapTime
+
+      return [
+        car.driverId,
+        {
+          liveDisplayPosition: index + 1,
+          gapToLeaderLabel:
+            index === 0
+              ? car.status === 'finished'
+                ? 'Winner'
+                : 'Leader'
+              : formatGap(gapToLeaderOnTrack),
+          gapToAheadLabel:
+            index === 0 ? '0.0s' : `+${gapToAheadOnTrack.toFixed(1)}s`,
+        },
+      ] as const
+    }),
+  )
+
   return ordered.map((car, index) => {
-    if (
-      car.status === 'retired' ||
-      car.status === 'disqualified' ||
-      car.status === 'dns'
-    ) {
-      const label =
-        car.status === 'disqualified'
-          ? 'DSQ'
-          : car.status === 'dns'
-            ? 'DNS'
-            : 'OUT'
+    const live = liveTimingById.get(car.driverId)!
+
+    if (isExcludedStatus(car)) {
       return {
         ...car,
         position: index + 1,
+        liveDisplayPosition: live.liveDisplayPosition,
         gapToLeader: 0,
         gapToAhead: 0,
-        gapToLeaderLabel: label,
-        gapToAheadLabel: label,
+        gapToLeaderLabel: live.gapToLeaderLabel,
+        gapToAheadLabel: live.gapToAheadLabel,
       }
     }
 
@@ -1347,34 +1407,15 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
         : car.status === 'finished' && ahead.status === 'finished'
           ? finishTime(car) - finishTime(ahead)
           : (classified(ahead) - classified(car)) * lapTime
-    // Live display gap (penalty NOT applied) — what the viewer sees on the
-    // timing sheet while the pending penalty rides alongside as a chip. Finished
-    // cars keep the penalty in the gap so the result reflects the sum.
-    const liveGapToLeader =
-      index === 0
-        ? 0
-        : car.status === 'finished' && leader.status === 'finished'
-          ? finishTime(car) - finishTime(leader)
-          : (trackGap(leader) - trackGap(car)) * lapTime
-    const liveGapToAhead =
-      !ahead || ahead.status === 'retired'
-        ? 0
-        : car.status === 'finished' && ahead.status === 'finished'
-          ? finishTime(car) - finishTime(ahead)
-          : (trackGap(ahead) - trackGap(car)) * lapTime
 
     return {
       ...car,
       position: index + 1,
+      liveDisplayPosition: live.liveDisplayPosition,
       gapToLeader,
       gapToAhead,
-      gapToLeaderLabel:
-        index === 0
-          ? car.status === 'finished'
-            ? 'Winner'
-            : 'Leader'
-          : formatGap(liveGapToLeader),
-      gapToAheadLabel: index === 0 ? '0.0s' : `+${liveGapToAhead.toFixed(1)}s`,
+      gapToLeaderLabel: live.gapToLeaderLabel,
+      gapToAheadLabel: live.gapToAheadLabel,
     }
   })
 }

@@ -2374,7 +2374,7 @@ export default function App() {
         const displayPosition =
           useObservedTiming
             ? (openF1LiveState.positionsByCode.get(car.code) ?? car.position)
-            : car.position
+            : (car.liveDisplayPosition ?? car.position)
         const displayGapToLeaderLabel =
           useObservedTiming
             ? (openF1LiveTiming?.gapToLeaderLabel ?? car.gapToLeaderLabel)
@@ -2583,6 +2583,7 @@ export default function App() {
         ) as [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus],
       }
     })
+    .sort((left, right) => left.displayPosition - right.displayPosition)
   },
     [
       openF1CarDataByCode,
