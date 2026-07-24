@@ -679,6 +679,12 @@ export type LapRecord = {
   sectors: [number, number, number]
   /** 24 measured timing segments (eight per sector), written at the line. */
   miniSectors?: number[]
+  /**
+   * Timed-session segment the lap was set in (Q1/Q2/Q3, SQ1-3). Lets the timing
+   * screen scope best laps and purple sectors to the current segment so each
+   * knockout session starts from a clean sheet. Absent for race laps.
+   */
+  segment?: string
   tire: TireCompound
   tireAgeLaps: number
   weather: WeatherState

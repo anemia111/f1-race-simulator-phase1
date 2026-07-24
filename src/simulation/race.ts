@@ -3206,6 +3206,10 @@ export function advanceRace(
         brakePercent: 0,
         rpm: 0,
         gear: 1,
+        // Each knockout segment starts from a clean timing sheet: the headline
+        // best lap resets so Q2/Q3 no longer display a lap carried over from Q1.
+        bestLapTimeSeconds: startsNewSegment ? null : car.bestLapTimeSeconds,
+        bestLapLap: startsNewSegment ? null : car.bestLapLap,
         tire: compound,
         tireAgeLaps: startsNewSegment ? 0 : car.tireAgeLaps,
         tireWearPercent: startsNewSegment ? 0 : car.tireWearPercent,
@@ -4891,6 +4895,7 @@ export function advanceRace(
                 pitStop: false,
                 isValid: lapIsValid,
                 invalidReason,
+                segment: segmentKey,
               },
             ],
             tireAgeLaps: next.tireAgeLaps + 1,

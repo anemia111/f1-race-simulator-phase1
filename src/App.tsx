@@ -344,6 +344,7 @@ const lowerTimingValue = (
 
 const personalTimingBestsForRow = (
   row: TimingRowWithoutSectorStatuses,
+  activeSegmentName?: string | null,
 ): PersonalTimingBests => {
   if (row.source === 'openf1') {
     return {
@@ -363,6 +364,9 @@ const personalTimingBestsForRow = (
 
   for (const lap of row.car.lapHistory) {
     if (!lap.isValid) continue
+    // In a knockout session only the current segment's laps set the purple
+    // references, so Q2/Q3 sectors and mini-sectors start fresh.
+    if (activeSegmentName != null && lap.segment !== activeSegmentName) continue
 
     lap.sectors.forEach((value, index) => {
       sectors[index] = lowerTimingValue(sectors[index], value)
@@ -2508,7 +2512,7 @@ export default function App() {
     const personalBestsByDriver = new Map(
       rows.map((row) => [
         row.car.driverId,
-        personalTimingBestsForRow(row),
+        personalTimingBestsForRow(row, activeTimedSegment?.name ?? null),
       ]),
     )
     const overallComparisonSource = rows.some(
@@ -2582,6 +2586,7 @@ export default function App() {
   },
     [
       openF1CarDataByCode,
+      activeTimedSegment?.name,
       dataMode,
       openF1LiveState.positionsByCode,
       openF1LiveState.timingByCode,
