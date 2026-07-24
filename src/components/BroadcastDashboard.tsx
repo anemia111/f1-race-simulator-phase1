@@ -29,6 +29,7 @@ import {
   START_LIGHT_COUNT,
   startSignalStateFor,
 } from '../domain/startSignal'
+import { tireStintsFor } from '../simulation/stints'
 import type {
   CameraMode,
   CarSnapshot,
@@ -715,6 +716,7 @@ function CenterView({
   dataControl,
   dataDetails,
   environment,
+  isRaceStage,
   labels,
   overtakeSystem,
   raceControlLog,
@@ -727,6 +729,7 @@ function CenterView({
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   environment: EnvironmentReadout
+  isRaceStage: boolean
   labels: Record<CarSnapshot['tire'], string>
   overtakeSystem: 'active-aero' | 'drs' | 'ots'
   raceControlLog: BroadcastRaceControlEntry[]
@@ -791,7 +794,57 @@ function CenterView({
   }
 
   if (view === 'tyres') {
-    return (
+    const stintChart =
+      isRaceStage &&
+      (() => {
+        const totalLaps = Math.max(snapshot.raceLaps, 1)
+
+        return (
+          <section aria-label="Tyre stint history" className="stint-chart">
+            <div className="stint-chart-head">
+              <span>DRIVER</span>
+              <span>STINTS / LAP {Math.min(snapshot.leaderLap, totalLaps)} OF {totalLaps}</span>
+              <span>STOPS</span>
+            </div>
+            <ol aria-label="Tyre stints by driver" tabIndex={0}>
+              {rows.map((row) => {
+                const stints = tireStintsFor(row.car)
+                const summary = stints
+                  .map(
+                    (stint) =>
+                      `${labels[stint.compound]} laps ${stint.fromLap} to ${stint.toLap}${stint.inProgress ? ' in progress' : ''}`,
+                  )
+                  .join(', ')
+
+                return (
+                  <li key={row.car.driverId}>
+                    <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
+                    <div
+                      aria-label={summary === '' ? 'No stint started' : summary}
+                      className="stint-bar"
+                      role="img"
+                    >
+                      {stints.map((stint) => (
+                        <span
+                          className={`tire-${stint.compound}${stint.inProgress ? ' stint-live' : ''}`}
+                          key={stint.fromLap}
+                          style={{ width: `${(stint.laps / totalLaps) * 100}%` }}
+                          title={`${labels[stint.compound]} L${stint.fromLap}-L${stint.toLap} (${stint.laps} ${stint.laps === 1 ? 'lap' : 'laps'})`}
+                        >
+                          {stint.laps / totalLaps >= 0.08 ? stint.laps : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="stint-stops">{row.car.pitStops}</span>
+                  </li>
+                )
+              })}
+            </ol>
+          </section>
+        )
+      })()
+
+    const tyreTable = (
       <div className="center-table tyre-detail-table">
         <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>LIFE</span><span>PACE DELTA</span><span>TEMP</span><span>SETS</span><span>STOPS</span><span>SOURCE</span></div>
         <ol aria-label="All drivers tyre information" tabIndex={0}>
@@ -807,6 +860,15 @@ function CenterView({
           ))}
         </ol>
       </div>
+    )
+
+    return stintChart ? (
+      <div className="tyre-detail-stack">
+        {stintChart}
+        {tyreTable}
+      </div>
+    ) : (
+      tyreTable
     )
   }
 
@@ -1105,6 +1167,7 @@ export function BroadcastDashboard({
                 dataControl={dataControl}
                 dataDetails={dataDetails}
                 environment={environment}
+                isRaceStage={isRaceStage}
                 labels={tireLabels}
                 overtakeSystem={overtakeSystem}
                 raceControlLog={raceControlLog}

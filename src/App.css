@@ -2727,6 +2727,82 @@
   grid-template-columns: 42px minmax(76px, 1fr) 34px 38px 54px 42px 32px 32px 30px;
 }
 
+.tyre-detail-stack {
+  display: grid;
+  grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stint-chart {
+  display: grid;
+  grid-template-rows: 20px minmax(0, 1fr);
+  min-height: 0;
+  border-bottom: 1px solid var(--broadcast-border-soft);
+}
+
+.stint-chart-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  color: var(--broadcast-muted);
+  border-bottom: 1px solid var(--broadcast-border-soft);
+  font-size: 6px;
+}
+
+.stint-chart-head span:last-child { text-align: right; }
+
+.stint-chart ol {
+  display: grid;
+  grid-auto-rows: 14px;
+  row-gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 3px 8px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.stint-chart li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  font-size: 7px;
+}
+
+.stint-bar {
+  display: flex;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #0a1826;
+}
+
+.stint-bar > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  overflow: hidden;
+  border-right: 1px solid #071018;
+  color: #071018;
+  font-size: 6px;
+  font-weight: 700;
+}
+
+.stint-bar > span:last-child { border-right: 0; }
+.stint-bar > .tire-S { background: #ff344d; color: #ffffff; }
+.stint-bar > .tire-M { background: #ffd21f; }
+.stint-bar > .tire-H { background: #eef2f5; }
+.stint-bar > .tire-I { background: #35d66f; }
+.stint-bar > .tire-W { background: #36a4ff; color: #ffffff; }
+.stint-bar > .stint-live { box-shadow: inset -2px 0 #9ad1ff; }
+.stint-stops { color: var(--broadcast-muted); text-align: right; }
+
 .driver-detail-table .center-table-head,
 .driver-detail-table li > div {
   grid-template-columns: 62px 30px minmax(70px, 1fr) 28px 28px 40px 52px 58px 34px;

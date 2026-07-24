@@ -96,6 +96,10 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   across rounds.
 - Grid tire choices vary by available sets, stint demand, team/driver risk,
   and the wet crossover while remaining legal for the current track state.
+- The Tyres view adds a race-session stint timeline: one compound-coloured bar
+  per driver rebuilt from measured lap records, split at pit stops (including
+  same-compound changes), with the live stint marked and stop counts alongside
+  the per-car tyre table.
 - Versioned weekend, championship, driver-rating, and OpenF1 cache inputs are
   bounded and schema-checked, so stale or corrupted browser data falls back
   without freezing startup or contaminating standings and calibration.
