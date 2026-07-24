@@ -3,6 +3,7 @@ import type { RaceSnapshot } from '../types'
 import {
   buildRaceClassification,
   fastestLapFromClassification,
+  lapDeficitLabel,
 } from './classification'
 import { createInitialRace } from './race'
 import { initialDrivers, initialTeams } from '../data/grid2026'
@@ -19,9 +20,12 @@ function snapshotFixture(): RaceSnapshot {
     ...car,
     bestLapLap: index === 1 ? 27 : 14,
     bestLapTimeSeconds: index === 1 ? 80.1 : 80.4,
-    finishedAtSeconds: index < 2 ? 5000 + index * 1.2 : null,
+    finishedAtSeconds: index < 2 ? 5000 + index * 1.2 : index === 3 ? 5010 : null,
     gapToLeader: index * 1.2,
     gridPosition: index + 1,
+    // Car 4 takes the flag seconds after the winner but one lap short.
+    lap: index === 3 ? 57 : 58,
+    penaltyLaps: 0,
     penaltySeconds: index === 1 ? 5 : 0,
     pitStops: index === 0 ? 1 : 2,
     position: index + 1,
@@ -45,11 +49,24 @@ describe('race classification', () => {
     })
     expect(entries[1]).toMatchObject({
       gapLabel: '+1.200',
-      penaltyLabel: '+5s pending',
+      penaltyLabel: '+5s applied',
       positionChange: 0,
     })
     expect(entries[2].gapLabel).toBe('DNF mechanical')
     expect(entries[2].statusLabel).toBe('DNF')
+  })
+
+  it('labels a lapped finisher by lap deficit, not crossing-time difference', () => {
+    const entries = buildRaceClassification(snapshotFixture())
+
+    expect(entries[3].statusLabel).toBe('FIN')
+    expect(entries[3].gapLabel).toBe('+1 lap')
+  })
+
+  it('builds lap-deficit labels from classified laps', () => {
+    expect(lapDeficitLabel({ lap: 58, penaltyLaps: 0 }, { lap: 58, penaltyLaps: 0 })).toBeNull()
+    expect(lapDeficitLabel({ lap: 58, penaltyLaps: 0 }, { lap: 57, penaltyLaps: 0 })).toBe('+1 lap')
+    expect(lapDeficitLabel({ lap: 58, penaltyLaps: 0 }, { lap: 55, penaltyLaps: 1 })).toBe('+4 laps')
   })
 
   it('keeps a valid fastest lap when its driver later retires', () => {

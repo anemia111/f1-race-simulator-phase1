@@ -192,7 +192,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 399 passed across 45 files
+- Tests: 401 passed across 45 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow

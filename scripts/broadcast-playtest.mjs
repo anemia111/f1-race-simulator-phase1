@@ -301,7 +301,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForSelector('.classification-panel')
   const classificationVisible = await page.locator('.classification-panel').isVisible()
   await page.getByLabel('Show lap chart').click()
-  await page.waitForSelector('.lap-chart svg polyline')
+  // A car holding its grid position draws a flat polyline with a zero-height
+  // bounding box, which Playwright treats as invisible; require attachment.
+  await page.waitForSelector('.lap-chart svg polyline', { state: 'attached' })
   const lapChartLineCount = await page.locator('.lap-chart svg polyline').count()
   await page.getByLabel('Hide lap chart').click()
   await page.getByLabel('hide classification').click()

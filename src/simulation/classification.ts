@@ -20,15 +20,40 @@ export type RaceClassificationEntry = {
 
 const formatGap = (seconds: number) => `+${seconds.toFixed(3)}`
 
+/** Classified lap count: completed laps net of any lap penalties. */
+const classifiedLaps = (car: Pick<CarSnapshot, 'lap' | 'penaltyLaps'>) =>
+  car.lap - car.penaltyLaps
+
+/**
+ * "+N lap(s)" when a finisher ends short of the reference car's classified
+ * laps; null when both finished the same distance and a time gap applies. A
+ * lapped car takes the flag seconds behind the winner, so its raw crossing-time
+ * difference must never be shown as the result gap.
+ */
+export function lapDeficitLabel(
+  reference: Pick<CarSnapshot, 'lap' | 'penaltyLaps'>,
+  car: Pick<CarSnapshot, 'lap' | 'penaltyLaps'>,
+): string | null {
+  const deficit = classifiedLaps(reference) - classifiedLaps(car)
+
+  return deficit > 0 ? `+${deficit} lap${deficit === 1 ? '' : 's'}` : null
+}
+
 export function buildRaceClassification(
   snapshot: Pick<RaceSnapshot, 'cars' | 'sessionStatus'>,
 ): RaceClassificationEntry[] {
+  const winner = snapshot.cars.find((car) => car.position === 1) ?? null
+
   return snapshot.cars.map((car) => {
     const servedPenalty = car.servedPenaltySeconds
     const pendingPenalty = car.penaltySeconds
+    // A penalty still unserved when the car takes the flag is added to its
+    // race time, so the final board reports it as applied, not pending.
     const penaltyLabel =
       pendingPenalty > 0
-        ? `+${pendingPenalty.toFixed(0)}s pending`
+        ? car.status === 'finished'
+          ? `+${pendingPenalty.toFixed(0)}s applied`
+          : `+${pendingPenalty.toFixed(0)}s pending`
         : servedPenalty > 0
           ? `${servedPenalty.toFixed(0)}s served`
           : null
@@ -44,6 +69,10 @@ export function buildRaceClassification(
           : car.status === 'pit'
             ? 'PIT'
             : 'RUN'
+    const lappedGap =
+      car.status === 'finished' && winner !== null && winner.status === 'finished'
+        ? lapDeficitLabel(winner, car)
+        : null
     const gapLabel =
       car.status === 'disqualified'
         ? 'DSQ'
@@ -55,7 +84,7 @@ export function buildRaceClassification(
           ? snapshot.sessionStatus === 'finished'
             ? 'Winner'
             : 'Leader'
-          : formatGap(car.gapToLeader)
+          : lappedGap ?? formatGap(car.gapToLeader)
 
     return {
       bestLapLap: car.bestLapLap,

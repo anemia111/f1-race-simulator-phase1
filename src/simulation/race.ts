@@ -17,6 +17,7 @@ import type {
   WeatherState,
   WeekendStage,
 } from '../types'
+import { lapDeficitLabel } from './classification'
 import { flagSeverityRank, incidentForLap } from './incidents'
 import {
   driverPerformanceAbility,
@@ -1366,6 +1367,18 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
           : car.status === 'finished' && liveAhead.status === 'finished'
             ? finishTime(car) - finishTime(liveAhead)
             : (trackGap(liveAhead) - trackGap(car)) * lapTime
+      // A finisher short of the reference's classified laps shows the lap
+      // deficit, never the raw crossing-time difference at the flag.
+      const lappedToLeader =
+        car.status === 'finished' && liveLeader.status === 'finished'
+          ? lapDeficitLabel(liveLeader, car)
+          : null
+      const lappedToAhead =
+        liveAhead !== null &&
+        car.status === 'finished' &&
+        liveAhead.status === 'finished'
+          ? lapDeficitLabel(liveAhead, car)
+          : null
 
       return [
         car.driverId,
@@ -1376,9 +1389,11 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
               ? car.status === 'finished'
                 ? 'Winner'
                 : 'Leader'
-              : formatGap(gapToLeaderOnTrack),
+              : lappedToLeader ?? formatGap(gapToLeaderOnTrack),
           gapToAheadLabel:
-            index === 0 ? '0.0s' : `+${gapToAheadOnTrack.toFixed(1)}s`,
+            index === 0
+              ? '0.0s'
+              : lappedToAhead ?? `+${gapToAheadOnTrack.toFixed(1)}s`,
         },
       ] as const
     }),
