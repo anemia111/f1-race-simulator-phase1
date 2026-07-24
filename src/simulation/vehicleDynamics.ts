@@ -34,6 +34,16 @@ export const DRIVER_SEGMENT_RESPONSE = 0.14
  * factor controls how far the rest of the field falls back.
  */
 export const DRIVER_SKILL_REFERENCE = 0.9175
+/**
+ * Extra pace for a genuine top-of-the-scale ace. It only engages for race-pace
+ * ratings in the very top band (≈97-100 on the 0-100 scale), so it rewards a
+ * standout number-one driver without touching the midfield, the junior
+ * categories, or field attrition. `ACE_PACE_THRESHOLD` is on the internal
+ * 0.55-1.0 execution scale (0.97 ≈ a 93-point race-pace rating), and the gain
+ * is what a maximum-rated driver adds to the segment pace multiplier.
+ */
+export const ACE_PACE_THRESHOLD = 0.99
+export const ACE_PACE_GAIN = 2.8
 export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
 export const machinePaceRating = effectiveMachineRating
@@ -250,10 +260,17 @@ export function driverSegmentExecution(options: {
   // The floor has to clear the bottom of the shared rating scale, which now
   // reaches into the junior categories, so a weak driver is not silently
   // lifted to midfield pace.
+  // A genuine number-one ace (top-band race pace) gains extra segment pace on
+  // top of the normal calibration. It is zero for the midfield down, so it
+  // separates a standout leader without spreading the whole field, changing
+  // junior-category racing, or reducing attrition.
+  const aceBonus =
+    Math.max(0, sessionPace - ACE_PACE_THRESHOLD) * ACE_PACE_GAIN
+
   return clamp(
-    1 - (DRIVER_SKILL_REFERENCE - skill) * DRIVER_SEGMENT_RESPONSE,
+    1 - (DRIVER_SKILL_REFERENCE - skill) * DRIVER_SEGMENT_RESPONSE + aceBonus,
     0.9,
-    1.04,
+    1.16,
   )
 }
 

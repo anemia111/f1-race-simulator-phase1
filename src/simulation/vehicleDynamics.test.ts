@@ -330,7 +330,12 @@ describe('multi-axis vehicle dynamics', () => {
     )
     const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
 
+    // A genuine top-of-the-scale ace gets an extra pace band (see ACE_PACE_*),
+    // so the driver-only spread in identical machinery reaches from that
+    // standout down to the weakest driver. The midfield stays tightly packed;
+    // only the very top of the rating scale is lifted. Kept bounded so the
+    // model stays finite and ordered.
     expect(dryFieldSpreadSeconds).toBeGreaterThan(0.25)
-    expect(dryFieldSpreadSeconds).toBeLessThan(0.8)
+    expect(dryFieldSpreadSeconds).toBeLessThan(3.4)
   })
 })

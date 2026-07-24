@@ -85,6 +85,15 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   physical simulation expands axis deviations by 35% around the reference car
   and applies a wider local response so team differences are clearer in
   corners, acceleration, braking, and speed.
+- A genuine top-of-the-scale ace (race pace in the very top ~97-100 band) gains
+  an extra pace tier on top of the normal calibration, so a standout number-one
+  driver can win on pure skill even in a car that is not the fastest. The bonus
+  is zero from the midfield down, leaving junior categories and the rest of the
+  F1 field on their normal spread. Ferrari `NAK` (car 31, race pace 100) is that
+  number-one and dominates by driver skill while Ferrari itself stays a
+  second-tier machine; his team-mate in the same car runs midfield. Because a
+  field-dominating leader runs in clean air and shortens the race a little,
+  total field attrition sits toward the low end of the modern range.
 - Explicit SIM/HIST/LIVE modes for OpenF1 timing, telemetry, weather,
   race-control, position, pit/stint, radio,
   result, and championship enrichment with SIM/HIST/LIVE source separation.
