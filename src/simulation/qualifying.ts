@@ -514,7 +514,10 @@ function runQualifyingSegment(
       ),
     }
   })
-  const classified = schedule.map(({ driver, team, runs: scheduledRuns }) => {
+  // Play out every scheduled run with its traffic first, so each driver has a
+  // provisional lap — what they would read on the timing screen before deciding
+  // whether another run is worth a fresh set of tyres.
+  const played = schedule.map(({ driver, team, runs: scheduledRuns }) => {
     const runs = scheduledRuns.map((run) =>
       withCausalTraffic(
         run,
@@ -524,6 +527,47 @@ function runQualifyingSegment(
         config.track.kind === 'street',
       ),
     )
+
+    return { driver, team, runs, firstValidIndex: runs.findIndex((run) => run.isValid) }
+  })
+
+  // Provisional order by that first valid lap drives the run-count strategy.
+  const provisionalRank = new Map(
+    played
+      .filter((entry) => entry.firstValidIndex >= 0)
+      .sort(
+        (a, b) =>
+          a.runs[a.firstValidIndex].lapTimeSeconds -
+          b.runs[b.firstValidIndex].lapTimeSeconds,
+      )
+      .map((entry, index) => [entry.driver.id, index + 1]),
+  )
+  // How many cars survive this segment. Q3/SQ3 send everyone to the grid, so
+  // there is no cushion to sit on and every driver keeps improving.
+  const isFinalSegment = segment === 'Q3' || segment === 'SQ3'
+  const advanceCount =
+    segment === 'Q1' || segment === 'SQ1'
+      ? qualifyingCutSizes(participants.length).q2Size
+      : segment === 'Q2' || segment === 'SQ2'
+        ? Math.min(10, participants.length)
+        : participants.length
+  const safeRankThreshold =
+    advanceCount - Math.max(3, Math.round(advanceCount * 0.35))
+
+  const classified = played.map(({ driver, team, runs: playedRuns, firstValidIndex }) => {
+    // A driver already comfortably through banks the set and stays in the garage
+    // rather than running again; one on the bubble keeps going, and a driver
+    // still without a lap always keeps running.
+    const provisional = provisionalRank.get(driver.id)
+    const comfortablyThrough =
+      !isFinalSegment &&
+      firstValidIndex >= 0 &&
+      provisional !== undefined &&
+      provisional <= safeRankThreshold &&
+      hashChance(`${config.seed}:qualifying-relax:${segment}:${driver.id}`) < 0.7
+    const runs = comfortablyThrough
+      ? playedRuns.slice(0, firstValidIndex + 1)
+      : playedRuns
     const validRuns = runs.filter((run) => run.isValid)
     const abortedRunCount = runs.filter((run) => run.aborted).length
     const deletedRunCount = runs.filter((run) => run.deleted).length
