@@ -439,7 +439,6 @@
         "qualifying": {
           "breakSeconds": 420,
           "format": "grouped",
-          "grouping": "car-number-parity",
           "segments": [
             { "name": "Q1", "durationSeconds": 1200, "advanceCount": 12 },
             { "name": "Q2", "durationSeconds": 420, "advanceCount": null }
