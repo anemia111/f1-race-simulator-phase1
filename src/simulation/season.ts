@@ -220,6 +220,95 @@ export function rankSeasonEntries(
   })
 }
 
+export type SeasonStandingRow = {
+  id: string
+  /** Driver code or team name shown in the standings table. */
+  label: string
+  /** Team name for a driver row; empty for team rows. */
+  detail: string
+  color: string
+  points: number
+  wins: number
+}
+
+/**
+ * Full championship tables for the standings view, ranked with the same
+ * countback as the title decider. Identities come from the current field
+ * first, then from the immutable result archive, so a driver or team that has
+ * since left their seat keeps the name and colours they scored under.
+ */
+export function buildSeasonStandings(options: {
+  season: Pick<
+    SeasonState,
+    'driverPoints' | 'teamPoints' | 'driverResults' | 'teamResults' | 'resultArchive'
+  >
+  drivers: Array<Pick<Driver, 'id' | 'code' | 'teamId'>>
+  teams: Array<Pick<Team, 'id' | 'name' | 'color'>>
+}): { drivers: SeasonStandingRow[]; teams: SeasonStandingRow[] } {
+  const { season, drivers, teams } = options
+  const teamById = new Map(teams.map((team) => [team.id, team]))
+  const driverById = new Map(drivers.map((driver) => [driver.id, driver]))
+  // Newest archive entry wins, so a mid-season identity change keeps the
+  // latest name a driver actually raced under.
+  const archivedDriverById = new Map<
+    string,
+    { code: string; teamId: string; teamName: string | null; teamColor: string | null }
+  >()
+  const archivedTeamById = new Map<string, { name: string; color: string | null }>()
+  for (const round of season.resultArchive) {
+    for (const entry of round.entries) {
+      archivedDriverById.set(entry.driverId, {
+        code: entry.driverSnapshot?.code ?? entry.code,
+        teamId: entry.teamId,
+        teamName: entry.teamSnapshot?.name ?? null,
+        teamColor: entry.teamSnapshot?.color ?? null,
+      })
+      archivedTeamById.set(entry.teamId, {
+        name: entry.teamSnapshot?.name ?? entry.teamId,
+        color: entry.teamSnapshot?.color ?? null,
+      })
+    }
+  }
+  const winsFor = (results: number[] | undefined) =>
+    (results ?? []).filter((position) => position === 1).length
+
+  const driverRows = rankSeasonEntries(
+    season.driverPoints,
+    season.driverResults,
+  ).map(([driverId, points]) => {
+    const current = driverById.get(driverId)
+    const archived = archivedDriverById.get(driverId)
+    const teamId = current?.teamId ?? archived?.teamId
+    const team = teamId === undefined ? undefined : teamById.get(teamId)
+
+    return {
+      id: driverId,
+      label: current?.code ?? archived?.code ?? driverId,
+      detail: team?.name ?? archived?.teamName ?? '',
+      color: team?.color ?? archived?.teamColor ?? '#9aa7b5',
+      points,
+      wins: winsFor(season.driverResults[driverId]),
+    }
+  })
+  const teamRows = rankSeasonEntries(season.teamPoints, season.teamResults).map(
+    ([teamId, points]) => {
+      const current = teamById.get(teamId)
+      const archived = archivedTeamById.get(teamId)
+
+      return {
+        id: teamId,
+        label: current?.name ?? archived?.name ?? teamId,
+        detail: '',
+        color: current?.color ?? archived?.color ?? '#9aa7b5',
+        points,
+        wins: winsFor(season.teamResults[teamId]),
+      }
+    },
+  )
+
+  return { drivers: driverRows, teams: teamRows }
+}
+
 export function recordSeasonRound(
   season: SeasonState,
   options: {

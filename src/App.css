@@ -2757,6 +2757,63 @@
   overflow: hidden;
 }
 
+.season-standings {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  padding: 4px 8px;
+  overflow: hidden;
+}
+
+.season-standings section {
+  display: grid;
+  grid-template-rows: 16px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.season-standings h3 {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  border-bottom: 1px solid var(--broadcast-border-soft);
+  color: var(--broadcast-muted);
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.season-standings ol {
+  display: grid;
+  grid-auto-rows: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.season-standings li {
+  display: grid;
+  grid-template-columns: 14px 44px minmax(0, 1fr) 20px 30px;
+  gap: 4px;
+  align-items: center;
+  border-bottom: 1px solid #10202d;
+  font-size: 7px;
+}
+
+.season-standings li span { color: var(--broadcast-muted); }
+
+.season-standings li small {
+  overflow: hidden;
+  color: var(--broadcast-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.season-standings li b { color: var(--broadcast-muted); text-align: right; }
+.season-standings li em { font-style: normal; font-weight: 800; text-align: right; }
+
 .stint-chart {
   display: grid;
   grid-template-rows: 20px minmax(0, 1fr);

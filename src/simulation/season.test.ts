@@ -4,6 +4,7 @@ import { tracks } from '../data/tracks'
 import { createInitialRace } from './race'
 import {
   applySeasonGarageToWeekend,
+  buildSeasonStandings,
   createSeasonState,
   rankSeasonEntries,
   recordQualifyingPoints,
@@ -60,6 +61,56 @@ describe('local season standings', () => {
       roundId: 'bahrain:race:one',
       stage: 'race',
     })).toBe(recorded)
+  })
+
+  it('builds ranked standings with current identities and archive fallback', () => {
+    const snapshot = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'season-standings',
+      teams: initialTeams,
+      track: tracks[0],
+    })
+    const cars = snapshot.cars.map((car, index) => ({
+      ...car,
+      position: index + 1,
+      status: 'finished' as const,
+      totalDistance: 57,
+    }))
+    const season = recordSeasonRound(createSeasonState(), {
+      cars,
+      drivers: initialDrivers,
+      roundId: 'melbourne:race',
+      stage: 'race',
+      teams: initialTeams,
+    })
+
+    // The race winner has since lost their seat; the archive keeps their name.
+    const remainingDrivers = initialDrivers.filter(
+      (driver) => driver.id !== cars[0].driverId,
+    )
+    const standings = buildSeasonStandings({
+      season,
+      drivers: remainingDrivers,
+      teams: initialTeams,
+    })
+
+    expect(standings.drivers[0]).toMatchObject({
+      id: cars[0].driverId,
+      label: cars[0].code,
+      points: 25,
+      wins: 1,
+    })
+    expect(standings.drivers[1].points).toBe(18)
+    expect(standings.teams[0].points).toBeGreaterThanOrEqual(
+      standings.teams[1]?.points ?? 0,
+    )
+    expect(
+      buildSeasonStandings({
+        season: createSeasonState(),
+        drivers: initialDrivers,
+        teams: initialTeams,
+      }).drivers,
+    ).toHaveLength(0)
   })
 
   it('uses a seed-independent championship key for each race session', () => {

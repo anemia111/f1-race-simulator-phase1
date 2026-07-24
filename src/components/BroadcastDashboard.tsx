@@ -29,6 +29,7 @@ import {
   START_LIGHT_COUNT,
   startSignalStateFor,
 } from '../domain/startSignal'
+import type { SeasonStandingRow } from '../simulation/season'
 import { tireStintsFor } from '../simulation/stints'
 import type {
   CameraMode,
@@ -52,7 +53,14 @@ type DashboardView =
   | 'messages'
   | 'alerts'
   | 'drivers'
+  | 'season'
   | 'data'
+
+export type ChampionshipStandings = {
+  drivers: SeasonStandingRow[]
+  teams: SeasonStandingRow[]
+  rounds: number
+}
 
 export type BroadcastTimingRow = {
   aeroOvertakeLabel: string
@@ -108,6 +116,7 @@ type EnvironmentReadout = {
 
 type BroadcastDashboardProps = {
   cameraMode: CameraMode
+  championshipStandings: ChampionshipStandings
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   dataMode: DataMode
@@ -200,6 +209,7 @@ const dashboardViews: Array<{
   { Icon: MessageSquare, id: 'messages', label: 'Messages' },
   { Icon: ShieldAlert, id: 'alerts', label: 'Alerts' },
   { Icon: Users, id: 'drivers', label: 'Drivers' },
+  { Icon: Trophy, id: 'season', label: 'Season' },
   { Icon: Database, id: 'data', label: 'Data' },
 ]
 
@@ -713,6 +723,7 @@ function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
 }
 
 function CenterView({
+  championshipStandings,
   dataControl,
   dataDetails,
   environment,
@@ -726,6 +737,7 @@ function CenterView({
   useF1TireNomination,
   view,
 }: {
+  championshipStandings: ChampionshipStandings
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   environment: EnvironmentReadout
@@ -872,6 +884,53 @@ function CenterView({
     )
   }
 
+  if (view === 'season') {
+    const { drivers: driverStandings, teams: teamStandings, rounds } = championshipStandings
+
+    if (driverStandings.length === 0) {
+      return (
+        <div className="empty-detail">
+          <Trophy size={22} />
+          <strong>No championship rounds recorded</strong>
+          <span>Standings appear after the first classified race or sprint.</span>
+        </div>
+      )
+    }
+
+    return (
+      <div className="season-standings">
+        <section>
+          <h3>DRIVERS / {rounds} ROUND{rounds === 1 ? '' : 'S'} / WINS / PTS</h3>
+          <ol aria-label="Driver championship standings" tabIndex={0}>
+            {driverStandings.map((row, index) => (
+              <li key={row.id}>
+                <span>{index + 1}</span>
+                <strong style={{ color: row.color }}>{row.label}</strong>
+                <small>{row.detail}</small>
+                <b title={`${row.wins} win${row.wins === 1 ? '' : 's'}`}>{row.wins}</b>
+                <em>{row.points}</em>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section>
+          <h3>TEAMS / WINS / PTS</h3>
+          <ol aria-label="Team championship standings" tabIndex={0}>
+            {teamStandings.map((row, index) => (
+              <li key={row.id}>
+                <span>{index + 1}</span>
+                <strong style={{ color: row.color }}>{row.label}</strong>
+                <small />
+                <b title={`${row.wins} win${row.wins === 1 ? '' : 's'}`}>{row.wins}</b>
+                <em>{row.points}</em>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+    )
+  }
+
   if (view === 'messages') {
     return (
       <ol className="detail-message-list">
@@ -941,6 +1000,7 @@ function CenterView({
 
 export function BroadcastDashboard({
   cameraMode,
+  championshipStandings,
   dataControl,
   dataDetails,
   dataMode,
@@ -1164,6 +1224,7 @@ export function BroadcastDashboard({
             />
             {showLiveTiming ? (
               <CenterView
+                championshipStandings={championshipStandings}
                 dataControl={dataControl}
                 dataDetails={dataDetails}
                 environment={environment}

@@ -173,6 +173,14 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     .allInnerTexts()
   const driverScroll = await inspectScroll(page.locator('.driver-detail-table ol'))
 
+  await page.locator('.broadcast-sidebar button[title="Season"]').click()
+  const seasonStandingsSections = await page.locator('.season-standings section').count()
+  const seasonEmptyStateVisible = await page
+    .locator('.broadcast-live-timing .empty-detail')
+    .count() > 0
+  // A fresh profile has no recorded rounds; a persisted one shows both tables.
+  const seasonViewOk = seasonStandingsSections === 2 || seasonEmptyStateVisible
+
   await page.locator('.broadcast-sidebar button[title="Messages"]').click()
   const messageRows = await page.locator('.detail-message-list li').count()
 
@@ -355,6 +363,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     chaseSelected,
     classificationVisible,
     lapChartLineCount,
+    seasonViewOk,
     dataDetails,
     dataManagerAudit,
     dataManagerDriverRows,
@@ -600,6 +609,7 @@ try {
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')
     if (!result.setupVisible || !result.classificationVisible || !result.insightsVisible || !result.strategyControlsVisible) failures.push('secondary functional panels failed')
     if (result.lapChartLineCount < EXPECTED_FIELD_SIZE) failures.push(`lap chart drew ${result.lapChartLineCount} of ${EXPECTED_FIELD_SIZE} car lines`)
+    if (!result.seasonViewOk) failures.push('season standings view rendered neither tables nor its empty state')
     if (!result.canvas?.ok) failures.push(`canvas pixels invalid: ${JSON.stringify(result.canvas)}`)
     if (result.pageErrors.length > 0) failures.push(`page errors: ${result.pageErrors.join('; ')}`)
     if (result.layout.documentWidth !== result.layout.viewportWidth || result.layout.documentHeight !== result.layout.viewportHeight) failures.push(`viewport overflow ${result.layout.documentWidth}x${result.layout.documentHeight}`)
