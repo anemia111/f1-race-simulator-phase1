@@ -63,6 +63,7 @@ import {
 import { hashChance } from './random'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { automaticRacePaceModeFor } from './racePace'
+import { advanceRetiredCarMotion } from './retirementMotion'
 import {
   advanceNeutralisationProcedure,
   controlProcedureStatusMessage,
@@ -1273,21 +1274,15 @@ function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
   })
 }
 
-function rankCars(cars: CarSnapshot[], config: RaceConfig) {
+export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   if (isTimedLapSession(config.weekendStage ?? 'race')) {
     return rankTimedSessionCars(cars, config)
   }
 
   const lapTime = config.track.baseLapTime
-  // The running order still folds an outstanding time penalty in, so the
-  // physical battle order and the eventual result stay consistent with what a
-  // car owes. The LIVE gap shown to the viewer, however, is measured on track
-  // (see trackGap): the penalty is surfaced separately as a pending "+Ns" chip
-  // and only bites the classification at the finish, or is cleared earlier when
-  // the car serves it at a pit stop.
-  const classified = (car: CarSnapshot) =>
-    car.totalDistance - car.penaltyLaps - car.penaltySeconds / lapTime
-  // On-track order with no pending penalty applied — used for the live gap.
+  // Pending time penalties do not move a car on the road. They remain a
+  // separate timing-screen item until served or applied at the finish.
+  // On-track order is shared by the physics and live timing paths.
   const trackGap = (car: CarSnapshot) => car.totalDistance - car.penaltyLaps
   // Finished cars are classified by real crossing time plus penalties, not
   // by frozen distance (which collapses at the line).
@@ -1308,7 +1303,7 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
     .filter((car) =>
       ['running', 'pit'].includes(car.status),
     )
-    .sort((a, b) => classified(b) - classified(a))
+    .sort((a, b) => trackGap(b) - trackGap(a))
   const retired = cars
     .filter((car) => car.status === 'retired')
     .sort((a, b) => b.totalDistance - a.totalDistance)
@@ -1318,11 +1313,9 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   const ordered = [...finished, ...active, ...retired, ...excluded]
   const leader = ordered[0]
 
-  // Live timing-screen order: a pending time penalty is NOT folded into
-  // position, gap or interval — it rides alongside as a chip and only lands on
-  // the classification at the finish. Finished cars keep their result order
-  // (crossing time plus penalty), so once the race ends the board equals the
-  // final result. The physics order above is left untouched.
+  // The live display uses the same physical order while cars are running.
+  // Finished cars already include penalties, so the board becomes the final
+  // result without changing any on-track battle before the flag.
   const isExcludedStatus = (car: CarSnapshot) =>
     car.status === 'retired' ||
     car.status === 'disqualified' ||
@@ -1414,21 +1407,21 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
       }
     }
 
-    // Physics gap (penalty folded in) — drives dirty air, battle triggers and
-    // overtakes, so it must stay identical to the running order.
+    // Physics gaps follow the actual car ahead, independent of unserved time
+    // penalties.
     const gapToLeader =
       index === 0
         ? 0
         : car.status === 'finished' && leader.status === 'finished'
           ? finishTime(car) - finishTime(leader)
-          : (classified(leader) - classified(car)) * lapTime
+          : (trackGap(leader) - trackGap(car)) * lapTime
     const ahead = index === 0 ? null : ordered[index - 1]
     const gapToAhead =
       !ahead || ahead.status === 'retired'
         ? 0
         : car.status === 'finished' && ahead.status === 'finished'
           ? finishTime(car) - finishTime(ahead)
-          : (classified(ahead) - classified(car)) * lapTime
+          : (trackGap(ahead) - trackGap(car)) * lapTime
 
     return {
       ...car,
@@ -1440,6 +1433,20 @@ function rankCars(cars: CarSnapshot[], config: RaceConfig) {
       gapToAheadLabel: live.gapToAheadLabel,
     }
   })
+}
+
+export function carDefinesNeutralisationQueueOrder(car: CarSnapshot): boolean {
+  if (car.status !== 'running') {
+    return false
+  }
+
+  const recoveringFromIncident =
+    car.battlePhase === 'resolved' &&
+    car.battleDeltaSecondsRemaining <= -0.35
+  const clearlyDisabled =
+    car.damage >= 0.6 && car.speedKph < 90 && car.throttlePercent < 20
+
+  return !recoveringFromIncident && !clearlyDisabled
 }
 
 function fallbackTickerMessage(snapshot: RaceSnapshot) {
@@ -1766,7 +1773,17 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         }
       }
     }
-    initialTireSets[startingTire] = Math.max(0, initialTireSets[startingTire] - 1)
+    const usesStartingSet =
+      !isTimedSession ||
+      (initialTimedSegment?.participantDriverIds.includes(driver.id) === true &&
+        pitReleaseAtSeconds !== null)
+
+    if (usesStartingSet) {
+      initialTireSets[startingTire] = Math.max(
+        0,
+        initialTireSets[startingTire] - 1,
+      )
+    }
     const totalDistance = startsFromPitLane
       ? 1 + pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
       : isRaceDistance
@@ -3251,7 +3268,7 @@ export function advanceRace(
         config.track.baseLapTime * (segment.declaredWet ? 1.9 : 1.6)
       const canStartFlyingLap =
         releaseAtSeconds + estimatedOutLapSeconds < segment.endsAtSeconds
-      const tireSetsRemaining = startsNewSegment
+      const tireSetsRemaining = startsNewSegment && canStartFlyingLap
         ? {
             ...car.tireSetsRemaining,
             [compound]: Math.max(
@@ -3564,14 +3581,21 @@ export function advanceRace(
 
     // --- Non-running states -------------------------------------------------
     if (car.status === 'retired') {
+      const retiredCar = advanceRetiredCarMotion(car, {
+        deltaSeconds,
+        elapsedSeconds,
+        trackLengthKm: config.track.lengthKm,
+      })
+
       if (
-        !car.hiddenFromTrack &&
-        car.retiredAtSeconds !== null &&
-        elapsedSeconds >= car.retiredAtSeconds + WRECK_CLEAR_SECONDS
+        !retiredCar.hiddenFromTrack &&
+        retiredCar.retiredAtSeconds !== null &&
+        elapsedSeconds >=
+          retiredCar.retiredAtSeconds + WRECK_CLEAR_SECONDS
       ) {
-        return { ...car, hiddenFromTrack: true }
+        return { ...retiredCar, hiddenFromTrack: true, speedKph: 0 }
       }
-      return car
+      return retiredCar
     }
 
     if (
@@ -4019,7 +4043,7 @@ export function advanceRace(
       weather: localWeather,
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
-    const displayTelemetry = telemetryForTimedRunPhase(
+    let displayTelemetry = telemetryForTimedRunPhase(
       telemetry,
       timedRun.phase,
     )
@@ -4071,6 +4095,62 @@ export function advanceRace(
     totalDistance += battleDeltaStep / baseLapTime
     const battleDeltaSecondsRemaining =
       car.battleDeltaSecondsRemaining - battleDeltaStep
+    const incidentRecoveryScale =
+      battleDeltaStep < 0
+        ? Math.max(
+            0.08,
+            1 + battleDeltaStep / Math.max(0.001, deltaSeconds),
+          )
+        : 1
+
+    if (incidentRecoveryScale < 1) {
+      const reactedSpeedKph = Math.max(
+        0,
+        displayTelemetry.speedKph * incidentRecoveryScale,
+      )
+
+      displayTelemetry = {
+        ...displayTelemetry,
+        activeAeroMode: 'corner',
+        brakePercent: Math.max(
+          displayTelemetry.brakePercent,
+          Math.round((1 - incidentRecoveryScale) * 82),
+        ),
+        energyStore: {
+          ...displayTelemetry.energyStore,
+          actualDeploymentPowerKw:
+            displayTelemetry.energyStore.actualDeploymentPowerKw *
+            incidentRecoveryScale,
+          batteryDischargePowerKw:
+            displayTelemetry.energyStore.batteryDischargePowerKw *
+            incidentRecoveryScale,
+          dischargePowerKw:
+            displayTelemetry.energyStore.dischargePowerKw *
+            incidentRecoveryScale,
+          motorMechanicalPowerKw:
+            displayTelemetry.energyStore.motorMechanicalPowerKw *
+            incidentRecoveryScale,
+          requestedDeploymentPowerKw:
+            displayTelemetry.energyStore.requestedDeploymentPowerKw *
+            incidentRecoveryScale,
+        },
+        ersPowerKw: displayTelemetry.ersPowerKw * incidentRecoveryScale,
+        gear:
+          reactedSpeedKph < 1
+            ? 1
+            : Math.max(1, Math.min(8, Math.ceil(reactedSpeedKph / 45))),
+        overtakeStatus: 'disabled',
+        rpm:
+          reactedSpeedKph < 1
+            ? 0
+            : Math.round(Math.min(11000, 3000 + reactedSpeedKph * 20)),
+        speedKph: reactedSpeedKph,
+        throttlePercent: Math.min(
+          displayTelemetry.throttlePercent,
+          Math.round(12 * incidentRecoveryScale),
+        ),
+      }
+    }
     if (
       car.position === 1 &&
       safetyCarProcedure &&
@@ -4735,10 +4815,9 @@ export function advanceRace(
     }
 
     const newLap = Math.floor(next.totalDistance)
-    // Only process laps this car has never crossed before: an incident
-    // time-loss can drop the car back across a boundary it already crossed,
-    // and re-rolling that lap would deterministically repeat the same
-    // incident forever.
+    // Only process laps this car has never crossed before. Keeping a monotonic
+    // processed-lap marker also prevents a deterministic incident from being
+    // rolled more than once after an unusual session-state transition.
     const startLap = Math.max(Math.floor(car.totalDistance), car.processedLap)
 
     // --- Lap-crossing decisions ----------------------------------------------
@@ -5302,7 +5381,12 @@ export function advanceRace(
 
           next = {
             ...next,
-            totalDistance: next.totalDistance - incident.timeLossSeconds / baseLapTime,
+            battleDeltaSecondsRemaining:
+              next.battleDeltaSecondsRemaining - incident.timeLossSeconds,
+            battleOpponentId: null,
+            battlePhase: 'resolved',
+            battlePhaseUntilSeconds:
+              elapsedSeconds + Math.max(1.2, incident.timeLossSeconds * 1.8),
             damage: Math.min(1, next.damage + incident.damageDelta),
           }
         }
@@ -5869,7 +5953,10 @@ export function advanceRace(
       projectedLapTime: effectiveLapTime,
     }
 
-    if (next.status === 'running') {
+    // A car recovering from an obvious incident is a passable obstruction
+    // under yellow/neutralisation rules. Keep the last unaffected car as the
+    // queue reference so the entire field is not chained behind the stopped car.
+    if (carDefinesNeutralisationQueueOrder(next)) {
       aheadTotal = next.totalDistance
     }
 
@@ -5929,7 +6016,10 @@ export function advanceRace(
       damage,
       battleDeltaSecondsRemaining:
         car.battleDeltaSecondsRemaining - effect.timeLossSeconds,
-      battlePhase: 'defending' as const,
+        battlePhase:
+          effect.damageDelta > 0
+            ? ('resolved' as const)
+            : ('defending' as const),
       battleOpponentId: effect.opponentId,
       battlePhaseUntilSeconds: elapsedSeconds + 1.6,
     }

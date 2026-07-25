@@ -2531,9 +2531,17 @@
 .leaderboard-column-head,
 .leaderboard-rows button {
   display: grid;
-  grid-template-columns: 26px minmax(46px, 0.75fr) 24px minmax(44px, 0.78fr) minmax(54px, 1fr) minmax(54px, 1fr) 40px 40px 40px 28px 28px;
+  grid-template-columns: 20px minmax(36px, 0.75fr) 20px minmax(28px, 0.65fr) minmax(36px, 1fr) minmax(36px, 1fr) 24px 24px 24px 24px 27px;
   align-items: center;
-  gap: 3px;
+  gap: 1px;
+}
+
+.leaderboard-column-head > span,
+.leaderboard-rows button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .leaderboard-column-head {
@@ -2596,9 +2604,9 @@
 
 .leaderboard-driver {
   display: grid;
-  grid-template-columns: 2px 1fr auto;
+  grid-template-columns: 2px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   text-align: left;
 }
 

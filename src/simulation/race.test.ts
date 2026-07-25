@@ -33,11 +33,13 @@ import {
 import {
   advanceRace,
   blueFlagApproachingCarFor,
+  carDefinesNeutralisationQueueOrder,
   createInitialRace,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
+  rankCars,
   skipFormationLap,
 } from './race'
 import {
@@ -71,6 +73,7 @@ import {
 } from './weekendTires'
 import {
   applyWeekendGrid,
+  completedQualifyingClassification,
   completePracticeSession,
   completeQualifyingSession,
   completeRaceSession,
@@ -777,6 +780,72 @@ describe('weekend grid penalties', () => {
   })
 })
 
+describe('physical running order', () => {
+  it('keeps an unserved time penalty out of on-track position and gaps', () => {
+    const config = makeConfig('pending-penalty-physical-order')
+    const initial = createInitialRace(config)
+    const cars = initial.cars.map((car, index) => {
+      const totalDistance = 10 - index * 0.02
+
+      return {
+        ...car,
+        gapToAhead: index === 0 ? 0 : config.track.baseLapTime * 0.02,
+        lap: Math.floor(totalDistance),
+        penaltySeconds: index === 0 ? 10 : 0,
+        position: index + 1,
+        progress: totalDistance - Math.floor(totalDistance),
+        status: 'running' as const,
+        totalDistance,
+      }
+    })
+    const ranked = rankCars(cars, config)
+
+    expect(ranked[0].driverId).toBe(cars[0].driverId)
+    expect(ranked[0].position).toBe(1)
+    expect(ranked[0].liveDisplayPosition).toBe(1)
+    expect(ranked[1].gapToAhead).toBeCloseTo(
+      config.track.baseLapTime * 0.02,
+      6,
+    )
+  })
+
+  it('does not use a stopped or recovering car as the neutralisation queue reference', () => {
+    const car = createInitialRace(makeConfig('neutralisation-obstruction')).cars[0]
+
+    expect(carDefinesNeutralisationQueueOrder(car)).toBe(true)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        battleDeltaSecondsRemaining: -1.2,
+        battlePhase: 'resolved',
+        speedKph: 18,
+      }),
+    ).toBe(false)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        battleDeltaSecondsRemaining: -1.2,
+        battlePhase: 'attacking',
+        speedKph: 18,
+      }),
+    ).toBe(true)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        damage: 0.8,
+        speedKph: 18,
+        throttlePercent: 0,
+      }),
+    ).toBe(false)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        status: 'retired',
+      }),
+    ).toBe(false)
+  })
+})
+
 describe('full race', () => {
   const config = makeConfig('full-race')
   let finished: RaceSnapshot
@@ -1299,6 +1368,58 @@ describe('start procedure and persisted weekend', () => {
     expect(context.completed).toContain('qualifying')
     expect(context.setupBonusByDriver[practice[0].driverId]).toBeGreaterThan(0)
     expect(grid?.[0].id).toBe(qualifying[0].driverId)
+  })
+
+  it('uses the measured qualifying order and tyre inventory as the completed result', () => {
+    const config = makeConfig('measured-qualifying-result')
+    const context = createWeekendContext(config.drivers)
+    const knockout = runKnockoutQualifying(config)
+    const snapshot = createInitialRace({
+      ...config,
+      weekendContext: context,
+      weekendStage: 'qualifying',
+    })
+    const measuredCars = snapshot.cars
+      .slice()
+      .reverse()
+      .map((car, index) => {
+        const startingSoftSets = context.tireSetsByDriver[car.driverId].S ?? 0
+        const usedSets = index === 0 ? 3 : 1
+
+        return {
+          ...car,
+          bestLapTimeSeconds: 88 + index * 0.2,
+          position: index + 1,
+          tireSetsRemaining: {
+            ...car.tireSetsRemaining,
+            S: Math.max(0, startingSoftSets - usedSets),
+          },
+        }
+      })
+    const completed = completeQualifyingSession(
+      context,
+      'qualifying',
+      knockout.classification,
+      knockout.segments,
+      measuredCars,
+      true,
+    )
+    const classification = completedQualifyingClassification(
+      knockout.classification,
+      measuredCars,
+      true,
+    )
+
+    expect(classification[0].driverId).toBe(measuredCars[0].driverId)
+    expect(completed.gridByStage.race?.[0]).toBe(measuredCars[0].driverId)
+    expect(completed.tireSetsByDriver[measuredCars[0].driverId].S).toBe(
+      measuredCars[0].tireSetsRemaining.S,
+    )
+    expect(
+      completed.tireSetInventoryByDriver[measuredCars[0].driverId].filter(
+        (set) => set.compound === 'S' && set.status === 'used',
+      ),
+    ).toHaveLength(3)
   })
 
   it('stores Madrid qualifying 2 independently for the second feature grid', () => {

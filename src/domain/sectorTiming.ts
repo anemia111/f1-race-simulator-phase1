@@ -1,4 +1,4 @@
-import type { SectorTimingStatus, TimedRunPhase } from '../types'
+import type { LapRecord, SectorTimingStatus, TimedRunPhase } from '../types'
 
 // Samples come from the same immutable crossing records, so only floating-point
 // noise should count as equal. A display-rounding tolerance can incorrectly
@@ -20,6 +20,17 @@ export function isCurrentLapEligibleForBest(
   phase: TimedRunPhase | null,
 ): boolean {
   return phase === null || phase === 'attack-lap'
+}
+
+export function latestTimingLapForSegment(
+  laps: LapRecord[],
+  segment: string | null,
+): LapRecord | null {
+  if (segment === null) {
+    return laps.at(-1) ?? null
+  }
+
+  return laps.findLast((lap) => lap.segment === segment) ?? null
 }
 
 export function classifySectorTime(

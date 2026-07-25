@@ -174,9 +174,11 @@ Use `npm run playtest:dev` to target an already-running server. It checks 1440x9
 1280x720 PC layouts, WebGL pixels, overlay controls, and panel overlap. Screenshots
 go to the OS temporary directory by default; set `QA_ARTIFACT_DIR` to retain them
 at a specific location.
-`npm run benchmark` records 60x frame rate, long tasks, DOM size, canvas pixels,
-renderer identity, and optional Chromium heap usage. It prints JSON to stdout and
-only writes a file when `BENCHMARK_REPORT` specifies a path.
+`npm run benchmark` serves the latest `dist` build on an isolated preview and
+records 60x frame rate, long tasks, DOM size, canvas pixels, renderer identity,
+and optional Chromium heap usage. Use `npm run benchmark:dev` for an already
+running server. It prints JSON to stdout and only writes a file when
+`BENCHMARK_REPORT` specifies a path.
 Software renderers such as SwiftShader are recorded but are not treated as a
 hardware frame-rate pass/fail signal. Set `BENCHMARK_STRICT=1` for a real-GPU
 threshold run.

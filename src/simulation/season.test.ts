@@ -5,6 +5,7 @@ import { createInitialRace } from './race'
 import {
   applySeasonGarageToWeekend,
   buildSeasonStandings,
+  completedSeasonEventCount,
   createSeasonState,
   rankSeasonEntries,
   recordQualifyingPoints,
@@ -101,6 +102,9 @@ describe('local season standings', () => {
       wins: 1,
     })
     expect(standings.drivers[1].points).toBe(18)
+    expect(standings.drivers).toHaveLength(initialDrivers.length)
+    expect(standings.drivers.at(-1)?.points).toBe(0)
+    expect(standings.teams).toHaveLength(initialTeams.length)
     expect(standings.teams[0].points).toBeGreaterThanOrEqual(
       standings.teams[1]?.points ?? 0,
     )
@@ -120,6 +124,14 @@ describe('local season standings', () => {
     expect(seasonSessionId('shanghai-approx', 'sprint')).toBe(
       'shanghai-approx:sprint',
     )
+    expect(
+      completedSeasonEventCount([
+        'shanghai-approx:qualifying',
+        'shanghai-approx:sprint',
+        'shanghai-approx:race',
+        'melbourne-approx:race',
+      ]),
+    ).toBe(2)
   })
 
   it('supports category points and best-two entrant scoring', () => {

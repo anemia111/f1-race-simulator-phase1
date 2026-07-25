@@ -48,6 +48,7 @@ import {
   bestSectorTime,
   classifySectorTime,
   isCurrentLapEligibleForBest,
+  latestTimingLapForSegment,
 } from './domain/sectorTiming'
 import { useOpenF1Data } from './hooks/useOpenF1Data'
 import { useOpenF1SeasonStandings } from './hooks/useOpenF1SeasonStandings'
@@ -116,6 +117,7 @@ import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
   buildSeasonStandings,
+  completedSeasonEventCount,
   recordSeasonRound,
   recordQualifyingPoints,
   seasonSessionId,
@@ -126,6 +128,7 @@ import {
 import {
   applyGridPenalties,
   applyWeekendGrid,
+  completedQualifyingClassification,
   completePracticeSession,
   completeQualifyingSession,
   completeRaceSession,
@@ -1994,6 +1997,11 @@ export default function App() {
         : selectedWeekendStage === 'qualifying2'
           ? secondaryQualifying
           : standardQualifying
+    const completedClassification = completedQualifyingClassification(
+      knockout.classification,
+      snapshot.cars,
+      true,
+    )
 
     setWeekendContext((current) =>
       completeQualifyingSession(
@@ -2002,12 +2010,13 @@ export default function App() {
         knockout.classification,
         knockout.segments,
         snapshot.cars,
+        true,
       ),
     )
     if (isStandardQualifyingStage(selectedWeekendStage)) {
       setSeason((current) =>
         recordQualifyingPoints(current, {
-          classification: knockout.classification,
+          classification: completedClassification,
           pointsTable: seriesPackage.rules.points.qualifying,
           roundId: `${selectedEventId}:${selectedWeekendStage}`,
           teamScoring: seriesPackage.rules.championshipTeamScoring,
@@ -2384,7 +2393,10 @@ export default function App() {
           useObservedTiming
             ? (openF1LiveTiming?.intervalLabel ?? intervalLabel(car))
             : intervalLabel(car)
-        const latestCompletedLap = car.lapHistory.at(-1)
+        const latestCompletedLap = latestTimingLapForSegment(
+          car.lapHistory,
+          activeTimedSegment?.name ?? null,
+        )
         const tireSampleCount =
           raceConfig.track.observedCalibration?.tireSampleCountByCompound[
             car.tire
@@ -2495,7 +2507,7 @@ export default function App() {
           displayPosition,
           ...telemetry,
           ...tireModel,
-          lapTimeSeconds: car.lastLapTimeSeconds,
+          lapTimeSeconds: latestCompletedLap?.lapTimeSeconds ?? null,
           lapDataLabel: latestCompletedLap
             ? `SIM MEASURED / LAP ${sectorLapNumber}`
             : 'SIM AWAITING TIMING LINE',
@@ -2823,6 +2835,7 @@ export default function App() {
           qualifying.classification,
           qualifying.segments,
           snapshot.cars,
+          snapshot.sessionStatus === 'finished',
         ),
       )
     } else if (selectedWeekendStage === 'sprintQualifying') {
@@ -2833,6 +2846,7 @@ export default function App() {
           sprintShootout.classification,
           sprintShootout.segments,
           snapshot.cars,
+          snapshot.sessionStatus === 'finished',
         ),
       )
     }
@@ -3328,7 +3342,7 @@ export default function App() {
         drivers: raceConfig.drivers,
         teams: raceConfig.teams,
       }),
-      rounds: season.completedRounds.length,
+      rounds: completedSeasonEventCount(season.completedRounds),
     }),
     [season, raceConfig.drivers, raceConfig.teams],
   )

@@ -13,7 +13,8 @@
     "validate:montecarlo": "vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts",
     "playtest": "node scripts/run-built-playtest.mjs",
     "playtest:dev": "node scripts/broadcast-playtest.mjs",
-    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark": "node scripts/run-built-benchmark.mjs",
+    "benchmark:dev": "node scripts/benchmark.mjs",
     "preview": "vite preview",
     "publish": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-web-app.ps1"
   },

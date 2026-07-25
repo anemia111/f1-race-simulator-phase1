@@ -137,6 +137,50 @@ function consumeCompound(
   }
 }
 
+function hasMeasuredQualifyingEvidence(cars: CarSnapshot[] | undefined) {
+  return (
+    cars?.some(
+      (car) =>
+        car.lapHistory.some((lap) => lap.segment !== undefined) ||
+        Object.values(car.timedSegmentAttemptStatus ?? {}).some(
+          (status) => status !== 'garage',
+        ),
+    ) ?? false
+  )
+}
+
+export function completedQualifyingClassification(
+  results: QualifyingResult[],
+  cars?: CarSnapshot[],
+  preferMeasuredCars = false,
+): Array<Pick<QualifyingResult, 'driverId' | 'teamId' | 'position'>> {
+  const useMeasuredCars =
+    Boolean(cars && cars.length > 0) &&
+    (preferMeasuredCars || hasMeasuredQualifyingEvidence(cars))
+
+  return useMeasuredCars
+    ? cars!
+        .slice()
+        .sort(
+          (left, right) =>
+            left.position - right.position ||
+            left.gridPosition - right.gridPosition,
+        )
+        .map((car, index) => ({
+          driverId: car.driverId,
+          position: index + 1,
+          teamId: car.teamId,
+        }))
+    : results
+        .slice()
+        .sort((left, right) => left.position - right.position)
+        .map(({ driverId, position, teamId }) => ({
+          driverId,
+          position,
+          teamId,
+        }))
+}
+
 export function completePracticeSession(
   previous: WeekendContext,
   stage: Extract<WeekendStage, 'fp1' | 'fp2' | 'fp3'>,
@@ -214,6 +258,7 @@ export function completeQualifyingSession(
   results: QualifyingResult[],
   segments?: QualifyingSegment[],
   cars?: CarSnapshot[],
+  preferMeasuredCars = false,
 ): WeekendContext {
   if (previous.completed.includes(stage)) {
     return previous
@@ -226,27 +271,64 @@ export function completeQualifyingSession(
   const qualificationStatusByDriver = {
     ...previous.qualificationStatusByDriver,
   }
+  const useMeasuredCars =
+    Boolean(cars && cars.length > 0) &&
+    (preferMeasuredCars || hasMeasuredQualifyingEvidence(cars))
+  const completedClassification = completedQualifyingClassification(
+    results,
+    cars,
+    preferMeasuredCars,
+  )
 
-  const usageResults = segments
-    ? segments.flatMap((segment) => segment.results)
-    : results
+  if (useMeasuredCars) {
+    for (const car of cars!) {
+      const previousSets = previous.tireSetsByDriver[car.driverId] ?? {}
+      const consumedCompounds = allCompounds.flatMap((compound) =>
+        Array.from(
+          {
+            length: Math.max(
+              0,
+              (previousSets[compound] ?? 0) -
+                (car.tireSetsRemaining[compound] ?? 0),
+            ),
+          },
+          () => compound,
+        ),
+      )
 
-  for (const result of usageResults) {
-    tireSetsByDriver = consumeCompound(
-      { ...previous, tireSetsByDriver },
-      result.driverId,
-      result.compound,
-      result.setsUsed,
-    )
-    tireSetInventoryByDriver = recordDetailedTireSets(
-      tireSetInventoryByDriver,
-      result.driverId,
-      Array.from({ length: result.setsUsed }, () => result.compound),
-      Math.max(1, result.validRunCount),
-    )
+      tireSetsByDriver = {
+        ...tireSetsByDriver,
+        [car.driverId]: { ...car.tireSetsRemaining },
+      }
+      tireSetInventoryByDriver = recordDetailedTireSets(
+        tireSetInventoryByDriver,
+        car.driverId,
+        consumedCompounds,
+        car.lapHistory.length,
+      )
+    }
+  } else {
+    const usageResults = segments
+      ? segments.flatMap((segment) => segment.results)
+      : results
+
+    for (const result of usageResults) {
+      tireSetsByDriver = consumeCompound(
+        { ...previous, tireSetsByDriver },
+        result.driverId,
+        result.compound,
+        result.setsUsed,
+      )
+      tireSetInventoryByDriver = recordDetailedTireSets(
+        tireSetInventoryByDriver,
+        result.driverId,
+        Array.from({ length: result.setsUsed }, () => result.compound),
+        Math.max(1, result.validRunCount),
+      )
+    }
   }
 
-  for (const result of results) {
+  for (const result of completedClassification) {
     parcFermeLockedByDriver[result.driverId] = true
   }
 
@@ -279,17 +361,7 @@ export function completeQualifyingSession(
       : stage === 'qualifying2'
         ? 'race2'
         : 'race'
-  const measuredClassificationAvailable =
-    cars?.some((car) => car.bestLapTimeSeconds !== null) ?? false
-  const orderedIds = measuredClassificationAvailable
-    ? cars!
-        .slice()
-        .sort((left, right) => left.position - right.position)
-        .map((car) => car.driverId)
-    : results
-        .slice()
-        .sort((a, b) => a.position - b.position)
-        .map((result) => result.driverId)
+  const orderedIds = completedClassification.map((result) => result.driverId)
 
   return {
     ...previous,

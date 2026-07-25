@@ -1,7 +1,11 @@
 import { Activity, BarChart3, Flag, Gauge, Route, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { strategyOutlookFor } from '../simulation/strategy'
-import { rankSeasonEntries, type SeasonState } from '../simulation/season'
+import {
+  completedSeasonEventCount,
+  rankSeasonEntries,
+  type SeasonState,
+} from '../simulation/season'
 import { tireConditionFor } from '../simulation/tires'
 import { driverAbilityValue } from '../simulation/driverAbility'
 import type {
@@ -224,7 +228,7 @@ export function RaceInsightsPanel({
       <section className="insight-section">
         <h2><Flag aria-hidden="true" size={13} /> Championship</h2>
         <div className="insight-grid">
-          <span>Rounds</span><strong>{season.completedRounds.length}</strong>
+          <span>Rounds</span><strong>{completedSeasonEventCount(season.completedRounds)}</strong>
           <span>{car.code}</span><strong>{championship.selectedPoints} pts</strong>
           <span>Leader</span><strong>{championship.leaderLabel}</strong>
           <span>Team</span><strong>{season.teamPoints[car.teamId] ?? 0} pts</strong>

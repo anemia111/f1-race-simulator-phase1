@@ -73,6 +73,17 @@ export function seasonSessionId(
   return `${trackId}:${stage}`
 }
 
+const seasonSessionSuffix =
+  /:(?:qualifying2|sprintQualifying|qualifying|race2|sprint|race)$/
+
+export function completedSeasonEventCount(completedSessions: string[]): number {
+  return new Set(
+    completedSessions
+      .filter((sessionId) => sessionId.length > 0)
+      .map((sessionId) => sessionId.replace(seasonSessionSuffix, '')),
+  ).size
+}
+
 export function canonicalSeasonSessionId(value: string) {
   const legacy = /^([^:]+):(race|race2|sprint)(?::.+)?$/.exec(value)
 
@@ -271,9 +282,35 @@ export function buildSeasonStandings(options: {
   }
   const winsFor = (results: number[] | undefined) =>
     (results ?? []).filter((position) => position === 1).length
+  const championshipStarted =
+    season.resultArchive.length > 0 ||
+    Object.keys(season.driverPoints).length > 0 ||
+    Object.keys(season.teamPoints).length > 0 ||
+    Object.keys(season.driverResults).length > 0 ||
+    Object.keys(season.teamResults).length > 0
+  const completeDriverPoints = { ...season.driverPoints }
+  const completeTeamPoints = { ...season.teamPoints }
+
+  if (championshipStarted) {
+    for (const driverId of new Set([
+      ...driverById.keys(),
+      ...archivedDriverById.keys(),
+      ...Object.keys(season.driverPoints),
+    ])) {
+      completeDriverPoints[driverId] ??= 0
+    }
+
+    for (const teamId of new Set([
+      ...teamById.keys(),
+      ...archivedTeamById.keys(),
+      ...Object.keys(season.teamPoints),
+    ])) {
+      completeTeamPoints[teamId] ??= 0
+    }
+  }
 
   const driverRows = rankSeasonEntries(
-    season.driverPoints,
+    completeDriverPoints,
     season.driverResults,
   ).map(([driverId, points]) => {
     const current = driverById.get(driverId)
@@ -290,7 +327,7 @@ export function buildSeasonStandings(options: {
       wins: winsFor(season.driverResults[driverId]),
     }
   })
-  const teamRows = rankSeasonEntries(season.teamPoints, season.teamResults).map(
+  const teamRows = rankSeasonEntries(completeTeamPoints, season.teamResults).map(
     ([teamId, points]) => {
       const current = teamById.get(teamId)
       const archived = archivedTeamById.get(teamId)

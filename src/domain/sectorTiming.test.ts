@@ -3,6 +3,7 @@ import {
   bestSectorTime,
   classifySectorTime,
   isCurrentLapEligibleForBest,
+  latestTimingLapForSegment,
 } from './sectorTiming'
 
 describe('sector timing colors', () => {
@@ -57,5 +58,32 @@ describe('sector timing colors', () => {
     expect(isCurrentLapEligibleForBest('in-lap')).toBe(false)
     expect(isCurrentLapEligibleForBest('cooldown')).toBe(false)
     expect(isCurrentLapEligibleForBest('garage')).toBe(false)
+  })
+
+  it('starts each qualifying segment from a clean timing sheet', () => {
+    const q1Lap = {
+      invalidReason: null,
+      isValid: true,
+      lap: 1,
+      lapTimeSeconds: 90,
+      pitStop: false,
+      position: 1,
+      sectors: [30, 30, 30] as [number, number, number],
+      segment: 'Q1',
+      tire: 'S' as const,
+      tireAgeLaps: 1,
+      trackGrip: 1,
+      weather: 'clear' as const,
+    }
+    const q2Lap = {
+      ...q1Lap,
+      lapTimeSeconds: 89,
+      sectors: [29.5, 29.5, 30] as [number, number, number],
+      segment: 'Q2',
+    }
+
+    expect(latestTimingLapForSegment([q1Lap], 'Q2')).toBeNull()
+    expect(latestTimingLapForSegment([q1Lap, q2Lap], 'Q2')).toBe(q2Lap)
+    expect(latestTimingLapForSegment([q1Lap, q2Lap], null)).toBe(q2Lap)
   })
 })

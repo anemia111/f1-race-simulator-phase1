@@ -112,6 +112,26 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const liveGapScroll = await inspectScroll(page.locator('.live-gap-panel ol'))
   const liveTimingTitle = await page.locator('.broadcast-live-timing .broadcast-panel-header').innerText()
   const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
+  const leaderboardColumnVisibility = await page.locator('.leaderboard-column-head').evaluate((header) => {
+    const headerRect = header.getBoundingClientRect()
+    const cells = Array.from(header.querySelectorAll('span'))
+    const visibleInsideHeader = (cell) => {
+      if (!cell) return false
+
+      const rect = cell.getBoundingClientRect()
+
+      return (
+        rect.width > 0 &&
+        rect.left >= headerRect.left - 1 &&
+        rect.right <= headerRect.right + 1
+      )
+    }
+
+    return {
+      battery: visibleInsideHeader(cells.at(-1)),
+      speed: visibleInsideHeader(cells.at(-2)),
+    }
+  })
   const overviewNavigationItems = await page.locator('.broadcast-sidebar button[title="Overview"]').count()
   const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
   const initialSectorValues = await page.locator('.leaderboard-rows .sector-value').allInnerTexts()
@@ -247,7 +267,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   let observedOverallBest = false
   let observedMeasuredSector = false
 
-  for (let sample = 0; sample < 45; sample += 1) {
+  // An early SC/VSC or red flag can legitimately delay the first measured lap.
+  // Keep the QA run adaptive instead of making its result depend on a random
+  // incident fitting inside one fixed 4.5-second wall-clock window.
+  for (let sample = 0; sample < 180; sample += 1) {
     await page.waitForTimeout(100)
     const measuredSectorCount = await page
       .locator(
@@ -258,6 +281,30 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     observedOverallBest ||=
       (await page.locator('.leaderboard-rows .sector-status-overall-best').count()) > 0
     observedMeasuredSector ||= measuredSectorCount > 0
+
+    if (sample >= 44 && sample % 5 === 4) {
+      const currentTireLife = await page
+        .locator('.leaderboard-tire-life')
+        .allInnerTexts()
+      const lastLapValues = await page
+        .locator('.leaderboard-rows button > span:nth-child(5)')
+        .allInnerTexts()
+      const hasMeasuredLap = lastLapValues.some((value) =>
+        /^\d+:\d{2}\.\d{3}$/u.test(value),
+      )
+      const tireLifeChanged = currentTireLife.some(
+        (value) => /^\d{1,3}$/u.test(value) && Number(value) < 100,
+      )
+
+      if (
+        observedOverallBest &&
+        observedMeasuredSector &&
+        hasMeasuredLap &&
+        tireLifeChanged
+      ) {
+        break
+      }
+    }
   }
 
   const batteryValues = await page.locator('.leaderboard-rows button > span:last-child').allInnerTexts()
@@ -384,6 +431,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     leaderboardRows,
     leaderboardScroll,
     leaderboardHeader,
+    leaderboardColumnVisibility,
     liveGapRows,
     liveGapScroll,
     liveTimingTitle,
@@ -534,6 +582,8 @@ try {
     if (result.leaderboardRows !== EXPECTED_FIELD_SIZE) failures.push(`expected ${EXPECTED_FIELD_SIZE} leaderboard rows, saw ${result.leaderboardRows}`)
     if (!result.leaderboardHeader.includes('SPD')) failures.push('leaderboard speed column missing')
     if (!result.leaderboardHeader.includes('BAT')) failures.push('leaderboard battery column missing')
+    if (!result.leaderboardColumnVisibility.speed) failures.push('leaderboard speed column is clipped')
+    if (!result.leaderboardColumnVisibility.battery) failures.push('leaderboard battery column is clipped')
     if (result.overviewNavigationItems !== 0) failures.push('redundant overview navigation is still present')
     if (!result.initialFastestText.includes('--:--.---') || !result.initialFastestText.includes('Awaiting completed lap')) failures.push('initial fastest lap must wait for a measured CPU lap')
     if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
