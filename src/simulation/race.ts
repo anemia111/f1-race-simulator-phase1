@@ -219,7 +219,13 @@ const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
 const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
-const BLUE_FLAG_APPROACH_GAP_SECONDS = 3
+/**
+ * How close a lapping car must be before the blue flag is shown. Race Control
+ * warns a driver who is about to be lapped, not one whose lap deficit merely
+ * says a faster car exists somewhere on the circuit, so the flag waits until
+ * the quicker car is genuinely on the gearbox.
+ */
+const BLUE_FLAG_APPROACH_GAP_SECONDS = 1.5
 
 function simulatedHeadwindMpsAt(
   config: RaceConfig,
@@ -273,7 +279,7 @@ export function blueFlagApproachingCarFor(
     const trackGapBehind = nextLappingBoundary - lapLead
 
     // Use physical proximity to the next lapping boundary, not the raw lap
-    // deficit. The user-facing model calls the blue flag inside three seconds.
+    // deficit, so the flag tracks the car actually closing in.
     if (trackGapBehind <= 1e-6) {
       continue
     }
@@ -6034,6 +6040,16 @@ export function advanceRace(
               raceLaps,
               controlPhase: pitControlPhase,
               neutralisationSecondsRemaining,
+              neutralisationElapsedSeconds:
+                localControlPhase === null || localControlPhase === undefined
+                  ? null
+                  : elapsedSeconds - localControlPhase.startSeconds,
+              neutralisedLapSeconds: baseLapTime * 1.45,
+              fieldSize: snapshot.cars.filter(
+                (candidate) =>
+                  candidate.status !== 'dns' &&
+                  candidate.status !== 'disqualified',
+              ).length,
               pitEntrySecondsAway: 0,
               overtakeDifficulty: overtakeDifficultyForTrack(config.track),
               weather: localWeather,

@@ -393,6 +393,12 @@ export function decidePitStop(options: {
   underSafetyCar?: boolean
   controlPhase?: PitControlPhase
   neutralisationSecondsRemaining?: number | null
+  /** Time since the current neutralisation was declared. */
+  neutralisationElapsedSeconds?: number | null
+  /** Reference duration of one lap run behind the Safety Car. */
+  neutralisedLapSeconds?: number
+  /** Cars still classified, used to spot the tail of the field. */
+  fieldSize?: number
   pitEntrySecondsAway?: number
   overtakeDifficulty?: number
   weather: WeatherState
@@ -426,6 +432,9 @@ export function decidePitStop(options: {
     underSafetyCar: legacyUnderSafetyCar,
     controlPhase: requestedControlPhase,
     neutralisationSecondsRemaining,
+    neutralisationElapsedSeconds,
+    neutralisedLapSeconds,
+    fieldSize,
     pitEntrySecondsAway = 0,
     overtakeDifficulty = 0.5,
     weather,
@@ -490,10 +499,21 @@ export function decidePitStop(options: {
     usedDryCompounds.length < 2
   const compoundRoll = hashChance(`${seed}:compound:${driver.id}:${lap}`)
   const avoid = needsSecondCompound ? car.tire : null
+  // What the surface itself is asking for right now, independent of any
+  // forecast. This is the authority on wet versus dry.
+  const measuredCategory = trackCondition
+    ? preferredTireCategoryFor(trackCondition)
+    : null
+  const rainFalling = (trackCondition?.rainIntensityMmH ?? 0) > 0.15
+  const dryRacingLine = measuredCategory === 'M' && !rainFalling
+  // A forecast may bring a stop forward, but only once the track has actually
+  // started to go: rain falling, or water already standing on the line. Acting
+  // on a dry line fits intermediates to a dry track and throws the race away.
   const forecastIsActionable =
     forecast?.willChange === true &&
     forecast.secondsAhead <= 180 &&
-    forecast.confidence >= 0.65
+    forecast.confidence >= 0.65 &&
+    !dryRacingLine
   const strategicWeather = forecastIsActionable ? forecast.weather : weather
   const strategicGrip = forecastIsActionable ? forecast.trackGrip : trackGrip
   const preferredCompound = chooseCompound(
@@ -522,12 +542,26 @@ export function decidePitStop(options: {
   // a heavy-rain label while the line holds a millimetre wastes the stop and
   // leaves the car on far too much tread. Anticipation can still reach for
   // intermediates early.
-  const compound =
+  const wetCategoryCompound =
     availableCompound === 'W' &&
     trackCondition &&
     preferredTireCategoryFor(trackCondition) !== 'W'
       ? 'I'
       : availableCompound
+  // Final surface check: a dry racing line never receives a wet-weather tyre,
+  // whatever the forecast or the grip estimate said. If the anticipation model
+  // reached for one anyway, fall back to the dry compound the stint needs.
+  const compound =
+    dryRacingLine && !isDryCompound(wetCategoryCompound)
+      ? chooseCompound(
+          remaining,
+          avoid,
+          compoundRoll,
+          'clear',
+          1,
+          trackCondition,
+        )
+      : wetCategoryCompound
   const closeAhead =
     typeof gapToAheadSeconds === 'number' &&
     gapToAheadSeconds > 0 &&
@@ -725,11 +759,29 @@ export function decidePitStop(options: {
     neutralisationSecondsRemaining !== undefined &&
     neutralisationSecondsRemaining <= pitEntrySecondsAway + 5
 
+  // A Safety Car stop is only cheap while the field is still strung out. Once
+  // the queue has formed behind the Safety Car, the cars that stayed out are
+  // nose to tail, and a stop a lap later rejoins behind all of them: the pit
+  // loss is paid in full against a compressed field. So the stop is taken on
+  // the lap the Safety Car is called, and after that only by cars near the
+  // tail of the field, who have little track position left to lose.
+  const safetyCarQueueFormed =
+    controlPhase === 'safety-car' &&
+    neutralisationElapsedSeconds !== null &&
+    neutralisationElapsedSeconds !== undefined &&
+    neutralisationElapsedSeconds > (neutralisedLapSeconds ?? 130)
+  const nearBackOfField =
+    fieldSize !== undefined &&
+    position !== undefined &&
+    position >= fieldSize - 4
+  const missedSafetyCarWindow = safetyCarQueueFormed && !nearBackOfField
+
   // Neutralisation creates an opportunity, not a command. Stable team traits,
   // track position and this driver's rejoin traffic split the field's calls.
   if (
     underSafetyCar &&
     !vscEndingBeforeEntry &&
+    !missedSafetyCarWindow &&
     age >= strategicCliff * minimumNeutralisationAgeShare &&
     opportunity.netGainSeconds >= neutralisationThreshold
   ) {

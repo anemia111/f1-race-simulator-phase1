@@ -121,7 +121,7 @@ function runThroughStart(
 }
 
 describe('blue flags', () => {
-  it('shows only when a lead car is within three seconds of lapping traffic', () => {
+  it('shows only when a lead car is right on the gearbox of lapping traffic', () => {
     const [leader, backmarker] = createInitialRace(makeConfig('blue-flag')).cars
     const farApproaching = {
       ...leader,
@@ -142,9 +142,11 @@ describe('blue flags', () => {
       ),
     ).toBeNull()
 
+    // 0.99 of a lap ahead is 0.01 of a lap from lapping this car: about 0.9s
+    // at a 90s reference lap, so the flag is shown.
     const closeApproaching = {
       ...farApproaching,
-      totalDistance: 4.97,
+      totalDistance: 4.99,
     }
 
     expect(
@@ -156,10 +158,11 @@ describe('blue flags', () => {
     ).toBe(
       closeApproaching.driverId,
     )
+    // Still 0.03 of a lap back (2.7s): closing, but not yet on the gearbox.
     expect(
       blueFlagApproachingCarFor(
         lapped,
-        [{ ...closeApproaching, totalDistance: 4.9666 }, lapped],
+        [{ ...closeApproaching, totalDistance: 4.97 }, lapped],
         90,
       ),
     ).toBeNull()
@@ -3328,13 +3331,21 @@ describe('qualifying', () => {
 
 describe('incidents', () => {
   it('uses VSC off track, SC on track, and red for a major blocked accident', () => {
+    // Both cars drive away: nothing is stopped, so the race is not neutralised.
     expect(
       crashFlagResponseFor({
         attackerRetires: false,
         defenderRetires: false,
         obstructionRoll: 0.99,
       }),
-    ).toBe('sc')
+    ).toBe('yellow')
+    expect(
+      crashFlagResponseFor({
+        attackerRetires: false,
+        defenderRetires: false,
+        obstructionRoll: 0.05,
+      }),
+    ).toBe('yellow')
     expect(
       crashFlagResponseFor({
         attackerRetires: true,

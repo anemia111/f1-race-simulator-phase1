@@ -132,15 +132,17 @@ export function crashDispositionFor(options: {
   defenderRetires: boolean
   obstructionRoll: number
 }): {
-  location: IncidentStopLocation
+  /** Null when both cars drive away and nothing is left stopped on track. */
+  location: IncidentStopLocation | null
   response: Exclude<FlagState, 'clear'>
 } {
   const { attackerRetires, defenderRetires, obstructionRoll } = options
 
   if (!attackerRetires && !defenderRetires) {
-    // A heavy impact that leaves both damaged cars stopped in the traffic
-    // stream can block the following field even if both eventually continue.
-    return { location: 'on-track', response: 'sc' }
+    // Both cars drive away. Nothing is stranded in the traffic stream, so the
+    // marshals work a local yellow rather than neutralising the whole race:
+    // a Safety Car or VSC needs a car actually stopped on or beside the track.
+    return { location: null, response: 'yellow' }
   }
 
   if (attackerRetires && defenderRetires) {

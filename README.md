@@ -59,11 +59,25 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   dashboard status, and the 3D circuit trace.
 - Minor contact remains a sector-local yellow. VSC, Safety Car, and red-flag
   escalation requires a stopped or obstructing car, and cars in clear sectors
-  retain green-flag pace.
+  retain green-flag pace. A collision both cars drive away from is worked under
+  a local yellow: nothing is stranded, so the race is not neutralised.
 - Neutralised-race strategy prices SC and VSC pit loss separately, rejects a
   VSC opportunity that will end before pit entry, preserves the VSC tyre-only
   service restriction, and splits calls by traffic, track position, tyre state,
   team profile, available sets, and double-stack risk.
+- A Safety Car stop is taken on the lap the Safety Car is called, while the
+  field is still strung out. Once the queue has formed, the cars that stayed
+  out are nose to tail and a stop a lap later rejoins behind all of them, so
+  only cars near the tail of the field still take it.
+- Lapped cars are waved past under the Safety Car: eligibility is frozen at the
+  prescribed Safety Car Line crossing, only the named cars may pass, and the
+  restart waits for them to rejoin the back of the queue.
+- Blue flags wait until the lapping car is genuinely on the gearbox rather than
+  merely a lap ahead somewhere on the circuit.
+- Wet-weather tyres are fitted from the measured state of the racing line, not
+  from a forecast: a dry line never receives intermediates or wets, and a
+  forecast can only bring a stop forward once rain is falling or water is
+  already standing.
 - Integrated acceleration now produces representative dry maxima above the old
   260 km/h plateau, while 420-class speed remains limited to favorable long
   straights with low drag, low fuel, tow, and ERS deployment.
