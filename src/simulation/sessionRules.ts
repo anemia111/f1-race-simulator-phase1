@@ -67,6 +67,12 @@ export function isRaceDistanceSession(stage: WeekendStage): stage is RaceDistanc
   return isFeatureRaceStage(stage) || stage === 'sprint'
 }
 
+export function performanceSessionForWeekendStage(
+  stage: WeekendStage,
+): 'qualifying' | 'race' {
+  return isQualifyingStage(stage) ? 'qualifying' : 'race'
+}
+
 /** Maps event-specific duplicate sessions onto the shared physics rule set. */
 export function simulationStageFor(stage: WeekendStage): WeekendStage {
   if (stage === 'qualifying2') return 'qualifying'

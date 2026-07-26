@@ -121,7 +121,7 @@ function runThroughStart(
 }
 
 describe('blue flags', () => {
-  it('shows only when a lead car is within the operational 1.2 second lapping gap', () => {
+  it('shows only when a lead car is within three seconds of lapping traffic', () => {
     const [leader, backmarker] = createInitialRace(makeConfig('blue-flag')).cars
     const farApproaching = {
       ...leader,
@@ -144,7 +144,7 @@ describe('blue flags', () => {
 
     const closeApproaching = {
       ...farApproaching,
-      totalDistance: 4.988,
+      totalDistance: 4.97,
     }
 
     expect(
@@ -156,6 +156,13 @@ describe('blue flags', () => {
     ).toBe(
       closeApproaching.driverId,
     )
+    expect(
+      blueFlagApproachingCarFor(
+        lapped,
+        [{ ...closeApproaching, totalDistance: 4.9666 }, lapped],
+        90,
+      ),
+    ).toBeNull()
     expect(
       blueFlagApproachingCarFor(
         lapped,
@@ -875,6 +882,16 @@ describe('physical running order', () => {
     expect(
       carDefinesNeutralisationQueueOrder({
         ...car,
+        battleDeltaSecondsRemaining: 0,
+        damage: 0.3,
+        incidentTrackState: 'on-track-stopped',
+        speedKph: 0,
+        throttlePercent: 0,
+      }),
+    ).toBe(false)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
         damage: 0.8,
         speedKph: 18,
         throttlePercent: 0,
@@ -903,9 +920,11 @@ describe('physical running order', () => {
       { ...leader, totalDistance: 2.47 },
       {
         ...obstruction,
-        battleDeltaSecondsRemaining: -8,
+        battleDeltaSecondsRemaining: -20,
         battlePhase: 'resolved' as const,
         damage: 0.35,
+        incidentTrackState: 'on-track-stopped' as const,
+        incidentTrackStateSinceSeconds: started.elapsedSeconds - 1,
         speedKph: 0,
         throttlePercent: 0,
         totalDistance: 2.445,
@@ -977,6 +996,50 @@ describe('physical running order', () => {
         .sort((left, right) => right - left),
     )
   })
+
+  it.each([
+    ['on-track-stopped', 'sc'],
+    ['off-track-stopped', 'vsc'],
+  ] as const)(
+    'stages double yellow then %s retirement escalates to %s',
+    (incidentTrackState, expectedResponse) => {
+      const config = makeConfig(`stopped-location-${expectedResponse}`)
+      const started = runThroughStart(config)
+      const stopped = started.cars[4]
+      const snapshot = advanceRace(
+        {
+          ...started,
+          cars: started.cars.map((car) =>
+            car.driverId === stopped.driverId
+              ? {
+                  ...car,
+                  hiddenFromTrack: false,
+                  incidentTrackState,
+                  incidentTrackStateSinceSeconds: started.elapsedSeconds,
+                  retiredAtSeconds: started.elapsedSeconds,
+                  retiredReason: 'test failure',
+                  speedKph: 0,
+                  status: 'retired' as const,
+                  throttlePercent: 0,
+                }
+              : car,
+          ),
+          flag: 'clear',
+          flagLabel: 'CLEAR',
+          flagPhase: null,
+          sectorFlags: ['clear', 'clear', 'clear'],
+        },
+        0.1,
+        config,
+      )
+
+      expect(snapshot.flagPhase).toMatchObject({
+        flag: 'yellow',
+        yellowSeverity: 'double',
+        escalation: { flag: expectedResponse },
+      })
+    },
+  )
 })
 
 describe('full race', () => {
@@ -3264,31 +3327,38 @@ describe('qualifying', () => {
 })
 
 describe('incidents', () => {
-  it('reserves VSC, Safety Car, and red flags for stopped or obstructing cars', () => {
+  it('uses VSC off track, SC on track, and red for a major blocked accident', () => {
     expect(
       crashFlagResponseFor({
         attackerRetires: false,
         defenderRetires: false,
         obstructionRoll: 0.99,
       }),
-    ).toBe('yellow')
+    ).toBe('sc')
     expect(
       crashFlagResponseFor({
         attackerRetires: true,
         defenderRetires: false,
         obstructionRoll: 0.2,
       }),
-    ).toBe('yellow')
+    ).toBe('vsc')
+    expect(
+      crashFlagResponseFor({
+        attackerRetires: true,
+        defenderRetires: false,
+        obstructionRoll: 0.8,
+      }),
+    ).toBe('sc')
     expect(
       crashFlagResponseFor({
         attackerRetires: true,
         defenderRetires: true,
-        obstructionRoll: 0.95,
+        obstructionRoll: 0.97,
       }),
     ).toBe('red')
-    expect(terminalCrashFlagResponse(0.1)).toBe('yellow')
-    expect(terminalCrashFlagResponse(0.5)).toBe('vsc')
-    expect(terminalCrashFlagResponse(0.8)).toBe('sc')
+    expect(terminalCrashFlagResponse(0.1)).toBe('vsc')
+    expect(terminalCrashFlagResponse(0.5)).toBe('sc')
+    expect(terminalCrashFlagResponse(0.98)).toBe('red')
   })
 
   it('is deterministic for the same inputs', () => {

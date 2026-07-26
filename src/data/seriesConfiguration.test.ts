@@ -14,6 +14,7 @@ import {
 } from './seriesConfiguration'
 
 const f2 = seriesPackageById.get('f2')!
+const f1 = seriesPackageById.get('f1-custom')!
 
 describe('series configuration import and export', () => {
   it('round-trips a validated versioned JSON backup', () => {
@@ -151,5 +152,25 @@ describe('series configuration import and export', () => {
     expect(stored.saveVersion).toBe(1)
     expect(stored.drivers[0]).not.toHaveProperty('startOffset')
     expect(stored.teams[0]).not.toHaveProperty('performanceSource')
+  })
+
+  it('migrates the old uniform F1 pit-crew default to calibrated team values', () => {
+    const stored = serializeSeriesConfiguration(
+      'f1-custom',
+      f1.teams.map((team) => ({ ...team, pitCrewSpeed: 0.82 })),
+      f1.drivers,
+    )
+    const restored = parsePersistedSeriesConfiguration(
+      JSON.stringify(stored),
+      f1,
+    )
+
+    expect(restored).not.toBeNull()
+    expect(restored!.teams.map((team) => team.pitCrewSpeed)).toEqual(
+      f1.teams.map((team) => team.pitCrewSpeed),
+    )
+    expect(
+      new Set(restored!.teams.map((team) => team.pitCrewSpeed)).size,
+    ).toBe(10)
   })
 })

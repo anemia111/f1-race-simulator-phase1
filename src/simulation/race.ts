@@ -5,6 +5,7 @@ import type {
   CarSnapshot,
   Driver,
   FlagState,
+  IncidentTrackState,
   RaceConfig,
   RacePaceMode,
   PenaltyKind,
@@ -19,6 +20,10 @@ import type {
 } from '../types'
 import { lapDeficitLabel } from './classification'
 import { flagSeverityRank, incidentForLap } from './incidents'
+import {
+  carCanDefineNeutralisationQueue,
+  incidentTrackStateForLocation,
+} from './incidentTraffic'
 import {
   driverPerformanceAbility,
   driverSkillBlend,
@@ -76,6 +81,7 @@ import {
   compactSessionDurationLabel,
   isRaceDistanceSession,
   isTimedLapSession,
+  performanceSessionForWeekendStage,
   sessionDurationSecondsFor,
   weekendStageLabelFor,
 } from './sessionRules'
@@ -202,6 +208,7 @@ const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
 const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
+const BLUE_FLAG_APPROACH_GAP_SECONDS = 3
 
 function simulatedHeadwindMpsAt(
   config: RaceConfig,
@@ -254,16 +261,18 @@ export function blueFlagApproachingCarFor(
     const nextLappingBoundary = Math.ceil(lapLead - 1e-9)
     const trackGapBehind = nextLappingBoundary - lapLead
 
-    // The FIA light-panel call is made only when the faster car is about to
-    // lap the car ahead. A 1.2 s timing gap mirrors current event-note
-    // operation; it replaces the old 0.18-lap (roughly 16 s) early warning.
+    // Use physical proximity to the next lapping boundary, not the raw lap
+    // deficit. The user-facing model calls the blue flag inside three seconds.
     if (trackGapBehind <= 1e-6) {
       continue
     }
 
     const gapSeconds = trackGapBehind * lapTime
 
-    if (gapSeconds <= 1.2 && gapSeconds < closestGapSeconds) {
+    if (
+      gapSeconds <= BLUE_FLAG_APPROACH_GAP_SECONDS &&
+      gapSeconds < closestGapSeconds
+    ) {
       closest = candidate
       closestGapSeconds = gapSeconds
     }
@@ -423,6 +432,7 @@ type DeferredBattleEffect = {
   retires: boolean
   reason: string | null
   opponentId: string | null
+  incidentTrackState: Exclude<IncidentTrackState, 'clear'> | null
 }
 
 const formatGap = (seconds: number, isLeader = false) => {
@@ -535,6 +545,13 @@ function addDeferredBattleEffect(
     retires: (current?.retires ?? false) || effect.retires,
     reason: effect.retires ? effect.reason : (current?.reason ?? effect.reason),
     opponentId: effect.opponentId ?? current?.opponentId ?? null,
+    incidentTrackState:
+      current?.incidentTrackState === 'on-track-stopped' ||
+      effect.incidentTrackState === 'on-track-stopped'
+        ? 'on-track-stopped'
+        : (effect.incidentTrackState ??
+          current?.incidentTrackState ??
+          null),
   })
 }
 
@@ -773,9 +790,9 @@ function projectedLapTime(
     team,
     track: config.track,
     weather,
-    session: isTimedLapSession(config.weekendStage ?? 'race')
-      ? 'qualifying'
-      : 'race',
+    session: performanceSessionForWeekendStage(
+      config.weekendStage ?? 'race',
+    ),
   })
   const trackGrip = trackGripOverride ?? trackGripForWeather(config.seed, config.track, elapsedSeconds)
   const isTimedSession = isTimedLapSession(config.weekendStage ?? 'race')
@@ -1449,10 +1466,7 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
 }
 
 export function carDefinesNeutralisationQueueOrder(car: CarSnapshot): boolean {
-  if (
-    car.status !== 'running' ||
-    car.offTrackSinceSeconds != null
-  ) {
+  if (!carCanDefineNeutralisationQueue(car)) {
     return false
   }
 
@@ -1841,6 +1855,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       trackLimitWarnings: 0,
       offTrackSinceSeconds: null,
       rejoinEligibleAtSeconds: null,
+      incidentTrackState: 'clear',
+      incidentTrackStateSinceSeconds: null,
       speedKph: 0,
       racePaceMode: 'standard',
       throttlePercent: 0,
@@ -3611,7 +3627,13 @@ export function advanceRace(
         elapsedSeconds >=
           retiredCar.retiredAtSeconds + WRECK_CLEAR_SECONDS
       ) {
-        return { ...retiredCar, hiddenFromTrack: true, speedKph: 0 }
+        return {
+          ...retiredCar,
+          hiddenFromTrack: true,
+          incidentTrackState: 'clear' as const,
+          incidentTrackStateSinceSeconds: null,
+          speedKph: 0,
+        }
       }
       return retiredCar
     }
@@ -3757,6 +3779,10 @@ export function advanceRace(
           pitExitUntilSeconds: elapsedSeconds + PIT_EXIT_VISUAL_SECONDS,
           pitPhase: 'exit' as const,
           pitLaneProgress: pitExitProgress,
+          incidentTrackState: 'clear' as const,
+          incidentTrackStateSinceSeconds: null,
+          offTrackSinceSeconds: null,
+          rejoinEligibleAtSeconds: null,
           timedRunStartedAtSeconds: isTimedLapSession(weekendStage)
             ? elapsedSeconds
             : car.timedRunStartedAtSeconds,
@@ -4012,7 +4038,7 @@ export function advanceRace(
       team,
       track: config.track,
       weather: localWeather,
-      session: isTimedSession ? 'qualifying' : 'race',
+      session: performanceSessionForWeekendStage(weekendStage),
     })
     const baselineEffectiveLapTime = Math.max(
       40,
@@ -4636,6 +4662,16 @@ export function advanceRace(
       previousTotalDistance: car.totalDistance,
       sectorMarks: config.track.sectorMarks,
     })
+    const previousIncidentTrackState = car.incidentTrackState ?? 'clear'
+    const recoveredFromIncident =
+      previousIncidentTrackState === 'on-track-stopped' &&
+      battleDeltaSecondsRemaining >= -0.01 &&
+      displayTelemetry.speedKph >= 55 &&
+      displayTelemetry.throttlePercent >= 15
+    const incidentTrackState: IncidentTrackState =
+      rejoiningThisFrame || recoveredFromIncident
+        ? 'clear'
+        : previousIncidentTrackState
     let next: CarSnapshot = {
       ...car,
       totalDistance,
@@ -4656,6 +4692,13 @@ export function advanceRace(
       rejoinEligibleAtSeconds: waitingForSafeRejoin
         ? (car.rejoinEligibleAtSeconds ?? offTrackSinceSeconds)
         : null,
+      incidentTrackState,
+      incidentTrackStateSinceSeconds:
+        incidentTrackState === 'clear'
+          ? null
+          : (car.incidentTrackStateSinceSeconds ??
+            offTrackSinceSeconds ??
+            elapsedSeconds),
       battlePhase: activeBattlePhase,
       battleOpponentId,
       battlePhaseUntilSeconds,
@@ -4897,6 +4940,10 @@ export function advanceRace(
               battle.attackerTimeLossSeconds > 0 ||
               battle.attackerDamageDelta > 0
             ) {
+              const battleIncidentTrackState =
+                battle.kind === 'crash' && battle.stoppingLocation
+                  ? incidentTrackStateForLocation(battle.stoppingLocation)
+                  : null
               next = {
                 ...next,
                 battleDeltaSecondsRemaining:
@@ -4907,6 +4954,20 @@ export function advanceRace(
                 battleOpponentId: defender.id,
                 battlePhaseUntilSeconds: elapsedSeconds + 1.6,
                 damage: Math.min(1, next.damage + battle.attackerDamageDelta),
+                incidentTrackState:
+                  battleIncidentTrackState ?? next.incidentTrackState,
+                incidentTrackStateSinceSeconds: battleIncidentTrackState
+                  ? elapsedSeconds
+                  : next.incidentTrackStateSinceSeconds,
+                offTrackSinceSeconds:
+                  battleIncidentTrackState === 'off-track-stopped'
+                    ? elapsedSeconds
+                    : next.offTrackSinceSeconds,
+                rejoinEligibleAtSeconds:
+                  battleIncidentTrackState === 'off-track-stopped'
+                    ? elapsedSeconds +
+                      Math.max(1.2, battle.attackerTimeLossSeconds)
+                    : next.rejoinEligibleAtSeconds,
               }
             }
 
@@ -4921,6 +4982,10 @@ export function advanceRace(
                 retires: battle.defenderRetires,
                 reason: battle.defenderRetires ? 'contact' : null,
                 opponentId: driver.id,
+                incidentTrackState:
+                  battle.kind === 'crash' && battle.stoppingLocation
+                    ? incidentTrackStateForLocation(battle.stoppingLocation)
+                    : null,
               })
             }
 
@@ -4957,6 +5022,10 @@ export function advanceRace(
                 pitLaneProgress: null,
                 retiredAtSeconds: elapsedSeconds,
                 retiredReason: 'contact',
+                incidentTrackState: battle.stoppingLocation
+                  ? incidentTrackStateForLocation(battle.stoppingLocation)
+                  : 'on-track-stopped',
+                incidentTrackStateSinceSeconds: elapsedSeconds,
               }
             }
           }
@@ -5525,6 +5594,10 @@ export function advanceRace(
               pitLaneProgress: null,
               retiredAtSeconds: elapsedSeconds,
               retiredReason: incident.kind,
+              incidentTrackState: incident.stoppingLocation
+                ? incidentTrackStateForLocation(incident.stoppingLocation)
+                : 'on-track-stopped',
+              incidentTrackStateSinceSeconds: elapsedSeconds,
             }
             break
           }
@@ -5587,12 +5660,18 @@ export function advanceRace(
         hashChance(`${config.seed}:component:${driver.id}:${weakestName}:${lap}`) <
           (14 - weakest.conditionPercent) * 0.018
       ) {
+        const componentFailureLocation =
+          hashChance(
+            `${config.seed}:component-location:${driver.id}:${weakestName}:${lap}`,
+          ) < 0.18
+            ? ('on-track' as const)
+            : ('off-track' as const)
         newEvents.push(
           makeEvent(
             `component-failure-${driver.id}-${lap}`,
             'incident',
             elapsedSeconds,
-            `${driver.code} retires with a ${weakestName} failure.`,
+            `${driver.code} retires with a ${weakestName} failure ${componentFailureLocation === 'on-track' ? 'on the circuit' : 'off the racing surface'}.`,
           ),
         )
         next = {
@@ -5607,6 +5686,10 @@ export function advanceRace(
           pitLaneProgress: null,
           retiredAtSeconds: elapsedSeconds,
           retiredReason: `${weakestName} failure`,
+          incidentTrackState: incidentTrackStateForLocation(
+            componentFailureLocation,
+          ),
+          incidentTrackStateSinceSeconds: elapsedSeconds,
         }
         break
       }
@@ -6186,6 +6269,9 @@ export function advanceRace(
         blueFlag: false,
         retiredAtSeconds: elapsedSeconds,
         retiredReason: effect.reason,
+        incidentTrackState:
+          effect.incidentTrackState ?? 'on-track-stopped',
+        incidentTrackStateSinceSeconds: elapsedSeconds,
       }
     }
 
@@ -6203,6 +6289,19 @@ export function advanceRace(
             : ('defending' as const),
       battleOpponentId: effect.opponentId,
       battlePhaseUntilSeconds: elapsedSeconds + 1.6,
+      incidentTrackState:
+        effect.incidentTrackState ?? car.incidentTrackState,
+      incidentTrackStateSinceSeconds: effect.incidentTrackState
+        ? elapsedSeconds
+        : car.incidentTrackStateSinceSeconds,
+      offTrackSinceSeconds:
+        effect.incidentTrackState === 'off-track-stopped'
+          ? elapsedSeconds
+          : car.offTrackSinceSeconds,
+      rejoinEligibleAtSeconds:
+        effect.incidentTrackState === 'off-track-stopped'
+          ? elapsedSeconds + Math.max(1.2, effect.timeLossSeconds)
+          : car.rejoinEligibleAtSeconds,
     }
   })
   const carsWithTimedPenalties = carsWithBattleEffects.map((car) => {
@@ -6239,6 +6338,40 @@ export function advanceRace(
       stewardNote: `Impeding: ${gridDrop}-place grid drop`,
     }
   })
+
+  if (isRaceDistance && phase == null) {
+    const stoppedCar = carsWithTimedPenalties.find(
+      (car) =>
+        !car.hiddenFromTrack &&
+        (car.status === 'running' || car.status === 'retired') &&
+        car.incidentTrackState !== undefined &&
+        car.incidentTrackState !== 'clear',
+    )
+
+    if (stoppedCar) {
+      const response =
+        stoppedCar.incidentTrackState === 'on-track-stopped' ? 'sc' : 'vsc'
+      const candidate = stagedFlagPhase({
+        durationSeconds: response === 'sc' ? 70 : 45,
+        id: `stopped-car-${stoppedCar.driverId}-${Math.floor(stoppedCar.incidentTrackStateSinceSeconds ?? elapsedSeconds)}`,
+        incidentProgress: stoppedCar.progress,
+        response,
+        sector: sectorIndexForProgress(
+          stoppedCar.progress,
+          config.track.sectorMarks,
+        ),
+        startSeconds: elapsedSeconds,
+        track: config.track,
+      })
+
+      if (
+        proposedFlagSeverity(candidate) >
+        proposedFlagSeverity(frame.proposedPhase)
+      ) {
+        frame.proposedPhase = candidate
+      }
+    }
+  }
 
   // Activate the strongest incident flag from this frame.
   if (frame.proposedPhase) {

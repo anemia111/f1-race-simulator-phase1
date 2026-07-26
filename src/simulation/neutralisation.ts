@@ -4,6 +4,7 @@ import type {
   NeutralisationProcedure,
   TrackDefinition,
 } from '../types'
+import { carCanDefineNeutralisationQueue } from './incidentTraffic'
 import { hashChance } from './random'
 
 const SAFETY_CAR_JOIN_SIGNAL_SECONDS = 2
@@ -55,7 +56,7 @@ const lapProgress = (distance: number) =>
 
 const runningOnTrackCars = (cars: CarSnapshot[]) =>
   cars
-    .filter((car) => car.status === 'running' && car.pitPhase === 'none')
+    .filter(carCanDefineNeutralisationQueue)
     .slice()
     .sort((left, right) => right.totalDistance - left.totalDistance)
 
@@ -86,7 +87,10 @@ function eligibilityLineTargets(
 
   return Object.fromEntries(
     cars
-      .filter((car) => car.status === 'running' || car.status === 'pit')
+      .filter(
+        (car) =>
+          car.status === 'pit' || carCanDefineNeutralisationQueue(car),
+      )
       .map((car) => {
         const firstCrossing = nextMarkerDistance(
           car.totalDistance,
@@ -235,7 +239,7 @@ function followingLapEndDistance(leaderDistance: number) {
 function firstLineTargets(cars: CarSnapshot[]) {
   return Object.fromEntries(
     cars
-      .filter((car) => car.status === 'running')
+      .filter(carCanDefineNeutralisationQueue)
       .map((car) => [car.driverId, nextControlLine(car.totalDistance)]),
   )
 }

@@ -308,6 +308,14 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
     isRecord(team) ? requiredText(team.id, `teams[${index}].id`) : '',
   )
   validateExactIds('teams', ids, series.teams.map((team) => team.id))
+  const usesLegacyUniformF1PitCrew =
+    series.id === 'f1-custom' &&
+    value.every(
+      (candidate) =>
+        isRecord(candidate) &&
+        typeof candidate.pitCrewSpeed === 'number' &&
+        Math.abs(candidate.pitCrewSpeed - 0.82) < 0.000001,
+    )
 
   return value.map((candidate, index) => {
     if (!isRecord(candidate) || !isRecord(candidate.machine)) {
@@ -343,12 +351,14 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
       color,
       machine,
       name: requiredText(candidate.name, `${id}.name`),
-      pitCrewSpeed: boundedNumber(
-        candidate.pitCrewSpeed,
-        `${id}.pitCrewSpeed`,
-        0.55,
-        1,
-      ),
+      pitCrewSpeed: usesLegacyUniformF1PitCrew
+        ? base.pitCrewSpeed
+        : boundedNumber(
+            candidate.pitCrewSpeed,
+            `${id}.pitCrewSpeed`,
+            0.55,
+            1,
+          ),
     }
   })
 }

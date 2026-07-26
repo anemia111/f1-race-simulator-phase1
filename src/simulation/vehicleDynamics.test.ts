@@ -104,6 +104,89 @@ describe('multi-axis vehicle dynamics', () => {
     ).toBe(higherGain)
   })
 
+  it('keeps qualifying and race pace as independent driver and machine axes', () => {
+    const track = tracks[0]
+    const baseDriver = driverAt(0.9)
+    const baseTeam = {
+      ...initialTeams[0],
+      machine: {
+        ...initialTeams[0].machine,
+        qualifyingPace: 0.9,
+        racePace: 0.9,
+      },
+    }
+    const qualifyingDriver = {
+      ...baseDriver,
+      skills: { ...baseDriver.skills, qualifyingPace: 1 },
+    }
+    const lowerQualifyingDriver = {
+      ...baseDriver,
+      skills: { ...baseDriver.skills, qualifyingPace: 0.7 },
+    }
+    const raceDriver = {
+      ...baseDriver,
+      skills: { ...baseDriver.skills, racePace: 1 },
+    }
+    const lowerRaceDriver = {
+      ...baseDriver,
+      skills: { ...baseDriver.skills, racePace: 0.7 },
+    }
+    const gain = (
+      driver: Driver,
+      team: typeof baseTeam,
+      session: 'qualifying' | 'race',
+    ) => performanceLapGainSeconds({ driver, session, team, track })
+
+    expect(
+      gain(qualifyingDriver, baseTeam, 'qualifying'),
+    ).toBeGreaterThan(gain(lowerQualifyingDriver, baseTeam, 'qualifying'))
+    expect(gain(qualifyingDriver, baseTeam, 'race')).toBeCloseTo(
+      gain(lowerQualifyingDriver, baseTeam, 'race'),
+      10,
+    )
+    expect(gain(raceDriver, baseTeam, 'race')).toBeGreaterThan(
+      gain(lowerRaceDriver, baseTeam, 'race'),
+    )
+    expect(gain(raceDriver, baseTeam, 'qualifying')).toBeCloseTo(
+      gain(lowerRaceDriver, baseTeam, 'qualifying'),
+      10,
+    )
+
+    const qualifyingMachine = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, qualifyingPace: 1 },
+    }
+    const lowerQualifyingMachine = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, qualifyingPace: 0.7 },
+    }
+    const raceMachine = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, racePace: 1 },
+    }
+    const lowerRaceMachine = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, racePace: 0.7 },
+    }
+
+    expect(
+      gain(baseDriver, qualifyingMachine, 'qualifying'),
+    ).toBeGreaterThan(
+      gain(baseDriver, lowerQualifyingMachine, 'qualifying'),
+    )
+    expect(gain(baseDriver, qualifyingMachine, 'race')).toBeCloseTo(
+      gain(baseDriver, lowerQualifyingMachine, 'race'),
+      10,
+    )
+    expect(gain(baseDriver, raceMachine, 'race')).toBeGreaterThan(
+      gain(baseDriver, lowerRaceMachine, 'race'),
+    )
+    expect(gain(baseDriver, raceMachine, 'qualifying')).toBeCloseTo(
+      gain(baseDriver, lowerRaceMachine, 'qualifying'),
+      10,
+    )
+  })
+
   it('uses drag-limited acceleration instead of adding a fixed top speed', () => {
     const team = initialTeams[0]
     let speedKph = 300

@@ -9,6 +9,7 @@ import type {
 import {
   advanceNeutralisationProcedure,
   ensureNeutralisationProcedure,
+  isSafetyCarFieldQueued,
 } from './neutralisation'
 import { createInitialRace } from './race'
 
@@ -81,6 +82,24 @@ function deployedScenario() {
 
   return { base, phase, referenceCars }
 }
+
+describe('Safety Car queue traffic', () => {
+  it('does not wait for a stopped on-track obstruction to join the queue', () => {
+    const [leader, obstruction, follower] = createInitialRace(config).cars
+    const cars = [
+      atDistance(leader, 10.2),
+      {
+        ...atDistance(obstruction, 10.1),
+        incidentTrackState: 'on-track-stopped' as const,
+        speedKph: 0,
+        throttlePercent: 0,
+      },
+      atDistance(follower, 10.195),
+    ]
+
+    expect(isSafetyCarFieldQueued(cars, 90)).toBe(true)
+  })
+})
 
 function beginUnlapping(overtakingPermitted = true) {
   const scenario = deployedScenario()

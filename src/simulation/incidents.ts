@@ -3,7 +3,13 @@
 // Phase 3-A precomputed flag timeline with incident-driven flags.
 // Pure TypeScript, all randomness derived from the race seed.
 
-import type { Driver, FlagState, Team, WeatherState } from '../types'
+import type {
+  Driver,
+  FlagState,
+  IncidentStopLocation,
+  Team,
+  WeatherState,
+} from '../types'
 import {
   driverPerformanceAbility,
   driverSkillBlend,
@@ -35,6 +41,8 @@ export type IncidentOutcome = {
   flagDurationSeconds: number
   /** Main track is obstructed near pit entry, so B5.13.3 routing may apply. */
   safetyCarUsesPitLane: boolean
+  /** Where a retired/stopped car came to rest; null for a moving incident. */
+  stoppingLocation: IncidentStopLocation | null
   /** Sector where the incident happened (0-based). */
   sector: number
   /** Ticker/log message. */
@@ -62,13 +70,26 @@ export function flagSeverityRank(flag: Exclude<FlagState, 'clear'> | null): numb
   return flag ? flagRank[flag] : 0
 }
 
+export function terminalCrashDisposition(
+  obstructionRoll: number,
+): {
+  location: IncidentStopLocation
+  response: Exclude<FlagState, 'clear'>
+} {
+  if (obstructionRoll < 0.42) {
+    return { location: 'off-track', response: 'vsc' }
+  }
+  if (obstructionRoll < 0.96) {
+    return { location: 'on-track', response: 'sc' }
+  }
+
+  return { location: 'on-track', response: 'red' }
+}
+
 export function terminalCrashFlagResponse(
   obstructionRoll: number,
 ): Exclude<FlagState, 'clear'> {
-  if (obstructionRoll < 0.28) return 'yellow'
-  if (obstructionRoll < 0.72) return 'vsc'
-  if (obstructionRoll < 0.96) return 'sc'
-  return 'red'
+  return terminalCrashDisposition(obstructionRoll).response
 }
 
 /**
@@ -103,19 +124,23 @@ export function incidentForLap(
     riskMultiplier
 
   if (hashChance(`${seed}:mechanical:${driver.id}:${lap}`) < mechanicalChance) {
-    // Mechanical retirement: the car pulls off, marshals respond.
-    const usesVsc = detail < 0.2
+    const stopsOnTrack =
+      hashChance(`${seed}:mechanical-location:${driver.id}:${lap}`) < 0.18
+    const stoppingLocation = stopsOnTrack ? 'on-track' : 'off-track'
     return {
       kind: 'mechanical',
       classification: 'incident',
       retirement: true,
       damageDelta: 0,
       timeLossSeconds: 0,
-      flagResponse: usesVsc ? 'vsc' : 'yellow',
-      flagDurationSeconds: usesVsc ? 25 + detail * 40 : 18 + detail * 24,
+      flagResponse: stopsOnTrack ? 'sc' : 'vsc',
+      flagDurationSeconds: stopsOnTrack
+        ? 55 + detail * 45
+        : 30 + detail * 35,
       safetyCarUsesPitLane: false,
+      stoppingLocation,
       sector,
-      message: `INCIDENT: ${driver.code} retires with a mechanical failure in sector ${sector + 1}.`,
+      message: `INCIDENT: ${driver.code} retires with a mechanical failure ${stopsOnTrack ? 'on the circuit' : 'off the racing surface'} in sector ${sector + 1}.`,
     }
   }
 
@@ -159,6 +184,7 @@ export function incidentForLap(
       flagResponse: null,
       flagDurationSeconds: 0,
       safetyCarUsesPitLane: false,
+      stoppingLocation: null,
       sector,
       message: `INCIDENT: ${driver.code} runs wide in sector ${sector + 1} and loses time.`,
     }
@@ -174,13 +200,17 @@ export function incidentForLap(
       flagResponse: 'yellow',
       flagDurationSeconds: 15 + detail * 18,
       safetyCarUsesPitLane: false,
+      stoppingLocation: null,
       sector,
       message: `ACCIDENT: ${driver.code} clips the wall in sector ${sector + 1}: front wing damage.`,
     }
   }
 
   // Terminal crash: retirement plus a strong flag response.
-  const response = terminalCrashFlagResponse(detail)
+  const disposition = terminalCrashDisposition(
+    hashChance(`${seed}:terminal-location:${driver.id}:${lap}`),
+  )
+  const response = disposition.response
   const duration =
     response === 'yellow'
       ? 18 + detail * 20
@@ -202,7 +232,8 @@ export function incidentForLap(
       response === 'sc' &&
       sector === 2 &&
       hashChance(`${seed}:pit-lane-route:${driver.id}:${lap}`) < 0.22,
+    stoppingLocation: disposition.location,
     sector,
-    message: `ACCIDENT: ${driver.code} crashes out in sector ${sector + 1}.`,
+    message: `ACCIDENT: ${driver.code} crashes out ${disposition.location === 'on-track' ? 'on the circuit' : 'off the racing surface'} in sector ${sector + 1}.`,
   }
 }

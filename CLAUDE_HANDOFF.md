@@ -102,7 +102,9 @@ driving game.
   own projected pace; the model never teleports distance or fixes an overtake.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
-  owed penalties.
+  owed penalties. F1 teams use distinct pit-crew ratings derived from the
+  official 2025 DHL fastest-stop results; legacy saves with the old uniform
+  rating migrate automatically while non-uniform custom ratings are preserved.
 - Race control includes yellow/VSC/SC/red, restart effects, track limits,
   investigations, penalties, retirement, and post-race classification.
 - Local yellow and timed-session double-yellow states are published separately
@@ -112,11 +114,18 @@ driving game.
 - Single and double yellow have distinct map labels and pace reductions. A
   disabled, off-track, or incident-delayed car is excluded from neutralisation
   queue ordering, allowing the entire following field to clear the obstruction
-  while preserving order behind the last unaffected car.
+  while preserving order behind the last unaffected car. Explicit on-track and
+  off-track stopped states drive the staged response: local double yellow first,
+  then SC for a track obstruction or VSC for an off-track recovery under the
+  simulator's race-director policy.
 - Off-track cars wait at the excursion point until a deterministic recovery
   delay has elapsed and traffic gaps ahead and behind are safe, then rejoin at
   reduced speed. Blue flags use physical proximity to the next lapping
-  boundary rather than firing merely because a one-lap deficit exists.
+  boundary and appear only once the lapping car is within three seconds, rather
+  than firing merely because a one-lap deficit exists.
+- Q1/Q2/Q3 and SQ1/SQ2/SQ3 use the dedicated qualifying machine and driver
+  performance axes. FP, Sprint, and Race use the long-run/race axes, so setup
+  data can change single-lap and race pace independently.
 - Drive-through and stop-and-go penalties use dedicated pit services, service
   deadlines, and disqualification when unserved. Low-power starts trigger a
   rear warning light and an MGU-K event.
@@ -168,6 +177,7 @@ driving game.
 - `src/data/motorsportSeries2026.json`: F2/F3/SF data and category rules.
 - `src/series/seriesRegistry.ts`: validated packages, pool, and assignments.
 - `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
+- `src/data/f1PitCrewCalibration.ts`: source-backed F1 pit-crew calibration.
 - `scripts/generate-real-track-layouts.mjs`: layout generator.
 - `src/services/openF1.ts`: OpenF1 request/bundle logic.
 - `src/services/openF1Location.ts`: sample projection to track progress.
@@ -183,6 +193,7 @@ driving game.
 - `src/domain/startSignal.ts`: five-light and lights-out presentation state.
 - `src/persistence.ts`: V3 save migration and nested season-garage normalization.
 - `src/simulation/overtaking.ts`: mapped close-battle outcomes.
+- `src/simulation/incidentTraffic.ts`: stopped-car location and queue rules.
 - `src/simulation/trackRejoin.ts`: deterministic traffic-gap checks for safe
   off-track recovery.
 - `src/simulation/strategy.ts`: pit and strategy rules.
@@ -208,7 +219,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 414 passed across 47 files
+- Tests: 422 passed across 49 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow

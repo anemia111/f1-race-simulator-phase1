@@ -4,6 +4,7 @@ import type {
   MachinePerformanceProfile,
   Team,
 } from '../types'
+import { f1PitCrewSpeedForTeam } from './f1PitCrewCalibration'
 import performanceCsv from './f1Performance.csv?raw'
 import { expandedDriverSkills } from './driverProfiles'
 
@@ -429,7 +430,7 @@ export function loadPerformanceCsv(
       name,
       color,
       machine: machineProfileFor(record, fileName),
-      pitCrewSpeed: 0.82,
+      pitCrewSpeed: f1PitCrewSpeedForTeam(name),
       performanceSource: {
         fileName,
         overall: rawRatings.Overall,

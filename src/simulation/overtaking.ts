@@ -6,6 +6,7 @@ import type {
   CarSnapshot,
   Driver,
   FlagState,
+  IncidentStopLocation,
   StewardConsequence,
   StewardOffence,
   TrackDefinition,
@@ -33,6 +34,7 @@ export type OvertakeOutcome = {
   flagResponse: Exclude<FlagState, 'clear'> | null
   flagDurationSeconds: number
   safetyCarUsesPitLane?: boolean
+  stoppingLocation: IncidentStopLocation | null
   sector: number
   zone: 'straight' | 'corner'
   assistance: 'overtake' | 'tow' | 'none'
@@ -125,25 +127,44 @@ function driverErrorRate(driver: Driver): number {
   return clamp01((1 - control) * battleIncidentTuning.driverErrorScale)
 }
 
+export function crashDispositionFor(options: {
+  attackerRetires: boolean
+  defenderRetires: boolean
+  obstructionRoll: number
+}): {
+  location: IncidentStopLocation
+  response: Exclude<FlagState, 'clear'>
+} {
+  const { attackerRetires, defenderRetires, obstructionRoll } = options
+
+  if (!attackerRetires && !defenderRetires) {
+    // A heavy impact that leaves both damaged cars stopped in the traffic
+    // stream can block the following field even if both eventually continue.
+    return { location: 'on-track', response: 'sc' }
+  }
+
+  if (attackerRetires && defenderRetires) {
+    if (obstructionRoll < 0.16) {
+      return { location: 'off-track', response: 'vsc' }
+    }
+    if (obstructionRoll < 0.94) {
+      return { location: 'on-track', response: 'sc' }
+    }
+
+    return { location: 'on-track', response: 'red' }
+  }
+
+  return obstructionRoll < 0.44
+    ? { location: 'off-track', response: 'vsc' }
+    : { location: 'on-track', response: 'sc' }
+}
+
 export function crashFlagResponseFor(options: {
   attackerRetires: boolean
   defenderRetires: boolean
   obstructionRoll: number
 }): Exclude<FlagState, 'clear'> {
-  const { attackerRetires, defenderRetires, obstructionRoll } = options
-
-  if (!attackerRetires && !defenderRetires) {
-    return 'yellow'
-  }
-
-  if (attackerRetires && defenderRetires) {
-    if (obstructionRoll < 0.35) return 'vsc'
-    if (obstructionRoll < 0.9) return 'sc'
-    return 'red'
-  }
-
-  if (obstructionRoll < 0.45) return 'yellow'
-  return obstructionRoll < 0.9 ? 'vsc' : 'sc'
+  return crashDispositionFor(options).response
 }
 
 function progressIsInZone(progress: number, start: number, end: number): boolean {
@@ -418,11 +439,12 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
         hashChance(`${key}:defender-out`) <
         battleIncidentTuning.defenderRetirementChance
       const majorMultiCarCrash = attackerRetires && defenderRetires
-      const flagResponse = crashFlagResponseFor({
+      const crashDisposition = crashDispositionFor({
         attackerRetires,
         defenderRetires,
         obstructionRoll: responseRoll,
       })
+      const flagResponse = crashDisposition.response
 
       return {
         kind: 'crash',
@@ -446,6 +468,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
           flagResponse === 'sc' &&
           sector === 2 &&
           hashChance(`${key}:pit-lane-route`) < 0.22,
+        stoppingLocation: crashDisposition.location,
         sector,
         zone,
         assistance,
@@ -478,6 +501,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       defenderRetires: false,
       flagResponse: needsYellow ? 'yellow' : null,
       flagDurationSeconds: needsYellow ? 12 + detail * 18 : 0,
+      stoppingLocation: null,
       sector,
       zone,
       assistance,
@@ -510,6 +534,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       defenderRetires: false,
       flagResponse: null,
       flagDurationSeconds: 0,
+      stoppingLocation: null,
       sector,
       zone,
       assistance,
@@ -534,6 +559,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     defenderRetires: false,
     flagResponse: null,
     flagDurationSeconds: 0,
+    stoppingLocation: null,
     sector,
     zone,
     assistance,

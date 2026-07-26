@@ -23,6 +23,10 @@ export const sourceRegistry = {
     label: 'OpenF1 API',
     url: 'https://openf1.org/',
   },
+  f1FastestPitStops2025: {
+    label: 'Formula 1 2025 DHL Fastest Pit Stop Award',
+    url: 'https://www.formula1.com/en/results/2025/awards/fastest-pit-stops',
+  },
   pirelli2026: {
     label: 'Pirelli 2026 compound nominations',
     url: 'https://press.pirelli.com/complete-f1-tyre-range-for-the-first-three-grands-prix-of-2026/',

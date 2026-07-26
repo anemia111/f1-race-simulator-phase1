@@ -123,6 +123,22 @@ describe('CSV performance source of truth', () => {
     )
   })
 
+  it('calibrates pit crews by team instead of giving every team one value', () => {
+    const pitCrewByTeam = Object.fromEntries(
+      initialTeams.map((team) => [team.name, team.pitCrewSpeed]),
+    )
+
+    expect(new Set(Object.values(pitCrewByTeam)).size).toBeGreaterThan(5)
+    expect(pitCrewByTeam.Ferrari).toBeGreaterThan(
+      pitCrewByTeam['Aston Martin'],
+    )
+    expect(
+      Object.values(pitCrewByTeam).every(
+        (rating) => rating >= 0.75 && rating <= 0.97,
+      ),
+    ).toBe(true)
+  })
+
   it('CSV-4: preserves raw ratings and uses one monotonic normalization', () => {
     const ferrari = initialTeams.find((team) => team.id === 'ferrari')!
     const astonMartin = initialTeams.find((team) => team.id === 'aston-martin')!

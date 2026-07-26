@@ -28,6 +28,11 @@ export type DryCompoundFamily = 'C1' | 'C2' | 'C3' | 'C4' | 'C5'
 export type GridSource = 'brief' | 'qualifying' | 'openf1'
 export type FlagState = 'clear' | 'yellow' | 'vsc' | 'sc' | 'red'
 export type SectorFlagState = FlagState | 'double-yellow'
+export type IncidentStopLocation = 'on-track' | 'off-track'
+export type IncidentTrackState =
+  | 'clear'
+  | 'on-track-stopped'
+  | 'off-track-stopped'
 export type CarStatus =
   | 'running'
   | 'pit'
@@ -787,6 +792,12 @@ export type CarSnapshot = {
   offTrackSinceSeconds?: number | null
   /** Earliest time a stopped car may assess a safe gap and rejoin. */
   rejoinEligibleAtSeconds?: number | null
+  /**
+   * Explicit accident/recovery location used by Race Control and queue
+   * ordering. Optional so checkpoints created before this field remain valid.
+   */
+  incidentTrackState?: IncidentTrackState
+  incidentTrackStateSinceSeconds?: number | null
   speedKph: number
   /** Team/driver instruction that changes pace, energy use, and wear. */
   racePaceMode: RacePaceMode
