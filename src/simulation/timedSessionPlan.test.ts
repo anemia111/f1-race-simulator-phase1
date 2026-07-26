@@ -3,6 +3,7 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type {
   RaceConfig,
+  TrackDefinition,
   TimedSegmentAttemptStatus,
   TimedSessionPlan,
 } from '../types'
@@ -18,6 +19,77 @@ import {
   buildTimedSessionPlan,
   timedSessionStateAt,
 } from './timedSessionPlan'
+
+function measureLiveF1QualifyingPace(
+  track: TrackDefinition,
+  simulationStepSeconds = 3,
+) {
+  const f1 = seriesPackageById.get('f1-custom')!
+  const qualifying = runSeriesQualifying(
+    {
+      drivers: f1.drivers,
+      qualifyingDryCompound: f1.rules.tires.qualifyingDryCompound,
+      seed: `live-qualifying-pace:${track.id}`,
+      seriesId: f1.id,
+      teams: f1.teams,
+      tireAllocation: f1.rules.tires.standardAllocation,
+      track: { ...track, rainProbability: 0 },
+      weekendStage: 'qualifying',
+    },
+    f1.rules,
+  )
+  const config: RaceConfig = {
+    categoryRaceFormat: f1.rules.race,
+    drivers: f1.drivers,
+    overtakeActivation: f1.rules.overtakeActivation,
+    overtakeSystem: f1.rules.overtakeSystem,
+    qualifyingDryCompound: f1.rules.tires.qualifyingDryCompound,
+    seed: `live-qualifying-pace:${track.id}`,
+    seriesId: f1.id,
+    teams: f1.teams,
+    timedSessionPlan: buildTimedSessionPlan(
+      qualifying,
+      f1.rules.qualifying.breakSeconds,
+      f1.rules.qualifying.format,
+    ),
+    tireAllocation: f1.rules.tires.standardAllocation,
+    tireSupplier: f1.rules.tireSupplier,
+    track: { ...track, rainProbability: 0 },
+    weekendStage: 'qualifying',
+  }
+  let snapshot = createInitialRace(config)
+  const q1EndsAtSeconds =
+    config.timedSessionPlan!.segments[0]?.endsAtSeconds ?? 18 * 60
+  const measurementEndsAtSeconds =
+    q1EndsAtSeconds + Math.max(120, track.baseLapTime * 1.8)
+
+  for (
+    let elapsed = 0;
+    elapsed < measurementEndsAtSeconds;
+    elapsed += simulationStepSeconds
+  ) {
+    snapshot = advanceRace(snapshot, simulationStepSeconds, config)
+  }
+
+  const bestByDriver = snapshot.cars
+    .flatMap((car) => {
+      const valid = car.lapHistory
+        .filter(
+          (lap) =>
+            lap.isValid &&
+            (lap.segment === 'Q1' || lap.segment === null),
+        )
+        .map((lap) => lap.lapTimeSeconds)
+
+      return valid.length === 0 ? [] : [Math.min(...valid)]
+    })
+    .sort((left, right) => left - right)
+
+  return {
+    fastestSeconds: bestByDriver[0] ?? Number.POSITIVE_INFINITY,
+    top3MedianSeconds: bestByDriver[1] ?? Number.POSITIVE_INFINITY,
+  }
+}
 
 describe('timed session plan', () => {
   it('scales the official knockout structure to the 30-car field', () => {
@@ -264,6 +336,70 @@ describe('timed session plan', () => {
     expect(minimumAttackBatteryPercent).toBeLessThanOrEqual(28)
     expect(maximumAttackSpeedKph).toBeGreaterThan(maximumOutLapSpeedKph)
   })
+
+  it('measures a live Suzuka qualifying attack near its calibrated reference', () => {
+    const track = tracks.find(
+      (candidate) => candidate.id === 'suzuka-approx',
+    )!
+    const referenceSeconds =
+      track.paceReference2026!.calibration.qualifying
+        .selectedReferenceSeconds
+    const measured = measureLiveF1QualifyingPace(track)
+
+    expect(Number.isFinite(measured.top3MedianSeconds)).toBe(true)
+    expect(measured.top3MedianSeconds).toBeGreaterThan(referenceSeconds - 3)
+    expect(measured.top3MedianSeconds).toBeLessThan(referenceSeconds + 3)
+  })
+
+  it(
+    'keeps every F1 circuit near its calibrated qualifying pace at 60x',
+    () => {
+      const f1 = seriesPackageById.get('f1-custom')!
+      const calibratedTracks = f1.tracks.filter(
+        (track) => track.paceReference2026 !== undefined,
+      )
+      const deviations = calibratedTracks.map((track) => {
+        const referenceSeconds =
+          track.paceReference2026!.calibration.qualifying
+            .selectedReferenceSeconds
+        const measured = measureLiveF1QualifyingPace(track)
+
+        return {
+          deviationSeconds: Number(
+            (measured.top3MedianSeconds - referenceSeconds).toFixed(3),
+          ),
+          measuredSeconds: Number(measured.top3MedianSeconds.toFixed(3)),
+          referenceSeconds,
+          trackId: track.id,
+        }
+      })
+
+      expect(calibratedTracks).toHaveLength(22)
+      expect(
+        deviations.filter(
+          ({ deviationSeconds }) => Math.abs(deviationSeconds) > 3,
+        ),
+      ).toEqual([])
+    },
+    180_000,
+  )
+
+  it(
+    'keeps calibrated qualifying pace stable between 5x and 60x integration',
+    () => {
+      const suzuka = tracks.find(
+        (candidate) => candidate.id === 'suzuka-approx',
+      )!
+      const fine = measureLiveF1QualifyingPace(suzuka, 0.25)
+      const coarse = measureLiveF1QualifyingPace(suzuka, 3)
+
+      expect(
+        Math.abs(fine.top3MedianSeconds - coarse.top3MedianSeconds),
+        `5x=${fine.top3MedianSeconds.toFixed(3)}s, 60x=${coarse.top3MedianSeconds.toFixed(3)}s`,
+      ).toBeLessThan(1.5)
+    },
+    60_000,
+  )
 
   it('suspends the segment under red and releases only eligible cars', () => {
     const plan: TimedSessionPlan = {

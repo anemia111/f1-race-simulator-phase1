@@ -125,7 +125,7 @@
       "residualSigmaSeconds": 0.43,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 78.463,
@@ -133,8 +133,12 @@
         "fieldMedianDeltaSeconds": 0.864,
         "raceGreenMedianSeconds": 83.456,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.022
-      }
+        "raceReferenceErrorSeconds": 0.022,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 79.894,
+        "liveQualifyingReferenceErrorSeconds": 1.083
+      },
+      "liveTimingProgressScale": 0.969304
     },
     "sources": [
       {
@@ -264,7 +268,7 @@
       "residualSigmaSeconds": 0.52,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 91.847,
@@ -272,8 +276,12 @@
         "fieldMedianDeltaSeconds": 1.019,
         "raceGreenMedianSeconds": 97.375,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.017
-      }
+        "raceReferenceErrorSeconds": -0.017,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 90.67,
+        "liveQualifyingReferenceErrorSeconds": -1.616
+      },
+      "liveTimingProgressScale": 1.034199
     },
     "sources": [
       {
@@ -396,7 +404,7 @@
       "residualSigmaSeconds": 0.438,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 88.642,
@@ -404,8 +412,12 @@
         "fieldMedianDeltaSeconds": 0.964,
         "raceGreenMedianSeconds": 94.258,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.116
-      }
+        "raceReferenceErrorSeconds": -0.116,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 89.971,
+        "liveQualifyingReferenceErrorSeconds": 0.895
+      },
+      "liveTimingProgressScale": 1.003469
     },
     "sources": [
       {
@@ -547,7 +559,7 @@
       "residualSigmaSeconds": 0.469,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 87.546,
@@ -555,8 +567,12 @@
         "fieldMedianDeltaSeconds": 0.893,
         "raceGreenMedianSeconds": 93.74,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.198
-      }
+        "raceReferenceErrorSeconds": 0.198,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 89.331,
+        "liveQualifyingReferenceErrorSeconds": 1.367
+      },
+      "liveTimingProgressScale": 0.993277
     },
     "sources": [
       {
@@ -704,7 +720,7 @@
       "residualSigmaSeconds": 0.696,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 72.303,
@@ -712,8 +728,12 @@
         "fieldMedianDeltaSeconds": 0.734,
         "raceGreenMedianSeconds": 76.427,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0
-      }
+        "raceReferenceErrorSeconds": 0,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 74.146,
+        "liveQualifyingReferenceErrorSeconds": 1.5
+      },
+      "liveTimingProgressScale": 0.964036
     },
     "sources": [
       {
@@ -843,7 +863,7 @@
       "residualSigmaSeconds": 0.352,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 71.701,
@@ -851,8 +871,12 @@
         "fieldMedianDeltaSeconds": 0.817,
         "raceGreenMedianSeconds": 78.233,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.11
-      }
+        "raceReferenceErrorSeconds": 0.11,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 72.521,
+        "liveQualifyingReferenceErrorSeconds": 0.427
+      },
+      "liveTimingProgressScale": 0.988202
     },
     "sources": [
       {
@@ -1014,7 +1038,7 @@
       "residualSigmaSeconds": 0.6,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 74.432,
@@ -1022,8 +1046,12 @@
         "fieldMedianDeltaSeconds": 0.775,
         "raceGreenMedianSeconds": 82.402,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.073
-      }
+        "raceReferenceErrorSeconds": 0.073,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 75.737,
+        "liveQualifyingReferenceErrorSeconds": 0.994
+      },
+      "liveTimingProgressScale": 1.063507
     },
     "sources": [
       {
@@ -1177,7 +1205,7 @@
       "residualSigmaSeconds": 0.63,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 66.073,
@@ -1185,8 +1213,12 @@
         "fieldMedianDeltaSeconds": 0.677,
         "raceGreenMedianSeconds": 71.662,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.066
-      }
+        "raceReferenceErrorSeconds": -0.066,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 67.828,
+        "liveQualifyingReferenceErrorSeconds": 1.479
+      },
+      "liveTimingProgressScale": 0.996627
     },
     "sources": [
       {
@@ -1328,7 +1360,7 @@
       "residualSigmaSeconds": 0.641,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 87.89,
@@ -1336,8 +1368,12 @@
         "fieldMedianDeltaSeconds": 0.965,
         "raceGreenMedianSeconds": 94.866,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.09
-      }
+        "raceReferenceErrorSeconds": 0.09,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 86.928,
+        "liveQualifyingReferenceErrorSeconds": -1.358
+      },
+      "liveTimingProgressScale": 1.042349
     },
     "sources": [
       {
@@ -1485,7 +1521,7 @@
       "residualSigmaSeconds": 0.46,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
         "poleMedianSeconds": 104.221,
@@ -1493,8 +1529,12 @@
         "fieldMedianDeltaSeconds": 1.134,
         "raceGreenMedianSeconds": 110.254,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.011
-      }
+        "raceReferenceErrorSeconds": 0.011,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 105.847,
+        "liveQualifyingReferenceErrorSeconds": 1.169
+      },
+      "liveTimingProgressScale": 1.003442
     },
     "sources": [
       {
@@ -1587,7 +1627,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 76.866,
@@ -1595,8 +1635,12 @@
         "fieldMedianDeltaSeconds": 0.859,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 75.817,
+        "liveQualifyingReferenceErrorSeconds": -1.402
+      },
+      "liveTimingProgressScale": 1.052978
     },
     "sources": [
       {
@@ -1704,7 +1748,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 71.213,
@@ -1712,8 +1756,12 @@
         "fieldMedianDeltaSeconds": 0.795,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 70.592,
+        "liveQualifyingReferenceErrorSeconds": -0.942
+      },
+      "liveTimingProgressScale": 1.07507
     },
     "sources": [
       {
@@ -1823,7 +1871,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 81.546,
@@ -1831,8 +1879,12 @@
         "fieldMedianDeltaSeconds": 0.83,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 82.25,
+        "liveQualifyingReferenceErrorSeconds": 0.327
+      },
+      "liveTimingProgressScale": 0.97108
     },
     "sources": [
       {
@@ -1942,7 +1994,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 91.583,
@@ -1950,8 +2002,12 @@
         "fieldMedianDeltaSeconds": 1.014,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 90.892,
+        "liveQualifyingReferenceErrorSeconds": -1.108
+      },
+      "liveTimingProgressScale": 1.04451
     },
     "sources": [
       {
@@ -2036,7 +2092,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 103.726,
@@ -2044,8 +2100,12 @@
         "fieldMedianDeltaSeconds": 1.142,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 103.273,
+        "liveQualifyingReferenceErrorSeconds": -0.886
+      },
+      "liveTimingProgressScale": 0.984981
     },
     "sources": [
       {
@@ -2147,7 +2207,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 91.103,
@@ -2155,8 +2215,12 @@
         "fieldMedianDeltaSeconds": 1.022,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 90.402,
+        "liveQualifyingReferenceErrorSeconds": -1.111
+      },
+      "liveTimingProgressScale": 1.030681
     },
     "sources": [
       {
@@ -2266,7 +2330,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 96.269,
@@ -2274,8 +2338,12 @@
         "fieldMedianDeltaSeconds": 1.075,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 96.057,
+        "liveQualifyingReferenceErrorSeconds": -0.608
+      },
+      "liveTimingProgressScale": 1.053547
     },
     "sources": [
       {
@@ -2385,7 +2453,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 77.214,
@@ -2393,8 +2461,12 @@
         "fieldMedianDeltaSeconds": 0.797,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 78.903,
+        "liveQualifyingReferenceErrorSeconds": 1.361
+      },
+      "liveTimingProgressScale": 0.974839
     },
     "sources": [
       {
@@ -2504,7 +2576,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 72.256,
@@ -2512,8 +2584,12 @@
         "fieldMedianDeltaSeconds": 0.748,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 72.319,
+        "liveQualifyingReferenceErrorSeconds": -0.268
+      },
+      "liveTimingProgressScale": 1.030802
     },
     "sources": [
       {
@@ -2615,7 +2691,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 94.243,
@@ -2623,8 +2699,12 @@
         "fieldMedianDeltaSeconds": 1.04,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 94.633,
+        "liveQualifyingReferenceErrorSeconds": -0.024
+      },
+      "liveTimingProgressScale": 0.975273
     },
     "sources": [
       {
@@ -2726,7 +2806,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 82.185,
@@ -2734,8 +2814,12 @@
         "fieldMedianDeltaSeconds": 0.904,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 83.58,
+        "liveQualifyingReferenceErrorSeconds": 1.007
+      },
+      "liveTimingProgressScale": 1.082085
     },
     "sources": [
       {
@@ -2845,7 +2929,7 @@
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-26T14:02:06.480Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
         "poleMedianSeconds": 85.465,
@@ -2853,8 +2937,12 @@
         "fieldMedianDeltaSeconds": 0.919,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null
-      }
+        "raceReferenceErrorSeconds": null,
+        "liveQualifyingSeedCount": 3,
+        "liveQualifyingTop3MedianSeconds": 87.414,
+        "liveQualifyingReferenceErrorSeconds": 1.574
+      },
+      "liveTimingProgressScale": 1.038637
     },
     "sources": [
       {

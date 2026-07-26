@@ -5,6 +5,7 @@ import { advanceRace, createInitialRace } from '../simulation/race'
 import type { RaceConfig } from '../types'
 import {
   RACE_CHECKPOINT_MAX_AGE_MS,
+  RACE_SIMULATION_MODEL_VERSION,
   activeRaceSessionFor,
   parseRaceCheckpoint,
   restoreRaceCheckpoint,
@@ -57,6 +58,7 @@ describe('race session continuity', () => {
 
     expect(restored?.elapsedSeconds).toBe(123)
     expect(restored?.cars).toHaveLength(initialDrivers.length)
+    expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
   })
 
   it('round-trips a populated multi-lap snapshot within browser storage limits', () => {
@@ -122,6 +124,7 @@ describe('race session continuity', () => {
     const snapshot = createInitialRace(config)
     const valid = serializeRaceCheckpoint('session-a', snapshot, now)!
     const malformed = JSON.stringify({
+      modelVersion: RACE_SIMULATION_MODEL_VERSION,
       savedAt: now,
       sessionKey: 'session-a',
       snapshot: { ...snapshot, cars: [] },
@@ -143,6 +146,36 @@ describe('race session continuity', () => {
     ).toBeNull()
     expect(parseRaceCheckpoint(malformed, 'session-a', config, now)).toBeNull()
     expect(parseRaceCheckpoint('{broken', 'session-a', config, now)).toBeNull()
+  })
+
+  it('rejects structurally valid checkpoints from an older simulation model', () => {
+    const now = 1_800_000_000_000
+    const snapshot = createInitialRace(config)
+    const current = JSON.parse(
+      serializeRaceCheckpoint('session-a', snapshot, now)!,
+    ) as Record<string, unknown>
+    const legacyWithoutModelVersion = { ...current }
+    delete legacyWithoutModelVersion.modelVersion
+
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify({
+          ...current,
+          modelVersion: '2026.07.25.1',
+        }),
+        'session-a',
+        config,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(legacyWithoutModelVersion),
+        'session-a',
+        config,
+        now,
+      ),
+    ).toBeNull()
   })
 
   it('saves through a storage adapter and removes invalid data on restore', () => {

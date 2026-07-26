@@ -2,6 +2,12 @@ import type { RaceConfig, RaceSnapshot } from '../types'
 
 export const RACE_CHECKPOINT_STORAGE_KEY = 'f1-sim-race-checkpoint-v1'
 export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
+/**
+ * Bump whenever persisted physics/timing state can no longer be continued
+ * faithfully. The storage schema can stay stable while old engine snapshots
+ * are rejected instead of mixing lap histories from different pace models.
+ */
+export const RACE_SIMULATION_MODEL_VERSION = '2026.07.26.2'
 const RACE_CHECKPOINT_VERSION = 1
 const MAX_CHECKPOINT_LENGTH = 4_500_000
 
@@ -13,6 +19,7 @@ export type ActiveRaceSession = {
 }
 
 type StoredRaceCheckpoint = {
+  modelVersion: typeof RACE_SIMULATION_MODEL_VERSION
   savedAt: number
   sessionKey: string
   snapshot: RaceSnapshot
@@ -142,6 +149,7 @@ export function serializeRaceCheckpoint(
 ): string | null {
   try {
     const serialized = JSON.stringify({
+      modelVersion: RACE_SIMULATION_MODEL_VERSION,
       savedAt,
       sessionKey,
       snapshot,
@@ -170,6 +178,7 @@ export function parseRaceCheckpoint(
     if (
       !isRecord(parsed) ||
       parsed.version !== RACE_CHECKPOINT_VERSION ||
+      parsed.modelVersion !== RACE_SIMULATION_MODEL_VERSION ||
       parsed.sessionKey !== sessionKey ||
       !isFiniteNumber(parsed.savedAt) ||
       parsed.savedAt > now + 60_000 ||

@@ -427,6 +427,12 @@ export type EventPaceCalibration = {
   simulation: {
     neutralBaseLapSeconds: number
     qualifyingOffsetSeconds: number
+    /**
+     * Offline correction for the measured, map-driven limited-time session
+     * loop. It compensates for circuit-profile sampling without changing the
+     * displayed telemetry speed or the race-distance pace model.
+     */
+    liveTimingProgressScale?: number
     expectedGreenRaceDeltaSeconds: number
     raceModelCorrectionSeconds: number
     residualSigmaSeconds: number
@@ -441,6 +447,9 @@ export type EventPaceCalibration = {
       raceGreenMedianSeconds: number | null
       qualifyingReferenceErrorSeconds: number
       raceReferenceErrorSeconds: number | null
+      liveQualifyingSeedCount?: number
+      liveQualifyingTop3MedianSeconds?: number | null
+      liveQualifyingReferenceErrorSeconds?: number | null
     }
   }
   sources: PaceCalibrationSource[]

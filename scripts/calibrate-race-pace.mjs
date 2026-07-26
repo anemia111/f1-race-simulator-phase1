@@ -20,7 +20,19 @@ const argumentValue = (name, fallback) => {
   const parsed = Number.parseInt(value?.slice(prefix.length) ?? '', 10)
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
 }
+const stringArgumentValue = (name) => {
+  const prefix = `--${name}=`
+  return process.argv
+    .find((argument) => argument.startsWith(prefix))
+    ?.slice(prefix.length)
+    .trim()
+}
 const QUALIFYING_SEEDS = argumentValue('qualifying-seeds', 100)
+const LIVE_QUALIFYING_SEEDS = argumentValue('live-qualifying-seeds', 3)
+const LIVE_QUALIFYING_ITERATIONS = argumentValue(
+  'live-qualifying-iterations',
+  3,
+)
 const RACE_CALIBRATION_SEEDS = argumentValue('race-calibration-seeds', 8)
 const RACE_VALIDATION_SEEDS = argumentValue('race-validation-seeds', 100)
 const RACE_SEARCH_ITERATIONS = argumentValue('race-search-iterations', 8)
@@ -30,8 +42,13 @@ const MAX_QUALIFYING_ITERATIONS = argumentValue(
 )
 const DRY_RUN = process.argv.includes('--dry-run')
 const QUALIFYING_ONLY = process.argv.includes('--qualifying-only')
+const LIVE_QUALIFYING_ONLY = process.argv.includes('--live-qualifying-only')
+const VALIDATE_LIVE_QUALIFYING_ONLY = process.argv.includes(
+  '--validate-live-qualifying-only',
+)
 const RACE_ONLY = process.argv.includes('--race-only')
 const VALIDATE_ONLY = process.argv.includes('--validate-only')
+const TRACK_FILTER = stringArgumentValue('track')
 
 const round = (value, digits = 3) =>
   value === null || !Number.isFinite(value)
@@ -92,12 +109,17 @@ async function loadRuntime() {
     '/src/simulation/qualifying.ts',
   )
   const raceModule = await server.ssrLoadModule('/src/simulation/race.ts')
+  const timedSessionModule = await server.ssrLoadModule(
+    '/src/simulation/timedSessionPlan.ts',
+  )
 
   return {
     close: () => server.close(),
     createInitialRace: raceModule.createInitialRace,
     advanceRace: raceModule.advanceRace,
+    buildTimedSessionPlan: timedSessionModule.buildTimedSessionPlan,
     runKnockoutQualifying: qualifyingModule.runKnockoutQualifying,
+    runSeriesQualifying: qualifyingModule.runSeriesQualifying,
     seriesPackageById: seriesModule.seriesPackageById,
   }
 }
@@ -170,6 +192,68 @@ function qualifyingDistribution(runtime, series, track, seedCount) {
     top3MedianSeconds: median(top3Medians),
     fieldMedianDeltaSeconds: median(fieldMedianDeltas),
   }
+}
+
+function liveQualifyingDistribution(runtime, series, track, seedCount) {
+  const top3Medians = []
+  const dryTrack =
+    track.rainProbability === 0
+      ? track
+      : { ...track, rainProbability: 0 }
+
+  for (let index = 0; index < seedCount; index += 1) {
+    const seed = `live-pace-calibration:${series.id}:${track.id}:${index}`
+    const qualifyingConfig = {
+      ...configFor(series, dryTrack, seed),
+      tireAllocation: series.rules.tires.standardAllocation,
+      weekendStage: 'qualifying',
+    }
+    const qualifying = runtime.runSeriesQualifying(
+      qualifyingConfig,
+      series.rules,
+    )
+    const config = {
+      ...qualifyingConfig,
+      timedSessionPlan: runtime.buildTimedSessionPlan(
+        qualifying,
+        series.rules.qualifying.breakSeconds,
+        series.rules.qualifying.format,
+      ),
+    }
+    let snapshot = runtime.createInitialRace(config)
+    const q1EndsAtSeconds =
+      config.timedSessionPlan.segments[0]?.endsAtSeconds ?? 18 * 60
+    const measurementEndsAtSeconds =
+      q1EndsAtSeconds + Math.max(120, dryTrack.baseLapTime * 1.8)
+
+    for (
+      let elapsed = 0;
+      elapsed < measurementEndsAtSeconds;
+      elapsed += 3
+    ) {
+      snapshot = runtime.advanceRace(snapshot, 3, config)
+    }
+
+    const bestByDriver = snapshot.cars
+      .flatMap((car) => {
+        const valid = car.lapHistory
+          .filter(
+            (lap) =>
+              lap.isValid &&
+              (lap.segment === 'Q1' || lap.segment === null),
+          )
+          .map((lap) => lap.lapTimeSeconds)
+        return valid.length === 0 ? [] : [Math.min(...valid)]
+      })
+      .sort((left, right) => left - right)
+    const top3 = median(bestByDriver.slice(0, 3))
+
+    if (top3 !== null) {
+      top3Medians.push(top3)
+    }
+  }
+
+  return median(top3Medians)
 }
 
 function representativeDriver(runtime, series, track) {
@@ -275,8 +359,30 @@ function trackWithRaceCorrection(track, correction) {
   }
 }
 
+function trackWithLiveTimingScale(track, scale) {
+  return {
+    ...track,
+    paceReference2026: track.paceReference2026
+      ? {
+          ...track.paceReference2026,
+          calibration: {
+            ...track.paceReference2026.calibration,
+            simulation: {
+              ...track.paceReference2026.calibration.simulation,
+              liveTimingProgressScale: scale,
+            },
+          },
+        }
+      : undefined,
+  }
+}
+
 function recordForTrack(records, seriesId, trackId) {
   return records[seriesId].find((record) => record.trackId === trackId)
+}
+
+function isSelectedTrack(track) {
+  return TRACK_FILTER === undefined || track.id === TRACK_FILTER
 }
 
 async function calibrateQualifying() {
@@ -334,6 +440,122 @@ async function calibrateQualifying() {
       break
     }
   }
+}
+
+async function calibrateLiveTiming() {
+  const records = await readCalibration()
+  const runtime = await loadRuntime()
+
+  for (const seriesId of ['f1-custom']) {
+    const series = runtime.seriesPackageById.get(seriesId)
+
+    if (!series) {
+      continue
+    }
+
+    for (const track of series.tracks) {
+      if (!isSelectedTrack(track)) {
+        continue
+      }
+
+      const record = recordForTrack(records, seriesId, track.id)
+
+      if (!record) {
+        continue
+      }
+
+      const target = record.qualifying.selectedReferenceSeconds
+      let scale = record.simulation.liveTimingProgressScale ?? 1
+      let best = {
+        absoluteError: Number.POSITIVE_INFINITY,
+        observed: null,
+        scale,
+      }
+
+      for (
+        let iteration = 0;
+        iteration < LIVE_QUALIFYING_ITERATIONS;
+        iteration += 1
+      ) {
+        const observed = liveQualifyingDistribution(
+          runtime,
+          series,
+          trackWithLiveTimingScale(track, scale),
+          LIVE_QUALIFYING_SEEDS,
+        )
+
+        if (observed === null) {
+          break
+        }
+
+        const absoluteError = Math.abs(observed - target)
+
+        if (absoluteError < best.absoluteError) {
+          best = { absoluteError, observed, scale }
+        }
+
+        scale = Math.min(1.3, Math.max(0.7, scale * (observed / target)))
+      }
+
+      record.simulation.liveTimingProgressScale = round(best.scale, 6)
+      process.stdout.write(
+        `${record.eventName}: live timing progress scale ${best.scale.toFixed(6)} (${best.observed?.toFixed(3) ?? 'no time'}s, error ${best.absoluteError.toFixed(3)}s)\n`,
+      )
+    }
+  }
+
+  await runtime.close()
+  await writeCalibration(records)
+}
+
+async function validateLiveTimingCalibration() {
+  const records = await readCalibration()
+  const runtime = await loadRuntime()
+  const validatedAt = new Date().toISOString()
+  const report = []
+  const series = runtime.seriesPackageById.get('f1-custom')
+
+  if (series) {
+    for (const track of series.tracks) {
+      if (!isSelectedTrack(track)) {
+        continue
+      }
+
+      const record = recordForTrack(records, series.id, track.id)
+
+      if (!record) {
+        continue
+      }
+
+      const observed = liveQualifyingDistribution(
+        runtime,
+        series,
+        track,
+        LIVE_QUALIFYING_SEEDS,
+      )
+      const error =
+        observed === null
+          ? null
+          : observed - record.qualifying.selectedReferenceSeconds
+
+      record.simulation.validation = {
+        ...(record.simulation.validation ?? {}),
+        validatedAt,
+        liveQualifyingSeedCount: LIVE_QUALIFYING_SEEDS,
+        liveQualifyingTop3MedianSeconds: round(observed),
+        liveQualifyingReferenceErrorSeconds: round(error),
+      }
+      report.push({
+        error: round(error),
+        scale: record.simulation.liveTimingProgressScale,
+        track: track.id,
+      })
+    }
+  }
+
+  await runtime.close()
+  await writeCalibration(records)
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 }
 
 async function calibrateRaceResidual() {
@@ -450,6 +672,7 @@ async function validateFinalCalibration() {
           : raceGreen - record.race.cleanLapReferenceSeconds
 
       record.simulation.validation = {
+        ...(record.simulation.validation ?? {}),
         validatedAt,
         qualifyingSeedCount: QUALIFYING_SEEDS,
         raceSeedCount: shouldValidateRace ? RACE_VALIDATION_SEEDS : 0,
@@ -480,11 +703,17 @@ if (VALIDATE_ONLY) {
   await validateFinalCalibration()
 } else if (QUALIFYING_ONLY) {
   await calibrateQualifying()
+} else if (VALIDATE_LIVE_QUALIFYING_ONLY) {
+  await validateLiveTimingCalibration()
+} else if (LIVE_QUALIFYING_ONLY) {
+  await calibrateLiveTiming()
+  await validateLiveTimingCalibration()
 } else if (RACE_ONLY) {
   await calibrateRaceResidual()
   await validateFinalCalibration()
 } else {
   await calibrateQualifying()
+  await calibrateLiveTiming()
   await calibrateRaceResidual()
   await validateFinalCalibration()
 }

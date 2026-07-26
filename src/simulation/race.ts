@@ -169,6 +169,9 @@ const EVENT_LOG_LIMIT = 100
 const TICKER_EVENT_WINDOW_SECONDS = 12
 /** Seconds after retirement before the wreck is cleared from the 3D track. */
 const WRECK_CLEAR_SECONDS = 25
+/** The worker's largest real-time step is 3 seconds at 60x. */
+const TIMED_SESSION_MAX_REALTIME_STEP_SECONDS = 3
+const TIMED_SESSION_INTEGRATION_STEP_SECONDS = 1
 /** Tight but non-overlapping spacing enforced inside an SC train. */
 /**
  * Extra straight-line drag for the junior categories, so each field tops out
@@ -2165,6 +2168,38 @@ export function advanceRace(
     return snapshot
   }
 
+  const requestedWeekendStage =
+    config.weekendStage ?? snapshot.weekend.stage
+
+  if (
+    isTimedLapSession(requestedWeekendStage) &&
+    deltaSeconds > TIMED_SESSION_INTEGRATION_STEP_SECONDS &&
+    deltaSeconds <= TIMED_SESSION_MAX_REALTIME_STEP_SECONDS
+  ) {
+    const integrationSteps = Math.ceil(
+      deltaSeconds / TIMED_SESSION_INTEGRATION_STEP_SECONDS,
+    )
+    const integrationStepSeconds = deltaSeconds / integrationSteps
+    let integratedSnapshot = snapshot
+
+    for (
+      let step = 0;
+      step < integrationSteps &&
+      integratedSnapshot.sessionStatus !== 'finished';
+      step += 1
+    ) {
+      integratedSnapshot = advanceRace(
+        integratedSnapshot,
+        integrationStepSeconds,
+        config,
+        manualPitRequests,
+        manualPaceModes,
+      )
+    }
+
+    return integratedSnapshot
+  }
+
   const teams = byId(config.teams)
   const drivers = byId(config.drivers)
   const elapsedSeconds = snapshot.elapsedSeconds + deltaSeconds
@@ -2208,7 +2243,7 @@ export function advanceRace(
     surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
     track: config.track,
   })
-  const weekendStage = config.weekendStage ?? snapshot.weekend.stage
+  const weekendStage = requestedWeekendStage
   const isRaceDistance = isRaceDistanceSession(weekendStage)
   const heatIndexC = heatIndexCFor(
     airTemperatureC,
@@ -4221,7 +4256,17 @@ export function advanceRace(
         performanceDeltaSeconds -
         packPaceSupportSeconds,
     )
-
+    const liveTimingProgressScale =
+      isTimedSession && timedRun.phase === 'attack-lap'
+        ? Math.min(
+            1.3,
+            Math.max(
+              0.7,
+              config.track.paceReference2026?.calibration.simulation
+                .liveTimingProgressScale ?? 1,
+            ),
+          )
+        : 1
     let totalDistance =
       waitingForSafeRejoin
         ? car.totalDistance
@@ -4231,7 +4276,8 @@ export function advanceRace(
             car.progress,
             displayTelemetry.speedKph,
             deltaSeconds,
-          )
+          ) *
+            liveTimingProgressScale
     const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
     const projectedProgress =

@@ -197,6 +197,15 @@ export function validatePaceCalibrationRecords(
       value.simulation.neutralBaseLapSeconds,
       `${label} neutral base`,
     )
+    if (
+      value.simulation.liveTimingProgressScale !== undefined &&
+      (typeof value.simulation.liveTimingProgressScale !== 'number' ||
+        !Number.isFinite(value.simulation.liveTimingProgressScale) ||
+        value.simulation.liveTimingProgressScale < 0.7 ||
+        value.simulation.liveTimingProgressScale > 1.3)
+    ) {
+      throw new Error(`Invalid ${label}: live timing progress scale`)
+    }
 
     if (!Array.isArray(value.sources) || value.sources.length === 0) {
       throw new Error(`Invalid ${label}: source list`)

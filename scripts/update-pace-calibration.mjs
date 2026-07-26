@@ -1031,6 +1031,17 @@ function estimatedQualifying(event) {
 }
 
 function withPreservedSimulation(generated, previous) {
+  const generatedWithLiveTimingScale =
+    previous?.simulation.liveTimingProgressScale === undefined
+      ? generated
+      : {
+          ...generated,
+          simulation: {
+            ...generated.simulation,
+            liveTimingProgressScale:
+              previous.simulation.liveTimingProgressScale,
+          },
+        }
   const qualifyingUnchanged =
     previous &&
     Math.abs(
@@ -1043,13 +1054,13 @@ function withPreservedSimulation(generated, previous) {
       generated.race.cleanLapReferenceSeconds
 
   if (!qualifyingUnchanged || !raceUnchanged) {
-    return generated
+    return generatedWithLiveTimingScale
   }
 
   return {
-    ...generated,
+    ...generatedWithLiveTimingScale,
     simulation: {
-      ...generated.simulation,
+      ...generatedWithLiveTimingScale.simulation,
       ...previous.simulation,
     },
   }

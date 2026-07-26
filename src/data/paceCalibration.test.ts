@@ -69,6 +69,15 @@ describe('pace calibration data', () => {
     expect(() =>
       validatePaceCalibrationRecords(duplicateSource, 'f1-custom'),
     ).toThrow(/duplicate source provenance/)
+
+    const invalidLiveTimingScale = clone(f1PaceCalibration2026)
+    invalidLiveTimingScale[0].simulation.liveTimingProgressScale = 1.5
+    expect(() =>
+      validatePaceCalibrationRecords(
+        invalidLiveTimingScale,
+        'f1-custom',
+      ),
+    ).toThrow(/live timing progress scale/)
   })
 
   it('rejects duplicate event identities but permits the same track across series', () => {
@@ -124,5 +133,32 @@ describe('pace calibration data', () => {
           record.race.confidence > 0.5,
       ),
     ).toBe(true)
+  })
+
+  it('keeps every F1 live Q1 measurement within three seconds of its reference', () => {
+    expect(f1PaceCalibration2026).toHaveLength(22)
+
+    for (const record of f1PaceCalibration2026) {
+      const validation = record.simulation.validation
+
+      expect(validation).toBeDefined()
+
+      if (!validation) {
+        throw new Error(`Missing live Q1 validation for ${record.trackId}`)
+      }
+
+      expect(
+        validation.liveQualifyingSeedCount,
+      ).toBeGreaterThanOrEqual(3)
+      expect(
+        validation.liveQualifyingTop3MedianSeconds,
+      ).toBeTypeOf('number')
+      expect(
+        Math.abs(
+          validation.liveQualifyingReferenceErrorSeconds ??
+            Number.POSITIVE_INFINITY,
+        ),
+      ).toBeLessThanOrEqual(3)
+    }
   })
 })
