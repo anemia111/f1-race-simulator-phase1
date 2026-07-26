@@ -783,6 +783,10 @@ export type CarSnapshot = {
   gapToLeaderLabel: string
   gapToAheadLabel: string
   trackLimitWarnings: number
+  /** Clock time when the car left the racing surface; null while on track. */
+  offTrackSinceSeconds?: number | null
+  /** Earliest time a stopped car may assess a safe gap and rejoin. */
+  rejoinEligibleAtSeconds?: number | null
   speedKph: number
   /** Team/driver instruction that changes pace, energy use, and wear. */
   racePaceMode: RacePaceMode
@@ -868,8 +872,7 @@ export type CarSnapshot = {
   status: CarStatus
   /**
    * Highest lap whose crossing effects (incidents, warnings, pit calls) have
-   * already run. Prevents re-rolling a lap when an incident time-loss pushes
-   * the car back across the same lap boundary.
+   * already run. Prevents re-rolling a lap after an unusual state transition.
    */
   processedLap: number
   /** Last 12-part track segment that evaluated a wheel-to-wheel battle. */

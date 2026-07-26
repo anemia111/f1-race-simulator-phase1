@@ -97,6 +97,9 @@ driving game.
 - Cars stay centered on one racing line. Battle outcomes are evaluated once
   per 1/12-lap segment and use actual mapped DRS-zone/sector position without
   adding lateral presentation offsets.
+- A close pack below 1.9 seconds receives smoothly fading tow/pace support,
+  capped at 0.9 seconds per lap. Once the train breaks, each car returns to its
+  own projected pace; the model never teleports distance or fixes an overtake.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
   owed penalties.
@@ -106,6 +109,14 @@ driving game.
   for sectors 1/2/3. Only the affected sector slows and suppresses racing; the
   dashboard and 3D trace show the same state. OpenF1 sector/scope fields map to
   the same display without mixing observed and SIM flag sources.
+- Single and double yellow have distinct map labels and pace reductions. A
+  disabled, off-track, or incident-delayed car is excluded from neutralisation
+  queue ordering, allowing the entire following field to clear the obstruction
+  while preserving order behind the last unaffected car.
+- Off-track cars wait at the excursion point until a deterministic recovery
+  delay has elapsed and traffic gaps ahead and behind are safe, then rejoin at
+  reduced speed. Blue flags use physical proximity to the next lapping
+  boundary rather than firing merely because a one-lap deficit exists.
 - Drive-through and stop-and-go penalties use dedicated pit services, service
   deadlines, and disqualification when unserved. Low-power starts trigger a
   rear warning light and an MGU-K event.
@@ -137,6 +148,9 @@ driving game.
   accessible per-sector summary. Forced-colors mode remains legible.
 - The race-control panel exposes S1/S2/S3 status independently, and active
   local flags thicken and relabel the affected 3D sector trace.
+- The duplicate `LIVE GAP TO LEADER` and lower `GAP TO LEADER` panels were
+  removed. Their space now belongs to the full-field leaderboard and the
+  scrollable race-control message history.
 - Analysis includes tire condition, strategy outlook, manual box compound,
   push/standard/save/defend pace, lap history, championship, and track profile.
 - A dedicated Web Worker owns a deterministic 50ms fixed tick and publishes
@@ -169,6 +183,8 @@ driving game.
 - `src/domain/startSignal.ts`: five-light and lights-out presentation state.
 - `src/persistence.ts`: V3 save migration and nested season-garage normalization.
 - `src/simulation/overtaking.ts`: mapped close-battle outcomes.
+- `src/simulation/trackRejoin.ts`: deterministic traffic-gap checks for safe
+  off-track recovery.
 - `src/simulation/strategy.ts`: pit and strategy rules.
 - `src/simulation/weather.ts`: continuous weather/grip and forecast.
 - `src/simulation/qualifying.ts`: timed-session and grid model.
@@ -192,7 +208,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 408 passed across 46 files
+- Tests: 414 passed across 47 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow

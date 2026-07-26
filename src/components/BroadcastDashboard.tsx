@@ -377,40 +377,6 @@ function MiniSectorStrip({
   )
 }
 
-function Sparkline({
-  color = '#ffd21f',
-  values,
-}: {
-  color?: string
-  values: number[]
-}) {
-  const normalized = useMemo(() => {
-    const finite = values.filter(Number.isFinite)
-    const minimum = finite.length > 0 ? Math.min(...finite) : 0
-    const maximum = finite.length > 0 ? Math.max(...finite) : 1
-    const spread = Math.max(0.001, maximum - minimum)
-
-    return values.map((value, index) => ({
-      x: values.length <= 1 ? 0 : (index / (values.length - 1)) * 100,
-      y: 30 - ((value - minimum) / spread) * 24,
-    }))
-  }, [values])
-
-  return (
-    <svg aria-hidden="true" className="broadcast-sparkline" preserveAspectRatio="none" viewBox="0 0 100 32">
-      <line className="sparkline-grid" x1="0" x2="100" y1="16" y2="16" />
-      <polyline
-        fill="none"
-        points={normalized.map((point) => `${point.x},${point.y}`).join(' ')}
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  )
-}
-
 function TireUsage({
   cars,
   labels,
@@ -460,54 +426,6 @@ function TireUsage({
             <span>{labels[compound]}</span>
             <strong>{count}</strong>
             <small>{Math.round((count / total) * 100)}%</small>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function GapHistory({ rows }: { rows: BroadcastTimingRow[] }) {
-  const series = useMemo(() => {
-    const leader = rows[0]?.car
-
-    if (!leader) return []
-
-    const leaderLaps = new Map(
-      leader.lapHistory.map((lap) => [lap.lap, lap.lapTimeSeconds]),
-    )
-
-    return rows.slice(0, 8).map((row) => {
-      const completed = row.car.lapHistory.slice(-12)
-      const currentGap = Math.max(0, row.car.gapToLeader)
-      const reverseValues = [currentGap]
-
-      for (const lap of completed.slice().reverse()) {
-        const leaderTime = leaderLaps.get(lap.lap)
-        const previous = reverseValues.at(-1) ?? currentGap
-        reverseValues.push(
-          Math.max(0, previous - (leaderTime === undefined ? 0 : lap.lapTimeSeconds - leaderTime)),
-        )
-      }
-
-      const values = reverseValues.reverse()
-
-      return {
-        code: row.car.code,
-        color: row.car.teamColor,
-        values: values.length > 1 ? values : [currentGap, currentGap],
-      }
-    })
-  }, [rows])
-
-  return (
-    <div className="gap-history-chart">
-      <div className="gap-history-axis"><span>+0s</span><span>+15s</span><span>+30s</span></div>
-      <div className="gap-history-lines">
-        {series.map((entry) => (
-          <div className="gap-history-line" key={entry.code} title={`${entry.code} gap history`}>
-            <span style={{ color: entry.color }}>{entry.code}</span>
-            <Sparkline color={entry.color} values={entry.values} />
           </div>
         ))}
       </div>
@@ -1210,7 +1128,6 @@ export function BroadcastDashboard({
           <div className="broadcast-left-analytics">
             <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} labels={tireLabels} /></section>
             <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div aria-label="All drivers pit stops" className="pit-stop-list" role="table" tabIndex={0}><div role="row"><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).map((row) => <div key={row.car.driverId} role="row"><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
-            <section className="broadcast-panel gap-history-panel"><PanelHeader eyebrow="COMPLETED LAPS" title="Gap To Leader" /><GapHistory rows={timingRows} /></section>
           </div>
         </div>
 
@@ -1288,7 +1205,6 @@ export function BroadcastDashboard({
             {showRaceFeed ? <ol className="race-message-list">{displayedFeed.slice(0, 9).map((event) => <li key={event.id}><time>{event.timeLabel}</time><span>{event.message}</span></li>)}</ol> : <button className="restore-panel" onClick={() => setShowRaceFeed(true)} type="button"><MessageSquare size={13}/> Restore messages</button>}
           </section>
           <section className="broadcast-panel fastest-lap-panel"><span>FASTEST LAP</span><strong>{formatLapTime(fastestRow?.car.bestLapTimeSeconds)}</strong><small>{fastestRow ? `${fastestRow.car.driverName} / LAP ${fastestRow.car.bestLapLap ?? '-'}` : 'Awaiting completed lap'}</small></section>
-          <section className="broadcast-panel live-gap-panel"><PanelHeader title="Live Gap To Leader" /><ol aria-label="All drivers gaps to leader" tabIndex={0}>{timingRows.slice(1).map((row) => <li key={row.car.driverId}><strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong><span><i style={{ backgroundColor: row.car.teamColor, width: `${clamp(100 - row.car.gapToLeader * 2.4, 12, 100)}%` }} /></span><b>{row.displayGapToLeaderLabel}</b></li>)}</ol></section>
         </aside>
       </main>
 

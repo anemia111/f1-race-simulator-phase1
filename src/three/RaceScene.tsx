@@ -898,15 +898,15 @@ function SectorPathLinesContent({
         <group>
           <Line
             points={localYellow.points}
-            color="#ffe35a"
-            lineWidth={yellowSeverity === 'double' ? 5 : 4.2}
+            color={yellowSeverity === 'double' ? '#ffae00' : '#ffe35a'}
+            lineWidth={yellowSeverity === 'double' ? 5.8 : 3.8}
           />
           <SpriteLabel
-            color="#ffe35a"
-            fontSize={0.84}
+            color={yellowSeverity === 'double' ? '#ffae00' : '#ffe35a'}
+            fontSize={yellowSeverity === 'double' ? 0.9 : 0.78}
             outlineColor="#071019"
             position={localYellow.labelPose.position.setY(0.68)}
-            text={yellowSeverity === 'double' ? 'DOUBLE YELLOW ZONE' : 'YELLOW ZONE'}
+            text={yellowSeverity === 'double' ? 'DOUBLE YELLOW' : 'SINGLE YELLOW'}
           />
           <SpriteLabel
             color="#ffffff"

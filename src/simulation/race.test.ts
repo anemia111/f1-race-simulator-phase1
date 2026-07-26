@@ -46,6 +46,7 @@ import {
   dirtyAirDeltaSeconds,
   fuelEffectSeconds,
   owedPenaltySeconds,
+  packFollowingLapTime,
   penaltyFromWarnings,
   raceLapsFor,
   trackEvolutionLevel,
@@ -120,9 +121,9 @@ function runThroughStart(
 }
 
 describe('blue flags', () => {
-  it('warns a lapped car only while a lead-lap car approaches from behind', () => {
+  it('shows only when a lead car is within the operational 1.2 second lapping gap', () => {
     const [leader, backmarker] = createInitialRace(makeConfig('blue-flag')).cars
-    const approaching = {
+    const farApproaching = {
       ...leader,
       position: 1,
       totalDistance: 4.91,
@@ -133,15 +134,49 @@ describe('blue flags', () => {
       totalDistance: 4,
     }
 
-    expect(blueFlagApproachingCarFor(lapped, [approaching, lapped])?.driverId).toBe(
-      approaching.driverId,
+    expect(
+      blueFlagApproachingCarFor(
+        lapped,
+        [farApproaching, lapped],
+        90,
+      ),
+    ).toBeNull()
+
+    const closeApproaching = {
+      ...farApproaching,
+      totalDistance: 4.988,
+    }
+
+    expect(
+      blueFlagApproachingCarFor(
+        lapped,
+        [closeApproaching, lapped],
+        90,
+      )?.driverId,
+    ).toBe(
+      closeApproaching.driverId,
     )
     expect(
-      blueFlagApproachingCarFor(lapped, [
-        { ...approaching, totalDistance: 5.01 },
+      blueFlagApproachingCarFor(
         lapped,
-      ]),
+        [
+          { ...closeApproaching, totalDistance: 5.01 },
+          lapped,
+        ],
+        90,
+      ),
     ).toBeNull()
+
+    expect(
+      blueFlagApproachingCarFor(
+        lapped,
+        [
+          { ...closeApproaching, totalDistance: 5.988 },
+          lapped,
+        ],
+        90,
+      )?.driverId,
+    ).toBe(closeApproaching.driverId)
   })
 })
 
@@ -816,7 +851,7 @@ describe('physical running order', () => {
     expect(
       carDefinesNeutralisationQueueOrder({
         ...car,
-        battleDeltaSecondsRemaining: -1.2,
+        battleDeltaSecondsRemaining: -0.02,
         battlePhase: 'resolved',
         speedKph: 18,
       }),
@@ -827,6 +862,14 @@ describe('physical running order', () => {
         battleDeltaSecondsRemaining: -1.2,
         battlePhase: 'attacking',
         speedKph: 18,
+      }),
+    ).toBe(true)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        damage: 0.3,
+        speedKph: 18,
+        throttlePercent: 0,
       }),
     ).toBe(true)
     expect(
@@ -843,6 +886,96 @@ describe('physical running order', () => {
         status: 'retired',
       }),
     ).toBe(false)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        offTrackSinceSeconds: 20,
+        rejoinEligibleAtSeconds: 22,
+      }),
+    ).toBe(false)
+  })
+
+  it('lets several followers clear one passable accident under local yellow', () => {
+    const config = makeConfig('yellow-obstruction-field')
+    const started = runThroughStart(config)
+    const [leader, obstruction, ...followers] = started.cars.slice(0, 6)
+    const orderedCars = [
+      { ...leader, totalDistance: 2.47 },
+      {
+        ...obstruction,
+        battleDeltaSecondsRemaining: -8,
+        battlePhase: 'resolved' as const,
+        damage: 0.35,
+        speedKph: 0,
+        throttlePercent: 0,
+        totalDistance: 2.445,
+      },
+      ...followers.map((car, index) => ({
+        ...car,
+        totalDistance: 2.442 - index * 0.002,
+      })),
+    ].map((car, index) => ({
+      ...car,
+      lap: 2,
+      position: index + 1,
+      processedBattleSegment: Number.MAX_SAFE_INTEGER,
+      processedLap: 2,
+      progress: car.totalDistance - 2,
+      status: 'running' as const,
+    }))
+    let snapshot: RaceSnapshot = {
+      ...started,
+      cars: orderedCars,
+      flag: 'yellow',
+      flagLabel: 'DOUBLE YELLOW S2',
+      flagPhase: {
+        endMessage: 'Track clear',
+        endSeconds: started.elapsedSeconds + 20,
+        flag: 'yellow',
+        id: 'test-local-yellow-obstruction',
+        sector: 1,
+        startMessage: 'Double yellow',
+        startSeconds: started.elapsedSeconds - 1,
+        yellowSeverity: 'double',
+        yellowZone: {
+          endProgress: 0.5,
+          incidentProgress: 0.445,
+          startProgress: 0.42,
+        },
+      },
+      sectorFlags: ['clear', 'double-yellow', 'clear'],
+    }
+
+    for (let step = 0; step < 30; step += 1) {
+      snapshot = advanceRace(snapshot, 0.2, config)
+    }
+
+    const stopped = snapshot.cars.find(
+      (car) => car.driverId === obstruction.driverId,
+    )!
+    const clearedFollowers = followers.map(
+      (follower) =>
+        snapshot.cars.find(
+          (car) => car.driverId === follower.driverId,
+        )!,
+    )
+
+    expect(
+      clearedFollowers.every(
+        (follower) => follower.totalDistance > stopped.totalDistance,
+      ),
+      `stopped=${stopped.totalDistance}/${stopped.battlePhase}/${stopped.battleDeltaSecondsRemaining}/${stopped.damage}/${stopped.speedKph}; followers=${clearedFollowers
+        .map((follower) => follower.totalDistance)
+        .join(',')}`,
+    ).toBe(true)
+    expect(
+      clearedFollowers.map((follower) => follower.totalDistance),
+    ).toEqual(
+      clearedFollowers
+        .map((follower) => follower.totalDistance)
+        .slice()
+        .sort((left, right) => right - left),
+    )
   })
 })
 
@@ -982,6 +1115,35 @@ describe('full race', () => {
           ),
       ),
     ).toBe(true)
+  })
+
+  it('holds position, tire wear, and stored energy while waiting to rejoin', () => {
+    const config = makeConfig('off-track-stationary-state')
+    const started = runThroughStart(config)
+    const target = started.cars[4]
+    const waiting = {
+      ...target,
+      offTrackSinceSeconds: started.elapsedSeconds,
+      rejoinEligibleAtSeconds: started.elapsedSeconds + 10,
+    }
+    const snapshot = {
+      ...started,
+      cars: started.cars.map((car) =>
+        car.driverId === target.driverId ? waiting : car,
+      ),
+    }
+    const advanced = advanceRace(snapshot, 1, config)
+    const held = advanced.cars.find(
+      (car) => car.driverId === target.driverId,
+    )!
+
+    expect(held.totalDistance).toBe(waiting.totalDistance)
+    expect(held.speedKph).toBe(0)
+    expect(held.tireWearPercent).toBe(waiting.tireWearPercent)
+    expect(held.energyStore.currentEnergyMJ).toBe(
+      waiting.energyStore.currentEnergyMJ,
+    )
+    expect(held.ersBatteryPercent).toBe(waiting.ersBatteryPercent)
   })
 })
 
@@ -1563,6 +1725,34 @@ describe('dirty air', () => {
 
   it('fades as the gap opens', () => {
     expect(dirtyAirDeltaSeconds(1.8)).toBeLessThan(dirtyAirDeltaSeconds(1.0))
+  })
+
+  it('helps an attached car retain the train pace but ends smoothly when the gap breaks', () => {
+    const closePackPace = packFollowingLapTime({
+      aheadLapTimeSeconds: 90,
+      gapToAheadSeconds: 0.55,
+      ownLapTimeSeconds: 91.2,
+      phaseActive: false,
+    })
+    const edgePackPace = packFollowingLapTime({
+      aheadLapTimeSeconds: 90,
+      gapToAheadSeconds: 1.85,
+      ownLapTimeSeconds: 91.2,
+      phaseActive: false,
+    })
+
+    expect(closePackPace).toBeGreaterThan(90)
+    expect(closePackPace).toBeLessThan(91.2)
+    expect(edgePackPace).toBeGreaterThan(closePackPace)
+    expect(edgePackPace).toBeLessThanOrEqual(91.2)
+    expect(
+      packFollowingLapTime({
+        aheadLapTimeSeconds: 90,
+        gapToAheadSeconds: 1.9,
+        ownLapTimeSeconds: 91.2,
+        phaseActive: false,
+      }),
+    ).toBe(91.2)
   })
 })
 

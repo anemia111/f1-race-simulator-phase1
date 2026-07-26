@@ -51,6 +51,7 @@ import {
   flagPaceMultiplier,
   flagPhaseForProgress,
   lapHasTrackLimitWarning,
+  packFollowingLapTime,
   penaltyFromWarnings,
   phaseThreeTuning,
   restartGripLossSeconds,
@@ -64,6 +65,7 @@ import { hashChance } from './random'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { automaticRacePaceModeFor } from './racePace'
 import { advanceRetiredCarMotion } from './retirementMotion'
+import { canRejoinTrack } from './trackRejoin'
 import {
   advanceNeutralisationProcedure,
   controlProcedureStatusMessage,
@@ -227,32 +229,43 @@ function simulatedHeadwindMpsAt(
 export function blueFlagApproachingCarFor(
   car: CarSnapshot,
   cars: CarSnapshot[],
+  referenceLapTimeSeconds = 90,
 ): CarSnapshot | null {
   let closest: CarSnapshot | null = null
-  let closestTrackGap = Number.POSITIVE_INFINITY
+  let closestGapSeconds = Number.POSITIVE_INFINITY
+  const lapTime = Math.max(40, referenceLapTimeSeconds)
 
   for (const candidate of cars) {
     if (
       candidate.driverId === car.driverId ||
       candidate.status !== 'running' ||
-      candidate.position >= car.position
+      candidate.position >= car.position ||
+      candidate.offTrackSinceSeconds != null
     ) {
       continue
     }
 
-    const distanceAhead = candidate.totalDistance - car.totalDistance
+    const lapLead = candidate.totalDistance - car.totalDistance
 
-    // A lead-lap car 0.82..1.00 laps ahead is physically approaching from
-    // behind to put this car a lap down. Once it crosses 1.00, the pass is done.
-    if (distanceAhead < 0.82 || distanceAhead >= 1) {
+    if (lapLead <= 0) {
       continue
     }
 
-    const trackGapBehind = 1 - distanceAhead
+    const nextLappingBoundary = Math.ceil(lapLead - 1e-9)
+    const trackGapBehind = nextLappingBoundary - lapLead
 
-    if (trackGapBehind < closestTrackGap) {
+    // The FIA light-panel call is made only when the faster car is about to
+    // lap the car ahead. A 1.2 s timing gap mirrors current event-note
+    // operation; it replaces the old 0.18-lap (roughly 16 s) early warning.
+    if (trackGapBehind <= 1e-6) {
+      continue
+    }
+
+    const gapSeconds = trackGapBehind * lapTime
+
+    if (gapSeconds <= 1.2 && gapSeconds < closestGapSeconds) {
       closest = candidate
-      closestTrackGap = trackGapBehind
+      closestGapSeconds = gapSeconds
     }
   }
 
@@ -1436,15 +1449,18 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
 }
 
 export function carDefinesNeutralisationQueueOrder(car: CarSnapshot): boolean {
-  if (car.status !== 'running') {
+  if (
+    car.status !== 'running' ||
+    car.offTrackSinceSeconds != null
+  ) {
     return false
   }
 
   const recoveringFromIncident =
-    car.battlePhase === 'resolved' &&
-    car.battleDeltaSecondsRemaining <= -0.35
+    car.battleDeltaSecondsRemaining < -0.01 &&
+    (car.battlePhase === 'resolved' || car.damage > 0)
   const clearlyDisabled =
-    car.damage >= 0.6 && car.speedKph < 90 && car.throttlePercent < 20
+    car.damage >= 0.6 && car.speedKph < 35 && car.throttlePercent < 10
 
   return !recoveringFromIncident && !clearlyDisabled
 }
@@ -1823,6 +1839,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       gapToLeaderLabel: '',
       gapToAheadLabel: '',
       trackLimitWarnings: 0,
+      offTrackSinceSeconds: null,
+      rejoinEligibleAtSeconds: null,
       speedKph: 0,
       racePaceMode: 'standard',
       throttlePercent: 0,
@@ -3887,6 +3905,28 @@ export function advanceRace(
       car.progress,
       carSector,
     )
+    const offTrackSinceSeconds = car.offTrackSinceSeconds ?? null
+    const rejoiningThisFrame =
+      offTrackSinceSeconds !== null &&
+      canRejoinTrack(
+        car,
+        frameCars,
+        elapsedSeconds,
+        baseLapTime,
+      )
+    const waitingForSafeRejoin =
+      offTrackSinceSeconds !== null && !rejoiningThisFrame
+
+    if (rejoiningThisFrame) {
+      newEvents.push(
+        makeEvent(
+          `safe-rejoin-${car.driverId}-${Math.floor(offTrackSinceSeconds ?? elapsedSeconds)}`,
+          'info',
+          elapsedSeconds,
+          `${car.code} rejoins after waiting for a safe gap in traffic.`,
+        ),
+      )
+    }
     const timedPaceMode = isTimedSession
       ? car.timedRunPhase === 'attack-lap'
         ? ('push' as const)
@@ -3978,10 +4018,24 @@ export function advanceRace(
       40,
       lapTime * timedRun.paceFactor,
     )
-    const conditionEffectiveLapTime = Math.max(
+    const uncoupledConditionLapTime = Math.max(
       40,
       (lapTime + performanceGain) * timedRun.paceFactor,
     )
+    const carAhead =
+      index > 0 &&
+      frameCars[index - 1]?.status === 'running' &&
+      frameCars[index - 1]?.offTrackSinceSeconds == null
+        ? frameCars[index - 1]
+        : null
+    const conditionEffectiveLapTime = packFollowingLapTime({
+      aheadLapTimeSeconds: carAhead?.projectedLapTime ?? null,
+      gapToAheadSeconds: car.gapToAhead,
+      ownLapTimeSeconds: uncoupledConditionLapTime,
+      phaseActive: localControlPhase !== null || waitingForSafeRejoin,
+    })
+    const packPaceSupportSeconds =
+      uncoupledConditionLapTime - conditionEffectiveLapTime
     const restartLineTarget =
       overtakeEnableTargetsByDriver?.[car.driverId]
     const hasCrossedRestartLine =
@@ -4047,6 +4101,72 @@ export function advanceRace(
       telemetry,
       timedRun.phase,
     )
+
+    if (waitingForSafeRejoin) {
+      const stationaryEnergyStore = paceManagedCar.energyStore
+
+      displayTelemetry = {
+        ...displayTelemetry,
+        activeAeroMode: 'corner',
+        brakePercent: 0,
+        energyStore: {
+          ...displayTelemetry.energyStore,
+          currentEnergyMJ: stationaryEnergyStore.currentEnergyMJ,
+          stateOfCharge: stationaryEnergyStore.stateOfCharge,
+          actualHarvestedThisLapMJ:
+            stationaryEnergyStore.actualHarvestedThisLapMJ,
+          deployedMechanicalEnergyThisLapMJ:
+            stationaryEnergyStore.deployedMechanicalEnergyThisLapMJ,
+          energyRemovedThisLapMJ:
+            stationaryEnergyStore.energyRemovedThisLapMJ,
+          conversionLossThisLapMJ:
+            stationaryEnergyStore.conversionLossThisLapMJ,
+          energyBalanceErrorMJ: stationaryEnergyStore.energyBalanceErrorMJ,
+          actualDeploymentPowerKw: 0,
+          actualRecoveryPowerKw: 0,
+          batteryChargePowerKw: 0,
+          batteryDischargePowerKw: 0,
+          chargePowerKw: 0,
+          dischargePowerKw: 0,
+          frictionBrakePowerKw: 0,
+          motorMechanicalPowerKw: 0,
+          recoveryTorqueNm: 0,
+          requestedBrakePowerKw: 0,
+          requestedDeploymentPowerKw: 0,
+          requestedRecoveryPowerKw: 0,
+        },
+        energyDeployedThisLapMj: paceManagedCar.energyDeployedThisLapMj,
+        energyHarvestedThisLapMj: paceManagedCar.energyHarvestedThisLapMj,
+        ersBatteryPercent: paceManagedCar.ersBatteryPercent,
+        ersMode: 'harvest',
+        ersPowerKw: 0,
+        gear: 0,
+        overtakeStatus: 'disabled',
+        rpm: 0,
+        speedKph: 0,
+        superClippingDrivePowerScale: 1,
+        superClippingDurationSeconds: 0,
+        superClippingIntensity: 0,
+        superClippingRecoveredThisLapMj:
+          paceManagedCar.superClippingRecoveredThisLapMj,
+        superClippingRegenPowerKw: 0,
+        superClippingStartedAtProgress: null,
+        superClippingStartedAtSeconds: null,
+        tireTemperatureC: Math.max(
+          trackTemperatureC,
+          paceManagedCar.tireTemperatureC - deltaSeconds * 0.35,
+        ),
+        throttlePercent: 0,
+      }
+    } else if (rejoiningThisFrame) {
+      displayTelemetry = {
+        ...displayTelemetry,
+        activeAeroMode: 'corner',
+        overtakeStatus: 'disabled',
+        speedKph: Math.min(displayTelemetry.speedKph, 140),
+        throttlePercent: Math.min(displayTelemetry.throttlePercent, 45),
+      }
+    }
     const modeBrakeMultiplier: Record<RacePaceMode, number> = {
       defend: 1.08,
       push: 1.16,
@@ -4055,17 +4175,21 @@ export function advanceRace(
     }
     const effectiveLapTime = Math.max(
       40,
-      baselineEffectiveLapTime + performanceDeltaSeconds,
+      baselineEffectiveLapTime +
+        performanceDeltaSeconds -
+        packPaceSupportSeconds,
     )
 
     let totalDistance =
-      car.totalDistance +
-      progressForProfileSpeed(
-        config.track,
-        car.progress,
-        displayTelemetry.speedKph,
-        deltaSeconds,
-      )
+      waitingForSafeRejoin
+        ? car.totalDistance
+        : car.totalDistance +
+          progressForProfileSpeed(
+            config.track,
+            car.progress,
+            displayTelemetry.speedKph,
+            deltaSeconds,
+          )
     const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
     const projectedProgress =
@@ -4086,12 +4210,13 @@ export function advanceRace(
           ),
       )
     }
-    const battleDeltaStep =
-      Math.sign(car.battleDeltaSecondsRemaining) *
-      Math.min(
-        Math.abs(car.battleDeltaSecondsRemaining),
-        deltaSeconds * 0.95,
-      )
+    const battleDeltaStep = waitingForSafeRejoin
+      ? 0
+      : Math.sign(car.battleDeltaSecondsRemaining) *
+        Math.min(
+          Math.abs(car.battleDeltaSecondsRemaining),
+          deltaSeconds * 0.95,
+        )
     totalDistance += battleDeltaStep / baseLapTime
     const battleDeltaSecondsRemaining =
       car.battleDeltaSecondsRemaining - battleDeltaStep
@@ -4201,8 +4326,15 @@ export function advanceRace(
     }
 
     const blueFlagApproachingCar =
-      isRaceDistance && !localControlPhase && hasCrossedRestartLine
-      ? blueFlagApproachingCarFor(car, snapshot.cars)
+      isRaceDistance &&
+      !localControlPhase &&
+      hasCrossedRestartLine &&
+      !waitingForSafeRejoin
+      ? blueFlagApproachingCarFor(
+          car,
+          snapshot.cars,
+          Math.max(baseLapTime, car.projectedLapTime),
+        )
       : null
     const blueFlag = blueFlagApproachingCar !== null
     const blueFlagSinceSeconds = blueFlag
@@ -4242,7 +4374,10 @@ export function advanceRace(
         car.battlePhase === 'defending' ||
         car.battlePhase === 'side-by-side')
     const activeBattlePhase =
-      localControlPhase || !hasCrossedRestartLine
+      localControlPhase ||
+      !hasCrossedRestartLine ||
+      waitingForSafeRejoin ||
+      rejoiningThisFrame
         ? ('single-file' as const)
         : hasCommittedBattleWindow
           ? car.battlePhase
@@ -4288,7 +4423,9 @@ export function advanceRace(
     )
     const wearScale = wearScaleForControlPhase(localControlPhase)
     const tireLapFraction =
-      (deltaSeconds / Math.max(40, effectiveLapTime)) * wearScale.tire
+      waitingForSafeRejoin
+        ? 0
+        : (deltaSeconds / Math.max(40, effectiveLapTime)) * wearScale.tire
     const localDynamics = trackDynamicsAt(config.track, car.progress)
     const fuelEffects = fuelMassEffects({
       fuelLoadKg: car.fuelLoadKg,
@@ -4513,6 +4650,12 @@ export function advanceRace(
       currentLapSectorTimes,
       currentLapMiniSectorTimes,
       trackLateralOffset,
+      offTrackSinceSeconds: waitingForSafeRejoin
+        ? offTrackSinceSeconds
+        : null,
+      rejoinEligibleAtSeconds: waitingForSafeRejoin
+        ? (car.rejoinEligibleAtSeconds ?? offTrackSinceSeconds)
+        : null,
       battlePhase: activeBattlePhase,
       battleOpponentId,
       battlePhaseUntilSeconds,
@@ -4540,6 +4683,13 @@ export function advanceRace(
       tireThermalStressPercent: tireState.thermalStressPercent,
       brakeTemperatureC,
       brakeOverheatSeconds,
+      stewardNote:
+        waitingForSafeRejoin && car.stewardStatus === 'clear'
+          ? 'Waiting for a safe rejoin'
+          : rejoiningThisFrame &&
+              car.stewardNote === 'Waiting for a safe rejoin'
+            ? null
+            : car.stewardNote,
       blueFlag,
       blueFlagSinceSeconds,
       warningLightsUntilSeconds:
@@ -5382,12 +5532,28 @@ export function advanceRace(
           next = {
             ...next,
             battleDeltaSecondsRemaining:
-              next.battleDeltaSecondsRemaining - incident.timeLossSeconds,
+              incident.kind === 'minor-error'
+                ? next.battleDeltaSecondsRemaining
+                : next.battleDeltaSecondsRemaining - incident.timeLossSeconds,
             battleOpponentId: null,
             battlePhase: 'resolved',
             battlePhaseUntilSeconds:
               elapsedSeconds + Math.max(1.2, incident.timeLossSeconds * 1.8),
             damage: Math.min(1, next.damage + incident.damageDelta),
+            offTrackSinceSeconds:
+              incident.kind === 'minor-error'
+                ? elapsedSeconds
+                : next.offTrackSinceSeconds,
+            rejoinEligibleAtSeconds:
+              incident.kind === 'minor-error'
+                ? elapsedSeconds +
+                  Math.max(0.8, incident.timeLossSeconds * 4)
+                : next.rejoinEligibleAtSeconds,
+            stewardNote:
+              incident.kind === 'minor-error' &&
+              next.stewardStatus === 'clear'
+                ? 'Waiting for a safe rejoin'
+                : next.stewardNote,
           }
         }
       }
@@ -5525,19 +5691,42 @@ export function advanceRace(
         const excursionDetail = hashChance(
           `${config.seed}:track-excursion:${driver.id}:${lap}`,
         )
-        const unsafeRejoin =
-          excursionDetail > 0.975 &&
-          (next.gapToAhead < 1.2 || localTrackGrip < 0.78)
+        const wentFullyOffTrack = excursionDetail > 0.93
         const gainedLastingAdvantage =
-          !unsafeRejoin && retainedAdvantageSeconds > 0.15
+          !wentFullyOffTrack && retainedAdvantageSeconds > 0.15
 
-        if (unsafeRejoin || gainedLastingAdvantage) {
+        if (wentFullyOffTrack) {
+          newEvents.push(
+            makeEvent(
+              `off-track-${driver.id}-${lap}`,
+              'incident',
+              elapsedSeconds,
+              `${driver.code} leaves the track and waits for a safe gap before rejoining.`,
+            ),
+          )
+          next = {
+            ...next,
+            battleDeltaSecondsRemaining: Math.min(
+              0,
+              next.battleDeltaSecondsRemaining,
+            ),
+            battleOpponentId: null,
+            battlePhase: 'resolved',
+            battlePhaseUntilSeconds: elapsedSeconds + 1.5,
+            offTrackSinceSeconds: elapsedSeconds,
+            rejoinEligibleAtSeconds:
+              elapsedSeconds + 1 + Math.max(0, 0.82 - localTrackGrip) * 4,
+            stewardNote:
+              next.stewardStatus === 'clear'
+                ? 'Waiting for a safe rejoin'
+                : next.stewardNote,
+          }
+        }
+
+        if (gainedLastingAdvantage) {
           const caseId = `investigation-excursion-${driver.id}-${lap}`
-          const consequence = unsafeRejoin
-            ? localTrackGrip < 0.66 || next.gapToAhead < 0.45
-              ? ('significant' as const)
-              : ('minor' as const)
-            : retainedAdvantageSeconds > 1.5
+          const consequence =
+            retainedAdvantageSeconds > 1.5
               ? ('major' as const)
               : retainedAdvantageSeconds > 0.75
                 ? ('significant' as const)
@@ -5547,13 +5736,9 @@ export function advanceRace(
             openedAtSeconds: elapsedSeconds,
             resolveAtSeconds: elapsedSeconds + 18,
             driverId: driver.id,
-            otherDriverId: unsafeRejoin ? snapshot.cars[index - 1]?.driverId ?? null : null,
-            offence: unsafeRejoin
-              ? 'unsafe-rejoin'
-              : 'leaving-track-advantage',
-            article: unsafeRejoin
-              ? 'B1.8.6 / ISC App. L Ch. IV 2(c)'
-              : 'B1.9.6 / ISC App. L Ch. IV 2(c)',
+            otherDriverId: null,
+            offence: 'leaving-track-advantage',
+            article: 'B1.9.6 / ISC App. L Ch. IV 2(c)',
             responsibilityShare: 1,
             consequence,
             advantageSeconds: retainedAdvantageSeconds,
@@ -5563,17 +5748,13 @@ export function advanceRace(
               caseId,
               'investigation',
               elapsedSeconds,
-              unsafeRejoin
-                ? `INCIDENT NOTED: ${driver.code} investigated for an unsafe rejoin in sector ${carSector + 1}.`
-                : `INCIDENT NOTED: ${driver.code} investigated for leaving the track and retaining an advantage.`,
+              `INCIDENT NOTED: ${driver.code} investigated for leaving the track and retaining an advantage.`,
             ),
           )
           next = {
             ...next,
             stewardStatus: 'investigating',
-            stewardNote: unsafeRejoin
-              ? 'Unsafe rejoin under review'
-              : 'Off-track advantage under review',
+            stewardNote: 'Off-track advantage under review',
           }
         }
       }

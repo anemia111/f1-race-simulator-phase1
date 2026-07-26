@@ -108,8 +108,34 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
   const leaderboardRows = await page.locator('.leaderboard-rows li').count()
   const leaderboardScroll = await inspectScroll(page.locator('.leaderboard-rows'))
-  const liveGapRows = await page.locator('.live-gap-panel li').count()
-  const liveGapScroll = await inspectScroll(page.locator('.live-gap-panel ol'))
+  const duplicateGapPanels = await page.locator(
+    '.live-gap-panel, .gap-history-panel',
+  ).count()
+  const reclaimedSideSpace = await page.evaluate(() => {
+    const leftColumn = document
+      .querySelector('.broadcast-left-column')
+      ?.getBoundingClientRect()
+    const leaderboard = document
+      .querySelector('.broadcast-left-column > .broadcast-panel')
+      ?.getBoundingClientRect()
+    const rightColumn = document
+      .querySelector('.broadcast-right-column')
+      ?.getBoundingClientRect()
+    const messages = document
+      .querySelector('.messages-panel')
+      ?.getBoundingClientRect()
+
+    return {
+      leaderboardRatio:
+        leftColumn && leaderboard && leftColumn.height > 0
+          ? leaderboard.height / leftColumn.height
+          : 0,
+      messagesRatio:
+        rightColumn && messages && rightColumn.height > 0
+          ? messages.height / rightColumn.height
+          : 0,
+    }
+  })
   const liveTimingTitle = await page.locator('.broadcast-live-timing .broadcast-panel-header').innerText()
   const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
   const leaderboardColumnVisibility = await page.locator('.leaderboard-column-head').evaluate((header) => {
@@ -247,6 +273,19 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   }))
   await page.getByLabel('Close data manager').click()
 
+  // Keep the visual QA scenario reproducible. The product still creates a new
+  // automatic seed for normal users; only this isolated browser profile uses
+  // a fixed run.
+  await page.locator('.broadcast-sidebar .sidebar-settings').click()
+  await page.waitForSelector('.setup-panel')
+  await page.getByPlaceholder('simulation seed').fill('broadcast-playtest-stable')
+  await page.getByLabel('close setup').click()
+  await page.waitForFunction(() =>
+    document.querySelector('.fastest-lap-panel')?.textContent?.includes(
+      'Awaiting completed lap',
+    ),
+  )
+
   const liveClose = page.locator('.broadcast-live-timing .panel-close')
   await liveClose.click()
   const liveTimingClosed = await page.locator('.broadcast-live-timing .restore-panel').isVisible()
@@ -263,13 +302,59 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await secondDriver.click()
   const selectedRows = await page.locator('.leaderboard-rows li.selected').count()
 
-  await page.getByRole('button', { name: '60x' }).click()
+  await page.evaluate(() => {
+    const observation = {
+      measured: false,
+      overallBest: false,
+    }
+    const inspect = () => {
+      observation.measured ||= Boolean(
+        document.querySelector(
+          '.leaderboard-rows .sector-status-overall-best, .leaderboard-rows .sector-status-personal-best, .leaderboard-rows .sector-status-slower',
+        ),
+      )
+      observation.overallBest ||= Boolean(
+        document.querySelector(
+          '.leaderboard-rows .sector-status-overall-best',
+        ),
+      )
+    }
+
+    window.__broadcastQaSectorObservation = observation
+    window.__broadcastQaSectorObserver?.disconnect()
+    window.__broadcastQaSectorObserver = new MutationObserver(inspect)
+    window.__broadcastQaSectorObserver.observe(
+      document.querySelector('.leaderboard-rows'),
+      { attributes: true, childList: true, subtree: true },
+    )
+    inspect()
+  })
+
+  const skipFormation = page.getByLabel('Skip formation lap')
+  if (await skipFormation.isVisible()) {
+    await skipFormation.click()
+  }
+  await page.getByRole('button', { name: '5x' }).click()
   let observedOverallBest = false
   let observedMeasuredSector = false
 
-  // An early SC/VSC or red flag can legitimately delay the first measured lap.
-  // Keep the QA run adaptive instead of making its result depend on a random
-  // incident fitting inside one fixed 4.5-second wall-clock window.
+  // First observe the initial sector at a publish rate that exposes the
+  // provisional purple state, then accelerate the longer tire/lap checks.
+  for (let sample = 0; sample < 240; sample += 1) {
+    await page.waitForTimeout(50)
+    const observation = await page.evaluate(
+      () => window.__broadcastQaSectorObservation,
+    )
+
+    observedOverallBest ||= observation?.overallBest === true
+    observedMeasuredSector ||= observation?.measured === true
+
+    if (observedOverallBest && observedMeasuredSector) {
+      break
+    }
+  }
+
+  await page.getByRole('button', { name: '60x' }).click()
   for (let sample = 0; sample < 180; sample += 1) {
     await page.waitForTimeout(100)
     const measuredSectorCount = await page
@@ -306,6 +391,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
       }
     }
   }
+  await page.evaluate(() => window.__broadcastQaSectorObserver?.disconnect())
 
   const batteryValues = await page.locator('.leaderboard-rows button > span:last-child').allInnerTexts()
   const tireLifeValues = await page.locator('.leaderboard-tire-life').allInnerTexts()
@@ -432,8 +518,8 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     leaderboardScroll,
     leaderboardHeader,
     leaderboardColumnVisibility,
-    liveGapRows,
-    liveGapScroll,
+    duplicateGapPanels,
+    reclaimedSideSpace,
     liveTimingTitle,
     liveTimingClosed,
     liveTimingRestored,
@@ -545,6 +631,11 @@ async function inspectSeriesModes(browser) {
       document.querySelector('select[aria-label="Weekend session"]')?.value ===
       'race',
   )
+  await page.waitForFunction(() =>
+    /1\s*\/\s*25/u.test(
+      document.querySelector('.broadcast-session-core')?.textContent ?? '',
+    ),
+  )
   results['super-formula'].replacementSessions = await page
     .getByLabel('Weekend session')
     .locator('option')
@@ -627,7 +718,8 @@ try {
     ]) {
       if (count !== result.leaderboardRows) failures.push(`${name} table rendered ${count}/${result.leaderboardRows} drivers`)
     }
-    if (result.liveGapRows !== result.leaderboardRows - 1) failures.push(`live gap rendered ${result.liveGapRows}/${result.leaderboardRows - 1} trailing drivers`)
+    if (result.duplicateGapPanels !== 0) failures.push(`removed duplicate gap panels still render: ${result.duplicateGapPanels}`)
+    if (result.reclaimedSideSpace.leaderboardRatio < 0.72 || result.reclaimedSideSpace.messagesRatio < 0.35) failures.push(`removed gap-panel space was not reclaimed: ${JSON.stringify(result.reclaimedSideSpace)}`)
     if (!result.liveTimingTitle.includes(`ALL ${result.leaderboardRows}`)) failures.push(`live timing field label is stale: ${result.liveTimingTitle}`)
     for (const [name, metrics] of [
       ['leaderboard', result.leaderboardScroll],
@@ -635,7 +727,6 @@ try {
       ['telemetry', result.telemetryScroll],
       ['tyres', result.tyreScroll],
       ['drivers', result.driverScroll],
-      ['live gap', result.liveGapScroll],
     ]) {
       // A list that already shows every driver has nothing to scroll, which is
       // still every driver reachable.

@@ -133,6 +133,50 @@ export function dirtyAirDeltaSeconds(gapToAheadSeconds: number): number {
   return cornerLoss - slipstreamGain
 }
 
+/**
+ * A car already attached to a train can use the tow and the common racing
+ * line to retain part of the car ahead's pace. The effect fades smoothly to
+ * zero before two seconds; once the train breaks, each car returns to its own
+ * projected pace.
+ */
+export function packFollowingLapTime(options: {
+  aheadLapTimeSeconds: number | null
+  gapToAheadSeconds: number
+  ownLapTimeSeconds: number
+  phaseActive: boolean
+}): number {
+  const {
+    aheadLapTimeSeconds,
+    gapToAheadSeconds,
+    ownLapTimeSeconds,
+    phaseActive,
+  } = options
+  const outerGapSeconds = 1.9
+
+  if (
+    phaseActive ||
+    aheadLapTimeSeconds === null ||
+    gapToAheadSeconds <= 0 ||
+    gapToAheadSeconds >= outerGapSeconds ||
+    ownLapTimeSeconds <= aheadLapTimeSeconds
+  ) {
+    return ownLapTimeSeconds
+  }
+
+  const proximity = clamp01(
+    (outerGapSeconds - gapToAheadSeconds) /
+      (outerGapSeconds - 0.15),
+  )
+  const smoothProximity = proximity * proximity * (3 - 2 * proximity)
+  const ownPaceDeficit = ownLapTimeSeconds - aheadLapTimeSeconds
+  const supportedPaceSeconds = Math.min(
+    ownPaceDeficit * 0.72 * smoothProximity,
+    0.9 * smoothProximity,
+  )
+
+  return ownLapTimeSeconds - supportedPaceSeconds
+}
+
 // --- Track limits ----------------------------------------------------------
 
 function trackLimitChance(

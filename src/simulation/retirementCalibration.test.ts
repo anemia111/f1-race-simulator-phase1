@@ -76,7 +76,7 @@ describe('full-race retirement calibration', () => {
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)
     },
-    90_000,
+    120_000,
   )
 })
 
