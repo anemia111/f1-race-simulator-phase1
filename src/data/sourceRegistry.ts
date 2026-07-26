@@ -23,6 +23,10 @@ export const sourceRegistry = {
     label: 'OpenF1 API',
     url: 'https://openf1.org/',
   },
+  openF1SessionResults2026: {
+    label: 'OpenF1 2026 session result and timing endpoints',
+    url: 'https://api.openf1.org/v1/sessions?year=2026',
+  },
   f1Results2026: {
     label: 'Formula 1 official 2026 results',
     url: 'https://www.formula1.com/en/results/2026/races',
@@ -30,6 +34,14 @@ export const sourceRegistry = {
   superFormula2026: {
     label: 'SUPER FORMULA official 2026 calendar and results',
     url: 'https://superformula.net/sf3/race_taxonomy/2026/',
+  },
+  fiaEventDocuments2026: {
+    label: 'FIA 2026 Formula One event documents',
+    url: 'https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072',
+  },
+  superFormulaJafResults2026: {
+    label: 'JAF 2026 SUPER FORMULA official results',
+    url: 'https://motorsports.jaf.or.jp/results/standings/race/2026/superformula',
   },
   f1FastestPitStops2025: {
     label: 'Formula 1 2025 DHL Fastest Pit Stop Award',

@@ -306,7 +306,7 @@ describe('on-track speed calibration', () => {
     )
 
     expect(albertPark.maximumSpeedKph).toBeGreaterThanOrEqual(295)
-    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(335)
+    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(345)
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(330)
     expect(monza.maximumSpeedKph).toBeLessThanOrEqual(370)
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(360)

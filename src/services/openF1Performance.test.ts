@@ -33,11 +33,11 @@ function lap(
 }
 
 function tireCalibrationBundle(): OpenF1Bundle {
-  const mediumLaps = Array.from({ length: 8 }, (_, index) =>
+  const mediumLaps = Array.from({ length: 9 }, (_, index) =>
     lap(index + 1, index + 4, 90, 0.1),
   )
   const softLaps = Array.from({ length: 8 }, (_, index) =>
-    lap(index + 9, index + 1, 89.3, 0.16),
+    lap(index + 10, index + 1, 89.3, 0.16),
   )
 
   return {
@@ -82,7 +82,7 @@ function tireCalibrationBundle(): OpenF1Bundle {
       {
         compound: 'MEDIUM',
         driver_number: 1,
-        lap_end: 8,
+        lap_end: 9,
         lap_start: 1,
         stint_number: 1,
         tyre_age_at_start: 4,
@@ -90,8 +90,8 @@ function tireCalibrationBundle(): OpenF1Bundle {
       {
         compound: 'SOFT',
         driver_number: 1,
-        lap_end: 16,
-        lap_start: 9,
+        lap_end: 17,
+        lap_start: 10,
         stint_number: 2,
         tyre_age_at_start: 1,
       },
@@ -127,7 +127,7 @@ describe('OpenF1 tire calibration', () => {
   it('uses actual tyre age and robust stint slopes', () => {
     const calibration = buildOpenF1TrackCalibration(tireCalibrationBundle())
 
-    expect(calibration.tireSampleCountByCompound).toMatchObject({ M: 8, S: 8 })
+    expect(calibration.tireSampleCountByCompound).toMatchObject({ M: 6, S: 7 })
     expect(calibration.tireDegradationByCompound.M).toBeCloseTo(0.1, 3)
     expect(calibration.tireDegradationByCompound.S).toBeCloseTo(0.16, 3)
   })

@@ -130,6 +130,80 @@ type QualifyingRun = {
 
 const byId = <T extends { id: string }>(items: T[]) =>
   new Map(items.map((item) => [item.id, item]))
+const qualifyingPerformanceCenterCache = new WeakMap<
+  RaceConfig,
+  Map<WeatherState, number>
+>()
+const F1_QUALIFYING_FIELD_SPREAD_SCALE = 0.27
+
+function medianNumber(values: number[]) {
+  const sorted = [...values].sort((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+
+  return sorted.length === 0
+    ? 0
+    : sorted.length % 2 === 0
+      ? (sorted[middle - 1] + sorted[middle]) / 2
+      : sorted[middle]
+}
+
+function calibratedQualifyingPerformanceGain(
+  config: RaceConfig,
+  driver: Driver,
+  team: Team,
+  weather: WeatherState,
+) {
+  const rawGain = performanceLapGainSeconds({
+    driver,
+    session: 'qualifying',
+    team,
+    track: config.track,
+    weather,
+  })
+
+  if (
+    config.seriesId !== undefined &&
+    config.seriesId !== 'f1-custom'
+  ) {
+    return rawGain
+  }
+
+  let centers = qualifyingPerformanceCenterCache.get(config)
+
+  if (!centers) {
+    centers = new Map()
+    qualifyingPerformanceCenterCache.set(config, centers)
+  }
+
+  let center = centers.get(weather)
+
+  if (center === undefined) {
+    const teams = byId(config.teams)
+    center = medianNumber(
+      config.drivers.flatMap((candidate) => {
+        const candidateTeam = teams.get(candidate.teamId)
+
+        return candidateTeam
+          ? [
+              performanceLapGainSeconds({
+                driver: candidate,
+                session: 'qualifying',
+                team: candidateTeam,
+                track: config.track,
+                weather,
+              }),
+            ]
+          : []
+      }),
+    )
+    centers.set(weather, center)
+  }
+
+  return (
+    center +
+    (rawGain - center) * F1_QUALIFYING_FIELD_SPREAD_SCALE
+  )
+}
 
 const clampAbility = (value: number) => Math.min(1.5, Math.max(0, value))
 
@@ -235,13 +309,12 @@ function qualifyingRunLapTime(
   compound: TireCompound,
   run: number,
 ): number {
-  const performanceGain = performanceLapGainSeconds({
+  const performanceGain = calibratedQualifyingPerformanceGain(
+    config,
     driver,
-    session: 'qualifying',
     team,
-    track: config.track,
     weather,
-  })
+  )
   const consistency = driverPerformanceAbility(driver, 'consistency')
   const awareness = driverPerformanceAbility(driver, 'raceAwareness')
   const segmentEvolution = segmentEvolutionFor(segment)
@@ -255,7 +328,8 @@ function qualifyingRunLapTime(
   const key = `${seed}:qualifying:${segment}:${driver.id}:${run}`
   const variance =
     (hashChance(`${key}:variance`) - 0.5) *
-    (1.45 - consistency * 0.65)
+    (1.45 - consistency * 0.65) *
+    0.82
   const trafficLoss =
     segment === 'Q1' &&
     hashChance(`${key}:traffic`) < 0.12 + Math.max(0, 0.84 - awareness) * 0.12

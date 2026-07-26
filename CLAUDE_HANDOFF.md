@@ -62,10 +62,13 @@ driving game.
   the simulation effects again would double-count pace loss.
 - `src/data/fiaEventPacks2026.ts` tracks event-page and decision-document
   coverage. Links are not marked as normalized operational values.
-- `src/data/paceReferences2026.ts` stores separate 2026 representative pole and
-  winner-time-per-lap benchmarks for all 22 active F1 rounds plus the current
-  SUPER FORMULA circuits. Completed results and estimates remain explicitly
-  distinct; MADRING and Fuji retain their supplied uncertainty ranges.
+- `src/data/calibration` stores versioned, source-backed 2026 event records for
+  all 22 active F1 rounds and the current SUPER FORMULA circuits.
+  `src/data/paceReferences2026.ts` is only the legacy adapter. Official Q3
+  classifications, classified clean OpenF1 race laps, derived values, future
+  estimates, and unavailable values retain separate status/confidence fields.
+  The update and 100-seed inverse-calibration workflow is documented in
+  `docs/PACE_CALIBRATION_2026.md`.
 
 ## Simulation State
 
@@ -134,10 +137,11 @@ driving game.
 - Q1/Q2/Q3 and SQ1/SQ2/SQ3 use the dedicated qualifying machine and driver
   performance axes. FP, Sprint, and Race use the long-run/race axes, so setup
   data can change single-lap and race pace independently.
-- Fixed-seed pace acceptance keeps official 2026 F1 pole references within
-  0.5 seconds and estimated rounds within 1.0 second. Green race pace remains
-  faster than a full-event average because the latter includes stops and
-  neutralisations; the dry 20-car Australian reference run averages 1:25.9.
+- Fixed-seed pace acceptance uses 100 qualifying seeds and, for completed
+  races, 100 race seeds. Official top-three Q3 medians stay within 0.3 seconds,
+  pole within 0.351 seconds, field spread within 0.6 seconds, and classified
+  clean green-race pace within 0.7 seconds. Winner event averages remain
+  contextual because they include stops and neutralisations.
 - Drive-through and stop-and-go penalties use dedicated pit services, service
   deadlines, and disqualification when unserved. Low-power starts trigger a
   rear warning light and an MGU-K event.

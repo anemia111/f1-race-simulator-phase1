@@ -184,10 +184,18 @@ const WRECK_CLEAR_SECONDS = 25
  */
 function categoryDragScaleFor(
   seriesId: RaceConfig['seriesId'],
+  track: RaceConfig['track'],
 ): number {
   switch (seriesId) {
+    case undefined:
     case 'f1-custom':
-      return 1.9
+      // The vehicle model already includes the 2026 F1 drag area and active
+      // aero state. A second 1.9x multiplier made the complete race loop much
+      // slower than the same car in the longitudinal physics tests.
+      if (track.id === 'las-vegas-approx') return 1
+      if (track.id === 'baku-approx') return 1.12
+      if (track.id === 'monza-approx') return 1.15
+      return 1.35
     case 'f2':
       return 2.55
     case 'f3':
@@ -841,6 +849,10 @@ function projectedLapTime(
     baselineSetupForTrack(config.track)
   const setupPenalty = setupPaceDeltaSeconds(config.track, configuredSetup)
   const componentPenalty = componentPacePenaltySeconds(car.components)
+  const calibratedRaceResidual =
+    (config.track.paceReference2026?.calibration.simulation
+      .raceModelCorrectionSeconds ?? 0) *
+    (weather === 'clear' ? 1 : 0.35)
   const modeDelta: Record<RacePaceMode, number> = {
     defend: -0.16,
     push: -0.42,
@@ -859,6 +871,7 @@ function projectedLapTime(
     restartLoss +
     setupPenalty +
     componentPenalty +
+    calibratedRaceResidual +
     modeDelta[car.racePaceMode]
   )
 }
@@ -4091,7 +4104,10 @@ export function advanceRace(
     })
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
-      categoryDragScale: categoryDragScaleFor(config.seriesId),
+      categoryDragScale: categoryDragScaleFor(
+        config.seriesId,
+        config.track,
+      ),
       deltaSeconds,
       driver,
       elapsedSeconds,

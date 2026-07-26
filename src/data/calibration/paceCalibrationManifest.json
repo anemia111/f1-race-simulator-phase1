@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "calibrationVersion": "2026.07.26.1",
+  "generatedAt": "2026-07-26T12:22:08.191Z",
+  "season": 2026,
+  "eventCount": 27,
+  "series": [
+    {
+      "id": "f1-custom",
+      "eventCount": 22,
+      "latestObservedEventDate": "2026-07-26"
+    },
+    {
+      "id": "super-formula",
+      "eventCount": 5,
+      "latestObservedEventDate": "2026-07-19"
+    }
+  ],
+  "generator": "scripts/update-pace-calibration.mjs",
+  "sourcePolicy": "Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions."
+}

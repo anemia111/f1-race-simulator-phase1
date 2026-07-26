@@ -268,7 +268,7 @@ export function calculateCarTelemetry(options: {
     38 * longStraightOpportunity * Math.pow(dynamics.straightness, 1.5)
   const targetSpeedKph =
     (dynamics.referenceSpeedKph + longStraightTargetHeadroomKph) *
-    clamp(paceScale, 0.42, 1.14) *
+    clamp(paceScale, 0.42, 1.32) *
     clamp(localFlagPaceScale, 0.42, 1) *
     machineCapability *
     driverExecution *

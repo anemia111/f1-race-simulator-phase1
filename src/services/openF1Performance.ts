@@ -7,6 +7,10 @@ import type {
   TrackObservedCalibration,
 } from '../types'
 import type { OpenF1Bundle, OpenF1StandingsSnapshot } from './openF1'
+import {
+  classifyObservedLaps,
+  observedLapClassCounts,
+} from './observedLapClassification'
 
 export type FieldCalibration = {
   confidence: number
@@ -20,7 +24,18 @@ export type FieldCalibration = {
 }
 
 type ObservedSource = Pick<OpenF1Bundle, 'carData' | 'drivers'> &
-  Partial<Pick<OpenF1Bundle, 'laps' | 'pit' | 'sessionResult'>>
+  Partial<
+    Pick<
+      OpenF1Bundle,
+      | 'intervals'
+      | 'laps'
+      | 'pit'
+      | 'raceControl'
+      | 'sessionResult'
+      | 'stints'
+      | 'weather'
+    >
+  >
 
 type StandingSource =
   | Pick<
@@ -32,7 +47,7 @@ type StandingSource =
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-const FUEL_GAIN_PER_LAP_PRIOR_SECONDS = 0.04
+const FUEL_GAIN_PER_LAP_FALLBACK_SECONDS = 0.04
 const MIN_TIRE_OFFSET_SAMPLES = 6
 
 /**
@@ -143,10 +158,69 @@ function robustSlope(samples: Array<{ x: number; y: number }>) {
   return median(slopes)
 }
 
+function observedClassificationSource(source: ObservedSource) {
+  return {
+    intervals: source.intervals ?? [],
+    laps: source.laps ?? [],
+    pit: source.pit ?? [],
+    raceControl: source.raceControl ?? [],
+    stints: source.stints ?? [],
+    weather: source.weather ?? [],
+  }
+}
+
+function isQualifyingObservation(source: ObservedSource) {
+  return (
+    source.sessionResult?.some((result) => Array.isArray(result.duration)) ??
+    false
+  )
+}
+
+function estimatedFuelGainPerLap(
+  classified: ReturnType<typeof classifyObservedLaps>,
+) {
+  const samplesByComparableTireAge = new Map<
+    string,
+    Array<{ x: number; y: number }>
+  >()
+
+  for (const sample of classified) {
+    if (
+      sample.classification !== 'race-clear' ||
+      sample.tireAgeLaps === null ||
+      sample.tireAgeLaps > 6 ||
+      sample.lap.lap_duration === null
+    ) {
+      continue
+    }
+
+    const key = `${sample.lap.driver_number}:${sample.compound ?? 'unknown'}:${sample.tireAgeLaps}`
+    samplesByComparableTireAge.set(key, [
+      ...(samplesByComparableTireAge.get(key) ?? []),
+      {
+        x: sample.lap.lap_number,
+        y: sample.lap.lap_duration,
+      },
+    ])
+  }
+
+  const slopes = [...samplesByComparableTireAge.values()]
+    .map((samples) => robustSlope(samples))
+    .filter((slope): slope is number => slope !== null)
+  const slope = median(slopes)
+
+  return slope === null
+    ? null
+    : clamp(-slope, 0, 0.12)
+}
+
 export function buildOpenF1TrackCalibration(
   bundle: OpenF1Bundle | null | undefined,
 ): TrackObservedCalibration {
   const unavailable: TrackObservedCalibration = {
+    cleanLapSampleCount: 0,
+    fuelGainPerLapSeconds: null,
+    lapClassCounts: {},
     maxSpeedKph: null,
     medianPitStopsPerDriver: null,
     medianStintLapsByCompound: {},
@@ -169,19 +243,31 @@ export function buildOpenF1TrackCalibration(
     return unavailable
   }
 
-  const validLaps = bundle.laps.filter(
-    (lap) =>
-      lap.lap_duration !== null &&
-      Number.isFinite(lap.lap_duration) &&
-      lap.lap_duration > 35 &&
-      lap.lap_duration < 240 &&
-      Number.isSafeInteger(lap.driver_number) &&
-      lap.driver_number > 0 &&
-      Number.isSafeInteger(lap.lap_number) &&
-      lap.lap_number >= 1 &&
-      lap.lap_number <= MAX_OBSERVED_RACE_LAPS &&
-      !lap.is_pit_out_lap,
+  const classifiedLaps = classifyObservedLaps(
+    observedClassificationSource(bundle),
+    isQualifyingObservation(bundle) ? 'qualifying' : 'race',
   )
+  const validClassifications = new Set([
+    'qualifying-push',
+    'race-clear',
+    'race-management',
+  ])
+  const validLaps = classifiedLaps
+    .filter((sample) =>
+      validClassifications.has(sample.classification),
+    )
+    .map((sample) => sample.lap)
+  const cleanRaceLapKeys = new Set(
+    classifiedLaps
+      .filter((sample) => sample.classification === 'race-clear')
+      .map(
+        (sample) =>
+          `${sample.lap.driver_number}:${sample.lap.lap_number}`,
+      ),
+  )
+  const observedFuelGain = estimatedFuelGainPerLap(classifiedLaps)
+  const fuelGainForTireIsolation =
+    observedFuelGain ?? FUEL_GAIN_PER_LAP_FALLBACK_SECONDS
   const sectorRatios = validLaps.flatMap((lap) => {
     if (
       lap.duration_sector_1 === null ||
@@ -249,15 +335,6 @@ export function buildOpenF1TrackCalibration(
   const lapsByDriverAndNumber = new Map(
     validLaps.map((lap) => [`${lap.driver_number}:${lap.lap_number}`, lap]),
   )
-  const fastestLapByDriver = new Map<number, number>()
-
-  for (const lap of validLaps) {
-    const duration = lap.lap_duration as number
-    fastestLapByDriver.set(
-      lap.driver_number,
-      Math.min(fastestLapByDriver.get(lap.driver_number) ?? Infinity, duration),
-    )
-  }
 
   type TireLapSample = {
     adjustedLapTime: number
@@ -287,15 +364,17 @@ export function buildOpenF1TrackCalibration(
         continue
       }
 
-      const fastestLap = fastestLapByDriver.get(stint.driver_number)
-
-      if (fastestLap !== undefined && lap.lap_duration > fastestLap * 1.1) {
+      if (
+        !cleanRaceLapKeys.has(
+          `${stint.driver_number}:${lapNumber}`,
+        )
+      ) {
         continue
       }
 
       const sample = {
         adjustedLapTime:
-          lap.lap_duration + lapNumber * FUEL_GAIN_PER_LAP_PRIOR_SECONDS,
+          lap.lap_duration + lapNumber * fuelGainForTireIsolation,
         compound,
         driverNumber: stint.driver_number,
         lapNumber,
@@ -437,6 +516,12 @@ export function buildOpenF1TrackCalibration(
     validLaps.length + bundle.carData.length + bundle.pit.length + bundle.stints.length
 
   return {
+    cleanLapSampleCount: cleanRaceLapKeys.size,
+    fuelGainPerLapSeconds:
+      observedFuelGain === null
+        ? null
+        : Number(observedFuelGain.toFixed(4)),
+    lapClassCounts: observedLapClassCounts(classifiedLaps),
     maxSpeedKph,
     medianPitStopsPerDriver,
     medianStintLapsByCompound,
@@ -447,7 +532,11 @@ export function buildOpenF1TrackCalibration(
       sampledAt: bundle.selectedSession.date_end,
       sessionKey: bundle.selectedSession.session_key,
       sourceYear: bundle.year,
-      note: `${validLaps.length} valid laps; ${tireLapSamples.length} clean tire laps; ${bundle.pit.length} pit visits; ${bundle.stints.length} stints`,
+      note: `${validLaps.length} classified valid laps; ${cleanRaceLapKeys.size} clean race laps; ${tireLapSamples.length} tire-isolation laps; fuel slope ${
+        observedFuelGain === null
+          ? 'used explicit 0.04 s/lap fallback'
+          : `${observedFuelGain.toFixed(4)} s/lap observed`
+      }; ${bundle.pit.length} pit visits; ${bundle.stints.length} stints`,
     },
     sampleCount,
     sectorWeights: normalizedSectorWeights,
@@ -467,13 +556,17 @@ function cleanLapPaceByDriver(source: ObservedSource | null | undefined) {
     return result
   }
 
-  const valid = source.laps.filter(
-    (lap) =>
-      lap.lap_duration !== null &&
-      lap.lap_duration > 35 &&
-      lap.lap_duration < 240 &&
-      !lap.is_pit_out_lap,
+  const classified = classifyObservedLaps(
+    observedClassificationSource(source),
+    isQualifyingObservation(source) ? 'qualifying' : 'race',
   )
+  const valid = classified
+    .filter(
+      (sample) =>
+        sample.classification === 'qualifying-push' ||
+        sample.classification === 'race-clear',
+    )
+    .map((sample) => sample.lap)
   const byDriver = new Map<number, number[]>()
 
   for (const lap of valid) {
@@ -505,15 +598,16 @@ function representativeLapTime(source: ObservedSource | null | undefined) {
     return null
   }
 
-  const valid = source.laps
+  const valid = classifyObservedLaps(
+    observedClassificationSource(source),
+    isQualifyingObservation(source) ? 'qualifying' : 'race',
+  )
     .filter(
-      (lap) =>
-        lap.lap_duration !== null &&
-        lap.lap_duration > 35 &&
-        lap.lap_duration < 240 &&
-        !lap.is_pit_out_lap,
+      (sample) =>
+        sample.classification === 'qualifying-push' ||
+        sample.classification === 'race-clear',
     )
-    .map((lap) => lap.lap_duration as number)
+    .map((sample) => sample.lap.lap_duration as number)
     .sort((a, b) => a - b)
 
   if (valid.length === 0) {

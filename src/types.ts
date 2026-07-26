@@ -322,6 +322,9 @@ export type TireNomination = {
 }
 
 export type TrackObservedCalibration = {
+  cleanLapSampleCount?: number
+  fuelGainPerLapSeconds?: number | null
+  lapClassCounts?: Partial<Record<ObservedLapClass, number>>
   maxSpeedKph: number | null
   medianPitStopsPerDriver: number | null
   medianStintLapsByCompound: Partial<Record<TireCompound, number>>
@@ -334,6 +337,114 @@ export type TrackObservedCalibration = {
   tireSampleCountByCompound: Partial<Record<TireCompound, number>>
   sampleCount: number
   provenance: DataProvenance
+}
+
+export type ObservedLapClass =
+  | 'qualifying-push'
+  | 'race-clear'
+  | 'race-traffic'
+  | 'race-management'
+  | 'in-lap'
+  | 'out-lap'
+  | 'pit-lap'
+  | 'safety-car'
+  | 'virtual-safety-car'
+  | 'yellow'
+  | 'wet'
+  | 'invalid'
+  | 'unknown'
+
+export type CalibrationStatus =
+  | 'official'
+  | 'observed'
+  | 'derived'
+  | 'estimated'
+  | 'unverified'
+
+export type PaceCalibrationSource = {
+  provider: string
+  label: string
+  url: string
+  retrievedAt: string
+  documentHash?: string
+  sessionKey?: number
+}
+
+export type EventPaceCalibration = {
+  schemaVersion: number
+  calibrationVersion: string
+  series: 'f1-custom' | 'super-formula'
+  season: number
+  eventId: string
+  eventName: string
+  trackId: string
+  round: number
+  eventDate: string
+  qualifying: {
+    poleSeconds: number | null
+    top3MedianSeconds: number | null
+    top5MedianSeconds: number | null
+    theoreticalBestSeconds: number | null
+    selectedReferenceSeconds: number
+    selectedMethod: string
+    fieldP10DeltaSeconds: number | null
+    fieldMedianDeltaSeconds: number | null
+    fieldP90DeltaSeconds: number | null
+    referenceRangeSeconds?: [number, number]
+    validLapCount: number
+    deletedOrInvalidRate: number | null
+    status: CalibrationStatus
+    confidence: number
+  }
+  race: {
+    cleanLapReferenceSeconds: number | null
+    earlyStintMedianSeconds: number | null
+    middleStintMedianSeconds: number | null
+    lateStintMedianSeconds: number | null
+    greenLapP10Seconds: number | null
+    greenLapMedianSeconds: number | null
+    greenLapP90Seconds: number | null
+    winnerAverageSeconds: number | null
+    referenceRangeSeconds?: [number, number]
+    pitLaneLossSeconds: number | null
+    inLapLossSeconds: number | null
+    outLapLossSeconds: number | null
+    clearAirTrafficDeltaSeconds: number | null
+    cleanLapCount: number
+    totalLapCount: number
+    compoundMedianSeconds: Partial<Record<TireCompound, number>>
+    stintMedianSeconds: Array<{
+      compound: TireCompound | null
+      medianSeconds: number
+      sampleCount: number
+      stintNumber: number
+    }>
+    fuelGainPerLapSeconds: number | null
+    tireDegradationPerLapSeconds: number | null
+    status: CalibrationStatus
+    confidence: number
+  }
+  simulation: {
+    neutralBaseLapSeconds: number
+    qualifyingOffsetSeconds: number
+    expectedGreenRaceDeltaSeconds: number
+    raceModelCorrectionSeconds: number
+    residualSigmaSeconds: number
+    calibrationSeedCount: number
+    validation?: {
+      validatedAt: string
+      qualifyingSeedCount: number
+      raceSeedCount: number
+      poleMedianSeconds: number
+      top3MedianSeconds: number
+      fieldMedianDeltaSeconds: number
+      raceGreenMedianSeconds: number | null
+      qualifyingReferenceErrorSeconds: number
+      raceReferenceErrorSeconds: number | null
+    }
+  }
+  sources: PaceCalibrationSource[]
+  notes: string[]
 }
 
 export type CarSetup = {
@@ -520,16 +631,25 @@ export type TrackDefinition = {
    * include pit stops and neutralisations. It is not a clean-lap speed cap.
    */
   paceReference2026?: {
-    qualifyingBasis: 'official-result' | 'estimate'
+    qualifyingBasis:
+      | 'official-result'
+      | 'observed'
+      | 'derived'
+      | 'estimate'
     qualifyingSeconds: number
     qualifyingRangeSeconds?: [number, number]
-    raceAverageBasis: 'official-result' | 'estimate'
+    raceAverageBasis:
+      | 'official-result'
+      | 'observed'
+      | 'derived'
+      | 'estimate'
     raceAverageSeconds: number
     raceAverageRangeSeconds?: [number, number]
     series: 'f1-custom' | 'super-formula'
     sourceLabel: string
     sourceUrl: string
     note?: string
+    calibration: EventPaceCalibration
   }
   observedCalibration?: TrackObservedCalibration
   calendar2026?: {

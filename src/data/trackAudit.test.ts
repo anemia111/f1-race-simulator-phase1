@@ -41,7 +41,7 @@ describe('2026 track data packs', () => {
       qualifyingBasis: 'estimate',
       qualifyingRangeSeconds: [90, 94],
       raceAverageBasis: 'estimate',
-      raceAverageRangeSeconds: [101, 106],
+      raceAverageRangeSeconds: [96.5, 102.5],
     })
   })
 })

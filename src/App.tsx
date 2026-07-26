@@ -3118,31 +3118,165 @@ export default function App() {
         ? 'OBS'
         : 'SIM'
   const paceReference2026 = raceConfig.track.paceReference2026
+  const paceCalibration = paceReference2026?.calibration
+  const paceSourceTag = (
+    status: NonNullable<typeof paceCalibration>['qualifying']['status'],
+  ): BroadcastDataDetail['source'] => {
+    switch (status) {
+      case 'official':
+        return 'OFF'
+      case 'observed':
+        return 'OBS'
+      case 'derived':
+        return 'CAL'
+      case 'estimated':
+        return 'SIM'
+      case 'unverified':
+        return 'UNAVAILABLE'
+    }
+  }
+  const paceStatusLabel = (
+    status: NonNullable<typeof paceCalibration>['qualifying']['status'],
+  ) => status.toUpperCase()
+  const activePaceStatus = paceCalibration
+    ? isRaceProgressSession
+      ? paceCalibration.race.status
+      : paceCalibration.qualifying.status
+    : 'estimated'
+  const sortedPaceSources = paceCalibration?.sources
+    .slice()
+    .sort(
+      (left, right) =>
+        Date.parse(right.retrievedAt) - Date.parse(left.retrievedAt),
+    )
+  const activePaceSource =
+    sortedPaceSources?.find((source) => {
+      const normalizedLabel = source.label.toLowerCase()
+      const sessionLabel = isRaceProgressSession
+        ? 'race'
+        : 'qualifying'
+
+      if (activePaceStatus === 'estimated') {
+        return normalizedLabel.includes(
+          `${sessionLabel} historical forecast input`,
+        )
+      }
+
+      if (source.provider === 'OpenF1') {
+        return (
+          normalizedLabel.includes(`${sessionLabel} timing`) &&
+          !normalizedLabel.includes('historical forecast input')
+        )
+      }
+
+      return paceCalibration?.series === 'super-formula'
+        ? source.provider === 'SUPER FORMULA'
+        : source.provider === 'Formula 1'
+    }) ?? sortedPaceSources?.[0]
+  const activePaceReferenceSeconds = paceCalibration
+    ? isRaceProgressSession
+      ? (paceCalibration.race.cleanLapReferenceSeconds ??
+        paceReference2026?.raceAverageSeconds ??
+        raceConfig.track.baseLapTime)
+      : paceCalibration.qualifying.selectedReferenceSeconds
+    : raceConfig.track.baseLapTime
+  const activePaceStatusLabel =
+    activePaceStatus === 'official'
+      ? 'OFF'
+      : activePaceStatus === 'observed'
+        ? 'OBS'
+        : activePaceStatus === 'derived'
+          ? 'CAL'
+          : activePaceStatus === 'estimated'
+            ? 'EST'
+            : 'N/A'
   const paceReferenceDataDetails: BroadcastDataDetail[] = paceReference2026
     ? [
         {
-          label: '2026 qualifying target',
-          source:
-            paceReference2026.qualifyingBasis === 'official-result'
-              ? 'OFF'
-              : 'SIM',
-          value: `${formatLapTime(paceReference2026.qualifyingSeconds)} ${
-            paceReference2026.qualifyingBasis === 'official-result'
-              ? 'actual pole'
-              : 'estimate'
-          }`,
+          label: '2026 qualifying reference',
+          source: paceSourceTag(
+            paceReference2026.calibration.qualifying.status,
+          ),
+          value: `${formatLapTime(
+            paceReference2026.calibration.qualifying
+              .selectedReferenceSeconds,
+          )} ${paceStatusLabel(
+            paceReference2026.calibration.qualifying.status,
+          )}`,
         },
         {
-          label: '2026 race average',
+          label: 'Neutral model baseline',
+          source: 'CAL',
+          value: `${formatLapTime(
+            paceReference2026.calibration.simulation
+              .neutralBaseLapSeconds,
+          )} / ${paceReference2026.calibration.simulation.calibrationSeedCount} seeds`,
+        },
+        {
+          label: 'Green race median',
           source:
-            paceReference2026.raceAverageBasis === 'official-result'
-              ? 'OFF'
-              : 'SIM',
-          value: `${formatLapTime(paceReference2026.raceAverageSeconds)} ${
-            paceReference2026.raceAverageBasis === 'official-result'
-              ? 'winner time / laps'
-              : 'estimate'
-          }`,
+            paceReference2026.calibration.race
+              .cleanLapReferenceSeconds === null
+              ? 'UNAVAILABLE'
+              : paceSourceTag(
+                  paceReference2026.calibration.race.status,
+                ),
+          value:
+            paceReference2026.calibration.race
+              .cleanLapReferenceSeconds === null
+              ? 'No verified clean-lap sample'
+              : `${formatLapTime(
+                  paceReference2026.calibration.race
+                    .cleanLapReferenceSeconds,
+                )} / ${
+                  paceReference2026.calibration.race.cleanLapCount
+                } laps`,
+        },
+        {
+          label: 'Full-event average',
+          source:
+            paceReference2026.calibration.race
+              .winnerAverageSeconds === null
+              ? 'UNAVAILABLE'
+              : paceReference2026.raceAverageBasis === 'official-result'
+                ? 'OFF'
+                : 'SIM',
+          value:
+            paceReference2026.calibration.race
+              .winnerAverageSeconds === null
+              ? 'Not available'
+              : `${formatLapTime(
+                  paceReference2026.calibration.race
+                    .winnerAverageSeconds,
+                )} winner time / laps`,
+        },
+        {
+          label: 'Calibration confidence',
+          source: 'CAL',
+          value: `Q ${Math.round(
+            paceReference2026.calibration.qualifying.confidence *
+              100,
+          )}% / R ${Math.round(
+            paceReference2026.calibration.race.confidence * 100,
+          )}%`,
+        },
+        {
+          label: 'Calibration source',
+          source: activePaceSource
+            ? paceSourceTag(activePaceStatus)
+            : 'UNAVAILABLE',
+          value: activePaceSource
+            ? `${activePaceSource.provider} / ${activePaceSource.retrievedAt.slice(
+                0,
+                10,
+              )}`
+            : 'No source metadata',
+        },
+        {
+          label: 'Calibration version',
+          source: 'CAL',
+          value:
+            paceReference2026.calibration.calibrationVersion,
         },
       ]
     : []
@@ -3724,10 +3858,9 @@ export default function App() {
           <span>Pace ref</span>
           <strong
             className={
-              paceReference2026 &&
-              (isRaceProgressSession
-                ? paceReference2026.raceAverageBasis
-                : paceReference2026.qualifyingBasis) === 'official-result'
+              activePaceStatus === 'official' ||
+              activePaceStatus === 'observed' ||
+              activePaceStatus === 'derived'
                 ? 'flag-clear'
                 : 'flag-yellow'
             }
@@ -3737,19 +3870,8 @@ export default function App() {
               'Simulator estimated reference lap'
             }
           >
-            {formatLapTime(
-              paceReference2026
-                ? isRaceProgressSession
-                  ? paceReference2026.raceAverageSeconds
-                  : paceReference2026.qualifyingSeconds
-                : raceConfig.track.baseLapTime,
-            )}{' '}
-            {paceReference2026 &&
-            (isRaceProgressSession
-              ? paceReference2026.raceAverageBasis
-              : paceReference2026.qualifyingBasis) === 'official-result'
-              ? 'ACT'
-              : 'EST'}
+            {formatLapTime(activePaceReferenceSeconds)}{' '}
+            {activePaceStatusLabel}
           </strong>
           <span>Flag</span>
           <strong className={`flag-${displayedFlag}`}>{displayedFlagLabel}</strong>

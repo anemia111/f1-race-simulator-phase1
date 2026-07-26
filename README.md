@@ -203,6 +203,32 @@ checks.
 - FIA event pages and decision documents are source links until a field is
   explicitly normalized. A linked document is not treated as imported data.
 
+## 2026 Pace Calibration
+
+Event pace is sourced from the checked-in, versioned calibration records under
+`src/data/calibration`. Official qualifying classifications, classified
+OpenF1 race samples, derived values, future estimates, and unavailable values
+retain separate status and confidence fields. Runtime simulation stays fully
+offline and never waits for an API to produce its base pace.
+
+Qualifying is calibrated against the official top-three Q3 median with 100
+fixed seeds. Race calibration uses classified clean green-flag laps rather
+than winner time divided by race laps, then validates another 100 fixed seeds.
+Pit, SC/VSC, yellow, wet, invalid, traffic, and management laps are separated
+before the dry race reference is calculated. The dashboard Data panel exposes
+the selected values, sample counts, source date, status, and confidence.
+
+```bash
+npm run update:pace-calibration
+npm run calibrate:pace
+npm run validate:pace-calibration
+```
+
+See
+[`docs/PACE_CALIBRATION_2026.md`](docs/PACE_CALIBRATION_2026.md)
+for source boundaries, definitions, completed-event values, acceptance limits,
+and the update procedure.
+
 ## Collaboration
 
 Read `CLAUDE_HANDOFF.md` before editing with Claude Code or another agent.
