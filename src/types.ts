@@ -513,7 +513,24 @@ export type TrackDefinition = {
   surfaceRoughness?: number
   tireNomination?: TireNomination
   baseLapTime: number
-  baseLapTimeSource?: 'estimated' | 'openf1-observed'
+  baseLapTimeSource?: 'estimated' | 'openf1-observed' | '2026-reference'
+  /**
+   * Reader-facing season benchmark. Qualifying is the representative pole
+   * time; raceAverage is total winner time divided by laps and therefore may
+   * include pit stops and neutralisations. It is not a clean-lap speed cap.
+   */
+  paceReference2026?: {
+    qualifyingBasis: 'official-result' | 'estimate'
+    qualifyingSeconds: number
+    qualifyingRangeSeconds?: [number, number]
+    raceAverageBasis: 'official-result' | 'estimate'
+    raceAverageSeconds: number
+    raceAverageRangeSeconds?: [number, number]
+    series: 'f1-custom' | 'super-formula'
+    sourceLabel: string
+    sourceUrl: string
+    note?: string
+  }
   observedCalibration?: TrackObservedCalibration
   calendar2026?: {
     calendarSlot: number

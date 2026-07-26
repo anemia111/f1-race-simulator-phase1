@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { tracks } from '../data/tracks'
 import type { OpenF1Bundle, OpenF1Lap } from './openF1'
-import { buildOpenF1TrackCalibration } from './openF1Performance'
+import {
+  buildOpenF1TrackCalibration,
+  mergeObservedTrackCalibration,
+} from './openF1Performance'
 
 function lap(
   lapNumber: number,
@@ -108,6 +112,18 @@ function tireCalibrationBundle(): OpenF1Bundle {
 }
 
 describe('OpenF1 tire calibration', () => {
+  it('does not rebase physical pace onto an already affected observed race lap', () => {
+    const track = tracks.find(
+      (candidate) => candidate.id === 'albert-park-approx',
+    )!
+    const calibration = buildOpenF1TrackCalibration(tireCalibrationBundle())
+    const calibrated = mergeObservedTrackCalibration(track, calibration)
+
+    expect(calibrated.baseLapTime).toBe(track.baseLapTime)
+    expect(calibrated.baseLapTimeSource).toBe('2026-reference')
+    expect(calibrated.observedCalibration).toBe(calibration)
+  })
+
   it('uses actual tyre age and robust stint slopes', () => {
     const calibration = buildOpenF1TrackCalibration(tireCalibrationBundle())
 

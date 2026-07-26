@@ -6,6 +6,10 @@ import type {
 import { realTrackLayouts } from './realTrackLayouts'
 import { tireNominationForTrack } from './tireNominations2026'
 import { calendar2026ByTrackId } from './calendar2026'
+import {
+  paceReference2026For,
+  simulationBaseLapTimeForPaceReference,
+} from './paceReferences2026'
 import { sourceRegistry } from './sourceRegistry'
 import {
   officialTrackOperations2026,
@@ -1053,6 +1057,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
         officialOperations,
       )
     : null
+  const paceReference2026 = paceReference2026For('f1-custom', id)
 
   return {
     ...track,
@@ -1079,9 +1084,14 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     locationProjection: realLayout?.projection,
     lengthKm: officialOperations?.centerlineLengthKm ?? circuitLengthKm[id],
     lengthSource: 'official',
-    baseLapTimeSource: 'estimated',
+    baseLapTime: simulationBaseLapTimeForPaceReference(
+      paceReference2026,
+      track.baseLapTime,
+    ),
+    baseLapTimeSource: paceReference2026 ? '2026-reference' : 'estimated',
     marshalPosts: realLayout?.marshalPosts,
     name: displayTrackName(track.name),
+    paceReference2026,
     pitLane,
     overtakeControlLines:
       officialOvertakeLines ?? deriveOvertakeControlLines(aeroActivationZones),

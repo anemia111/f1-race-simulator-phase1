@@ -8,7 +8,9 @@ import { advanceRace, createInitialRace } from './race'
 // A broader deterministic sample keeps the attrition mean robust rather than
 // hostage to four seeds. The field now includes a dominant number-one ace who
 // runs in clean air and ends races a touch sooner, so total attrition sits at
-// the low end of the modern range while still varying race to race.
+// the low end of the modern range while still varying race to race. Pace
+// calibration shortens exposure time, so this suite guards the upper tail and
+// preserves occasional attrition without forcing a retirement into every race.
 const calibrationSeeds = [
   'ret-probe-0',
   'ret-probe-1',
@@ -44,7 +46,7 @@ function runRace(seed: string): RaceSnapshot {
 
 describe('full-race retirement calibration', () => {
   it(
-    'keeps a 30-car field near modern F1 attrition without removing variety',
+    'keeps the 20-car F1 field at low attrition without removing variety',
     () => {
       const samples = calibrationSeeds.map((seed) => {
         const snapshot = runRace(seed)
@@ -63,15 +65,14 @@ describe('full-race retirement calibration', () => {
       const mean = total / samples.length
       const maximum = Math.max(...samples.map((sample) => sample.retired))
 
-      // The 2025 official classifications averaged roughly 2.1 retirements
-      // from 20 starters. The fictional field stays in the same order of
-      // magnitude, at the low end because a field-dominating ace runs clear of
-      // the incident-prone battles and shortens the race a little, without
-      // requiring an artificial high-attrition race every sample:
+      // The fictional field intentionally sits below the 2025 result average
+      // after repeated user feedback that terminal incidents were excessive.
+      // The acceptance window prevents both a crash-heavy field and a world
+      // with no mechanical/contact attrition:
       // https://www.formula1.com/en/results/2025/races
-      expect(mean).toBeGreaterThanOrEqual(0.8)
-      expect(mean).toBeLessThanOrEqual(4)
-      expect(maximum).toBeLessThanOrEqual(6)
+      expect(mean).toBeGreaterThanOrEqual(0.4)
+      expect(mean).toBeLessThanOrEqual(3)
+      expect(maximum).toBeLessThanOrEqual(5)
       expect(early).toBeLessThanOrEqual(2)
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)

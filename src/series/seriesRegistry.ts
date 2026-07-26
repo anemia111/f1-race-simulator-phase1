@@ -4,6 +4,10 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { reserveDrivers } from '../data/performanceCsv'
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks as f1Tracks } from '../data/tracks'
+import {
+  paceReference2026For,
+  simulationBaseLapTimeForPaceReference,
+} from '../data/paceReferences2026'
 import type {
   Driver,
   DriverStyleProfile,
@@ -257,12 +261,27 @@ function tracksFor(definition: RawSeries) {
       }
 
       const event = eventByTrack.get(trackId)
+      const referenceSeries =
+        definition.id === 'f1-custom' || definition.id === 'super-formula'
+          ? definition.id
+          : null
+      const paceReference2026 =
+        referenceSeries === null
+          ? undefined
+          : paceReference2026For(referenceSeries, trackId)
+      const scaledBaseLapTime = Number(
+        (track.baseLapTime * definition.rules.baseLapTimeMultiplier).toFixed(3),
+      )
+
       return {
         ...track,
-        baseLapTime: Number(
-          (track.baseLapTime * definition.rules.baseLapTimeMultiplier).toFixed(3),
+        baseLapTime: simulationBaseLapTimeForPaceReference(
+          paceReference2026,
+          scaledBaseLapTime,
         ),
+        baseLapTimeSource: paceReference2026 ? '2026-reference' : 'estimated',
         isSprintWeekend: Boolean(event?.sprint),
+        paceReference2026,
         raceLaps: Math.max(
           12,
           Math.round((track.raceLaps ?? 50) * definition.rules.raceDistanceRatio),

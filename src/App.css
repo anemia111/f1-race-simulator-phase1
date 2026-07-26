@@ -2531,7 +2531,10 @@
 .leaderboard-column-head,
 .leaderboard-rows button {
   display: grid;
-  grid-template-columns: 20px minmax(36px, 0.75fr) 20px minmax(28px, 0.65fr) minmax(36px, 1fr) minmax(36px, 1fr) 24px 24px 24px 24px 27px;
+  grid-template-columns:
+    20px minmax(34px, 0.65fr) 20px minmax(28px, 0.55fr)
+    minmax(40px, 0.9fr) minmax(40px, 0.9fr)
+    29px 29px 29px 25px 28px;
   align-items: center;
   gap: 1px;
 }
@@ -3902,3 +3905,171 @@
 .migration-history-list { min-height: 0; margin: 0; overflow-y: auto; border-top: 1px solid var(--manager-line); padding: 7px 0 0 22px; color: #9fb4c2; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 8px; }
 .migration-history-list li { padding: 4px; }
 .backup-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 7px; border-top: 1px solid var(--manager-line); padding-top: 12px; }
+
+/* PC readability pass. Data remains dense, but the smallest broadcast and
+   editor text is large enough to scan without changing the fixed panel grid. */
+.broadcast-app { font-size: 10px; }
+.broadcast-brand strong { font-size: 14px; }
+.broadcast-brand span { font-size: 11px; }
+.broadcast-series-select { font-size: 10px; }
+.broadcast-session-core { font-size: 14px; }
+.broadcast-session-core time { font-size: 16px; }
+.broadcast-live-mode { font-size: 11px; }
+.broadcast-session-switch select,
+.broadcast-session-switch button { font-size: 9px; }
+.broadcast-weather-strip span { font-size: 9px; }
+.broadcast-weather-strip strong { font-size: 11px; }
+.broadcast-sidebar button span { font-size: 9.5px; }
+.broadcast-panel-header strong { font-size: 11px; }
+.broadcast-panel-header span { font-size: 9px; }
+.broadcast-tabs button { font-size: 9px; }
+.broadcast-source { font-size: 8px; }
+
+.leaderboard-column-head { font-size: 8px; }
+.leaderboard-rows button { font-size: 9px; }
+.leaderboard-position { font-size: 10.5px; }
+.leaderboard-driver strong { font-size: 10px; }
+.leaderboard-driver small { font-size: 8px; }
+.leaderboard-driver .penalty-pending-label { letter-spacing: 0; }
+.leaderboard-tire-life { font-size: 8px; }
+.tyre-usage-legend > div,
+.pit-stop-list { font-size: 9px; }
+.tyre-usage-legend small,
+.pit-stop-list > div:first-child { font-size: 8px; }
+
+.center-table-head,
+.season-standings h3,
+.stint-chart-head { font-size: 8px; }
+.center-table li > button,
+.center-table li > div,
+.season-standings li,
+.stint-chart li { font-size: 9px; }
+.center-table .broadcast-tire,
+.tyre-usage-legend .broadcast-tire { font-size: 7.5px; }
+.timing-detail-list > div { font-size: 9px; }
+.timing-detail-sector small,
+.timing-lap-source small { font-size: 8px; }
+.detail-grid { font-size: 10px; }
+.detail-message-list li,
+.alert-list li { font-size: 9px; }
+.empty-detail { font-size: 10px; }
+.data-detail-grid > div,
+.broadcast-data-control label { font-size: 9px; }
+.broadcast-data-control button { font-size: 10px; }
+
+.start-signal > span,
+.track-map-status { font-size: 10px; }
+.track-map-legend > span { font-size: 8px; }
+.track-map-legend .broadcast-tire { font-size: 7.5px; }
+.track-status-grid span { font-size: 8px; }
+.track-status-grid strong { font-size: 9.5px; }
+.sector-flag b,
+.sector-flag strong { font-size: 7.5px; }
+.sector-flag-double-yellow strong { font-size: 7px; }
+.conditions-grid span { font-size: 7.5px; }
+.conditions-grid strong { font-size: 9px; }
+.race-message-list li { font-size: 8.5px; }
+.race-message-list time { font-size: 8.5px; }
+.fastest-lap-panel > span,
+.fastest-lap-panel > small { font-size: 8.5px; }
+.fastest-lap-panel > strong { font-size: 17px; }
+.footer-race-control,
+.footer-best { font-size: 9.5px; }
+.footer-controls button,
+.footer-data-modes button,
+.footer-controls .formation-skip-control { font-size: 8.5px; }
+.footer-data-modes > span { font-size: 8px; }
+.footer-best strong { font-size: 14px; }
+
+.insights-panel header,
+.classification-panel header { font-size: 11px; }
+.insights-panel header > strong,
+.classification-panel header > strong,
+.insight-section h2 { font-size: 11px; }
+.insight-source-grid,
+.insight-grid,
+.classification-summary { font-size: 12px; }
+.insight-section p { font-size: 12px; }
+.insight-section small,
+.manual-strategy select,
+.manual-strategy button { font-size: 11px; }
+.pace-mode-row button,
+.lap-trend li,
+.lap-trend strong { font-size: 10px; }
+.lap-history li { font-size: 11px; }
+.lap-chart figcaption,
+.qualifying-table-head,
+.qualifying-classification-panel li.qualifying-cut-marker { font-size: 9px; }
+.qualifying-time { font-size: 11px; }
+.qualifying-status { font-size: 10px; }
+.result-position,
+.result-change,
+.result-time strong { font-size: 12px; }
+.result-driver strong { font-size: 13px; }
+.result-driver span,
+.result-time span { font-size: 10px; }
+.classification-panel footer { font-size: 11px; }
+
+.setup-header span,
+.field-block span,
+.section-title span { font-size: 12px; }
+.setup-header strong { font-size: 16px; }
+.field-block small,
+.section-title button,
+.preset-row button,
+.qualifying-preview,
+.slider-row { font-size: 13px; }
+.section-title a,
+.component-row,
+.binary-setting,
+.compact-title small,
+.knockout-strip strong { font-size: 12px; }
+.knockout-strip span,
+.driver-overall-rating span,
+.driver-overall-rating small { font-size: 11px; }
+.driver-overall-rating strong { font-size: 28px; }
+
+.series-data-manager { font-size: 12px; }
+.data-manager-header span,
+.data-manager-header output,
+.data-manager-tabs button { font-size: 10px; }
+.data-manager-header strong { font-size: 14px; }
+.directory-filters select,
+.bulk-edit-row select,
+.bulk-edit-row input,
+.driver-metadata-grid input,
+.driver-metadata-grid select,
+.team-identity-fields input,
+.team-identity-fields select,
+.rule-editor-controls input,
+.rule-editor-controls select,
+.event-rule-editor input,
+.event-rule-editor select { font-size: 10px; }
+.driver-directory-head,
+.assignment-strip span,
+.driver-metadata-grid label > span,
+.team-identity-fields label > span,
+.rule-editor-controls label > span,
+.qualifying-rule-editor > div:first-child,
+.event-rule-editor header span,
+.event-rule-editor label > span,
+.event-rule-table > div:first-child { font-size: 8.5px; }
+.driver-directory-list button strong small,
+.driver-directory-list button > span:last-child,
+.driver-metadata-grid output,
+.team-identity-fields output,
+.ability-editor-grid label > span,
+.machine-editor-grid label > span,
+.qualifying-rule-editor label span,
+.qualifying-rule-editor > div > span:last-child,
+.event-rule-table span:last-child,
+.rule-source-list a span,
+.configuration-warning-list span,
+.migration-history-list { font-size: 9px; }
+.driver-directory-list button b { font-size: 12px; }
+.bulk-edit-row button,
+.data-editor-actions button,
+.backup-actions button { font-size: 9px; }
+.data-editor-title span { font-size: 10px; }
+.data-editor-title strong { font-size: 17px; }
+.data-editor-title > b { font-size: 27px; }

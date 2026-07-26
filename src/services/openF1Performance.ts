@@ -3,6 +3,7 @@ import type {
   Driver,
   Team,
   TireCompound,
+  TrackDefinition,
   TrackObservedCalibration,
 } from '../types'
 import type { OpenF1Bundle, OpenF1StandingsSnapshot } from './openF1'
@@ -33,6 +34,22 @@ const clamp = (value: number, min: number, max: number) =>
 
 const FUEL_GAIN_PER_LAP_PRIOR_SECONDS = 0.04
 const MIN_TIRE_OFFSET_SAMPLES = 6
+
+/**
+ * OpenF1 clean race laps already contain fuel, tire, traffic, and conditions.
+ * Keep those observations as local calibration inputs, but never replace the
+ * neutral simulation baseline and then apply the same effects a second time.
+ */
+export function mergeObservedTrackCalibration(
+  track: TrackDefinition,
+  observedCalibration: TrackObservedCalibration,
+): TrackDefinition {
+  return {
+    ...track,
+    observedCalibration,
+  }
+}
+
 const MAX_OBSERVED_RACE_LAPS = 120
 const MAX_OBSERVED_STINTS = 20
 

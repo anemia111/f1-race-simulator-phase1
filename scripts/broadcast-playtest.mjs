@@ -484,6 +484,21 @@ async function runViewport(browser, name, viewport, screenshotPath) {
       workspace: workspace ? { bottom: workspace.bottom, left: workspace.left, right: workspace.right, top: workspace.top } : null,
     }
   })
+  const typography = await page.evaluate(() => {
+    const fontSize = (selector) => {
+      const element = document.querySelector(selector)
+
+      return element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0
+    }
+
+    return {
+      app: fontSize('.broadcast-app'),
+      conditions: fontSize('.conditions-grid strong'),
+      leaderboard: fontSize('.leaderboard-rows button'),
+      messages: fontSize('.race-message-list li'),
+      panelTitle: fontSize('.broadcast-panel-header strong'),
+    }
+  })
 
   await page.screenshot({ path: screenshotPath, fullPage: true })
   await page.close()
@@ -555,6 +570,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     timingDetailScroll,
     timingLapLabels,
     timingLapRows,
+    typography,
     runningMiniSectorStates,
     tokenInputVisible,
     trackTitle,
@@ -632,7 +648,7 @@ async function inspectSeriesModes(browser) {
       'race',
   )
   await page.waitForFunction(() =>
-    /1\s*\/\s*25/u.test(
+    /\d+\s*\/\s*25/u.test(
       document.querySelector('.broadcast-session-core')?.textContent ?? '',
     ),
   )
@@ -755,6 +771,11 @@ try {
     if (result.pageErrors.length > 0) failures.push(`page errors: ${result.pageErrors.join('; ')}`)
     if (result.layout.documentWidth !== result.layout.viewportWidth || result.layout.documentHeight !== result.layout.viewportHeight) failures.push(`viewport overflow ${result.layout.documentWidth}x${result.layout.documentHeight}`)
     if (result.layout.clippedButtons > 0) failures.push(`${result.layout.clippedButtons} visible buttons clip content`)
+    if (result.typography.app < 10) failures.push(`broadcast base font is too small: ${result.typography.app}px`)
+    if (result.typography.panelTitle < 11) failures.push(`panel title font is too small: ${result.typography.panelTitle}px`)
+    if (result.typography.leaderboard < 9) failures.push(`leaderboard font is too small: ${result.typography.leaderboard}px`)
+    if (result.typography.messages < 8.5) failures.push(`message font is too small: ${result.typography.messages}px`)
+    if (result.typography.conditions < 9) failures.push(`condition value font is too small: ${result.typography.conditions}px`)
     if (result.layout.top?.bottom > result.layout.workspace?.top + 1) failures.push('top bar overlaps workspace')
     if (result.layout.workspace?.bottom > result.layout.footer?.top + 1) failures.push('workspace overlaps footer')
 
@@ -779,7 +800,7 @@ try {
   if (replacement.replacementSessions?.join(',') !== 'race') {
     seriesFailures.push(`SF replacement event has extra sessions: ${replacement.replacementSessions?.join(', ')}`)
   }
-  if (!/1\s*\/\s*25/u.test(replacement.replacementProgress)) {
+  if (!/\d+\s*\/\s*25/u.test(replacement.replacementProgress)) {
     seriesFailures.push(`SF replacement event is not 25 laps: ${replacement.replacementProgress}`)
   }
   if (seriesModes.pageErrors.length > 0) {

@@ -110,6 +110,7 @@ import { buildOpenF1TrackProgress } from './services/openF1Location'
 import {
   buildOpenF1TrackCalibration,
   calibrateFieldFromOpenF1,
+  mergeObservedTrackCalibration,
 } from './services/openF1Performance'
 import { buildSynchronizedCarData } from './services/openF1Sync'
 import { buildOpenF1TimelineFrame } from './services/openF1Timeline'
@@ -1497,18 +1498,8 @@ export default function App() {
     [openF1Bundle],
   )
   const calibratedTrack = useMemo(
-    () =>
-      ({
-        ...track,
-        observedCalibration: trackCalibration,
-        ...(fieldCalibration.referenceLapTimeSeconds === null
-          ? {}
-          : {
-            baseLapTime: fieldCalibration.referenceLapTimeSeconds,
-            baseLapTimeSource: 'openf1-observed' as const,
-          }),
-      }),
-    [fieldCalibration.referenceLapTimeSeconds, track, trackCalibration],
+    () => mergeObservedTrackCalibration(track, trackCalibration),
+    [track, trackCalibration],
   )
   const baseConfig: RaceConfig = useMemo(
     () => ({
@@ -3126,6 +3117,35 @@ export default function App() {
           raceConfig.track.layoutSource?.provider === 'openstreetmap'
         ? 'OBS'
         : 'SIM'
+  const paceReference2026 = raceConfig.track.paceReference2026
+  const paceReferenceDataDetails: BroadcastDataDetail[] = paceReference2026
+    ? [
+        {
+          label: '2026 qualifying target',
+          source:
+            paceReference2026.qualifyingBasis === 'official-result'
+              ? 'OFF'
+              : 'SIM',
+          value: `${formatLapTime(paceReference2026.qualifyingSeconds)} ${
+            paceReference2026.qualifyingBasis === 'official-result'
+              ? 'actual pole'
+              : 'estimate'
+          }`,
+        },
+        {
+          label: '2026 race average',
+          source:
+            paceReference2026.raceAverageBasis === 'official-result'
+              ? 'OFF'
+              : 'SIM',
+          value: `${formatLapTime(paceReference2026.raceAverageSeconds)} ${
+            paceReference2026.raceAverageBasis === 'official-result'
+              ? 'winner time / laps'
+              : 'estimate'
+          }`,
+        },
+      ]
+    : []
 
   const baselineBroadcastDataDetails: BroadcastDataDetail[] = [
     {
@@ -3170,6 +3190,7 @@ export default function App() {
       source: raceConfig.track.raceLapsSource === 'official' ? 'FIA' : 'SIM',
       value: `${snapshot.raceLaps} laps`,
     },
+    ...paceReferenceDataDetails,
     {
       label: '2026 rulebook',
       source: 'FIA',
@@ -3703,19 +3724,31 @@ export default function App() {
           <span>Pace ref</span>
           <strong
             className={
-              raceConfig.track.baseLapTimeSource === 'openf1-observed'
+              paceReference2026 &&
+              (isRaceProgressSession
+                ? paceReference2026.raceAverageBasis
+                : paceReference2026.qualifyingBasis) === 'official-result'
                 ? 'flag-clear'
                 : 'flag-yellow'
             }
             title={
-              raceConfig.track.baseLapTimeSource === 'openf1-observed'
-                ? 'OpenF1 observed clean-lap reference'
-                : 'Simulator estimated reference lap'
+              paceReference2026?.note ??
+              paceReference2026?.sourceLabel ??
+              'Simulator estimated reference lap'
             }
           >
-            {formatLapTime(raceConfig.track.baseLapTime)}{' '}
-            {raceConfig.track.baseLapTimeSource === 'openf1-observed'
-              ? 'OBS'
+            {formatLapTime(
+              paceReference2026
+                ? isRaceProgressSession
+                  ? paceReference2026.raceAverageSeconds
+                  : paceReference2026.qualifyingSeconds
+                : raceConfig.track.baseLapTime,
+            )}{' '}
+            {paceReference2026 &&
+            (isRaceProgressSession
+              ? paceReference2026.raceAverageBasis
+              : paceReference2026.qualifyingBasis) === 'official-result'
+              ? 'ACT'
               : 'EST'}
           </strong>
           <span>Flag</span>

@@ -37,5 +37,11 @@ describe('2026 track data packs', () => {
     })
     expect(madrid.locationProjection).toBeUndefined()
     expect(madrid.sectorMarksSource).toBe('derived')
+    expect(madrid.paceReference2026).toMatchObject({
+      qualifyingBasis: 'estimate',
+      qualifyingRangeSeconds: [90, 94],
+      raceAverageBasis: 'estimate',
+      raceAverageRangeSeconds: [101, 106],
+    })
   })
 })

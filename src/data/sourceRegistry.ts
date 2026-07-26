@@ -23,6 +23,14 @@ export const sourceRegistry = {
     label: 'OpenF1 API',
     url: 'https://openf1.org/',
   },
+  f1Results2026: {
+    label: 'Formula 1 official 2026 results',
+    url: 'https://www.formula1.com/en/results/2026/races',
+  },
+  superFormula2026: {
+    label: 'SUPER FORMULA official 2026 calendar and results',
+    url: 'https://superformula.net/sf3/race_taxonomy/2026/',
+  },
   f1FastestPitStops2025: {
     label: 'Formula 1 2025 DHL Fastest Pit Stop Award',
     url: 'https://www.formula1.com/en/results/2025/awards/fastest-pit-stops',

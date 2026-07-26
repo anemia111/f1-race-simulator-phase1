@@ -56,8 +56,16 @@ driving game.
 - Historical mode has one coherent target timestamp for laps, telemetry,
   position, intervals, weather, and race control instead of mixing latest
   samples from different moments.
+- OpenF1 clean race laps enrich tire, stint, sector, and field calibration but
+  never replace the neutral physical base lap. Those samples already include
+  fuel, tire, traffic, and weather effects, so rebasing onto one and applying
+  the simulation effects again would double-count pace loss.
 - `src/data/fiaEventPacks2026.ts` tracks event-page and decision-document
   coverage. Links are not marked as normalized operational values.
+- `src/data/paceReferences2026.ts` stores separate 2026 representative pole and
+  winner-time-per-lap benchmarks for all 22 active F1 rounds plus the current
+  SUPER FORMULA circuits. Completed results and estimates remain explicitly
+  distinct; MADRING and Fuji retain their supplied uncertainty ranges.
 
 ## Simulation State
 
@@ -126,6 +134,10 @@ driving game.
 - Q1/Q2/Q3 and SQ1/SQ2/SQ3 use the dedicated qualifying machine and driver
   performance axes. FP, Sprint, and Race use the long-run/race axes, so setup
   data can change single-lap and race pace independently.
+- Fixed-seed pace acceptance keeps official 2026 F1 pole references within
+  0.5 seconds and estimated rounds within 1.0 second. Green race pace remains
+  faster than a full-event average because the latter includes stops and
+  neutralisations; the dry 20-car Australian reference run averages 1:25.9.
 - Drive-through and stop-and-go penalties use dedicated pit services, service
   deadlines, and disqualification when unserved. Low-power starts trigger a
   rear warning light and an MGU-K event.
@@ -157,6 +169,9 @@ driving game.
   accessible per-sector summary. Forced-colors mode remains legible.
 - The race-control panel exposes S1/S2/S3 status independently, and active
   local flags thicken and relabel the affected 3D sector trace.
+- PC timing rows, headings, controls, conditions, messages, source tags, and
+  map labels use a larger readability baseline. At 1280x720 the full field
+  remains accessible by scrollbar without clipping SPD or BAT columns.
 - The duplicate `LIVE GAP TO LEADER` and lower `GAP TO LEADER` panels were
   removed. Their space now belongs to the full-field leaderboard and the
   scrollable race-control message history.
@@ -170,6 +185,8 @@ driving game.
 - `src/App.tsx`: orchestration, data-source labels, timing and controls.
 - `src/types.ts`: domain types.
 - `src/data/tracks.ts`: calendar and derived operational markers.
+- `src/data/paceReferences2026.ts`: factual/estimated qualifying and
+  full-event race-average pace benchmarks.
 - `src/data/calendar2026.ts`, `trackAudit.ts`, `sourceRegistry.ts`: amended
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
@@ -219,7 +236,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 422 passed across 49 files
+- Tests: 427 passed across 50 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
   controls, no clipping, and no page overflow

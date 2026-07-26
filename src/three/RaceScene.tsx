@@ -427,13 +427,13 @@ function PitLane({
       <InstancedPitBoxes boxes={pitBoxes} />
       <SpriteLabel
         color="#4bd8ff"
-        fontSize={0.46}
+        fontSize={0.54}
         position={labelPose.position.setY(0.45)}
         text="PIT"
       />
       <SpriteLabel
         color="#f4c430"
-        fontSize={0.34}
+        fontSize={0.42}
         position={labelPose.position.clone().setY(0.86).add(new THREE.Vector3(0, 0, 0.62))}
         text={`${track.pitLane?.speedLimitKph ?? 80} KPH`}
       />
@@ -481,7 +481,7 @@ function ActiveAeroZoneLines({
           <Line points={zone.points} color="#43e76f" lineWidth={1.8} />
           <SpriteLabel
             color="#46d880"
-            fontSize={0.68}
+            fontSize={0.8}
             outlineColor="#03120a"
             position={zone.labelPose.position.setY(0.54)}
             text={zone.label}
@@ -541,7 +541,7 @@ function RaceControlLines({
           </mesh>
           <SpriteLabel
             color={marker.color}
-            fontSize={0.44}
+            fontSize={0.52}
             position={[0, 0.3, presentationTrackWidth(track) * 0.72]}
             text={marker.label}
           />
@@ -784,7 +784,7 @@ function TrackFurniture({
           </mesh>
           <SpriteLabel
             color="#111"
-            fontSize={0.34}
+            fontSize={0.42}
             outlineColor="#f4c430"
             position={[0, 0, 0]}
             text={`${corner.number}`}
@@ -883,7 +883,7 @@ function SectorPathLinesContent({
             />
             <SpriteLabel
               color={color}
-              fontSize={isControlled ? 0.82 : 0.72}
+              fontSize={isControlled ? 0.94 : 0.84}
               position={sector.labelPose.position.setY(0.56)}
               text={
                 isControlled
@@ -903,14 +903,14 @@ function SectorPathLinesContent({
           />
           <SpriteLabel
             color={yellowSeverity === 'double' ? '#ffae00' : '#ffe35a'}
-            fontSize={yellowSeverity === 'double' ? 0.9 : 0.78}
+            fontSize={yellowSeverity === 'double' ? 1 : 0.9}
             outlineColor="#071019"
             position={localYellow.labelPose.position.setY(0.68)}
             text={yellowSeverity === 'double' ? 'DOUBLE YELLOW' : 'SINGLE YELLOW'}
           />
           <SpriteLabel
             color="#ffffff"
-            fontSize={0.6}
+            fontSize={0.72}
             outlineColor="#b9162e"
             position={localYellow.incidentPose.position.setY(0.62)}
             text="INCIDENT"
@@ -983,7 +983,7 @@ function TrackSurface({
         (config.track.corners ?? []).map((corner) => (
           <SpriteLabel
             color="#dce7f2"
-            fontSize={0.82}
+            fontSize={0.92}
             key={corner.number}
             outlineColor="#071019"
             position={[corner.position[0], 0.46, corner.position[2]]}
@@ -1121,7 +1121,7 @@ function CarMarker({
           onSelectDriver(car.driverId)
         }}
         renderOrder={isSelected ? 20 : 10}
-        scale={isSelected ? [2.15, 2.15, 1] : [1.9, 1.9, 1]}
+        scale={isSelected ? [2.32, 2.32, 1] : [2.05, 2.05, 1]}
       >
         <spriteMaterial
           depthTest={false}
@@ -1234,7 +1234,7 @@ function SafetyCarMarker({
 
   return (
     <group ref={groupRef}>
-      <sprite renderOrder={10} scale={[1.9, 1.9, 1]}>
+      <sprite renderOrder={10} scale={[2.05, 2.05, 1]}>
         <spriteMaterial
           depthTest={false}
           depthWrite={false}
@@ -1305,7 +1305,7 @@ function OpenF1CarOverlay({
     <group>
       <SpriteLabel
         color="#4bd8ff"
-        fontSize={0.42}
+        fontSize={0.5}
         position={tagPose.position.setY(0.72)}
         text={`OpenF1 ${mode}`}
       />
@@ -1342,7 +1342,7 @@ function OpenF1CarOverlay({
           </mesh>
           <SpriteLabel
             color={car.teamColor}
-            fontSize={0.9}
+            fontSize={1}
             position={[0, 0.52, 0]}
             text={car.code}
           />

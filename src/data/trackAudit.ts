@@ -99,6 +99,19 @@ export function auditTrackCalendar(
     if (!track.tireNomination) {
       add(track, 'tireNomination', 'error', 'Missing tire nomination')
     }
+
+    if (
+      track.calendar2026?.status === 'scheduled' &&
+      (!track.paceReference2026 ||
+        track.paceReference2026.series !== 'f1-custom')
+    ) {
+      add(
+        track,
+        'paceReference2026',
+        'error',
+        'Missing 2026 qualifying and race-average pace reference',
+      )
+    }
   }
 
   if (tracks.length !== 24 && tracks[0]) {
@@ -107,7 +120,7 @@ export function auditTrackCalendar(
 
   const errorCount = issues.filter((issue) => issue.severity === 'error').length
   const warningCount = issues.length - errorCount
-  const checksPerTrack = 9
+  const checksPerTrack = 10
   const scorePercent = Math.max(
     0,
     Math.floor(
