@@ -118,25 +118,14 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     const leaderboard = document
       .querySelector('.broadcast-left-column > .broadcast-panel')
       ?.getBoundingClientRect()
-    const rightColumn = document
-      .querySelector('.broadcast-right-column')
-      ?.getBoundingClientRect()
-    const messages = document
-      .querySelector('.messages-panel')
-      ?.getBoundingClientRect()
 
     return {
       leaderboardRatio:
         leftColumn && leaderboard && leftColumn.height > 0
           ? leaderboard.height / leftColumn.height
           : 0,
-      messagesRatio:
-        rightColumn && messages && rightColumn.height > 0
-          ? messages.height / rightColumn.height
-          : 0,
     }
   })
-  const liveTimingTitle = await page.locator('.broadcast-live-timing .broadcast-panel-header').innerText()
   const leaderboardHeader = await page.locator('.leaderboard-column-head').innerText()
   const leaderboardColumnVisibility = await page.locator('.leaderboard-column-head').evaluate((header) => {
     const headerRect = header.getBoundingClientRect()
@@ -159,7 +148,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     }
   })
   const overviewNavigationItems = await page.locator('.broadcast-sidebar button[title="Overview"]').count()
-  const initialFastestText = await page.locator('.fastest-lap-panel').innerText()
   const initialSectorValues = await page.locator('.leaderboard-rows .sector-value').allInnerTexts()
   const initialSectorStatuses = await page.locator('.leaderboard-rows .sector-value').evaluateAll((cells) => ({
     pending: cells.filter((cell) => cell.classList.contains('sector-status-pending')).length,
@@ -189,8 +177,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     }
   })
   const headerText = await page.locator('.broadcast-topbar').innerText()
-  const sectorFlagLabels = await page.locator('.sector-flag').allInnerTexts()
-  const sectorFlagAriaLabel = await page.locator('.sector-flag-strip').getAttribute('aria-label')
 
   // Mini sectors now live on the leaderboard itself, so the timing tower is
   // read where the field order is read.
@@ -280,22 +266,18 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByPlaceholder('simulation seed').fill('broadcast-playtest-stable')
   await page.getByLabel('close setup').click()
   await page.waitForFunction(() =>
-    document.querySelector('.fastest-lap-panel')?.textContent?.includes(
-      'Awaiting completed lap',
-    ),
+    Array.from(
+      document.querySelectorAll('.leaderboard-rows .sector-value'),
+    ).every((cell) => cell.textContent?.includes('--.---')),
   )
 
+  await page.locator('.broadcast-sidebar button[title="Data"]').click()
   const liveClose = page.locator('.broadcast-live-timing .panel-close')
   await liveClose.click()
   const liveTimingClosed = await page.locator('.broadcast-live-timing .restore-panel').isVisible()
   await page.locator('.broadcast-live-timing .restore-panel').click()
   const liveTimingRestored = await page.locator('.data-view').isVisible()
 
-  const messageClose = page.locator('.messages-panel .panel-close')
-  await messageClose.click()
-  const messagesClosed = await page.locator('.messages-panel .restore-panel').isVisible()
-  await page.locator('.messages-panel .restore-panel').click()
-  const messagesRestored = await page.locator('.race-message-list').isVisible()
 
   const secondDriver = page.locator('.leaderboard-rows li button').nth(1)
   await secondDriver.click()
@@ -410,6 +392,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByLabel('Resume simulation').click()
   await page.getByRole('button', { name: '1x' }).click()
 
+  await page.locator('.broadcast-sidebar button[title="Map"]').click()
   await page.getByTitle('chase camera').click()
   const chaseSelected = await page.getByTitle('chase camera').getAttribute('aria-pressed')
   await page.getByTitle('overview camera').click()
@@ -484,9 +467,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
 
     return {
       app: fontSize('.broadcast-app'),
-      conditions: fontSize('.conditions-grid strong'),
       leaderboard: fontSize('.leaderboard-rows button'),
-      messages: fontSize('.race-message-list li'),
       panelTitle: fontSize('.broadcast-panel-header strong'),
     }
   })
@@ -515,7 +496,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     dataManagerSelectedEvent,
     dataManagerTeamRows,
     headerText,
-    initialFastestText,
     initialSectorStatuses,
     initialSectorValues,
     insightsVisible,
@@ -526,12 +506,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     leaderboardColumnVisibility,
     duplicateGapPanels,
     reclaimedSideSpace,
-    liveTimingTitle,
     liveTimingClosed,
     liveTimingRestored,
     messageRows,
-    messagesClosed,
-    messagesRestored,
     miniSectors,
     driverAbilityMaxes,
     driverAbilityControlChanged,
@@ -548,8 +525,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     screenshotPath,
     sectorStatuses,
     selectedRows,
-    sectorFlagAriaLabel,
-    sectorFlagLabels,
     setupVisible,
     speed60Selected,
     strategyControlsVisible,
@@ -597,9 +572,7 @@ async function inspectSeriesModes(browser) {
     results[seriesId] = {
       cars: await page.locator('.leaderboard-rows li').count(),
       eventName: await page.locator('.broadcast-brand strong').innerText(),
-      timingTitle: await page
-        .locator('.broadcast-live-timing .broadcast-panel-header')
-        .innerText(),
+      timingTitle: await page.locator('.broadcast-leaderboard .broadcast-panel-header').innerText(),
     }
 
     if (seriesId === 'f3') {
@@ -679,7 +652,6 @@ try {
     if (!result.leaderboardColumnVisibility.speed) failures.push('leaderboard speed column is clipped')
     if (!result.leaderboardColumnVisibility.battery) failures.push('leaderboard battery column is clipped')
     if (result.overviewNavigationItems !== 0) failures.push('redundant overview navigation is still present')
-    if (!result.initialFastestText.includes('--:--.---') || !result.initialFastestText.includes('Awaiting completed lap')) failures.push('initial fastest lap must wait for a measured CPU lap')
     if (result.initialSectorValues.some((value) => value !== '--.---')) failures.push('initial sector cells must remain unmeasured')
     if (result.initialSectorStatuses.pending !== result.initialSectorStatuses.total) failures.push('initial sector cells must all use the pending state')
     if (!result.observedOverallBest) failures.push('completed sectors never showed a provisional overall-best state')
@@ -691,9 +663,6 @@ try {
     const expectedMiniSectors = EXPECTED_FIELD_SIZE * MINI_SECTORS_PER_DRIVER
     if (result.miniSectors < expectedMiniSectors) failures.push(`expected ${expectedMiniSectors} complete timing mini-sector cells, saw ${result.miniSectors}`)
     if (result.initialMiniSectorStates.colored !== 0 || result.initialMiniSectorStates.dim !== result.miniSectors) failures.push('initial mini sectors must all be pending')
-    const validSectorFlag = /(CLEAR|YELLOW|DOUBLE YELLOW|VSC|SC|RED)/u
-    if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !validSectorFlag.test(label))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
-    if (!result.sectorFlagAriaLabel?.includes('Sector 1') || !result.sectorFlagAriaLabel.includes('Sector 3')) failures.push('sector flag strip needs an accessible per-sector summary')
     if (result.runningMiniSectorStates.colored === 0 || result.runningMiniSectorStates.dim === 0) failures.push('running mini sectors need completed and pending states')
     if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityValues.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1')) failures.push('driver editor must expose 12 grouped sliders with the 100-point ceiling')
     if (!result.driverAbilityControlChanged) failures.push('grouped driver ability control did not update the calculated overall rating')
@@ -715,7 +684,7 @@ try {
       if (count !== result.leaderboardRows) failures.push(`${name} table rendered ${count}/${result.leaderboardRows} drivers`)
     }
     if (result.duplicateGapPanels !== 0) failures.push(`removed duplicate gap panels still render: ${result.duplicateGapPanels}`)
-    if (result.reclaimedSideSpace.leaderboardRatio < 0.72 || result.reclaimedSideSpace.messagesRatio < 0.35) failures.push(`removed gap-panel space was not reclaimed: ${JSON.stringify(result.reclaimedSideSpace)}`)
+    if (result.reclaimedSideSpace.leaderboardRatio < 0.72) failures.push(`the leaderboard did not keep the left column: ${JSON.stringify(result.reclaimedSideSpace)}`)
     for (const [name, metrics] of [
       ['leaderboard', result.leaderboardScroll],
       ['telemetry', result.telemetryScroll],
@@ -738,7 +707,6 @@ try {
     if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes(`${EXPECTED_FIELD_SIZE} / ${EXPECTED_FIELD_SIZE}`) || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes('110')) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
     if (result.dataManagerLayout.scrollWidth !== result.dataManagerLayout.clientWidth || result.dataManagerLayout.scrollHeight !== result.dataManagerLayout.clientHeight) failures.push(`data manager overflows its frame: ${JSON.stringify(result.dataManagerLayout)}`)
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
-    if (!result.messagesClosed || !result.messagesRestored) failures.push('message close/restore failed')
     if (result.selectedRows !== 1) failures.push(`expected one selected timing row, saw ${result.selectedRows}`)
     if (result.speed60Selected !== 'true' || !result.resumeVisible) failures.push('playback controls failed')
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')
@@ -752,8 +720,6 @@ try {
     if (result.typography.app < 10) failures.push(`broadcast base font is too small: ${result.typography.app}px`)
     if (result.typography.panelTitle < 11) failures.push(`panel title font is too small: ${result.typography.panelTitle}px`)
     if (result.typography.leaderboard < 9) failures.push(`leaderboard font is too small: ${result.typography.leaderboard}px`)
-    if (result.typography.messages < 8.5) failures.push(`message font is too small: ${result.typography.messages}px`)
-    if (result.typography.conditions < 9) failures.push(`condition value font is too small: ${result.typography.conditions}px`)
     if (result.layout.top?.bottom > result.layout.workspace?.top + 1) failures.push('top bar overlaps workspace')
     if (result.layout.workspace?.bottom > result.layout.footer?.top + 1) failures.push('workspace overlaps footer')
 
@@ -768,7 +734,7 @@ try {
   for (const [seriesId, carCount] of Object.entries(expectedCars)) {
     const result = seriesModes.results[seriesId]
     if (result.cars !== carCount) seriesFailures.push(`${seriesId} rendered ${result.cars}/${carCount} cars`)
-    if (!result.timingTitle.includes(`ALL ${carCount}`)) seriesFailures.push(`${seriesId} timing title is stale: ${result.timingTitle}`)
+    if (!/Leaderboard/iu.test(result.timingTitle)) seriesFailures.push(`${seriesId} leaderboard title is stale: ${result.timingTitle}`)
   }
   const madridSessions = seriesModes.results.f3.madridSessions ?? []
   if (madridSessions.join(',') !== 'fp1,qualifying,qualifying2,sprint,race,race2') {

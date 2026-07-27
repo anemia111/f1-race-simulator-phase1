@@ -2363,7 +2363,7 @@
 
 .broadcast-sidebar nav {
   display: grid;
-  grid-template-rows: repeat(10, minmax(42px, 1fr));
+  grid-template-rows: repeat(8, minmax(42px, 1fr));
   min-height: 0;
 }
 
@@ -2408,7 +2408,7 @@
   display: grid;
   grid-column: 2;
   grid-row: 2;
-  grid-template-columns: minmax(360px, 0.94fr) minmax(500px, 1.36fr) minmax(250px, 0.72fr);
+  grid-template-columns: minmax(430px, 0.9fr) minmax(560px, 1.5fr);
   gap: 6px;
   min-width: 0;
   min-height: 0;
@@ -2426,7 +2426,7 @@
 }
 
 .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 112px; }
-.broadcast-center-column { grid-template-rows: 220px minmax(250px, 1fr); }
+.broadcast-center-column { grid-template-rows: minmax(0, 1fr); }
 .broadcast-right-column { grid-template-rows: 90px 116px minmax(220px, 1fr) 70px; }
 
 .broadcast-panel {
@@ -2532,9 +2532,9 @@
 .leaderboard-rows button {
   display: grid;
   grid-template-columns:
-    20px minmax(34px, 0.65fr) 20px minmax(28px, 0.55fr)
-    minmax(40px, 0.9fr) minmax(40px, 0.9fr)
-    29px 29px 29px 25px 28px;
+    20px minmax(34px, 0.62fr) 20px minmax(28px, 0.5fr)
+    minmax(38px, 0.85fr) minmax(38px, 0.85fr)
+    30px 30px 30px 18px minmax(30px, 0.42fr) 24px 26px;
   align-items: center;
   gap: 1px;
 }
@@ -2938,6 +2938,23 @@
 
 .leaderboard-rows .sector-value > b { font-weight: inherit; }
 
+.leaderboard-stops { color: var(--broadcast-muted); }
+
+/* Every dry/wet set the car has run, oldest first. */
+.leaderboard-compounds {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.leaderboard-compounds > i { width: 4px; height: 8px; border-radius: 1px; }
+.leaderboard-compounds > .tire-S { background: #ff344d; }
+.leaderboard-compounds > .tire-M { background: #ffd21f; }
+.leaderboard-compounds > .tire-H { background: #eef2f5; }
+.leaderboard-compounds > .tire-I { background: #35d66f; }
+.leaderboard-compounds > .tire-W { background: #36a4ff; }
+
 /* Steward business sits above the message log in one race-control feed. */
 .race-feed-view {
   display: grid;
@@ -3250,16 +3267,13 @@
     grid-template-rows: 46px minmax(0, 1fr) 38px;
   }
 
-  .broadcast-center-column { grid-template-rows: 176px minmax(220px, 1fr); }
+  .broadcast-center-column { grid-template-rows: minmax(0, 1fr); }
   .broadcast-left-column { grid-template-rows: minmax(0, 1fr) 96px; }
   .broadcast-left-analytics { grid-template-rows: minmax(0, 1fr); }
-  .broadcast-right-column { grid-template-rows: 78px 96px minmax(180px, 1fr) 60px; }
-  .track-status-grid { padding-top: 2px; }
-  .sector-flag-strip { padding-bottom: 3px; }
   .tyre-donut { width: 50px; height: 50px; }
   .tyre-usage-content { grid-template-columns: 54px 1fr; }
   .broadcast-sidebar { grid-template-rows: 34px minmax(0, 1fr) 46px; }
-  .broadcast-sidebar nav { grid-template-rows: repeat(10, minmax(36px, 1fr)); }
+  .broadcast-sidebar nav { grid-template-rows: repeat(8, minmax(36px, 1fr)); }
 }
 
 .broadcast-session-switch {

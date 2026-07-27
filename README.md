@@ -55,11 +55,17 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   best lap, the three measured sector times, and each sector's eight
   progressive mini-sectors as a bar under its own sector time, plus speed and
   battery. The whole 24-part lap is read where the field order is read.
-- The leaderboard and the circuit map stay deliberately dense; every other
-  destination is kept plain. Duplicated destinations were merged rather than
-  shown twice: the separate Timing view is gone now that the leaderboard
-  carries the mini-sectors, conditions live with the circuit in Track, and
-  steward alerts sit at the top of the single race-control Messages feed.
+- Two columns: the leaderboard on the left and the circuit map filling the
+  right. Both stay deliberately dense; every other destination is kept plain.
+  The sidebar swaps the right-hand area between the map and one detail
+  destination at a time.
+- Duplicated destinations and panels were merged or dropped rather than shown
+  twice: the separate Timing view is gone now that the leaderboard carries the
+  mini-sectors, conditions live with the circuit in Track, steward alerts sit
+  at the top of the single race-control Messages feed, and the old right-hand
+  rail (race-control status, conditions, message log, fastest lap) is removed.
+- The leaderboard also carries completed pit stops and the compounds each car
+  has used, so the strategy picture reads from the timing tower.
 - Telemetry, source chips, classification, analysis, and manual strategy
   controls remain available from the sidebar.
 - Independent S1/S2/S3 flag states for local yellow, double yellow, VSC, SC,
