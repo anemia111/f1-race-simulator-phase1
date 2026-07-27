@@ -187,34 +187,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
   }))
 
-  await page.locator('.broadcast-sidebar button[title="Telemetry"]').click()
-  const telemetryHeader = await page.locator('.telemetry-table .center-table-head').innerText()
-  const telemetryRows = await page.locator('.telemetry-table li').count()
-  const telemetryScroll = await inspectScroll(page.locator('.telemetry-table ol'))
-
-  await page.locator('.broadcast-sidebar button[title="Tyres"]').click()
-  const tyreRows = await page.locator('.tyre-detail-table li').count()
-  const tyreHeader = await page.locator('.tyre-detail-table .center-table-head').innerText()
-  const tyreScroll = await inspectScroll(page.locator('.tyre-detail-table ol'))
-
-  await page.locator('.broadcast-sidebar button[title="Drivers"]').click()
-  const driverRows = await page.locator('.driver-detail-table li').count()
-  const driverNumberLabels = await page
-    .locator('.driver-detail-table li strong')
-    .allInnerTexts()
-  const driverScroll = await inspectScroll(page.locator('.driver-detail-table ol'))
-
-  await page.locator('.broadcast-sidebar button[title="Season"]').click()
-  const seasonStandingsSections = await page.locator('.season-standings section').count()
-  const seasonEmptyStateVisible = await page
-    .locator('.broadcast-live-timing .empty-detail')
-    .count() > 0
-  // A fresh profile has no recorded rounds; a persisted one shows both tables.
-  const seasonViewOk = seasonStandingsSections === 2 || seasonEmptyStateVisible
-
-  await page.locator('.broadcast-sidebar button[title="Messages"]').click()
-  const messageRows = await page.locator('.detail-message-list li').count()
-
   await page.locator('.broadcast-sidebar button[title="Data"]').click()
   const dataDetails = await page.locator('.data-detail-grid > div').count()
   const tokenInputVisible = await page.locator('.broadcast-data-control input').isVisible()
@@ -271,7 +243,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     ).every((cell) => cell.textContent?.includes('--.---')),
   )
 
-  await page.locator('.broadcast-sidebar button[title="Data"]').click()
+  // Data toggles against the map, so only select it when it is not already up.
+  if ((await page.locator('.broadcast-live-timing').count()) === 0) {
+    await page.locator('.broadcast-sidebar button[title="Data"]').click()
+  }
   const liveClose = page.locator('.broadcast-live-timing .panel-close')
   await liveClose.click()
   const liveTimingClosed = await page.locator('.broadcast-live-timing .restore-panel').isVisible()
@@ -392,7 +367,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByLabel('Resume simulation').click()
   await page.getByRole('button', { name: '1x' }).click()
 
-  await page.locator('.broadcast-sidebar button[title="Map"]').click()
+  if ((await page.locator('.broadcast-track-panel').count()) === 0) {
+    await page.locator('.broadcast-sidebar button[title="Data"]').click()
+  }
   await page.getByTitle('chase camera').click()
   const chaseSelected = await page.getByTitle('chase camera').getAttribute('aria-pressed')
   await page.getByTitle('overview camera').click()
@@ -483,7 +460,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     chaseSelected,
     classificationVisible,
     lapChartLineCount,
-    seasonViewOk,
     dataDetails,
     dataManagerAudit,
     dataManagerDriverRows,
@@ -508,7 +484,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     reclaimedSideSpace,
     liveTimingClosed,
     liveTimingRestored,
-    messageRows,
     miniSectors,
     driverAbilityMaxes,
     driverAbilityControlChanged,
@@ -528,20 +503,11 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     setupVisible,
     speed60Selected,
     strategyControlsVisible,
-    telemetryHeader,
-    telemetryRows,
-    telemetryScroll,
     tireLifeValues,
     typography,
     runningMiniSectorStates,
     tokenInputVisible,
     trackTitle,
-    tyreHeader,
-    tyreRows,
-    tyreScroll,
-    driverRows,
-    driverNumberLabels,
-    driverScroll,
   }
 }
 
@@ -668,18 +634,11 @@ try {
     if (!result.driverAbilityControlChanged) failures.push('grouped driver ability control did not update the calculated overall rating')
     if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('CSV-configured driver abilities exceed the 100-point scale')
     if (!/^\d{1,3}$/u.test(result.driverOverallAbility) || Number(result.driverOverallAbility) > 100) failures.push(`driver overall ability is invalid: ${result.driverOverallAbility}`)
-    if (!result.driverNumberLabels.includes('#31 NAK')) failures.push(`NAK car number 31 is missing: ${result.driverNumberLabels.join(', ')}`)
     if (result.removedBottomPanelLabels.length > 0) failures.push(`removed bottom panels are still visible: ${result.removedBottomPanelLabels.join(', ')}`)
     if (result.centerMapLayout.mapHeightRatio < 0.55) failures.push(`track map did not expand into the removed panel space: ${JSON.stringify(result.centerMapLayout)}`)
     if (result.tireLifeValues.some((value) => !/^\d{1,3}$/u.test(value) || Number(value) < 0 || Number(value) > 100)) failures.push(`tyre life must be a 100-to-0 remaining value: ${result.tireLifeValues.join(', ')}`)
     if (result.tireLifeValues.every((value) => Number(value) === 100)) failures.push('tyre life never decreased from 100 during the accelerated run')
-    for (const label of ['SPD', 'THR', 'BRK', 'GEAR', 'RPM', 'ERS', 'SOURCE']) {
-      if (!result.telemetryHeader.includes(label)) failures.push(`telemetry header missing ${label}`)
-    }
     for (const [name, count] of [
-      ['telemetry', result.telemetryRows],
-      ['tyres', result.tyreRows],
-      ['drivers', result.driverRows],
     ]) {
       if (count !== result.leaderboardRows) failures.push(`${name} table rendered ${count}/${result.leaderboardRows} drivers`)
     }
@@ -687,16 +646,12 @@ try {
     if (result.reclaimedSideSpace.leaderboardRatio < 0.72) failures.push(`the leaderboard did not keep the left column: ${JSON.stringify(result.reclaimedSideSpace)}`)
     for (const [name, metrics] of [
       ['leaderboard', result.leaderboardScroll],
-      ['telemetry', result.telemetryScroll],
-      ['tyres', result.tyreScroll],
-      ['drivers', result.driverScroll],
     ]) {
       // A list that already shows every driver has nothing to scroll, which is
       // still every driver reachable.
       const fitsWithoutScrolling = metrics.scrollHeight <= metrics.clientHeight + 1
       if (!fitsWithoutScrolling && (metrics.maxScrollTop <= 0 || !metrics.reachedBottom)) failures.push(`${name} list cannot scroll through all drivers: ${JSON.stringify(metrics)}`)
     }
-    if (!result.tyreHeader.includes('PACE DELTA') || !result.tyreHeader.includes('SOURCE')) failures.push('tyre model provenance is missing')
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
     if (result.dataManagerDriverRows !== 110) failures.push(`data manager rendered ${result.dataManagerDriverRows}/110 pool drivers`)
     if (result.dataManagerDriverScroll.maxScrollTop <= 0 || !result.dataManagerDriverScroll.reachedBottom) failures.push(`driver directory cannot scroll: ${JSON.stringify(result.dataManagerDriverScroll)}`)
@@ -712,7 +667,6 @@ try {
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')
     if (!result.setupVisible || !result.classificationVisible || !result.insightsVisible || !result.strategyControlsVisible) failures.push('secondary functional panels failed')
     if (result.lapChartLineCount < EXPECTED_FIELD_SIZE) failures.push(`lap chart drew ${result.lapChartLineCount} of ${EXPECTED_FIELD_SIZE} car lines`)
-    if (!result.seasonViewOk) failures.push('season standings view rendered neither tables nor its empty state')
     if (!result.canvas?.ok) failures.push(`canvas pixels invalid: ${JSON.stringify(result.canvas)}`)
     if (result.pageErrors.length > 0) failures.push(`page errors: ${result.pageErrors.join('; ')}`)
     if (result.layout.documentWidth !== result.layout.viewportWidth || result.layout.documentHeight !== result.layout.viewportHeight) failures.push(`viewport overflow ${result.layout.documentWidth}x${result.layout.documentHeight}`)

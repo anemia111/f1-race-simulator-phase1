@@ -1,24 +1,17 @@
 import {
   Activity,
-  AlertTriangle,
-  CircleGauge,
   Database,
-  Droplets,
   Flag,
   Gauge,
   Map as MapIcon,
-  MessageSquare,
   Pause,
   Play,
   Radio,
   Route,
   Settings2,
   StepForward,
-  Thermometer,
   Timer,
   Trophy,
-  Users,
-  Wind,
   Wrench,
   X,
 } from 'lucide-react'
@@ -28,7 +21,6 @@ import {
   startSignalStateFor,
 } from '../domain/startSignal'
 import type { SeasonStandingRow } from '../simulation/season'
-import { tireStintsFor } from '../simulation/stints'
 import type {
   CameraMode,
   CarSnapshot,
@@ -42,15 +34,7 @@ import type { SeriesId } from '../series/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
-type DashboardView =
-  | 'map'
-  | 'telemetry'
-  | 'track'
-  | 'tyres'
-  | 'messages'
-  | 'drivers'
-  | 'season'
-  | 'data'
+type DashboardView = 'map' | 'data'
 
 export type ChampionshipStandings = {
   drivers: SeasonStandingRow[]
@@ -112,7 +96,6 @@ type EnvironmentReadout = {
 
 type BroadcastDashboardProps = {
   cameraMode: CameraMode
-  championshipStandings: ChampionshipStandings
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
   dataMode: DataMode
@@ -197,13 +180,6 @@ const dashboardViews: Array<{
   id: DashboardView
   label: string
 }> = [
-  { Icon: MapIcon, id: 'map', label: 'Map' },
-  { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
-  { Icon: Route, id: 'track', label: 'Track' },
-  { Icon: CircleGauge, id: 'tyres', label: 'Tyres' },
-  { Icon: MessageSquare, id: 'messages', label: 'Messages' },
-  { Icon: Users, id: 'drivers', label: 'Drivers' },
-  { Icon: Trophy, id: 'season', label: 'Season' },
   { Icon: Database, id: 'data', label: 'Data' },
 ]
 
@@ -313,15 +289,6 @@ const layoutSourceTag = (
         track.layoutSource?.provider === 'openstreetmap'
       ? 'OBS'
       : 'SIM'
-
-const layoutGeometryLabel = (track: TrackDefinition) =>
-  track.layoutSource?.provider === 'official'
-    ? 'Official vector geometry'
-    : track.layoutSource?.provider === 'openf1'
-      ? 'Observed geometry'
-      : track.layoutSource?.provider === 'openstreetmap'
-        ? 'Surveyed map geometry'
-        : 'Fallback geometry'
 
 const miniSectorStateLabels: Record<MiniSectorState, string> = {
   dim: 'not completed',
@@ -563,313 +530,13 @@ function LeftLeaderboard({
   )
 }
 
-function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
-  return (
-    <div className="center-table telemetry-table">
-      <div className="center-table-head">
-        <span>DRIVER</span><span>SPD</span><span>THR</span><span>BRK</span><span>GEAR</span>
-        <span>RPM</span><span>ERS</span><span>AERO / OVT</span><span>SOURCE</span>
-      </div>
-      <ol aria-label="All drivers telemetry" tabIndex={0}>
-        {rows.map((row) => (
-          <li key={row.car.driverId}>
-            <div>
-              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
-              <span>{row.speedKph}</span><span>{row.throttlePercent}%</span><span>{row.brakePercent}%</span>
-              <span>{row.gear}</span><span>{row.rpm}</span>
-              <span
-                title={`${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW deploy / ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW recover / battery ${row.car.energyStore.batteryTemperatureC.toFixed(1)} C`}
-              >
-                {row.batteryPercent}%
-              </span>
-              <span
-                title={
-                  row.telemetrySource === 'simulation' &&
-                  row.car.superClippingIntensity >= 0.04
-                    ? `Super clipping ${Math.round(row.car.superClippingIntensity * 100)}%, ${Math.round(row.car.superClippingRegenPowerKw)} kW recovery`
-                    : row.aeroOvertakeLabel
-                }
-              >
-                {row.telemetrySource === 'simulation' &&
-                row.car.superClippingIntensity >= 0.04
-                  ? `CLIP ${Math.round(row.car.superClippingIntensity * 100)}`
-                  : row.aeroOvertakeLabel}
-              </span>
-              <SourceTag
-                source={
-                  row.telemetrySource === 'openf1'
-                    ? 'OBS'
-                    : row.telemetrySource === 'simulation'
-                      ? 'SIM'
-                      : 'UNAVAILABLE'
-                }
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
 function CenterView({
-  championshipStandings,
   dataControl,
   dataDetails,
-  environment,
-  isRaceStage,
-  labels,
-  overtakeSystem,
-  raceControlLog,
-  rows,
-  snapshot,
-  track,
-  useF1TireNomination,
-  view,
 }: {
-  championshipStandings: ChampionshipStandings
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
-  environment: EnvironmentReadout
-  isRaceStage: boolean
-  labels: Record<CarSnapshot['tire'], string>
-  overtakeSystem: 'active-aero' | 'drs' | 'ots'
-  raceControlLog: BroadcastRaceControlEntry[]
-  rows: BroadcastTimingRow[]
-  snapshot: RaceSnapshot
-  track: TrackDefinition
-  useF1TireNomination: boolean
-  view: DashboardView
 }) {
-  if (view === 'telemetry') return <TelemetryView rows={rows} />
-
-  if (view === 'track') {
-    const aeroSource = track.aeroActivationZones?.every(
-      (zone) => zone.source === 'official',
-    )
-      ? 'FIA'
-      : track.aeroActivationZones?.some((zone) => zone.source === 'openf1')
-        ? 'OBS'
-        : 'CAL'
-    const overtakeSource = track.overtakeControlLines?.every(
-      (line) => line.source === 'official',
-    )
-      ? 'FIA'
-      : 'CAL'
-    const wetness =
-      snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
-
-    return (
-      <div className="detail-grid track-detail-grid">
-        <span>Track length</span><strong>{track.lengthKm.toFixed(3)} km</strong><SourceTag source={track.lengthSource === 'official' ? 'FIA' : 'SIM'} />
-        <span>Layout</span><strong>{layoutGeometryLabel(track)}</strong><SourceTag source={layoutSourceTag(track)} />
-        <span>Corners</span><strong>{track.corners?.length ?? 0}</strong><SourceTag source={track.corners ? layoutSourceTag(track) : 'UNAVAILABLE'} />
-        <span>Sector boundaries</span><strong>{track.sectorMarks.slice(1).map((mark) => `${Math.round(mark * 100)}%`).join(' / ')}</strong><SourceTag source={track.sectorMarksSource === 'official' ? 'FIA' : 'CAL'} />
-        <span>{overtakeSystem === 'active-aero' ? 'Straight Mode zones' : overtakeSystem === 'drs' ? 'DRS zones' : 'OTS allocation'}</span><strong>{overtakeSystem === 'ots' ? '200 seconds' : track.activeAeroUnavailable ? 'N/A' : track.aeroActivationZones?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : aeroSource} />
-        <span>{overtakeSystem === 'ots' ? 'Activation model' : 'Overtake detection lines'}</span><strong>{overtakeSystem === 'ots' ? 'Driver controlled' : track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : overtakeSource} />
-        <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
-        <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
-        <span><Thermometer size={13} /> Air temperature</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span><Thermometer size={13} /> Track temperature</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span><Droplets size={13} /> Rainfall</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span><Wind size={13} /> Wind</span><strong>{cleanEnvironmentValue(environment.windLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span>Humidity</span><strong>{cleanEnvironmentValue(environment.humidityLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span>Heat Index</span><strong>{snapshot.heatIndexC.toFixed(1)}°C</strong><SourceTag source="SIM" />
-        <span>Heat Hazard</span><strong>{snapshot.heatHazardDeclared ? `DECLARED / +${snapshot.heatHazardMassIncreaseKg}kg` : snapshot.heatHazardMassIncreaseKg > 0 ? `EVENT / +${snapshot.heatHazardMassIncreaseKg}kg` : 'NOT DECLARED'}</strong><SourceTag source="FIA" />
-        <span>Pressure</span><strong>{cleanEnvironmentValue(environment.pressureLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
-        <span>Surface water</span><strong>{wetness.toFixed(2)} mm</strong><SourceTag source="SIM" />
-        <span>Forecast</span><strong>{snapshot.weatherForecastLabel}</strong><SourceTag source="SIM" />
-        <span>Rain Hazard</span><strong>{snapshot.rainHazardDeclared ? 'DECLARED' : 'NOT DECLARED'}</strong><SourceTag source="SIM" />
-        <span>Grip declaration</span><strong>{snapshot.lowGripConditions ? 'LOW GRIP' : 'NORMAL GRIP'}</strong><SourceTag source="SIM" />
-        <span>{overtakeSystem === 'active-aero' ? 'Active aero' : overtakeSystem.toUpperCase()}</span><strong>{snapshot.lowGripConditions ? 'DISABLED' : snapshot.overtakeEnabled ? 'ENABLED' : 'CONTROLLED'}</strong><SourceTag source="FIA" />
-        {overtakeSystem === 'active-aero' ? <><span>Low-grip ERS curve</span><strong>{snapshot.lowGripConditions ? 'CONSERVATIVE EST.' : 'PUBLIC C5.2.8'}</strong><SourceTag source={snapshot.lowGripConditions ? 'UNAVAILABLE' : 'FIA'} /></> : null}
-      </div>
-    )
-  }
-
-  if (view === 'tyres') {
-    const stintChart =
-      isRaceStage &&
-      (() => {
-        const totalLaps = Math.max(snapshot.raceLaps, 1)
-
-        return (
-          <section aria-label="Tyre stint history" className="stint-chart">
-            <div className="stint-chart-head">
-              <span>DRIVER</span>
-              <span>STINTS / LAP {Math.min(snapshot.leaderLap, totalLaps)} OF {totalLaps}</span>
-              <span>STOPS</span>
-            </div>
-            <ol aria-label="Tyre stints by driver" tabIndex={0}>
-              {rows.map((row) => {
-                const stints = tireStintsFor(row.car)
-                const summary = stints
-                  .map(
-                    (stint) =>
-                      `${labels[stint.compound]} laps ${stint.fromLap} to ${stint.toLap}${stint.inProgress ? ' in progress' : ''}`,
-                  )
-                  .join(', ')
-
-                return (
-                  <li key={row.car.driverId}>
-                    <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
-                    <div
-                      aria-label={summary === '' ? 'No stint started' : summary}
-                      className="stint-bar"
-                      role="img"
-                    >
-                      {stints.map((stint) => (
-                        <span
-                          className={`tire-${stint.compound}${stint.inProgress ? ' stint-live' : ''}`}
-                          key={stint.fromLap}
-                          style={{ width: `${(stint.laps / totalLaps) * 100}%` }}
-                          title={`${labels[stint.compound]} L${stint.fromLap}-L${stint.toLap} (${stint.laps} ${stint.laps === 1 ? 'lap' : 'laps'})`}
-                        >
-                          {stint.laps / totalLaps >= 0.08 ? stint.laps : ''}
-                        </span>
-                      ))}
-                    </div>
-                    <span className="stint-stops">{row.car.pitStops}</span>
-                  </li>
-                )
-              })}
-            </ol>
-          </section>
-        )
-      })()
-
-    const tyreTable = (
-      <div className="center-table tyre-detail-table">
-        <div className="center-table-head"><span>DRIVER</span><span>COMPOUND</span><span>AGE</span><span>LIFE</span><span>PACE DELTA</span><span>TEMP</span><span>SETS</span><span>STOPS</span><span>SOURCE</span></div>
-        <ol aria-label="All drivers tyre information" tabIndex={0}>
-          {rows.map((row) => (
-            <li key={row.car.driverId}><div>
-              <strong style={{ color: row.car.teamColor }}>{row.car.code}</strong>
-              <span><i className={`broadcast-tire tire-${row.car.tire}`}>{row.car.tire}</i> {useF1TireNomination && (row.car.tire === 'S' || row.car.tire === 'M' || row.car.tire === 'H') ? `${labels[row.car.tire]} (${track.tireNomination?.[row.car.tire] ?? 'nomination pending'})` : labels[row.car.tire]}</span>
-              <span>{row.car.tireAgeLaps} L</span><span>{clamp(Math.round(row.tireLifePercent), 0, 100)}%</span>
-              <span>{row.tirePaceDeltaSeconds >= 0 ? '+' : ''}{row.tirePaceDeltaSeconds.toFixed(2)}s</span>
-              <span>{row.tireTemperatureC} C</span><span>{row.car.tireSetsRemaining[row.car.tire] ?? 0}</span><span>{row.car.pitStops}</span>
-              <SourceTag source={row.tireModelSource === 'openf1-calibrated' ? 'CAL' : row.tireModelSource === 'pirelli' ? 'PIR' : 'SIM'} />
-            </div></li>
-          ))}
-        </ol>
-      </div>
-    )
-
-    return stintChart ? (
-      <div className="tyre-detail-stack">
-        {stintChart}
-        {tyreTable}
-      </div>
-    ) : (
-      tyreTable
-    )
-  }
-
-  if (view === 'season') {
-    const { drivers: driverStandings, teams: teamStandings, rounds } = championshipStandings
-
-    if (driverStandings.length === 0) {
-      return (
-        <div className="empty-detail">
-          <Trophy size={22} />
-          <strong>No championship rounds recorded</strong>
-          <span>Standings appear after the first classified race or sprint.</span>
-        </div>
-      )
-    }
-
-    return (
-      <div className="season-standings">
-        <section>
-          <h3>DRIVERS / {rounds} ROUND{rounds === 1 ? '' : 'S'} / WINS / PTS</h3>
-          <ol aria-label="Driver championship standings" tabIndex={0}>
-            {driverStandings.map((row, index) => (
-              <li key={row.id}>
-                <span>{index + 1}</span>
-                <strong style={{ color: row.color }}>{row.label}</strong>
-                <small>{row.detail}</small>
-                <b title={`${row.wins} win${row.wins === 1 ? '' : 's'}`}>{row.wins}</b>
-                <em>{row.points}</em>
-              </li>
-            ))}
-          </ol>
-        </section>
-        <section>
-          <h3>TEAMS / WINS / PTS</h3>
-          <ol aria-label="Team championship standings" tabIndex={0}>
-            {teamStandings.map((row, index) => (
-              <li key={row.id}>
-                <span>{index + 1}</span>
-                <strong style={{ color: row.color }}>{row.label}</strong>
-                <small />
-                <b title={`${row.wins} win${row.wins === 1 ? '' : 's'}`}>{row.wins}</b>
-                <em>{row.points}</em>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </div>
-    )
-  }
-
-  if (view === 'messages') {
-    // One race-control feed: outstanding steward business first, then the
-    // message log. Alerts used to be a separate destination showing the same
-    // session in a second place.
-    const alerts = [
-      ...rows
-        .filter((row) => row.car.stewardStatus !== 'clear' || row.car.damage > 0.02)
-        .map((row) => ({ id: row.car.driverId, label: row.car.code, message: row.car.stewardNote ?? `Car damage ${Math.round(row.car.damage * 100)}%` })),
-      ...snapshot.events
-        .filter((event) => ['accident', 'incident', 'penalty', 'investigation', 'track-limit'].includes(event.kind))
-        .slice(0, 6)
-        .map((event) => ({
-          id: event.id,
-          label:
-            event.kind === 'accident'
-              ? 'ACC'
-              : event.kind === 'incident'
-                ? 'INC'
-                : event.timeLabel,
-          message:
-            event.kind === 'accident' || event.kind === 'incident'
-              ? `${event.timeLabel} ${event.message}`
-              : event.message,
-        })),
-    ].slice(0, 6)
-
-    return (
-      <div className="race-feed-view">
-        {alerts.length > 0 ? (
-          <ol aria-label="Active investigations" className="alert-list">
-            {alerts.map((alert) => <li key={alert.id}><AlertTriangle size={13} /><strong>{alert.label}</strong><span>{alert.message}</span></li>)}
-          </ol>
-        ) : null}
-        <ol aria-label="Race control messages" className="detail-message-list">
-          {raceControlLog.slice(0, 12).map((event) => (
-            <li key={event.id}><time>{event.timeLabel}</time><SourceTag source={event.source === 'OPENF1' ? 'OBS' : 'SIM'} /><span>{event.message}</span></li>
-          ))}
-        </ol>
-      </div>
-    )
-  }
-
-  if (view === 'drivers') {
-    return (
-      <div className="center-table driver-detail-table">
-        <div className="center-table-head"><span>NO / DRIVER</span><span>OVR</span><span>TEAM</span><span>GRID</span><span>POS</span><span>CHANGE</span><span>CAR DELTA</span><span>MODE</span><span>STATUS</span></div>
-        <ol aria-label="All driver information" tabIndex={0}>{rows.map((row) => (
-          <li key={row.car.driverId}><div>
-            <strong style={{ color: row.car.teamColor }}>#{row.car.carNumber} {row.car.code}</strong><b>{row.driverOverallAbility || '--'}</b><span>{row.car.teamName}</span>
-            <span>{row.car.gridPosition}</span><span>{row.displayPosition}</span><span>{row.car.gridPosition - row.displayPosition >= 0 ? '+' : ''}{row.car.gridPosition - row.displayPosition}</span>
-            <span title={row.performanceSource === 'openf1-calibrated' ? 'OpenF1 clean-lap calibration' : 'Configured model'}>{row.performancePaceDeltaSeconds === null ? '--' : `+${row.performancePaceDeltaSeconds.toFixed(3)}s`}</span><span>{row.car.racePaceMode}</span><span>{terminalLabel(row.car) ?? 'RUN'}</span>
-          </div></li>
-        ))}</ol>
-      </div>
-    )
-  }
-
   return (
     <div className="data-view">
       <div className="data-detail-grid">
@@ -884,7 +551,6 @@ function CenterView({
 
 export function BroadcastDashboard({
   cameraMode,
-  championshipStandings,
   dataControl,
   dataDetails,
   dataMode,
@@ -1056,7 +722,7 @@ export function BroadcastDashboard({
               aria-current={activeView === id ? 'page' : undefined}
               key={id}
               onClick={() => {
-                setActiveView(id)
+                setActiveView((current) => (current === id ? 'map' : id))
               }}
               title={label}
               type="button"
@@ -1107,31 +773,10 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-live-timing">
             <PanelHeader
               action={<button aria-label={showLiveTiming ? 'Hide live timing' : 'Show live timing'} className="panel-close" onClick={() => setShowLiveTiming((value) => !value)} title={showLiveTiming ? 'Hide live timing' : 'Show live timing'} type="button">{showLiveTiming ? <X size={13} /> : <Timer size={13} />}</button>}
-              eyebrow={
-                activeView === 'telemetry' ||
-                activeView === 'tyres' ||
-                activeView === 'drivers'
-                  ? `ALL ${timingRows.length}`
-                  : undefined
-              }
               title={dashboardViews.find((item) => item.id === activeView)?.label ?? 'Timing'}
             />
             {showLiveTiming ? (
-              <CenterView
-                championshipStandings={championshipStandings}
-                dataControl={dataControl}
-                dataDetails={dataDetails}
-                environment={environment}
-                isRaceStage={isRaceStage}
-                labels={tireLabels}
-                overtakeSystem={overtakeSystem}
-                raceControlLog={raceControlLog}
-                rows={timingRows}
-                snapshot={snapshot}
-                track={track}
-                useF1TireNomination={seriesId === 'f1-custom'}
-                view={activeView}
-              />
+              <CenterView dataControl={dataControl} dataDetails={dataDetails} />
             ) : <button className="restore-panel" onClick={() => setShowLiveTiming(true)} type="button"><Timer size={14} /> Restore live timing</button>}
           </section>
           )}

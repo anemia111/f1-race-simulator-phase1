@@ -117,8 +117,6 @@ import { buildOpenF1TimelineFrame } from './services/openF1Timeline'
 import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
-  buildSeasonStandings,
-  completedSeasonEventCount,
   recordSeasonRound,
   recordQualifyingPoints,
   seasonSessionId,
@@ -3490,24 +3488,11 @@ export default function App() {
   )
   const legacyLayoutRequested =
     new URLSearchParams(window.location.search).get('layout') === 'legacy'
-  const championshipStandings = useMemo(
-    () => ({
-      ...buildSeasonStandings({
-        season,
-        drivers: raceConfig.drivers,
-        teams: raceConfig.teams,
-      }),
-      rounds: completedSeasonEventCount(season.completedRounds),
-    }),
-    [season, raceConfig.drivers, raceConfig.teams],
-  )
-
   if (!legacyLayoutRequested) {
     return (
       <div className="race-shell broadcast-race-shell">
         <BroadcastDashboard
           cameraMode={cameraMode}
-          championshipStandings={championshipStandings}
           dataControl={broadcastDataControl}
           dataDetails={broadcastDataDetails}
           dataMode={dataMode}

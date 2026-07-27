@@ -5842,7 +5842,10 @@ export function advanceRace(
         const excursionDetail = hashChance(
           `${config.seed}:track-excursion:${driver.id}:${lap}`,
         )
-        const wentFullyOffTrack = excursionDetail > 0.93
+        // Running wide is common; actually leaving the circuit and having to
+        // wait for a safe gap is not. Only a small share of track-limit
+        // infringements escalates that far, or the race reads as a crash-fest.
+        const wentFullyOffTrack = excursionDetail > 0.985
         const gainedLastingAdvantage =
           !wentFullyOffTrack && retainedAdvantageSeconds > 0.15
 

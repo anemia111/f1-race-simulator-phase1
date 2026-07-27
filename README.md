@@ -56,21 +56,24 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   progressive mini-sectors as a bar under its own sector time, plus speed and
   battery. The whole 24-part lap is read where the field order is read.
 - Two columns: the leaderboard on the left and the circuit map filling the
-  right. Both stay deliberately dense; every other destination is kept plain.
-  The sidebar swaps the right-hand area between the map and one detail
-  destination at a time.
-- Duplicated destinations and panels were merged or dropped rather than shown
-  twice: the separate Timing view is gone now that the leaderboard carries the
-  mini-sectors, conditions live with the circuit in Track, steward alerts sit
-  at the top of the single race-control Messages feed, and the old right-hand
-  rail (race-control status, conditions, message log, fastest lap) is removed.
+  right. Both stay deliberately dense. The sidebar is down to Data and
+  Settings; Data toggles the right-hand area between the circuit map and the
+  source ledger, and everything else the sidebar used to reach was either
+  duplicated by the leaderboard or removed.
+- Duplicated destinations and panels were dropped rather than shown twice: the
+  Timing, Telemetry, Track, Tyres, Messages, Drivers and Season destinations
+  are gone, along with the old right-hand rail (race-control status,
+  conditions, message log, fastest lap).
 - The leaderboard also carries completed pit stops and the compounds each car
   has used, so the strategy picture reads from the timing tower.
-- Telemetry, source chips, classification, analysis, and manual strategy
-  controls remain available from the sidebar.
+- Source chips, classification, analysis, and manual strategy controls remain
+  available from the footer controls and the Data destination.
 - Independent S1/S2/S3 flag states for local yellow, double yellow, VSC, SC,
   and red phases, synchronized between pace control, OpenF1 race control,
   dashboard status, and the 3D circuit trace.
+- Running wide is common, but only a small share of track-limit infringements
+  escalates into leaving the circuit and waiting for a safe gap, so a race
+  reads as racing rather than a run of excursions.
 - Minor contact remains a sector-local yellow. VSC, Safety Car, and red-flag
   escalation requires a stopped or obstructing car, and cars in clear sectors
   retain green-flag pace. A collision both cars drive away from is worked under
