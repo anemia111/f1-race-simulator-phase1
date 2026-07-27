@@ -192,10 +192,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const sectorFlagLabels = await page.locator('.sector-flag').allInnerTexts()
   const sectorFlagAriaLabel = await page.locator('.sector-flag-strip').getAttribute('aria-label')
 
-  await page.locator('.broadcast-sidebar button[title="Timing"]').click()
-  await page.waitForSelector('.timing-detail-list')
-  const timingDetailRows = await page.locator('.timing-detail-list > [role="listitem"]').count()
-  const timingDetailScroll = await inspectScroll(page.locator('.timing-detail-list'))
+  // Mini sectors now live on the leaderboard itself, so the timing tower is
+  // read where the field order is read.
+  await page.waitForSelector('.leaderboard-rows .broadcast-mini-sectors')
   const miniSectors = await page.locator('.broadcast-mini-sectors span').count()
   const initialMiniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
@@ -400,18 +399,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     personalBest: cells.filter((cell) => cell.classList.contains('sector-status-personal-best')).length,
     slower: cells.filter((cell) => cell.classList.contains('sector-status-slower')).length,
   }))
-  await page.locator('.broadcast-sidebar button[title="Timing"]').click()
   const runningMiniSectorStates = await page.locator('.broadcast-mini-sectors span').evaluateAll((bars) => ({
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
     dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
   }))
-  const timingLapRows = await page.locator('.timing-detail-list > [role="listitem"]').evaluateAll((rows) =>
-    rows.map((row) => ({
-      label: row.querySelector('.timing-lap-source > small')?.textContent ?? '',
-      status: row.getAttribute('data-car-status') ?? '',
-    })),
-  )
-  const timingLapLabels = timingLapRows.map((row) => row.label)
   const speed60Selected = await page.getByRole('button', { name: '60x' }).getAttribute('aria-pressed')
   const pauseButton = page.getByLabel('Pause simulation')
   await pauseButton.click()
@@ -566,10 +557,6 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     telemetryRows,
     telemetryScroll,
     tireLifeValues,
-    timingDetailRows,
-    timingDetailScroll,
-    timingLapLabels,
-    timingLapRows,
     typography,
     runningMiniSectorStates,
     tokenInputVisible,
@@ -708,12 +695,6 @@ try {
     if (result.sectorFlagLabels.length !== 3 || result.sectorFlagLabels.some((label, index) => !label.includes(`S${index + 1}`) || !validSectorFlag.test(label))) failures.push(`sector flag strip is incomplete: ${result.sectorFlagLabels.join(', ')}`)
     if (!result.sectorFlagAriaLabel?.includes('Sector 1') || !result.sectorFlagAriaLabel.includes('Sector 3')) failures.push('sector flag strip needs an accessible per-sector summary')
     if (result.runningMiniSectorStates.colored === 0 || result.runningMiniSectorStates.dim === 0) failures.push('running mini sectors need completed and pending states')
-    const invalidTimingLapRows = result.timingLapRows.filter(
-      (row) =>
-        !/^L\d+$/u.test(row.label) &&
-        !['retired', 'disqualified', 'dns'].includes(row.status),
-    )
-    if (invalidTimingLapRows.length > 0) failures.push(`active timing rows need measured lap labels: ${JSON.stringify(invalidTimingLapRows)}`)
     if (result.driverAbilityMaxes.length !== 12 || result.driverAbilityValues.length !== 12 || result.driverAbilityMaxes.some((value) => value !== '1')) failures.push('driver editor must expose 12 grouped sliders with the 100-point ceiling')
     if (!result.driverAbilityControlChanged) failures.push('grouped driver ability control did not update the calculated overall rating')
     if (result.driverAbilityValues.some((value) => Number(value) > 100)) failures.push('CSV-configured driver abilities exceed the 100-point scale')
@@ -727,7 +708,6 @@ try {
       if (!result.telemetryHeader.includes(label)) failures.push(`telemetry header missing ${label}`)
     }
     for (const [name, count] of [
-      ['timing', result.timingDetailRows],
       ['telemetry', result.telemetryRows],
       ['tyres', result.tyreRows],
       ['drivers', result.driverRows],
@@ -736,10 +716,8 @@ try {
     }
     if (result.duplicateGapPanels !== 0) failures.push(`removed duplicate gap panels still render: ${result.duplicateGapPanels}`)
     if (result.reclaimedSideSpace.leaderboardRatio < 0.72 || result.reclaimedSideSpace.messagesRatio < 0.35) failures.push(`removed gap-panel space was not reclaimed: ${JSON.stringify(result.reclaimedSideSpace)}`)
-    if (!result.liveTimingTitle.includes(`ALL ${result.leaderboardRows}`)) failures.push(`live timing field label is stale: ${result.liveTimingTitle}`)
     for (const [name, metrics] of [
       ['leaderboard', result.leaderboardScroll],
-      ['timing', result.timingDetailScroll],
       ['telemetry', result.telemetryScroll],
       ['tyres', result.tyreScroll],
       ['drivers', result.driverScroll],

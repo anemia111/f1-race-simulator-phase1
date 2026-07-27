@@ -2922,6 +2922,37 @@
 .timing-detail-sector small { color: var(--broadcast-muted); }
 .timing-lap-source { display: grid; grid-template-columns: 16px 24px; align-items: center; gap: 2px; color: var(--broadcast-muted); }
 .broadcast-mini-sectors { display: grid; grid-template-columns: repeat(8, minmax(2px, 1fr)); gap: 1px; height: 7px; min-width: 0; }
+
+/*
+ * On the leaderboard each sector cell carries its own eight mini sectors as a
+ * thin bar under the sector time, so the whole 24-part lap reads on the timing
+ * tower without giving a row a second line.
+ */
+.leaderboard-rows .sector-value {
+  display: grid;
+  grid-template-rows: auto 3px;
+  gap: 1px;
+  align-content: center;
+  min-width: 0;
+}
+
+.leaderboard-rows .sector-value > b { font-weight: inherit; }
+
+/* Steward business sits above the message log in one race-control feed. */
+.race-feed-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.race-feed-view .alert-list { border-bottom: 1px solid var(--broadcast-border-soft); }
+
+.leaderboard-rows .broadcast-mini-sectors {
+  height: 3px;
+  gap: 0.5px;
+  grid-template-columns: repeat(8, minmax(1px, 1fr));
+}
 .broadcast-mini-sectors span { background: #26313b; }
 .broadcast-mini-sectors .mini-yellow { background: #ffd21f; }
 .broadcast-mini-sectors .mini-green { background: #35d66f; }

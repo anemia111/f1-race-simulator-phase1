@@ -14,7 +14,6 @@ import {
   Radio,
   Route,
   Settings2,
-  ShieldAlert,
   StepForward,
   Thermometer,
   Timer,
@@ -45,13 +44,10 @@ import type { SeriesId } from '../series/types'
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
 type DashboardView =
-  | 'timing'
   | 'telemetry'
   | 'track'
-  | 'weather'
   | 'tyres'
   | 'messages'
-  | 'alerts'
   | 'drivers'
   | 'season'
   | 'data'
@@ -201,13 +197,10 @@ const dashboardViews: Array<{
   id: DashboardView
   label: string
 }> = [
-  { Icon: Timer, id: 'timing', label: 'Timing' },
   { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
   { Icon: Route, id: 'track', label: 'Track' },
-  { Icon: CloudRain, id: 'weather', label: 'Weather' },
   { Icon: CircleGauge, id: 'tyres', label: 'Tyres' },
   { Icon: MessageSquare, id: 'messages', label: 'Messages' },
-  { Icon: ShieldAlert, id: 'alerts', label: 'Alerts' },
   { Icon: Users, id: 'drivers', label: 'Drivers' },
   { Icon: Trophy, id: 'season', label: 'Season' },
   { Icon: Database, id: 'data', label: 'Data' },
@@ -529,9 +522,13 @@ function LeftLeaderboard({
                   <span
                     className={`sector-value sector-status-${row.sectorStatuses[index]}`}
                     key={index}
-                    title={`S${index + 1}: ${sectorStatusLabels[row.sectorStatuses[index]]}`}
+                    title={`S${index + 1}: ${sectorStatusLabels[row.sectorStatuses[index]]}${row.sectorLapNumber === null ? '' : ` (lap ${row.sectorLapNumber})`}`}
                   >
-                    {formatSectorTime(sector)}
+                    <b>{formatSectorTime(sector)}</b>
+                    <MiniSectorStrip
+                      sectorIndex={index}
+                      states={row.microSectors[index]}
+                    />
                   </span>
                 ))}
                 <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
@@ -598,47 +595,6 @@ function TelemetryView({ rows }: { rows: BroadcastTimingRow[] }) {
   )
 }
 
-function TimingDetail({ rows }: { rows: BroadcastTimingRow[] }) {
-  return (
-    <div
-      aria-label="All drivers sector timing"
-      className="timing-detail-list"
-      role="list"
-      tabIndex={0}
-    >
-      {rows.map((row) => (
-        <div
-          className={row.car.blueFlag ? 'blue-flag-active' : undefined}
-          data-car-status={row.car.status}
-          key={row.car.driverId}
-          role="listitem"
-        >
-          <strong style={{ color: row.car.teamColor }}>{row.displayPosition} {row.car.code}</strong>
-          {[0, 1, 2].map((sectorIndex) => (
-            <span className="timing-detail-sector" key={sectorIndex}>
-              <small>S{sectorIndex + 1}</small>
-              <b
-                className={`sector-status-${row.sectorStatuses[sectorIndex]}`}
-                title={sectorStatusLabels[row.sectorStatuses[sectorIndex]]}
-              >
-                {formatSectorTime(row.sectors[sectorIndex])}
-              </b>
-              <MiniSectorStrip
-                sectorIndex={sectorIndex}
-                states={row.microSectors[sectorIndex]}
-              />
-            </span>
-          ))}
-          <span className="timing-lap-source">
-            <small>{row.sectorLapNumber === null ? 'L--' : `L${row.sectorLapNumber}`}</small>
-            <SourceTag source={row.source === 'openf1' ? 'OBS' : 'SIM'} />
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function CenterView({
   championshipStandings,
   dataControl,
@@ -668,7 +624,6 @@ function CenterView({
   useF1TireNomination: boolean
   view: DashboardView
 }) {
-  if (view === 'timing') return <TimingDetail rows={rows} />
   if (view === 'telemetry') return <TelemetryView rows={rows} />
 
   if (view === 'track') {
@@ -684,6 +639,8 @@ function CenterView({
     )
       ? 'FIA'
       : 'CAL'
+    const wetness =
+      snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
 
     return (
       <div className="detail-grid track-detail-grid">
@@ -695,15 +652,6 @@ function CenterView({
         <span>{overtakeSystem === 'ots' ? 'Activation model' : 'Overtake detection lines'}</span><strong>{overtakeSystem === 'ots' ? 'Driver controlled' : track.overtakeControlLines?.length ?? 0}</strong><SourceTag source={overtakeSystem === 'ots' ? 'FIA' : overtakeSource} />
         <span>Pit speed limit</span><strong>{track.pitLane?.speedLimitKph ?? 80} km/h</strong><SourceTag source={track.pitLane?.speedLimitSource === 'official' ? 'FIA' : 'SIM'} />
         <span>Grip</span><strong>{Math.round(snapshot.trackGrip * 100)}%</strong><SourceTag source="SIM" />
-      </div>
-    )
-  }
-
-  if (view === 'weather') {
-    const wetness = snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3
-
-    return (
-      <div className="detail-grid weather-detail-grid">
         <span><Thermometer size={13} /> Air temperature</span><strong>{cleanEnvironmentValue(environment.airLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
         <span><Thermometer size={13} /> Track temperature</span><strong>{cleanEnvironmentValue(environment.trackLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
         <span><Droplets size={13} /> Rainfall</span><strong>{cleanEnvironmentValue(environment.rainLabel)}</strong><SourceTag source={environment.source.startsWith('OpenF1') ? 'OBS' : 'SIM'} />
@@ -849,23 +797,16 @@ function CenterView({
   }
 
   if (view === 'messages') {
-    return (
-      <ol className="detail-message-list">
-        {raceControlLog.slice(0, 12).map((event) => (
-          <li key={event.id}><time>{event.timeLabel}</time><SourceTag source={event.source === 'OPENF1' ? 'OBS' : 'SIM'} /><span>{event.message}</span></li>
-        ))}
-      </ol>
-    )
-  }
-
-  if (view === 'alerts') {
+    // One race-control feed: outstanding steward business first, then the
+    // message log. Alerts used to be a separate destination showing the same
+    // session in a second place.
     const alerts = [
       ...rows
         .filter((row) => row.car.stewardStatus !== 'clear' || row.car.damage > 0.02)
         .map((row) => ({ id: row.car.driverId, label: row.car.code, message: row.car.stewardNote ?? `Car damage ${Math.round(row.car.damage * 100)}%` })),
       ...snapshot.events
         .filter((event) => ['accident', 'incident', 'penalty', 'investigation', 'track-limit'].includes(event.kind))
-        .slice(0, 8)
+        .slice(0, 6)
         .map((event) => ({
           id: event.id,
           label:
@@ -879,13 +820,22 @@ function CenterView({
               ? `${event.timeLabel} ${event.message}`
               : event.message,
         })),
-    ]
+    ].slice(0, 6)
 
-    return alerts.length > 0 ? (
-      <ol className="alert-list">
-        {alerts.slice(0, 12).map((alert) => <li key={alert.id}><AlertTriangle size={13} /><strong>{alert.label}</strong><span>{alert.message}</span></li>)}
-      </ol>
-    ) : <div className="empty-detail"><ShieldAlert size={22} /><strong>No active investigations</strong><span>Race control is monitoring the session.</span></div>
+    return (
+      <div className="race-feed-view">
+        {alerts.length > 0 ? (
+          <ol aria-label="Active investigations" className="alert-list">
+            {alerts.map((alert) => <li key={alert.id}><AlertTriangle size={13} /><strong>{alert.label}</strong><span>{alert.message}</span></li>)}
+          </ol>
+        ) : null}
+        <ol aria-label="Race control messages" className="detail-message-list">
+          {raceControlLog.slice(0, 12).map((event) => (
+            <li key={event.id}><time>{event.timeLabel}</time><SourceTag source={event.source === 'OPENF1' ? 'OBS' : 'SIM'} /><span>{event.message}</span></li>
+          ))}
+        </ol>
+      </div>
+    )
   }
 
   if (view === 'drivers') {
@@ -955,7 +905,7 @@ export function BroadcastDashboard({
   trackScene,
   weekendStages,
 }: BroadcastDashboardProps) {
-  const [activeView, setActiveView] = useState<DashboardView>('timing')
+  const [activeView, setActiveView] = useState<DashboardView>('telemetry')
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
   const [feedMode, setFeedMode] = useState<'control' | 'events'>('control')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
@@ -1101,7 +1051,6 @@ export function BroadcastDashboard({
               key={id}
               onClick={() => {
                 setActiveView(id)
-                if (id === 'timing') setShowLiveTiming(true)
                 if (id === 'messages') setShowRaceFeed(true)
               }}
               title={label}
@@ -1135,7 +1084,13 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-live-timing">
             <PanelHeader
               action={<button aria-label={showLiveTiming ? 'Hide live timing' : 'Show live timing'} className="panel-close" onClick={() => setShowLiveTiming((value) => !value)} title={showLiveTiming ? 'Hide live timing' : 'Show live timing'} type="button">{showLiveTiming ? <X size={13} /> : <Timer size={13} />}</button>}
-              eyebrow={activeView === 'timing' ? `ALL ${timingRows.length}` : activeView.toUpperCase()}
+              eyebrow={
+                activeView === 'telemetry' ||
+                activeView === 'tyres' ||
+                activeView === 'drivers'
+                  ? `ALL ${timingRows.length}`
+                  : undefined
+              }
               title={dashboardViews.find((item) => item.id === activeView)?.label ?? 'Timing'}
             />
             {showLiveTiming ? (
