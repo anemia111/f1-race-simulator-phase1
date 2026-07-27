@@ -337,19 +337,26 @@ describe('timed session plan', () => {
     expect(maximumAttackSpeedKph).toBeGreaterThan(maximumOutLapSpeedKph)
   })
 
-  it('measures a live Suzuka qualifying attack near its calibrated reference', () => {
-    const track = tracks.find(
-      (candidate) => candidate.id === 'suzuka-approx',
-    )!
-    const referenceSeconds =
-      track.paceReference2026!.calibration.qualifying
-        .selectedReferenceSeconds
-    const measured = measureLiveF1QualifyingPace(track)
+  it(
+    'measures a live Suzuka qualifying attack near its calibrated reference',
+    () => {
+      const track = tracks.find(
+        (candidate) => candidate.id === 'suzuka-approx',
+      )!
+      const referenceSeconds =
+        track.paceReference2026!.calibration.qualifying
+          .selectedReferenceSeconds
+      const measured = measureLiveF1QualifyingPace(track)
 
-    expect(Number.isFinite(measured.top3MedianSeconds)).toBe(true)
-    expect(measured.top3MedianSeconds).toBeGreaterThan(referenceSeconds - 3)
-    expect(measured.top3MedianSeconds).toBeLessThan(referenceSeconds + 3)
-  })
+      expect(Number.isFinite(measured.top3MedianSeconds)).toBe(true)
+      expect(measured.top3MedianSeconds).toBeGreaterThan(referenceSeconds - 3)
+      expect(measured.top3MedianSeconds).toBeLessThan(referenceSeconds + 3)
+    },
+    // A full Q1 through the production engine takes seconds, not milliseconds,
+    // and runs alongside a build during a publish. Its siblings already carry
+    // their own budget; the default 5s left this one failing on load alone.
+    60_000,
+  )
 
   it(
     'keeps every F1 circuit near its calibrated qualifying pace at 60x',
