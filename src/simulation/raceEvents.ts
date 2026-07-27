@@ -33,10 +33,11 @@ export const phaseThreeTuning = {
   // Track limits: per-lap warning chance scaled by driver consistency.
   trackLimitBaseChance: 0.026,
   trackLimitConsistencyWeight: 0.075,
-  // Flag pace multipliers.
-  singleYellowMarshallingPace: 0.88,
-  /** Double yellow requires a significant reduction and readiness to stop. */
-  doubleYellowMarshallingPace: 0.68,
+  // Flag pace multipliers. A single yellow is a meaningful lift, roughly
+  // twenty km/h off racing speed through the marshalling zone, not a crawl.
+  singleYellowMarshallingPace: 0.9,
+  /** Double yellow requires a further reduction and readiness to stop. */
+  doubleYellowMarshallingPace: 0.8,
   /** Small ordering gap while overtaking is prohibited in a local-yellow zone. */
   localYellowMinimumGapSeconds: 0.08,
   /** FIA minimum-time reference; drivers target slightly below this pace. */

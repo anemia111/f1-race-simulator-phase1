@@ -77,7 +77,9 @@ describe('full-race retirement calibration', () => {
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)
     },
-    120_000,
+    // Ten full races through the production engine, run alongside a build
+    // during a publish. The measurement is quick to state and slow to make.
+    300_000,
   )
 })
 

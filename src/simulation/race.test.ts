@@ -874,6 +874,8 @@ describe('physical running order', () => {
         speedKph: 18,
       }),
     ).toBe(true)
+    // Any accident damage makes a car passable, so the field is never queued
+    // behind one car's incident.
     expect(
       carDefinesNeutralisationQueueOrder({
         ...car,
@@ -881,7 +883,15 @@ describe('physical running order', () => {
         speedKph: 18,
         throttlePercent: 0,
       }),
-    ).toBe(true)
+    ).toBe(false)
+    expect(
+      carDefinesNeutralisationQueueOrder({
+        ...car,
+        damage: 0.05,
+        speedKph: 210,
+        throttlePercent: 90,
+      }),
+    ).toBe(false)
     expect(
       carDefinesNeutralisationQueueOrder({
         ...car,

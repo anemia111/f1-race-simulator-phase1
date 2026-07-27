@@ -1495,8 +1495,11 @@ export function carDefinesNeutralisationQueueOrder(car: CarSnapshot): boolean {
   const recoveringFromIncident =
     car.battleDeltaSecondsRemaining < -0.01 &&
     (car.battlePhase === 'resolved' || car.damage > 0)
-  const clearlyDisabled =
-    car.damage >= 0.6 && car.speedKph < 35 && car.throttlePercent < 10
+  // Any car carrying accident damage is an obstruction to be driven around,
+  // never a queue reference. Chaining the field behind a damaged car holds up
+  // the whole race for one car's incident, so a car that has been in an
+  // accident is always passable.
+  const clearlyDisabled = car.damage > 0
 
   return !recoveringFromIncident && !clearlyDisabled
 }

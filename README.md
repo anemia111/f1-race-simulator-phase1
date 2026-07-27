@@ -74,6 +74,18 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - Running wide is common, but only a small share of track-limit infringements
   escalates into leaving the circuit and waiting for a safe gap, so a race
   reads as racing rather than a run of excursions.
+- A single yellow lifts the field about twenty km/h through the marshalling
+  zone rather than reducing it to a crawl; a double yellow slows it further.
+  Any car carrying accident damage stops acting as the queue reference, so the
+  field drives around it instead of the whole train bunching up behind one
+  car's incident.
+- A car that has gone off rejoins as soon as nothing is within three seconds
+  behind it, and in any case within five seconds of the accident, so an
+  excursion costs time rather than the race. On the opening lap the field is
+  still one bunch, so a car that goes off there waits for the whole pack to go
+  by and rejoins at the back instead. Cars caught in the same accident never
+  count as traffic for each other, and a crashed car that has dropped out of
+  the pack is not part of the pack to wait for.
 - Minor contact remains a sector-local yellow. VSC, Safety Car, and red-flag
   escalation requires a stopped or obstructing car, and cars in clear sectors
   retain green-flag pace. A collision both cars drive away from is worked under
