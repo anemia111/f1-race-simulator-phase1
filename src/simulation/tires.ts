@@ -55,9 +55,9 @@ export type ObservedTireCalibration = {
 }
 
 export const tireCompounds: Record<TireCompound, TireCompoundSpec> = {
-  S: { offsetSeconds: -0.9, wearPerLapSeconds: 0.11, cliffLaps: 12, cliffPerLapSeconds: 0.44 },
+  S: { offsetSeconds: -0.7, wearPerLapSeconds: 0.11, cliffLaps: 12, cliffPerLapSeconds: 0.44 },
   M: { offsetSeconds: 0, wearPerLapSeconds: 0.064, cliffLaps: 21, cliffPerLapSeconds: 0.34 },
-  H: { offsetSeconds: 0.62, wearPerLapSeconds: 0.039, cliffLaps: 34, cliffPerLapSeconds: 0.27 },
+  H: { offsetSeconds: 0.7, wearPerLapSeconds: 0.039, cliffLaps: 34, cliffPerLapSeconds: 0.27 },
   I: { offsetSeconds: 1.25, wearPerLapSeconds: 0.074, cliffLaps: 22, cliffPerLapSeconds: 0.33 },
   W: { offsetSeconds: 3.05, wearPerLapSeconds: 0.052, cliffLaps: 30, cliffPerLapSeconds: 0.26 },
 }
@@ -66,12 +66,20 @@ export const SLICK_WATER_MAX_MM = 0.8
 export const INTERMEDIATE_WATER_MAX_MM = 3.4
 export const WET_WATER_MIN_MM = 3.5
 
+/**
+ * Adjacent compounds are set about seven tenths apart. Pirelli widened the
+ * 2026 range deliberately, targeting roughly seven to eight tenths of a second
+ * per step in qualifying rather than the few tenths the earlier range gave:
+ * https://scuderiafans.com/f1-2026-tyres-pirelli-targets-bigger-compound-gaps-to-reshape-race-strategy/
+ * C3 stays the zero reference and the per-step wear and cliff figures are
+ * unchanged, so only the pace separation widens.
+ */
 export const dryCompoundFamilies: Record<DryCompoundFamily, TireCompoundSpec> = {
-  C1: { offsetSeconds: 0.95, wearPerLapSeconds: 0.032, cliffLaps: 38, cliffPerLapSeconds: 0.24 },
-  C2: { offsetSeconds: 0.48, wearPerLapSeconds: 0.044, cliffLaps: 31, cliffPerLapSeconds: 0.28 },
+  C1: { offsetSeconds: 1.4, wearPerLapSeconds: 0.032, cliffLaps: 38, cliffPerLapSeconds: 0.24 },
+  C2: { offsetSeconds: 0.7, wearPerLapSeconds: 0.044, cliffLaps: 31, cliffPerLapSeconds: 0.28 },
   C3: { offsetSeconds: 0, wearPerLapSeconds: 0.062, cliffLaps: 24, cliffPerLapSeconds: 0.33 },
-  C4: { offsetSeconds: -0.48, wearPerLapSeconds: 0.086, cliffLaps: 17, cliffPerLapSeconds: 0.39 },
-  C5: { offsetSeconds: -0.92, wearPerLapSeconds: 0.115, cliffLaps: 12, cliffPerLapSeconds: 0.46 },
+  C4: { offsetSeconds: -0.7, wearPerLapSeconds: 0.086, cliffLaps: 17, cliffPerLapSeconds: 0.39 },
+  C5: { offsetSeconds: -1.4, wearPerLapSeconds: 0.115, cliffLaps: 12, cliffPerLapSeconds: 0.46 },
 }
 
 function specFor(

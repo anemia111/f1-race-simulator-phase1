@@ -20,7 +20,6 @@ import {
   START_LIGHT_COUNT,
   startSignalStateFor,
 } from '../domain/startSignal'
-import type { SeasonStandingRow } from '../simulation/season'
 import type {
   CameraMode,
   CarSnapshot,
@@ -36,11 +35,6 @@ type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
 type DashboardView = 'map' | 'data'
 
-export type ChampionshipStandings = {
-  drivers: SeasonStandingRow[]
-  teams: SeasonStandingRow[]
-  rounds: number
-}
 
 export type BroadcastTimingRow = {
   aeroOvertakeLabel: string
