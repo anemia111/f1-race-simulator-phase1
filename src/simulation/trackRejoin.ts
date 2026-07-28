@@ -3,7 +3,6 @@ import { incidentTrackStateForCar } from './incidentTraffic'
 
 // These are simulation safety margins, not fixed FIA timing thresholds. The
 // sporting rule is that a driver may rejoin only when it is safe to do so.
-export const REJOIN_MIN_AHEAD_GAP_SECONDS = 1.5
 export const REJOIN_MIN_BEHIND_GAP_SECONDS = 3
 /**
  * A car never sits beside the circuit longer than this. Recovering from an
@@ -15,7 +14,6 @@ export const REJOIN_MAX_WAIT_SECONDS = 5
 export type TrackRejoinAssessment = {
   nearestAheadGapSeconds: number | null
   nearestBehindGapSeconds: number | null
-  safe: boolean
 }
 
 function signedTrackDistance(from: number, to: number) {
@@ -69,15 +67,7 @@ export function assessTrackRejoin(
     }
   }
 
-  return {
-    nearestAheadGapSeconds,
-    nearestBehindGapSeconds,
-    safe:
-      (nearestAheadGapSeconds === null ||
-        nearestAheadGapSeconds >= REJOIN_MIN_AHEAD_GAP_SECONDS) &&
-      (nearestBehindGapSeconds === null ||
-        nearestBehindGapSeconds >= REJOIN_MIN_BEHIND_GAP_SECONDS),
-  }
+  return { nearestAheadGapSeconds, nearestBehindGapSeconds }
 }
 
 /**

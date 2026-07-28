@@ -10,8 +10,8 @@ Automated verification: `npm run playtest`
 
 - No viewport overflow or panel overlap at 1440x900 and 1280x720.
 - All core controls, tabs, close/restore actions, driver selection, playback controls, and secondary panels work.
-- The redundant Overview destination is absent; Timing is the initial active view and renders all 22 drivers.
-- Leaderboard and Timing lists both expose working vertical scroll ranges at 1280x720.
+- The sidebar is Data and Settings only; the circuit map is the initial right-hand view and the leaderboard renders the whole field.
+- The leaderboard exposes a working vertical scroll range at 1280x720.
 - The WebGL circuit map renders nonblank and remains interactive.
 - The former lap comparison, duplicate live-sector, fuel-load, and next-events panels are absent; the map now uses the released center-column space.
 
@@ -30,7 +30,7 @@ Automated verification: `npm run playtest`
 - Live timing, telemetry, tires, weather, messages, track data, and reliability views use the same panel system.
 - Compact desktop rendering has no clipped button labels.
 - The supplied reference and current implementation were reviewed together. The information hierarchy, dense timing treatment, thin circuit line, restrained borders, and persistent race-control rail remain aligned.
-- The supplied Overview-button crop and the latest compact prototype capture were reviewed together; removing the duplicate destination leaves the sidebar balanced and keeps Timing one click from every other data view.
+- Duplicated destinations were removed rather than shown twice; the leaderboard carries the timing detail and the map owns the right-hand column.
 
 ## P3 - Accepted
 

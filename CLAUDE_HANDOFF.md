@@ -162,23 +162,24 @@ driving game.
 - Scene text uses canvas sprites rather than font geometry. Overview mode uses
   reduced vehicle detail for unselected cars, while kerb/runoff, grid, pit-box,
   and marshal geometry is instanced to reduce draw calls.
-- Sector boards, live timing, OpenF1, race control, classification, analysis,
-  and setup start closed.
-- The map overlays a five-column start gantry during the grid, sequential red
-  light, and lights-out phases. Safety Car rolling starts suppress it.
-- Timing includes lap/gap/interval, tire/age, sectors, progressive mini-sectors,
-  battery, speed, throttle, brake, RPM, gear, active aero/Overtake, temperature,
-  and source labels. Purple is session best, green personal best, yellow slower.
+- The workspace is two columns: the leaderboard on the left, the circuit map
+  filling the right. The sidebar holds only Data and Settings; Data toggles the
+  right-hand area between the map and the source ledger.
+- The leaderboard is the timing tower: position, tyre and life, gap/interval,
+  last and best lap, the three measured sector times each with its own eight
+  mini-sectors as a bar beneath it, completed stops, compounds used, speed and
+  battery. Purple is session best, green personal best, yellow slower.
 - Mini-sector states use distinct patterns as well as colors and expose an
   accessible per-sector summary. Forced-colors mode remains legible.
-- The race-control panel exposes S1/S2/S3 status independently, and active
-  local flags thicken and relabel the affected 3D sector trace.
-- PC timing rows, headings, controls, conditions, messages, source tags, and
-  map labels use a larger readability baseline. At 1280x720 the full field
-  remains accessible by scrollbar without clipping SPD or BAT columns.
-- The duplicate `LIVE GAP TO LEADER` and lower `GAP TO LEADER` panels were
-  removed. Their space now belongs to the full-field leaderboard and the
-  scrollable race-control message history.
+- The map overlays a five-column start gantry during the grid, sequential red
+  light, and lights-out phases. Safety Car rolling starts suppress it.
+- Active local flags thicken and relabel the affected 3D sector trace, and the
+  map header carries the current flag state.
+- The separate Timing, Telemetry, Track, Tyres, Messages, Drivers and Season
+  destinations, the right-hand rail (race control, conditions, message log,
+  fastest lap) and the `?layout=legacy` layout were all removed as duplicates of
+  the leaderboard and the map. Do not reintroduce them without a reason the
+  leaderboard cannot serve.
 - Analysis includes tire condition, strategy outlook, manual box compound,
   push/standard/save/defend pace, lap history, championship, and track profile.
 - A dedicated Web Worker owns a deterministic 50ms fixed tick and publishes

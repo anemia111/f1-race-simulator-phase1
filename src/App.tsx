@@ -1,22 +1,3 @@
-import {
-  BarChart3,
-  Badge,
-  Camera,
-  Check,
-  CircleGauge,
-  ClipboardList,
-  Map as MapIcon,
-  KeyRound,
-  Pause,
-  Play,
-  Radar,
-  Rotate3D,
-  Settings2,
-  StepForward,
-  Table2,
-  Trophy,
-  X,
-} from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import {
@@ -34,9 +15,6 @@ import {
   serializeSeriesConfiguration,
   type SeriesConfigurationSnapshot,
 } from './data/seriesConfiguration'
-import { sourceRegistry } from './data/sourceRegistry'
-import { tracks } from './data/tracks'
-import { auditTrackCalendar } from './data/trackAudit'
 import {
   classifyObservedDataMode,
   dataModeUsesObservedEnvironment,
@@ -166,17 +144,6 @@ import {
 } from './series/seriesRegistry'
 import type { SeriesId, SeriesPackage } from './series/types'
 
-const cameraModes: Array<{
-  mode: CameraMode
-  label: string
-  title: string
-  Icon: typeof MapIcon
-}> = [
-  { mode: 'overview', label: 'Map', title: 'Overview camera', Icon: MapIcon },
-  { mode: 'chase', label: 'Chase', title: 'Chase selected car', Icon: Camera },
-  { mode: 'orbit', label: 'Orbit', title: 'Free orbit camera', Icon: Rotate3D },
-]
-
 const RaceScene = lazy(() =>
   import('./three/RaceScene').then((module) => ({ default: module.RaceScene })),
 )
@@ -186,11 +153,8 @@ const SeriesDataManager = lazy(() =>
   })),
 )
 
-const speedOptions: SpeedMultiplier[] = [1, 5, 20, 60]
-const dataModeOptions: DataMode[] = ['SIM', 'HIST', 'LIVE']
 const SERIES_STORAGE_KEY = 'race-sim-selected-series-v1'
 const emptyOpenF1CarDataByCode = new Map<string, OpenF1CarData>()
-const trackCalendarAudit = auditTrackCalendar(tracks)
 const microSectorCount = 8
 const totalMicroSectorCount = microSectorCount * 3
 const weekendStageLabels: Record<WeekendStage, string> = {
@@ -391,30 +355,6 @@ const personalTimingBestsForRow = (
   return { sectors, miniSectors }
 }
 
-const miniSectorAriaLabel = (
-  states: MiniSectorState[],
-  sectorIndex: number,
-) => {
-  const counts = states.reduce<Partial<Record<MiniSectorState, number>>>(
-    (summary, state) => ({ ...summary, [state]: (summary[state] ?? 0) + 1 }),
-    {},
-  )
-  const labels: Record<MiniSectorState, string> = {
-    dim: 'not completed',
-    yellow: 'slower',
-    green: 'personal best',
-    purple: 'overall best',
-    pit: 'pit lane',
-    stopped: 'stopped',
-  }
-  const details = (Object.keys(labels) as MiniSectorState[])
-    .filter((state) => (counts[state] ?? 0) > 0)
-    .map((state) => `${counts[state]} ${labels[state]}`)
-    .join(', ')
-
-  return `Sector ${sectorIndex + 1} mini sectors: ${details}`
-}
-
 type OpenF1LapWithSectorTimes = OpenF1Lap & {
   duration_sector_1: number
   duration_sector_2: number
@@ -534,11 +474,6 @@ const formatLapTime = (seconds: number | null | undefined) => {
   return `${minutes}:${remaining}`
 }
 
-const formatSector = (seconds: number | null | undefined) =>
-  typeof seconds === 'number' && Number.isFinite(seconds)
-    ? seconds.toFixed(3)
-    : '--.---'
-
 const formatTemperature = (value: number) => `${value.toFixed(1)}C`
 
 const formatWind = (speedMetersPerSecond: number, directionDegrees: number) => {
@@ -548,22 +483,6 @@ const formatWind = (speedMetersPerSecond: number, directionDegrees: number) => {
 
   return `${(speedMetersPerSecond * 3.6).toFixed(1)} km/h ${compass}`
 }
-
-const compactForecastLabel = (label: string) =>
-  label
-    .replace('LIGHT RAIN', 'LR')
-    .replace('HEAVY RAIN', 'HR')
-    .replace('CLEAR', 'CLR')
-    .replace(' stable', '')
-    .replace(' in ', ' ')
-    .replace(/\((\d+%)\)/, '$1')
-
-const shortTeamName = (teamName: string) =>
-  teamName
-    .replace('Mercedes-AMG', 'Mercedes')
-    .replace('Aston Martin', 'Aston')
-    .replace('Racing Bulls', 'RB')
-    .replace('Stake Kick Sauber', 'Sauber')
 
 const measuredMiniSectorStates = (
   car: CarSnapshot,
@@ -926,82 +845,6 @@ const intervalLabel = (car: CarSnapshot) => {
   return car.gapToAheadLabel
 }
 
-const overtakeControlLabel = (snapshot: RaceSnapshot) => {
-  if (snapshot.lowGripConditions) {
-    return 'DISABLED / LOW GRIP'
-  }
-
-  if (snapshot.overtakeEnabled) {
-    return 'ENABLED'
-  }
-
-  const targets = snapshot.overtakeEnableTargetsByDriver
-
-  if (targets) {
-    const carsByDriver = new Map(
-      snapshot.cars.map((car) => [car.driverId, car]),
-    )
-    const entries = Object.entries(targets)
-    const crossed = entries.filter(([driverId, target]) => {
-      const car = carsByDriver.get(driverId)
-
-      return !car || car.status !== 'running' || car.totalDistance >= target
-    }).length
-
-    return `WAIT FIELD ${crossed}/${entries.length}`
-  }
-
-  return snapshot.overtakeEnableAtLeaderDistance === null
-    ? 'DISABLED'
-    : 'WAIT LEADER'
-}
-
-const terminalStatusLabel = (car: CarSnapshot) => {
-  if (car.status === 'retired') {
-    return 'OUT'
-  }
-
-  if (car.status === 'disqualified') {
-    return 'DSQ'
-  }
-
-  if (car.status === 'dns') {
-    return 'DNS'
-  }
-
-  return null
-}
-
-const stewardChipLabel = (car: CarSnapshot) => {
-  const pendingProcedure = car.penalties.find(
-    (penalty) =>
-      !penalty.served &&
-      (penalty.kind === 'drive-through' || penalty.kind === 'stop-go-10'),
-  )
-
-  if (pendingProcedure?.kind === 'drive-through') {
-    return 'DT'
-  }
-
-  if (pendingProcedure?.kind === 'stop-go-10') {
-    return 'SG10'
-  }
-
-  if (car.stewardStatus === 'penalty') {
-    return car.penaltyLaps > 0
-      ? `${car.penaltyLaps}L`
-      : car.penaltySeconds > 0
-        ? `+${Math.round(car.penaltySeconds)}s`
-        : 'PEN'
-  }
-
-  if (car.stewardStatus === 'investigating') {
-    return 'INV'
-  }
-
-  return 'NOTE'
-}
-
 const formatOpenF1Date = (isoDate?: string | null) => {
   if (!isoDate) {
     return 'No date'
@@ -1050,9 +893,6 @@ const compactDataAge = (isoDate: string | null) => {
   return `Hist ${Math.round(ageSeconds / 3600)}h`
 }
 
-const formatSeconds = (seconds: number | null | undefined) =>
-  typeof seconds === 'number' ? seconds.toFixed(3) : '-'
-
 const formatShortDuration = (seconds: number) => {
   const minutes = Math.floor(seconds / 60)
   const remaining = Math.floor(seconds % 60)
@@ -1060,21 +900,6 @@ const formatShortDuration = (seconds: number) => {
   return remaining === 0
     ? `${minutes}m`
     : `${minutes}:${remaining.toString().padStart(2, '0')}`
-}
-
-const openF1DriverLabel = (
-  bundle: OpenF1Bundle | null | undefined,
-  driverNumber: number | null | undefined,
-) => {
-  if (!bundle || driverNumber === null || driverNumber === undefined) {
-    return '-'
-  }
-
-  const driver = bundle.drivers.find(
-    (candidate) => candidate.driver_number === driverNumber,
-  )
-
-  return driver ? driver.name_acronym : `#${driverNumber}`
 }
 
 const openF1CompoundToTire = (compound: string | null | undefined): TireCompound | null => {
@@ -1133,21 +958,6 @@ const openF1StatusLabel = (bundle: OpenF1Bundle | null | undefined) => {
   }
 
   return 'Historical'
-}
-
-const formatOpenF1ResultGap = (
-  gap: OpenF1Bundle['sessionResult'][number]['gap_to_leader'],
-  position: number,
-) => {
-  const value = Array.isArray(gap)
-    ? gap.slice().reverse().find((candidate) => candidate !== null)
-    : gap
-
-  if (typeof value === 'number') {
-    return value === 0 && position === 1 ? 'Leader' : `+${value.toFixed(3)}`
-  }
-
-  return value ?? (position === 1 ? 'Leader' : '-')
 }
 
 const openF1ClockLabel = (date: string) => {
@@ -1268,12 +1078,8 @@ export default function App() {
   const [isPaused, setIsPaused] = useState(false)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
   const [isDataManagerOpen, setIsDataManagerOpen] = useState(false)
-  const [areSectorBoardsOpen, setAreSectorBoardsOpen] = useState(false)
-  const [isLiveTimingOpen, setIsLiveTimingOpen] = useState(false)
   const [isClassificationOpen, setIsClassificationOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
-  const [isOpenF1PanelOpen, setIsOpenF1PanelOpen] = useState(false)
-  const [isRaceControlLogOpen, setIsRaceControlLogOpen] = useState(false)
   const [showOpenF1Cars, setShowOpenF1Cars] = useState(true)
   const [requestedDataMode, setRequestedDataMode] = useState<DataMode>('SIM')
   const [openF1AccessToken, setOpenF1AccessToken] = useState<string | null>(null)
@@ -2275,15 +2081,6 @@ export default function App() {
     observedTimelineActive && observedLeaderLap !== null && isRaceProgressSession
       ? `${observedLeaderLap} / ${snapshot.raceLaps}`
       : sessionProgressLabel
-  const activePitCars = snapshot.cars.filter((car) => car.status === 'pit').length
-  const liveTimingProgressLabel =
-    isRaceProgressSession || selectedSessionDurationSeconds === null
-      ? `Lap ${snapshot.leaderLap}/${snapshot.raceLaps} | ${snapshot.elapsedLabel}`
-      : `${timedPhaseLabel} | ${snapshot.elapsedLabel} / ${formatShortDuration(selectedSessionDurationSeconds)}`
-  const displayedWeekend = snapshot.weekend
-  const displayedFlag = snapshot.flag
-  const displayedFlagLabel = snapshot.flagLabel
-  const displayedEventMessage = snapshot.eventMessage
   const raceControlLog = useMemo(() => {
     const openF1Entries = (openF1Bundle?.raceControl ?? [])
       .filter(
@@ -2605,34 +2402,6 @@ export default function App() {
       timingCars,
     ],
   )
-  const sectorBoards = useMemo(
-    () =>
-      [0, 1, 2].map((sectorIndex) =>
-        timingRows
-          .filter(
-            ({ car }) =>
-              car.status !== 'retired' &&
-              car.status !== 'disqualified' &&
-              car.status !== 'dns',
-          )
-          .flatMap((row) => {
-            const sectorTime = row.sectors[sectorIndex]
-
-            return sectorTime === null
-              ? []
-              : [
-                  {
-                    car: row.car,
-                    sectorTime,
-                    status: row.sectorStatuses[sectorIndex],
-                  },
-                ]
-          })
-          .sort((a, b) => a.sectorTime - b.sectorTime)
-          .slice(0, 10),
-      ),
-    [timingRows],
-  )
   const openF1LoadedEndpoints =
     openF1Bundle?.endpointStatuses.filter((status) => status.count > 0).length ?? 0
   const openF1RequestedEndpoints = openF1Bundle?.endpointStatuses.length ?? 0
@@ -2642,15 +2411,6 @@ export default function App() {
       : openF1GridResults.length > 0
         ? `OpenF1 ${openF1Bundle?.startingGrid.length ? 'starting grid' : 'result order'} ready`
         : 'No OpenF1 order yet'
-  const openF1TopResults = useMemo(
-    () =>
-      (openF1Bundle?.sessionResult ?? [])
-        .slice()
-        .sort((a, b) => a.position - b.position)
-        .slice(0, 5),
-    [openF1Bundle],
-  )
-
   const changeSeries = (seriesId: SeriesId) => {
     if (seriesId === selectedSeriesId) {
       return
@@ -2798,52 +2558,6 @@ export default function App() {
       setSeed(createAutoScenarioSeed())
       setSelectedWeekendStage(stage)
     }
-  }
-
-  const advanceWeekendStage = () => {
-    setSeason((current) => updateSeasonGarageFromCars(current, snapshot.cars))
-
-    if (isPracticeStage(selectedWeekendStage)) {
-      setWeekendContext((current) =>
-        completePracticeSession(
-          current,
-          selectedWeekendStage,
-          practiceResults,
-          snapshot.cars,
-        ),
-      )
-    } else if (isStandardQualifyingStage(selectedWeekendStage)) {
-      const qualifying =
-        selectedWeekendStage === 'qualifying2'
-          ? secondaryQualifying
-          : standardQualifying
-      setWeekendContext((current) =>
-        completeQualifyingSession(
-          current,
-          selectedWeekendStage,
-          qualifying.classification,
-          qualifying.segments,
-          snapshot.cars,
-          snapshot.sessionStatus === 'finished',
-        ),
-      )
-    } else if (selectedWeekendStage === 'sprintQualifying') {
-      setWeekendContext((current) =>
-        completeQualifyingSession(
-          current,
-          'sprintQualifying',
-          sprintShootout.classification,
-          sprintShootout.segments,
-          snapshot.cars,
-          snapshot.sessionStatus === 'finished',
-        ),
-      )
-    }
-    const currentIndex = weekendStages.indexOf(selectedWeekendStage)
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % weekendStages.length
-
-    setSeed(createAutoScenarioSeed())
-    setSelectedWeekendStage(weekendStages[nextIndex])
   }
 
   const focusDriver = (driverId: string) => {
@@ -3099,15 +2813,6 @@ export default function App() {
   const randomSeed = () => {
     setSeed(createAutoScenarioSeed())
   }
-  const effectiveGridLabel =
-    gridSource === 'openf1'
-      ? 'OpenF1'
-      : gridSource === 'qualifying'
-        ? selectedWeekendStage === 'sprint'
-          ? 'SQ'
-          : 'Quali'
-        : 'Brief'
-  const bestSetupTeam = practiceSetup.teamSummaries[0]
   const trackGeometrySource: BroadcastDataDetail['source'] =
     raceConfig.track.layoutSource?.provider === 'official'
       ? 'OFF'
@@ -3171,23 +2876,6 @@ export default function App() {
         ? source.provider === 'SUPER FORMULA'
         : source.provider === 'Formula 1'
     }) ?? sortedPaceSources?.[0]
-  const activePaceReferenceSeconds = paceCalibration
-    ? isRaceProgressSession
-      ? (paceCalibration.race.cleanLapReferenceSeconds ??
-        paceReference2026?.raceAverageSeconds ??
-        raceConfig.track.baseLapTime)
-      : paceCalibration.qualifying.selectedReferenceSeconds
-    : raceConfig.track.baseLapTime
-  const activePaceStatusLabel =
-    activePaceStatus === 'official'
-      ? 'OFF'
-      : activePaceStatus === 'observed'
-        ? 'OBS'
-        : activePaceStatus === 'derived'
-          ? 'CAL'
-          : activePaceStatus === 'estimated'
-            ? 'EST'
-            : 'N/A'
   const paceReferenceDataDetails: BroadcastDataDetail[] = paceReference2026
     ? [
         {
@@ -3486,739 +3174,137 @@ export default function App() {
       </button>
     </div>
   )
-  const legacyLayoutRequested =
-    new URLSearchParams(window.location.search).get('layout') === 'legacy'
-  if (!legacyLayoutRequested) {
-    return (
-      <div className="race-shell broadcast-race-shell">
-        <BroadcastDashboard
-          cameraMode={cameraMode}
-          dataControl={broadcastDataControl}
-          dataDetails={broadcastDataDetails}
-          dataMode={dataMode}
-          dataModeAvailability={{
-            HIST: latestOpenF1Sample !== null,
-            LIVE: detectedDataMode === 'LIVE',
-            SIM: true,
-          }}
-          engineLabel={`ENGINE ${engineMode.toUpperCase()}${checkpointRecovered ? ' / RESUMED' : ''}${checkpointSaveStatus === 'failed' ? ' / SAVE ERROR' : ''}`}
-          environment={environmentReadout}
-          eventName={
-            seriesPackage.rules.supportsOpenF1
-              ? (track.openF1?.meetingName ??
-                fiaEventPack?.eventName ??
-                `${track.location} ${seriesPackage.shortLabel}`)
-              : `${seriesPackage.shortLabel} ROUND ${selectedEvent.round} / ${track.location}`
-          }
-          isPaused={isPaused}
-          onCameraModeChange={setCameraMode}
-          onDataModeChange={setRequestedDataMode}
-          onFocusDriver={focusDriver}
-          onOpenClassification={() => {
-            setIsClassificationOpen(true)
-            setIsInsightsOpen(false)
-          }}
-          onOpenInsights={() => {
-            setIsInsightsOpen(true)
-            setIsClassificationOpen(false)
-          }}
-          onOpenSetup={() => setIsSetupOpen(true)}
-          onPauseChange={() => setIsPaused((paused) => !paused)}
-          onSeriesChange={changeSeries}
-          onSkipFormationLap={skipFormationLap}
-          onSpeedChange={setSpeed}
-          onStageChange={jumpToWeekendStage}
-          raceControlLog={raceControlLog}
-          raceLabel={seriesPackage.rules.raceLabel}
-          selectedCar={selectedCar}
-          sessionPhaseLabel={
-            isRaceProgressSession
-              ? selectedWeekendStage.toUpperCase()
-              : timedPhaseLabel
-          }
-          sessionProgressLabel={broadcastSessionProgressLabel}
-          snapshot={broadcastSnapshot}
-          speed={speed}
-          stage={selectedWeekendStage}
-          seriesId={selectedSeriesId}
-          seriesLabel={seriesPackage.label}
-          seriesOptions={seriesPackages.map(({ id, label }) => ({ id, label }))}
-          tireLabels={{
-            ...seriesPackage.rules.tires.dryLabels,
-            I: 'Intermediate',
-            W: 'Wet',
-          }}
-          overtakeSystem={seriesPackage.rules.overtakeSystem}
-          timingRows={timingRows}
-          track={raceConfig.track}
-          trackScene={
-            <Suspense
-              fallback={
-                <div className="scene-loading" role="status">
-                  Loading circuit map...
-                </div>
+  return (
+    <div className="race-shell broadcast-race-shell">
+      <BroadcastDashboard
+        cameraMode={cameraMode}
+        dataControl={broadcastDataControl}
+        dataDetails={broadcastDataDetails}
+        dataMode={dataMode}
+        dataModeAvailability={{
+          HIST: latestOpenF1Sample !== null,
+          LIVE: detectedDataMode === 'LIVE',
+          SIM: true,
+        }}
+        engineLabel={`ENGINE ${engineMode.toUpperCase()}${checkpointRecovered ? ' / RESUMED' : ''}${checkpointSaveStatus === 'failed' ? ' / SAVE ERROR' : ''}`}
+        environment={environmentReadout}
+        eventName={
+          seriesPackage.rules.supportsOpenF1
+            ? (track.openF1?.meetingName ??
+              fiaEventPack?.eventName ??
+              `${track.location} ${seriesPackage.shortLabel}`)
+            : `${seriesPackage.shortLabel} ROUND ${selectedEvent.round} / ${track.location}`
+        }
+        isPaused={isPaused}
+        onCameraModeChange={setCameraMode}
+        onDataModeChange={setRequestedDataMode}
+        onFocusDriver={focusDriver}
+        onOpenClassification={() => {
+          setIsClassificationOpen(true)
+          setIsInsightsOpen(false)
+        }}
+        onOpenInsights={() => {
+          setIsInsightsOpen(true)
+          setIsClassificationOpen(false)
+        }}
+        onOpenSetup={() => setIsSetupOpen(true)}
+        onPauseChange={() => setIsPaused((paused) => !paused)}
+        onSeriesChange={changeSeries}
+        onSkipFormationLap={skipFormationLap}
+        onSpeedChange={setSpeed}
+        onStageChange={jumpToWeekendStage}
+        raceControlLog={raceControlLog}
+        raceLabel={seriesPackage.rules.raceLabel}
+        selectedCar={selectedCar}
+        sessionPhaseLabel={
+          isRaceProgressSession
+            ? selectedWeekendStage.toUpperCase()
+            : timedPhaseLabel
+        }
+        sessionProgressLabel={broadcastSessionProgressLabel}
+        snapshot={broadcastSnapshot}
+        speed={speed}
+        stage={selectedWeekendStage}
+        seriesId={selectedSeriesId}
+        seriesLabel={seriesPackage.label}
+        seriesOptions={seriesPackages.map(({ id, label }) => ({ id, label }))}
+        tireLabels={{
+          ...seriesPackage.rules.tires.dryLabels,
+          I: 'Intermediate',
+          W: 'Wet',
+        }}
+        overtakeSystem={seriesPackage.rules.overtakeSystem}
+        timingRows={timingRows}
+        track={raceConfig.track}
+        trackScene={
+          <Suspense
+            fallback={
+              <div className="scene-loading" role="status">
+                Loading circuit map...
+              </div>
+            }
+          >
+            <RaceScene
+              cameraMode={cameraMode}
+              config={raceConfig}
+              onSelectDriver={focusDriver}
+              openF1Overlay={
+                observedMapActive
+                  ? openF1TrackProgress
+                  : null
               }
-            >
-              <RaceScene
-                cameraMode={cameraMode}
-                config={raceConfig}
-                onSelectDriver={focusDriver}
-                openF1Overlay={
-                  observedMapActive
-                    ? openF1TrackProgress
-                    : null
-                }
-                openF1OverlayMode={openF1TrackProgressMode}
-                selectedDriverId={selectedCar.driverId}
-                showSimulationCars={!observedMapActive}
-                snapshot={snapshot}
-              />
-            </Suspense>
-          }
-          weekendStages={weekendStages}
-        />
-
-        <SetupPanel
-          calendarEvents={seriesPackage.calendar}
-          componentReplacementDisabled={!isPaused}
-          drivers={drivers}
-          gridSource={gridSource}
-          gridReferenceLabel={
-            selectedEvent.gridSourceTrackId
-              ? `${qualifyingBaseConfig.track.name} R${selectedEvent.round} qualifying reference`
-              : null
-          }
-          isOpen={isSetupOpen}
-          knockoutQualifying={knockoutQualifying}
-          onApplyTeamPreset={applyTeamPreset}
-          onCarSetupChange={updateCarSetup}
-          onComponentReplace={replaceComponent}
-          onDriverChange={focusDriver}
-          onDriverStatChange={updateDriverStat}
-          onGridSourceChange={setGridSource}
-          onPitLaneStartChange={setPitLaneStart}
-          onRandomSeed={randomSeed}
-          onResetGrid={resetGrid}
-          onSeedChange={setSeed}
-          onTeamChange={setSelectedTeamId}
-          onTeamStatChange={updateTeamStat}
-          onToggle={() => setIsSetupOpen((isOpen) => !isOpen)}
-          onEventChange={changeEvent}
-          openF1GridAvailable={openF1GridResults.length > 0}
-          openF1GridStatus={openF1GridStatus}
-          practiceResults={practiceResults}
-          practiceSetup={practiceSetup}
-          qualifyingResults={qualifyingResults}
-          seed={seed}
-          selectedDriverId={selectedDriverId}
-          selectedEventId={selectedEventId}
-          selectedTeamId={selectedTeamId}
-          selectedTrackId={selectedTrackId}
-          selectedWeekendStage={selectedWeekendStage}
-          sessionFormatLabel={categorySessionFormatLabel}
-          teams={teams}
-          tracks={seriesPackage.tracks}
-          weekendContext={weekendContext}
-          weekendTirePlan={weekendTirePlan}
-        />
-
-        {isDataManagerOpen ? (
-          <Suspense fallback={null}>
-            <SeriesDataManager
-              assignments={driverAssignments2026}
-              driverPool={driverPool2026}
-              drivers={drivers}
-              isOpen={isDataManagerOpen}
-              migrationHistory={configurationMigrationHistory}
-              onApply={applySeriesConfiguration}
-              onClose={() => setIsDataManagerOpen(false)}
-              onReset={resetGrid}
-              series={seriesPackage}
-              teams={teams}
+              openF1OverlayMode={openF1TrackProgressMode}
+              selectedDriverId={selectedCar.driverId}
+              showSimulationCars={!observedMapActive}
+              snapshot={snapshot}
             />
           </Suspense>
-        ) : null}
-
-        {isClassificationOpen && isRaceProgressSession ? (
-          <RaceClassificationPanel
-            onClose={() => setIsClassificationOpen(false)}
-            snapshot={snapshot}
-          />
-        ) : null}
-
-        {isClassificationOpen && isQualifyingSession ? (
-          <QualifyingClassificationPanel
-            onClose={() => setIsClassificationOpen(false)}
-            segments={classificationSegments}
-            snapshot={snapshot}
-            stage={selectedWeekendStage}
-          />
-        ) : null}
-
-        {isInsightsOpen && isRaceProgressSession && selectedDriver ? (
-          <RaceInsightsPanel
-            car={selectedCar}
-            driver={selectedDriver}
-            onClose={() => setIsInsightsOpen(false)}
-            onRequestPitStop={requestPitStop}
-            onSetDriverPaceMode={setDriverPaceMode}
-            openF1Mode={dataMode}
-            season={season}
-            snapshot={snapshot}
-            telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
-            timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
-            track={track}
-            weekendContext={weekendContext}
-          />
-        ) : null}
-      </div>
-    )
-  }
-
-  return (
-    <main className="race-shell">
-      <Suspense
-        fallback={
-          <div className="scene-loading" role="status">
-            Loading 3D circuit...
-          </div>
         }
-      >
-        <RaceScene
-          cameraMode={cameraMode}
-          config={raceConfig}
-          onSelectDriver={focusDriver}
-          openF1Overlay={
-            observedMapActive
-              ? openF1TrackProgress
-              : null
-          }
-          openF1OverlayMode={openF1TrackProgressMode}
-          selectedDriverId={selectedCar.driverId}
-          showSimulationCars={!observedMapActive}
-          snapshot={snapshot}
-        />
-      </Suspense>
-
-      <section className="hud hud-session" aria-label="session status">
-        <div className="live-row">
-          <span className="live-dot sim" aria-hidden="true" />
-          <span title={engineError ?? undefined}>ENGINE {engineMode.toUpperCase()}</span>
-          <strong>
-            {snapshot.sessionStatus === 'finished'
-              ? 'Finished'
-              : displayedWeekend.label}
-          </strong>
-          <span className={`data-layer-tag ${dataMode.toLowerCase()}`}>
-            OpenF1 {dataMode}
-          </span>
-          <div className="segmented data-mode-switch" aria-label="data mode">
-            {dataModeOptions.map((mode) => (
-              <button
-                aria-pressed={requestedDataMode === mode}
-                className={requestedDataMode === mode ? 'active' : ''}
-                disabled={
-                  (mode === 'HIST' && latestOpenF1Sample === null) ||
-                  (mode === 'LIVE' && detectedDataMode !== 'LIVE')
-                }
-                key={mode}
-                onClick={() => setRequestedDataMode(mode)}
-                title={`${mode} data mode`}
-                type="button"
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="session-grid">
-          <span>Race</span>
-          <strong>{raceConfig.track.name}</strong>
-          <span>Calendar</span>
-          <strong
-            className={
-              raceConfig.track.calendar2026?.status === 'cancelled'
-                ? 'flag-red'
-                : 'flag-clear'
-            }
-            title={raceConfig.track.calendar2026?.sourceUrl}
-          >
-            {raceConfig.track.calendar2026?.status === 'cancelled'
-              ? 'CANCELLED'
-              : raceConfig.track.calendar2026?.championshipRound
-                ? `R${raceConfig.track.calendar2026.championshipRound}`
-                : 'EXHIBITION'}
-          </strong>
-          <span>Weekend</span>
-          <strong title={displayedWeekend.source}>
-            {displayedWeekend.label}
-          </strong>
-          <span>Start</span>
-          <strong className={snapshot.startProcedure === 'racing' ? 'flag-clear' : 'flag-yellow'}>
-            {snapshot.startProcedure === 'racing'
-              ? 'RACING'
-              : `${snapshot.startProcedure.toUpperCase()} ${Math.ceil(snapshot.startProcedureRemainingSeconds)}s`}
-          </strong>
-          <span>Formation</span>
-          <strong>
-            {isRaceProgressSession
-              ? `${snapshot.formationLapsCompleted}/${snapshot.formationLapsPlanned}`
-              : 'N/A'}
-          </strong>
-          <span>Restart</span>
-          <strong className={snapshot.restartProcedure === 'none' ? undefined : 'flag-yellow'}>
-            {snapshot.restartProcedure.toUpperCase()}
-          </strong>
-          <span>Overtake</span>
-          <strong className={snapshot.overtakeEnabled ? 'flag-clear' : 'flag-yellow'}>
-            {overtakeControlLabel(snapshot)}
-          </strong>
-          <span>Timed yellow</span>
-          <strong className={snapshot.timedYellowUntilSeconds === null ? undefined : 'flag-yellow'}>
-            {snapshot.timedYellowUntilSeconds === null
-              ? 'CLEAR'
-              : `ZONE S${(snapshot.timedYellowSector ?? 0) + 1} / ${Math.max(0, Math.ceil(snapshot.timedYellowUntilSeconds - snapshot.elapsedSeconds))}s`}
-          </strong>
-          <span>Layout</span>
-          <strong
-            className={
-              raceConfig.track.layoutSource?.detail === 'real'
-                ? 'flag-clear'
-                : 'flag-yellow'
-            }
-            title={raceConfig.track.layoutSource?.label}
-          >
-            {raceConfig.track.layoutSource?.detail === 'real' ? 'Real' : 'Fallback'}
-          </strong>
-          <span>Track packs</span>
-          <strong
-            className={
-              trackCalendarAudit.errorCount === 0 ? 'flag-clear' : 'flag-red'
-            }
-            title={`${trackCalendarAudit.warningCount} warnings / ${trackCalendarAudit.errorCount} errors`}
-          >
-            {trackCalendarAudit.realLayoutCount}/{trackCalendarAudit.trackCount} REAL{' '}
-            {trackCalendarAudit.scorePercent}%
-          </strong>
-          <span>Grid</span>
-          <strong>
-            {raceConfig.drivers.length} cars / {effectiveGridLabel}
-          </strong>
-          <span>Setup</span>
-          <strong title={bestSetupTeam?.teamName}>
-            {bestSetupTeam
-              ? `${Math.round(bestSetupTeam.score)} ${bestSetupTeam.teamName.split(' ')[0]}`
-              : '-'}
-          </strong>
-          <span>Weekend done</span>
-          <strong title={weekendContext.notes.join(' / ')}>
-            {weekendContext.completed.length}/{weekendStages.length}
-          </strong>
-          <span>{isRaceProgressSession ? 'Lap' : 'Clock'}</span>
-          <strong>{sessionProgressLabel}</strong>
-          <span>Phase</span>
-          <strong
-            className={
-              snapshot.timedSessionSuspended
-                ? 'flag-red'
-                : activeTimedSegment
-                  ? 'flag-clear'
-                  : undefined
-            }
-          >
-            {timedPhaseLabel}
-          </strong>
-          <span>Format</span>
-          <strong
-            title={
-              isRaceProgressSession
-                ? categoryRaceFormatLabel
-                : categorySessionFormatLabel
-            }
-          >
-            {isRaceProgressSession
-              ? categoryRaceFormatLabel
-              : categorySessionFormatLabel}
-          </strong>
-          <span>Pace ref</span>
-          <strong
-            className={
-              activePaceStatus === 'official' ||
-              activePaceStatus === 'observed' ||
-              activePaceStatus === 'derived'
-                ? 'flag-clear'
-                : 'flag-yellow'
-            }
-            title={
-              paceReference2026?.note ??
-              paceReference2026?.sourceLabel ??
-              'Simulator estimated reference lap'
-            }
-          >
-            {formatLapTime(activePaceReferenceSeconds)}{' '}
-            {activePaceStatusLabel}
-          </strong>
-          <span>Flag</span>
-          <strong className={`flag-${displayedFlag}`}>{displayedFlagLabel}</strong>
-          <span>Fuel effect</span>
-          <strong>+{snapshot.fuelEffectSeconds.toFixed(1)}s</strong>
-          <span>Weather</span>
-          <strong>{snapshot.weatherLabel}</strong>
-          <span>Rain</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.rainLabel}
-          </strong>
-          <span>Track temp</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.trackLabel}
-          </strong>
-          <span>Air</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.airLabel}
-          </strong>
-          <span>Wind</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.windLabel}
-          </strong>
-          <span>Humidity</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.humidityLabel}
-          </strong>
-          <span>Heat index</span>
-          <strong className={snapshot.heatHazardDeclared ? 'flag-yellow' : undefined}>
-            {snapshot.heatIndexC.toFixed(1)}°C
-          </strong>
-          <span>Heat Hazard</span>
-          <strong className={snapshot.heatHazardDeclared ? 'flag-yellow' : 'flag-clear'}>
-            {snapshot.heatHazardDeclared
-              ? `DECLARED +${snapshot.heatHazardMassIncreaseKg}kg`
-              : snapshot.heatHazardMassIncreaseKg > 0
-                ? `EVENT +${snapshot.heatHazardMassIncreaseKg}kg`
-                : 'NOT DECLARED'}
-          </strong>
-          <span>Pressure</span>
-          <strong title={environmentReadout.source}>
-            {environmentReadout.pressureLabel}
-          </strong>
-          <span>Wetness</span>
-          <strong>
-            {(snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) / 3).toFixed(2)}mm
-          </strong>
-          <span>Dry line</span>
-          <strong>
-            {Math.round(snapshot.dryingLineBySector.reduce((sum, value) => sum + value, 0) / 3 * 100)}%
-          </strong>
-          <span>Forecast</span>
-          <strong title={snapshot.weatherForecastLabel}>
-            {compactForecastLabel(snapshot.weatherForecastLabel)}
-          </strong>
-          <span>Grip</span>
-          <strong>{Math.round(snapshot.trackGrip * 100)}%</strong>
-          <span>Pit lane</span>
-          <strong className={snapshot.pitLaneOpen ? 'flag-clear' : 'flag-red'}>
-            {snapshot.pitLaneOpen ? 'OPEN' : 'CLOSED'}
-          </strong>
-          <span>Pit exit</span>
-          <strong className={snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>
-            {snapshot.pitExitOpen ? 'OPEN' : 'RED'}
-          </strong>
-          <span>Pit activity</span>
-          <strong title="Routine green-flag stops are staggered when the lane is busy">
-            {activePitCars} active
-          </strong>
-          <span>OpenF1</span>
-          <strong>
-            {openF1State.status === 'loading'
-              ? 'Loading'
-              : openF1Bundle?.meeting
-                ? `M${openF1Bundle.meeting.meeting_key}`
-                : 'No link'}
-          </strong>
-          <span>Data age</span>
-          <strong title="Age of newest OpenF1 timing, telemetry, weather, or race-control sample">
-            {openF1DataAge}
-          </strong>
-          <span>Field data</span>
-          <strong title="Team and driver performance source">
-            {fieldCalibration.source === 'openf1-calibrated'
-              ? `${
-                  seasonStandings.data?.snapshotSource === 'bundled'
-                    ? 'Snap'
-                    : 'Cal'
-                } ${seasonStandings.data?.sourceYear ?? ''} ${Math.round(fieldCalibration.confidence * 100)}%`
-              : seasonStandings.status === 'loading'
-                ? 'Loading'
-                : 'Model'}
-          </strong>
-          <span>API race ctrl</span>
-          <strong>
-            {openF1LiveState.raceControlMessage
-              ? dataMode
-              : 'No sample'}
-          </strong>
-        </div>
-        <div className="weekend-flow" aria-label="weekend flow">
-          {weekendStages.map((stage) => {
-            const isDone = weekendContext.completed.includes(stage)
-            const skipsSessions =
-              weekendStages.indexOf(stage) > weekendStages.indexOf(selectedWeekendStage) &&
-              weekendStages
-                .slice(0, weekendStages.indexOf(stage))
-                .some((earlier) => !weekendContext.completed.includes(earlier))
-
-            return (
-              <button
-                aria-pressed={selectedWeekendStage === stage}
-                className={isDone ? 'stage-done' : undefined}
-                key={stage}
-                onClick={() => jumpToWeekendStage(stage)}
-                title={`Set weekend stage to ${weekendStageLabels[stage]}${
-                  skipsSessions
-                    ? ' (locks in skipped sessions first)'
-                    : isDone
-                      ? ' (completed)'
-                      : ''
-                }`}
-                type="button"
-              >
-                {weekendStageLabels[stage]}
-              </button>
-            )
-          })}
-          <button
-            aria-label="advance weekend stage"
-            className="weekend-next"
-            onClick={advanceWeekendStage}
-            title="Advance weekend stage"
-            type="button"
-          >
-            <StepForward aria-hidden="true" size={13} />
-          </button>
-        </div>
-        {isRaceControlLogOpen ? (
-          <div className="event-log" aria-label="recent race events">
-            <div className="event-log-header">
-              <span className="event-log-title">Race control</span>
-              <button
-                aria-label="hide race control log"
-                onClick={() => setIsRaceControlLogOpen(false)}
-                title="Hide race control log"
-                type="button"
-              >
-                <X aria-hidden="true" size={13} />
-              </button>
-            </div>
-            <ol>
-              {raceControlLog.map((event) => (
-                <li key={event.id}>
-                  <span className="event-time">{event.timeLabel}</span>
-                  <span className={`event-source event-source-${event.source.toLowerCase()}`}>
-                    {event.source}
-                  </span>
-                  <span className="event-text">{event.message}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="hud hud-controls" aria-label="camera and playback">
-        <div className="segmented" aria-label="camera mode">
-          {cameraModes.map(({ mode, label, title, Icon }) => (
-            <button
-              aria-pressed={cameraMode === mode}
-              className="icon-button"
-              key={mode}
-              onClick={() => setCameraMode(mode)}
-              title={title}
-              type="button"
-            >
-              <Icon aria-hidden="true" size={17} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="playback-row">
-          <button
-            aria-label="toggle OpenF1 data"
-            aria-pressed={isOpenF1PanelOpen}
-            className="round-button secondary"
-            onClick={() => setIsOpenF1PanelOpen((isOpen) => !isOpen)}
-            title={isOpenF1PanelOpen ? 'Hide OpenF1 data' : 'Show OpenF1 data'}
-            type="button"
-          >
-            <Badge aria-hidden="true" size={18} />
-          </button>
-          <button
-            aria-label="toggle OpenF1 car overlay"
-            aria-pressed={showOpenF1Cars}
-            className="round-button secondary"
-            disabled={!openF1TrackProgressAvailable}
-            onClick={() => setShowOpenF1Cars((isShown) => !isShown)}
-            title={
-              !openF1TrackProgressAvailable
-                ? raceConfig.track.locationProjection
-                  ? 'OpenF1 car positions unavailable: no recent location samples'
-                  : 'OpenF1 car positions unavailable: no matching telemetry coordinate projection'
-                : showOpenF1Cars
-                  ? 'Hide factual OpenF1 car positions'
-                  : `Show factual OpenF1 car positions (${openF1TrackProgressMode} window replay)`
-            }
-            type="button"
-          >
-            <Radar aria-hidden="true" size={18} />
-          </button>
-          <button
-            aria-label="toggle live timing"
-            aria-pressed={isLiveTimingOpen}
-            className="round-button secondary"
-            onClick={() => setIsLiveTimingOpen((isOpen) => !isOpen)}
-            title={isLiveTimingOpen ? 'Hide live timing' : 'Show live timing'}
-            type="button"
-          >
-            <CircleGauge aria-hidden="true" size={18} />
-          </button>
-          <button
-            aria-label="toggle sector boards"
-            aria-pressed={areSectorBoardsOpen}
-            className="round-button secondary"
-            onClick={() => setAreSectorBoardsOpen((isOpen) => !isOpen)}
-            title={areSectorBoardsOpen ? 'Hide sector boards' : 'Show sector boards'}
-            type="button"
-          >
-            <Table2 aria-hidden="true" size={18} />
-          </button>
-          <button
-            aria-label="toggle race control log"
-            aria-pressed={isRaceControlLogOpen}
-            className="round-button secondary"
-            onClick={() => setIsRaceControlLogOpen((isOpen) => !isOpen)}
-            title={
-              isRaceControlLogOpen
-                ? 'Hide race control log'
-                : 'Show race control log'
-            }
-            type="button"
-          >
-            <ClipboardList aria-hidden="true" size={18} />
-          </button>
-          {isRaceProgressSession ? (
-            <button
-              aria-label="toggle classification"
-              aria-pressed={isClassificationOpen}
-              className="round-button secondary"
-              onClick={() => {
-                setIsClassificationOpen((isOpen) => !isOpen)
-                setIsOpenF1PanelOpen(false)
-                setAreSectorBoardsOpen(false)
-              }}
-              title={isClassificationOpen ? 'Hide classification' : 'Show classification'}
-              type="button"
-            >
-              <Trophy aria-hidden="true" size={18} />
-            </button>
-          ) : null}
-          {isRaceProgressSession ? (
-            <button
-              aria-label="toggle race analysis"
-              aria-pressed={isInsightsOpen}
-              className="round-button secondary"
-              onClick={() => {
-                setIsInsightsOpen((isOpen) => !isOpen)
-                setIsLiveTimingOpen(false)
-                setIsOpenF1PanelOpen(false)
-                setAreSectorBoardsOpen(false)
-                setIsClassificationOpen(false)
-              }}
-              title={isInsightsOpen ? 'Hide race analysis' : 'Show race analysis'}
-              type="button"
-            >
-              <BarChart3 aria-hidden="true" size={18} />
-            </button>
-          ) : null}
-          <button
-            aria-pressed={isSetupOpen}
-            aria-label="open setup"
-            className="round-button secondary"
-            onClick={() => setIsSetupOpen((isOpen) => !isOpen)}
-            title="Setup"
-            type="button"
-          >
-            <Settings2 aria-hidden="true" size={18} />
-          </button>
-          <button
-            aria-label={isPaused ? 'resume simulation' : 'pause simulation'}
-            className="round-button"
-            onClick={() => setIsPaused((paused) => !paused)}
-            title={isPaused ? 'Resume' : 'Pause'}
-            type="button"
-          >
-            {isPaused ? (
-              <Play aria-hidden="true" size={18} />
-            ) : (
-              <Pause aria-hidden="true" size={18} />
-            )}
-          </button>
-          <div className="segmented compact" aria-label="simulation speed">
-            {speedOptions.map((option) => (
-              <button
-                aria-pressed={speed === option}
-                className="speed-button"
-                key={option}
-                onClick={() => setSpeed(option)}
-                title={`Speed ${option}x`}
-                type="button"
-              >
-                {option}x
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+        weekendStages={weekendStages}
+      />
 
       <SetupPanel
         calendarEvents={seriesPackage.calendar}
+        componentReplacementDisabled={!isPaused}
         drivers={drivers}
+        gridSource={gridSource}
         gridReferenceLabel={
           selectedEvent.gridSourceTrackId
             ? `${qualifyingBaseConfig.track.name} R${selectedEvent.round} qualifying reference`
             : null
         }
         isOpen={isSetupOpen}
+        knockoutQualifying={knockoutQualifying}
         onApplyTeamPreset={applyTeamPreset}
-        onDriverChange={focusDriver}
-        onDriverStatChange={updateDriverStat}
         onCarSetupChange={updateCarSetup}
         onComponentReplace={replaceComponent}
+        onDriverChange={focusDriver}
+        onDriverStatChange={updateDriverStat}
+        onGridSourceChange={setGridSource}
         onPitLaneStartChange={setPitLaneStart}
-        componentReplacementDisabled={!isPaused}
-        openF1GridAvailable={openF1GridResults.length > 0}
-        openF1GridStatus={openF1GridStatus}
         onRandomSeed={randomSeed}
         onResetGrid={resetGrid}
-        onGridSourceChange={setGridSource}
         onSeedChange={setSeed}
         onTeamChange={setSelectedTeamId}
         onTeamStatChange={updateTeamStat}
         onToggle={() => setIsSetupOpen((isOpen) => !isOpen)}
         onEventChange={changeEvent}
+        openF1GridAvailable={openF1GridResults.length > 0}
+        openF1GridStatus={openF1GridStatus}
+        practiceResults={practiceResults}
+        practiceSetup={practiceSetup}
+        qualifyingResults={qualifyingResults}
         seed={seed}
         selectedDriverId={selectedDriverId}
         selectedEventId={selectedEventId}
         selectedTeamId={selectedTeamId}
         selectedTrackId={selectedTrackId}
-        gridSource={gridSource}
-        knockoutQualifying={knockoutQualifying}
-        practiceResults={practiceResults}
-        practiceSetup={practiceSetup}
-        qualifyingResults={qualifyingResults}
         selectedWeekendStage={selectedWeekendStage}
         sessionFormatLabel={categorySessionFormatLabel}
         teams={teams}
-        weekendTirePlan={weekendTirePlan}
-        weekendContext={weekendContext}
         tracks={seriesPackage.tracks}
+        weekendContext={weekendContext}
+        weekendTirePlan={weekendTirePlan}
       />
 
       {isDataManagerOpen ? (
@@ -4236,653 +3322,6 @@ export default function App() {
             teams={teams}
           />
         </Suspense>
-      ) : null}
-
-      {isOpenF1PanelOpen ? (
-      <section className="hud openf1-panel" aria-label="OpenF1 data">
-        <header>
-          <span>OpenF1 API</span>
-          <strong>{openF1StatusLabel(openF1Bundle)}</strong>
-          <button
-            aria-label="hide OpenF1 data"
-            onClick={() => setIsOpenF1PanelOpen(false)}
-            title="Hide OpenF1 data"
-            type="button"
-          >
-            <X aria-hidden="true" size={14} />
-          </button>
-        </header>
-        {openF1State.status === 'loading' ? (
-          <div className="openf1-placeholder">
-            Collecting meetings, sessions, timing, weather, pit, control and
-            telemetry data...
-          </div>
-        ) : openF1State.status === 'error' ? (
-          <div className="openf1-placeholder">{openF1State.error}</div>
-        ) : openF1Bundle?.meeting ? (
-          <>
-            <div className="openf1-meeting">
-              {openF1Bundle.meeting.circuit_image ? (
-                <img
-                  alt={`${openF1Bundle.meeting.circuit_short_name} track map`}
-                  src={openF1Bundle.meeting.circuit_image}
-                />
-              ) : null}
-              <div>
-                <strong>{openF1Bundle.meeting.meeting_name}</strong>
-                <span>
-                  {openF1Bundle.meeting.circuit_short_name} |{' '}
-                  {openF1Bundle.meeting.country_code}
-                </span>
-                <small>
-                  {formatOpenF1Date(
-                    openF1Bundle.selectedSession?.date_start ??
-                      openF1Bundle.meeting.date_start,
-                  )}
-                </small>
-              </div>
-            </div>
-            {requestedDataMode === 'HIST' &&
-            openF1Timeline.endMs > openF1Timeline.startMs ? (
-              <label className="openf1-timeline">
-                <span>HIST timeline</span>
-                <input
-                  aria-label="OpenF1 historical timeline"
-                  max="1000"
-                  min="0"
-                  onChange={(event) =>
-                    setHistoricalTimelineRatio(Number(event.target.value) / 1000)
-                  }
-                  type="range"
-                  value={Math.round(historicalTimelineRatio * 1000)}
-                />
-                <strong>
-                  {openF1Timeline.targetDate
-                    ? openF1ClockLabel(openF1Timeline.targetDate)
-                    : '-'}
-                </strong>
-              </label>
-            ) : null}
-            <div className="openf1-metrics">
-              <span>Layout</span>
-              <strong
-                className={
-                  raceConfig.track.layoutSource?.detail === 'real'
-                    ? 'flag-clear'
-                    : 'flag-yellow'
-                }
-                title={raceConfig.track.layoutSource?.label}
-              >
-                {raceConfig.track.layoutSource?.detail === 'real' ? 'Real' : 'Fallback'}
-              </strong>
-              <span>Track audit</span>
-              <strong title={`${trackCalendarAudit.warningCount} warning / ${trackCalendarAudit.errorCount} error`}>
-                {trackCalendarAudit.scorePercent}%
-              </strong>
-              <span>FIA pack</span>
-              <strong title={`As of ${fiaEventPack?.asOf ?? '-'}`}>
-                {fiaEventPack?.status.toUpperCase() ?? 'NONE'}
-              </strong>
-              <span>Telemetry</span>
-              <strong>{openF1Bundle.summary.telemetrySamples}</strong>
-              <span>Sync frame</span>
-              <strong
-                className={
-                  openF1TelemetryFrame.byCode.size > 0 ? 'flag-clear' : undefined
-                }
-                title={openF1TelemetryFrame.provenance.note ?? undefined}
-              >
-                {openF1TelemetryFrame.byCode.size} cars
-              </strong>
-              <span>Frame time</span>
-              <strong>
-                {openF1TelemetryFrame.targetDate
-                  ? openF1ClockLabel(openF1TelemetryFrame.targetDate)
-                  : '-'}
-              </strong>
-              <span>Stale drop</span>
-              <strong
-                className={
-                  openF1TelemetryFrame.rejectedStaleSamples > 0
-                    ? 'flag-yellow'
-                    : undefined
-                }
-              >
-                {openF1TelemetryFrame.rejectedStaleSamples}
-              </strong>
-              <span>Field model</span>
-              <strong title={fieldCalibration.provenance.note ?? undefined}>
-                {fieldCalibration.source === 'openf1-calibrated'
-                  ? `${
-                      seasonStandings.data?.snapshotSource === 'bundled'
-                        ? 'SNAP'
-                        : 'CAL'
-                    } ${Math.round(fieldCalibration.confidence * 100)}%`
-                  : 'SIM'}
-              </strong>
-              <span>Track model</span>
-              <strong title={trackCalibration.provenance.note ?? undefined}>
-                {trackCalibration.sampleCount > 0
-                  ? `CAL ${trackCalibration.sampleCount}`
-                  : 'SIM'}
-              </strong>
-              <span>Pit transit</span>
-              <strong>
-                {trackCalibration.pitLaneTransitSeconds === null
-                  ? '-'
-                  : `${trackCalibration.pitLaneTransitSeconds.toFixed(1)}s`}
-              </strong>
-              <span>Live pos</span>
-              <strong>{openF1LiveState.positionsByCode.size}</strong>
-              <span>Track pos</span>
-              <strong
-                className={openF1TrackProgressAvailable ? 'flag-clear' : undefined}
-                title={
-                  openF1TrackProgressAvailable
-                    ? `Replay of the newest fetched OpenF1 location window. Cars sit on the racing line: OpenF1 lateral placement is not reliable at this scale. ${openF1TrackProgress.rejectedSamples} off-track samples dropped.`
-                    : raceConfig.track.locationProjection
-                      ? 'No recent OpenF1 location samples for this session'
-                      : 'No matching OpenF1 telemetry coordinate projection'
-                }
-              >
-                {openF1TrackProgressAvailable
-                  ? `${openF1TrackProgress.cars.length} cars / ${openF1TrackProgressMode}`
-                  : 'Unavailable'}
-              </strong>
-              <span>Intervals</span>
-              <strong>{openF1LiveState.timingByCode.size}</strong>
-              <span>Datasets</span>
-              <strong>
-                {openF1LoadedEndpoints}/{openF1RequestedEndpoints}
-              </strong>
-              <span>Mini S</span>
-              <strong>{openF1Bundle.summary.miniSectorSamples}</strong>
-              <span>Session</span>
-              <strong title={openF1Bundle.selectedSession?.session_name}>
-                {openF1Bundle.selectedSession
-                  ? `${openF1Bundle.selectedSession.session_name} / ${openF1Bundle.selectedSession.session_key}`
-                  : `${weekendStageLabels[openF1Bundle.requestedStage]} unavailable`}
-              </strong>
-              <span>Access</span>
-              <strong
-                className={
-                  openF1Bundle.authMode === 'bearer' ? 'flag-clear' : undefined
-                }
-              >
-                {openF1Bundle.authMode === 'bearer' ? 'AUTH' : 'PUBLIC'}
-              </strong>
-              <span>Best lap</span>
-              <strong>
-                {openF1Bundle.summary.bestLap
-                  ? `${openF1DriverLabel(
-                      openF1Bundle,
-                      openF1Bundle.summary.bestLap.driver_number,
-                    )} ${formatLapTime(
-                      openF1Bundle.summary.bestLap.lap_duration ?? 0,
-                    )}`
-                  : '-'}
-              </strong>
-              <span>Weather</span>
-              <strong>
-                {latestOpenF1Weather
-                  ? `${formatTemperature(latestOpenF1Weather.track_temperature)} track / ${formatTemperature(latestOpenF1Weather.air_temperature)} air`
-                  : '-'}
-              </strong>
-              <span>Wind</span>
-              <strong>
-                {latestOpenF1Weather
-                  ? `${latestOpenF1Weather.wind_speed.toFixed(1)} m/s ${Math.round(
-                      latestOpenF1Weather.wind_direction,
-                    )}deg`
-                  : '-'}
-              </strong>
-              <span>Humidity</span>
-              <strong>
-                {latestOpenF1Weather
-                  ? `${Math.round(latestOpenF1Weather.humidity)}%`
-                  : '-'}
-              </strong>
-              <span>Pits</span>
-              <strong>{openF1Bundle.pit.length}</strong>
-              <span>Stints</span>
-              <strong>{openF1Bundle.stints.length}</strong>
-              <span>Overtakes</span>
-              <strong>{openF1Bundle.overtakes.length}</strong>
-              <span>Radio</span>
-              <strong>{openF1Bundle.teamRadio.length}</strong>
-              <span>Fast stop</span>
-              <strong>
-                {openF1Bundle.summary.fastestPitStop
-                  ? `${openF1DriverLabel(
-                      openF1Bundle,
-                      openF1Bundle.summary.fastestPitStop.driver_number,
-                    )} ${formatSeconds(
-                      openF1Bundle.summary.fastestPitStop.stop_duration,
-                    )}s`
-                  : '-'}
-              </strong>
-              <span>Top speed</span>
-              <strong>
-                {openF1Bundle.summary.maxSpeed
-                  ? `${openF1DriverLabel(
-                      openF1Bundle,
-                      openF1Bundle.summary.maxSpeed.driver_number,
-                    )} ${openF1Bundle.summary.maxSpeed.speed} km/h`
-                  : '-'}
-              </strong>
-            </div>
-            <form
-              className="openf1-auth"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const token = openF1TokenDraft.trim()
-                setOpenF1AccessToken(token || null)
-              }}
-            >
-              <KeyRound aria-hidden="true" size={14} />
-              <label>
-                <span>Bearer token</span>
-                <input
-                  autoComplete="off"
-                  onChange={(event) => setOpenF1TokenDraft(event.target.value)}
-                  placeholder="OpenF1 access token"
-                  type="password"
-                  value={openF1TokenDraft}
-                />
-              </label>
-              <button
-                aria-label="apply OpenF1 access token"
-                title="Apply token for this app session"
-                type="submit"
-              >
-                <Check aria-hidden="true" size={14} />
-              </button>
-              {openF1AccessToken ? (
-                <button
-                  aria-label="clear OpenF1 access token"
-                  onClick={() => {
-                    setOpenF1AccessToken(null)
-                    setOpenF1TokenDraft('')
-                  }}
-                  title="Clear access token"
-                  type="button"
-                >
-                  <X aria-hidden="true" size={14} />
-                </button>
-              ) : null}
-            </form>
-            <div className="source-ledger" aria-label="data source ledger">
-              <a
-                href={sourceRegistry.fiaCalendar2026.url}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span>2026 calendar</span>
-                <strong>FIA OFFICIAL</strong>
-              </a>
-              {fiaEventPack ? (
-                <a
-                  href={fiaEventPack.documents.eventPageUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span>Event documents</span>
-                  <strong>
-                    {fiaEventPack.normalizedOperationalData
-                      ? 'FIA NORMALIZED'
-                      : fiaEventPack.status === 'pending'
-                        ? 'FIA PENDING'
-                        : 'FIA LINKED'}
-                  </strong>
-                </a>
-              ) : null}
-              {fiaEventPack?.documents.circuitMapUrl ? (
-                <a
-                  href={fiaEventPack.documents.circuitMapUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span>Circuit / pit map</span>
-                  <strong>FIA PDF</strong>
-                </a>
-              ) : null}
-              <a
-                href={sourceRegistry.fiaSporting2026.url}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span>Sporting rules</span>
-                <strong>FIA ISSUE 07</strong>
-              </a>
-              <a
-                href={
-                  raceConfig.track.layoutSource?.url ??
-                  sourceRegistry.openF1.url
-                }
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span>Track geometry</span>
-                <strong>
-                  {raceConfig.track.layoutSource?.detail === 'real'
-                    ? raceConfig.track.layoutSource.provider === 'official'
-                      ? 'OFFICIAL VECTOR'
-                      : 'OPENF1 OBS'
-                    : 'FALLBACK'}
-                </strong>
-              </a>
-              {raceConfig.track.tireNomination?.sourceUrl ? (
-                <a
-                  href={raceConfig.track.tireNomination.sourceUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span>Tyre nomination</span>
-                  <strong>PIRELLI</strong>
-                </a>
-              ) : (
-                <span className="source-ledger-row">
-                  <span>Tyre nomination</span>
-                  <strong>EST PENDING</strong>
-                </span>
-              )}
-              <span className="source-ledger-row">
-                <span>Pit/aero lines</span>
-                <strong>DERIVED</strong>
-              </span>
-            </div>
-            {openF1Bundle.summary.latestRaceControl ? (
-              <div className="openf1-control">
-                <span>{openF1Bundle.summary.latestRaceControl.category}</span>
-                <strong>{openF1Bundle.summary.latestRaceControl.message}</strong>
-              </div>
-            ) : null}
-            {openF1TopResults.length > 0 ? (
-              <ol className="openf1-results" aria-label="OpenF1 top result">
-                {openF1TopResults.map((result) => (
-                  <li key={result.driver_number}>
-                    <span>{result.position}</span>
-                    <strong>
-                      {openF1DriverLabel(openF1Bundle, result.driver_number)}
-                    </strong>
-                    <span>
-                      {formatOpenF1ResultGap(
-                        result.gap_to_leader,
-                        result.position,
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-          </>
-        ) : (
-          <div className="openf1-placeholder">
-            No OpenF1 meeting matched this local track.
-          </div>
-        )}
-      </section>
-      ) : null}
-
-      {isLiveTimingOpen ? (
-        <section className="hud leaderboard" aria-label="live timing">
-          <div className="leaderboard-header">
-            <span>
-              <CircleGauge aria-hidden="true" size={17} />
-              Live Timing
-            </span>
-            <span className="time-readout">
-              {liveTimingProgressLabel}
-            </span>
-            <button
-              aria-label="hide live timing"
-              onClick={() => setIsLiveTimingOpen(false)}
-              title="Hide live timing"
-              type="button"
-            >
-              <X aria-hidden="true" size={14} />
-            </button>
-          </div>
-          <div className="timing-table-scroll">
-            <div className="timing-header-row" role="row">
-              <span>Driver</span>
-              <span>Team</span>
-              <span>Last lap</span>
-              <span>Src</span>
-              <span>Speed</span>
-              <span>Thr</span>
-              <span>Brake</span>
-              <span>RPM</span>
-              <span>Gear</span>
-              <span>Aero/OVT</span>
-              <span>Gap</span>
-              <span>Interval</span>
-              <span>Tyre</span>
-              <span>Age</span>
-              <span>Temp</span>
-              <span>Battery</span>
-              <span>Sector 1</span>
-              <span>S1 uS</span>
-              <span>Sector 2</span>
-              <span>S2 uS</span>
-              <span>Sector 3</span>
-              <span>S3 uS</span>
-            </div>
-            <ol>
-              {timingRows.map(
-                ({
-                  batteryPercent,
-                  brakePercent,
-                  car,
-                  displayGapToLeaderLabel,
-                  displayIntervalLabel,
-                  displayPosition,
-                  aeroOvertakeLabel,
-                  gear,
-                  lapDataLabel,
-                  lapTimeSeconds,
-                  microSectors,
-                  rpm,
-                  sectors,
-                  sectorStatuses,
-                  source,
-                  speedKph,
-                  telemetrySource,
-                  throttlePercent,
-                  tireTemperatureC,
-                }) => (
-                  <li
-                    className={[
-                      car.driverId === selectedCar.driverId ? 'selected' : '',
-                      terminalStatusLabel(car) ? 'retired' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    key={car.driverId}
-                  >
-                    <button
-                      className="timing-row"
-                      onClick={() => focusDriver(car.driverId)}
-                      title={`Focus ${car.driverName}${car.timedRunPhase ? ` / ${car.timedRunPhase}` : ''} / ${lapDataLabel}${telemetrySource === 'openf1' ? ' / OpenF1 observed telemetry' : ' / simulated telemetry'}${car.stewardNote ? ` / ${car.stewardNote}` : ''}`}
-                      type="button"
-                    >
-                      <span className="driver-cell">
-                        <span
-                          className="position-badge"
-                          style={{ backgroundColor: car.teamColor }}
-                        >
-                          {displayPosition}
-                        </span>
-                        <span className="code-stack">
-                          <span className="timing-code">{car.code}</span>
-                          {car.stewardStatus !== 'clear' ? (
-                            <span className={`steward-chip steward-${car.stewardStatus}`}>
-                              {stewardChipLabel(car)}
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                      <span className="timing-team" title={car.teamName}>
-                        {shortTeamName(car.teamName)}
-                      </span>
-                      <span className="timing-number">
-                        {formatLapTime(lapTimeSeconds)}
-                      </span>
-                      <span
-                        className="source-stack"
-                        title={`Lap/sector: ${lapDataLabel} / Telemetry: ${
-                          telemetrySource === 'openf1'
-                            ? 'OpenF1 observed data'
-                            : telemetrySource === 'simulation'
-                              ? 'simulation estimate'
-                              : 'unavailable'
-                        }`}
-                      >
-                        <span className={`source-chip source-mini source-${source}`}>
-                          L
-                        </span>
-                        <span
-                          className={`source-chip source-mini source-${telemetrySource}`}
-                        >
-                          T
-                        </span>
-                      </span>
-                      <span className="timing-number">{speedKph}</span>
-                      <span className="timing-number">{throttlePercent}%</span>
-                      <span className="timing-number">{brakePercent}%</span>
-                      <span className="timing-number">{rpm}</span>
-                      <span className="timing-number">{gear}</span>
-                      <span
-                        className={`drs-chip drs-${aeroOvertakeLabel.includes('OVT') || aeroOvertakeLabel.includes('ON') ? 'on' : aeroOvertakeLabel.includes('RDY') ? 'elig' : 'off'}`}
-                        title={`Active aero / Overtake: ${aeroOvertakeLabel}`}
-                      >
-                        {aeroOvertakeLabel}
-                      </span>
-                      <span
-                        className={`gap ${
-                          terminalStatusLabel(car)
-                            ? 'status-out'
-                            : car.status === 'pit'
-                              ? 'status-pit'
-                              : ''
-                        }`}
-                      >
-                        {terminalStatusLabel(car)
-                          ? terminalStatusLabel(car)
-                          : car.status === 'pit'
-                            ? 'PIT'
-                            : displayGapToLeaderLabel}
-                      </span>
-                      <span
-                        className={`gap interval ${
-                          terminalStatusLabel(car)
-                            ? 'status-out'
-                            : car.status === 'pit'
-                              ? 'status-pit'
-                              : ''
-                        }`}
-                      >
-                        {terminalStatusLabel(car) || car.status === 'pit'
-                          ? intervalLabel(car)
-                          : displayIntervalLabel}
-                      </span>
-                      <span
-                        className={`tire tire-${car.tire}`}
-                        title={`Tire ${car.tire}${car.tire === 'H' || car.tire === 'M' || car.tire === 'S' ? ` (${track.tireNomination?.[car.tire] ?? 'family unavailable'})` : ''} / lap ${car.tireAgeLaps}`}
-                      >
-                        {car.tire}
-                      </span>
-                      <span className="timing-number">{car.tireAgeLaps}</span>
-                      <span className="timing-number">{tireTemperatureC}C</span>
-                      <span
-                        className="battery-cell"
-                        title={`SOC ${batteryPercent}% / Energy Store ${car.energyStore.currentEnergyMJ.toFixed(2)} MJ (${car.energyStore.minimumUsableEnergyMJ.toFixed(2)}-${car.energyStore.maximumUsableEnergyMJ.toFixed(2)} MJ) / deployment ${Math.round(car.energyStore.actualDeploymentPowerKw)} of ${Math.round(car.energyStore.requestedDeploymentPowerKw)} kW / recovery ${Math.round(car.energyStore.actualRecoveryPowerKw)} of ${Math.round(car.energyStore.requestedRecoveryPowerKw)} kW / battery ${car.energyStore.batteryTemperatureC.toFixed(1)} C / MGU ${car.energyStore.motorGeneratorTemperatureC.toFixed(1)} C / inverter ${car.energyStore.inverterTemperatureC.toFixed(1)} C / conversion loss ${car.energyStore.conversionLossThisLapMJ.toFixed(2)} MJ / balance error ${car.energyStore.energyBalanceErrorMJ.toExponential(1)} MJ / Overtake ${car.overtakeEnergyRemainingMj.toFixed(2)} of 0.50 MJ / clipping ${Math.round(car.superClippingIntensity * 100)}%`}
-                      >
-                        <span>{batteryPercent}%</span>
-                        <span className="battery-meter" aria-hidden="true">
-                          <span style={{ width: `${batteryPercent}%` }} />
-                        </span>
-                      </span>
-                      {[0, 1, 2].map((sectorIndex) => (
-                        <span className="sector-pair" key={sectorIndex}>
-                          <span
-                            className={`sector-time sector-status-${sectorStatuses[sectorIndex]}`}
-                          >
-                            {formatSector(sectors[sectorIndex])}
-                          </span>
-                          <span
-                            className="micro-bars"
-                            aria-label={miniSectorAriaLabel(
-                              microSectors[sectorIndex],
-                              sectorIndex,
-                            )}
-                            style={{
-                              gridTemplateColumns: `repeat(${
-                                microSectors[sectorIndex].length
-                              }, minmax(2px, 1fr))`,
-                            }}
-                          >
-                            {microSectors[sectorIndex].map((state, microIndex) => (
-                              <span
-                                aria-hidden="true"
-                                className={`micro-bar micro-${state}`}
-                                key={`${sectorIndex}-${microIndex}`}
-                              />
-                            ))}
-                          </span>
-                        </span>
-                      ))}
-                    </button>
-                  </li>
-                ),
-              )}
-            </ol>
-          </div>
-        </section>
-      ) : null}
-
-      {areSectorBoardsOpen ? (
-        <section className="hud sector-boards" aria-label="sector leaders">
-          <div className="sector-boards-header">
-            <span>Sector Leaders</span>
-            <button
-              aria-label="hide sector boards"
-              onClick={() => setAreSectorBoardsOpen(false)}
-            title="Hide sector boards"
-            type="button"
-          >
-            <X aria-hidden="true" size={14} />
-          </button>
-          </div>
-          <div className="sector-board-grid">
-            {sectorBoards.map((entries, sectorIndex) => (
-              <div className="sector-board" key={sectorIndex}>
-                <header>
-                  <span>Sector {sectorIndex + 1}</span>
-                  <strong>
-                    {entries[0] ? formatSector(entries[0].sectorTime) : '--.---'}
-                  </strong>
-                </header>
-                <ol>
-                  {entries.map(({ car, sectorTime, status }, index) => (
-                    <li
-                      className={
-                        car.driverId === selectedCar.driverId ? 'selected' : ''
-                      }
-                      key={car.driverId}
-                    >
-                      <span>{index + 1}</span>
-                      <strong style={{ color: car.teamColor }}>{car.code}</strong>
-                      <span className={`sector-status-${status}`}>
-                        {formatSector(sectorTime)}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-        </section>
       ) : null}
 
       {isClassificationOpen && isRaceProgressSession ? (
@@ -4904,31 +3343,19 @@ export default function App() {
       {isInsightsOpen && isRaceProgressSession && selectedDriver ? (
         <RaceInsightsPanel
           car={selectedCar}
-          openF1Mode={dataMode}
           driver={selectedDriver}
           onClose={() => setIsInsightsOpen(false)}
+          onRequestPitStop={requestPitStop}
+          onSetDriverPaceMode={setDriverPaceMode}
+          openF1Mode={dataMode}
+          season={season}
           snapshot={snapshot}
           telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
           timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
           track={track}
           weekendContext={weekendContext}
-          season={season}
-          onRequestPitStop={requestPitStop}
-          onSetDriverPaceMode={setDriverPaceMode}
         />
       ) : null}
-
-      {!isRaceControlLogOpen &&
-      !isLiveTimingOpen &&
-      !areSectorBoardsOpen &&
-      !isClassificationOpen &&
-      !isInsightsOpen &&
-      !isOpenF1PanelOpen ? (
-        <section className="hud event-ticker" aria-label="event ticker">
-          <Badge aria-hidden="true" size={15} />
-          <span>{displayedEventMessage}</span>
-        </section>
-      ) : null}
-    </main>
+    </div>
   )
 }

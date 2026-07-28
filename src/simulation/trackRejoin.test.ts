@@ -6,7 +6,6 @@ import {
   assessTrackRejoin,
   canRejoinTrack,
   REJOIN_MAX_WAIT_SECONDS,
-  REJOIN_MIN_AHEAD_GAP_SECONDS,
   REJOIN_MIN_BEHIND_GAP_SECONDS,
 } from './trackRejoin'
 
@@ -39,7 +38,6 @@ describe('safe track rejoining', () => {
     )
 
     expect(assessment.nearestBehindGapSeconds).toBeCloseTo(0.9, 6)
-    expect(assessment.safe).toBe(false)
     expect(
       canRejoinTrack(waitingCar, [waitingCar, approaching], 12, 90),
     ).toBe(false)
@@ -58,7 +56,7 @@ describe('safe track rejoining', () => {
     const justAhead = {
       ...ahead,
       status: 'running' as const,
-      totalDistance: 3.4 + (REJOIN_MIN_AHEAD_GAP_SECONDS - 0.1) / 90,
+      totalDistance: 3.4 + 1.4 / 90,
     }
     const clearBehind = {
       ...behind,
