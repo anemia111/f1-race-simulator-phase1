@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceDate": "2026-07-19",
+  "sourceDate": "2026-07-29",
   "series": [
     {
       "id": "f1-custom",
@@ -460,64 +460,65 @@
       },
       "sources": [
         { "label": "SUPER FORMULA 2026 teams", "sourceDate": "2026-07-19", "url": "https://superformula.net/sf3/team_taxonomy/2026/" },
+        { "label": "SUPER FORMULA 2026 Seita Nonaka profile", "sourceDate": "2026-07-29", "url": "https://superformula.net/sf3/driver/25046/" },
         { "label": "JAF 2026 SUPER FORMULA unified regulations", "sourceDate": "2026-06-10", "url": "https://motorsports.jaf.or.jp/regulations/information/internal" }
       ],
       "teams": [
         { "id": "sf-mugen", "name": "TEAM MUGEN AUTOBACS", "color": "#e31b23", "operations": 91, "drivers": [
-          { "id": "ayumu_iwasa", "code": "IWA", "name": "Ayumu Iwasa", "number": 1, "nationality": "JPN", "overall": 78, "potential": 94 },
-          { "id": "tomoki_nojiri", "code": "NOJ", "name": "Tomoki Nojiri", "number": 16, "nationality": "JPN", "overall": 77, "potential": 88 }
+          { "id": "ayumu_iwasa", "code": "IWA", "name": "Ayumu Iwasa", "number": 1, "nationality": "JPN", "overall": 82, "potential": 94 },
+          { "id": "tomoki_nojiri", "code": "NOJ", "name": "Tomoki Nojiri", "number": 16, "nationality": "JPN", "overall": 81, "potential": 88 }
         ]},
         { "id": "sf-kondo", "name": "REALIZE KONDO RACING", "color": "#245bb5", "operations": 87, "drivers": [
-          { "id": "luke_browning", "code": "BRO", "name": "Luke Browning", "number": 3, "nationality": "GBR", "overall": 72, "potential": 95 },
-          { "id": "ukyo_sasahara", "code": "SAS", "name": "Ukyo Sasahara", "number": 4, "nationality": "JPN", "overall": 72, "potential": 85 }
+          { "id": "luke_browning", "code": "BRO", "name": "Luke Browning", "number": 3, "nationality": "GBR", "overall": 79, "potential": 95 },
+          { "id": "ukyo_sasahara", "code": "SAS", "name": "Ukyo Sasahara", "number": 4, "nationality": "JPN", "overall": 76, "potential": 85 }
         ]},
         { "id": "sf-dandelion", "name": "DOCOMO TEAM DANDELION RACING", "color": "#f6f6f6", "operations": 93, "drivers": [
-          { "id": "tadasuke_makino", "code": "MAK", "name": "Tadasuke Makino", "number": 5, "nationality": "JPN", "overall": 77, "potential": 89 },
-          { "id": "kakunoshin_ohta", "code": "OTA", "name": "Kakunoshin Ohta", "number": 6, "nationality": "JPN", "overall": 79, "potential": 94 }
+          { "id": "tadasuke_makino", "code": "MAK", "name": "Tadasuke Makino", "number": 5, "nationality": "JPN", "overall": 81, "potential": 89 },
+          { "id": "kakunoshin_ohta", "code": "OTA", "name": "Kakunoshin Ohta", "number": 6, "nationality": "JPN", "overall": 83, "potential": 94 }
         ]},
         { "id": "sf-kcmg", "name": "KCMG", "color": "#174a97", "operations": 84, "drivers": [
-          { "id": "kenta_yamashita", "code": "KEN", "name": "Kenta Yamashita", "number": 8, "nationality": "JPN", "overall": 74, "potential": 86 },
-          { "id": "giuliano_alesi", "code": "ALE", "name": "Giuliano Alesi", "number": 9, "nationality": "FRA", "overall": 70, "potential": 84 }
+          { "id": "kenta_yamashita", "code": "KEN", "name": "Kenta Yamashita", "number": 8, "nationality": "JPN", "overall": 77, "potential": 86 },
+          { "id": "seita_nonaka", "code": "NON", "name": "Seita Nonaka", "number": 9, "nationality": "JPN", "overall": 74, "potential": 84 }
         ]},
         { "id": "sf-tgmgp", "name": "KDDI TGMGP TGR-DC", "color": "#e31b23", "operations": 88, "drivers": [
-          { "id": "kamui_kobayashi", "code": "KOB", "name": "Kamui Kobayashi", "number": 7, "nationality": "JPN", "overall": 75, "potential": 85 },
-          { "id": "rikuto_kobayashi", "code": "RIK", "name": "Rikuto Kobayashi", "number": 28, "nationality": "JPN", "overall": 68, "potential": 94 }
+          { "id": "kamui_kobayashi", "code": "KOB", "name": "Kamui Kobayashi", "number": 7, "nationality": "JPN", "overall": 78, "potential": 85 },
+          { "id": "rikuto_kobayashi", "code": "RIK", "name": "Rikuto Kobayashi", "number": 28, "nationality": "JPN", "overall": 73, "potential": 94 }
         ]},
         { "id": "sf-triple-tree", "name": "HAZAMA ANDO Triple Tree Racing", "color": "#6c2b87", "operations": 78, "drivers": [
-          { "id": "juju_noda", "code": "JUJ", "name": "Juju", "number": 10, "nationality": "JPN", "overall": 66, "potential": 87 }
+          { "id": "juju_noda", "code": "JUJ", "name": "Juju", "number": 10, "nationality": "JPN", "overall": 64, "potential": 87 }
         ]},
         { "id": "sf-threebond", "name": "ThreeBond Racing", "color": "#b51f2a", "operations": 80, "drivers": [
-          { "id": "syun_koide", "code": "KOI", "name": "Syun Koide", "number": 12, "nationality": "JPN", "overall": 68, "potential": 90 }
+          { "id": "syun_koide", "code": "KOI", "name": "Syun Koide", "number": 12, "nationality": "JPN", "overall": 75, "potential": 90 }
         ]},
         { "id": "sf-rookie", "name": "NTT docomo Business ROOKIE", "color": "#f05a28", "operations": 90, "drivers": [
-          { "id": "nirei_fukuzumi", "code": "FUK", "name": "Nirei Fukuzumi", "number": 14, "nationality": "JPN", "overall": 76, "potential": 88 }
+          { "id": "nirei_fukuzumi", "code": "FUK", "name": "Nirei Fukuzumi", "number": 14, "nationality": "JPN", "overall": 80, "potential": 88 }
         ]},
         { "id": "sf-impul", "name": "TEAM IMPUL", "color": "#245bb5", "operations": 82, "drivers": [
-          { "id": "zak_osullivan", "code": "OSU", "name": "Zak O'Sullivan", "number": 19, "nationality": "GBR", "overall": 70, "potential": 92 }
+          { "id": "zak_osullivan", "code": "OSU", "name": "Zak O'Sullivan", "number": 19, "nationality": "GBR", "overall": 78, "potential": 92 }
         ]},
         { "id": "sf-delightworks", "name": "DELiGHTWORKS RACING", "color": "#d7b56d", "operations": 79, "drivers": [
-          { "id": "nobuharu_matsushita", "code": "MAT", "name": "Nobuharu Matsushita", "number": 22, "nationality": "JPN", "overall": 72, "potential": 84 }
+          { "id": "nobuharu_matsushita", "code": "MAT", "name": "Nobuharu Matsushita", "number": 22, "nationality": "JPN", "overall": 77, "potential": 84 }
         ]},
         { "id": "sf-toms", "name": "VANTELIN TEAM TOM'S", "color": "#e31b23", "operations": 92, "drivers": [
-          { "id": "sho_tsuboi", "code": "TSU", "name": "Sho Tsuboi", "number": 36, "nationality": "JPN", "overall": 78, "potential": 90 },
-          { "id": "sacha_fenestraz", "code": "FEN", "name": "Sacha Fenestraz", "number": 37, "nationality": "ARG", "overall": 75, "potential": 89 }
+          { "id": "sho_tsuboi", "code": "TSU", "name": "Sho Tsuboi", "number": 36, "nationality": "JPN", "overall": 82, "potential": 90 },
+          { "id": "sacha_fenestraz", "code": "FEN", "name": "Sacha Fenestraz", "number": 37, "nationality": "ARG", "overall": 80, "potential": 89 }
         ]},
         { "id": "sf-inging", "name": "SANKI VERTEX PARTNERS CERUMO INGING", "color": "#1d4f91", "operations": 89, "drivers": [
-          { "id": "sena_sakaguchi", "code": "SAK", "name": "Sena Sakaguchi", "number": 38, "nationality": "JPN", "overall": 75, "potential": 89 },
-          { "id": "toshiki_oyu", "code": "OYU", "name": "Toshiki Oyu", "number": 39, "nationality": "JPN", "overall": 74, "potential": 88 }
+          { "id": "sena_sakaguchi", "code": "SAK", "name": "Sena Sakaguchi", "number": 38, "nationality": "JPN", "overall": 78, "potential": 89 },
+          { "id": "toshiki_oyu", "code": "OYU", "name": "Toshiki Oyu", "number": 39, "nationality": "JPN", "overall": 79, "potential": 88 }
         ]},
         { "id": "sf-bmax", "name": "San-Ei Gen with B-Max", "color": "#4a4a4a", "operations": 77, "drivers": [
-          { "id": "yuto_nomura", "code": "NOM", "name": "Yuto Nomura", "number": 50, "nationality": "JPN", "overall": 67, "potential": 92 }
+          { "id": "yuto_nomura", "code": "NOM", "name": "Yuto Nomura", "number": 50, "nationality": "JPN", "overall": 75, "potential": 92 }
         ]},
         { "id": "sf-goh", "name": "TEAM GOH", "color": "#df2d33", "operations": 78, "drivers": [
-          { "id": "charlie_wurz", "code": "WUR", "name": "Charlie Wurz", "number": 53, "nationality": "AUT", "overall": 67, "potential": 92 }
+          { "id": "charlie_wurz", "code": "WUR", "name": "Charlie Wurz", "number": 53, "nationality": "AUT", "overall": 74, "potential": 92 }
         ]},
         { "id": "sf-nakajima", "name": "PONOS NAKAJIMA RACING", "color": "#1b6fb5", "operations": 86, "drivers": [
-          { "id": "ren_sato", "code": "REN", "name": "Ren Sato", "number": 64, "nationality": "JPN", "overall": 72, "potential": 88 },
-          { "id": "igor_fraga", "code": "FRA", "name": "Igor Omura Fraga", "number": 65, "nationality": "BRA", "overall": 71, "potential": 87 }
+          { "id": "ren_sato", "code": "REN", "name": "Ren Sato", "number": 64, "nationality": "JPN", "overall": 77, "potential": 88 },
+          { "id": "igor_fraga", "code": "FRA", "name": "Igor Omura Fraga", "number": 65, "nationality": "BRA", "overall": 79, "potential": 87 }
         ]},
         { "id": "sf-buzz", "name": "Buzz MK RACING", "color": "#dfd100", "operations": 76, "drivers": [
-          { "id": "roman_stanek", "code": "STA", "name": "Roman Stanek", "number": 97, "nationality": "CZE", "overall": 70, "potential": 89 }
+          { "id": "roman_stanek", "code": "STA", "name": "Roman Stanek", "number": 97, "nationality": "CZE", "overall": 76, "potential": 89 }
         ]}
       ]
     }

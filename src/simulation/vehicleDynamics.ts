@@ -39,15 +39,15 @@ export const DRIVER_SEGMENT_RESPONSE = 0.14
  */
 export const DRIVER_SKILL_REFERENCE = 0.9175
 /**
- * Extra pace for a genuine top-of-the-scale ace. It only engages for race-pace
- * ratings in the very top band (≈97-100 on the 0-100 scale), so it rewards a
- * standout number-one driver without touching the midfield, the junior
- * categories, or field attrition. `ACE_PACE_THRESHOLD` is on the internal
- * 0.55-1.0 execution scale (0.97 ≈ a 93-point race-pace rating), and the gain
- * is what a maximum-rated driver adds to the segment pace multiplier.
+ * Extra pace for a genuine top-of-the-scale ace. The threshold corresponds to
+ * roughly 95 on the authored 0-100 scale, so the current F1 ceiling can still
+ * reach the real-world calibration without lifting the midfield or junior
+ * categories. The cap prevents a custom 100-rated driver from creating grip
+ * or power beyond the former top-driver calibration.
  */
-export const ACE_PACE_THRESHOLD = 0.99
+export const ACE_PACE_THRESHOLD = 0.9764
 export const ACE_PACE_GAIN = 2.8
+export const ACE_PACE_MAX_GAIN = 0.0157
 export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
 export const machinePaceRating = effectiveMachineRating
@@ -264,8 +264,10 @@ export function driverSegmentExecution(options: {
   // top of the normal calibration. It is zero for the midfield down, so it
   // separates a standout leader without spreading the whole field, changing
   // junior-category racing, or reducing attrition.
-  const aceBonus =
-    Math.max(0, sessionPace - ACE_PACE_THRESHOLD) * ACE_PACE_GAIN
+  const aceBonus = Math.min(
+    ACE_PACE_MAX_GAIN,
+    Math.max(0, sessionPace - ACE_PACE_THRESHOLD) * ACE_PACE_GAIN,
+  )
 
   return clamp(
     1 - (DRIVER_SKILL_REFERENCE - skill) * DRIVER_SEGMENT_RESPONSE + aceBonus,

@@ -4,7 +4,11 @@ import {
   clampDriverAbility,
   driverAbilityGroupValue,
 } from '../simulation/driverAbility'
-import { validateSeriesPackage } from '../series/seriesRegistry'
+import {
+  isLegacySupportDriverProfile,
+  isLegacySupportMachineProfile,
+  validateSeriesPackage,
+} from '../series/seriesRegistry'
 import type {
   SeriesCalendarEvent,
   SeriesId,
@@ -29,6 +33,34 @@ const driverRoles = [
   'reserve',
   'development',
 ] as const
+
+const LEGACY_F1_DRIVER_PROFILE_FINGERPRINTS: Readonly<
+  Record<string, string>
+> = {
+  alexander_albon: 'fc2394fb',
+  arvid_lindblad: 'd826d8f6',
+  carlos_sainz: '9ec46f93',
+  charles_leclerc: 'df78a887',
+  esteban_ocon: '6b914757',
+  fernando_alonso: 'e3feb510',
+  franco_colapinto: '9060e4b4',
+  gabriel_bortoleto: 'd6c5bc4a',
+  george_russell: 'b3d916b7',
+  isack_hadjar: '344f21d1',
+  kimi_antonelli: '812fe6e4',
+  lance_stroll: 'b31ac465',
+  lando_norris: '98f89389',
+  lewis_hamilton: 'e8d9f05c',
+  liam_lawson: 'cacfbb0d',
+  max_verstappen: '998e8b92',
+  nico_hulkenberg: '5f73c88b',
+  oliver_bearman: 'f218ea6b',
+  oscar_piastri: 'a4ae3cfb',
+  pierre_gasly: 'ab7526dd',
+  sergio_perez: '2ad2690b',
+  valtteri_bottas: '0a6ca160',
+  yuki_tsunoda: '59688120',
+}
 
 type DriverRole = NonNullable<Driver['seatRole']>
 
@@ -77,6 +109,21 @@ export class SeriesConfigurationValidationError extends Error {
     this.name = 'SeriesConfigurationValidationError'
     this.issues = issues
   }
+}
+
+function driverProfileFingerprint(skills: DriverSkillProfile) {
+  const source = Object.entries(skills)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}:${value.toFixed(12)}`)
+    .join('|')
+  let hash = 2166136261
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -339,6 +386,18 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
       ]),
     ) as MachinePerformanceProfile
     const color = requiredText(candidate.color, `${id}.color`, 16)
+    const baseRating = series.rules.vehicleBaseRating
+    const operations =
+      base.performanceSource?.rawRatings?.['Team operations']
+    const usesLegacySupportMachine =
+      series.id !== 'f1-custom' &&
+      typeof baseRating === 'number' &&
+      typeof operations === 'number' &&
+      isLegacySupportMachineProfile(
+        candidateMachine,
+        baseRating,
+        operations,
+      )
 
     if (!/^#[0-9a-f]{6}$/i.test(color)) {
       throw new SeriesConfigurationValidationError([
@@ -349,7 +408,7 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
     return {
       ...base,
       color,
-      machine,
+      machine: usesLegacySupportMachine ? { ...base.machine } : machine,
       name: requiredText(candidate.name, `${id}.name`),
       pitCrewSpeed: usesLegacyUniformF1PitCrew
         ? base.pitCrewSpeed
@@ -373,13 +432,35 @@ function parseStoredDrivers(
   }
 
   const baseById = new Map(series.drivers.map((driver) => [driver.id, driver]))
+  const normalizedValue = value.map((candidate) => {
+    if (
+      series.id !== 'super-formula' ||
+      !isRecord(candidate) ||
+      candidate.id !== 'giuliano_alesi'
+    ) {
+      return candidate
+    }
+
+    const replacement = baseById.get('seita_nonaka')
+    if (!replacement) return candidate
+
+    return {
+      ...candidate,
+      code: replacement.code,
+      id: replacement.id,
+      name: replacement.name,
+      nationality: replacement.nationality,
+      potential: replacement.potential,
+      skills: { ...replacement.skills },
+    }
+  })
   const teamIds = new Set(teams.map((team) => team.id))
-  const ids = value.map((driver, index) =>
+  const ids = normalizedValue.map((driver, index) =>
     isRecord(driver) ? requiredText(driver.id, `drivers[${index}].id`) : '',
   )
   validateExactIds('drivers', ids, series.drivers.map((driver) => driver.id))
 
-  const drivers = value.map((candidate, index) => {
+  const drivers = normalizedValue.map((candidate, index) => {
     if (!isRecord(candidate) || !isRecord(candidate.skills)) {
       throw new SeriesConfigurationValidationError([
         `drivers[${index}] must contain a skills object.`,
@@ -410,6 +491,15 @@ function parseStoredDrivers(
         boundedNumber(candidateSkills[stat], `${id}.${stat}`, 0, 1),
       ]),
     ) as DriverSkillProfile
+    const usesLegacyF1DriverProfile =
+      series.id === 'f1-custom' &&
+      LEGACY_F1_DRIVER_PROFILE_FINGERPRINTS[id] ===
+        driverProfileFingerprint(skills)
+    const migratedSkills =
+      usesLegacyF1DriverProfile ||
+      isLegacySupportDriverProfile(skills, base, series.id)
+      ? { ...base.skills }
+      : skills
 
     return {
       ...base,
@@ -420,7 +510,7 @@ function parseStoredDrivers(
       nationality: optionalText(candidate.nationality, `${id}.nationality`),
       potential: boundedNumber(candidate.potential ?? 0, `${id}.potential`, 0, 1),
       seatRole: role as DriverRole,
-      skills,
+      skills: migratedSkills,
       style: { ...base.style },
       teamId,
     }

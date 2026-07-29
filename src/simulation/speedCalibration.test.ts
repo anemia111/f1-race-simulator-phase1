@@ -10,6 +10,7 @@ import { baselineSetupForTrack, idealSetupForTrack } from './engineering'
 function runSpeedTrace(
   track: TrackDefinition,
   options: {
+    driverId?: string
     fuelLoadKg?: number
     gapToAheadSeconds?: number
     headwindMps?: number
@@ -18,9 +19,14 @@ function runSpeedTrace(
     teamId?: string
   } = {},
 ) {
-  const driver = initialDrivers.find(
-    (candidate) => candidate.teamId === (options.teamId ?? 'mercedes'),
-  )!
+  const driver = options.driverId
+    ? initialDrivers.find(
+        (candidate) => candidate.id === options.driverId,
+      )!
+    : initialDrivers.find(
+        (candidate) =>
+          candidate.teamId === (options.teamId ?? 'mercedes'),
+      )!
   const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
   const snapshot = createInitialRace({
     drivers: [driver],
@@ -406,6 +412,7 @@ describe('on-track speed calibration', () => {
         fuelLoadKg: 8,
         gapToAheadSeconds: 0.16,
         headwindMps: -5,
+        driverId: 'yuki_nakayama',
         sessionType: 'limited-time',
         setup: lowDragSetup,
         teamId: 'ferrari',

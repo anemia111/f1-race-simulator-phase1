@@ -107,7 +107,7 @@ export const supportSeriesTracks: TrackDefinition[] = [
     ...commonTrackData,
     ...operationalData(0.945, 0.09, [0.095]),
     altitudeMeters: 550,
-    baseLapTime: 80,
+    baseLapTime: 79.2,
     ...layoutFor('fuji-sf'),
     feature: '1.5 km main straight followed by a technical final sector',
     id: 'fuji-sf',

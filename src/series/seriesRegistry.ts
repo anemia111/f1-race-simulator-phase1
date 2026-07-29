@@ -8,8 +8,10 @@ import {
   paceReference2026For,
   simulationBaseLapTimeForPaceReference,
 } from '../data/paceReferences2026'
+import { DRIVER_ABILITY_GROUPS } from '../simulation/driverAbility'
 import type {
   Driver,
+  DriverSkillProfile,
   DriverStyleProfile,
   MachinePerformanceProfile,
   Team,
@@ -83,6 +85,21 @@ const neutralDriverStyle: DriverStyleProfile = {
 const clamp = (value: number, minimum = 0, maximum = 1) =>
   Math.min(maximum, Math.max(minimum, value))
 
+const compactDriverRatingKeys = [
+  'adaptability',
+  'consistency',
+  'defending',
+  'errorControl',
+  'experience',
+  'overtaking',
+  'qualifyingPace',
+  'racePace',
+  'raceStart',
+  'technicalFeedback',
+  'tyreManagement',
+  'wetSkill',
+] as const satisfies readonly (keyof CompactDriverRatings)[]
+
 function hashUnit(value: string) {
   let hash = 2166136261
 
@@ -103,7 +120,7 @@ function estimatedRating(
   return clamp((driver.overall + variation + adjustment) / 100)
 }
 
-function compactRatingsFor(driver: RawDriver): CompactDriverRatings {
+function estimatedCompactRatingsFor(driver: RawDriver): CompactDriverRatings {
   const youthGap = Math.max(0, driver.potential - driver.overall)
 
   return {
@@ -124,6 +141,32 @@ function compactRatingsFor(driver: RawDriver): CompactDriverRatings {
     tyreManagement: estimatedRating(driver, 'tyreManagement'),
     wetSkill: estimatedRating(driver, 'wetSkill'),
   }
+}
+
+function compactRatingsOverall(ratings: CompactDriverRatings) {
+  const skills = expandedDriverSkills(ratings)
+
+  return (
+    DRIVER_ABILITY_GROUPS.reduce(
+      (total, group) =>
+        total +
+        group.stats.reduce((sum, stat) => sum + skills[stat], 0) /
+          group.stats.length,
+      0,
+    ) / DRIVER_ABILITY_GROUPS.length
+  )
+}
+
+function compactRatingsFor(driver: RawDriver): CompactDriverRatings {
+  const ratings = estimatedCompactRatingsFor(driver)
+  const correction = driver.overall / 100 - compactRatingsOverall(ratings)
+
+  return Object.fromEntries(
+    compactDriverRatingKeys.map((key) => [
+      key,
+      clamp(ratings[key] + correction),
+    ]),
+  ) as CompactDriverRatings
 }
 
 function rawRatingsFor(
@@ -148,7 +191,7 @@ function rawRatingsFor(
   }
 }
 
-function oneMakeMachineProfile(
+function legacyOneMakeMachineProfile(
   baseRating: number,
   operations: number,
 ): MachinePerformanceProfile {
@@ -190,6 +233,142 @@ function oneMakeMachineProfile(
     traction: operationalPace,
     wetPerformance: operationalPace,
   }
+}
+
+function oneMakeMachineProfile(
+  baseRating: number,
+  operations: number,
+): MachinePerformanceProfile {
+  const base = clamp(baseRating / 100, 0.65, 0.95)
+  const operationalDelta = (operations - 85) * 0.0045
+  const tuned = (weight: number) =>
+    clamp(base + operationalDelta * weight, 0.65, 0.97)
+  const reliability = clamp(
+    base + (operations - 82) * 0.0035,
+    0.65,
+    0.97,
+  )
+
+  return {
+    activeAeroEfficiency: tuned(0.25),
+    aerodynamicEfficiency: tuned(0.75),
+    brakeCooling: reliability,
+    brakingPerformance: tuned(1),
+    brakingStability: tuned(1),
+    bumpTolerance: tuned(0.7),
+    coolingEfficiency: reliability,
+    dirtyAirTolerance: tuned(0.45),
+    downforceGeneration: tuned(0.85),
+    dragEfficiency: tuned(0.65),
+    electricalDeploymentEfficiency: tuned(0.1),
+    energyRecoveryEfficiency: tuned(0.1),
+    frontTireManagement: tuned(1.1),
+    fuelEfficiency: tuned(0.25),
+    highSpeedCornerPerformance: tuned(0.85),
+    intermediatePerformance: tuned(1),
+    kerbHandling: tuned(0.75),
+    lowSpeedCornerPerformance: tuned(1),
+    mechanicalGrip: tuned(1),
+    mediumSpeedCornerPerformance: tuned(0.95),
+    puOutput: base,
+    qualifyingPace: tuned(1.15),
+    racePace: tuned(1),
+    rearTireManagement: tuned(1.1),
+    reliability,
+    rideCompliance: tuned(0.7),
+    straightLineEfficiency: tuned(0.65),
+    tireDegManagement: tuned(1.1),
+    tireWarmup: tuned(1),
+    towSensitivity: tuned(0.2),
+    traction: tuned(1),
+    wetPerformance: tuned(1),
+  }
+}
+
+function profilesEqual(
+  candidate: Record<string, unknown>,
+  expected: Record<string, number>,
+) {
+  return Object.entries(expected).every(
+    ([key, value]) =>
+      typeof candidate[key] === 'number' &&
+      Math.abs(candidate[key] - value) < 0.000000001,
+  )
+}
+
+export function isLegacySupportMachineProfile(
+  candidate: Record<string, unknown>,
+  baseRating: number,
+  operations: number,
+) {
+  return profilesEqual(
+    candidate,
+    legacyOneMakeMachineProfile(baseRating, operations),
+  )
+}
+
+const legacySuperFormulaOverallByDriverId: Readonly<
+  Record<string, number>
+> = {
+  ayumu_iwasa: 78,
+  charlie_wurz: 67,
+  igor_fraga: 71,
+  juju_noda: 66,
+  kakunoshin_ohta: 79,
+  kamui_kobayashi: 75,
+  kenta_yamashita: 74,
+  luke_browning: 72,
+  nirei_fukuzumi: 76,
+  nobuharu_matsushita: 72,
+  ren_sato: 72,
+  rikuto_kobayashi: 68,
+  roman_stanek: 70,
+  sacha_fenestraz: 75,
+  sena_sakaguchi: 75,
+  sho_tsuboi: 78,
+  syun_koide: 68,
+  tadasuke_makino: 77,
+  tomoki_nojiri: 77,
+  toshiki_oyu: 74,
+  ukyo_sasahara: 72,
+  yuto_nomura: 67,
+  zak_osullivan: 70,
+}
+
+export function isLegacySupportDriverProfile(
+  candidate: DriverSkillProfile,
+  baseDriver: Driver,
+  seriesId: SeriesId,
+) {
+  if (seriesId === 'f1-custom') return false
+
+  const currentOverall = baseDriver.performanceSource?.overall
+  if (
+    typeof currentOverall !== 'number' ||
+    typeof baseDriver.potential !== 'number'
+  ) {
+    return false
+  }
+
+  const legacyOverall =
+    seriesId === 'super-formula'
+      ? legacySuperFormulaOverallByDriverId[baseDriver.id]
+      : currentOverall
+  if (legacyOverall === undefined) return false
+  const legacyRatings = estimatedCompactRatingsFor({
+    code: baseDriver.code,
+    id: baseDriver.id,
+    name: baseDriver.name,
+    nationality: baseDriver.nationality ?? '',
+    number: baseDriver.carNumber,
+    overall: legacyOverall,
+    potential: Math.round(baseDriver.potential * 100),
+  })
+
+  return profilesEqual(
+    candidate,
+    expandedDriverSkills(legacyRatings),
+  )
 }
 
 function createSeriesField(definition: RawSeries) {

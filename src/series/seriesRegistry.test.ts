@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { reversedSprintGrid, runSeriesQualifying } from '../simulation/qualifying'
 import { sessionDistanceLapsFor } from '../simulation/regulations'
+import { driverOverallAbilityPoints } from '../simulation/driverAbility'
 import { buildWeekendTirePlan } from '../simulation/weekendTires'
 import {
   driverAssignments2026,
@@ -76,6 +77,99 @@ describe('2026 multi-series registry', () => {
         ).toBe(true)
       }
     }
+  })
+
+  it('turns support-team operations into distinct but close machine packages', () => {
+    for (const seriesId of ['f2', 'f3', 'super-formula'] as const) {
+      const series = seriesPackageById.get(seriesId)!
+      const overallFor = (team: (typeof series.teams)[number]) =>
+        Math.round(
+          (Object.values(team.machine).reduce(
+            (total, rating) => total + rating,
+            0,
+          ) /
+            Object.values(team.machine).length) *
+            100,
+        )
+      const machineOveralls = series.teams.map(overallFor)
+      const byOperations = series.teams.toSorted(
+        (left, right) =>
+          (left.performanceSource?.overall ?? 0) -
+          (right.performanceSource?.overall ?? 0),
+      )
+
+      expect(new Set(machineOveralls).size).toBeGreaterThan(1)
+      expect(overallFor(byOperations.at(-1)!)).toBeGreaterThan(
+        overallFor(byOperations[0]),
+      )
+      expect(Math.max(...machineOveralls) - Math.min(...machineOveralls)).toBeLessThanOrEqual(
+        7,
+      )
+      expect(new Set(series.teams.map((team) => team.machine.puOutput)).size).toBe(
+        1,
+      )
+    }
+  })
+
+  it('calibrates the authored Super Formula field from Juju 64 to Ohta 83', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const expected = {
+      ayumu_iwasa: 82,
+      charlie_wurz: 74,
+      igor_fraga: 79,
+      juju_noda: 64,
+      kakunoshin_ohta: 83,
+      kamui_kobayashi: 78,
+      kenta_yamashita: 77,
+      luke_browning: 79,
+      nirei_fukuzumi: 80,
+      nobuharu_matsushita: 77,
+      ren_sato: 77,
+      rikuto_kobayashi: 73,
+      roman_stanek: 76,
+      sacha_fenestraz: 80,
+      seita_nonaka: 74,
+      sena_sakaguchi: 78,
+      sho_tsuboi: 82,
+      syun_koide: 75,
+      tadasuke_makino: 81,
+      tomoki_nojiri: 81,
+      toshiki_oyu: 79,
+      ukyo_sasahara: 76,
+      yuto_nomura: 75,
+      zak_osullivan: 78,
+    }
+    const overalls = superFormula.drivers.map(driverOverallAbilityPoints)
+    const juju = superFormula.drivers.find(
+      (driver) => driver.id === 'juju_noda',
+    )!
+    const ohta = superFormula.drivers.find(
+      (driver) => driver.id === 'kakunoshin_ohta',
+    )!
+    const nonaka = superFormula.drivers.find(
+      (driver) => driver.id === 'seita_nonaka',
+    )!
+
+    expect(Math.min(...overalls)).toBe(64)
+    expect(Math.max(...overalls)).toBe(83)
+    expect(driverOverallAbilityPoints(juju)).toBe(64)
+    expect(driverOverallAbilityPoints(ohta)).toBe(83)
+    for (const [id, overall] of Object.entries(expected)) {
+      const driver = superFormula.drivers.find(
+        (candidate) => candidate.id === id,
+      )
+      expect(driver, id).toBeDefined()
+      expect(driver?.performanceSource?.overall, id).toBe(overall)
+      expect(driverOverallAbilityPoints(driver!), id).toBe(overall)
+    }
+    expect(nonaka).toMatchObject({
+      carNumber: 9,
+      code: 'NON',
+      name: 'Seita Nonaka',
+      nationality: 'JPN',
+      teamId: 'sf-kcmg',
+    })
+    expect(driverOverallAbilityPoints(nonaka)).toBe(74)
   })
 
   it('encodes category-specific calendars and sporting rules', () => {

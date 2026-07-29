@@ -83,8 +83,8 @@ describe('CSV performance source of truth', () => {
 
     expect(driverOverallAbilityPoints(nakayama)).toBe(100)
     expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(100)
-    expect(driverOverallAbilityPoints(verstappen)).toBe(99)
-    expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(98)
+    expect(driverOverallAbilityPoints(verstappen)).toBe(95)
+    expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(95)
     expect(
       initialDrivers.every(
         (driver) =>
@@ -99,6 +99,47 @@ describe('CSV performance source of truth', () => {
         ),
       ),
     ).toBe(true)
+  })
+
+  it('matches the authored 2026 F1 driver hierarchy in source and simulation', () => {
+    const expected = {
+      alexander_albon: 86,
+      arvid_lindblad: 82,
+      carlos_sainz: 88,
+      charles_leclerc: 92,
+      esteban_ocon: 84,
+      fernando_alonso: 89,
+      franco_colapinto: 81,
+      gabriel_bortoleto: 83,
+      george_russell: 91,
+      isack_hadjar: 85,
+      kimi_antonelli: 88,
+      lance_stroll: 80,
+      lando_norris: 92,
+      lewis_hamilton: 89,
+      liam_lawson: 83,
+      max_verstappen: 95,
+      nico_hulkenberg: 85,
+      oliver_bearman: 83,
+      oscar_piastri: 90,
+      pierre_gasly: 86,
+      sergio_perez: 82,
+      valtteri_bottas: 83,
+      yuki_tsunoda: 84,
+    }
+    const driversById = new Map(
+      [...initialDrivers, ...reserveDrivers].map((driver) => [
+        driver.id,
+        driver,
+      ]),
+    )
+
+    for (const [id, overall] of Object.entries(expected)) {
+      const driver = driversById.get(id)
+      expect(driver, id).toBeDefined()
+      expect(driverConfiguredOverallAbilityPoints(driver!), id).toBe(overall)
+      expect(driverOverallAbilityPoints(driver!), id).toBe(overall)
+    }
   })
 
   it('loads the eleven specified constructors and their machine hierarchy', () => {

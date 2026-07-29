@@ -86,12 +86,12 @@ describe('driver ability scale', () => {
     )
   })
 
-  it('keeps the configured CSV overall separate from the skill mean', () => {
+  it('reads the configured CSV overall and falls back to the skill mean', () => {
     const max = initialDrivers.find((driver) => driver.code === 'VER')!
     const withoutSource = { ...max, performanceSource: undefined }
 
-    expect(driverConfiguredOverallAbilityPoints(max)).toBe(98)
-    expect(driverOverallAbilityPoints(max)).toBeGreaterThanOrEqual(98)
+    expect(driverConfiguredOverallAbilityPoints(max)).toBe(95)
+    expect(driverOverallAbilityPoints(max)).toBe(95)
     expect(driverConfiguredOverallAbilityPoints(withoutSource)).toBe(
       driverOverallAbilityPoints(withoutSource),
     )
