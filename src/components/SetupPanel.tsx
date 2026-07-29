@@ -370,6 +370,22 @@ export function SetupPanel({
               <span>Practice setup</span>
               <small>{sessionFormatLabel}</small>
             </div>
+            <div
+              aria-label={`${selectedWeekendStage.toUpperCase()} run programmes`}
+              className="practice-program-strip"
+            >
+              {practiceResults[0]?.programs.map((program, index) => (
+                <span
+                  key={`${program.kind}-${index}`}
+                  title={`${program.label}: ${program.workItems.join(', ')}`}
+                >
+                  <b>{program.shortLabel}</b>
+                  <small>
+                    {program.compound} / {program.targetFlyingLaps}L
+                  </small>
+                </span>
+              ))}
+            </div>
             <ol className="qualifying-preview" aria-label="practice setup top five">
               {practiceResults.slice(0, 5).map((result) => (
                 <li key={result.driverId}>

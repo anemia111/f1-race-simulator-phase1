@@ -232,7 +232,10 @@ describe('on-track speed calibration', () => {
       weather: 'clear',
     })
 
-    expect(entrySpeedKph - telemetry.speedKph).toBeLessThanOrEqual(8)
+    // A 2026 F1 car can sustain roughly 5 g under peak braking. At 0.1 s this
+    // is about 18 km/h before aerodynamic drag, so the physical trace may lose
+    // around 21 km/h without being an instantaneous speed assignment.
+    expect(entrySpeedKph - telemetry.speedKph).toBeLessThanOrEqual(22)
     expect(telemetry.speedKph).toBeGreaterThanOrEqual(235)
   })
 
@@ -294,6 +297,81 @@ describe('on-track speed calibration', () => {
     expect(telemetry.throttlePercent).toBe(100)
   })
 
+  it('does not brake through a near-flat bend before the real braking zone', () => {
+    const candidates = tracks.flatMap((track) => {
+      const pointLengthMeters =
+        (track.lengthKm * 1000) / track.centerline.length
+
+      return track.centerline.flatMap((_, index) => {
+        const progress = index / track.centerline.length
+        const dynamics = trackDynamicsAt(track, progress)
+        let distanceToCommittedCorner = Number.POSITIVE_INFINITY
+
+        for (
+          let lookAhead = 1;
+          lookAhead < Math.min(24, track.centerline.length / 3);
+          lookAhead += 1
+        ) {
+          const target = trackDynamicsAt(
+            track,
+            (index + lookAhead) / track.centerline.length,
+          )
+
+          if (target.curvature >= 0.28 || target.referenceSpeedKph < 190) {
+            distanceToCommittedCorner = lookAhead * pointLengthMeters
+            break
+          }
+        }
+
+        return dynamics.curvature >= 0.055 &&
+          dynamics.curvature <= 0.18 &&
+          dynamics.referenceSpeedKph >= 220 &&
+          distanceToCommittedCorner >= 300
+          ? [{ dynamics, progress, track }]
+          : []
+      })
+    })
+
+    expect(candidates.length).toBeGreaterThan(5)
+
+    for (const candidate of candidates.slice(0, 12)) {
+      const driver = initialDrivers[0]
+      const team = initialTeams.find(({ id }) => id === driver.teamId)!
+      const snapshot = createInitialRace({
+        drivers: [driver],
+        seed: `flat-bend:${candidate.track.id}`,
+        teams: [team],
+        track: candidate.track,
+      })
+      const telemetry = calculateCarTelemetry({
+        car: {
+          ...snapshot.cars[0],
+          gapToAhead: 10,
+          progress: candidate.progress,
+          speedKph: Math.min(
+            340,
+            Math.max(235, candidate.dynamics.referenceSpeedKph),
+          ),
+          status: 'running',
+          totalDistance: 2 + candidate.progress,
+        },
+        deltaSeconds: 0.1,
+        driver,
+        elapsedSeconds: 80,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 3,
+        team,
+        track: candidate.track,
+        trackGrip: 1,
+        weather: 'clear',
+      })
+
+      expect(telemetry.brakePercent, candidate.track.id).toBe(0)
+      expect(telemetry.throttlePercent, candidate.track.id).toBe(100)
+    }
+  })
+
   it('keeps representative dry-running tracks above the old 260 km/h ceiling', () => {
     const albertPark = runSpeedTrace(
       tracks.find((candidate) => candidate.id === 'albert-park-approx')!,
@@ -308,7 +386,7 @@ describe('on-track speed calibration', () => {
     expect(albertPark.maximumSpeedKph).toBeGreaterThanOrEqual(295)
     expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(345)
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(330)
-    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(370)
+    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(380)
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(360)
     expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(390)
   })

@@ -83,6 +83,12 @@ async function writeCalibration(records) {
     return
   }
 
+  for (const seriesRecords of Object.values(records)) {
+    for (const record of seriesRecords) {
+      delete record.simulation.liveTimingProgressScale
+    }
+  }
+
   await Promise.all(
     Object.entries(FILES).map(([series, path]) =>
       writeFile(
@@ -369,7 +375,7 @@ function trackWithLiveTimingScale(track, scale) {
             ...track.paceReference2026.calibration,
             simulation: {
               ...track.paceReference2026.calibration.simulation,
-              liveTimingProgressScale: scale,
+              liveTimingPaceScale: scale,
             },
           },
         }
@@ -465,7 +471,7 @@ async function calibrateLiveTiming() {
       }
 
       const target = record.qualifying.selectedReferenceSeconds
-      let scale = record.simulation.liveTimingProgressScale ?? 1
+      let scale = record.simulation.liveTimingPaceScale ?? 1
       let best = {
         absoluteError: Number.POSITIVE_INFINITY,
         observed: null,
@@ -497,9 +503,10 @@ async function calibrateLiveTiming() {
         scale = Math.min(1.3, Math.max(0.7, scale * (observed / target)))
       }
 
-      record.simulation.liveTimingProgressScale = round(best.scale, 6)
+      record.simulation.liveTimingPaceScale = round(best.scale, 6)
+      delete record.simulation.liveTimingProgressScale
       process.stdout.write(
-        `${record.eventName}: live timing progress scale ${best.scale.toFixed(6)} (${best.observed?.toFixed(3) ?? 'no time'}s, error ${best.absoluteError.toFixed(3)}s)\n`,
+        `${record.eventName}: live timing pace scale ${best.scale.toFixed(6)} (${best.observed?.toFixed(3) ?? 'no time'}s, error ${best.absoluteError.toFixed(3)}s)\n`,
       )
     }
   }
@@ -547,7 +554,7 @@ async function validateLiveTimingCalibration() {
       }
       report.push({
         error: round(error),
-        scale: record.simulation.liveTimingProgressScale,
+        scale: record.simulation.liveTimingPaceScale,
         track: track.id,
       })
     }

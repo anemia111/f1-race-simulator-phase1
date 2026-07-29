@@ -416,6 +416,13 @@ export function energyDeploymentRequestFor(
   const neutralisationMultiplier = phaseActive ? 0.12 : 1
   const longStraightMultiplier =
     1 + clamp((straightLengthAheadMeters - 500) / 900, 0, 1) * 0.18
+  const baseStraightAllocationPriority =
+    0.06 +
+    clamp((straightLengthAheadMeters - 150) / 1_000, 0, 1) * 0.94
+  const endOfLapSpend = smoothstep(0.74, 0.98, lapProgress)
+  const straightAllocationPriority =
+    baseStraightAllocationPriority +
+    (1 - baseStraightAllocationPriority) * endOfLapSpend
   const terminalSpeedAllocation =
     1 - smoothstep(420, 432, speedKph) * 0.65
 
@@ -423,6 +430,7 @@ export function energyDeploymentRequestFor(
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *
       0.72 *
       longStraightMultiplier *
+      straightAllocationPriority *
       paceMultiplier[paceMode] *
       battleMultiplier *
       timedMultiplier *
@@ -433,7 +441,8 @@ export function energyDeploymentRequestFor(
       neutralisationMultiplier
   const qualifyingAttackMinimum =
     timedRunPhase === 'attack-lap'
-      ? (0.88 + straightValue * 0.12) *
+      ? (0.18 + straightValue * 0.82) *
+        straightAllocationPriority *
         smoothstep(18, 72, throttlePercent) *
         terminalSpeedAllocation *
         neutralisationMultiplier

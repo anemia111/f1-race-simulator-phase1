@@ -93,6 +93,16 @@ export type PenaltyKind =
   | 'pit-lane-start'
   | 'disqualification'
 export type TimedRunPhase = 'garage' | 'out-lap' | 'attack-lap' | 'in-lap' | 'cooldown'
+export type PracticeProgramKind =
+  | 'systems-check'
+  | 'aero-correlation'
+  | 'setup-baseline'
+  | 'qualifying-simulation'
+  | 'race-simulation'
+  | 'compound-comparison'
+  | 'qualifying-preparation'
+  | 'setup-verification'
+  | 'start-pit-practice'
 export type TimedSegmentAttemptStatus =
   | 'garage'
   | 'left-pits'
@@ -428,11 +438,11 @@ export type EventPaceCalibration = {
     neutralBaseLapSeconds: number
     qualifyingOffsetSeconds: number
     /**
-     * Offline correction for the measured, map-driven limited-time session
-     * loop. It compensates for circuit-profile sampling without changing the
-     * displayed telemetry speed or the race-distance pace model.
+     * Offline controller calibration for limited-time attack laps. It changes
+     * pedal targets before longitudinal integration; it never advances map
+     * position independently from the displayed telemetry speed.
      */
-    liveTimingProgressScale?: number
+    liveTimingPaceScale?: number
     expectedGreenRaceDeltaSeconds: number
     raceModelCorrectionSeconds: number
     residualSigmaSeconds: number
@@ -1020,6 +1030,12 @@ export type CarSnapshot = {
   timedRunStartedAtSeconds: number | null
   timedRunPhase: TimedRunPhase | null
   timedRunsCompleted: number
+  /** Active free-practice work programme; absent in race and qualifying. */
+  practiceProgram?: PracticeProgramKind | null
+  /** Flying laps completed in the current multi-lap practice run. */
+  timedRunLapsCompleted?: number
+  /** Planned flying-lap count before the car returns to the garage. */
+  timedRunTargetLaps?: number
   timedSegmentBestSeconds: Record<string, number | null>
   /** Clock time of each segment best; exact ties favour the earlier lap. */
   timedSegmentBestSetAtSeconds?: Record<string, number | null>

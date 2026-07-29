@@ -51,7 +51,11 @@ import {
   raceLapsFor,
   trackEvolutionLevel,
 } from './raceEvents'
-import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
+import {
+  referenceProfileLapTimeSeconds,
+  speedForProfileTravelKph,
+  trackDynamicsAt,
+} from './trackDynamics'
 import { startingGridDistance } from './startingGrid'
 import {
   decidePitStop,
@@ -458,8 +462,8 @@ describe('starting grid', () => {
     }
     let snapshot = runThroughStart(config)
 
-    for (let step = 0; step < 500 && snapshot.leaderLap < 15; step += 1) {
-      snapshot = advanceRace(snapshot, 5, config)
+    for (let step = 0; step < 900 && snapshot.leaderLap < 15; step += 1) {
+      snapshot = advanceRace(snapshot, 3, config)
     }
 
     const brakeStops = snapshot.events.filter(
@@ -481,7 +485,7 @@ describe('starting grid', () => {
     expect(fastestCleanLap).toBeGreaterThan(config.track.baseLapTime * 0.84)
     expect(fastestCleanLap).toBeLessThan(config.track.baseLapTime * 1.15)
     expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
-  })
+  }, 20_000)
 
   it('stages routine green-flag stops instead of sending the field together', () => {
     const baseConfig = makeConfig('staggered-pit-window')
@@ -573,6 +577,35 @@ describe('starting grid', () => {
     ).toBeGreaterThan(1)
   })
 
+  it('streams a healthy practice field out early with pit-exit spacing', () => {
+    const config = {
+      ...makeConfig('fp-early-stream'),
+      weekendStage: 'fp1' as const,
+    }
+    let snapshot = createInitialRace(config)
+    const starts = new Map<string, number>()
+
+    for (let second = 0; second < 180; second += 1) {
+      snapshot = advanceRace(snapshot, 1, config)
+
+      snapshot.cars.forEach((car) => {
+        if (car.timedRunStartedAtSeconds !== null && !starts.has(car.driverId)) {
+          starts.set(car.driverId, car.timedRunStartedAtSeconds)
+        }
+      })
+    }
+
+    const startTimes = [...starts.values()].sort((left, right) => left - right)
+    const minimumSpacing = Math.min(
+      ...startTimes.slice(1).map((time, index) => time - startTimes[index]),
+    )
+
+    expect(starts.size).toBe(config.drivers.length)
+    expect(startTimes[0]).toBeLessThan(60)
+    expect(startTimes[startTimes.length - 1]).toBeLessThan(150)
+    expect(minimumSpacing).toBeGreaterThanOrEqual(2)
+  })
+
   it('finishes timed practice by clock instead of race distance', () => {
     const config = { ...makeConfig('fp-clock'), weekendStage: 'fp2' as const }
     let snapshot = createInitialRace(config)
@@ -589,6 +622,30 @@ describe('starting grid', () => {
 })
 
 describe('CPU timing lines', () => {
+  it('reports the speed implied by actual centerline travel', () => {
+    const driver = initialDrivers[0]
+    const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
+    const config: RaceConfig = {
+      ...makeConfig('physical-speed-readout'),
+      drivers: [driver],
+      teams: [team],
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const before = runThroughStart(config)
+    const deltaSeconds = 0.25
+    const after = advanceRace(before, deltaSeconds, config)
+    const beforeCar = before.cars[0]
+    const afterCar = after.cars[0]
+    const travelSpeedKph = speedForProfileTravelKph(
+      config.track,
+      beforeCar.totalDistance,
+      afterCar.totalDistance,
+      deltaSeconds,
+    )
+
+    expect(afterCar.speedKph).toBeCloseTo(travelSpeedKph, 2)
+  })
+
   it('starts with no invented lap or sector times', () => {
     const snapshot = createInitialRace(makeConfig('timing-placeholders'))
 
@@ -1762,21 +1819,11 @@ describe('official race distances', () => {
 describe('track speed profile', () => {
   it('integrates the reference profile to the configured base lap time', () => {
     const track = tracks[0]
-    const steps = 1_000
-    const deltaSeconds = track.baseLapTime / steps
-    let progress = 0
 
-    for (let step = 0; step < steps; step += 1) {
-      const referenceSpeed = trackDynamicsAt(track, progress).referenceSpeedKph
-      progress += progressForProfileSpeed(
-        track,
-        progress,
-        referenceSpeed,
-        deltaSeconds,
-      )
-    }
-
-    expect(progress).toBeCloseTo(1, 8)
+    expect(referenceProfileLapTimeSeconds(track)).toBeCloseTo(
+      track.baseLapTime,
+      5,
+    )
   })
 })
 

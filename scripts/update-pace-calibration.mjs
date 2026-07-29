@@ -1032,14 +1032,14 @@ function estimatedQualifying(event) {
 
 function withPreservedSimulation(generated, previous) {
   const generatedWithLiveTimingScale =
-    previous?.simulation.liveTimingProgressScale === undefined
+    previous?.simulation.liveTimingPaceScale === undefined
       ? generated
       : {
           ...generated,
           simulation: {
             ...generated.simulation,
-            liveTimingProgressScale:
-              previous.simulation.liveTimingProgressScale,
+            liveTimingPaceScale:
+              previous.simulation.liveTimingPaceScale,
           },
         }
   const qualifyingUnchanged =

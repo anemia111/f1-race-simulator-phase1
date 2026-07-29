@@ -1047,6 +1047,41 @@
   margin-bottom: 10px;
 }
 
+.practice-program-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 7px;
+}
+
+.practice-program-strip > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-left: 2px solid #16c9ff;
+  background: #081520;
+  padding: 5px 7px;
+}
+
+.practice-program-strip b,
+.practice-program-strip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-program-strip b {
+  color: #f3f8fc;
+  font-size: 10px;
+}
+
+.practice-program-strip small {
+  color: #8da9ba;
+  font-size: 9px;
+}
+
 .compact-title {
   margin-bottom: 7px;
 }

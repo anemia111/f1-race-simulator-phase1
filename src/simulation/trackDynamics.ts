@@ -2,6 +2,7 @@ import type { BattlePhase, TrackDefinition } from '../types'
 
 export type TrackDynamicPoint = {
   brakingSeverity: number
+  requiredBrakingDecelerationMps2: number
   cornerClass: 'low' | 'medium' | 'high' | 'straight'
   curvature: number
   fullThrottle: boolean
@@ -12,7 +13,10 @@ export type TrackDynamicPoint = {
   turnDirection: -1 | 0 | 1
 }
 
-type CachedProfile = { points: TrackDynamicPoint[] }
+type CachedProfile = {
+  cumulativeArcLength: number[]
+  points: TrackDynamicPoint[]
+}
 
 const profileCache = new WeakMap<TrackDefinition, CachedProfile>()
 const clamp = (value: number, min: number, max: number) =>
@@ -86,48 +90,113 @@ function rawProfileAt(track: TrackDefinition, index: number) {
 
 function buildProfile(track: TrackDefinition): CachedProfile {
   const raw = track.centerline.map((_, index) => rawProfileAt(track, index))
+  const visualSegmentLengths = track.centerline.map((point, index) => {
+    const next = pointAt(track, index + 1)
+
+    return Math.max(
+      0.000001,
+      Math.hypot(next[0] - point[0], next[2] - point[2]),
+    )
+  })
+  const visualLapLength = visualSegmentLengths.reduce(
+    (total, length) => total + length,
+    0,
+  )
+  const segmentWeights = visualSegmentLengths.map(
+    (length) => length / visualLapLength,
+  )
+  const segmentLengthMeters = segmentWeights.map(
+    (weight) => weight * track.lengthKm * 1000,
+  )
+  const cumulativeArcLength = [0]
+
+  for (const weight of segmentWeights) {
+    cumulativeArcLength.push(
+      cumulativeArcLength[cumulativeArcLength.length - 1] + weight,
+    )
+  }
+  cumulativeArcLength[cumulativeArcLength.length - 1] = 1
   const averageSpeedKph = (track.lengthKm / track.baseLapTime) * 3600
   let speedScale =
     averageSpeedKph /
-    (raw.length /
-      raw.reduce((total, point) => total + 1 / point.rawSpeedFactor, 0))
+    (1 /
+      raw.reduce(
+        (total, point, index) =>
+          total + segmentWeights[index] / point.rawSpeedFactor,
+        0,
+      ))
+
+  const feasibleSpeedsForScale = (scale: number) => {
+    const speeds = raw.map((point) =>
+      clamp(
+        point.rawSpeedFactor * scale,
+        MIN_REFERENCE_SPEED_KPH,
+        MAX_REFERENCE_SPEED_KPH,
+      ) / 3.6,
+    )
+
+    // Curvature alone can jump from a hairpin to 395 km/h at the next sampled
+    // point. Forward/backward passes turn that shape into a physically
+    // reachable envelope before it is used by throttle and brake control.
+    for (let pass = 0; pass < 4; pass += 1) {
+      for (let index = 0; index < speeds.length; index += 1) {
+        const nextIndex = (index + 1) % speeds.length
+        const maximumNextMps = Math.sqrt(
+          speeds[index] ** 2 +
+            2 * 12.5 * segmentLengthMeters[index],
+        )
+
+        speeds[nextIndex] = Math.min(speeds[nextIndex], maximumNextMps)
+      }
+
+      for (let index = speeds.length - 1; index >= 0; index -= 1) {
+        const nextIndex = (index + 1) % speeds.length
+        const maximumEntryMps = Math.sqrt(
+          speeds[nextIndex] ** 2 +
+            2 * 44 * segmentLengthMeters[index],
+        )
+
+        speeds[index] = Math.min(speeds[index], maximumEntryMps)
+      }
+    }
+
+    return speeds.map((speedMps) => speedMps * 3.6)
+  }
 
   // Curvature creates a wide F1-like speed range while this iterative scale
   // keeps the distance-weighted lap time anchored to the configured circuit
   // baseline, including tracks that touch the hairpin or straight-line bounds.
-  for (let iteration = 0; iteration < 12; iteration += 1) {
-    const speeds = raw.map((point) =>
-      clamp(
-        point.rawSpeedFactor * speedScale,
-        MIN_REFERENCE_SPEED_KPH,
-        MAX_REFERENCE_SPEED_KPH,
-      ),
-    )
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const speeds = feasibleSpeedsForScale(speedScale)
     const achievedAverageSpeedKph =
-      speeds.length /
-      speeds.reduce((total, speedKph) => total + 1 / speedKph, 0)
+      1 /
+      speeds.reduce(
+        (total, speedKph, index) =>
+          total + segmentWeights[index] / speedKph,
+        0,
+      )
 
     speedScale *= averageSpeedKph / achievedAverageSpeedKph
   }
 
-  const speedPoints = raw.map((point) => ({
+  const feasibleSpeeds = feasibleSpeedsForScale(speedScale)
+  const speedPoints = raw.map((point, index) => ({
     curvature: point.curvature,
     gradient: point.gradient,
-    referenceSpeedKph: clamp(
-      point.rawSpeedFactor * speedScale,
-      MIN_REFERENCE_SPEED_KPH,
-      MAX_REFERENCE_SPEED_KPH,
-    ),
+    referenceSpeedKph: feasibleSpeeds[index],
     straightness: point.straightness,
     turnDirection: point.turnDirection,
   }))
-  const pointLengthMeters = (track.lengthKm * 1000) / Math.max(1, raw.length)
   const points = speedPoints.map((point, index) => {
-    let brakingSeverity = 0
+    let requiredBrakingDecelerationMps2 = 0
+    let distanceMeters = 0
 
     for (let lookAhead = 1; lookAhead <= Math.min(14, speedPoints.length / 5); lookAhead += 1) {
       const target = speedPoints[(index + lookAhead) % speedPoints.length]
-      const distanceMeters = Math.max(1, lookAhead * pointLengthMeters)
+      distanceMeters +=
+        segmentLengthMeters[
+          (index + lookAhead - 1) % segmentLengthMeters.length
+        ]
       const currentMps = point.referenceSpeedKph / 3.6
       const targetMps = target.referenceSpeedKph / 3.6
       const requiredDeceleration = Math.max(
@@ -136,11 +205,21 @@ function buildProfile(track: TrackDefinition): CachedProfile {
           (2 * distanceMeters),
       )
 
-      brakingSeverity = Math.max(
-        brakingSeverity,
-        clamp(requiredDeceleration / 13.5, 0, 1),
+      requiredBrakingDecelerationMps2 = Math.max(
+        requiredBrakingDecelerationMps2,
+        target.curvature < 0.08 && target.referenceSpeedKph >= 220
+          ? 0
+          : requiredDeceleration,
       )
     }
+    // The map-level severity is an F1 reference only. Telemetry converts the
+    // raw required deceleration into the actual category's brake capability,
+    // so an F3 car starts earlier than an F1 car without changing the circuit.
+    const brakingSeverity = clamp(
+      (requiredBrakingDecelerationMps2 - 14) / 30,
+      0,
+      1,
+    )
     let straightLengthAheadMeters = 0
 
     for (let lookAhead = 0; lookAhead < speedPoints.length / 3; lookAhead += 1) {
@@ -153,7 +232,10 @@ function buildProfile(track: TrackDefinition): CachedProfile {
         break
       }
 
-      straightLengthAheadMeters += pointLengthMeters
+      straightLengthAheadMeters +=
+        segmentLengthMeters[
+          (index + lookAhead) % segmentLengthMeters.length
+        ]
     }
 
     const cornerClass: TrackDynamicPoint['cornerClass'] =
@@ -168,16 +250,17 @@ function buildProfile(track: TrackDefinition): CachedProfile {
     return {
       ...point,
       brakingSeverity,
+      requiredBrakingDecelerationMps2,
       cornerClass,
       fullThrottle:
         (point.straightness > 0.68 || straightLengthAheadMeters >= 100) &&
         point.referenceSpeedKph >= 190 &&
-        brakingSeverity < 0.32,
+        brakingSeverity < 0.14,
       straightLengthAheadMeters,
     }
   })
 
-  return { points }
+  return { cumulativeArcLength, points }
 }
 
 export function trackDynamicsAt(
@@ -293,18 +376,130 @@ export function progressForSpeed(
   return Math.max(0, speedKph) * (deltaSeconds / 3600) / track.lengthKm
 }
 
+export function referenceProfileLapTimeSeconds(track: TrackDefinition) {
+  let profile = profileCache.get(track)
+
+  if (!profile) {
+    profile = buildProfile(track)
+    profileCache.set(track, profile)
+  }
+
+  return profile.points.reduce((lapSeconds, point, index) => {
+    const distanceFraction =
+      profile.cumulativeArcLength[index + 1] -
+      profile.cumulativeArcLength[index]
+
+    return (
+      lapSeconds +
+      (distanceFraction * track.lengthKm * 3600) /
+        point.referenceSpeedKph
+    )
+  }, 0)
+}
+
+function profileArcProgressAt(
+  profile: CachedProfile,
+  unwrappedProgress: number,
+) {
+  const completedLaps = Math.floor(unwrappedProgress)
+  const normalizedProgress = unwrappedProgress - completedLaps
+  const pointPosition = normalizedProgress * profile.points.length
+  const pointIndex = Math.min(
+    profile.points.length - 1,
+    Math.floor(pointPosition),
+  )
+  const pointFraction = pointPosition - pointIndex
+  const segmentStartArc = profile.cumulativeArcLength[pointIndex]
+  const segmentEndArc = profile.cumulativeArcLength[pointIndex + 1]
+
+  return (
+    completedLaps +
+    segmentStartArc +
+    (segmentEndArc - segmentStartArc) * pointFraction
+  )
+}
+
+export function profileDistanceKmBetween(
+  track: TrackDefinition,
+  startProgress: number,
+  endProgress: number,
+) {
+  let profile = profileCache.get(track)
+
+  if (!profile) {
+    profile = buildProfile(track)
+    profileCache.set(track, profile)
+  }
+
+  return (
+    Math.max(
+      0,
+      profileArcProgressAt(profile, endProgress) -
+        profileArcProgressAt(profile, startProgress),
+    ) * track.lengthKm
+  )
+}
+
+export function speedForProfileTravelKph(
+  track: TrackDefinition,
+  startProgress: number,
+  endProgress: number,
+  deltaSeconds: number,
+) {
+  if (deltaSeconds <= 0) {
+    return 0
+  }
+
+  return (
+    (profileDistanceKmBetween(track, startProgress, endProgress) * 3600) /
+    deltaSeconds
+  )
+}
+
 export function progressForProfileSpeed(
   track: TrackDefinition,
   progress: number,
   speedKph: number,
   deltaSeconds: number,
 ) {
-  const referenceSpeedKph = trackDynamicsAt(track, progress).referenceSpeedKph
-  const localPaceRatio = clamp(
-    Math.max(0, speedKph) / Math.max(1, referenceSpeedKph),
-    0,
-    2.2,
-  )
+  let profile = profileCache.get(track)
 
-  return (deltaSeconds / Math.max(1, track.baseLapTime)) * localPaceRatio
+  if (!profile) {
+    profile = buildProfile(track)
+    profileCache.set(track, profile)
+  }
+
+  const normalizedProgress = ((progress % 1) + 1) % 1
+  const startArc = profileArcProgressAt(profile, normalizedProgress)
+  const distanceFraction =
+    Math.max(0, speedKph) * (deltaSeconds / 3600) / track.lengthKm
+  const unwrappedEndArc = startArc + distanceFraction
+  const completedLaps = Math.floor(unwrappedEndArc)
+  const endArc = unwrappedEndArc - completedLaps
+  let endPointIndex = profile.points.length - 1
+
+  for (let index = 0; index < profile.points.length; index += 1) {
+    if (profile.cumulativeArcLength[index + 1] >= endArc) {
+      endPointIndex = index
+      break
+    }
+  }
+
+  const endSegmentStart = profile.cumulativeArcLength[endPointIndex]
+  const endSegmentLength = Math.max(
+    0.0000001,
+    profile.cumulativeArcLength[endPointIndex + 1] - endSegmentStart,
+  )
+  const endPointFraction = clamp(
+    (endArc - endSegmentStart) / endSegmentLength,
+    0,
+    1,
+  )
+  const unwrappedEndProgress =
+    completedLaps +
+    (endPointIndex + endPointFraction) / profile.points.length
+
+  // The same telemetry speed shown in the timing tower now advances the car by
+  // v * dt over the centerline's actual arc length.
+  return Math.max(0, unwrappedEndProgress - normalizedProgress)
 }

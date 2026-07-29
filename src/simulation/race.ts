@@ -79,6 +79,7 @@ import {
 } from './neutralisation'
 import {
   compactSessionDurationLabel,
+  isPracticeStage,
   isRaceDistanceSession,
   isTimedLapSession,
   performanceSessionForWeekendStage,
@@ -94,6 +95,11 @@ import {
 } from './strategy'
 import { startingGridDistance } from './startingGrid'
 import { calculateCarTelemetry } from './telemetry'
+import {
+  categoryEngineRpmForSpeed,
+  categoryGearForSpeed,
+  categoryPhysicsFor,
+} from './categoryPhysics'
 import {
   blueFlagDecision,
   jumpStartDecision,
@@ -118,6 +124,7 @@ import {
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
   progressForProfileSpeed,
+  speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
 import {
@@ -141,12 +148,20 @@ import {
   trackEvolutionLevelFor,
 } from './trackEvolution'
 import {
+  baseFuelBurnKgPerLap,
   fuelBurnKgPerLap,
   fuelMassEffects,
   initialFuelLoadKg,
   performanceLapGainSeconds,
   driverFuelUseMultiplier,
 } from './vehicleDynamics'
+import {
+  practiceDryCompoundFor,
+  practiceProgramFor,
+  type PracticeProgramPlan,
+} from './practicePrograms'
+import { timedLapLaunchBlend } from './timedLapPreparation'
+import { timedSessionYieldDecision } from './timedSessionTraffic'
 import {
   legalStartCompoundForConditions,
   weekendTireAllocation,
@@ -170,46 +185,8 @@ const TICKER_EVENT_WINDOW_SECONDS = 12
 /** Seconds after retirement before the wreck is cleared from the 3D track. */
 const WRECK_CLEAR_SECONDS = 25
 /** The worker's largest real-time step is 3 seconds at 60x. */
-const TIMED_SESSION_MAX_REALTIME_STEP_SECONDS = 3
-const TIMED_SESSION_INTEGRATION_STEP_SECONDS = 1
-/** Tight but non-overlapping spacing enforced inside an SC train. */
-/**
- * Extra straight-line drag for the junior categories, so each field tops out
- * near its real machine instead of matching F1. F1 keeps this simulation's
- * designed 400-class terminal speed (1). Junior cars run less power and more
- * drag, so their top speed is lower; drag rises with v², biting only at the top
- * end and leaving cornering pace to the lap-time multiplier. Tuned so top
- * speeds land near each real machine: F1 360, SUPER FORMULA 315, F2 335,
- * F3 300.
- *
- * A config with no category (the raw physics tests and calibration helpers)
- * keeps 1, the uncapped car; the drag applies only to an explicit series.
- */
-function categoryDragScaleFor(
-  seriesId: RaceConfig['seriesId'],
-  track: RaceConfig['track'],
-): number {
-  switch (seriesId) {
-    case undefined:
-    case 'f1-custom':
-      // The vehicle model already includes the 2026 F1 drag area and active
-      // aero state. A second 1.9x multiplier made the complete race loop much
-      // slower than the same car in the longitudinal physics tests.
-      if (track.id === 'las-vegas-approx') return 1
-      if (track.id === 'baku-approx') return 1.12
-      if (track.id === 'monza-approx') return 1.15
-      return 1.35
-    case 'f2':
-      return 2.55
-    case 'f3':
-      return 3.4
-    case 'super-formula':
-      return 2.4
-    default:
-      return 1
-  }
-}
-
+const MAX_REALTIME_STEP_SECONDS = 3
+const PHYSICS_INTEGRATION_STEP_SECONDS = 0.5
 const SAFETY_CAR_QUEUE_MIN_GAP_SECONDS = 0.22
 /** VSC cars retain their track gaps but cannot overlap while overtaking is banned. */
 const VSC_QUEUE_MIN_GAP_SECONDS = 0.4
@@ -627,6 +604,23 @@ function timedSessionReleasePlan(
     }
   }
 
+  if (isPracticeStage(stage)) {
+    if (runIndex > 0) {
+      return { pitExitAtSeconds: 0, strategy: null }
+    }
+
+    return {
+      pitExitAtSeconds:
+        12 +
+        gridIndex * 3.1 +
+        hashChance(
+          `${config.seed}:practice-release:${stage}:${driver.id}:${runIndex}`,
+        ) *
+          0.9,
+      strategy: null,
+    }
+  }
+
   const isQualifyingStyle =
     stage === 'qualifying' || stage === 'sprintQualifying'
   const baseSeconds = isQualifyingStyle ? 38 : 90
@@ -658,6 +652,10 @@ function timedRunCompound(
   plannedCompound: TireCompound | null,
   weather: WeatherState,
   trackCondition?: TireTrackCondition,
+  practiceContext?: {
+    driverId: string
+    seed: string
+  },
 ): TireCompound {
   const preferred = trackCondition
     ? preferredTireCategoryFor(trackCondition)
@@ -678,8 +676,27 @@ function timedRunCompound(
   // Grand Prix qualifying runs are built around the fastest dry compound.
   // Keep the segment plan from accidentally carrying a race/practice tyre
   // into Q1-Q3; Sprint Qualifying retains its prescribed M/M/S plan.
-  if (stage === 'qualifying') {
+  if (stage === 'qualifying' || stage === 'qualifying2') {
     return 'S'
+  }
+
+  if (isPracticeStage(stage) && practiceContext) {
+    const plan = practiceProgramFor({
+      driverId: practiceContext.driverId,
+      runIndex,
+      seed: practiceContext.seed,
+      stage,
+    })
+
+    if (plan) {
+      return practiceDryCompoundFor({
+        driverId: practiceContext.driverId,
+        plan,
+        runIndex,
+        seed: practiceContext.seed,
+        stage,
+      })
+    }
   }
 
   if (plannedCompound) {
@@ -718,73 +735,119 @@ function timedSessionStartingTire(
   fallback: TireCompound,
   weather: ReturnType<typeof weatherFor>,
   trackCondition: TireTrackCondition,
+  practiceContext?: {
+    driverId: string
+    seed: string
+  },
 ): TireCompound {
-  return timedRunCompound(stage, 0, fallback, weather, trackCondition)
+  return timedRunCompound(
+    stage,
+    0,
+    fallback,
+    weather,
+    trackCondition,
+    practiceContext,
+  )
 }
 
 function timedRunPaceFor(options: {
   car: CarSnapshot
+  seed: string
   stage: WeekendStage
+  track: RaceConfig['track']
 }) {
-  const { car, stage } = options
+  const { car, seed, stage, track } = options
+  const practicePlan = practiceProgramFor({
+    driverId: car.driverId,
+    runIndex: car.timedRunsCompleted,
+    seed,
+    stage,
+  })
 
   if (!isTimedLapSession(stage) || car.timedRunStartedAtSeconds === null) {
-    return { paceFactor: 1, phase: car.timedRunPhase }
+    return {
+      launchBlend: 0,
+      paceFactor: 1,
+      phase: car.timedRunPhase,
+      physicsPhase: car.timedRunPhase,
+      practicePlan,
+    }
   }
 
   const isQualifyingStyle =
-    stage === 'qualifying' || stage === 'sprintQualifying'
+    stage === 'qualifying' ||
+    stage === 'qualifying2' ||
+    stage === 'sprintQualifying'
+  const attackPaceFactor =
+    practicePlan?.paceFactor ?? (isQualifyingStyle ? 0.98 : 1.04)
+  const qualifyingEnergy =
+    practicePlan === null || practicePlan.energyIntent === 'qualifying'
 
   if (car.timedRunPhase === 'out-lap') {
-    return { paceFactor: isQualifyingStyle ? 1.42 : 1.28, phase: 'out-lap' as const }
+    const launchBlend = timedLapLaunchBlend(
+      track,
+      car.progress,
+      car.timedRunPhase,
+    )
+    const outLapPaceFactor = isQualifyingStyle ? 1.42 : 1.28
+
+    return {
+      launchBlend,
+      paceFactor:
+        outLapPaceFactor +
+        (attackPaceFactor - outLapPaceFactor) * launchBlend,
+      phase: 'out-lap' as const,
+      physicsPhase:
+        launchBlend > 0
+          ? qualifyingEnergy
+            ? ('attack-lap' as const)
+            : null
+          : ('out-lap' as const),
+      practicePlan,
+    }
   }
 
   if (car.timedRunPhase === 'attack-lap') {
-    return { paceFactor: isQualifyingStyle ? 0.98 : 1.04, phase: 'attack-lap' as const }
+    return {
+      launchBlend: 1,
+      paceFactor: attackPaceFactor,
+      phase: 'attack-lap' as const,
+      physicsPhase: qualifyingEnergy ? ('attack-lap' as const) : null,
+      practicePlan,
+    }
   }
 
   if (car.timedRunPhase === 'in-lap') {
-    return { paceFactor: isQualifyingStyle ? 1.5 : 1.34, phase: 'in-lap' as const }
+    return {
+      launchBlend: 0,
+      paceFactor: isQualifyingStyle ? 1.5 : 1.34,
+      phase: 'in-lap' as const,
+      physicsPhase: 'in-lap' as const,
+      practicePlan,
+    }
   }
-
-  return { paceFactor: isQualifyingStyle ? 1.2 : 1.16, phase: 'cooldown' as const }
-}
-
-function telemetryForTimedRunPhase<T extends {
-  activeAeroMode: CarSnapshot['activeAeroMode']
-  overtakeStatus: CarSnapshot['overtakeStatus']
-  rpm: number
-  speedKph: number
-  throttlePercent: number
-}>(
-  telemetry: T,
-  phase: CarSnapshot['timedRunPhase'],
-): T {
-  if (phase !== 'out-lap' && phase !== 'in-lap' && phase !== 'cooldown') {
-    return telemetry
-  }
-
-  const rpmScale = phase === 'in-lap' ? 0.88 : phase === 'out-lap' ? 0.92 : 0.94
-  const throttleCeiling =
-    phase === 'in-lap' ? 68 : phase === 'out-lap' ? 82 : 76
-  // Out and in laps run to a controlled delta pace, not flat out. Capping the
-  // speed to a common ceiling keeps every car at the same measured out-lap pace
-  // so the pit-release spacing holds and nobody reels in the car ahead before
-  // their flying lap.
-  const speedCeilingKph =
-    phase === 'in-lap' ? 150 : phase === 'out-lap' ? 175 : 190
 
   return {
-    ...telemetry,
-    activeAeroMode: 'corner',
-    overtakeStatus: 'disabled',
-    rpm: Math.round(telemetry.rpm * rpmScale),
-    speedKph: Math.min(telemetry.speedKph, speedCeilingKph),
-    throttlePercent: Math.min(
-      throttleCeiling,
-      telemetry.throttlePercent,
-    ),
+    launchBlend: 0,
+    paceFactor: isQualifyingStyle ? 1.2 : 1.16,
+    phase: 'cooldown' as const,
+    physicsPhase: 'cooldown' as const,
+    practicePlan,
   }
+}
+
+function practiceFuelLoadKgFor(
+  track: RaceConfig['track'],
+  plan: PracticeProgramPlan | null,
+) {
+  if (!plan) {
+    return null
+  }
+
+  return Math.min(
+    110,
+    Math.max(5.5, baseFuelBurnKgPerLap(track) * plan.fuelLaps),
+  )
 }
 
 function projectedLapTime(
@@ -1770,6 +1833,12 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       throw new Error(`Missing team for driver ${driver.id}`)
     }
 
+    const initialPracticePlan = practiceProgramFor({
+      driverId: driver.id,
+      runIndex: 0,
+      seed: config.seed,
+      stage: weekendStage,
+    })
     const startsFromPitLane =
       isRaceDistance &&
       (config.weekendContext?.pitLaneStartByDriver[driver.id] ?? false)
@@ -1793,6 +1862,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
           initialTimedSegment?.compound ?? driver.tire,
           weather,
           initialTireTrackCondition,
+          {
+            driverId: driver.id,
+            seed: config.seed,
+          },
         )
       : driver.tire
     const startingTire = legalStartCompoundForConditions(
@@ -1910,11 +1983,13 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       superClippingStartedAtSeconds: null,
       superClippingStartedAtProgress: null,
       superClippingDurationSeconds: 0,
-      fuelLoadKg: initialFuelLoadKg({
-        raceLaps,
-        stage: weekendStage,
-        track: config.track,
-      }),
+      fuelLoadKg:
+        practiceFuelLoadKgFor(config.track, initialPracticePlan) ??
+        initialFuelLoadKg({
+          raceLaps,
+          stage: weekendStage,
+          track: config.track,
+        }),
       tireTemperatureC: 86,
       tireCarcassTemperatureC: 82,
       tireGrainingPercent: 0,
@@ -1929,6 +2004,9 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       timedRunStartedAtSeconds: null,
       timedRunPhase: isTimedSession ? 'garage' : null,
       timedRunsCompleted: 0,
+      practiceProgram: initialPracticePlan?.kind ?? null,
+      timedRunLapsCompleted: 0,
+      timedRunTargetLaps: initialPracticePlan?.targetFlyingLaps ?? 1,
       timedSegmentBestSeconds:
         initialTimedSegment?.participantDriverIds.includes(driver.id)
           ? { [initialTimedSegment.name]: null }
@@ -2181,12 +2259,11 @@ export function advanceRace(
     config.weekendStage ?? snapshot.weekend.stage
 
   if (
-    isTimedLapSession(requestedWeekendStage) &&
-    deltaSeconds > TIMED_SESSION_INTEGRATION_STEP_SECONDS &&
-    deltaSeconds <= TIMED_SESSION_MAX_REALTIME_STEP_SECONDS
+    deltaSeconds > PHYSICS_INTEGRATION_STEP_SECONDS &&
+    deltaSeconds <= MAX_REALTIME_STEP_SECONDS
   ) {
     const integrationSteps = Math.ceil(
-      deltaSeconds / TIMED_SESSION_INTEGRATION_STEP_SECONDS,
+      deltaSeconds / PHYSICS_INTEGRATION_STEP_SECONDS,
     )
     const integrationStepSeconds = deltaSeconds / integrationSteps
     let integratedSnapshot = snapshot
@@ -2214,6 +2291,7 @@ export function advanceRace(
   const elapsedSeconds = snapshot.elapsedSeconds + deltaSeconds
   const raceLaps = snapshot.raceLaps
   const baseLapTime = config.track.baseLapTime
+  const categoryPhysics = categoryPhysicsFor(config.seriesId)
   const newEvents: RaceEvent[] = []
   const weather = weatherFor(config.seed, config.track, elapsedSeconds)
   const trackGrip = trackGripForWeather(config.seed, config.track, elapsedSeconds)
@@ -3135,6 +3213,7 @@ export function advanceRace(
   const deferredTimedGridPenalties = new Map<string, number>()
   const teamsPittingThisFrame = new Set<string>()
   let timedPitExitAvailableAt = elapsedSeconds
+  const timedPitExitGapSeconds = isPracticeStage(weekendStage) ? 2.4 : 1.35
   let stewardCases = [...(snapshot.stewardCases ?? [])]
 
   // During a red-flag suspension the field gathers for the restart, so the
@@ -3347,6 +3426,10 @@ export function advanceRace(
                   0,
                 ) / trackWater.surfaceWaterMmBySector.length,
             },
+            {
+              driverId: driver.id,
+              seed: config.seed,
+            },
           )
         : car.tire
       const plannedRelease = timedSessionReleasePlan(
@@ -3417,6 +3500,9 @@ export function advanceRace(
         timedRunStartedAtSeconds: null,
         timedRunPhase: 'garage' as const,
         timedRunsCompleted: completedRuns,
+        practiceProgram: null,
+        timedRunLapsCompleted: 0,
+        timedRunTargetLaps: 1,
         timedReleaseStrategy: canStartFlyingLap
           ? plannedRelease.strategy
           : null,
@@ -3680,6 +3766,7 @@ export function advanceRace(
 
     // --- Non-running states -------------------------------------------------
     if (car.status === 'retired') {
+      manualPitRequests?.delete(car.driverId)
       const retiredCar = advanceRetiredCarMotion(car, {
         deltaSeconds,
         elapsedSeconds,
@@ -3708,6 +3795,7 @@ export function advanceRace(
       car.status === 'disqualified' ||
       car.status === 'dns'
     ) {
+      manualPitRequests?.delete(car.driverId)
       return car
     }
 
@@ -3731,7 +3819,9 @@ export function advanceRace(
           driverWetSkill: driverPerformanceAbility(driver, 'wetSkill'),
           gripMultiplier: trackGrip,
           maxRechargePerLapMj:
-            FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
+            categoryPhysics.hybridDeploymentPowerLimitKw > 0
+              ? FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+              : 0,
           speedKph,
           state: car.energyStore,
           surfaceWaterMm:
@@ -3742,7 +3832,8 @@ export function advanceRace(
           team,
           throttlePercent,
           tire: car.tire,
-          vehicleMassKg: 768 + car.fuelLoadKg,
+          vehicleMassKg:
+            categoryPhysics.minimumMassKg + car.fuelLoadKg,
         }).state
 
         return {
@@ -3786,7 +3877,8 @@ export function advanceRace(
           )
 
           if (releaseAtSeconds > elapsedSeconds + 0.001) {
-            timedPitExitAvailableAt = releaseAtSeconds + 1.35
+            timedPitExitAvailableAt =
+              releaseAtSeconds + timedPitExitGapSeconds
             const queueSeconds = releaseAtSeconds - elapsedSeconds
 
             if (queueSeconds > car.pitExitQueueSeconds + 0.1) {
@@ -3807,9 +3899,16 @@ export function advanceRace(
             }
           }
 
-          timedPitExitAvailableAt = elapsedSeconds + 1.35
+          timedPitExitAvailableAt =
+            elapsedSeconds + timedPitExitGapSeconds
         }
 
+        const practicePlan = practiceProgramFor({
+          driverId: car.driverId,
+          runIndex: car.timedRunsCompleted,
+          seed: config.seed,
+          stage: weekendStage,
+        })
         const servesProceduralPenalty =
           car.pitServiceKind === 'drive-through' ||
           car.pitServiceKind === 'stop-go'
@@ -3826,10 +3925,29 @@ export function advanceRace(
             ? sameLapExitDistance
             : sameLapExitDistance + 1
         const lap = Math.floor(totalDistance)
+        const pitEnergy = pitEnergyFields(80, 18, 0)
+        const preparedStateOfCharge =
+          practicePlan?.energyIntent === 'qualifying'
+            ? 1
+            : practicePlan?.energyIntent === 'balanced'
+              ? 0.88
+              : practicePlan
+                ? 0.78
+                : null
+        const preparedEnergyStore =
+          preparedStateOfCharge === null
+            ? pitEnergy.energyStore
+            : createInitialEnergyStore(team, preparedStateOfCharge)
 
         return {
           ...car,
-          ...pitEnergyFields(80, 18, 0),
+          ...pitEnergy,
+          energyStore: preparedEnergyStore,
+          energyHarvestedThisLapMj: 0,
+          energyDeployedThisLapMj: 0,
+          ersBatteryPercent: Math.round(
+            preparedEnergyStore.stateOfCharge * 100,
+          ),
           status: 'running' as const,
           totalDistance,
           lap,
@@ -3854,6 +3972,9 @@ export function advanceRace(
           timedRunPhase: isTimedLapSession(weekendStage)
             ? 'out-lap'
             : car.timedRunPhase,
+          practiceProgram: practicePlan?.kind ?? null,
+          timedRunLapsCompleted: 0,
+          timedRunTargetLaps: practicePlan?.targetFlyingLaps ?? 1,
           timedSegmentAttemptStatus:
             isTimedSession && timedSessionState.segment
               ? {
@@ -3868,12 +3989,16 @@ export function advanceRace(
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
           currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
           compoundsUsed,
+          fuelLoadKg:
+            practiceFuelLoadKgFor(config.track, practicePlan) ??
+            car.fuelLoadKg,
           damage: repairsDamage ? 0 : car.damage,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
           ersMode: 'harvest' as const,
           ersPowerKw: 0,
+          racePaceMode: practicePlan?.paceMode ?? car.racePaceMode,
           speedKph: 80,
           throttlePercent: 18,
           brakePercent: 0,
@@ -4018,9 +4143,25 @@ export function advanceRace(
         ),
       )
     }
+    const timedTrafficYield = isTimedSession
+      ? timedSessionYieldDecision({
+          car,
+          cars: frameCars,
+          stage: weekendStage,
+          track: config.track,
+        })
+      : null
+    const timedRun = timedRunPaceFor({
+      car,
+      seed: config.seed,
+      stage: weekendStage,
+      track: config.track,
+    })
     const timedPaceMode = isTimedSession
       ? car.timedRunPhase === 'attack-lap'
-        ? ('push' as const)
+        ? (timedRun.practicePlan?.paceMode ?? ('push' as const))
+        : car.timedRunPhase === 'out-lap' && timedRun.launchBlend > 0
+          ? (timedRun.practicePlan?.paceMode ?? ('push' as const))
         : car.timedRunPhase === 'out-lap' ||
             car.timedRunPhase === 'in-lap' ||
             car.timedRunPhase === 'cooldown'
@@ -4094,10 +4235,6 @@ export function advanceRace(
       localTireTrackCondition,
       heatHazardMassIncreaseKg,
     )
-    const timedRun = timedRunPaceFor({
-      car: paceManagedCar,
-      stage: weekendStage,
-    })
     const performanceGain = performanceLapGainSeconds({
       driver,
       team,
@@ -4119,12 +4256,15 @@ export function advanceRace(
       frameCars[index - 1]?.offTrackSinceSeconds == null
         ? frameCars[index - 1]
         : null
-    const conditionEffectiveLapTime = packFollowingLapTime({
-      aheadLapTimeSeconds: carAhead?.projectedLapTime ?? null,
-      gapToAheadSeconds: car.gapToAhead,
-      ownLapTimeSeconds: uncoupledConditionLapTime,
-      phaseActive: localControlPhase !== null || waitingForSafeRejoin,
-    })
+    const conditionEffectiveLapTime = isTimedSession
+      ? uncoupledConditionLapTime
+      : packFollowingLapTime({
+          aheadLapTimeSeconds: carAhead?.projectedLapTime ?? null,
+          gapToAheadSeconds: car.gapToAhead,
+          ownLapTimeSeconds: uncoupledConditionLapTime,
+          phaseActive:
+            localControlPhase !== null || waitingForSafeRejoin,
+        })
     const packPaceSupportSeconds =
       uncoupledConditionLapTime - conditionEffectiveLapTime
     const restartLineTarget =
@@ -4154,16 +4294,31 @@ export function advanceRace(
       lowGripConditions,
       stage: weekendStage,
     })
+    const battlePaceScale =
+      car.battleDeltaSecondsRemaining > 0
+        ? 1 +
+          Math.min(0.035, car.battleDeltaSecondsRemaining * 0.018)
+        : car.battleDeltaSecondsRemaining < 0
+          ? Math.max(
+              0.55,
+              1 + car.battleDeltaSecondsRemaining * 0.08,
+            )
+          : 1
+    const liveTimingPaceScale =
+      isTimedSession && timedRun.physicsPhase === 'attack-lap'
+        ? (config.track.paceReference2026?.calibration.simulation
+            .liveTimingPaceScale ?? 1)
+        : 1
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
-      categoryDragScale: categoryDragScaleFor(
-        config.seriesId,
-        config.track,
-      ),
+      categoryPhysics,
       deltaSeconds,
       driver,
       elapsedSeconds,
-      paceScale: config.track.baseLapTime / conditionEffectiveLapTime,
+      paceScale:
+        (config.track.baseLapTime / conditionEffectiveLapTime) *
+        battlePaceScale *
+        liveTimingPaceScale,
       phase: localControlPhase,
       localFlagPaceScale,
       lowGripConditions,
@@ -4172,9 +4327,14 @@ export function advanceRace(
       maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       overtakeSystem: config.overtakeSystem,
+      performanceSession:
+        timedRun.practicePlan?.energyIntent === 'qualifying'
+          ? 'qualifying'
+          : performanceSessionForWeekendStage(weekendStage),
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
-      timedRunPhase: timedRun.phase,
+      timedRunPhase: timedRun.physicsPhase,
+      timedTrafficYield: timedTrafficYield?.shouldYield ?? false,
       standingStartLaunchActive,
       standingStartMguKRestricted,
       track: config.track,
@@ -4191,10 +4351,7 @@ export function advanceRace(
       weather: localWeather,
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
-    let displayTelemetry = telemetryForTimedRunPhase(
-      telemetry,
-      timedRun.phase,
-    )
+    let displayTelemetry = telemetry
 
     if (waitingForSafeRejoin) {
       const stationaryEnergyStore = paceManagedCar.energyStore
@@ -4273,17 +4430,15 @@ export function advanceRace(
         performanceDeltaSeconds -
         packPaceSupportSeconds,
     )
-    const liveTimingProgressScale =
-      isTimedSession && timedRun.phase === 'attack-lap'
-        ? Math.min(
-            1.3,
-            Math.max(
-              0.7,
-              config.track.paceReference2026?.calibration.simulation
-                .liveTimingProgressScale ?? 1,
-            ),
-          )
-        : 1
+    const battleDeltaStep = waitingForSafeRejoin
+      ? 0
+      : Math.sign(car.battleDeltaSecondsRemaining) *
+        Math.min(
+          Math.abs(car.battleDeltaSecondsRemaining),
+          deltaSeconds * 0.5,
+        )
+    const battleDeltaSecondsRemaining =
+      car.battleDeltaSecondsRemaining - battleDeltaStep
     let totalDistance =
       waitingForSafeRejoin
         ? car.totalDistance
@@ -4293,8 +4448,7 @@ export function advanceRace(
             car.progress,
             displayTelemetry.speedKph,
             deltaSeconds,
-          ) *
-            liveTimingProgressScale
+          )
     const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
     const projectedProgress =
@@ -4314,72 +4468,6 @@ export function advanceRace(
             deltaSeconds,
           ),
       )
-    }
-    const battleDeltaStep = waitingForSafeRejoin
-      ? 0
-      : Math.sign(car.battleDeltaSecondsRemaining) *
-        Math.min(
-          Math.abs(car.battleDeltaSecondsRemaining),
-          deltaSeconds * 0.95,
-        )
-    totalDistance += battleDeltaStep / baseLapTime
-    const battleDeltaSecondsRemaining =
-      car.battleDeltaSecondsRemaining - battleDeltaStep
-    const incidentRecoveryScale =
-      battleDeltaStep < 0
-        ? Math.max(
-            0.08,
-            1 + battleDeltaStep / Math.max(0.001, deltaSeconds),
-          )
-        : 1
-
-    if (incidentRecoveryScale < 1) {
-      const reactedSpeedKph = Math.max(
-        0,
-        displayTelemetry.speedKph * incidentRecoveryScale,
-      )
-
-      displayTelemetry = {
-        ...displayTelemetry,
-        activeAeroMode: 'corner',
-        brakePercent: Math.max(
-          displayTelemetry.brakePercent,
-          Math.round((1 - incidentRecoveryScale) * 82),
-        ),
-        energyStore: {
-          ...displayTelemetry.energyStore,
-          actualDeploymentPowerKw:
-            displayTelemetry.energyStore.actualDeploymentPowerKw *
-            incidentRecoveryScale,
-          batteryDischargePowerKw:
-            displayTelemetry.energyStore.batteryDischargePowerKw *
-            incidentRecoveryScale,
-          dischargePowerKw:
-            displayTelemetry.energyStore.dischargePowerKw *
-            incidentRecoveryScale,
-          motorMechanicalPowerKw:
-            displayTelemetry.energyStore.motorMechanicalPowerKw *
-            incidentRecoveryScale,
-          requestedDeploymentPowerKw:
-            displayTelemetry.energyStore.requestedDeploymentPowerKw *
-            incidentRecoveryScale,
-        },
-        ersPowerKw: displayTelemetry.ersPowerKw * incidentRecoveryScale,
-        gear:
-          reactedSpeedKph < 1
-            ? 1
-            : Math.max(1, Math.min(8, Math.ceil(reactedSpeedKph / 45))),
-        overtakeStatus: 'disabled',
-        rpm:
-          reactedSpeedKph < 1
-            ? 0
-            : Math.round(Math.min(11000, 3000 + reactedSpeedKph * 20)),
-        speedKph: reactedSpeedKph,
-        throttlePercent: Math.min(
-          displayTelemetry.throttlePercent,
-          Math.round(12 * incidentRecoveryScale),
-        ),
-      }
     }
     if (
       car.position === 1 &&
@@ -4598,11 +4686,6 @@ export function advanceRace(
       brakeTemperatureC >= 1100 && displayTelemetry.brakePercent <= 25
         ? Math.min(180, car.brakeOverheatSeconds + deltaSeconds)
         : Math.max(0, car.brakeOverheatSeconds - deltaSeconds * 2.5)
-    const brakeFadeSeconds = Math.min(
-      0.025,
-      Math.max(0, brakeTemperatureC - 980) * 0.00015,
-    )
-
     if (blueFlag) {
       const yieldedTravel =
         Math.max(0, totalDistance - car.totalDistance) *
@@ -4648,10 +4731,23 @@ export function advanceRace(
       )
     }
 
-    totalDistance = Math.max(
+    const actualTravelSpeedKph = speedForProfileTravelKph(
+      config.track,
       car.totalDistance,
-      totalDistance - brakeFadeSeconds / baseLapTime,
+      totalDistance,
+      deltaSeconds,
     )
+    const actualTravelGear = categoryGearForSpeed(
+      actualTravelSpeedKph,
+      categoryPhysics,
+    )
+    const actualTravelRpm = categoryEngineRpmForSpeed({
+      brakePercent: displayTelemetry.brakePercent,
+      gear: actualTravelGear,
+      profile: categoryPhysics,
+      speedKph: actualTravelSpeedKph,
+      throttlePercent: displayTelemetry.throttlePercent,
+    })
     const overtakeEligibility = isRaceDistance
       ? updateOvertakeEligibilityAfterTravel({
           car,
@@ -4783,12 +4879,9 @@ export function advanceRace(
       battlePhaseUntilSeconds,
       battleDeltaSecondsRemaining,
       ...displayTelemetry,
-      speedKph: scPitLaneTransit
-        ? Math.min(
-            displayTelemetry.speedKph,
-            config.track.pitLane?.speedLimitKph ?? 80,
-          )
-        : displayTelemetry.speedKph,
+      speedKph: Number(actualTravelSpeedKph.toFixed(2)),
+      gear: actualTravelGear,
+      rpm: actualTravelRpm,
       throttlePercent: scPitLaneTransit
         ? Math.min(displayTelemetry.throttlePercent, 38)
         : displayTelemetry.throttlePercent,
@@ -5152,7 +5245,20 @@ export function advanceRace(
             car.timedRunPhase === 'cooldown')
 
         if (timedAttackCompleted) {
-          const completedRun = next.timedRunsCompleted + 1
+          const completedTimedLap = next.lapHistory.length + 1
+          const practiceStintLap =
+            (next.timedRunLapsCompleted ?? 0) + 1
+          const practiceTargetLaps =
+            next.timedRunTargetLaps ??
+            timedRun.practicePlan?.targetFlyingLaps ??
+            1
+          const practiceRunContinues =
+            isPracticeStage(weekendStage) &&
+            practiceStintLap < practiceTargetLaps &&
+            (timedSessionDurationSeconds === null ||
+              crossedAtSeconds < timedSessionDurationSeconds)
+          const completedRun =
+            next.timedRunsCompleted + (practiceRunContinues ? 0 : 1)
           const segmentKey =
             timedSessionState.segment?.name ??
             config.timedSessionPlan?.segments.findLast((segment) =>
@@ -5191,13 +5297,13 @@ export function advanceRace(
           const closestSlowerCar =
             obstructingCar !== undefined &&
             hashChance(
-              `${config.seed}:impeding-penalty:${segmentKey}:${driver.id}:${completedRun}`,
+              `${config.seed}:impeding-penalty:${segmentKey}:${driver.id}:${completedTimedLap}`,
             ) < 0.18
               ? obstructingCar
               : undefined
           const causedYellow =
             hashChance(
-              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedRun}`,
+              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedTimedLap}`,
             ) <
             0.01 +
               Math.max(
@@ -5208,7 +5314,7 @@ export function advanceRace(
           const passedDoubleYellow = next.passedDoubleYellowThisLap
           const trackLimitDeleted =
             hashChance(
-              `${config.seed}:timed-track-limit:${segmentKey}:${driver.id}:${completedRun}`,
+              `${config.seed}:timed-track-limit:${segmentKey}:${driver.id}:${completedTimedLap}`,
             ) <
             0.018 +
               Math.max(
@@ -5225,7 +5331,7 @@ export function advanceRace(
                     config.track.corners?.[
                       Math.floor(
                         hashChance(
-                          `${config.seed}:deleted-corner:${segmentKey}:${driver.id}:${completedRun}`,
+                          `${config.seed}:deleted-corner:${segmentKey}:${driver.id}:${completedTimedLap}`,
                         ) * (config.track.corners?.length ?? 1),
                       )
                     ]?.number ?? 1
@@ -5249,13 +5355,13 @@ export function advanceRace(
             timedYellowUntilSeconds = crossedAtSeconds + 12
             const generatedSector = Math.floor(
               hashChance(
-                `${config.seed}:timed-yellow-sector:${segmentKey}:${driver.id}:${completedRun}`,
+                `${config.seed}:timed-yellow-sector:${segmentKey}:${driver.id}:${completedTimedLap}`,
               ) * 3,
             )
             timedYellowProgress = incidentProgressWithinTimingSector(
               config.track,
               generatedSector,
-              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedRun}`,
+              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedTimedLap}`,
             )
             timedYellowSector = sectorIndexForProgress(
               timedYellowProgress,
@@ -5263,7 +5369,7 @@ export function advanceRace(
             )
             newEvents.push(
               makeEvent(
-                `timed-yellow-${driver.id}-${segmentKey}-${completedRun}`,
+                `timed-yellow-${driver.id}-${segmentKey}-${completedTimedLap}`,
                 'flag',
                 crossedAtSeconds,
                 `DOUBLE YELLOW marshalling zone in sector ${timedYellowSector + 1}; ${driver.code} is off line.`,
@@ -5274,7 +5380,7 @@ export function advanceRace(
           if (invalidReason) {
             newEvents.push(
               makeEvent(
-                `lap-deleted-${driver.id}-${segmentKey}-${completedRun}`,
+                `lap-deleted-${driver.id}-${segmentKey}-${completedTimedLap}`,
                 'track-limit',
                 crossedAtSeconds,
                 `${driver.code} lap time deleted in ${segmentKey}: ${invalidReason}.`,
@@ -5292,7 +5398,7 @@ export function advanceRace(
             )
             newEvents.push(
               makeEvent(
-                `impeding-${closestSlowerCar.driverId}-${driver.id}-${segmentKey}-${completedRun}`,
+                `impeding-${closestSlowerCar.driverId}-${driver.id}-${segmentKey}-${completedTimedLap}`,
                 'investigation',
                 crossedAtSeconds,
                 `${closestSlowerCar.code} investigated for impeding ${driver.code} in ${segmentKey}.`,
@@ -5312,7 +5418,7 @@ export function advanceRace(
             bestLapTimeSeconds: isPersonalBest
               ? recordedLapTime
               : next.bestLapTimeSeconds,
-            bestLapLap: isPersonalBest ? completedRun : next.bestLapLap,
+            bestLapLap: isPersonalBest ? completedTimedLap : next.bestLapLap,
             lapStartedAtSeconds: crossedAtSeconds,
             passedDoubleYellowThisLap: false,
             currentLapSectorTimes: emptyCurrentLapSectorTimes(),
@@ -5320,7 +5426,7 @@ export function advanceRace(
             lapHistory: [
               ...next.lapHistory,
               {
-                lap: completedRun,
+                lap: completedTimedLap,
                 lapTimeSeconds: recordedLapTime,
                 sectors: completedSectors,
                 miniSectors: completedMeasuredMiniSectors(
@@ -5340,7 +5446,10 @@ export function advanceRace(
             ],
             tireAgeLaps: next.tireAgeLaps + 1,
             timedRunsCompleted: completedRun,
-            timedRunPhase: 'in-lap',
+            timedRunLapsCompleted: practiceStintLap,
+            timedRunPhase: practiceRunContinues
+              ? 'attack-lap'
+              : 'in-lap',
             deletedLapCount:
               next.deletedLapCount + (lapIsValid ? 0 : 1),
             timedSegmentBestSeconds: {
@@ -5394,8 +5503,15 @@ export function advanceRace(
               : null,
             nextRunIndex,
           )
+          const nextPracticePlan = practiceProgramFor({
+            driverId: driver.id,
+            runIndex: nextRunIndex,
+            seed: config.seed,
+            stage: weekendStage,
+          })
           const releaseAtSeconds = Math.max(
-            crossedAtSeconds + 28,
+            crossedAtSeconds +
+              (nextPracticePlan?.garageTurnaroundSeconds ?? 28),
             // Null release (a non-participant) yields no further run below.
             releasePlan.pitExitAtSeconds ?? Number.POSITIVE_INFINITY,
           )
@@ -5404,17 +5520,40 @@ export function advanceRace(
             (activeSegment?.declaredWet || localWeather !== 'clear'
               ? 1.9
               : 1.6)
+          const estimatedAttackSeconds =
+            nextPracticePlan === null
+              ? baseLapTime
+              : baseLapTime *
+                nextPracticePlan.paceFactor *
+                nextPracticePlan.targetFlyingLaps
+          const estimatedInLapSeconds =
+            baseLapTime *
+            (activeSegment?.declaredWet || localWeather !== 'clear'
+              ? 1.95
+              : 1.5)
+          const estimatedRequiredSeconds =
+            nextPracticePlan === null
+              ? estimatedOutLapSeconds
+              : estimatedOutLapSeconds +
+                estimatedAttackSeconds +
+                estimatedInLapSeconds
           const hasTimeForAnotherRun =
             (activeSegment !== null || !config.timedSessionPlan) &&
             participantIds.has(driver.id) &&
             nextRunIndex < runLimit &&
-            releaseAtSeconds + estimatedOutLapSeconds < activeWindowEndsAt
+            releaseAtSeconds + estimatedRequiredSeconds <
+              activeWindowEndsAt +
+                (nextPracticePlan === null ? 0 : baseLapTime * 0.35)
           const plannedCompound = timedRunCompound(
             weekendStage,
             nextRunIndex,
             activeSegment?.compound ?? null,
             localWeather,
             localTireTrackCondition,
+            {
+              driverId: driver.id,
+              seed: config.seed,
+            },
           )
           const useFreshSet =
             hasTimeForAnotherRun &&
@@ -5465,6 +5604,10 @@ export function advanceRace(
             currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
             timedRunStartedAtSeconds: null,
             timedRunPhase: 'garage',
+            practiceProgram: nextPracticePlan?.kind ?? null,
+            timedRunLapsCompleted: 0,
+            timedRunTargetLaps:
+              nextPracticePlan?.targetFlyingLaps ?? 1,
             timedReleaseStrategy: hasTimeForAnotherRun
               ? releasePlan.strategy
               : null,

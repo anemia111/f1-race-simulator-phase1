@@ -19,6 +19,10 @@ import {
   MACHINE_PERFORMANCE_REFERENCE,
   MACHINE_PERFORMANCE_SPREAD_FACTOR,
 } from './machinePerformance'
+import {
+  categoryPhysicsFor,
+  type CategoryPhysicsProfile,
+} from './categoryPhysics'
 import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -61,7 +65,9 @@ export type TrackLoadProfile = {
 export type LongitudinalStepInput = {
   activeAeroMode: ActiveAeroMode
   airDensityKgM3: number
+  brakeReleaseSpeedKph?: number
   brakePercent: number
+  categoryPhysics?: CategoryPhysicsProfile
   currentSpeedKph: number
   deltaSeconds: number
   dynamics: Pick<TrackDynamicPoint, 'gradient' | 'straightness'>
@@ -77,12 +83,6 @@ export type LongitudinalStepInput = {
   team: Team
   throttlePercent: number
   towDragReduction?: number
-  /**
-   * Extra aerodynamic drag for junior categories, so their terminal speed drops
-   * to the real machine's without touching cornering or lap pace. Drag rises
-   * with v², so it bites at top speed and barely changes corner speeds. 1 = F1.
-   */
-  categoryDragScale?: number
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
@@ -327,15 +327,32 @@ export function airDensityKgM3(options: {
   return pressurePa / (287.05 * temperatureK)
 }
 
-function activeAeroDragMultiplier(mode: ActiveAeroMode, team: Team) {
+function activeAeroDragMultiplier(
+  mode: ActiveAeroMode,
+  team: Team,
+  categoryPhysics: CategoryPhysicsProfile,
+) {
   const efficiency = machinePaceRating(team.machine.activeAeroEfficiency)
+  const efficiencyCorrection = clamp(
+    1 - (efficiency - MACHINE_PERFORMANCE_REFERENCE) * 0.12,
+    0.975,
+    1.025,
+  )
 
   if (mode === 'straight') {
-    return clamp(0.88 - (efficiency - 0.84) * 0.2, 0.84, 0.9)
+    return clamp(
+      categoryPhysics.straightAeroDragMultiplier * efficiencyCorrection,
+      0.45,
+      1,
+    )
   }
 
   if (mode === 'partial-straight') {
-    return clamp(0.95 - (efficiency - 0.84) * 0.1, 0.92, 0.96)
+    return clamp(
+      categoryPhysics.partialAeroDragMultiplier * efficiencyCorrection,
+      0.65,
+      1,
+    )
   }
 
   return 1
@@ -343,11 +360,18 @@ function activeAeroDragMultiplier(mode: ActiveAeroMode, team: Team) {
 
 export function vehicleDragAreaM2(options: {
   activeAeroMode: ActiveAeroMode
+  categoryPhysics?: CategoryPhysicsProfile
   setup?: CarSetup
   team: Team
   towDragReduction?: number
 }) {
-  const { activeAeroMode, setup, team, towDragReduction = 0 } = options
+  const {
+    activeAeroMode,
+    categoryPhysics = categoryPhysicsFor(undefined),
+    setup,
+    team,
+    towDragReduction = 0,
+  } = options
   const machine = team.machine
   const baseDragArea =
     1.18 -
@@ -357,11 +381,12 @@ export function vehicleDragAreaM2(options: {
 
   return clamp(
     baseDragArea *
+      categoryPhysics.dragAreaScale *
       setupDragAreaMultiplier(setup) *
-      activeAeroDragMultiplier(activeAeroMode, team) *
+      activeAeroDragMultiplier(activeAeroMode, team, categoryPhysics) *
       (1 - clamp(towDragReduction, 0, 0.2)),
-    0.68,
-    1.05,
+    0.325,
+    1.45,
   )
 }
 
@@ -386,46 +411,101 @@ export function setupDragAreaMultiplier(setup?: CarSetup) {
   )
 }
 
-export function combustionPowerKwFor(team: Team) {
-  // This fictional 420 km/h category retains F1-style energy deployment but
-  // uses a higher combustion output. Aerodynamic drag, not a speed clamp,
-  // determines whether a car can approach the category's headline speed.
-  return 590 + machinePaceRating(team.machine.puOutput) * 78
+export function combustionPowerKwFor(
+  team: Team,
+  categoryPhysics = categoryPhysicsFor(undefined),
+) {
+  const performanceScale = clamp(
+    1 +
+      (machinePaceRating(team.machine.puOutput) -
+        MACHINE_PERFORMANCE_REFERENCE) *
+        0.55,
+    0.93,
+    1.05,
+  )
+
+  return categoryPhysics.combustionPowerKw * performanceScale
 }
 
-export function internalPowerScaleAtSpeed(speedKph: number) {
+export function internalPowerScaleAtSpeed(
+  speedKph: number,
+  categoryPhysics = categoryPhysicsFor(undefined),
+) {
   // Keep the requested field-wide performance uplift in acceleration zones,
   // then blend it out before terminal velocity. This raises the cars without
   // turning the internal scale into a hidden top-speed increase or limiter.
-  const highSpeedBlend = clamp((speedKph - 330) / 80, 0, 1)
+  const highSpeedBlend = clamp(
+    (speedKph - (categoryPhysics.topGearEfficiencyStartKph - 72)) / 80,
+    0,
+    1,
+  )
+
   return (
-    MACHINE_INTERNAL_PERFORMANCE_SCALE -
-    (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * highSpeedBlend
+    categoryPhysics.internalAccelerationScale -
+    (categoryPhysics.internalAccelerationScale - 1) * highSpeedBlend
   )
 }
 
-export function topGearPowerTransferEfficiency(speedKph: number, team: Team) {
+export function topGearPowerTransferEfficiency(
+  speedKph: number,
+  team: Team,
+  categoryPhysics = categoryPhysicsFor(undefined),
+) {
   const efficientRangeEndKph =
-    394 + machinePaceRating(team.machine.straightLineEfficiency) * 24
+    categoryPhysics.topGearEfficiencyStartKph +
+    (machinePaceRating(team.machine.straightLineEfficiency) -
+      MACHINE_PERFORMANCE_REFERENCE) *
+      24
   const overspeedKph = Math.max(0, speedKph - efficientRangeEndKph)
+  const falloffRangeKph =
+    (0.992 - categoryPhysics.minimumTopGearEfficiency) /
+    categoryPhysics.topGearEfficiencyFalloffPerKph
+  const normalizedOverspeed =
+    overspeedKph / Math.max(1, falloffRangeKph)
+  const progressiveOverspeedKph =
+    overspeedKph *
+    clamp(
+        0.55 +
+        0.45 * normalizedOverspeed +
+        0.0035 * normalizedOverspeed ** 4,
+      0.55,
+      1.15,
+    )
 
-  return clamp(0.992 - overspeedKph * 0.004, 0.82, 0.992)
+  return clamp(
+    0.992 -
+      progressiveOverspeedKph *
+        categoryPhysics.topGearEfficiencyFalloffPerKph,
+    categoryPhysics.minimumTopGearEfficiency,
+    0.992,
+  )
 }
 
 export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
-  const massKg = 768 + clamp(input.fuelLoadKg, 0, 120)
+  const categoryPhysics =
+    input.categoryPhysics ?? categoryPhysicsFor(undefined)
+  const massKg =
+    categoryPhysics.minimumMassKg + clamp(input.fuelLoadKg, 0, 120)
   const dragAreaM2 = vehicleDragAreaM2({
     activeAeroMode: input.activeAeroMode,
+    categoryPhysics,
     setup: input.setup,
     team: input.team,
     towDragReduction: input.towDragReduction,
   })
-  const rollingForceN = massKg * 9.81 * 0.012
+  const rollingForceN =
+    massKg * 9.81 * categoryPhysics.rollingResistanceCoefficient
   const gradeForceN =
     massKg * 9.81 * clamp(input.dynamics.gradient * 0.025, -0.035, 0.035)
-  const brakeDecelerationMps2 =
+  const requestedBrakeDecelerationMps2 =
     clamp(input.brakePercent / 100, 0, 1) *
-    (9.8 + machinePaceRating(input.team.machine.brakingPerformance) * 4.8) *
+    categoryPhysics.maximumBrakeDecelerationMps2 *
+    clamp(
+      0.9 +
+        machinePaceRating(input.team.machine.brakingPerformance) * 0.12,
+      0.94,
+      1.03,
+    ) *
     clamp(input.gripMultiplier, 0.35, 1.08) *
     (1 + (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * 0.3)
   const integrationSteps = Math.min(
@@ -442,11 +522,11 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
       0.5 *
       input.airDensityKgM3 *
       dragAreaM2 *
-      clamp(input.categoryDragScale ?? 1, 1, 3.5) *
       airSpeedMps *
       airSpeedMps
     const powerKw =
-      (combustionPowerKwFor(input.team) * internalPowerScaleAtSpeed(speedKph) +
+      (combustionPowerKwFor(input.team, categoryPhysics) *
+        internalPowerScaleAtSpeed(speedKph, categoryPhysics) +
         Math.max(0, input.extraDrivePowerKw ?? 0) +
         Math.max(0, input.ersPowerKw) *
           machinePaceRating(
@@ -455,8 +535,12 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
       clamp(input.drivePowerScale ?? 1, 0.45, 1) *
       clamp(
         input.gearEfficiency ??
-          topGearPowerTransferEfficiency(speedKph, input.team),
-        0.82,
+          topGearPowerTransferEfficiency(
+            speedKph,
+            input.team,
+            categoryPhysics,
+          ),
+        categoryPhysics.minimumTopGearEfficiency,
         1,
       )
     const requestedDriveForceN =
@@ -466,33 +550,43 @@ export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
       1 +
       Math.min(1.5, (nextMps / 75) ** 2) *
         machinePaceRating(input.team.machine.downforceGeneration) *
-        0.75
+        0.75 *
+        categoryPhysics.downforceTractionScale
     const tractionLimitN =
       massKg *
       9.81 *
       clamp(input.gripMultiplier, 0.35, 1.15) *
       (1.35 + machinePaceRating(input.team.machine.traction) * 0.42) *
+      categoryPhysics.tractionScale *
       downforceTractionGain *
       (1 + (MACHINE_INTERNAL_PERFORMANCE_SCALE - 1) * 0.35)
     const driveForceN = Math.min(requestedDriveForceN, tractionLimitN)
     const regenerativeResistanceForceN =
       (Math.max(0, input.regenerativeResistancePowerKw ?? 0) * 1000) /
       Math.max(25, nextMps)
+    const brakeModulation =
+      input.brakeReleaseSpeedKph === undefined
+        ? 1
+        : clamp(
+            (speedKph - input.brakeReleaseSpeedKph) / 18,
+            0,
+            1,
+          )
     const accelerationMps2 =
       (driveForceN -
         regenerativeResistanceForceN -
         dragForceN -
         rollingForceN -
-        gradeForceN) /
+      gradeForceN) /
         massKg -
-      brakeDecelerationMps2
+      requestedBrakeDecelerationMps2 * brakeModulation
 
     nextMps = Math.max(0, nextMps + accelerationMps2 * stepSeconds)
   }
 
-  // Numerical runaway guard only. Normal terminal velocity is the point where
-  // drag balances power and remains below this value.
-  return clamp(nextMps * 3.6, 0, 438)
+  const nextSpeedKph = nextMps * 3.6
+
+  return Number.isFinite(nextSpeedKph) ? Math.max(0, nextSpeedKph) : 0
 }
 
 export function vehicleSpeedPerformanceMultiplier(options: {

@@ -36,6 +36,26 @@ type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
 type DashboardView = 'map' | 'data'
 
+const practiceProgramLabels: Record<
+  NonNullable<CarSnapshot['practiceProgram']>,
+  { label: string; short: string }
+> = {
+  'aero-correlation': { label: 'Aero correlation', short: 'AERO' },
+  'compound-comparison': { label: 'Compound comparison', short: 'TYRE' },
+  'qualifying-preparation': {
+    label: 'Qualifying preparation',
+    short: 'QUALI',
+  },
+  'qualifying-simulation': {
+    label: 'Qualifying simulation',
+    short: 'QUALI',
+  },
+  'race-simulation': { label: 'Race simulation', short: 'LONG' },
+  'setup-baseline': { label: 'Setup baseline', short: 'BASE' },
+  'setup-verification': { label: 'Setup verification', short: 'SETUP' },
+  'start-pit-practice': { label: 'Start and pit practice', short: 'PROC' },
+  'systems-check': { label: 'Systems check', short: 'CHECK' },
+}
 
 export type BroadcastTimingRow = {
   aeroOvertakeLabel: string
@@ -399,7 +419,9 @@ function LeftLeaderboard({
   onModeChange,
   rows,
   selectedDriverId,
+  seriesId,
   showCarNumbers,
+  stage,
   title,
 }: {
   labels: Record<CarSnapshot['tire'], string>
@@ -408,7 +430,9 @@ function LeftLeaderboard({
   onModeChange: (mode: 'live' | 'gap') => void
   rows: BroadcastTimingRow[]
   selectedDriverId: string
+  seriesId: SeriesId
   showCarNumbers: boolean
+  stage: WeekendStage
   title: string
 }) {
   return (
@@ -434,7 +458,14 @@ function LeftLeaderboard({
       <div className="leaderboard-column-head" aria-hidden="true">
         <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
         <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span>
-        <span title="Completed pit stops">ST</span><span title="Compounds used">USED</span><span>SPD</span><span>BAT</span>
+        <span title="Completed pit stops">ST</span><span title="Compounds used">USED</span><span>SPD</span>
+        <span>
+          {seriesId === 'f1-custom'
+            ? 'ERS'
+            : seriesId === 'super-formula'
+              ? 'OTS'
+              : '-'}
+        </span>
       </div>
       <ol
         aria-label={`All drivers ${title.toLowerCase()}`}
@@ -444,6 +475,9 @@ function LeftLeaderboard({
         {rows.map((row) => {
           const status = terminalLabel(row.car)
           const tireLife = clamp(Math.round(row.tireLifePercent), 0, 100)
+          const practiceProgram = row.car.practiceProgram
+            ? practiceProgramLabels[row.car.practiceProgram]
+            : null
 
           return (
             <li
@@ -474,6 +508,11 @@ function LeftLeaderboard({
                   ) : showCarNumbers ? (
                     <small className="leaderboard-car-number">
                       #{row.car.carNumber}
+                    </small>
+                  ) : practiceProgram &&
+                    (stage === 'fp1' || stage === 'fp2' || stage === 'fp3') ? (
+                    <small title={practiceProgram.label}>
+                      {practiceProgram.short}
                     </small>
                   ) : (
                     <small>{compactSource(row.source)}</small>
@@ -520,11 +559,21 @@ function LeftLeaderboard({
                   ))}
                 </span>
                 <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
-                <span
-                  title={`SOC ${row.batteryPercent}% / ${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW`}
-                >
-                  {row.batteryPercent}%
-                </span>
+                {seriesId === 'f1-custom' ? (
+                  <span
+                    title={`ERS SOC ${row.batteryPercent}% / ${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW`}
+                  >
+                    {row.batteryPercent}%
+                  </span>
+                ) : seriesId === 'super-formula' ? (
+                  <span
+                    title={`OTS allocation remaining ${Math.ceil(row.car.otsRemainingSeconds ?? 0)} seconds`}
+                  >
+                    {Math.ceil(row.car.otsRemainingSeconds ?? 0)}s
+                  </span>
+                ) : (
+                  <span title="No hybrid Energy Store in this category">-</span>
+                )}
               </button>
             </li>
           )
@@ -655,6 +704,8 @@ export function BroadcastDashboard({
     stage === 'sprintQualifying'
   const isRaceStage =
     stage === 'race' || stage === 'race2' || stage === 'sprint'
+  const isPracticeStage =
+    stage === 'fp1' || stage === 'fp2' || stage === 'fp3'
 
   return (
     <div className="broadcast-app">
@@ -771,8 +822,16 @@ export function BroadcastDashboard({
             onModeChange={setLeaderboardMode}
             rows={timingRows}
             selectedDriverId={selectedCar.driverId}
+            seriesId={seriesId}
             showCarNumbers={applicationMode === 'free'}
-            title={isQualifyingStage ? 'Qualifying Leaderboard' : 'Race Leaderboard'}
+            stage={stage}
+            title={
+              isQualifyingStage
+                ? 'Qualifying Leaderboard'
+                : isPracticeStage
+                  ? `${stage.toUpperCase()} Leaderboard`
+                  : 'Race Leaderboard'
+            }
           />
           <div className="broadcast-left-analytics">
             <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} labels={tireLabels} /></section>

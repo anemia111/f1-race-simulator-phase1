@@ -28,9 +28,14 @@ import {
 } from './qualifyingStrategy'
 import { tireDeltaSeconds } from './tires'
 import {
+  baseFuelBurnKgPerLap,
   fuelMassEffects,
   performanceLapGainSeconds,
 } from './vehicleDynamics'
+import {
+  practiceDryCompoundFor,
+  practiceProgramFor,
+} from './practicePrograms'
 import {
   FREE_PRACTICE_DURATION_SECONDS,
   QUALIFYING_BREAK_SECONDS,
@@ -106,6 +111,17 @@ export type PracticeSessionResult = {
   lapsCompleted: number
   runCount: number
   runCompounds: TireCompound[]
+  programs: Array<{
+    compound: TireCompound
+    fuelLoadKg: number
+    kind: NonNullable<
+      ReturnType<typeof practiceProgramFor>
+    >['kind']
+    label: string
+    shortLabel: string
+    targetFlyingLaps: number
+    workItems: readonly string[]
+  }>
   firstPitExitAtSeconds: number
   finalPitExitAtSeconds: number
   sessionDurationSeconds: number
@@ -1112,23 +1128,66 @@ export function runPracticeSession(
         : weather === 'light-rain'
           ? 4 + (1 - wetSkill(driver)) * 2.1 + (1 - trackGrip) * 2.7
           : 9 + (1 - wetSkill(driver)) * 3.8 + (1 - trackGrip) * 4.8
-    const runCount = 3 + Math.floor(hashChance(`${config.seed}:practice:${stage}:${driver.id}:runs`) * 2)
+    const scheduledPrograms = Array.from({ length: 4 }, (_, runIndex) => {
+      const plan = practiceProgramFor({
+        driverId: driver.id,
+        runIndex,
+        seed: config.seed,
+        stage,
+      })!
+      const compound =
+        weather === 'heavy-rain'
+          ? ('W' as const)
+          : weather === 'light-rain'
+            ? ('I' as const)
+            : practiceDryCompoundFor({
+                driverId: driver.id,
+                plan,
+                runIndex,
+                seed: config.seed,
+                stage,
+              })
+
+      return {
+        compound,
+        fuelLoadKg: Math.min(
+          110,
+          Math.max(
+            5.5,
+            baseFuelBurnKgPerLap(config.track) * plan.fuelLaps,
+          ),
+        ),
+        kind: plan.kind,
+        label: plan.label,
+        shortLabel: plan.shortLabel,
+        targetFlyingLaps: plan.targetFlyingLaps,
+        workItems: plan.workItems,
+      }
+    })
+    const curtailedByReliability =
+      reliabilityRoll <
+      Math.max(0.015, (1 - machineReliability) * 0.18)
+    const runCount = curtailedByReliability ? 3 : 4
+    const programs = scheduledPrograms.slice(0, runCount)
     const firstPitExitAtSeconds =
-      130 + index * 4 + hashChance(`${config.seed}:practice:${stage}:${driver.id}:out1`) * 520
+      12 +
+      index * 1.4 +
+      hashChance(`${config.seed}:practice:${stage}:${driver.id}:out1`) * 42
     const finalPitExitAtSeconds =
       2350 + hashChance(`${config.seed}:practice:${stage}:${driver.id}:out3`) * 520
+    const plannedLaps = programs.reduce(
+      (total, program) => total + program.targetFlyingLaps + 2,
+      0,
+    )
+    const weatherLostLaps =
+      weather === 'heavy-rain'
+        ? 3 + Math.floor((1 - reliabilityRoll) * 3)
+        : weather === 'light-rain'
+          ? 1
+          : 0
     const lapsCompleted = Math.max(
       7,
-      Math.min(
-        29,
-        Math.round(
-          13 +
-            reliabilityRoll * 10 +
-            machineReliability * 4 +
-            consistency * 3 -
-            (weather === 'heavy-rain' ? 4 : weather === 'light-rain' ? 1.5 : 0),
-        ),
-      ),
+      plannedLaps - weatherLostLaps,
     )
     const performanceGain = performanceLapGainSeconds({
       driver,
@@ -1137,9 +1196,11 @@ export function runPracticeSession(
       track: config.track,
       weather,
     })
+    const practiceBestOffset =
+      stage === 'fp1' ? 2.4 : stage === 'fp2' ? 0.75 : 0.35
     const bestLapTimeSeconds =
       config.track.baseLapTime +
-      1.9 -
+      practiceBestOffset -
       performanceGain +
       wetPenalty +
       (hashChance(`${config.seed}:practice:${stage}:${driver.id}:best`) - 0.5) * 1.6
@@ -1185,19 +1246,7 @@ export function runPracticeSession(
       setupScore,
       stage,
     })
-    const dryRunCompounds: TireCompound[] =
-      stage === 'fp1'
-        ? ['H', 'M', 'M', 'S']
-        : stage === 'fp2'
-          ? ['M', 'S', 'M', 'S']
-          : ['S', 'S', 'M', 'S']
-    const runCompounds = Array.from({ length: runCount }, (_, runIndex) =>
-      weather === 'heavy-rain'
-        ? ('W' as const)
-        : weather === 'light-rain'
-          ? ('I' as const)
-          : dryRunCompounds[runIndex % dryRunCompounds.length],
-    )
+    const runCompounds = programs.map((program) => program.compound)
 
     return {
       driverId: driver.id,
@@ -1215,6 +1264,7 @@ export function runPracticeSession(
       lapsCompleted,
       runCount,
       runCompounds,
+      programs,
       firstPitExitAtSeconds,
       finalPitExitAtSeconds,
       sessionDurationSeconds: FREE_PRACTICE_DURATION_SECONDS,

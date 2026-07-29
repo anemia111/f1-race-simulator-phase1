@@ -19,6 +19,8 @@ import {
   buildTimedSessionPlan,
   timedSessionStateAt,
 } from './timedSessionPlan'
+import { timedLapLaunchStartProgress } from './timedLapPreparation'
+import { trackDynamicsAt } from './trackDynamics'
 
 function measureLiveF1QualifyingPace(
   track: TrackDefinition,
@@ -335,6 +337,166 @@ describe('timed session plan', () => {
     expect(sawAttackDeployment).toBe(true)
     expect(minimumAttackBatteryPercent).toBeLessThanOrEqual(28)
     expect(maximumAttackSpeedKph).toBeGreaterThan(maximumOutLapSpeedKph)
+  })
+
+  it.each(['qualifying', 'fp1'] as const)(
+    'accelerates from the final corner before the %s timing line',
+    (weekendStage) => {
+      const driver = initialDrivers[0]
+      const track = { ...tracks[0], rainProbability: 0 }
+      const config: RaceConfig = {
+        drivers: [driver],
+        seed: `final-corner-launch:${weekendStage}`,
+        teams: initialTeams,
+        track,
+        weekendStage,
+      }
+      const launchStart = timedLapLaunchStartProgress(track)
+      let snapshot = createInitialRace(config)
+      let sawPreLineLaunch = false
+      let exceededPreparationThrottle = false
+      let exceededPreparationSpeed = false
+      let sawQualifyingDeployment = false
+
+      for (let step = 0; step < 4_000; step += 1) {
+        snapshot = advanceRace(snapshot, 0.25, config)
+        const car = snapshot.cars[0]
+
+        if (
+          car.timedRunPhase === 'out-lap' &&
+          car.progress >= launchStart
+        ) {
+          sawPreLineLaunch = true
+          exceededPreparationThrottle ||= car.throttlePercent > 82
+          exceededPreparationSpeed ||= car.speedKph > 175
+          sawQualifyingDeployment ||=
+            car.ersMode === 'deploy' && car.ersPowerKw > 0
+          expect(car.lapStartedAtSeconds).toBeNull()
+        }
+
+        if (sawPreLineLaunch && car.timedRunPhase === 'attack-lap') {
+          break
+        }
+      }
+
+      expect(sawPreLineLaunch).toBe(true)
+      expect(exceededPreparationThrottle).toBe(true)
+      expect(exceededPreparationSpeed).toBe(true)
+      if (weekendStage === 'qualifying') {
+        expect(sawQualifyingDeployment).toBe(true)
+      }
+    },
+  )
+
+  it('keeps the FP2 race simulation on track for a multi-lap long run', () => {
+    const driver = initialDrivers[0]
+    const config: RaceConfig = {
+      drivers: [driver],
+      seed: 'fp2-live-long-run',
+      teams: initialTeams,
+      track: { ...tracks[0], rainProbability: 0 },
+      weekendStage: 'fp2',
+    }
+    let snapshot = createInitialRace(config)
+    let observedLongRun = snapshot.cars[0]
+
+    for (let step = 0; step < 1_800; step += 1) {
+      snapshot = advanceRace(snapshot, 2, config)
+      const car = snapshot.cars[0]
+
+      if (
+        car.practiceProgram === 'race-simulation' &&
+        car.timedRunPhase === 'attack-lap'
+      ) {
+        observedLongRun = car
+      }
+
+      if (
+        car.practiceProgram === 'race-simulation' &&
+        car.timedRunPhase === 'attack-lap' &&
+        (car.timedRunLapsCompleted ?? 0) >= 2
+      ) {
+        observedLongRun = car
+        break
+      }
+    }
+
+    expect(observedLongRun.practiceProgram).toBe('race-simulation')
+    expect(observedLongRun.timedRunTargetLaps).toBeGreaterThanOrEqual(10)
+    expect(observedLongRun.timedRunTargetLaps).toBeLessThanOrEqual(20)
+    expect(observedLongRun.timedRunLapsCompleted).toBeGreaterThanOrEqual(2)
+    expect(observedLongRun.timedRunPhase).toBe('attack-lap')
+    expect(observedLongRun.timedRunsCompleted).toBe(1)
+    expect(['H', 'M']).toContain(observedLongRun.tire)
+    expect(observedLongRun.racePaceMode).toBe('standard')
+  })
+
+  it('makes preparation traffic lift for a nearby FP attack car on a safe straight', () => {
+    const drivers = initialDrivers.slice(0, 2)
+    const track = { ...tracks[0], rainProbability: 0 }
+    const safeProgress =
+      Array.from({ length: 800 }, (_, index) => 0.15 + index / 1_200).find(
+        (progress) => {
+          const dynamics = trackDynamicsAt(track, progress)
+
+          return (
+            progress < 0.85 &&
+            dynamics.straightness >= 0.7 &&
+            dynamics.brakingSeverity < 0.2 &&
+            dynamics.referenceSpeedKph >= 175
+          )
+        },
+      ) ?? 0.5
+    const behindProgress =
+      safeProgress - 1.4 / track.baseLapTime
+    const config: RaceConfig = {
+      drivers,
+      seed: 'fp-live-yield',
+      teams: initialTeams,
+      track,
+      weekendStage: 'fp2',
+    }
+    const initial = createInitialRace(config)
+    const snapshot = advanceRace(
+      {
+        ...initial,
+        elapsedSeconds: 200,
+        cars: initial.cars.map((car, index) => ({
+          ...car,
+          fuelLoadKg: 18,
+          lap: 1,
+          lapStartedAtSeconds: index === 0 ? null : 120,
+          pitExitUntilSeconds: null,
+          pitPhase: 'none' as const,
+          pitUntilSeconds: null,
+          practiceProgram:
+            index === 0
+              ? ('systems-check' as const)
+              : ('qualifying-simulation' as const),
+          processedLap: 1,
+          progress: index === 0 ? safeProgress : behindProgress,
+          speedKph: 150,
+          status: 'running' as const,
+          timedRunPhase:
+            index === 0 ? ('out-lap' as const) : ('attack-lap' as const),
+          timedRunStartedAtSeconds: 20,
+          totalDistance:
+            1 + (index === 0 ? safeProgress : behindProgress),
+        })),
+      },
+      0.5,
+      config,
+    )
+    const preparationCar = snapshot.cars.find(
+      (car) => car.driverId === drivers[0].id,
+    )!
+    const attackCar = snapshot.cars.find(
+      (car) => car.driverId === drivers[1].id,
+    )!
+
+    expect(preparationCar.throttlePercent).toBeLessThanOrEqual(38)
+    expect(preparationCar.ersMode).toBe('harvest')
+    expect(attackCar.throttlePercent).toBeGreaterThan(38)
   })
 
   it(

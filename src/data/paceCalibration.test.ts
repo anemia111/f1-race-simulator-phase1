@@ -71,13 +71,13 @@ describe('pace calibration data', () => {
     ).toThrow(/duplicate source provenance/)
 
     const invalidLiveTimingScale = clone(f1PaceCalibration2026)
-    invalidLiveTimingScale[0].simulation.liveTimingProgressScale = 1.5
+    invalidLiveTimingScale[0].simulation.liveTimingPaceScale = 1.5
     expect(() =>
       validatePaceCalibrationRecords(
         invalidLiveTimingScale,
         'f1-custom',
       ),
-    ).toThrow(/live timing progress scale/)
+    ).toThrow(/live timing pace scale/)
   })
 
   it('rejects duplicate event identities but permits the same track across series', () => {
