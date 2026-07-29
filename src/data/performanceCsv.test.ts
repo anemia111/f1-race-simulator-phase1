@@ -117,7 +117,7 @@ describe('CSV performance source of truth', () => {
       lance_stroll: 80,
       lando_norris: 92,
       lewis_hamilton: 89,
-      liam_lawson: 83,
+      liam_lawson: 81,
       max_verstappen: 95,
       nico_hulkenberg: 85,
       oliver_bearman: 83,
