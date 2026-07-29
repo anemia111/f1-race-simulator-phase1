@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { phaseOneConfig } from '../data/phaseOne'
 import type { TimedSessionSegmentPlan } from '../types'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
+import { seriesPackageById } from '../series/seriesRegistry'
+import { runSeriesQualifying } from './qualifying'
 
 const q1Segment = (): TimedSessionSegmentPlan => ({
   compound: 'S',
@@ -69,6 +71,47 @@ describe('qualifying release strategy', () => {
       expect(teamsByDriver.get(ordered[index].driverId)).not.toBe(
         teamsByDriver.get(ordered[index - 1].driverId),
       )
+    }
+  })
+})
+
+describe('SUPER FORMULA grouped qualifying', () => {
+  it('sends the fastest six of each Q1 group through to Q2', () => {
+    const sf = seriesPackageById.get('super-formula')!
+    const results = runSeriesQualifying(
+      {
+        drivers: sf.drivers,
+        qualifyingDryCompound: sf.rules.tires.qualifyingDryCompound,
+        seed: 'sf-grouped-advance',
+        seriesId: sf.id,
+        teams: sf.teams,
+        tireAllocation: sf.rules.tires.standardAllocation,
+        track: { ...sf.tracks[0], rainProbability: 0 },
+        weekendStage: 'qualifying',
+      },
+      sf.rules,
+    )
+    const q1 = results.segments[0]
+    const q2 = results.segments[1]
+    const eliminated = new Set(q1.eliminatedDriverIds)
+    const advanced = q1.results.filter((r) => !eliminated.has(r.driverId))
+
+    expect(q2.results).toHaveLength(12)
+    for (const group of ['A', 'B'] as const) {
+      const inGroup = q1.results.filter((r) => r.qualifyingGroup === group)
+      const advancedInGroup = advanced.filter(
+        (r) => r.qualifyingGroup === group,
+      )
+
+      expect(advancedInGroup).toHaveLength(6)
+      // They are the six fastest of that group, not the six fastest overall.
+      const fastestSix = inGroup
+        .slice()
+        .sort((l, r) => l.lapTimeSeconds - r.lapTimeSeconds)
+        .slice(0, 6)
+        .map((r) => r.driverId)
+        .sort()
+      expect(advancedInGroup.map((r) => r.driverId).sort()).toEqual(fastestSix)
     }
   })
 })

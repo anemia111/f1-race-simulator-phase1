@@ -2242,16 +2242,24 @@ export function advanceRace(
     rainIntensityMmH,
     track: config.track,
   })
-  const trackRubber = advanceTrackRubber({
-    cars: snapshot.cars,
-    deltaSeconds,
-    previous: {
-      rubberLevelBySector: snapshot.rubberLevelBySector ?? [0, 0, 0],
-    },
-    rainIntensityMmH,
-    surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
-    track: config.track,
-  })
+  // The racing line rubbers in over a race, but a timed session is held at the
+  // level it started with. Qualifying is run in groups and segments, and a
+  // track that keeps gaining grip hands every later group a free advantage:
+  // SUPER FORMULA's Q1 group B would beat group A on the running order alone.
+  // Freezing the surface for the session makes every group run the same track.
+  const previousRubber = {
+    rubberLevelBySector: snapshot.rubberLevelBySector ?? [0, 0, 0],
+  }
+  const trackRubber = isTimedLapSession(requestedWeekendStage)
+    ? previousRubber
+    : advanceTrackRubber({
+        cars: snapshot.cars,
+        deltaSeconds,
+        previous: previousRubber,
+        rainIntensityMmH,
+        surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
+        track: config.track,
+      })
   const weekendStage = requestedWeekendStage
   const isRaceDistance = isRaceDistanceSession(weekendStage)
   const heatIndexC = heatIndexCFor(

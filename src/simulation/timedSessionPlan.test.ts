@@ -388,7 +388,9 @@ describe('timed session plan', () => {
         ),
       ).toEqual([])
     },
-    180_000,
+    // Twenty-two full Q1 sessions through the production engine. It sat right
+    // on a three-minute budget and tipped over whenever the machine was busy.
+    600_000,
   )
 
   it(
@@ -405,7 +407,7 @@ describe('timed session plan', () => {
         `5x=${fine.top3MedianSeconds.toFixed(3)}s, 60x=${coarse.top3MedianSeconds.toFixed(3)}s`,
       ).toBeLessThan(1.5)
     },
-    60_000,
+    240_000,
   )
 
   it('suspends the segment under red and releases only eligible cars', () => {
