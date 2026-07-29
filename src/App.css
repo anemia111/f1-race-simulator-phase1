@@ -1258,6 +1258,48 @@
   outline-offset: 2px;
 }
 
+.broadcast-series-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.broadcast-application-mode {
+  display: flex;
+  flex: 0 0 auto;
+  height: 26px;
+  overflow: hidden;
+  border: 1px solid var(--broadcast-border);
+  border-radius: 4px;
+}
+
+.broadcast-application-mode button {
+  min-width: 44px;
+  border: 0;
+  border-right: 1px solid var(--broadcast-border);
+  padding: 0 7px;
+  color: var(--broadcast-muted);
+  background: #07111a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.broadcast-application-mode button:last-child {
+  border-right: 0;
+}
+
+.broadcast-application-mode button[aria-pressed='true'] {
+  color: #ffffff;
+  background: #114b60;
+  box-shadow: inset 0 -2px #4bd8ff;
+}
+
+.broadcast-application-mode button:focus-visible {
+  z-index: 1;
+  outline: 2px solid #4bd8ff;
+  outline-offset: -2px;
+}
+
 .broadcast-brand > svg {
   flex: 0 0 auto;
   color: #ff263b;
@@ -1621,8 +1663,22 @@
 }
 
 .leaderboard-driver i { width: 2px; height: 13px; }
-.leaderboard-driver strong { font-size: 9px; }
+.leaderboard-driver strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
+  font-size: 9px;
+}
 .leaderboard-driver small { color: var(--broadcast-muted); font-size: 6px; }
+.leaderboard-car-number {
+  overflow: hidden;
+  color: #8aa0b2;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: clip;
+}
 .leaderboard-driver .blue-flag-label { display: flex; align-items: center; gap: 1px; color: #54a7ff; font-weight: 900; }
 .leaderboard-driver .penalty-pending-label { display: inline-flex; align-items: center; padding: 0 3px; border-radius: 3px; background: rgba(255, 107, 124, 0.16); color: #ff6b7c; font-weight: 900; letter-spacing: -0.02em; }
 .setup-completeness { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 8px; margin-bottom: 8px; font-size: 11px; }
@@ -2691,6 +2747,429 @@
 .broadcast-brand strong { font-size: 14px; }
 .broadcast-brand span { font-size: 11px; }
 .broadcast-series-select { font-size: 10px; }
+
+/* Free Mode is a dense desktop configuration surface. The field rows own the
+   scroll area so the session controls and validation state remain reachable at
+   the supported 1280x720 minimum. */
+.free-mode-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(0, 4, 8, 0.86);
+}
+
+.free-mode-builder {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(170px, 1fr) auto auto;
+  width: min(1500px, calc(100vw - 28px));
+  height: min(940px, calc(100vh - 28px));
+  min-height: 650px;
+  overflow: hidden;
+  border: 1px solid #2b455c;
+  border-radius: 6px;
+  color: #f3f7fa;
+  background: #06111b;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.free-mode-builder button,
+.free-mode-builder input,
+.free-mode-builder select {
+  min-width: 0;
+  border: 1px solid #294156;
+  border-radius: 4px;
+  color: #f4f7fa;
+  background: #0a1824;
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.free-mode-builder button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.free-mode-builder button:hover:not(:disabled),
+.free-mode-builder button[aria-pressed='true'] {
+  border-color: #4bd8ff;
+  color: #ffffff;
+  background: #103348;
+}
+
+.free-mode-builder button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.free-mode-builder button:focus-visible,
+.free-mode-builder input:focus-visible,
+.free-mode-builder select:focus-visible {
+  outline: 2px solid #4bd8ff;
+  outline-offset: 1px;
+}
+
+.free-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  border-bottom: 1px solid #203649;
+  padding: 11px 14px;
+  background: #030a11;
+}
+
+.free-mode-header > div {
+  min-width: 0;
+}
+
+.free-mode-header span {
+  color: #4bd8ff;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.free-mode-header h1 {
+  margin: 1px 0 0;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.free-mode-header p {
+  margin: 3px 0 0;
+  color: #91a3b4;
+  font-size: 10px;
+}
+
+.free-mode-icon-button {
+  width: 34px;
+  min-width: 34px !important;
+  height: 34px;
+  padding: 0 !important;
+}
+
+.free-mode-settings {
+  display: grid;
+  grid-template-columns:
+    minmax(100px, 0.75fr)
+    minmax(190px, 1.8fr)
+    minmax(105px, 0.8fr)
+    minmax(100px, 0.72fr)
+    minmax(95px, 0.72fr)
+    minmax(105px, 0.82fr)
+    minmax(150px, 1.25fr)
+    minmax(130px, 1fr);
+  gap: 7px;
+  border-bottom: 1px solid #1c3041;
+  padding: 8px 12px;
+  background: #08141f;
+}
+
+.free-mode-settings label,
+.free-mode-search label,
+.free-mode-presets label {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.free-mode-settings label > span,
+.free-mode-search label > span,
+.free-mode-presets label > span {
+  overflow: hidden;
+  color: #8fa2b3;
+  font-size: 8px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.free-mode-settings input,
+.free-mode-settings select,
+.free-mode-search input,
+.free-mode-presets input,
+.free-mode-presets select {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+.free-mode-inline-input {
+  display: grid;
+  grid-template-columns: minmax(45px, 1fr) auto;
+  gap: 4px;
+}
+
+.free-mode-inline-input button {
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 9px;
+}
+
+.free-mode-tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid #1c3041;
+  padding: 6px 12px;
+  scrollbar-width: thin;
+}
+
+.free-mode-tools > button {
+  flex: 0 0 auto;
+  font-size: 9px;
+}
+
+.free-mode-bulk-add {
+  display: grid;
+  grid-template-columns: 130px 50px auto;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.free-mode-bulk-add select,
+.free-mode-bulk-add input {
+  width: 100%;
+  height: 30px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.free-mode-bulk-add button {
+  font-size: 9px;
+}
+
+.free-mode-search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.8fr) auto;
+  align-items: end;
+  gap: 8px;
+  border-bottom: 1px solid #1c3041;
+  padding: 6px 12px;
+}
+
+.free-mode-field-summary {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 220px;
+  height: 30px;
+  border: 1px solid #294156;
+  border-radius: 4px;
+  padding: 5px 9px;
+  background: #091824;
+}
+
+.free-mode-field-summary strong {
+  color: #4bd8ff;
+  font-size: 13px;
+}
+
+.free-mode-field-summary span {
+  color: #91a3b4;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.free-mode-entry-table {
+  display: grid;
+  grid-template-rows: 28px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.free-mode-entry-head,
+.free-mode-entry-row {
+  display: grid;
+  grid-template-columns:
+    44px
+    minmax(230px, 1.45fr)
+    minmax(185px, 1.15fr)
+    75px
+    52px
+    52px
+    148px;
+  align-items: center;
+  gap: 6px;
+  min-width: 900px;
+}
+
+.free-mode-entry-head {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  border-bottom: 1px solid #2a4155;
+  padding: 0 12px;
+  color: #8296a8;
+  background: #050d15;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.free-mode-entry-scroll {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: #5b819e #09141e;
+  scrollbar-width: auto;
+}
+
+.free-mode-entry-row {
+  position: relative;
+  min-height: 39px;
+  border-bottom: 1px solid #132737;
+  padding: 4px 12px;
+  font-size: 10px;
+}
+
+.free-mode-entry-row:nth-child(even) {
+  background: #081621;
+}
+
+.free-mode-entry-row.has-error {
+  min-height: 56px;
+  border-left: 3px solid #ff4f64;
+  background: rgba(108, 23, 35, 0.22);
+}
+
+.free-mode-entry-row > strong {
+  color: #4bd8ff;
+  font-size: 12px;
+}
+
+.free-mode-entry-row label,
+.free-mode-entry-row select,
+.free-mode-entry-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.free-mode-entry-row select,
+.free-mode-entry-row input {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.free-mode-vehicle-cell {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.free-mode-vehicle-cell i {
+  width: 7px;
+  height: 22px;
+  border-radius: 2px;
+}
+
+.free-mode-row-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 30px);
+  gap: 4px;
+}
+
+.free-mode-row-actions button {
+  width: 30px;
+  min-width: 30px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.free-mode-entry-row > small {
+  position: absolute;
+  right: 12px;
+  bottom: 2px;
+  left: 62px;
+  overflow: hidden;
+  color: #ff9aa8;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.free-mode-presets {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr)
+    auto
+    minmax(150px, 1fr)
+    auto
+    auto
+    auto
+    auto
+    auto;
+  align-items: end;
+  gap: 5px;
+  border-top: 1px solid #203649;
+  padding: 6px 12px;
+  background: #07131e;
+}
+
+.free-mode-presets button {
+  font-size: 9px;
+}
+
+.free-mode-file-input {
+  display: none;
+}
+
+.free-mode-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  border-top: 1px solid #2a4155;
+  padding: 7px 12px;
+  background: #030a11;
+}
+
+.free-mode-footer p {
+  margin: 0;
+  color: #9fb0bf;
+  font-size: 10px;
+}
+
+.free-mode-footer .free-mode-error {
+  color: #ff8092;
+}
+
+.free-mode-start {
+  min-width: 150px;
+  border-color: #36d58a !important;
+  color: #04140d !important;
+  background: #36d58a !important;
+}
+
+.free-mode-start:hover:not(:disabled) {
+  background: #5be4a2 !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
 .broadcast-session-core { font-size: 14px; }
 .broadcast-session-core time { font-size: 16px; }
 .broadcast-live-mode { font-size: 11px; }
@@ -2709,6 +3188,7 @@
 .leaderboard-position { font-size: 10.5px; }
 .leaderboard-driver strong { font-size: 10px; }
 .leaderboard-driver small { font-size: 8px; }
+.leaderboard-car-number { font-size: 7px; }
 .leaderboard-driver .penalty-pending-label { letter-spacing: 0; }
 .leaderboard-tire-life { font-size: 8px; }
 .tyre-usage-legend > div,

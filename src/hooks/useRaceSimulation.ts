@@ -19,6 +19,7 @@ import {
   type RaceWorkerOutboundMessage,
 } from '../workers/raceWorkerProtocol'
 import {
+  RACE_CHECKPOINT_STORAGE_KEY,
   activeRaceSessionFor,
   restoreRaceCheckpoint,
   saveRaceCheckpoint,
@@ -26,6 +27,7 @@ import {
 } from './raceSession'
 
 type SimulationOptions = {
+  checkpointStorageKey?: string
   config?: RaceConfig
   isPaused: boolean
   resetKey?: string
@@ -33,6 +35,7 @@ type SimulationOptions = {
 }
 
 export function useRaceSimulation({
+  checkpointStorageKey = RACE_CHECKPOINT_STORAGE_KEY,
   config = phaseOneConfig,
   isPaused,
   resetKey,
@@ -54,6 +57,8 @@ export function useRaceSimulation({
       window.localStorage,
       sessionKey,
       activeConfig,
+      Date.now(),
+      checkpointStorageKey,
     )
 
     return {
@@ -82,20 +87,27 @@ export function useRaceSimulation({
     initialState.recovered && initialState.snapshot.sessionStatus === 'finished',
   )
   const currentSessionKeyRef = useRef(sessionKey)
+  const currentCheckpointStorageKeyRef = useRef(checkpointStorageKey)
   const manualPitRequestsRef = useRef(new Map<string, TireCompound>())
   const manualPaceModesRef = useRef(new Map<string, RacePaceMode>())
   controlRef.current = { isPaused, speed }
 
   useEffect(() => {
-    if (currentSessionKeyRef.current === sessionKey) {
+    if (
+      currentSessionKeyRef.current === sessionKey &&
+      currentCheckpointStorageKeyRef.current === checkpointStorageKey
+    ) {
       return
     }
 
     currentSessionKeyRef.current = sessionKey
+    currentCheckpointStorageKeyRef.current = checkpointStorageKey
     const restored = restoreRaceCheckpoint(
       window.localStorage,
       sessionKey,
       activeConfig,
+      Date.now(),
+      checkpointStorageKey,
     )
     const nextSnapshot = restored ?? createInitialRace(activeConfig)
 
@@ -110,7 +122,7 @@ export function useRaceSimulation({
       restored?.sessionStatus === 'finished'
     manualPitRequestsRef.current.clear()
     manualPaceModesRef.current.clear()
-  }, [activeConfig, sessionKey])
+  }, [activeConfig, checkpointStorageKey, sessionKey])
 
   useEffect(() => {
     if (!workerSupported) {
@@ -251,11 +263,17 @@ export function useRaceSimulation({
     }
 
     setCheckpointSaveStatus(
-      saveRaceCheckpoint(window.localStorage, sessionKey, snapshot, now)
+      saveRaceCheckpoint(
+        window.localStorage,
+        sessionKey,
+        snapshot,
+        now,
+        checkpointStorageKey,
+      )
         ? 'saved'
         : 'failed',
     )
-  }, [sessionKey, snapshot, snapshotSessionKey])
+  }, [checkpointStorageKey, sessionKey, snapshot, snapshotSessionKey])
 
   const requestPitStop = useCallback(
     (driverId: string, compound: TireCompound) => {

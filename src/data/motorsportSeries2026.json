@@ -6,8 +6,8 @@
       "id": "f1-custom",
       "label": "F1",
       "shortLabel": "F1",
-      "teamCount": 10,
-      "carCount": 20,
+      "teamCount": 11,
+      "carCount": 22,
       "calendar": [
         { "id": "f1-01", "round": 1, "trackId": "albert-park-approx", "raceCount": 1 },
         { "id": "f1-02", "round": 2, "trackId": "shanghai-approx", "raceCount": 1, "sprint": true },
@@ -64,7 +64,7 @@
           "breakSeconds": 420,
           "format": "knockout",
           "segments": [
-            { "name": "Q1", "durationSeconds": 1080, "advanceCount": 15 },
+            { "name": "Q1", "durationSeconds": 1080, "advanceCount": 16 },
             { "name": "Q2", "durationSeconds": 900, "advanceCount": 10 },
             { "name": "Q3", "durationSeconds": 780, "advanceCount": null }
           ]

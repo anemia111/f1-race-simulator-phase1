@@ -281,7 +281,7 @@ describe('multi-axis vehicle dynamics', () => {
     expect(harvesting).toBeLessThan(combustionOnly)
   })
 
-  it('compares all 10 CSV machines with one identical reference driver', () => {
+  it('compares every CSV machine with one identical reference driver', () => {
     const referenceDriver = driverAt(1)
     const monza = tracks.find((track) => track.id === 'monza-approx')!
     const monaco = tracks.find((track) => track.id === 'monaco-approx')!
@@ -300,7 +300,7 @@ describe('multi-axis vehicle dynamics', () => {
     const monzaResults = resultFor(monza)
     const monacoResults = resultFor(monaco)
 
-    expect(monzaResults).toHaveLength(10)
+    expect(monzaResults).toHaveLength(initialTeams.length)
     expect(
       new Set(monzaResults.map((result) => result.gain.toFixed(5))).size,
     ).toBeGreaterThan(7)

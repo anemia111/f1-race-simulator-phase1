@@ -46,7 +46,7 @@ function runRace(seed: string): RaceSnapshot {
 
 describe('full-race retirement calibration', () => {
   it(
-    'keeps the 20-car F1 field at low attrition without removing variety',
+    'keeps the full F1 field at low attrition without removing variety',
     () => {
       const samples = calibrationSeeds.map((seed) => {
         const snapshot = runRace(seed)
@@ -73,7 +73,10 @@ describe('full-race retirement calibration', () => {
       expect(mean).toBeGreaterThanOrEqual(0.4)
       expect(mean).toBeLessThanOrEqual(3)
       expect(maximum).toBeLessThanOrEqual(5)
-      expect(early).toBeLessThanOrEqual(2)
+      const earlyRetirementLimit = Math.ceil(
+        calibrationSeeds.length * initialDrivers.length * 0.01,
+      )
+      expect(early).toBeLessThanOrEqual(earlyRetirementLimit)
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)
     },

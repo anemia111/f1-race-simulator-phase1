@@ -15,10 +15,10 @@ import {
 } from './performanceCsv'
 
 describe('CSV performance source of truth', () => {
-  it('CSV-1/2/3: loads the specified 10-team, 20-car field', () => {
+  it('CSV-1/2/3: loads the specified 11-team, 22-car field', () => {
     expect(performanceCsvAudit.fileName).toBe(PERFORMANCE_CSV_FILE)
-    expect(initialTeams).toHaveLength(10)
-    expect(initialDrivers).toHaveLength(20)
+    expect(initialTeams).toHaveLength(11)
+    expect(initialDrivers).toHaveLength(22)
     expect(performanceCsvAudit.teamIds).toEqual(
       initialTeams.map((team) => team.id),
     )
@@ -28,7 +28,7 @@ describe('CSV performance source of truth', () => {
     expect(performanceCsvAudit.machineColumns).toContain('ERS recovery')
     expect(performanceCsvAudit.driverColumns).toContain('Technical feedback')
     expect(Object.values(performanceCsvAudit.teamDriverCounts)).toEqual(
-      Array.from({ length: 10 }, () => 2),
+      Array.from({ length: 11 }, () => 2),
     )
   })
 
@@ -101,7 +101,7 @@ describe('CSV performance source of truth', () => {
     ).toBe(true)
   })
 
-  it('loads the ten specified constructors and their machine hierarchy', () => {
+  it('loads the eleven specified constructors and their machine hierarchy', () => {
     expect(initialTeams.map((team) => team.id)).toEqual([
       'mercedes',
       'ferrari',
@@ -111,13 +111,14 @@ describe('CSV performance source of truth', () => {
       'racing-bulls',
       'haas-f1-team',
       'williams',
+      'cadillac',
       'audi',
       'aston-martin',
     ])
     expect(
       initialTeams.map((team) => team.performanceSource?.overall),
-    ).toEqual([96, 94, 91, 89, 82, 81, 75, 72, 69, 66])
-    expect(initialTeams.some((team) => team.id === 'cadillac')).toBe(false)
+    ).toEqual([96, 94, 91, 89, 82, 81, 75, 72, 70, 69, 66])
+    expect(initialTeams.some((team) => team.id === 'cadillac')).toBe(true)
     expect(initialDrivers.find((driver) => driver.code === 'OCO')?.carNumber).toBe(
       67,
     )
@@ -227,7 +228,7 @@ describe('CSV performance source of truth', () => {
     ].join('\n')
 
     expect(() => loadPerformanceCsv(truncated, 'tiny-grid.csv')).toThrow(
-      /tiny-grid\.csv row 1, column "<driver count>".*at least 20 driver rows/u,
+      /tiny-grid\.csv row 1, column "<driver count>".*at least 22 driver rows/u,
     )
   })
 })

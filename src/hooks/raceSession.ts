@@ -199,17 +199,18 @@ export function restoreRaceCheckpoint(
   sessionKey: string,
   config: RaceConfig,
   now = Date.now(),
+  storageKey = RACE_CHECKPOINT_STORAGE_KEY,
 ) {
   try {
     const restored = parseRaceCheckpoint(
-      storage.getItem(RACE_CHECKPOINT_STORAGE_KEY),
+      storage.getItem(storageKey),
       sessionKey,
       config,
       now,
     )
 
     if (!restored) {
-      storage.removeItem(RACE_CHECKPOINT_STORAGE_KEY)
+      storage.removeItem(storageKey)
     }
 
     return restored
@@ -223,6 +224,7 @@ export function saveRaceCheckpoint(
   sessionKey: string,
   snapshot: RaceSnapshot,
   savedAt = Date.now(),
+  storageKey = RACE_CHECKPOINT_STORAGE_KEY,
 ) {
   const serialized = serializeRaceCheckpoint(sessionKey, snapshot, savedAt)
 
@@ -231,7 +233,7 @@ export function saveRaceCheckpoint(
   }
 
   try {
-    storage.setItem(RACE_CHECKPOINT_STORAGE_KEY, serialized)
+    storage.setItem(storageKey, serialized)
     return true
   } catch {
     return false

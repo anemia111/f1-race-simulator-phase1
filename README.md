@@ -24,14 +24,15 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   derived values, not published timing-line positions. Regenerate with
   `npm run generate:support-tracks`. Track geometry is © OpenStreetMap
   contributors under the ODbL.
-- A canonical checked-in F1 performance CSV supplies 10 teams and a 20-car
-  field, two per team. Its 0-100 values are retained verbatim, including Yuki
-  Nakayama (`NAK`) at Ferrari car number 31. Drivers without a seat stay in the
-  file as `reserve` rows, so they keep their authored ability axes and remain
-  available in the pool. F2/F3/SF fields live in the versioned series registry.
+- A canonical checked-in F1 performance CSV supplies 11 teams, including
+  Cadillac, and a 22-car field, two per team. Its 0-100 values are retained
+  verbatim, including Yuki Nakayama (`NAK`) at Ferrari car number 31. Drivers
+  without a seat stay in the file as `reserve` rows, so they keep their
+  authored ability axes and remain available in the pool. F2/F3/SF fields live
+  in the versioned series registry.
 - FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. Madrid F3 adds a
-  second qualifying and second Feature Race with independent grids. The 20-car
-  F1 qualifying field runs 18/15/13-minute periods and cuts to 15, then 10.
+  second qualifying and second Feature Race with independent grids. The 22-car
+  F1 qualifying field runs 18/15/13-minute periods and cuts to 16, then 10.
   Each dry qualifying attempt uses a Soft-tyre out lap, full-attack lap, and
   in lap before returning to the garage, with attack-specific ERS deployment.
 - Moving formation lap, grid return, five-light start, and timed line-crossing
@@ -178,6 +179,43 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - Overview-mode vehicle LOD plus instanced kerbs, runoff, grid boxes, pit
   boxes, paved pit lane, and marshal equipment for lower draw-call pressure.
 
+## Free Mode
+
+Free Mode is an independent application mode, not a fifth racing category.
+Open it with `FREE` in the top bar, build a session, and return to the saved
+championship with `CHAMP`.
+
+- Categories: F1, F2, F3, and SUPER FORMULA. Category rules continue to own
+  vehicle performance, tires, qualifying format, and overtake/active-aero
+  behavior.
+- Tracks: the deduplicated union of the F1 and SUPER FORMULA physical circuit
+  registries. A non-native category/track combination keeps the chosen
+  category's car systems while using a category-scaled estimated pace and
+  explicitly `SIM`-labelled fallback control zones where native markers do not
+  exist.
+- Field: 1-40 cars selected from all 110 registered people. A vehicle/team may
+  be reused by multiple entries, but each driver identity and car number must
+  remain unique.
+- Sessions: timed Practice, scalable Qualifying, or Race. The standard
+  three-part format scales around the normal 22→16→10 and 20→15→10 flows;
+  very small fields fall back to fewer segments rather than eliminating every
+  entrant.
+- Controls: manual, seeded-random, or saved qualifying grid; configurable
+  weather, laps or practice duration, seed, category presets, driver/vehicle
+  randomization, equal cars, and version-1 JSON import/export.
+- Isolation: Free Mode is always `SIM`. It neither reads OpenF1 into the
+  session nor awards championship points, advances the calendar, or overwrites
+  championship weekend saves. Its checkpoint is also separate.
+- Persistence: the current version-1 configuration and compatible qualifying
+  result use `race-sim-free-mode-v1`; named presets use
+  `race-sim-free-mode-presets-v1`; the running-session checkpoint uses
+  `race-sim-free-race-checkpoint-v1`. Imported and restored data is bounded and
+  schema-validated before use.
+- Scale: pit boxes, grid placement, timing rows, map markers, qualifying cuts,
+  SC/VSC/red procedures, and pit processing use the actual entrant count.
+  Automated runtime coverage exercises 1, 22, 30, and 40-car fields, including
+  cross-category tracks and all 40 cars making a pit stop.
+
 ## Run
 
 ```bash
@@ -219,9 +257,9 @@ go to the OS temporary directory by default; set `QA_ARTIFACT_DIR` to retain the
 at a specific location.
 `npm run benchmark` serves the latest `dist` build on an isolated preview and
 records 60x frame rate, long tasks, DOM size, canvas pixels, renderer identity,
-and optional Chromium heap usage. Use `npm run benchmark:dev` for an already
-running server. It prints JSON to stdout and only writes a file when
-`BENCHMARK_REPORT` specifies a path.
+and optional Chromium heap usage for both the normal F1 field and a 40-car Free
+Mode field. Use `npm run benchmark:dev` for an already running server. It prints
+JSON to stdout and only writes a file when `BENCHMARK_REPORT` specifies a path.
 Software renderers such as SwiftShader are recorded but are not treated as a
 hardware frame-rate pass/fail signal. Set `BENCHMARK_STRICT=1` for a real-GPU
 threshold run.

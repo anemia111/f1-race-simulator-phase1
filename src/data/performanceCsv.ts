@@ -32,7 +32,7 @@ export type PerformanceCsvAudit = {
 
 /** Fielded seats per team. Rows marked `reserve` sit outside this count. */
 const DRIVERS_PER_TEAM = 2
-const EXPECTED_TEAMS = 10
+const EXPECTED_TEAMS = 11
 
 const DRIVER_COLUMNS = [
   'Driver ID',
@@ -89,6 +89,7 @@ const TEAM_COLORS: Record<string, string> = {
   'Racing Bulls': '#6692ff',
   Alpine: '#2293d1',
   Audi: '#c8ccd0',
+  Cadillac: '#d7b56d',
   Ferrari: '#dc0000',
   'Haas F1 Team': '#b6babd',
   McLaren: '#ff8700',

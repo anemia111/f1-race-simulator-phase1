@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
-// The F1 category this playtest loads runs ten teams of two cars.
-const EXPECTED_FIELD_SIZE = 20
+// The 2026 F1 baseline includes Cadillac: eleven teams and twenty-two cars.
+const EXPECTED_FIELD_SIZE = 22
 const MINI_SECTORS_PER_DRIVER = 24
 const artifactDirectory = resolve(
   process.env.QA_ARTIFACT_DIR?.trim() || join(tmpdir(), 'f1-simulator-qa'),
@@ -389,7 +389,15 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await driverAbilitySliders.first().fill(firstAbilityValue)
   await page.getByLabel('close setup').click()
 
-  await page.getByTitle('Classification').click()
+  const classificationPanel = page.locator('.classification-panel')
+  if (
+    (await classificationPanel.count()) === 0 ||
+    !(await classificationPanel.isVisible())
+  ) {
+    await page
+      .getByRole('button', { exact: true, name: 'Classification' })
+      .click()
+  }
   await page.waitForSelector('.classification-panel')
   const classificationVisible = await page.locator('.classification-panel').isVisible()
   await page.getByLabel('Show lap chart').click()
@@ -598,6 +606,238 @@ async function inspectSeriesModes(browser) {
   return { pageErrors, results, seriesOptions }
 }
 
+async function inspectFreeMode(browser) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const pageErrors = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  await page.route('https://api.openf1.org/**', (route) => route.abort())
+  await page.goto(appUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.broadcast-app')
+
+  await page.locator('.broadcast-sidebar .sidebar-settings').click()
+  await page.waitForSelector('.setup-panel')
+  const initialChampionshipEvent = await page
+    .locator('.broadcast-brand strong')
+    .innerText()
+  await page.getByLabel('Championship round').selectOption('f1-16')
+  await page.waitForFunction(
+    (previousEvent) =>
+      document.querySelector('.broadcast-brand strong')?.textContent?.trim() !==
+      previousEvent,
+    initialChampionshipEvent.trim(),
+  )
+  await page.getByLabel('close setup').click()
+  const championshipEventBeforeFree = await page
+    .locator('.broadcast-brand strong')
+    .innerText()
+  await page.waitForFunction(() => {
+    const raw = localStorage.getItem('race-sim-weekend-v3-multi-series')
+    if (!raw) return false
+    try {
+      return JSON.parse(raw).eventId === 'f1-16'
+    } catch {
+      return false
+    }
+  })
+  const championshipStorageBeforeFree = await page.evaluate(() => ({
+    season: localStorage.getItem('f1-sim-season-v3:f1-custom'),
+    weekend: localStorage.getItem('race-sim-weekend-v3-multi-series'),
+  }))
+
+  await page.getByRole('button', { exact: true, name: 'FREE' }).click()
+  await page.waitForSelector('.free-mode-builder')
+  await page.waitForFunction(
+    () =>
+      document.activeElement?.getAttribute('aria-label') ===
+      'Close Free Mode Builder',
+  )
+  const initialFocus = await page.evaluate(
+    () => document.activeElement?.getAttribute('aria-label') ?? '',
+  )
+  await page.keyboard.press('Escape')
+  await page.waitForSelector('.free-mode-builder', { state: 'detached' })
+  const escapeClosed = (await page.locator('.free-mode-builder').count()) === 0
+  await page.getByRole('button', { exact: true, name: 'FREE' }).click()
+  await page.waitForSelector('.free-mode-builder')
+  const vehicleSearch = page.getByPlaceholder('Team name or car number')
+  await vehicleSearch.fill('44')
+  await page.waitForFunction(() =>
+    Array.from(
+      document.querySelectorAll(
+        '.free-mode-entry-row:first-child .free-mode-vehicle-cell option',
+      ),
+    ).some((option) => option.textContent?.includes('Ferrari')),
+  )
+  const vehicleNumberSearchWorked = (
+    await page
+      .locator(
+        '.free-mode-entry-row:first-child .free-mode-vehicle-cell select',
+      )
+      .locator('option')
+      .allInnerTexts()
+  ).some((label) => label.includes('Ferrari'))
+  await vehicleSearch.fill('')
+
+  const carCountInput = page.locator(
+    '.free-mode-settings input[type="number"]',
+  ).first()
+  await carCountInput.fill('40')
+  await page.getByRole('button', { exact: true, name: 'Apply' }).click()
+  await page.waitForFunction(
+    () => document.querySelectorAll('.free-mode-entry-row').length === 40,
+  )
+  await page.getByLabel('Race laps').fill('1')
+  const startButton = page.getByRole('button', {
+    exact: true,
+    name: 'Start session',
+  })
+  const firstCarNumberInput = page.getByLabel('Car number for grid 1', {
+    exact: true,
+  })
+  const secondCarNumberInput = page.getByLabel('Car number for grid 2', {
+    exact: true,
+  })
+  const duplicateCarNumber = await firstCarNumberInput.inputValue()
+  const originalSecondCarNumber = await secondCarNumberInput.inputValue()
+  await secondCarNumberInput.focus()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type(duplicateCarNumber)
+  await page.waitForSelector('.free-mode-entry-row.has-error')
+  const keyboardNumberEdited =
+    (await secondCarNumberInput.inputValue()) === duplicateCarNumber
+  const duplicateRowErrors = await page
+    .locator('.free-mode-entry-row.has-error')
+    .count()
+  const duplicateStartDisabled = await startButton.isDisabled()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type(originalSecondCarNumber)
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll('.free-mode-entry-row.has-error').length === 0,
+  )
+  const rowValidationWorked =
+    keyboardNumberEdited &&
+    duplicateRowErrors >= 1 &&
+    duplicateStartDisabled
+
+  const builderScroll = await inspectScroll(
+    page.locator('.free-mode-entry-scroll'),
+  )
+  const builderLayout = await page.locator('.free-mode-builder').evaluate(
+    (element) => ({
+      bottom: element.getBoundingClientRect().bottom,
+      documentHeight: document.documentElement.scrollHeight,
+      documentWidth: document.documentElement.scrollWidth,
+      height: element.clientHeight,
+      scrollWidth: element.scrollWidth,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      width: element.clientWidth,
+    }),
+  )
+  const startDisabled = await startButton.isDisabled()
+  await startButton.click()
+  await page.waitForFunction(
+    () => document.querySelectorAll('.leaderboard-rows li').length === 40,
+  )
+
+  const leaderboardScroll = await inspectScroll(
+    page.locator('.leaderboard-rows'),
+  )
+  const carNumbers = await page
+    .locator('.leaderboard-car-number')
+    .allInnerTexts()
+  const dataModes = await page
+    .locator('.footer-data-modes button')
+    .evaluateAll((buttons) =>
+      buttons.map((button) => ({
+        active: button.getAttribute('aria-pressed') === 'true',
+        disabled: button.disabled,
+        label: button.textContent?.trim() ?? '',
+      })),
+    )
+  const activeApplicationMode = await page
+    .locator('.broadcast-application-mode button[aria-pressed="true"]')
+    .innerText()
+  const seriesDisabled = await page
+    .getByLabel('Racing series')
+    .isDisabled()
+  const skipFormation = page.getByLabel('Skip formation lap')
+  if (await skipFormation.isVisible()) {
+    await skipFormation.click()
+  }
+  await page.getByRole('button', { exact: true, name: '60x' }).click()
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('.footer-race-control')
+        ?.textContent?.includes('Race complete.') === true,
+    undefined,
+    { timeout: 30_000 },
+  )
+  const championshipStorageAfterFree = await page.evaluate(() => ({
+    season: localStorage.getItem('f1-sim-season-v3:f1-custom'),
+    weekend: localStorage.getItem('race-sim-weekend-v3-multi-series'),
+  }))
+  const championshipStorageUnchanged =
+    championshipStorageBeforeFree.weekend ===
+      championshipStorageAfterFree.weekend &&
+    championshipStorageBeforeFree.season ===
+      championshipStorageAfterFree.season
+  const freeClassificationPanel = page.locator('.classification-panel')
+  if (
+    (await freeClassificationPanel.count()) === 0 ||
+    !(await freeClassificationPanel.isVisible())
+  ) {
+    await page
+      .getByRole('button', { exact: true, name: 'Classification' })
+      .click()
+  }
+  await page.waitForSelector('.classification-panel')
+  await page.getByLabel('Show lap chart').click()
+  await page.waitForSelector('.lap-chart svg polyline', { state: 'attached' })
+  const freeLapChartLineCount = await page
+    .locator('.lap-chart svg polyline')
+    .count()
+  await page.getByLabel('Hide lap chart').click()
+  await page.getByLabel('hide classification').click()
+
+  await page.getByRole('button', { exact: true, name: 'CHAMP' }).click()
+  await page.waitForFunction(
+    () => document.querySelectorAll('.leaderboard-rows li').length === 22,
+  )
+  const championshipEventAfterFree = await page
+    .locator('.broadcast-brand strong')
+    .innerText()
+
+  await page.screenshot({
+    path: join(artifactDirectory, 'free-mode-40-cars.png'),
+    fullPage: true,
+  })
+  await page.close()
+
+  return {
+    activeApplicationMode,
+    builderLayout,
+    builderScroll,
+    carNumbers,
+    championshipEventAfterFree,
+    championshipEventBeforeFree,
+    championshipStorageUnchanged,
+    dataModes,
+    escapeClosed,
+    freeLapChartLineCount,
+    initialFocus,
+    keyboardNumberEdited,
+    leaderboardScroll,
+    pageErrors,
+    rowValidationWorked,
+    seriesDisabled,
+    startDisabled,
+    vehicleNumberSearchWorked,
+  }
+}
+
 const browser = await chromium.launch({ headless: true })
 
 try {
@@ -606,8 +846,9 @@ try {
     await runViewport(browser, 'desktop-compact', { width: 1280, height: 720 }, join(artifactDirectory, 'broadcast-compact.png')),
   ]
   const seriesModes = await inspectSeriesModes(browser)
+  const freeMode = await inspectFreeMode(browser)
 
-  console.log(JSON.stringify({ seriesModes, viewports: results }, null, 2))
+  console.log(JSON.stringify({ freeMode, seriesModes, viewports: results }, null, 2))
 
   for (const result of results) {
     const failures = []
@@ -655,7 +896,7 @@ try {
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
     if (result.dataManagerDriverRows !== 110) failures.push(`data manager rendered ${result.dataManagerDriverRows}/110 pool drivers`)
     if (result.dataManagerDriverScroll.maxScrollTop <= 0 || !result.dataManagerDriverScroll.reachedBottom) failures.push(`driver directory cannot scroll: ${JSON.stringify(result.dataManagerDriverScroll)}`)
-    if (result.dataManagerTeamRows !== 10) failures.push(`data manager rendered ${result.dataManagerTeamRows}/10 F1 teams`)
+    if (result.dataManagerTeamRows !== 11) failures.push(`data manager rendered ${result.dataManagerTeamRows}/11 F1 teams`)
     if (result.dataManagerRuleRows !== 25) failures.push(`data manager rendered ${result.dataManagerRuleRows - 1}/24 F1 events`)
     if (result.dataManagerRuleInputs < 10 || result.dataManagerQualifyingRows !== 4) failures.push(`rule editor is incomplete: ${result.dataManagerRuleInputs} inputs / ${result.dataManagerQualifyingRows - 1} segments`)
     if (result.dataManagerEventInputs < 7 || !result.dataManagerSelectedEvent.includes('f1-16')) failures.push(`event override editor is incomplete: ${result.dataManagerEventInputs} inputs / ${result.dataManagerSelectedEvent}`)
@@ -706,6 +947,115 @@ try {
   }
   if (seriesFailures.length > 0) {
     throw new Error(`multi-series failed:\n- ${seriesFailures.join('\n- ')}`)
+  }
+
+  const freeModeFailures = []
+  if (freeMode.activeApplicationMode.trim() !== 'FREE') {
+    freeModeFailures.push(
+      `application mode did not switch to FREE: ${freeMode.activeApplicationMode}`,
+    )
+  }
+  if (!freeMode.seriesDisabled) {
+    freeModeFailures.push('series selector remains editable during a Free session')
+  }
+  if (
+    freeMode.championshipEventBeforeFree !==
+    freeMode.championshipEventAfterFree
+  ) {
+    freeModeFailures.push(
+      `championship weekend was not restored after Free Mode: ${freeMode.championshipEventBeforeFree} -> ${freeMode.championshipEventAfterFree}`,
+    )
+  }
+  if (!freeMode.championshipStorageUnchanged) {
+    freeModeFailures.push(
+      'Free race mutated championship weekend or season storage',
+    )
+  }
+  if (freeMode.startDisabled) {
+    freeModeFailures.push('valid 40-car configuration cannot start')
+  }
+  if (!freeMode.keyboardNumberEdited || !freeMode.rowValidationWorked) {
+    freeModeFailures.push(
+      'keyboard editing or entrant-level duplicate validation failed',
+    )
+  }
+  if (!freeMode.vehicleNumberSearchWorked) {
+    freeModeFailures.push('vehicle search did not match a registered car number')
+  }
+  if (freeMode.freeLapChartLineCount < 40) {
+    freeModeFailures.push(
+      `Free Mode lap chart drew ${freeMode.freeLapChartLineCount}/40 entrants`,
+    )
+  }
+  if (
+    freeMode.initialFocus !== 'Close Free Mode Builder' ||
+    !freeMode.escapeClosed
+  ) {
+    freeModeFailures.push(
+      `Free Mode keyboard dialog behavior failed: ${JSON.stringify({
+        escapeClosed: freeMode.escapeClosed,
+        initialFocus: freeMode.initialFocus,
+      })}`,
+    )
+  }
+  if (
+    freeMode.builderLayout.documentWidth !==
+      freeMode.builderLayout.viewportWidth ||
+    freeMode.builderLayout.documentHeight !==
+      freeMode.builderLayout.viewportHeight ||
+    freeMode.builderLayout.scrollWidth !== freeMode.builderLayout.width ||
+    freeMode.builderLayout.bottom > freeMode.builderLayout.viewportHeight
+  ) {
+    freeModeFailures.push(
+      `Free Mode builder overflows its viewport: ${JSON.stringify(freeMode.builderLayout)}`,
+    )
+  }
+  if (
+    freeMode.builderScroll.maxScrollTop <= 0 ||
+    !freeMode.builderScroll.reachedBottom
+  ) {
+    freeModeFailures.push(
+      `40-car builder list cannot reach every entry: ${JSON.stringify(freeMode.builderScroll)}`,
+    )
+  }
+  if (
+    freeMode.leaderboardScroll.maxScrollTop <= 0 ||
+    !freeMode.leaderboardScroll.reachedBottom
+  ) {
+    freeModeFailures.push(
+      `40-car leaderboard cannot reach every entry: ${JSON.stringify(freeMode.leaderboardScroll)}`,
+    )
+  }
+  if (
+    freeMode.carNumbers.length !== 40 ||
+    new Set(freeMode.carNumbers).size !== 40 ||
+    freeMode.carNumbers.some((number) => !/^#\d{1,3}$/u.test(number))
+  ) {
+    freeModeFailures.push(
+      `Free Mode car-number identifiers are invalid: ${freeMode.carNumbers.join(', ')}`,
+    )
+  }
+  const simMode = freeMode.dataModes.find((mode) => mode.label === 'SIM')
+  const externalModes = freeMode.dataModes.filter((mode) =>
+    ['HIST', 'LIVE'].includes(mode.label),
+  )
+  if (
+    !simMode?.active ||
+    simMode.disabled ||
+    externalModes.length !== 2 ||
+    externalModes.some((mode) => !mode.disabled || mode.active)
+  ) {
+    freeModeFailures.push(
+      `Free Mode data-source isolation is invalid: ${JSON.stringify(freeMode.dataModes)}`,
+    )
+  }
+  if (freeMode.pageErrors.length > 0) {
+    freeModeFailures.push(
+      `Free Mode page errors: ${freeMode.pageErrors.join('; ')}`,
+    )
+  }
+  if (freeModeFailures.length > 0) {
+    throw new Error(`Free Mode failed:\n- ${freeModeFailures.join('\n- ')}`)
   }
 } finally {
   await browser.close()

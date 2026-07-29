@@ -3097,11 +3097,11 @@ describe('qualifying', () => {
     const session = runKnockoutQualifying(config)
 
     expect(session.segments.map((segment) => segment.name)).toEqual(['Q1', 'Q2', 'Q3'])
-    // A 20-car field runs the official 20 -> 15 -> 10 knockout.
+    // The 22-car field follows the configured 22 -> 16 -> 10 knockout.
     expect(session.segments[0].results).toHaveLength(initialDrivers.length)
-    expect(session.segments[0].eliminatedDriverIds).toHaveLength(5)
-    expect(session.segments[1].results).toHaveLength(15)
-    expect(session.segments[1].eliminatedDriverIds).toHaveLength(5)
+    expect(session.segments[0].eliminatedDriverIds).toHaveLength(6)
+    expect(session.segments[1].results).toHaveLength(16)
+    expect(session.segments[1].eliminatedDriverIds).toHaveLength(6)
     expect(session.segments[2].results).toHaveLength(10)
     expect(session.classification).toHaveLength(initialDrivers.length)
     expect(session.classification.map((result) => result.position)).toEqual(

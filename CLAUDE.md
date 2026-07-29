@@ -17,10 +17,11 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 
 - 24 verified tracks: 23 OpenF1-derived centerlines plus the official 2026
   MADRING organizer vector, with the amended 22-round championship status.
-- The canonical F1 performance CSV supplies 10 teams and a 20-car field, two
-  cars per team, on a 0-100 scale. Preserve every supplied value, including
-  Ferrari `NAK` #31. Drivers without a seat stay in the file as `reserve` rows
-  so their authored axes survive; they are pooled but never fielded.
+- The canonical F1 performance CSV supplies 11 teams and a 22-car field,
+  including Cadillac, with two cars per team on a 0-100 scale. Preserve every
+  supplied value, including Ferrari `NAK` #31. Drivers without a seat stay in
+  the file as `reserve` rows so their authored axes survive; they are pooled
+  but never fielded.
 - `motorsportSeries2026.json` supplies the F2/F3/SF fields and rule packages;
   preserve the 110-person relational pool and never subtract ratings at runtime.
 - Driver `overall` is one absolute scale shared by every category, so a driver
@@ -32,6 +33,10 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
   the incoming driver inherits that seat's car number and team.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
+- Free Mode is an independent application mode over the existing F1/F2/F3/SF
+  packages and race engine. It supports 1-40 cars from all 110 people and the
+  F1/SF track union, stays SIM-only, and must not mutate championship progress
+  or OpenF1 state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ
   elimination, segmented overtaking, strategy, weather, tires, 2026 active
   aero/Overtake/ERS, pits, incidents, flags,
@@ -72,7 +77,9 @@ remain intentional, separate steps so unrelated work is never swept in.
 - `src/types.ts`: shared domain state.
 - `src/data/tracks.ts`: calendar and operational markers.
 - `src/data/realTrackLayouts.ts`: generated real layouts; do not hand-edit.
-- `src/data/f1Performance.csv`: canonical 10-team/30-driver F1 performance data.
+- `src/data/f1Performance.csv`: canonical 11-team/30-driver F1 performance data.
+- `src/components/FreeModeBuilder.tsx`, `src/freeMode/`: Free Mode UI,
+  validation, persistence, and conversion into the existing `RaceConfig`.
 - `src/data/motorsportSeries2026.json`: category fields, calendars, and rules.
 - `src/series/seriesRegistry.ts`: validated multi-series domain packages.
 - `src/data/performanceCsv.ts`: strict CSV validation and domain mapping.

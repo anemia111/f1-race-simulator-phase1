@@ -8,6 +8,7 @@ import { RaceClassificationPanel } from './components/RaceClassificationPanel'
 import { QualifyingClassificationPanel } from './components/QualifyingClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
 import { SetupPanel } from './components/SetupPanel'
+import { FreeModeBuilder } from './components/FreeModeBuilder'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
 import {
   SERIES_CONFIGURATION_STORAGE_KEY,
@@ -135,6 +136,23 @@ import {
   driverConfiguredOverallAbilityPoints,
 } from './simulation/driverAbility'
 import { normalizeSimulationSeed } from './simulation/random'
+import {
+  buildFreeModeRuntime,
+  createDefaultFreeModeConfiguration,
+  freeModeStageFor,
+} from './freeMode/freeModeRegistry'
+import {
+  FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY,
+  loadFreeModeStoredState,
+  saveFreeModeStoredState,
+} from './freeMode/freeModePersistence'
+import type {
+  ApplicationMode,
+  FreeModeBuildContext,
+  FreeModeConfiguration,
+  FreeModeRuntime,
+  FreeModeStoredState,
+} from './freeMode/types'
 import {
   defaultSeriesPackage,
   driverAssignments2026,
@@ -412,6 +430,62 @@ function loadSeriesConfiguration(
 const initialSeriesConfiguration = loadSeriesConfiguration(
   initialSeriesPackage,
 )
+
+function configuredSeriesPackagesForFreeMode() {
+  return seriesPackages.map((series) => {
+    const configuration = loadSeriesConfiguration(series)
+
+    return {
+      ...series,
+      calendar: configuration.calendar,
+      drivers: configuration.drivers,
+      rules: configuration.rules,
+      teams: configuration.teams,
+    }
+  })
+}
+
+function freeModeContextFor(
+  packages: SeriesPackage[],
+): FreeModeBuildContext {
+  const driverOverridesById = new Map<string, Driver>()
+
+  for (const series of packages) {
+    for (const driver of series.drivers) {
+      const current = driverOverridesById.get(driver.id)
+
+      if (
+        !current ||
+        (driver.performanceSource?.overall ?? 0) >
+          (current.performanceSource?.overall ?? 0)
+      ) {
+        driverOverridesById.set(driver.id, driver)
+      }
+    }
+  }
+
+  return {
+    driverOverridesById,
+    driverPool: driverPool2026,
+    seriesById: new Map(packages.map((series) => [series.id, series])),
+  }
+}
+
+function initialFreeModeStoredState(): FreeModeStoredState {
+  const context = freeModeContextFor(configuredSeriesPackagesForFreeMode())
+  const restored = loadFreeModeStoredState(window.localStorage, context)
+
+  return (
+    restored ?? {
+      configuration: createDefaultFreeModeConfiguration(
+        context.seriesById,
+        createAutoScenarioSeed(),
+      ),
+      qualifyingResult: null,
+      version: 1,
+    }
+  )
+}
 
 const weekendStagesFor = (
   series: SeriesPackage,
@@ -1053,6 +1127,15 @@ const openF1GridResultsFor = (
 }
 
 export default function App() {
+  const [applicationMode, setApplicationMode] =
+    useState<ApplicationMode>('championship')
+  const [activeFreeModeRuntime, setActiveFreeModeRuntime] =
+    useState<FreeModeRuntime | null>(null)
+  const [freeModeStoredState, setFreeModeStoredState] =
+    useState<FreeModeStoredState>(initialFreeModeStoredState)
+  const [isFreeModeBuilderOpen, setIsFreeModeBuilderOpen] = useState(false)
+  const [championshipReturnSeriesId, setChampionshipReturnSeriesId] =
+    useState<SeriesId>(initialSeriesId)
   const [selectedSeriesId, setSelectedSeriesId] =
     useState<SeriesId>(initialSeriesId)
   const registrySeriesPackage = useMemo(
@@ -1065,14 +1148,51 @@ export default function App() {
   const [configuredCalendar, setConfiguredCalendar] = useState(
     () => initialSeriesConfiguration.calendar,
   )
-  const seriesPackage = useMemo<SeriesPackage>(
-    () => ({
+  const seriesPackage = useMemo<SeriesPackage>(() => {
+    if (applicationMode === 'free' && activeFreeModeRuntime) {
+      const stage = freeModeStageFor(
+        activeFreeModeRuntime.configuration.sessionKind,
+      )
+      const freeRules: SeriesPackage['rules'] = {
+        ...activeFreeModeRuntime.rules,
+        supportsOpenF1: false,
+        weekendStages: [stage],
+      }
+
+      return {
+        ...registrySeriesPackage,
+        calendar: [
+          {
+            id: 'free-session',
+            raceCount: 1,
+            round: 1,
+            trackId: activeFreeModeRuntime.raceConfig.track.id,
+            weekendStages: [stage],
+          },
+        ],
+        carCount: activeFreeModeRuntime.raceConfig.drivers.length,
+        drivers: activeFreeModeRuntime.raceConfig.drivers,
+        label: `FREE · ${registrySeriesPackage.shortLabel}`,
+        rules: freeRules,
+        shortLabel: `FREE · ${registrySeriesPackage.shortLabel}`,
+        teamCount: activeFreeModeRuntime.raceConfig.teams.length,
+        teams: activeFreeModeRuntime.raceConfig.teams,
+        tracks: [activeFreeModeRuntime.raceConfig.track],
+      }
+    }
+
+    return {
       ...registrySeriesPackage,
       calendar: configuredCalendar,
       rules: configuredRules,
-    }),
-    [configuredCalendar, configuredRules, registrySeriesPackage],
-  )
+    }
+  }, [
+    activeFreeModeRuntime,
+    applicationMode,
+    configuredCalendar,
+    configuredRules,
+    registrySeriesPackage,
+  ])
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview')
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [isPaused, setIsPaused] = useState(false)
@@ -1148,19 +1268,65 @@ export default function App() {
           ),
           season,
           initialSeriesConfiguration.drivers,
-        ),
+      ),
   )
+  const freeModeBuildContext = useMemo<FreeModeBuildContext>(() => {
+    const packages = seriesPackages.map((registrySeries) => {
+      if (
+        applicationMode === 'championship' &&
+        registrySeries.id === selectedSeriesId
+      ) {
+        return {
+          ...registrySeries,
+          calendar: configuredCalendar,
+          drivers,
+          rules: configuredRules,
+          teams,
+        }
+      }
+
+      const configuration = loadSeriesConfiguration(registrySeries)
+      return {
+        ...registrySeries,
+        calendar: configuration.calendar,
+        drivers: configuration.drivers,
+        rules: configuration.rules,
+        teams: configuration.teams,
+      }
+    })
+
+    return {
+      ...freeModeContextFor(packages),
+      qualifyingResult: freeModeStoredState.qualifyingResult,
+    }
+  }, [
+    applicationMode,
+    configuredCalendar,
+    configuredRules,
+    drivers,
+    freeModeStoredState.qualifyingResult,
+    selectedSeriesId,
+    teams,
+  ])
 
   // Save/load: the local weekend survives reloads until the track changes.
   useEffect(() => {
+    if (applicationMode !== 'championship') {
+      return
+    }
+
     try {
       window.localStorage.setItem(SERIES_STORAGE_KEY, selectedSeriesId)
     } catch {
       // Category selection remains usable when storage is unavailable.
     }
-  }, [selectedSeriesId])
+  }, [applicationMode, selectedSeriesId])
 
   useEffect(() => {
+    if (applicationMode !== 'championship') {
+      return
+    }
+
     try {
       window.localStorage.setItem(
         WEEKEND_STORAGE_KEY,
@@ -1179,6 +1345,7 @@ export default function App() {
       // Storage may be unavailable (private mode, quota); persistence is optional.
     }
   }, [
+    applicationMode,
     gridSource,
     seed,
     selectedSeriesId,
@@ -1189,6 +1356,10 @@ export default function App() {
   ])
 
   useEffect(() => {
+    if (applicationMode !== 'championship') {
+      return
+    }
+
     try {
       window.localStorage.setItem(
         scopedStorageKey(DRIVER_RATINGS_STORAGE_KEY, selectedSeriesId),
@@ -1197,9 +1368,13 @@ export default function App() {
     } catch {
       // Driver tuning remains usable when browser storage is unavailable.
     }
-  }, [drivers, selectedSeriesId])
+  }, [applicationMode, drivers, selectedSeriesId])
 
   useEffect(() => {
+    if (applicationMode !== 'championship') {
+      return
+    }
+
     try {
       window.localStorage.setItem(
         scopedStorageKey(
@@ -1221,6 +1396,7 @@ export default function App() {
       // The simulator remains usable when browser storage is unavailable.
     }
   }, [
+    applicationMode,
     configurationMigrationHistory,
     configuredCalendar,
     configuredRules,
@@ -1230,6 +1406,10 @@ export default function App() {
   ])
 
   useEffect(() => {
+    if (applicationMode !== 'championship') {
+      return
+    }
+
     try {
       window.localStorage.setItem(
         scopedStorageKey(SEASON_STORAGE_KEY, selectedSeriesId),
@@ -1238,7 +1418,11 @@ export default function App() {
     } catch {
       // Championship persistence is optional when storage is unavailable.
     }
-  }, [season, selectedSeriesId])
+  }, [applicationMode, season, selectedSeriesId])
+
+  useEffect(() => {
+    saveFreeModeStoredState(window.localStorage, freeModeStoredState)
+  }, [freeModeStoredState])
 
   const track = useMemo(
     () =>
@@ -1270,7 +1454,8 @@ export default function App() {
     selectedWeekendStage,
     2026,
     openF1AccessToken,
-    seriesPackage.rules.supportsOpenF1,
+    applicationMode === 'championship' &&
+      seriesPackage.rules.supportsOpenF1,
   )
   const openF1Bundle = openF1State.data
   const openF1Timeline = useMemo(
@@ -1285,7 +1470,8 @@ export default function App() {
   const seasonStandings = useOpenF1SeasonStandings(
     2026,
     track.calendar2026?.dateStart ?? track.openF1?.dateStart ?? null,
-    seriesPackage.rules.supportsOpenF1,
+    applicationMode === 'championship' &&
+      seriesPackage.rules.supportsOpenF1,
   )
   const fieldCalibration = useMemo(
     () =>
@@ -1306,51 +1492,68 @@ export default function App() {
     [track, trackCalibration],
   )
   const baseConfig: RaceConfig = useMemo(
-    () => ({
-      drivers: fieldCalibration.drivers,
-      featureRaceMandatoryPitStop:
-        selectedEvent.featureRaceMandatoryPitStop ??
-        seriesPackage.rules.featureRaceMandatoryPitStop,
-      featureRaceTwoDryCompounds:
-        seriesPackage.rules.featureRaceTwoDryCompounds,
-      overtakeActivation: seriesPackage.rules.overtakeActivation,
-      overtakeSystem: seriesPackage.rules.overtakeSystem,
-      categoryRaceFormat: seriesPackage.rules.race,
-      seed: normalizeSimulationSeed(seed),
-      seriesId: selectedSeriesId,
-      teams: fieldCalibration.teams,
-      tireSupplier: seriesPackage.rules.tireSupplier,
-      tireAllocation: tireAllocationFor(
-        seriesPackage,
-        track.isSprintWeekend,
-      ),
-      qualifyingDryCompound:
-        seriesPackage.rules.tires.qualifyingDryCompound,
-      sessionOverallTimeLimitSecondsOverride:
-        isRaceDistanceSession(selectedWeekendStage)
-          ? (selectedEvent.raceOverallTimeLimitSeconds ?? null)
-          : null,
-      sessionRaceLapsOverride:
-        isFeatureRaceStage(selectedWeekendStage)
-          ? (selectedEvent.raceLaps ?? null)
-          : null,
-      sessionRaceTimeLimitSecondsOverride:
-        isFeatureRaceStage(selectedWeekendStage)
-          ? (selectedEvent.raceTimeLimitSeconds ?? null)
-          : null,
-      track: calibratedTrack,
-      weekendStage: simulationStageFor(selectedWeekendStage),
-      weekendContext,
-    }),
+    () => {
+      if (applicationMode === 'free' && activeFreeModeRuntime) {
+        return {
+          ...activeFreeModeRuntime.raceConfig,
+          drivers,
+          teams,
+          track,
+          weekendContext,
+          weekendStage: simulationStageFor(selectedWeekendStage),
+        }
+      }
+
+      return {
+        drivers: fieldCalibration.drivers,
+        featureRaceMandatoryPitStop:
+          selectedEvent.featureRaceMandatoryPitStop ??
+          seriesPackage.rules.featureRaceMandatoryPitStop,
+        featureRaceTwoDryCompounds:
+          seriesPackage.rules.featureRaceTwoDryCompounds,
+        overtakeActivation: seriesPackage.rules.overtakeActivation,
+        overtakeSystem: seriesPackage.rules.overtakeSystem,
+        categoryRaceFormat: seriesPackage.rules.race,
+        seed: normalizeSimulationSeed(seed),
+        seriesId: selectedSeriesId,
+        teams: fieldCalibration.teams,
+        tireSupplier: seriesPackage.rules.tireSupplier,
+        tireAllocation: tireAllocationFor(
+          seriesPackage,
+          track.isSprintWeekend,
+        ),
+        qualifyingDryCompound:
+          seriesPackage.rules.tires.qualifyingDryCompound,
+        sessionOverallTimeLimitSecondsOverride:
+          isRaceDistanceSession(selectedWeekendStage)
+            ? (selectedEvent.raceOverallTimeLimitSeconds ?? null)
+            : null,
+        sessionRaceLapsOverride:
+          isFeatureRaceStage(selectedWeekendStage)
+            ? (selectedEvent.raceLaps ?? null)
+            : null,
+        sessionRaceTimeLimitSecondsOverride:
+          isFeatureRaceStage(selectedWeekendStage)
+            ? (selectedEvent.raceTimeLimitSeconds ?? null)
+            : null,
+        track: calibratedTrack,
+        weekendStage: simulationStageFor(selectedWeekendStage),
+        weekendContext,
+      }
+    },
     [
+      activeFreeModeRuntime,
+      applicationMode,
       calibratedTrack,
+      drivers,
       fieldCalibration,
       seed,
       selectedEvent,
       selectedSeriesId,
       selectedWeekendStage,
       seriesPackage,
-      track.isSprintWeekend,
+      teams,
+      track,
       weekendContext,
     ],
   )
@@ -1652,7 +1855,9 @@ export default function App() {
         ...preparedBaseConfig,
         drivers: raceDrivers,
         sessionDurationSeconds: isPracticeStage(selectedWeekendStage)
-          ? seriesPackage.rules.freePracticeDurationSeconds
+          ? applicationMode === 'free'
+            ? preparedBaseConfig.sessionDurationSeconds
+            : seriesPackage.rules.freePracticeDurationSeconds
           : null,
         timedSessionPlan,
       }
@@ -1660,6 +1865,7 @@ export default function App() {
     [
       preparedBaseConfig,
       raceDrivers,
+      applicationMode,
       selectedWeekendStage,
       activeSeriesRules.qualifying.breakSeconds,
       activeSeriesRules.qualifying.format,
@@ -1672,14 +1878,20 @@ export default function App() {
   const raceSessionKey = useMemo(
     () =>
       JSON.stringify([
+        applicationMode,
         normalizeSimulationSeed(seed),
         selectedSeriesId,
         selectedEventId,
         selectedTrackId,
         selectedWeekendStage,
         gridSource,
+        applicationMode === 'free'
+          ? activeFreeModeRuntime?.configuration
+          : null,
       ]),
     [
+      activeFreeModeRuntime?.configuration,
+      applicationMode,
       gridSource,
       seed,
       selectedEventId,
@@ -1699,6 +1911,10 @@ export default function App() {
     skipFormationLap,
     snapshotIsCurrent,
   } = useRaceSimulation({
+    checkpointStorageKey:
+      applicationMode === 'free'
+        ? FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY
+        : undefined,
     config: raceConfig,
     isPaused,
     resetKey: raceSessionKey,
@@ -1726,6 +1942,7 @@ export default function App() {
   // A finished race-distance session counts as weekend progress.
   useEffect(() => {
     if (
+      applicationMode !== 'championship' ||
       !snapshotIsCurrent ||
       snapshot.sessionStatus !== 'finished' ||
       !isRaceDistanceSession(selectedWeekendStage)
@@ -1760,6 +1977,7 @@ export default function App() {
       }),
     )
   }, [
+    applicationMode,
     selectedEvent.featurePoints,
     selectedEventId,
     selectedWeekendStage,
@@ -1808,6 +2026,24 @@ export default function App() {
         true,
       ),
     )
+    if (applicationMode === 'free' && activeFreeModeRuntime) {
+      setFreeModeStoredState((current) => ({
+        ...current,
+        configuration: activeFreeModeRuntime.configuration,
+        qualifyingResult: {
+          categoryId: activeFreeModeRuntime.configuration.categoryId,
+          completedAt: new Date().toISOString(),
+          orderedDriverIds: completedClassification.map(
+            (result) => result.driverId,
+          ),
+          seed: activeFreeModeRuntime.configuration.seed,
+          trackId: activeFreeModeRuntime.configuration.trackId,
+          version: 1,
+        },
+      }))
+      return
+    }
+
     if (isStandardQualifyingStage(selectedWeekendStage)) {
       setSeason((current) =>
         recordQualifyingPoints(current, {
@@ -1819,6 +2055,8 @@ export default function App() {
       )
     }
   }, [
+    activeFreeModeRuntime,
+    applicationMode,
     selectedWeekendStage,
     snapshot.cars,
     snapshot.sessionStatus,
@@ -1839,6 +2077,7 @@ export default function App() {
   // the manual advance so the sprint is never skipped.
   useEffect(() => {
     if (
+      applicationMode !== 'championship' ||
       !snapshotIsCurrent ||
       snapshot.sessionStatus !== 'finished' ||
       !isStandardQualifyingStage(selectedWeekendStage)
@@ -1856,6 +2095,7 @@ export default function App() {
     setSeed(createAutoScenarioSeed())
     setSelectedWeekendStage(nextStage)
   }, [
+    applicationMode,
     selectedWeekendStage,
     snapshot.sessionStatus,
     snapshotIsCurrent,
@@ -1879,11 +2119,14 @@ export default function App() {
   )
   const openF1DataAge = compactDataAge(latestOpenF1Sample)
   const detectedDataMode = classifyObservedDataMode(latestOpenF1Sample)
-  const dataMode = resolveRequestedDataMode({
-    detectedMode: detectedDataMode,
-    hasHistoricalData: latestOpenF1Sample !== null,
-    requestedMode: requestedDataMode,
-  })
+  const dataMode =
+    applicationMode === 'free'
+      ? ('SIM' as const)
+      : resolveRequestedDataMode({
+          detectedMode: detectedDataMode,
+          hasHistoricalData: latestOpenF1Sample !== null,
+          requestedMode: requestedDataMode,
+        })
   const observedTimelineActive =
     dataModeUsesObservedTiming(dataMode) &&
     openF1Timeline.targetMs > 0 &&
@@ -2411,20 +2654,23 @@ export default function App() {
       : openF1GridResults.length > 0
         ? `OpenF1 ${openF1Bundle?.startingGrid.length ? 'starting grid' : 'result order'} ready`
         : 'No OpenF1 order yet'
-  const changeSeries = (seriesId: SeriesId) => {
-    if (seriesId === selectedSeriesId) {
-      return
-    }
-
+  const activateChampionshipSeries = (seriesId: SeriesId) => {
     const nextRegistrySeries =
       seriesPackageById.get(seriesId) ?? defaultSeriesPackage
     const nextConfiguration = loadSeriesConfiguration(nextRegistrySeries)
     const nextSeries: SeriesPackage = {
       ...nextRegistrySeries,
       calendar: nextConfiguration.calendar,
+      drivers: nextConfiguration.drivers,
       rules: nextConfiguration.rules,
+      teams: nextConfiguration.teams,
     }
+    const savedWeekend = loadPersistedWeekend(nextSeries)
     const nextEvent =
+      nextSeries.calendar.find((event) => event.id === savedWeekend?.eventId) ??
+      nextSeries.calendar.find(
+        (event) => event.trackId === savedWeekend?.trackId,
+      ) ??
       nextSeries.calendar.find((event) => !event.cancelled) ??
       nextSeries.calendar[0]
     const nextTrack =
@@ -2433,10 +2679,17 @@ export default function App() {
     const nextDrivers = nextConfiguration.drivers
     const nextSeason = loadPersistedSeason(nextSeries.id)
     const nextStages = weekendStagesFor(nextSeries, nextTrack, nextEvent.id)
-    const nextStage = nextStages.includes('race')
-      ? 'race'
-      : nextStages.at(-1) ?? 'race'
+    const nextStage =
+      savedWeekend && nextStages.includes(savedWeekend.stage)
+        ? savedWeekend.stage
+        : nextStages.includes('race')
+          ? 'race'
+          : nextStages.at(-1) ?? 'race'
 
+    setApplicationMode('championship')
+    setActiveFreeModeRuntime(null)
+    setChampionshipReturnSeriesId(nextSeries.id)
+    setIsFreeModeBuilderOpen(false)
     setSelectedSeriesId(nextSeries.id)
     setConfiguredRules(nextConfiguration.rules)
     setConfiguredCalendar(nextConfiguration.calendar)
@@ -2449,21 +2702,78 @@ export default function App() {
     setSelectedTeamId(nextSeries.teams[0].id)
     setSelectedDriverId(nextSeries.drivers[0].id)
     setSeason(nextSeason)
-    setGridSource('qualifying')
+    setGridSource(savedWeekend?.gridSource ?? 'qualifying')
     setRequestedDataMode('SIM')
-    setSeed(createAutoScenarioSeed())
+    setSeed(savedWeekend?.seed ?? createAutoScenarioSeed())
     setWeekendContext(
-      applySeasonGarageToWeekend(
-        createWeekendContext(
+      savedWeekend?.weekendContext ??
+        applySeasonGarageToWeekend(
+          createWeekendContext(
+            nextDrivers,
+            nextTrack.isSprintWeekend,
+            nextTrack,
+            tireAllocationFor(nextSeries, nextTrack.isSprintWeekend),
+          ),
+          nextSeason,
           nextDrivers,
-          nextTrack.isSprintWeekend,
-          nextTrack,
-          tireAllocationFor(nextSeries, nextTrack.isSprintWeekend),
         ),
-        nextSeason,
-        nextDrivers,
-      ),
     )
+  }
+
+  const changeSeries = (seriesId: SeriesId) => {
+    if (
+      applicationMode === 'championship' &&
+      seriesId === selectedSeriesId
+    ) {
+      return
+    }
+
+    activateChampionshipSeries(seriesId)
+  }
+
+  const startFreeMode = (configuration: FreeModeConfiguration) => {
+    const runtime = buildFreeModeRuntime(configuration, {
+      ...freeModeBuildContext,
+      qualifyingResult: freeModeStoredState.qualifyingResult,
+    })
+    const stage = freeModeStageFor(configuration.sessionKind)
+    const runtimeWeekendContext =
+      runtime.raceConfig.weekendContext ??
+      createWeekendContext(
+        runtime.raceConfig.drivers,
+        false,
+        runtime.raceConfig.track,
+        runtime.raceConfig.tireAllocation,
+      )
+
+    if (applicationMode === 'championship') {
+      setChampionshipReturnSeriesId(selectedSeriesId)
+    }
+
+    setApplicationMode('free')
+    setActiveFreeModeRuntime(runtime)
+    setSelectedSeriesId(configuration.categoryId)
+    setConfiguredRules(runtime.rules)
+    setConfiguredCalendar([])
+    setSelectedEventId('free-session')
+    setSelectedTrackId(runtime.raceConfig.track.id)
+    setSelectedWeekendStage(stage)
+    setTeams(copyTeams(runtime.raceConfig.teams))
+    setDrivers(copyDrivers(runtime.raceConfig.drivers))
+    setSelectedTeamId(runtime.raceConfig.teams[0]?.id ?? '')
+    setSelectedDriverId(runtime.raceConfig.drivers[0]?.id ?? '')
+    setGridSource('brief')
+    setRequestedDataMode('SIM')
+    setSeed(runtime.raceConfig.seed)
+    setWeekendContext(runtimeWeekendContext)
+    setIsPaused(false)
+    setIsSetupOpen(false)
+    setIsDataManagerOpen(false)
+    setIsFreeModeBuilderOpen(false)
+    setFreeModeStoredState((current) => ({
+      ...current,
+      configuration,
+    }))
   }
 
   const changeEvent = (eventId: string) => {
@@ -3087,9 +3397,40 @@ export default function App() {
     'Low-grip ERS curve',
     'FIA event pack',
   ])
-  const broadcastDataDetails = seriesPackage.rules.supportsOpenF1
-    ? baselineBroadcastDataDetails
-    : [
+  const broadcastDataDetails =
+    applicationMode === 'free' && activeFreeModeRuntime
+      ? [
+          {
+            label: 'Session mode',
+            source: 'SIM' as const,
+            value: `FREE · ${registrySeriesPackage.shortLabel} · ${activeFreeModeRuntime.configuration.entrants.length} cars`,
+          },
+          {
+            label: 'Qualifying structure',
+            source: 'SIM' as const,
+            value: activeFreeModeRuntime.qualifyingFormatLabel,
+          },
+          {
+            label: 'Track source',
+            source: 'SIM' as const,
+            value: `${activeFreeModeRuntime.trackSources.join(' / ')} physical layout · ${raceConfig.track.freeModeProvenance?.pace ?? 'native'} category pace`,
+          },
+          {
+            label: 'Overtake zones',
+            source:
+              raceConfig.track.freeModeProvenance?.overtakeZones ===
+              'simulated'
+                ? ('SIM' as const)
+                : ('OFF' as const),
+            value: `${seriesPackage.rules.overtakeSystem.toUpperCase()} · ${raceConfig.track.freeModeProvenance?.overtakeZones ?? 'native'}`,
+          },
+          ...baselineBroadcastDataDetails.filter(
+            (detail) => !f1OnlyDataLabels.has(detail.label),
+          ),
+        ]
+      : seriesPackage.rules.supportsOpenF1
+        ? baselineBroadcastDataDetails
+        : [
         ...seriesPackage.sources.map<BroadcastDataDetail>((source) => ({
           label: source.label,
           source: 'OFF',
@@ -3119,7 +3460,20 @@ export default function App() {
           (detail) => !f1OnlyDataLabels.has(detail.label),
         ),
       ]
-  const broadcastDataControl = seriesPackage.rules.supportsOpenF1 ? (
+  const broadcastDataControl =
+    applicationMode === 'free' && activeFreeModeRuntime ? (
+      <div className="broadcast-data-control">
+        <strong>
+          FREE · {registrySeriesPackage.shortLabel} · SIM
+        </strong>
+        <span>
+          Independent session. Championship saves and OpenF1 are isolated.
+        </span>
+        <button onClick={() => setIsFreeModeBuilderOpen(true)} type="button">
+          Edit Free Mode session
+        </button>
+      </div>
+    ) : seriesPackage.rules.supportsOpenF1 ? (
     <form
       className="broadcast-data-control"
       onSubmit={(event) => {
@@ -3165,7 +3519,7 @@ export default function App() {
         Manage series data
       </button>
     </form>
-  ) : (
+    ) : (
     <div className="broadcast-data-control">
       <strong>{seriesPackage.label}</strong>
       <span>Official registry package. OpenF1 is F1-only.</span>
@@ -3177,19 +3531,26 @@ export default function App() {
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
+        applicationMode={applicationMode}
         cameraMode={cameraMode}
         dataControl={broadcastDataControl}
         dataDetails={broadcastDataDetails}
         dataMode={dataMode}
         dataModeAvailability={{
-          HIST: latestOpenF1Sample !== null,
-          LIVE: detectedDataMode === 'LIVE',
+          HIST:
+            applicationMode === 'championship' &&
+            latestOpenF1Sample !== null,
+          LIVE:
+            applicationMode === 'championship' &&
+            detectedDataMode === 'LIVE',
           SIM: true,
         }}
         engineLabel={`ENGINE ${engineMode.toUpperCase()}${checkpointRecovered ? ' / RESUMED' : ''}${checkpointSaveStatus === 'failed' ? ' / SAVE ERROR' : ''}`}
         environment={environmentReadout}
         eventName={
-          seriesPackage.rules.supportsOpenF1
+          applicationMode === 'free'
+            ? `${track.name} Free Session`
+            : seriesPackage.rules.supportsOpenF1
             ? (track.openF1?.meetingName ??
               fiaEventPack?.eventName ??
               `${track.location} ${seriesPackage.shortLabel}`)
@@ -3198,7 +3559,13 @@ export default function App() {
         isPaused={isPaused}
         onCameraModeChange={setCameraMode}
         onDataModeChange={setRequestedDataMode}
+        onExitFreeMode={() => {
+          if (applicationMode === 'free') {
+            activateChampionshipSeries(championshipReturnSeriesId)
+          }
+        }}
         onFocusDriver={focusDriver}
+        onOpenFreeMode={() => setIsFreeModeBuilderOpen(true)}
         onOpenClassification={() => {
           setIsClassificationOpen(true)
           setIsInsightsOpen(false)
@@ -3207,7 +3574,11 @@ export default function App() {
           setIsInsightsOpen(true)
           setIsClassificationOpen(false)
         }}
-        onOpenSetup={() => setIsSetupOpen(true)}
+        onOpenSetup={() =>
+          applicationMode === 'free'
+            ? setIsFreeModeBuilderOpen(true)
+            : setIsSetupOpen(true)
+        }
         onPauseChange={() => setIsPaused((paused) => !paused)}
         onSeriesChange={changeSeries}
         onSkipFormationLap={skipFormationLap}
@@ -3263,7 +3634,8 @@ export default function App() {
         weekendStages={weekendStages}
       />
 
-      <SetupPanel
+      {applicationMode === 'championship' ? (
+        <SetupPanel
         calendarEvents={seriesPackage.calendar}
         componentReplacementDisabled={!isPaused}
         drivers={drivers}
@@ -3305,9 +3677,10 @@ export default function App() {
         tracks={seriesPackage.tracks}
         weekendContext={weekendContext}
         weekendTirePlan={weekendTirePlan}
-      />
+        />
+      ) : null}
 
-      {isDataManagerOpen ? (
+      {applicationMode === 'championship' && isDataManagerOpen ? (
         <Suspense fallback={null}>
           <SeriesDataManager
             assignments={driverAssignments2026}
@@ -3323,6 +3696,15 @@ export default function App() {
           />
         </Suspense>
       ) : null}
+
+      <FreeModeBuilder
+        context={freeModeBuildContext}
+        initialConfiguration={freeModeStoredState.configuration}
+        isOpen={isFreeModeBuilderOpen}
+        onClose={() => setIsFreeModeBuilderOpen(false)}
+        onStart={startFreeMode}
+        qualifyingResult={freeModeStoredState.qualifyingResult}
+      />
 
       {isClassificationOpen && isRaceProgressSession ? (
         <RaceClassificationPanel

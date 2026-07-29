@@ -29,9 +29,9 @@ driving game.
   but are visibly marked cancelled.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
-- `src/data/f1Performance.csv` is the canonical F1 10-team/30-driver source on
-  a 0-100 scale (20 fielded seats, two per team; the rest are `reserve` rows).
-  It includes Ferrari `NAK` car number 31.
+- `src/data/f1Performance.csv` is the canonical F1 11-team/30-driver source on
+  a 0-100 scale (22 fielded seats, two per team; the rest are `reserve` rows).
+  Cadillac is present, and Ferrari `NAK` retains car number 31.
 - `src/data/motorsportSeries2026.json` is the versioned F2/F3/SF field,
   calendar, tire, points, and qualifying source. The validated relational pool
   contains 110 unique people; do not apply category subtraction at runtime.
@@ -75,7 +75,7 @@ driving game.
 - Sessions: FP1/FP2/FP3, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race.
 - Timed sessions start from pit boxes, distinguish out/attack/in laps, run the
   official Q/SQ clocks and breaks, freeze the clock during planned red flags,
-  and reduce the 20-car field to the measured top 15/top 10 rather than a
+  and reduce the 22-car F1 field to the measured top 16/top 10 rather than a
   precomputed order.
 - Timed-session adjudication includes deleted track-limit laps, double-yellow
   invalidation, impeding/grid penalties, serialized pit-exit queues, chequered
@@ -185,17 +185,53 @@ driving game.
 - A dedicated Web Worker owns a deterministic 50ms fixed tick and publishes
   immutable snapshots at 10Hz. A main-thread fallback uses the same cadence.
 
+## Free Mode
+
+- Free Mode is `ApplicationMode = 'free'`, not a `SeriesId`. Championship mode
+  remains the owner of points, calendar progress, OpenF1 enrichment, and
+  category-specific saved configuration.
+- The builder supports F1/F2/F3/SUPER FORMULA, the deduplicated F1 plus SF
+  physical-track union, Practice/Qualifying/Race, 1-40 entrants, weather,
+  distance/time, seed, manual/random/qualifying grids, all 110 pool drivers,
+  repeated source vehicles, and optional equal cars.
+- Driver identity and car number must be unique. Source teams may repeat; each
+  entrant receives a deep-cloned synthetic team so mutable race state never
+  leaks between duplicate vehicles.
+- Cross-category circuits retain the selected category's tire, overtake,
+  active-aero, qualifying, and machine rules. Non-native lap pace and any
+  generated control zones carry `simulated`/`fallback` provenance in the Data
+  view instead of pretending to be official.
+- Qualifying adapts to entrant count. Standard fields preserve the familiar
+  22→16→10 and 20→15→10 shapes; small fields collapse safely to fewer
+  segments. A compatible completed result can seed a later Free race.
+- Free sessions force `SIM`, disable HIST/LIVE and OpenF1 requests, award no
+  championship points, and use a separate race checkpoint.
+- Version-1 current state, presets, and checkpoint keys are
+  `race-sim-free-mode-v1`, `race-sim-free-mode-presets-v1`, and
+  `race-sim-free-race-checkpoint-v1`. Invalid, oversized, duplicate, stale,
+  and category-mismatched payloads are rejected or safely discarded.
+- The 40-car UI is internally scrollable and shows both driver code and unique
+  car number. Runtime tests cover one-car timed sessions, 30/40-car sessions,
+  cross-category tracks, race-control procedures, and a full-field pit wave.
+
 ## Important Files
 
 - `src/App.tsx`: orchestration, data-source labels, timing and controls.
 - `src/types.ts`: domain types.
+- `src/components/FreeModeBuilder.tsx`: desktop session builder and preset UI.
+- `src/freeMode/types.ts`: independent mode/configuration contracts.
+- `src/freeMode/freeModeRegistry.ts`: registry union, scalable rules, and
+  validated conversion into the existing `RaceConfig`.
+- `src/freeMode/freeModeValidation.ts`: bounded parser and semantic validation.
+- `src/freeMode/freeModePersistence.ts`: isolated state, presets, and
+  checkpoint keys.
 - `src/data/tracks.ts`: calendar and derived operational markers.
 - `src/data/paceReferences2026.ts`: factual/estimated qualifying and
   full-event race-average pace benchmarks.
 - `src/data/calendar2026.ts`, `trackAudit.ts`, `sourceRegistry.ts`: amended
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
-- `src/data/f1Performance.csv`: canonical F1 10-team/30-driver source values.
+- `src/data/f1Performance.csv`: canonical F1 11-team/30-driver source values.
 - `src/data/motorsportSeries2026.json`: F2/F3/SF data and category rules.
 - `src/series/seriesRegistry.ts`: validated packages, pool, and assignments.
 - `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
@@ -235,18 +271,24 @@ npm run lint
 npm run build
 npm test
 npm run playtest
+npm run validate:montecarlo
 npm run benchmark
 ```
 
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 427 passed across 50 files
+- Tests: 533 passed across 54 files
 - Playtest: 1440x900 and 1280x720 PC layouts, initial gray timing cells,
   provisional purple timing, S1/S2/S3 control status, WebGL pixels, overlay
-  controls, no clipping, and no page overflow
-- Benchmark: records renderer identity and does not fail normal runs on
-  Chromium SwiftShader; use `BENCHMARK_STRICT=1` only with real GPU rendering
+  controls, no clipping, no page overflow, plus a valid and scrollable 40-car
+  Free Mode build with unique visible numbers and SIM-only data mode
+- Monte Carlo: 6 acceptance groups passed across 10,000 matched-condition
+  production-model samples
+- Benchmark: records the normal field and 40-car Free Mode, including renderer
+  identity. The latest Chromium SwiftShader run measured about 58 fps for 22
+  cars and 43 fps for 40 cars at 60x, with no page errors; use
+  `BENCHMARK_STRICT=1` only with real GPU rendering.
 
 `npm run playtest` starts an isolated preview server. It locates weekend buttons by the
 `Set weekend stage to X` title prefix, so preserve that prefix.
@@ -272,4 +314,4 @@ npm run benchmark
 - Keep OpenF1 values nullable and source-labelled.
 - Derive randomness from the seed helpers.
 - Add numeric realism tests for model changes.
-- Run all five verification commands before handoff.
+- Run all six verification commands before handoff.

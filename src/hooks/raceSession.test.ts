@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
+import { FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY } from '../freeMode/freeModePersistence'
 import { advanceRace, createInitialRace } from '../simulation/race'
 import type { RaceConfig } from '../types'
 import {
   RACE_CHECKPOINT_MAX_AGE_MS,
+  RACE_CHECKPOINT_STORAGE_KEY,
   RACE_SIMULATION_MODEL_VERSION,
   activeRaceSessionFor,
   parseRaceCheckpoint,
@@ -192,5 +194,46 @@ describe('race session continuity', () => {
     ).toBe(42)
     expect(restoreRaceCheckpoint(storage, 'session-b', config, 11_000)).toBeNull()
     expect(restoreRaceCheckpoint(storage, 'session-a', config, 11_000)).toBeNull()
+  })
+
+  it('keeps Free Mode and championship checkpoints isolated', () => {
+    const storage = memoryStorage()
+    const championshipSnapshot = {
+      ...createInitialRace(config),
+      elapsedSeconds: 42,
+    }
+    const freeSnapshot = {
+      ...createInitialRace(config),
+      elapsedSeconds: 84,
+    }
+
+    saveRaceCheckpoint(
+      storage,
+      'championship',
+      championshipSnapshot,
+      10_000,
+    )
+    saveRaceCheckpoint(
+      storage,
+      'free',
+      freeSnapshot,
+      10_000,
+      FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY,
+    )
+
+    expect(storage.getItem(RACE_CHECKPOINT_STORAGE_KEY)).not.toBeNull()
+    expect(
+      storage.getItem(FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY),
+    ).not.toBeNull()
+    expect(
+      restoreRaceCheckpoint(
+        storage,
+        'free',
+        config,
+        11_000,
+        FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY,
+      )?.elapsedSeconds,
+    ).toBe(84)
+    expect(storage.getItem(RACE_CHECKPOINT_STORAGE_KEY)).not.toBeNull()
   })
 })

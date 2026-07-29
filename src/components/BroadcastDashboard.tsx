@@ -30,6 +30,7 @@ import type {
   WeekendStage,
 } from '../types'
 import type { SeriesId } from '../series/types'
+import type { ApplicationMode } from '../freeMode/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
 type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
@@ -89,6 +90,7 @@ type EnvironmentReadout = {
 }
 
 type BroadcastDashboardProps = {
+  applicationMode: ApplicationMode
   cameraMode: CameraMode
   dataControl: ReactNode
   dataDetails: BroadcastDataDetail[]
@@ -101,6 +103,8 @@ type BroadcastDashboardProps = {
   onCameraModeChange: (mode: CameraMode) => void
   onDataModeChange: (mode: DataMode) => void
   onFocusDriver: (driverId: string) => void
+  onExitFreeMode: () => void
+  onOpenFreeMode: () => void
   onOpenClassification: () => void
   onOpenInsights: () => void
   onOpenSetup: () => void
@@ -395,6 +399,7 @@ function LeftLeaderboard({
   onModeChange,
   rows,
   selectedDriverId,
+  showCarNumbers,
   title,
 }: {
   labels: Record<CarSnapshot['tire'], string>
@@ -403,6 +408,7 @@ function LeftLeaderboard({
   onModeChange: (mode: 'live' | 'gap') => void
   rows: BroadcastTimingRow[]
   selectedDriverId: string
+  showCarNumbers: boolean
   title: string
 }) {
   return (
@@ -464,6 +470,10 @@ function LeftLeaderboard({
                       title={`Outstanding time penalty: +${row.car.penaltySeconds}s (applied at the finish unless served in the pits)`}
                     >
                       +{row.car.penaltySeconds}s
+                    </small>
+                  ) : showCarNumbers ? (
+                    <small className="leaderboard-car-number">
+                      #{row.car.carNumber}
                     </small>
                   ) : (
                     <small>{compactSource(row.source)}</small>
@@ -544,6 +554,7 @@ function CenterView({
 }
 
 export function BroadcastDashboard({
+  applicationMode,
   cameraMode,
   dataControl,
   dataDetails,
@@ -556,6 +567,8 @@ export function BroadcastDashboard({
   onCameraModeChange,
   onDataModeChange,
   onFocusDriver,
+  onExitFreeMode,
+  onOpenFreeMode,
   onOpenClassification,
   onOpenInsights,
   onOpenSetup,
@@ -655,6 +668,7 @@ export function BroadcastDashboard({
           <select
             aria-label="Racing series"
             className="broadcast-series-select"
+            disabled={applicationMode === 'free'}
             onChange={(event) => onSeriesChange(event.target.value as SeriesId)}
             value={seriesId}
           >
@@ -685,9 +699,29 @@ export function BroadcastDashboard({
                         : weekendStage === 'race2'
                           ? `${raceLabel.toUpperCase()} 2`
                         : weekendStage.toUpperCase()}
-                </option>
-              ))}
-            </select>
+              </option>
+            ))}
+          </select>
+          <div
+            aria-label="Application mode"
+            className="broadcast-application-mode"
+            role="group"
+          >
+            <button
+              aria-pressed={applicationMode === 'championship'}
+              onClick={onExitFreeMode}
+              type="button"
+            >
+              CHAMP
+            </button>
+            <button
+              aria-pressed={applicationMode === 'free'}
+              onClick={onOpenFreeMode}
+              type="button"
+            >
+              FREE
+            </button>
+          </div>
           </div>
           <strong className="broadcast-phase-label">{sessionPhaseLabel}</strong>
           <span>{sessionProgressLabel}</span>
@@ -737,6 +771,7 @@ export function BroadcastDashboard({
             onModeChange={setLeaderboardMode}
             rows={timingRows}
             selectedDriverId={selectedCar.driverId}
+            showCarNumbers={applicationMode === 'free'}
             title={isQualifyingStage ? 'Qualifying Leaderboard' : 'Race Leaderboard'}
           />
           <div className="broadcast-left-analytics">

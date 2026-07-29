@@ -731,6 +731,12 @@ export type TrackDefinition = {
     meetingName: string
     round: number
   }
+  /** Free Mode provenance for category/track combinations outside a calendar. */
+  freeModeProvenance?: {
+    pace: 'native' | 'simulated'
+    overtakeZones: 'native' | 'simulated'
+    sourceSeries: Array<'F1' | 'SF'>
+  }
 }
 
 export type RaceConfig = {
