@@ -80,9 +80,10 @@ describe('full-race retirement calibration', () => {
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
       expect(samples.some((sample) => sample.retired >= 2)).toBe(true)
     },
-    // Ten full races through the production engine, run alongside a build
-    // during a publish. The measurement is quick to state and slow to make.
-    300_000,
+    // Ten full races through the production engine can take seven minutes on
+    // the desktop publish runner. Keep the statistical sample intact and give
+    // the synchronous simulation enough headroom to report its assertions.
+    600_000,
   )
 })
 
