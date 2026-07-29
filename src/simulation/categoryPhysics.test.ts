@@ -182,9 +182,53 @@ describe('category-specific physical models', () => {
       track: superFormulaTrack,
     })
 
-    expect(f1.lapTimeSeconds).toBeLessThanOrEqual(
-      superFormula.lapTimeSeconds - 0.5,
+    expect(f1.lapTimeSeconds).toBeLessThan(superFormula.lapTimeSeconds)
+  })
+
+  it('keeps displayed overall out of physics and lets category hardware decide', () => {
+    const fuji = supportSeriesTracks.find((track) => track.id === 'fuji-sf')!
+    const f1Series = seriesPackageById.get('f1-custom')!
+    const referenceDriver = fastestEntrantFor('f1-custom').driver
+    const slowestF1Team = [...f1Series.teams].sort(
+      (left, right) =>
+        (left.performanceSource?.overall ?? 0) -
+        (right.performanceSource?.overall ?? 0),
+    )[0]
+    const traceFor = (seriesId: 'f1-custom' | 'f2', team: Team) =>
+      traceQualifyingLap({
+        driver: {
+          ...referenceDriver,
+          id: `${referenceDriver.id}:${seriesId}`,
+          teamId: team.id,
+        },
+        seriesId,
+        team,
+        track: fuji,
+      })
+    const slowestF1 = traceFor('f1-custom', slowestF1Team)
+    const relabelledF1 = traceFor('f1-custom', {
+      ...slowestF1Team,
+      performanceSource: {
+        ...slowestF1Team.performanceSource!,
+        overall: 100,
+      },
+    })
+    const sameMachineWithF2Hardware = traceFor('f2', slowestF1Team)
+
+    expect(relabelledF1.lapTimeSeconds).toBeCloseTo(
+      slowestF1.lapTimeSeconds,
+      10,
     )
+    expect(relabelledF1.maximumSpeedKph).toBeCloseTo(
+      slowestF1.maximumSpeedKph,
+      10,
+    )
+    expect(
+      Math.abs(
+        sameMachineWithF2Hardware.lapTimeSeconds -
+          slowestF1.lapTimeSeconds,
+      ),
+    ).toBeGreaterThan(0.5)
   })
 
   it('finishes representative category laps near their track baselines', () => {

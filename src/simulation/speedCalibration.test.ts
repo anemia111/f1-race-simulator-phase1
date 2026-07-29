@@ -19,7 +19,7 @@ function runSpeedTrace(
     teamId?: string
   } = {},
 ) {
-  const driver = options.driverId
+  const baseDriver = options.driverId
     ? initialDrivers.find(
         (candidate) => candidate.id === options.driverId,
       )!
@@ -27,7 +27,12 @@ function runSpeedTrace(
         (candidate) =>
           candidate.teamId === (options.teamId ?? 'mercedes'),
       )!
-  const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
+  const teamId = options.teamId ?? baseDriver.teamId
+  const team = initialTeams.find((candidate) => candidate.id === teamId)!
+  const driver =
+    baseDriver.teamId === teamId
+      ? baseDriver
+      : { ...baseDriver, teamId }
   const snapshot = createInitialRace({
     drivers: [driver],
     seed: `speed-calibration:${track.id}`,
@@ -406,6 +411,15 @@ describe('on-track speed calibration', () => {
       rearWing: 2,
       rideHeightMm: 24,
     }
+    const fastestStraightLineTeam = [...initialTeams].sort(
+      (left, right) =>
+        right.machine.puOutput * 0.5 +
+        right.machine.dragEfficiency * 0.35 +
+        right.machine.straightLineEfficiency * 0.15 -
+        (left.machine.puOutput * 0.5 +
+          left.machine.dragEfficiency * 0.35 +
+          left.machine.straightLineEfficiency * 0.15),
+    )[0]
     const result = runSpeedTrace(
       tracks.find((candidate) => candidate.id === 'las-vegas-approx')!,
       {
@@ -415,7 +429,7 @@ describe('on-track speed calibration', () => {
         driverId: 'yuki_nakayama',
         sessionType: 'limited-time',
         setup: lowDragSetup,
-        teamId: 'ferrari',
+        teamId: fastestStraightLineTeam.id,
       },
     )
 

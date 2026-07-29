@@ -62,6 +62,22 @@ const LEGACY_F1_DRIVER_PROFILE_FINGERPRINTS: Readonly<
   yuki_tsunoda: '59688120',
 }
 
+const LEGACY_F1_MACHINE_PROFILE_FINGERPRINTS: Readonly<
+  Record<string, string>
+> = {
+  alpine: 'df67ea00',
+  'aston-martin': '77b82329',
+  audi: '7db68cd3',
+  cadillac: '08d09477',
+  ferrari: '692a2641',
+  'haas-f1-team': 'd47181b6',
+  mclaren: '482324d2',
+  mercedes: '2be3b92e',
+  'racing-bulls': 'ebf304f6',
+  'red-bull-racing': '1e920648',
+  williams: '9345747a',
+}
+
 type DriverRole = NonNullable<Driver['seatRole']>
 
 type StoredTeam = Pick<Team, 'color' | 'id' | 'machine' | 'name' | 'pitCrewSpeed'>
@@ -111,8 +127,8 @@ export class SeriesConfigurationValidationError extends Error {
   }
 }
 
-function driverProfileFingerprint(skills: DriverSkillProfile) {
-  const source = Object.entries(skills)
+function numericProfileFingerprint<Profile extends object>(profile: Profile) {
+  const source = Object.entries(profile as Record<string, number>)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}:${value.toFixed(12)}`)
     .join('|')
@@ -398,6 +414,10 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
         baseRating,
         operations,
       )
+    const usesLegacyF1Machine =
+      series.id === 'f1-custom' &&
+      LEGACY_F1_MACHINE_PROFILE_FINGERPRINTS[id] ===
+        numericProfileFingerprint(machine)
 
     if (!/^#[0-9a-f]{6}$/i.test(color)) {
       throw new SeriesConfigurationValidationError([
@@ -408,7 +428,10 @@ function parseStoredTeams(value: unknown, series: SeriesPackage): Team[] {
     return {
       ...base,
       color,
-      machine: usesLegacySupportMachine ? { ...base.machine } : machine,
+      machine:
+        usesLegacyF1Machine || usesLegacySupportMachine
+          ? { ...base.machine }
+          : machine,
       name: requiredText(candidate.name, `${id}.name`),
       pitCrewSpeed: usesLegacyUniformF1PitCrew
         ? base.pitCrewSpeed
@@ -494,7 +517,7 @@ function parseStoredDrivers(
     const usesLegacyF1DriverProfile =
       series.id === 'f1-custom' &&
       LEGACY_F1_DRIVER_PROFILE_FINGERPRINTS[id] ===
-        driverProfileFingerprint(skills)
+        numericProfileFingerprint(skills)
     const migratedSkills =
       usesLegacyF1DriverProfile ||
       isLegacySupportDriverProfile(skills, base, series.id)

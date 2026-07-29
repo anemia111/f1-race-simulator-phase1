@@ -144,6 +144,43 @@ function legacyMachineProfile(
   }
 }
 
+function legacyF1MercedesMachine(): MachinePerformanceProfile {
+  return {
+    activeAeroEfficiency: 0.95,
+    aerodynamicEfficiency: (0.95 + 0.95 + 0.96) / 3,
+    brakeCooling: 0.8,
+    brakingPerformance: 0.95,
+    brakingStability: 0.95,
+    bumpTolerance: 0.95,
+    coolingEfficiency: 0.8,
+    dirtyAirTolerance: 0.95,
+    downforceGeneration: 0.95,
+    dragEfficiency: 0.96,
+    electricalDeploymentEfficiency: 0.97,
+    energyRecoveryEfficiency: 0.96,
+    frontTireManagement: 0.97,
+    fuelEfficiency: 0.96,
+    highSpeedCornerPerformance: 0.95,
+    intermediatePerformance: 0.95,
+    kerbHandling: 0.95,
+    lowSpeedCornerPerformance: 0.95,
+    mechanicalGrip: 0.95,
+    mediumSpeedCornerPerformance: 0.95,
+    puOutput: 0.96,
+    qualifyingPace: 0.96,
+    racePace: 0.97,
+    rearTireManagement: 0.97,
+    reliability: 0.95,
+    rideCompliance: 0.95,
+    straightLineEfficiency: 0.97,
+    tireDegManagement: 0.97,
+    tireWarmup: 0.97,
+    towSensitivity: 0.96,
+    traction: 0.96,
+    wetPerformance: 0.95,
+  }
+}
+
 const legacyVerstappenSkills = expandedDriverSkills({
   adaptability: 0.99,
   consistency: 0.98,
@@ -355,6 +392,40 @@ describe('series configuration import and export', () => {
     expect(preserved).not.toBeNull()
     expect(preserved!.drivers[verstappenIndex].skills.qualifyingPace).toBe(
       edited.drivers[verstappenIndex].skills.qualifyingPace,
+    )
+  })
+
+  it('updates untouched legacy F1 machines and preserves edited ones', () => {
+    const mercedesIndex = f1.teams.findIndex(
+      (team) => team.id === 'mercedes',
+    )
+    const untouched = serializeSeriesConfiguration(
+      'f1-custom',
+      f1.teams,
+      f1.drivers,
+    )
+    untouched.teams[mercedesIndex].machine = legacyF1MercedesMachine()
+
+    const migrated = parsePersistedSeriesConfiguration(
+      JSON.stringify(untouched),
+      f1,
+    )
+
+    expect(migrated).not.toBeNull()
+    expect(migrated!.teams[mercedesIndex].machine).toEqual(
+      f1.teams[mercedesIndex].machine,
+    )
+
+    const edited = structuredClone(untouched)
+    edited.teams[mercedesIndex].machine.racePace -= 0.01
+    const preserved = parsePersistedSeriesConfiguration(
+      JSON.stringify(edited),
+      f1,
+    )
+
+    expect(preserved).not.toBeNull()
+    expect(preserved!.teams[mercedesIndex].machine.racePace).toBe(
+      edited.teams[mercedesIndex].machine.racePace,
     )
   })
 

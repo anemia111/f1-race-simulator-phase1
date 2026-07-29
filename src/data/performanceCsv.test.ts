@@ -148,17 +148,17 @@ describe('CSV performance source of truth', () => {
       'ferrari',
       'mclaren',
       'red-bull-racing',
-      'alpine',
       'racing-bulls',
+      'alpine',
+      'audi',
       'haas-f1-team',
       'williams',
-      'cadillac',
-      'audi',
       'aston-martin',
+      'cadillac',
     ])
     expect(
       initialTeams.map((team) => team.performanceSource?.overall),
-    ).toEqual([96, 94, 91, 89, 82, 81, 75, 72, 70, 69, 66])
+    ).toEqual([97, 94, 92, 90, 84, 82, 79, 77, 74, 71, 68])
     expect(initialTeams.some((team) => team.id === 'cadillac')).toBe(true)
     expect(initialDrivers.find((driver) => driver.code === 'OCO')?.carNumber).toBe(
       67,
@@ -187,12 +187,12 @@ describe('CSV performance source of truth', () => {
 
     expect(normalizeCsvAbility(100)).toBe(1)
     expect(normalizeCsvAbility(96)).toBe(0.96)
-    expect(ferrari.performanceSource?.rawRatings['Top speed']).toBe(95)
-    expect(ferrari.machine.dragEfficiency).toBe(0.95)
+    expect(ferrari.performanceSource?.rawRatings['Top speed']).toBe(91)
+    expect(ferrari.machine.dragEfficiency).toBe(0.91)
     expect(ferrari.machine.qualifyingPace).toBe(0.95)
     expect(ferrari.machine.racePace).toBe(0.95)
-    expect(astonMartin.performanceSource?.rawRatings['Top speed']).toBe(82)
-    expect(astonMartin.machine.dragEfficiency).toBe(0.82)
+    expect(astonMartin.performanceSource?.rawRatings['Top speed']).toBe(86)
+    expect(astonMartin.machine.dragEfficiency).toBe(0.86)
     expect(ferrari.machine.dragEfficiency).toBeGreaterThan(
       astonMartin.machine.dragEfficiency,
     )

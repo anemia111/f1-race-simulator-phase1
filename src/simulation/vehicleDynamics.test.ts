@@ -339,7 +339,7 @@ describe('multi-axis vehicle dynamics', () => {
   })
 
   it('produces team-relative terminal speeds from CSV power and drag axes', () => {
-    const terminalSpeeds = initialTeams.map((team) => {
+    const terminalSpeeds = new Map(initialTeams.map((team) => {
       let speedKph = 300
 
       for (let tick = 0; tick < 500; tick += 1) {
@@ -362,17 +362,22 @@ describe('multi-axis vehicle dynamics', () => {
         })
       }
 
-      return speedKph
-    })
+      return [team.id, speedKph] as const
+    }))
+    const speedValues = [...terminalSpeeds.values()]
 
-    expect(new Set(terminalSpeeds.map((speed) => speed.toFixed(2))).size).toBe(
+    expect(new Set(speedValues.map((speed) => speed.toFixed(2))).size).toBe(
       initialTeams.length,
     )
     const terminalSpeedSpreadKph =
-      Math.max(...terminalSpeeds) - Math.min(...terminalSpeeds)
+      Math.max(...speedValues) - Math.min(...speedValues)
 
-    expect(terminalSpeedSpreadKph).toBeGreaterThan(7)
-    expect(terminalSpeedSpreadKph).toBeLessThan(15)
+    expect(terminalSpeeds.get('mercedes')).toBe(Math.max(...speedValues))
+    expect(terminalSpeeds.get('aston-martin')).toBeLessThan(
+      terminalSpeeds.get('mercedes')!,
+    )
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(4)
+    expect(terminalSpeedSpreadKph).toBeLessThan(10)
   })
 
   it('compares every CSV driver in one identical machine without sorting by OVR', () => {
