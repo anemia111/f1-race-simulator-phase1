@@ -4150,12 +4150,24 @@ export function advanceRace(
                   [timedSessionState.segment.name]: 'left-pits' as const,
                 }
               : car.timedSegmentAttemptStatus,
-          lapStartedAtSeconds: isTimedSession ? null : elapsedSeconds,
+          // A race out-lap is a scored lap that started at the timing line, and
+          // the pit-lane exit run belongs to it. Restarting the clock and the
+          // sector accumulators here cut that part out, which made the out-lap
+          // the quickest lap of the run with an impossibly short first sector.
+          // A timed session keeps null: nothing is timed until the car crosses
+          // the line again, so its accumulators do start empty.
+          lapStartedAtSeconds: isTimedSession
+            ? null
+            : car.lapStartedAtSeconds,
           passedDoubleYellowThisLap: isTimedSession
             ? false
             : car.passedDoubleYellowThisLap,
-          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+          currentLapSectorTimes: isTimedSession
+            ? emptyCurrentLapSectorTimes()
+            : car.currentLapSectorTimes,
+          currentLapMiniSectorTimes: isTimedSession
+            ? emptyCurrentLapMiniSectorTimes()
+            : car.currentLapMiniSectorTimes,
           compoundsUsed,
           fuelLoadKg:
             practiceFuelLoadKgFor(config.track, practicePlan) ??

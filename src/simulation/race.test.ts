@@ -487,6 +487,56 @@ describe('starting grid', () => {
     expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
   }, 20_000)
 
+  it(
+    'times a race out-lap from the line so the pit lane is never a free sector',
+    () => {
+      const config = makeConfig('out-lap-timing')
+      let snapshot = runThroughStart(config)
+
+      for (let tick = 0; tick < 4_000 && snapshot.leaderLap < 25; tick += 1) {
+        snapshot = advanceRace(snapshot, 1, config)
+      }
+
+      const outLaps = snapshot.cars.flatMap((car) =>
+        car.lapHistory.flatMap((lap, index) => {
+          const previous = car.lapHistory[index - 1]
+
+          return previous?.pitStop && !lap.pitStop ? [{ car, lap, previous }] : []
+        }),
+      )
+
+      expect(outLaps.length).toBeGreaterThan(0)
+
+      for (const { car, lap } of outLaps) {
+        const greenLaps = car.lapHistory.filter(
+          (candidate) =>
+            candidate.isValid &&
+            !candidate.pitStop &&
+            candidate.lap !== lap.lap &&
+            candidate.lap > 1,
+        )
+
+        if (greenLaps.length === 0) {
+          continue
+        }
+
+        const fastestGreen = Math.min(
+          ...greenLaps.map((candidate) => candidate.lapTimeSeconds),
+        )
+        const fastestGreenFirstSector = Math.min(
+          ...greenLaps.map((candidate) => candidate.sectors[0]),
+        )
+
+        // The out-lap starts at the timing line, so it carries the pit-lane
+        // exit run. It must never be the quickest lap of the run, and its first
+        // sector must never be the quickest first sector.
+        expect(lap.lapTimeSeconds).toBeGreaterThan(fastestGreen)
+        expect(lap.sectors[0]).toBeGreaterThan(fastestGreenFirstSector)
+      }
+    },
+    30_000,
+  )
+
   it('stages routine green-flag stops instead of sending the field together', () => {
     const baseConfig = makeConfig('staggered-pit-window')
     const config = {
