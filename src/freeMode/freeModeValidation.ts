@@ -18,6 +18,7 @@ const seriesIds = new Set<SeriesId>([
   'super-formula',
 ])
 const sessionKinds = new Set(['practice', 'qualifying', 'race'])
+const practiceStages = new Set(['fp1', 'fp2', 'fp3'])
 const gridModes = new Set(['manual', 'random', 'qualifying-result'])
 const weatherModes = new Set([
   'random',
@@ -244,6 +245,9 @@ export function parseFreeModeConfiguration(
     value.trackId.length > 120 ||
     typeof value.sessionKind !== 'string' ||
     !sessionKinds.has(value.sessionKind) ||
+    (value.practiceStage !== undefined &&
+      (typeof value.practiceStage !== 'string' ||
+        !practiceStages.has(value.practiceStage))) ||
     typeof value.gridMode !== 'string' ||
     !gridModes.has(value.gridMode) ||
     typeof value.weatherMode !== 'string' ||
@@ -270,6 +274,13 @@ export function parseFreeModeConfiguration(
     equalCars: value.equalCars,
     gridMode: value.gridMode as FreeModeConfiguration['gridMode'],
     practiceDurationMinutes: value.practiceDurationMinutes,
+    // A stored version-1 payload has no practice stage and means FP1.
+    ...(value.practiceStage === undefined
+      ? {}
+      : {
+          practiceStage:
+            value.practiceStage as FreeModeConfiguration['practiceStage'],
+        }),
     raceLaps: value.raceLaps,
     seed: value.seed.slice(0, MAX_SIMULATION_SEED_LENGTH),
     sessionKind: value.sessionKind as FreeModeConfiguration['sessionKind'],

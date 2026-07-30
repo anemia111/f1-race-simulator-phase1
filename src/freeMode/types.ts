@@ -21,6 +21,14 @@ export type FreeModeWeatherMode =
   | 'light-rain'
   | 'heavy-rain'
 
+/**
+ * Which practice session a Free Mode practice run represents. They are not
+ * interchangeable: FP1 runs an unlearned setup on heavy fuel and setup
+ * knowledge grows through FP2 into FP3, so a representative light-fuel attack
+ * belongs to FP3. Absent in stored version-1 payloads, which mean FP1.
+ */
+export type FreeModePracticeStage = 'fp1' | 'fp2' | 'fp3'
+
 export type FreeModeEntrant = {
   id: string
   driverId: string
@@ -33,6 +41,7 @@ export type FreeModeConfiguration = {
   categoryId: SeriesId
   trackId: string
   sessionKind: FreeModeSessionKind
+  practiceStage?: FreeModePracticeStage
   gridMode: FreeModeGridMode
   weatherMode: FreeModeWeatherMode
   raceLaps: number

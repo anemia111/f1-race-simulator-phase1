@@ -121,6 +121,63 @@ calibration changes track-neutral pace and an explicit race-model residual. It
 does not hard-code a displayed lap time or bypass fuel, tyre, weather, traffic,
 ERS, machine, driver, and race-control effects.
 
+## Category x Course Keying
+
+A pace baseline belongs to a category and a course, never to a calendar round.
+Motegi hosts Super Formula rounds 1-2, Suzuka 4/5/11/12 and Fuji 3/6/7/9/10, and
+every round of a circuit reads the same course record; `selectPaceCalibration`
+filters by series and `trackId` only. Two categories on the same circuit keep
+separate records: Suzuka is 89.076 s for F1 and 97.605 s for Super Formula.
+
+Each session family owns its own dimensionless controller scale:
+
+- `simulation.qualifyingPaceScale` corrects the timed-session controller (free
+  practice and qualifying);
+- `simulation.racePaceScale` corrects the green-flag race controller;
+- `simulation.raceModelCorrectionSeconds` is legacy and must stay at 0. It was a
+  single additive term that silently calibrated qualifying *and* the race, so
+  splitting the race scale out of it left qualifying several seconds slow until
+  each family got its own scale.
+
+Both scales are guarded to 0.75-1.25 in `src/data/paceCalibration.ts`. A course
+that needs more than that is exposing a modelling fault, which belongs in the
+physics rather than in a correction factor.
+
+Free Mode may run a category on a circuit that is not on that category's
+calendar. `trackForConfiguration` then loads the category x course baseline and
+marks provenance `category-reference`; it never scales the other category's base
+lap time by a category multiplier. The four Super Formula circuits therefore
+carry F1 records of their own:
+
+| Course | F1 qualifying reference | Target window | Super Formula reference |
+| --- | --- | --- | --- |
+| Mobility Resort Motegi | 86.000 s | 84-88 s | 90.369 s |
+| Fuji Speedway | 77.000 s | 75.5-78.5 s | 82.815 s |
+| Sportsland SUGO | 60.500 s | 59-62 s | 64.500 s |
+| Autopolis | 80.400 s | 78.4-82.4 s | 86.139 s |
+
+F1 has never run these circuits, so these are project target windows rather than
+observed results, recorded with `estimated` status and low confidence. The
+cross-check is the F1-to-Super-Formula lap-time ratio: 91.3 % at Suzuka, the only
+2026 course both categories run, against 93-95 % for these windows.
+
+Autopolis is cancelled on the 2026 Super Formula calendar. It is Free Mode
+reference material only: it is measured, but it never gates a validation run.
+
+Validate with:
+
+```bash
+node scripts/validate-f1-support-circuits.mjs --enforce
+```
+
+That run covers twelve families per course - free-practice light-fuel attack,
+free-practice high-fuel long run, qualifying attack, race fastest lap, normal
+long run, sector times, top speed, average speed, fuel-burn improvement, track
+evolution, tire wear and same-stint lap variation - at 30 seeds for Motegi, 50
+for Suzuka, 100 for Fuji, 50 for SUGO and 20 for Autopolis. Out laps, in laps and
+post-chequered cool-down laps are excluded from every measured population, and
+same-stint variation uses clear-air laps only.
+
 ## Updating
 
 Run the complete workflow after a new event or corrected source becomes

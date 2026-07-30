@@ -17,12 +17,14 @@ describe('pace calibration data', () => {
     expect(paceCalibrationManifest.eventCount).toBe(
       allPaceCalibration2026.length,
     )
+    // 22 calendar events plus the four Super Formula circuits that Free Mode
+    // can run in the F1 category, each with its own course baseline.
     expect(
       validatePaceCalibrationRecords(
         clone(f1PaceCalibration2026),
         'f1-custom',
       ),
-    ).toHaveLength(22)
+    ).toHaveLength(26)
     expect(
       validatePaceCalibrationRecords(
         clone(superFormulaPaceCalibration2026),
@@ -135,8 +137,62 @@ describe('pace calibration data', () => {
     ).toBe(true)
   })
 
+  it('keys every baseline by category and course, never by calendar round', () => {
+    const keys = allPaceCalibration2026.map(
+      (record) => `${record.series}:${record.trackId}`,
+    )
+
+    // Motegi hosts SF rounds 1-2, Suzuka 4/5/11/12 and Fuji 3/6/7/9/10. One
+    // record per category x course means a round can never carry its own pace.
+    expect(new Set(keys).size).toBe(keys.length)
+
+    for (const trackId of [
+      'motegi-sf',
+      'fuji-sf',
+      'sugo-sf',
+      'autopolis-sf',
+      'suzuka-approx',
+    ]) {
+      expect(paceCalibrationFor('f1-custom', trackId)).toBeDefined()
+      expect(paceCalibrationFor('super-formula', trackId)).toBeDefined()
+    }
+
+    const f1Suzuka = paceCalibrationFor('f1-custom', 'suzuka-approx')!
+    const superFormulaSuzuka = paceCalibrationFor(
+      'super-formula',
+      'suzuka-approx',
+    )!
+
+    expect(
+      f1Suzuka.qualifying.selectedReferenceSeconds,
+    ).toBeLessThan(superFormulaSuzuka.qualifying.selectedReferenceSeconds)
+    expect(f1Suzuka.simulation.neutralBaseLapSeconds).toBeLessThan(
+      superFormulaSuzuka.simulation.neutralBaseLapSeconds,
+    )
+  })
+
+  it('leaves the legacy additive race correction retired', () => {
+    // A single additive term used to calibrate qualifying and the race at once.
+    // Each session family now owns a bounded dimensionless scale instead.
+    for (const record of allPaceCalibration2026) {
+      expect(record.simulation.raceModelCorrectionSeconds).toBe(0)
+
+      for (const scale of [
+        record.simulation.racePaceScale,
+        record.simulation.qualifyingPaceScale,
+      ]) {
+        if (scale === undefined) {
+          continue
+        }
+
+        expect(scale).toBeGreaterThanOrEqual(0.75)
+        expect(scale).toBeLessThanOrEqual(1.25)
+      }
+    }
+  })
+
   it('keeps every F1 live Q1 measurement within three seconds of its reference', () => {
-    expect(f1PaceCalibration2026).toHaveLength(22)
+    expect(f1PaceCalibration2026).toHaveLength(26)
 
     for (const record of f1PaceCalibration2026) {
       const validation = record.simulation.validation

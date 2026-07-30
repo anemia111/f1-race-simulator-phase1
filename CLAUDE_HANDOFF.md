@@ -118,6 +118,15 @@ driving game.
   rating migrate automatically while non-uniform custom ratings are preserved.
 - Race control includes yellow/VSC/SC/red, restart effects, track limits,
   investigations, penalties, retirement, and post-race classification.
+- VSC compliance treats the delta as a minimum sector time. `vscPaceScaleForDelta`
+  never commands more than `vscMinimumTimePace`, so banked delta buys a return to
+  the delta pace and not to racing pace; `calculateCarTelemetry` caps the VSC
+  target at the plain local reference speed, keeping straight-line headroom and
+  car performance out of it; and `VSC_DEPLOYMENT_ALLOWANCE_SECTORS` in `race.ts`
+  gives each car two marshalling sectors to reach the delta before judging
+  starts, because braking from racing speed is not speeding. A car that keeps
+  racing is still judged from the allowance onwards. Without these three, one VSC
+  deployment penalised 17 of 20 cars.
 - Local yellow and timed-session double-yellow states are published separately
   for sectors 1/2/3. Only the affected sector slows and suppresses racing; the
   dashboard and 3D trace show the same state. OpenF1 sector/scope fields map to
@@ -201,6 +210,20 @@ driving game.
   active-aero, qualifying, and machine rules. Non-native lap pace and any
   generated control zones carry `simulated`/`fallback` provenance in the Data
   view instead of pretending to be official.
+- A cross-category circuit that has its own category x course baseline uses it
+  and reports `freeModeProvenance.pace = 'category-reference'`. Motegi, Fuji,
+  SUGO, and Autopolis carry F1 baselines of their own, so an F1 Free Mode
+  session there no longer inherits the SUPER FORMULA base lap time. Validate
+  with `node scripts/validate-f1-support-circuits.mjs --enforce`; the target
+  windows, seed counts, and twelve measured families live in
+  `docs/PACE_CALIBRATION_2026.md`.
+- A practice session runs FP1, FP2, or FP3, chosen in the builder and defaulting
+  to FP1 so stored version-1 configurations keep their behaviour. The sessions
+  are not interchangeable: FP1 starts from an unlearned setup on heavy fuel
+  (`practiceBestOffset` 2.4s against FP3's 0.35s), so a representative
+  light-fuel attack belongs to FP2/FP3. At Fuji the same 20-car field reads
+  1:23.4 in FP1, 1:19.0 in FP2 and 1:20.8 in FP3; a single session varies by
+  around a second and a half, and the 100-seed FP3 median is 1:19.0.
 - Qualifying adapts to entrant count. Standard fields preserve the familiar
   22→16→10 and 20→15→10 shapes; small fields collapse safely to fewer
   segments. A compatible completed result can seed a later Free race.

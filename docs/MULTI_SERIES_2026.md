@@ -70,6 +70,25 @@ the inventory distinguishes a used set from a returned or unavailable set.
   overall fastest driver. SUPER FORMULA keeps balanced groups and is not
   accidentally switched to car-number parity.
 
+## Pace Keying Across Categories
+
+- A pace baseline is keyed by category and course, never by round. Repeat rounds
+  score separately (see Event Overrides) but read one course baseline: Motegi
+  rounds 1-2, Suzuka 4/5/11/12 and Fuji 3/6/7/9/10 each share a single record.
+- The same circuit run by two categories keeps two records. Suzuka is 89.076 s
+  for F1 and 97.605 s for SUPER FORMULA, and neither may be derived from the
+  other at runtime.
+- Free Mode may put a category on a circuit outside that category's calendar.
+  It loads the category x course baseline for that pairing and marks the track
+  `freeModeProvenance.pace = 'category-reference'`. A SUPER FORMULA base lap time
+  scaled by a category multiplier is not an F1 baseline and is not used as one.
+- Motegi, Fuji, SUGO and Autopolis therefore carry F1 records in
+  `src/data/calibration/f1PaceCalibration2026.json` alongside their SUPER FORMULA
+  records. Autopolis is cancelled on the 2026 calendar, so it is Free Mode
+  reference material only and never gates validation.
+- See `docs/PACE_CALIBRATION_2026.md` for the target windows, the per-family
+  validation and the seed counts.
+
 ## Source Boundary
 
 - F1 field: `src/data/f1Performance.csv`.

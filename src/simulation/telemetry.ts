@@ -298,7 +298,7 @@ export function calculateCarTelemetry(options: {
   )
   const longStraightTargetHeadroomKph =
     38 * longStraightOpportunity * Math.pow(dynamics.straightness, 1.5)
-  const targetSpeedKph =
+  const racingTargetSpeedKph =
     (dynamics.referenceSpeedKph + longStraightTargetHeadroomKph) *
     clamp(paceScale, 0.42, 1.32) *
     clamp(localFlagPaceScale, 0.42, 1) *
@@ -308,6 +308,18 @@ export function calculateCarTelemetry(options: {
     gripSpeedMultiplier *
     fuelEffects.cornerSpeedMultiplier *
     preparationPaceScale
+  // The VSC delta is a minimum sector time measured against the plain local
+  // reference speed, so Race Control's pace scale is the ceiling on its own.
+  // Racing pace, straight headroom and car performance must not lift a car
+  // above the delta while its driver is obeying the same instruction.
+  const neutralisedCeilingKph =
+    phase?.flag === 'vsc'
+      ? dynamics.referenceSpeedKph * clamp(localFlagPaceScale, 0.42, 1)
+      : Number.POSITIVE_INFINITY
+  const targetSpeedKph = Math.min(
+    racingTargetSpeedKph,
+    neutralisedCeilingKph,
+  )
   const speedExcess = Math.max(0, car.speedKph - targetSpeedKph)
   const brakingActivation = clamp(
     (car.speedKph / Math.max(1, targetSpeedKph) - 0.78) / 0.22,

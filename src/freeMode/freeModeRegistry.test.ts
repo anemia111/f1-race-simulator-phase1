@@ -13,6 +13,7 @@ import {
   buildFreeModeRuntime,
   createDefaultFreeModeConfiguration,
   createEntrantsFromCategoryGrid,
+  freeModeStageFor,
   freeModeTrackOptions,
 } from './freeModeRegistry'
 import {
@@ -93,6 +94,76 @@ describe('Free Mode registry and validation', () => {
       'SF',
     ])
     expect(options.some((track) => track.id === 'fuji-sf')).toBe(true)
+  })
+
+  it.each([
+    ['motegi-sf', 86],
+    ['fuji-sf', 77],
+    ['sugo-sf', 60.5],
+    ['autopolis-sf', 80.4],
+  ] as const)(
+    'gives F1 its own course baseline on %s instead of the Super Formula one',
+    (trackId, qualifyingReferenceSeconds) => {
+      const superFormulaTrack = seriesPackageById
+        .get('super-formula')!
+        .tracks.find((track) => track.id === trackId)!
+      const config = buildFreeModeRaceConfig(
+        configurationFor('f1-custom', trackId, 10),
+        context(),
+      )
+      const reference = config.track.paceReference2026
+
+      expect(reference?.series).toBe('f1-custom')
+      expect(reference?.calibration.qualifying.selectedReferenceSeconds).toBe(
+        qualifyingReferenceSeconds,
+      )
+      expect(config.track.freeModeProvenance?.pace).toBe('category-reference')
+      expect(config.track.baseLapTimeSource).toBe('2026-reference')
+      // The Super Formula base lap describes a different car on the same asphalt.
+      expect(config.track.baseLapTime).toBeLessThan(
+        superFormulaTrack.baseLapTime,
+      )
+    },
+  )
+
+  it('runs the selected practice session and defaults to FP1', () => {
+    const base = configurationFor('f1-custom', 'fuji-sf', 10)
+
+    // A stored version-1 configuration carries no practice stage.
+    expect(freeModeStageFor('practice')).toBe('fp1')
+    expect(freeModeStageFor('practice', 'fp3')).toBe('fp3')
+    expect(freeModeStageFor('qualifying', 'fp3')).toBe('qualifying')
+
+    for (const stage of ['fp1', 'fp2', 'fp3'] as const) {
+      const config = buildFreeModeRaceConfig(
+        { ...base, practiceStage: stage, sessionKind: 'practice' },
+        context(),
+      )
+
+      expect(config.weekendStage).toBe(stage)
+    }
+
+    const withoutStage = buildFreeModeRaceConfig(
+      { ...base, sessionKind: 'practice' },
+      context(),
+    )
+
+    expect(withoutStage.weekendStage).toBe('fp1')
+  })
+
+  it('keeps F1 and Super Formula baselines separate on a shared circuit', () => {
+    const f1 = buildFreeModeRaceConfig(
+      configurationFor('f1-custom', 'suzuka-approx', 10),
+      context(),
+    )
+    const superFormula = buildFreeModeRaceConfig(
+      configurationFor('super-formula', 'suzuka-approx', 10),
+      context(),
+    )
+
+    expect(f1.track.freeModeProvenance?.pace).toBe('native')
+    expect(superFormula.track.freeModeProvenance?.pace).toBe('native')
+    expect(f1.track.baseLapTime).toBeLessThan(superFormula.track.baseLapTime)
   })
 
   it('loads all four vehicle categories and the complete 110-driver pool', () => {

@@ -597,6 +597,10 @@ export function vscPaceScaleForDelta(
 
   return Math.min(
     phaseThreeTuning.vscMaximumPace,
+    // The delta is a minimum time per marshalling sector, so banked margin
+    // does not license running above it. Recovered delta lets a driver return
+    // to the delta pace, never to racing pace.
+    phaseThreeTuning.vscMinimumTimePace,
     Math.max(
       phaseThreeTuning.vscMinimumPace,
       phaseThreeTuning.vscPace +

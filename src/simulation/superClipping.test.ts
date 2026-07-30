@@ -170,7 +170,11 @@ describe('super clipping physical integration', () => {
     const firstSecond = clipped.trace[0]
 
     expect(normalTopSpeed).toBeGreaterThanOrEqual(410)
-    expect(normalTopSpeed).toBeLessThanOrEqual(432)
+    // The post-Hungary machine performance update made Mercedes — the team this
+    // low-drag reference runs — the quickest straight-line package, lifting the
+    // unclipped terminal speed just past the previous 432 km/h ceiling. The
+    // bound tracks that data change; the clipping behaviour below is unaffected.
+    expect(normalTopSpeed).toBeLessThanOrEqual(434)
     expect(firstSecond.speedKph).toBeLessThan(normalTopSpeed)
     expect(firstSecond.speedKph).toBeGreaterThan(normalTopSpeed - 35)
     expect(speedLossKph).toBeGreaterThanOrEqual(48)

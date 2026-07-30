@@ -3,11 +3,11 @@
   "calibrationVersion": "2026.07.26.1",
   "generatedAt": "2026-07-26T12:22:08.191Z",
   "season": 2026,
-  "eventCount": 27,
+  "eventCount": 31,
   "series": [
     {
       "id": "f1-custom",
-      "eventCount": 22,
+      "eventCount": 26,
       "latestObservedEventDate": "2026-07-26"
     },
     {

@@ -2736,7 +2736,10 @@ export default function App() {
       ...freeModeBuildContext,
       qualifyingResult: freeModeStoredState.qualifyingResult,
     })
-    const stage = freeModeStageFor(configuration.sessionKind)
+    const stage = freeModeStageFor(
+      configuration.sessionKind,
+      configuration.practiceStage,
+    )
     const runtimeWeekendContext =
       runtime.raceConfig.weekendContext ??
       createWeekendContext(

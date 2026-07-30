@@ -150,6 +150,13 @@ export function validatePaceCalibrationRecords(
     }
 
     if (
+      value.courseReference !== undefined &&
+      typeof value.courseReference !== 'boolean'
+    ) {
+      throw new Error(`Invalid ${label}: courseReference`)
+    }
+
+    if (
       !isRecord(value.qualifying) ||
       !isRecord(value.race) ||
       !isRecord(value.simulation)
@@ -205,6 +212,23 @@ export function validatePaceCalibrationRecords(
         value.simulation.liveTimingPaceScale > 1.3)
     ) {
       throw new Error(`Invalid ${label}: live timing pace scale`)
+    }
+
+    // A controller scale is a correction, not a pace source. A record that
+    // needs more than a quarter of the lap is papering over a modelling fault
+    // that belongs in the physics instead.
+    for (const scaleName of ['racePaceScale', 'qualifyingPaceScale'] as const) {
+      const scale = value.simulation[scaleName]
+
+      if (
+        scale !== undefined &&
+        (typeof scale !== 'number' ||
+          !Number.isFinite(scale) ||
+          scale < 0.75 ||
+          scale > 1.25)
+      ) {
+        throw new Error(`Invalid ${label}: ${scaleName}`)
+      }
     }
 
     if (!Array.isArray(value.sources) || value.sources.length === 0) {

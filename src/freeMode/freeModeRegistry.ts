@@ -1,3 +1,7 @@
+import {
+  paceReference2026For,
+  simulationBaseLapTimeForPaceReference,
+} from '../data/paceReferences2026'
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks as f1Tracks } from '../data/tracks'
 import { seatedDriverFrom } from '../series/seriesRegistry'
@@ -62,6 +66,17 @@ const cloneTrack = (track: TrackDefinition): TrackDefinition => ({
   })),
   marshalPosts: track.marshalPosts?.map((position) => [...position]),
 })
+
+/**
+ * Pace references are keyed by category x course, never by calendar round, so
+ * a circuit that hosts several rounds of a series shares one baseline and the
+ * same circuit run by another category keeps its own.
+ */
+function categoryPaceReferenceFor(seriesId: SeriesId, trackId: string) {
+  return seriesId === 'f1-custom' || seriesId === 'super-formula'
+    ? paceReference2026For(seriesId, trackId)
+    : undefined
+}
 
 export function freeModeTrackOptions(
   seriesById: Map<SeriesId, SeriesPackage>,
@@ -187,9 +202,10 @@ export function buildFreeModeQualifyingRules(
 
 export function freeModeStageFor(
   sessionKind: FreeModeConfiguration['sessionKind'],
+  practiceStage: FreeModeConfiguration['practiceStage'] = 'fp1',
 ): WeekendStage {
   return sessionKind === 'practice'
-    ? 'fp1'
+    ? practiceStage
     : sessionKind === 'qualifying'
       ? 'qualifying'
       : 'race'
@@ -373,18 +389,30 @@ function trackForConfiguration(
   trackOption: FreeModeTrackOption,
 ): TrackDefinition {
   const nativeTrack = series.tracks.find((track) => track.id === trackOption.id)
+  // A circuit that is not on this category's calendar can still have its own
+  // calibrated category x course baseline. Prefer that over the other
+  // category's lap time: a Super Formula base lap is not an F1 base lap, and
+  // scaling one by a category multiplier is not a calibration.
+  const categoryReference = nativeTrack
+    ? undefined
+    : categoryPaceReferenceFor(series.id, trackOption.id)
   const track = nativeTrack
     ? cloneTrack(nativeTrack)
     : {
         ...cloneTrack(trackOption.physicalTrack),
-        baseLapTime: Number(
-          (
-            trackOption.physicalTrack.baseLapTime *
-            series.rules.baseLapTimeMultiplier
-          ).toFixed(3),
+        baseLapTime: simulationBaseLapTimeForPaceReference(
+          categoryReference,
+          Number(
+            (
+              trackOption.physicalTrack.baseLapTime *
+              series.rules.baseLapTimeMultiplier
+            ).toFixed(3),
+          ),
         ),
-        baseLapTimeSource: 'estimated' as const,
-        paceReference2026: undefined,
+        baseLapTimeSource: categoryReference
+          ? ('2026-reference' as const)
+          : ('estimated' as const),
+        paceReference2026: categoryReference,
         raceLaps: suggestFreeModeRaceLaps(series, trackOption.physicalTrack),
         raceLapsSource: 'estimated' as const,
       }
@@ -424,7 +452,11 @@ function trackForConfiguration(
       series.tracks.some((candidate) => candidate.id === trackOption.id)
         ? 'native'
         : 'simulated',
-    pace: nativeTrack ? 'native' : 'simulated',
+    pace: nativeTrack
+      ? 'native'
+      : categoryReference
+        ? 'category-reference'
+        : 'simulated',
     sourceSeries: [...trackOption.sources],
   }
 
@@ -539,7 +571,10 @@ export function buildFreeModeRaceConfig(
     categoryTrack,
     configuration.weatherMode,
   )
-  const weekendStage = freeModeStageFor(configuration.sessionKind)
+  const weekendStage = freeModeStageFor(
+    configuration.sessionKind,
+    configuration.practiceStage,
+  )
   const tireAllocation = { ...rules.tires.standardAllocation }
   const config: RaceConfig = {
     categoryRaceFormat: rules.race,

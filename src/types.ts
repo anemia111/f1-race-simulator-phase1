@@ -390,6 +390,13 @@ export type EventPaceCalibration = {
   trackId: string
   round: number
   eventDate: string
+  /**
+   * True for a category x course baseline that is not a calendar event: the
+   * category never races here, so there is no timing of its own and `round`
+   * only satisfies the schema. Free Mode reads these when a category is put on
+   * another series' circuit.
+   */
+  courseReference?: boolean
   qualifying: {
     poleSeconds: number | null
     top3MedianSeconds: number | null
@@ -451,6 +458,13 @@ export type EventPaceCalibration = {
      * profile's longitudinal integration response.
      */
     racePaceScale?: number
+    /**
+     * Offline scale for the physically integrated timed-session controller
+     * (free practice and qualifying). The removed additive correction used to
+     * carry this alongside the race controller; each session family now owns
+     * its own dimensionless scale so one cannot silently calibrate the other.
+     */
+    qualifyingPaceScale?: number
     /**
      * Legacy additive calibration retained for old data migrations only.
      * Runtime race pace must not add this value directly.
@@ -754,7 +768,12 @@ export type TrackDefinition = {
   }
   /** Free Mode provenance for category/track combinations outside a calendar. */
   freeModeProvenance?: {
-    pace: 'native' | 'simulated'
+    /**
+     * `category-reference` marks a circuit that is not on this category's
+     * calendar but has its own calibrated category x course baseline, so the
+     * pace is neither a native calendar entry nor another category's number.
+     */
+    pace: 'native' | 'category-reference' | 'simulated'
     overtakeZones: 'native' | 'simulated'
     sourceSeries: Array<'F1' | 'SF'>
   }
@@ -1112,6 +1131,12 @@ export type CarSnapshot = {
   vscRedSectorCount?: number
   /** Absolute timing mini-sector last sampled for VSC compliance. */
   vscLastMeasuredMiniSector?: number | null
+  /**
+   * First mini-sector judged against the VSC delta. A car cannot brake from
+   * racing speed to the delta inside the sector where the VSC is deployed, so
+   * that sector is the driver's chance to reach it rather than a violation.
+   */
+  vscJudgedFromMiniSector?: number | null
   hasUnlappedUnderSafetyCar: boolean
   blueFlag: boolean
   blueFlagSinceSeconds: number | null

@@ -68,6 +68,14 @@ const sessionLabels = {
   race: 'Race',
 } as const
 
+// FP1 starts from an unlearned setup on heavy fuel; setup knowledge grows into
+// FP3, where a light-fuel attack lap becomes representative of the category.
+const practiceStageLabels = {
+  fp1: 'FP1 (new setup)',
+  fp2: 'FP2',
+  fp3: 'FP3 (learned setup)',
+} as const
+
 const weatherLabels = {
   random: 'Random',
   clear: 'Clear',
@@ -753,6 +761,27 @@ export function FreeModeBuilder({
                 type="number"
                 value={configuration.raceLaps}
               />
+            </label>
+          ) : null}
+          {configuration.sessionKind === 'practice' ? (
+            <label>
+              <span>Practice</span>
+              <select
+                onChange={(event) =>
+                  setConfiguration((current) => ({
+                    ...current,
+                    practiceStage: event.target
+                      .value as FreeModeConfiguration['practiceStage'],
+                  }))
+                }
+                value={configuration.practiceStage ?? 'fp1'}
+              >
+                {Object.entries(practiceStageLabels).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </label>
           ) : null}
           {configuration.sessionKind === 'practice' ? (

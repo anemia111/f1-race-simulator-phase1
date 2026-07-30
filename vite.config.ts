@@ -1,8 +1,16 @@
-import { defineConfig } from 'vite'
+// vitest's defineConfig is vite's with the `test` block typed.
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  test: {
+    // A Claude Code worktree lives at .claude/worktrees/<name> inside the
+    // repository. Without this exclusion its copy of every suite is collected
+    // as well, so `npm test` runs each file twice against two different
+    // commits' sources and reports the other commit's failures as ours.
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'],
+  },
   plugins: [
     react(),
     VitePWA({

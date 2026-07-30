@@ -18,7 +18,9 @@ describe('2026 pace references', () => {
       ...superFormulaPaceCalibration2026,
     ]
 
-    expect(f1PaceCalibration2026).toHaveLength(22)
+    // 22 calendar events plus four category x course baselines for the Super
+    // Formula circuits Free Mode can run in the F1 category.
+    expect(f1PaceCalibration2026).toHaveLength(26)
     expect(superFormulaPaceCalibration2026).toHaveLength(5)
     expect(
       records.every(
@@ -116,8 +118,12 @@ describe('2026 pace references', () => {
   })
 
   it('labels future estimates and MADRING uncertainty honestly', () => {
+    // Course references are a different species of estimate: the category has
+    // never raced there, so no OpenF1 history of its own exists. They are
+    // covered by their own expectation below.
     const future = f1PaceCalibration2026.filter(
-      (record) => record.qualifying.status === 'estimated',
+      (record) =>
+        record.qualifying.status === 'estimated' && !record.courseReference,
     )
     const madrid = future.find(
       (record) => record.trackId === 'madrid-approx',
@@ -145,6 +151,39 @@ describe('2026 pace references', () => {
           ),
       ),
     ).toBe(true)
+  })
+
+  it('labels category x course baselines as estimates with a cross-category source', () => {
+    const courseReferences = f1PaceCalibration2026.filter(
+      (record) => record.courseReference,
+    )
+
+    expect(courseReferences.map((record) => record.trackId).sort()).toEqual([
+      'autopolis-sf',
+      'fuji-sf',
+      'motegi-sf',
+      'sugo-sf',
+    ])
+
+    for (const record of courseReferences) {
+      // No F1 timing exists at these circuits, so nothing may be presented as
+      // observed: no pole, an explicit range, low confidence, and the Super
+      // Formula reference for the same course as the cross-check.
+      expect(record.qualifying.status).toBe('estimated')
+      expect(record.qualifying.poleSeconds).toBeNull()
+      expect(record.qualifying.referenceRangeSeconds).toBeDefined()
+      expect(record.qualifying.confidence).toBeLessThan(0.5)
+      expect(record.race.status).toBe('estimated')
+      expect(record.race.confidence).toBeLessThan(0.5)
+      expect(
+        record.sources.some((source) => source.provider === 'SUPER FORMULA'),
+      ).toBe(true)
+      expect(
+        record.notes?.some((note) => note.includes('SUPER FORMULA')),
+      ).toBe(true)
+      // The legacy additive correction must stay retired on these too.
+      expect(record.simulation.raceModelCorrectionSeconds).toBe(0)
+    }
   })
 
   it('retains the official Autopolis qualifying result without inventing a cancelled race', () => {

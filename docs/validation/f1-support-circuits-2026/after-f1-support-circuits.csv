@@ -1,0 +1,6 @@
+courseId,name,paceSource,raceSeeds,qualifyingSeeds,practiceSeeds,practiceLightFuelSeconds,practiceHighFuelSeconds,qualifyingTop3MedianSeconds,raceFastestSeconds,longRunSeconds,sector1Seconds,sector2Seconds,sector3Seconds,topSpeedKph,averageSpeedKph,fuelGainPerLapSeconds,trackEvolutionGainSeconds,tireWearPerLapPercent,sameStintP90DeltaSeconds,verdict
+motegi-sf,"Mobility Resort Motegi",category-reference,30,30,30,87.222,97.022,86.019,91.349,93.085,30.292,32.593,30.054,330.95,185.68,0.015,0.18,3.441,0.891,PASS
+suzuka-approx,"Suzuka",native,50,50,50,91.863,101.129,89.266,92.643,94.493,36.748,43.83,13.692,369.65,221.24,0.017,0.179,2.141,0.851,PASS
+fuji-sf,"Fuji Speedway",category-reference,100,100,100,79.035,86.106,77.183,81.601,83.423,29.313,24.861,29.03,361.35,196.91,0.012,0.18,1.919,1.435,PASS
+sugo-sf,"Sportsland SUGO",category-reference,50,50,50,62.233,69.111,60.642,65.497,66.6,21.009,24.806,20.824,348.78,193.84,0.009,0.18,2.068,1.427,PASS
+autopolis-sf,"Autopolis",category-reference,20,20,20,82.004,90.985,80.447,85.488,87.004,28.716,30.556,27.585,361.4,193.4,0.013,0.18,2.234,0.781,PASS

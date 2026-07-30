@@ -198,6 +198,19 @@ const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
 const FUEL_SAMPLE_RESERVE_KG = 0.8
+/**
+ * Marshalling sectors a car is given to reach the VSC delta after deployment.
+ * One sector covers the deceleration itself; the second absorbs the sector the
+ * car was already committed to when the boards came out.
+ */
+const VSC_DEPLOYMENT_ALLOWANCE_SECTORS = 2
+/**
+ * Share of the calibrated timed-session scale that free practice realises. The
+ * scale is solved against a qualifying attack lap; a practice best lap runs a
+ * lower engine map on less prepared tires and a greener track, so it stays a
+ * second or two behind the qualifying reference instead of matching it.
+ */
+const PRACTICE_TIMED_SCALE_RESPONSE = 0.52
 /** Initial settling margin for legacy additive-to-scale calibration migration. */
 const LEGACY_RACE_PACE_SCALE_SETTLING = 0.979
 /**
@@ -4520,13 +4533,36 @@ export function advanceRace(
         ? (config.track.paceReference2026?.calibration.simulation
             .liveTimingPaceScale ?? 1)
         : 1
-    const racePhysicsPaceScale = isRaceDistance
-      ? raceReferenceModelFor(driver, config, raceLaps).physicsPaceScale
-      : 1
+    // The offline scale calibrates green-flag race pace. Under a neutralised
+    // track the delta targets are absolute fractions of the reference speed,
+    // so Race Control's own pace scale stays the only authority there.
+    const racePhysicsPaceScale =
+      isRaceDistance && localControlPhase === null
+        ? raceReferenceModelFor(driver, config, raceLaps).physicsPaceScale
+        : 1
     const weatherAdjustedRacePhysicsScale =
       1 +
       (racePhysicsPaceScale - 1) *
         (localWeather === 'clear' ? 1 : 0.6)
+    // Free practice and qualifying run the same physical controller as the
+    // race but against a lap-record-style target, so they carry their own
+    // offline scale instead of borrowing the race calibration. The scale is
+    // solved on a qualifying attack lap, and practice only realises part of
+    // that trim: a lower engine map, less tire preparation and a greener track
+    // leave the best practice lap behind the qualifying reference.
+    const calibratedTimedPaceScale =
+      config.track.paceReference2026?.calibration.simulation
+        .qualifyingPaceScale ?? 1
+    const timedPhysicsPaceScale =
+      !isRaceDistance && localControlPhase === null
+        ? isPracticeStage(config.weekendStage ?? 'race')
+          ? 1 +
+            (calibratedTimedPaceScale - 1) * PRACTICE_TIMED_SCALE_RESPONSE
+          : calibratedTimedPaceScale
+        : 1
+    const weatherAdjustedTimedPhysicsScale =
+      1 +
+      (timedPhysicsPaceScale - 1) * (localWeather === 'clear' ? 1 : 0.6)
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
       categoryPhysics,
@@ -4537,7 +4573,8 @@ export function advanceRace(
         (config.track.baseLapTime / conditionEffectiveLapTime) *
         battlePaceScale *
         liveTimingPaceScale *
-        weatherAdjustedRacePhysicsScale,
+        weatherAdjustedRacePhysicsScale *
+        weatherAdjustedTimedPhysicsScale,
       phase: localControlPhase,
       localFlagPaceScale,
       lowGripConditions,
@@ -5004,19 +5041,31 @@ export function advanceRace(
       35,
       referenceSpeed * phaseThreeTuning.vscMinimumTimePace,
     )
-    const vscDeltaSeconds =
+    // Race Control judges the delta from the sector after deployment: braking
+    // from racing speed to the delta covers most of a marshalling sector, and
+    // that unavoidable deficit is not speeding. A car that keeps racing is
+    // still judged from the allowance onwards, so the ladder still bites.
+    const vscJudgedFromMiniSector =
       phase?.flag === 'vsc'
-        ? Math.max(
-            -2,
-            Math.min(
-              5,
-              car.vscDeltaSeconds +
-                ((allowedVscSpeed - displayTelemetry.speedKph) /
-                  allowedVscSpeed) *
-                  deltaSeconds,
-            ),
-          )
-        : 0
+        ? (car.vscJudgedFromMiniSector ??
+          Math.floor(car.totalDistance * MINI_SECTOR_COUNT) +
+            VSC_DEPLOYMENT_ALLOWANCE_SECTORS)
+        : null
+    const vscDeltaJudged =
+      vscJudgedFromMiniSector !== null &&
+      Math.floor(totalDistance * MINI_SECTOR_COUNT) >= vscJudgedFromMiniSector
+    const vscDeltaSeconds = vscDeltaJudged
+      ? Math.max(
+          -2,
+          Math.min(
+            5,
+            car.vscDeltaSeconds +
+              ((allowedVscSpeed - displayTelemetry.speedKph) /
+                allowedVscSpeed) *
+                deltaSeconds,
+          ),
+        )
+      : 0
     const vscSectorTracking =
       phase?.flag === 'vsc'
         ? advanceVscMarshallingSectorTracking({
@@ -5157,6 +5206,7 @@ export function advanceRace(
       vscDeltaSeconds,
       vscRedSectorCount: vscSectorTracking.redSectorCount,
       vscLastMeasuredMiniSector: vscSectorTracking.lastMeasuredSector,
+      vscJudgedFromMiniSector,
     }
 
     const blueFlagIgnoredForSeconds =

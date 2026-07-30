@@ -1,0 +1,289 @@
+[
+  {
+    "courseId": "motegi-sf",
+    "mandatory": true,
+    "metrics": {
+      "averageSpeedKph": 185.68,
+      "fuelBurnPerLapKg": 1.552,
+      "fuelGainPerLapSeconds": 0.015,
+      "longRunSeconds": 93.085,
+      "measuredLapCount": 18684,
+      "practiceHighFuelSeconds": 97.022,
+      "practiceLightFuelSeconds": 87.222,
+      "qualifyingPoleSeconds": 85.615,
+      "qualifyingTop3MedianSeconds": 86.019,
+      "raceFastestSeconds": 91.349,
+      "sameStintP90DeltaSeconds": 0.891,
+      "sameStintStdDevSeconds": 0.953,
+      "sectorMediansSeconds": [
+        30.292,
+        32.593,
+        30.054
+      ],
+      "tireWearPerLapPercent": 3.441,
+      "topSpeedKph": 330.95,
+      "trackEvolutionGainSeconds": 0.18
+    },
+    "name": "Mobility Resort Motegi",
+    "notes": [],
+    "paceSource": "category-reference",
+    "raceLaps": 35,
+    "reasons": [],
+    "rounds": "SF rounds 1-2",
+    "seedCounts": {
+      "practice": 30,
+      "qualifying": 30,
+      "race": 30
+    },
+    "verdict": "PASS",
+    "windows": {
+      "practiceLightFuel": [
+        86,
+        90
+      ],
+      "qualifying": [
+        84,
+        88
+      ],
+      "raceFastest": [
+        88,
+        92
+      ],
+      "longRun": [
+        90,
+        95
+      ]
+    },
+    "writeValidation": true
+  },
+  {
+    "courseId": "suzuka-approx",
+    "mandatory": true,
+    "metrics": {
+      "averageSpeedKph": 221.24,
+      "fuelBurnPerLapKg": 1.792,
+      "fuelGainPerLapSeconds": 0.017,
+      "longRunSeconds": 94.493,
+      "measuredLapCount": 47591,
+      "practiceHighFuelSeconds": 101.129,
+      "practiceLightFuelSeconds": 91.863,
+      "qualifyingPoleSeconds": 88.835,
+      "qualifyingTop3MedianSeconds": 89.266,
+      "raceFastestSeconds": 92.643,
+      "sameStintP90DeltaSeconds": 0.851,
+      "sameStintStdDevSeconds": 1.237,
+      "sectorMediansSeconds": [
+        36.748,
+        43.83,
+        13.692
+      ],
+      "tireWearPerLapPercent": 2.141,
+      "topSpeedKph": 369.65,
+      "trackEvolutionGainSeconds": 0.179
+    },
+    "name": "Suzuka",
+    "notes": [],
+    "paceSource": "native",
+    "raceLaps": 53,
+    "reasons": [],
+    "rounds": "SF rounds 4/5/11/12, F1 calendar round 3",
+    "seedCounts": {
+      "practice": 50,
+      "qualifying": 50,
+      "race": 50
+    },
+    "verdict": "PASS",
+    "windows": {
+      "practiceLightFuel": [
+        89,
+        92
+      ],
+      "qualifying": [
+        88,
+        90
+      ],
+      "raceFastest": [
+        91,
+        94
+      ],
+      "longRun": [
+        93,
+        97
+      ]
+    },
+    "writeValidation": false
+  },
+  {
+    "courseId": "fuji-sf",
+    "mandatory": true,
+    "metrics": {
+      "averageSpeedKph": 196.91,
+      "fuelBurnPerLapKg": 1.398,
+      "fuelGainPerLapSeconds": 0.012,
+      "longRunSeconds": 83.423,
+      "measuredLapCount": 72354,
+      "practiceHighFuelSeconds": 86.106,
+      "practiceLightFuelSeconds": 79.035,
+      "qualifyingPoleSeconds": 76.603,
+      "qualifyingTop3MedianSeconds": 77.183,
+      "raceFastestSeconds": 81.601,
+      "sameStintP90DeltaSeconds": 1.435,
+      "sameStintStdDevSeconds": 1.328,
+      "sectorMediansSeconds": [
+        29.313,
+        24.861,
+        29.03
+      ],
+      "tireWearPerLapPercent": 1.919,
+      "topSpeedKph": 361.35,
+      "trackEvolutionGainSeconds": 0.18
+    },
+    "name": "Fuji Speedway",
+    "notes": [],
+    "paceSource": "category-reference",
+    "raceLaps": 41,
+    "reasons": [],
+    "rounds": "SF rounds 3/6/7/9/10",
+    "seedCounts": {
+      "practice": 100,
+      "qualifying": 100,
+      "race": 100
+    },
+    "verdict": "PASS",
+    "windows": {
+      "practiceLightFuel": [
+        77,
+        80
+      ],
+      "qualifying": [
+        75.5,
+        78.5
+      ],
+      "raceFastest": [
+        79,
+        82
+      ],
+      "longRun": [
+        81,
+        85
+      ]
+    },
+    "writeValidation": true
+  },
+  {
+    "courseId": "sugo-sf",
+    "mandatory": true,
+    "metrics": {
+      "averageSpeedKph": 193.84,
+      "fuelBurnPerLapKg": 1.302,
+      "fuelGainPerLapSeconds": 0.009,
+      "longRunSeconds": 66.6,
+      "measuredLapCount": 44371,
+      "practiceHighFuelSeconds": 69.111,
+      "practiceLightFuelSeconds": 62.233,
+      "qualifyingPoleSeconds": 60.158,
+      "qualifyingTop3MedianSeconds": 60.642,
+      "raceFastestSeconds": 65.497,
+      "sameStintP90DeltaSeconds": 1.427,
+      "sameStintStdDevSeconds": 1.266,
+      "sectorMediansSeconds": [
+        21.009,
+        24.806,
+        20.824
+      ],
+      "tireWearPerLapPercent": 2.068,
+      "topSpeedKph": 348.78,
+      "trackEvolutionGainSeconds": 0.18
+    },
+    "name": "Sportsland SUGO",
+    "notes": [],
+    "paceSource": "category-reference",
+    "raceLaps": 53,
+    "reasons": [],
+    "rounds": "SF round 8",
+    "seedCounts": {
+      "practice": 50,
+      "qualifying": 50,
+      "race": 50
+    },
+    "verdict": "PASS",
+    "windows": {
+      "practiceLightFuel": [
+        61,
+        64
+      ],
+      "qualifying": [
+        59,
+        62
+      ],
+      "raceFastest": [
+        63,
+        66
+      ],
+      "longRun": [
+        65,
+        69
+      ]
+    },
+    "writeValidation": true
+  },
+  {
+    "courseId": "autopolis-sf",
+    "mandatory": false,
+    "metrics": {
+      "averageSpeedKph": 193.4,
+      "fuelBurnPerLapKg": 1.495,
+      "fuelGainPerLapSeconds": 0.013,
+      "longRunSeconds": 87.004,
+      "measuredLapCount": 14672,
+      "practiceHighFuelSeconds": 90.985,
+      "practiceLightFuelSeconds": 82.004,
+      "qualifyingPoleSeconds": 79.842,
+      "qualifyingTop3MedianSeconds": 80.447,
+      "raceFastestSeconds": 85.488,
+      "sameStintP90DeltaSeconds": 0.781,
+      "sameStintStdDevSeconds": 1.077,
+      "sectorMediansSeconds": [
+        28.716,
+        30.556,
+        27.585
+      ],
+      "tireWearPerLapPercent": 2.234,
+      "topSpeedKph": 361.4,
+      "trackEvolutionGainSeconds": 0.18
+    },
+    "name": "Autopolis",
+    "notes": [
+      "Reference only: this circuit is cancelled on the 2026 calendar, so deviations are reported without gating the run."
+    ],
+    "paceSource": "category-reference",
+    "raceLaps": 42,
+    "reasons": [],
+    "rounds": "SF round 3 (cancelled) - Free Mode reference only",
+    "seedCounts": {
+      "practice": 20,
+      "qualifying": 20,
+      "race": 20
+    },
+    "verdict": "PASS",
+    "windows": {
+      "practiceLightFuel": [
+        80.4,
+        84.4
+      ],
+      "qualifying": [
+        78.4,
+        82.4
+      ],
+      "raceFastest": [
+        83.4,
+        87.4
+      ],
+      "longRun": [
+        84.6,
+        88.6
+      ]
+    },
+    "writeValidation": true
+  }
+]
