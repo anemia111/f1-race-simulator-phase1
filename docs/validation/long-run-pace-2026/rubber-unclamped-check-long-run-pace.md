@@ -1,0 +1,36 @@
+# 2026 F1 Long-run Pace Validation
+
+- Generated: 2026-07-30T00:54:16.368Z
+- Source commit: `b13c729449baae8a1582543a750b8148aac05bf9`
+- Physics step: 3s maximum
+- Australia seeds: 100
+- Other F1 circuit seeds: 20
+- Result: **PASS**
+
+Clean laps exclude rain, flags, pits, off-track running, new damage and the tire cliff. Strict clean-air variation also excludes close traffic and active battles.
+
+| Circuit | Result | Seeds | Qualifying | Race fastest P50 | Gap | Early | Middle | Late | Clean delta P95 | 1s+ rate | Characteristics | Reason |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
+| Australian Grand Prix | PASS | 5 | 78.518 | 81.916 | 3.398 | 85.163 | 84.025 | 82.776 | 0.945 | 4.30% | street, high-speed-low-downforce, high-speed-high-downforce, low-speed-high-downforce, stop-and-go, high-degradation, low-degradation, high-temperature, low-temperature | Within acceptance |
+
+## Characteristic Coverage
+
+| Characteristic | Result | Circuits | Race/qualifying gap P50 | Clean delta P95 P50 | 1s+ rate P50 |
+|---|---:|---:|---:|---:|---:|
+| High speed / low downforce | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| High speed / high downforce | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| Low speed / high downforce | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| Street circuit | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| Stop and go | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| High degradation | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| Low degradation | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| High temperature | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| Low temperature | PASS | 1 | 3.398 | 0.945 | 4.30% |
+| High altitude | PASS | 0 | - | - | 0.00% |
+
+## Method
+
+Each seed runs the production race engine to the chequered flag with the full F1 field on a dry track. Lap and sector times come from physical timing-line crossings; map movement and telemetry use the same integrated road speed. The report records control exposure, traffic, tire state, fuel, rubber, ERS recovery and pace mode so large changes can be attributed.
+
+The early, middle and late windows are 9-18%, 35-60% and 78-100% of scheduled distance. Phase pace uses strict clean laps from cars running in the top five. Circuit characteristics are ranked from the production track-load model; degradation and temperature groups use the upper and lower quartiles of the registered F1 calendar.
+

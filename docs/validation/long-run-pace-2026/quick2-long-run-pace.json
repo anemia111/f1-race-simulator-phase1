@@ -1,0 +1,221 @@
+{
+  "configuration": {
+    "australiaSeeds": 100,
+    "courseSeeds": 20,
+    "seedOverride": 5,
+    "workers": 1
+  },
+  "generatedAt": "2026-07-30T00:14:00.212Z",
+  "label": "quick2",
+  "overallVerdict": "FAIL",
+  "sourceCommit": "b13c729449baae8a1582543a750b8148aac05bf9",
+  "stepSeconds": 3,
+  "tracks": [
+    {
+      "classification": {
+        "reasons": [
+          "clean same-stint P95 change exceeds 2.0s",
+          "more than 12% of clean same-stint changes exceed 1.0s",
+          "unexplained 2.0s+ same-stint changes remain"
+        ],
+        "verdict": "FAIL"
+      },
+      "compoundDegradation": {
+        "S": {
+          "medianSecondsPerLap": 0.002,
+          "sampleCount": 129
+        },
+        "M": {
+          "medianSecondsPerLap": -0.011,
+          "sampleCount": 321
+        },
+        "H": {
+          "medianSecondsPerLap": -0.02,
+          "sampleCount": 1095
+        },
+        "I": {
+          "medianSecondsPerLap": null,
+          "sampleCount": 0
+        },
+        "W": {
+          "medianSecondsPerLap": null,
+          "sampleCount": 0
+        }
+      },
+      "cleanLapCount": 4962,
+      "cleanVariation": {
+        "changeMedianSeconds": 0.445,
+        "changeP90Seconds": 2.766,
+        "changeP95Seconds": 3.834,
+        "maximumSeconds": 11.003,
+        "overOneSecondRate": 0.2,
+        "overTwoSecondsRate": 0.12816,
+        "overThreeSecondsRate": 0.08932,
+        "sampleCount": 1545
+      },
+      "conditionEstimates": {
+        "fuelGainSeconds": null,
+        "fuelSecondsPerKg": null,
+        "regressionSampleCount": 0,
+        "rubberGainSeconds": null,
+        "rubberSecondsPerLevel": null
+      },
+      "eventName": "Australian Grand Prix",
+      "fastestLap": {
+        "medianSeconds": 81.114,
+        "p10Seconds": 81.011,
+        "p90Seconds": 81.418,
+        "qualifyingGapSeconds": 2.596
+      },
+      "freshTireGainSeconds": 1.059,
+      "modeUsage": {
+        "defend": 0.00336,
+        "push": 0.53233,
+        "save": 0.06666,
+        "standard": 0.39766,
+        "switchesPerCarRace": 10.845,
+        "unexplainedIntraLapSwitches": 0
+      },
+      "outliers": {
+        "explainedTwoSecondCount": 968,
+        "reasonCounts": {
+          "flag": 326,
+          "pit": 127,
+          "traffic": 321,
+          "energy-recovery": 185,
+          "unexplained": 24,
+          "off-track": 1,
+          "pace-mode": 2,
+          "damage": 6
+        },
+        "samples": [
+          {
+            "changeSeconds": 70.13,
+            "currentLap": 2,
+            "driverId": "lando_norris",
+            "previousLap": 1,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 69.889,
+            "currentLap": 4,
+            "driverId": "lando_norris",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 69.825,
+            "currentLap": 4,
+            "driverId": "lewis_hamilton",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 67.736,
+            "currentLap": 4,
+            "driverId": "kimi_antonelli",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 67.706,
+            "currentLap": 2,
+            "driverId": "oscar_piastri",
+            "previousLap": 1,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 67.613,
+            "currentLap": 4,
+            "driverId": "george_russell",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 67.594,
+            "currentLap": 4,
+            "driverId": "oscar_piastri",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 67.398,
+            "currentLap": 4,
+            "driverId": "sergio_perez",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 66.494,
+            "currentLap": 4,
+            "driverId": "yuki_nakayama",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 66.203,
+            "currentLap": 4,
+            "driverId": "max_verstappen",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 65.854,
+            "currentLap": 4,
+            "driverId": "valtteri_bottas",
+            "previousLap": 3,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          },
+          {
+            "changeSeconds": 65.786,
+            "currentLap": 2,
+            "driverId": "george_russell",
+            "previousLap": 1,
+            "reason": "flag",
+            "seed": "long-run:quick2:albert-park-approx:0"
+          }
+        ],
+        "unexplainedTwoSecondCount": 24
+      },
+      "paceByPhase": {
+        "earlyMedianSeconds": 84.824,
+        "improvementSeconds": 2.419,
+        "lateMedianSeconds": 82.405,
+        "middleMedianSeconds": 84.004,
+        "windows": {
+          "early": [
+            5,
+            10
+          ],
+          "middle": [
+            20,
+            34
+          ],
+          "late": [
+            45,
+            58
+          ]
+        }
+      },
+      "qualifyingReference": {
+        "basis": "official",
+        "seconds": 78.518
+      },
+      "seedCount": 5,
+      "strictCleanLapCount": 1855,
+      "topToMidfieldCleanAirDeltaSeconds": 1.177,
+      "trackId": "albert-park-approx"
+    }
+  ]
+}

@@ -88,6 +88,10 @@ function validateRecord(record, expectedSeries, eventIds) {
       record.simulation.expectedGreenRaceDeltaSeconds,
     ) ||
     !Number.isFinite(record.simulation.raceModelCorrectionSeconds) ||
+    (record.simulation.racePaceScale !== undefined &&
+      (!Number.isFinite(record.simulation.racePaceScale) ||
+        record.simulation.racePaceScale < 0.8 ||
+        record.simulation.racePaceScale > 1.25)) ||
     !Number.isSafeInteger(record.simulation.calibrationSeedCount) ||
     record.simulation.calibrationSeedCount < 100
   ) {

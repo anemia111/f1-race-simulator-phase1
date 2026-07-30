@@ -68,7 +68,7 @@ export function gripWithTrackRubber(
   rubberLevel: number,
   waterMm: number,
 ) {
-  const dryGain = clamp(rubberLevel, 0, 1) * 0.026
+  const dryGain = clamp(rubberLevel, 0, 1) * 0.016
   const wetRubberLoss = Math.min(0.012, waterMm * rubberLevel * 0.009)
 
   return clamp(baseGrip + dryGain * clamp(1 - waterMm / 0.8, 0, 1) - wetRubberLoss, 0.5, 1.03)
@@ -80,5 +80,8 @@ export function trackEvolutionGainSecondsFor(
 ) {
   const circuitFactor = track.kind === 'street' ? 1.16 : track.kind === 'hybrid' ? 1.07 : 1
 
-  return clamp(rubberLevel, 0, 1) * 1.65 * circuitFactor
+  // Rubber already raises the grip used by the physical speed integrator.
+  // Keep only a small controller residual for effects that the compact tire
+  // model does not resolve (line cleaning and driver confidence).
+  return clamp(rubberLevel, 0, 1) * 0.18 * circuitFactor
 }

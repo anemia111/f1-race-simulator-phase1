@@ -75,4 +75,9 @@ describe('automatic pursuit pace', () => {
       }),
     ).toBe('push')
   })
+
+  it('saves fuel before spending the required finish reserve', () => {
+    expect(mode({}, { fuelMarginKg: 0.8 })).toBe('save')
+    expect(mode({}, { fuelMarginKg: 2.2 })).toBe('push')
+  })
 })

@@ -102,5 +102,5 @@ export function gripForSurfaceWater(
   const waterLoss = Math.min(0.38, waterMm * 0.075)
   const lineRecovery = waterLoss * dryingLine * 0.72
 
-  return clamp(baseGrip - waterLoss + lineRecovery, 0.52, 1)
+  return clamp(baseGrip - waterLoss + lineRecovery, 0.52, 1.03)
 }

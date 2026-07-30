@@ -1,0 +1,542 @@
+{
+  "configuration": {
+    "australiaSeeds": 100,
+    "courseSeeds": 20,
+    "seedOverride": 20,
+    "workers": 1
+  },
+  "generatedAt": "2026-07-30T00:19:47.160Z",
+  "label": "tune20",
+  "overallVerdict": "FAIL",
+  "sourceCommit": "b13c729449baae8a1582543a750b8148aac05bf9",
+  "stepSeconds": 3,
+  "tracks": [
+    {
+      "classification": {
+        "reasons": [
+          "clean same-stint P95 change exceeds 1.0s",
+          "more than 6% of clean same-stint changes exceed 1.0s",
+          "unexplained 2.0s+ same-stint changes remain"
+        ],
+        "verdict": "FAIL"
+      },
+      "compoundDegradation": {
+        "S": {
+          "medianSecondsPerLap": -0.027,
+          "sampleCount": 284
+        },
+        "M": {
+          "medianSecondsPerLap": -0.015,
+          "sampleCount": 1261
+        },
+        "H": {
+          "medianSecondsPerLap": -0.018,
+          "sampleCount": 3266
+        },
+        "I": {
+          "medianSecondsPerLap": null,
+          "sampleCount": 0
+        },
+        "W": {
+          "medianSecondsPerLap": null,
+          "sampleCount": 0
+        }
+      },
+      "cleanLapCount": 18115,
+      "cleanVariation": {
+        "changeMedianSeconds": 0.35,
+        "changeP90Seconds": 0.909,
+        "changeP95Seconds": 1.051,
+        "maximumSeconds": 4.935,
+        "overOneSecondRate": 0.06485,
+        "overTwoSecondsRate": 0.00208,
+        "overThreeSecondsRate": 0.00145,
+        "sampleCount": 4811
+      },
+      "conditionEstimates": {
+        "fuelGainSeconds": 0.718,
+        "fuelSecondsPerKg": 0.01312,
+        "regressionSampleCount": 17,
+        "rubberGainSeconds": 0,
+        "rubberSecondsPerLevel": 0
+      },
+      "eventName": "Australian Grand Prix",
+      "fastestLap": {
+        "medianSeconds": 81.31,
+        "p10Seconds": 81.017,
+        "p90Seconds": 81.588,
+        "qualifyingGapSeconds": 2.792
+      },
+      "freshTireGainSeconds": 1.078,
+      "modeUsage": {
+        "defend": 0.00385,
+        "push": 0.51413,
+        "save": 0.13101,
+        "standard": 0.35101,
+        "switchesPerCarRace": 11.334,
+        "unexplainedIntraLapSwitches": 0
+      },
+      "outliers": {
+        "explainedTwoSecondCount": 4142,
+        "reasonCounts": {
+          "flag": 2182,
+          "pit": 358,
+          "energy-recovery": 10,
+          "traffic": 1520,
+          "damage": 53,
+          "off-track": 19,
+          "unexplained": 1
+        },
+        "samples": [
+          {
+            "changeSeconds": 117.422,
+            "current": {
+              "fuelLoadKg": 90.45,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 88.978,
+              "tire": "M4",
+              "wearPercent": 16.2
+            },
+            "driverId": "yuki_nakayama",
+            "previous": {
+              "fuelLoadKg": 92.2,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.4057971014492754,
+                "save": 0.5942028985507246,
+                "standard": 0
+              },
+              "timeSeconds": 206.401,
+              "tire": "M3",
+              "wearPercent": 11.3
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 111.49,
+            "current": {
+              "fuelLoadKg": 90.64,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 89.796,
+              "tire": "M4",
+              "wearPercent": 15.6
+            },
+            "driverId": "franco_colapinto",
+            "previous": {
+              "fuelLoadKg": 92.37,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.014925373134328358,
+                "save": 0.6119402985074627,
+                "standard": 0.373134328358209
+              },
+              "timeSeconds": 201.285,
+              "tire": "M3",
+              "wearPercent": 10.6
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 107.797,
+            "current": {
+              "fuelLoadKg": 90.62,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.443,
+              "tire": "M4",
+              "wearPercent": 16.1
+            },
+            "driverId": "pierre_gasly",
+            "previous": {
+              "fuelLoadKg": 92.32,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.3939393939393939,
+                "save": 0.6060606060606061,
+                "standard": 0
+              },
+              "timeSeconds": 198.24,
+              "tire": "M3",
+              "wearPercent": 11.2
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 104.81,
+            "current": {
+              "fuelLoadKg": 90.64,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.387,
+              "tire": "M4",
+              "wearPercent": 15.9
+            },
+            "driverId": "sergio_perez",
+            "previous": {
+              "fuelLoadKg": 92.35,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.38461538461538464,
+                "save": 0.6153846153846154,
+                "standard": 0
+              },
+              "timeSeconds": 195.196,
+              "tire": "M3",
+              "wearPercent": 11
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 103.948,
+            "current": {
+              "fuelLoadKg": 90.68,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.112,
+              "tire": "M4",
+              "wearPercent": 15.8
+            },
+            "driverId": "carlos_sainz",
+            "previous": {
+              "fuelLoadKg": 92.39,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 194.06,
+              "tire": "M3",
+              "wearPercent": 10.9
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 103.677,
+            "current": {
+              "fuelLoadKg": 90.67,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 89.509,
+              "tire": "M4",
+              "wearPercent": 16.2
+            },
+            "driverId": "liam_lawson",
+            "previous": {
+              "fuelLoadKg": 92.39,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 193.186,
+              "tire": "M3",
+              "wearPercent": 11.2
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 102.871,
+            "current": {
+              "fuelLoadKg": 90.69,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 89.439,
+              "tire": "M4",
+              "wearPercent": 15.9
+            },
+            "driverId": "esteban_ocon",
+            "previous": {
+              "fuelLoadKg": 92.42,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 192.31,
+              "tire": "M3",
+              "wearPercent": 11
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 101.76,
+            "current": {
+              "fuelLoadKg": 90.72,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 89.75,
+              "tire": "M4",
+              "wearPercent": 15.7
+            },
+            "driverId": "alexander_albon",
+            "previous": {
+              "fuelLoadKg": 92.43,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.3492063492063492,
+                "save": 0.6507936507936508,
+                "standard": 0
+              },
+              "timeSeconds": 191.51,
+              "tire": "M3",
+              "wearPercent": 10.8
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 101.394,
+            "current": {
+              "fuelLoadKg": 90.65,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.095,
+              "tire": "M4",
+              "wearPercent": 15.7
+            },
+            "driverId": "fernando_alonso",
+            "previous": {
+              "fuelLoadKg": 92.38,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 191.489,
+              "tire": "M3",
+              "wearPercent": 10.8
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 101.155,
+            "current": {
+              "fuelLoadKg": 90.64,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.341,
+              "tire": "M4",
+              "wearPercent": 16
+            },
+            "driverId": "gabriel_bortoleto",
+            "previous": {
+              "fuelLoadKg": 92.37,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 191.496,
+              "tire": "M3",
+              "wearPercent": 11.1
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 100.595,
+            "current": {
+              "fuelLoadKg": 90.67,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.628,
+              "tire": "M4",
+              "wearPercent": 15.9
+            },
+            "driverId": "nico_hulkenberg",
+            "previous": {
+              "fuelLoadKg": 92.38,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 191.222,
+              "tire": "M3",
+              "wearPercent": 11
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          },
+          {
+            "changeSeconds": 100.086,
+            "current": {
+              "fuelLoadKg": 90.76,
+              "lap": 5,
+              "modeShares": {
+                "defend": 0,
+                "push": 1,
+                "save": 0,
+                "standard": 0
+              },
+              "timeSeconds": 90.324,
+              "tire": "M4",
+              "wearPercent": 15.6
+            },
+            "driverId": "charles_leclerc",
+            "previous": {
+              "fuelLoadKg": 92.42,
+              "lap": 4,
+              "modeShares": {
+                "defend": 0,
+                "push": 0.359375,
+                "save": 0.640625,
+                "standard": 0
+              },
+              "timeSeconds": 190.41,
+              "tire": "M3",
+              "wearPercent": 10.8
+            },
+            "reason": "flag",
+            "seed": "long-run:albert-park-approx:16"
+          }
+        ],
+        "unexplainedSamples": [
+          {
+            "changeSeconds": 2.107,
+            "current": {
+              "fuelLoadKg": 7.6,
+              "lap": 53,
+              "modeShares": {
+                "defend": 0,
+                "push": 0,
+                "save": 0,
+                "standard": 1
+              },
+              "timeSeconds": 82.185,
+              "tire": "H11",
+              "wearPercent": 30.6
+            },
+            "driverId": "isack_hadjar",
+            "previous": {
+              "fuelLoadKg": 9.18,
+              "lap": 52,
+              "modeShares": {
+                "defend": 0,
+                "push": 0,
+                "save": 0,
+                "standard": 1
+              },
+              "timeSeconds": 84.293,
+              "tire": "H10",
+              "wearPercent": 28.2
+            },
+            "reason": "unexplained",
+            "seed": "long-run:albert-park-approx:18"
+          }
+        ],
+        "unexplainedTwoSecondCount": 1
+      },
+      "paceByPhase": {
+        "earlyMedianSeconds": 84.823,
+        "improvementSeconds": 2.327,
+        "lateMedianSeconds": 82.496,
+        "middleMedianSeconds": 84.032,
+        "windows": {
+          "early": [
+            5,
+            10
+          ],
+          "middle": [
+            20,
+            34
+          ],
+          "late": [
+            45,
+            58
+          ]
+        }
+      },
+      "qualifyingReference": {
+        "basis": "official",
+        "seconds": 78.518
+      },
+      "seedCount": 20,
+      "strictCleanLapCount": 6185,
+      "topToMidfieldCleanAirDeltaSeconds": 0.511,
+      "trackId": "albert-park-approx"
+    }
+  ]
+}

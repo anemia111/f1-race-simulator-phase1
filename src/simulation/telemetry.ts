@@ -286,9 +286,11 @@ export function calculateCarTelemetry(options: {
   const gripSpeedMultiplier = clamp(
     1 -
       Math.max(0, 1 - localGrip) *
-        (0.24 + dynamics.curvature * 0.76),
+        (0.24 + dynamics.curvature * 0.76) +
+      Math.max(0, localGrip - 1) *
+        (0.18 + dynamics.curvature * 0.65),
     0.54,
-    1.04,
+    1.025,
   )
   const longStraightOpportunity = Math.max(
     clamp((dynamics.straightLengthAheadMeters - 650) / 1_150, 0, 1),

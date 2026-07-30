@@ -48,6 +48,7 @@ export const DRIVER_SKILL_REFERENCE = 0.9175
 export const ACE_PACE_THRESHOLD = 0.9764
 export const ACE_PACE_GAIN = 2.8
 export const ACE_PACE_MAX_GAIN = 0.0157
+export const ACE_RACE_PACE_MAX_GAIN = 0.0035
 export const MACHINE_INTERNAL_PERFORMANCE_SCALE = 1.06
 
 export const machinePaceRating = effectiveMachineRating
@@ -86,6 +87,10 @@ export type LongitudinalStepInput = {
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
+const performanceLapGainCache = new WeakMap<
+  TrackDefinition,
+  WeakMap<Team, WeakMap<Driver, Map<string, number>>>
+>()
 
 export function trackLoadProfileFor(track: TrackDefinition): TrackLoadProfile {
   const cached = profileCache.get(track)
@@ -265,7 +270,9 @@ export function driverSegmentExecution(options: {
   // separates a standout leader without spreading the whole field, changing
   // junior-category racing, or reducing attrition.
   const aceBonus = Math.min(
-    ACE_PACE_MAX_GAIN,
+    session === 'qualifying'
+      ? ACE_PACE_MAX_GAIN
+      : ACE_RACE_PACE_MAX_GAIN,
     Math.max(0, sessionPace - ACE_PACE_THRESHOLD) * ACE_PACE_GAIN,
   )
 
@@ -616,6 +623,34 @@ export function performanceLapGainSeconds(options: {
   weather?: WeatherState
   session?: 'qualifying' | 'race'
 }) {
+  let byTeam = performanceLapGainCache.get(options.track)
+
+  if (!byTeam) {
+    byTeam = new WeakMap()
+    performanceLapGainCache.set(options.track, byTeam)
+  }
+
+  let byDriver = byTeam.get(options.team)
+
+  if (!byDriver) {
+    byDriver = new WeakMap()
+    byTeam.set(options.team, byDriver)
+  }
+
+  let byCondition = byDriver.get(options.driver)
+
+  if (!byCondition) {
+    byCondition = new Map()
+    byDriver.set(options.driver, byCondition)
+  }
+
+  const conditionKey = `${options.session ?? 'race'}:${options.weather ?? 'clear'}`
+  const cached = byCondition.get(conditionKey)
+
+  if (cached !== undefined) {
+    return cached
+  }
+
   const samples = Array.from({ length: 120 }, (_, index) =>
     trackDynamicsAt(options.track, index / 120),
   )
@@ -637,7 +672,9 @@ export function performanceLapGainSeconds(options: {
     return total + baselineSliceSeconds / (machine * driver)
   }, 0)
 
-  return options.track.baseLapTime - modeledSeconds
+  const result = options.track.baseLapTime - modeledSeconds
+  byCondition.set(conditionKey, result)
+  return result
 }
 
 export function baseFuelBurnKgPerLap(track: TrackDefinition) {

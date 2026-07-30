@@ -69,6 +69,7 @@ import {
 import { hashChance } from './random'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { automaticRacePaceModeFor } from './racePace'
+import { raceConditionTargetLapSeconds } from './racePaceModel'
 import { advanceRetiredCarMotion } from './retirementMotion'
 import { canRejoinTrack } from './trackRejoin'
 import {
@@ -196,6 +197,9 @@ const GRAND_PRIX_OVERALL_WINDOW_SECONDS = 3 * 60 * 60
 const SPRINT_OVERALL_WINDOW_SECONDS = 90 * 60
 const MINI_SECTORS_PER_SECTOR = 8
 const MINI_SECTOR_COUNT = MINI_SECTORS_PER_SECTOR * 3
+const FUEL_SAMPLE_RESERVE_KG = 0.8
+/** Initial settling margin for legacy additive-to-scale calibration migration. */
+const LEGACY_RACE_PACE_SCALE_SETTLING = 0.979
 /**
  * How close a lapping car must be before the blue flag is shown. Race Control
  * warns a driver who is about to be lapped, not one whose lap deficit merely
@@ -850,6 +854,142 @@ function practiceFuelLoadKgFor(
   )
 }
 
+type RaceReferenceModel = {
+  expectedGreenRaceDeltaSeconds: number
+  physicsPaceScale: number
+  qualifyingReferenceSeconds: number
+  referenceEvolutionGainSeconds: number
+  referenceLapTimeSeconds: number
+  referenceTireDeltaSeconds: number
+}
+
+const raceReferenceModelCache = new WeakMap<
+  RaceConfig['track'],
+  WeakMap<Driver, Map<number, RaceReferenceModel>>
+>()
+
+function fallbackGreenRaceDeltaSeconds(track: RaceConfig['track']) {
+  const layoutCost =
+    track.kind === 'street' ? 1.15 : track.kind === 'hybrid' ? 0.55 : 0.2
+
+  return Math.min(
+    8,
+    Math.max(2.2, track.baseLapTime * 0.041 + layoutCost),
+  )
+}
+
+function referenceTireCalibration(
+  track: RaceConfig['track'],
+  compound: TireCompound,
+) {
+  return {
+    degradationPerLapSeconds:
+      track.observedCalibration?.tireDegradationByCompound[compound],
+    paceOffsetSeconds:
+      track.observedCalibration?.tirePaceOffsetByCompound[compound],
+    sampleCount:
+      track.observedCalibration?.tireSampleCountByCompound[compound],
+  }
+}
+
+function raceReferenceModelFor(
+  driver: Driver,
+  config: RaceConfig,
+  raceLaps: number,
+): RaceReferenceModel {
+  let byDriver = raceReferenceModelCache.get(config.track)
+
+  if (!byDriver) {
+    byDriver = new WeakMap()
+    raceReferenceModelCache.set(config.track, byDriver)
+  }
+
+  let byDistance = byDriver.get(driver)
+
+  if (!byDistance) {
+    byDistance = new Map()
+    byDriver.set(driver, byDistance)
+  }
+
+  const cached = byDistance.get(raceLaps)
+
+  if (cached) {
+    return cached
+  }
+
+  const calibration = config.track.paceReference2026?.calibration
+  const qualifyingReferenceSeconds =
+    calibration?.qualifying.selectedReferenceSeconds ??
+    config.track.paceReference2026?.qualifyingSeconds ??
+    config.track.baseLapTime
+  const expectedGreenRaceDeltaSeconds =
+    calibration?.simulation.expectedGreenRaceDeltaSeconds ??
+    fallbackGreenRaceDeltaSeconds(config.track)
+  const referenceLapTimeSeconds =
+    qualifyingReferenceSeconds + expectedGreenRaceDeltaSeconds
+  const referenceFuelLoadKg =
+    initialFuelLoadKg({
+      raceLaps,
+      stage: 'race',
+      track: config.track,
+    }) * 0.52
+  const legacyReferenceFuelDeltaSeconds = fuelMassEffects({
+    fuelLoadKg: referenceFuelLoadKg,
+    track: config.track,
+  }).lapTimeDeltaSeconds
+  const referenceTireDeltaSeconds = tireDeltaSeconds(
+    'M',
+    8,
+    driverPerformanceAbility(driver, 'tireManagement'),
+    'clear',
+    1,
+    undefined,
+    18,
+    config.track.tireNomination,
+    referenceTireCalibration(config.track, 'M'),
+  )
+  const referenceEvolutionGainSeconds = trackEvolutionGainSecondsFor(
+    0.55,
+    config.track,
+  )
+  const explicitScale = calibration?.simulation.racePaceScale
+  const legacyReferenceControllerSeconds =
+    config.track.baseLapTime +
+    legacyReferenceFuelDeltaSeconds +
+    referenceTireDeltaSeconds -
+    referenceEvolutionGainSeconds +
+    (calibration?.simulation.raceModelCorrectionSeconds ?? 0)
+  // Old records stored an additive controller correction. Convert it to the
+  // equivalent dimensionless scale only as a compatibility fallback; new
+  // calibration writes racePaceScale explicitly and never adds the old seconds.
+  const compatibilityScale =
+    referenceLapTimeSeconds /
+    Math.max(40, legacyReferenceControllerSeconds) *
+    LEGACY_RACE_PACE_SCALE_SETTLING
+  const physicsPaceScale = Math.min(
+    1.22,
+    Math.max(
+      0.9,
+      explicitScale !== undefined &&
+        Number.isFinite(explicitScale) &&
+        explicitScale > 0
+        ? explicitScale
+        : compatibilityScale,
+    ),
+  )
+  const model = {
+    expectedGreenRaceDeltaSeconds,
+    physicsPaceScale,
+    qualifyingReferenceSeconds,
+    referenceEvolutionGainSeconds,
+    referenceLapTimeSeconds,
+    referenceTireDeltaSeconds,
+  }
+
+  byDistance.set(raceLaps, model)
+  return model
+}
+
 function projectedLapTime(
   driver: Driver,
   team: Team,
@@ -862,7 +1002,6 @@ function projectedLapTime(
   trackGripOverride?: number,
   rubberLevel = 0,
   trackCondition?: TireTrackCondition,
-  regulatoryMassIncreaseKg = 0,
 ) {
   const weather = weatherOverride ?? weatherFor(config.seed, config.track, elapsedSeconds)
   const performanceGain = performanceLapGainSeconds({
@@ -903,10 +1042,6 @@ function projectedLapTime(
     },
   )
   const evolution = trackEvolutionGainSecondsFor(rubberLevel, config.track)
-  const fuelEffect = fuelMassEffects({
-    fuelLoadKg: car.fuelLoadKg + regulatoryMassIncreaseKg,
-    track: config.track,
-  }).lapTimeDeltaSeconds
   // No wheel-to-wheel racing under a flag, so no dirty-air penalty either.
   const localDynamics = trackDynamicsAt(config.track, car.progress)
   const dirtyAir =
@@ -921,29 +1056,47 @@ function projectedLapTime(
     baselineSetupForTrack(config.track)
   const setupPenalty = setupPaceDeltaSeconds(config.track, configuredSetup)
   const componentPenalty = componentPacePenaltySeconds(car.components)
-  const calibratedRaceResidual =
-    (config.track.paceReference2026?.calibration.simulation
-      .raceModelCorrectionSeconds ?? 0) *
-    (weather === 'clear' ? 1 : 0.35)
+  const isRaceDistance = isRaceDistanceSession(config.weekendStage ?? 'race')
+  const raceReference = isRaceDistance
+      ? raceReferenceModelFor(
+        driver,
+        config,
+        Math.max(
+          1,
+          sessionDistanceLapsFor(
+            config.track,
+            config.weekendStage ?? 'race',
+            config.categoryRaceFormat,
+          ),
+        ),
+      )
+    : null
+  const conditionLapTime =
+    raceReference === null
+      ? config.track.baseLapTime + tireDelta - evolution
+      : raceConditionTargetLapSeconds({
+          currentEvolutionGainSeconds: evolution,
+          currentTireDeltaSeconds: tireDelta,
+          referenceEvolutionGainSeconds:
+            raceReference.referenceEvolutionGainSeconds,
+          referenceLapTimeSeconds: raceReference.referenceLapTimeSeconds,
+          referenceTireDeltaSeconds: raceReference.referenceTireDeltaSeconds,
+        })
   const modeDelta: Record<RacePaceMode, number> = {
-    defend: -0.16,
-    push: -0.42,
-    save: 0.34,
+    defend: -0.12,
+    push: -0.3,
+    save: 0.28,
     standard: 0,
   }
 
   return (
-    config.track.baseLapTime -
+    conditionLapTime -
     performanceGain +
-    tireDelta -
-    evolution +
-    fuelEffect +
     dirtyAir +
     damageCost +
     restartLoss +
     setupPenalty +
     componentPenalty +
-    calibratedRaceResidual +
     modeDelta[car.racePaceMode]
   )
 }
@@ -1957,6 +2110,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       incidentTrackStateSinceSeconds: null,
       speedKph: 0,
       racePaceMode: 'standard',
+      racePaceModeDecisionLap: -1,
+      racePaceModeChangedLap: -2,
       throttlePercent: 0,
       brakePercent: 0,
       rpm: 0,
@@ -4168,25 +4323,82 @@ export function advanceRace(
           ? ('save' as const)
           : ('standard' as const)
       : null
+    const automaticPaceDecisionLap = Math.max(
+      0,
+      Math.floor(car.totalDistance) - 1,
+    )
+    const remainingRaceDistanceLaps = Math.max(
+      0,
+      raceLaps - car.totalDistance,
+    )
+    const standardFuelToFinishKg =
+      remainingRaceDistanceLaps *
+      fuelBurnKgPerLap({
+        paceMode: 'standard',
+        phase: localControlPhase,
+        team,
+        track: config.track,
+        weather: localWeather,
+      }) *
+      driverFuelUseMultiplier(driver)
+    const fuelMarginKg =
+      car.fuelLoadKg - standardFuelToFinishKg - FUEL_SAMPLE_RESERVE_KG
+    const shouldEvaluateAutomaticPace =
+      !isRaceDistance ||
+      localControlPhase !== null ||
+      car.racePaceModeDecisionLap !== automaticPaceDecisionLap
+    const proposedAutomaticRacePaceMode = shouldEvaluateAutomaticPace
+      ? automaticRacePaceModeFor({
+          car,
+          fuelMarginKg,
+          gapBehindSeconds: frameCars[index + 1]?.gapToAhead ?? null,
+          isRaceDistance,
+          phaseActive: localControlPhase !== null,
+          pursuitSkill:
+            driverPerformanceAbility(driver, 'overtakingSkill') * 0.32 +
+            driverPerformanceAbility(driver, 'ersManagement') * 0.4 +
+            driverPerformanceAbility(driver, 'raceAwareness') * 0.28,
+          raceLaps,
+          seed: config.seed,
+        })
+      : car.racePaceMode
+    const urgentPaceConservation =
+      car.tireWearPercent >= 88 ||
+      car.tireOverheatingPercent >= 68 ||
+      car.damage >= 0.45
+    const automaticRacePaceMode =
+      localControlPhase === null &&
+      proposedAutomaticRacePaceMode !== car.racePaceMode &&
+      automaticPaceDecisionLap - car.racePaceModeChangedLap < 2 &&
+      !urgentPaceConservation
+        ? car.racePaceMode
+        : proposedAutomaticRacePaceMode
     const racePaceMode =
-      requestedPaceMode ??
-      timedPaceMode ??
-      automaticRacePaceModeFor({
-        car,
-        gapBehindSeconds: frameCars[index + 1]?.gapToAhead ?? null,
-        isRaceDistance,
-        phaseActive: localControlPhase !== null,
-        pursuitSkill:
-          driverPerformanceAbility(driver, 'overtakingSkill') * 0.32 +
-          driverPerformanceAbility(driver, 'ersManagement') * 0.4 +
-          driverPerformanceAbility(driver, 'raceAwareness') * 0.28,
-        raceLaps,
-        seed: config.seed,
-      })
+      requestedPaceMode ?? timedPaceMode ?? automaticRacePaceMode
+    const racePaceModeDecisionLap =
+      requestedPaceMode !== undefined || timedPaceMode !== null
+        ? car.racePaceModeDecisionLap
+        : shouldEvaluateAutomaticPace && localControlPhase === null
+          ? automaticPaceDecisionLap
+          : car.racePaceModeDecisionLap
+    const racePaceModeChangedLap =
+      requestedPaceMode === undefined &&
+      timedPaceMode === null &&
+      localControlPhase === null &&
+      racePaceMode !== car.racePaceMode
+        ? automaticPaceDecisionLap
+        : car.racePaceModeChangedLap
     const paceManagedCar =
-      racePaceMode === car.racePaceMode
+      racePaceMode === car.racePaceMode &&
+      racePaceModeDecisionLap === car.racePaceModeDecisionLap &&
+      racePaceModeChangedLap === car.racePaceModeChangedLap
         ? car
-        : { ...car, racePaceMode }
+        : {
+            ...car,
+            racePaceMode,
+            racePaceModeDecisionLap,
+            racePaceModeChangedLap,
+          }
     const safetyCarProcedure =
       phase?.flag === 'sc' &&
       phase.neutralisation?.kind === 'safety-car'
@@ -4233,7 +4445,6 @@ export function advanceRace(
       localTrackGrip,
       trackRubber.rubberLevelBySector[carSector],
       localTireTrackCondition,
-      heatHazardMassIncreaseKg,
     )
     const performanceGain = performanceLapGainSeconds({
       driver,
@@ -4309,6 +4520,13 @@ export function advanceRace(
         ? (config.track.paceReference2026?.calibration.simulation
             .liveTimingPaceScale ?? 1)
         : 1
+    const racePhysicsPaceScale = isRaceDistance
+      ? raceReferenceModelFor(driver, config, raceLaps).physicsPaceScale
+      : 1
+    const weatherAdjustedRacePhysicsScale =
+      1 +
+      (racePhysicsPaceScale - 1) *
+        (localWeather === 'clear' ? 1 : 0.6)
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
       categoryPhysics,
@@ -4318,7 +4536,8 @@ export function advanceRace(
       paceScale:
         (config.track.baseLapTime / conditionEffectiveLapTime) *
         battlePaceScale *
-        liveTimingPaceScale,
+        liveTimingPaceScale *
+        weatherAdjustedRacePhysicsScale,
       phase: localControlPhase,
       localFlagPaceScale,
       lowGripConditions,
@@ -4761,7 +4980,7 @@ export function advanceRace(
       : null
     const distanceDelta = Math.max(0, totalDistance - car.totalDistance)
     const fuelLoadKg = Math.max(
-      0.35,
+      FUEL_SAMPLE_RESERVE_KG,
       car.fuelLoadKg -
         distanceDelta *
           fuelBurnKgPerLap({
@@ -4888,6 +5107,8 @@ export function advanceRace(
       overtakeEligibility,
       timedRunPhase: timedRun.phase,
       racePaceMode,
+      racePaceModeDecisionLap,
+      racePaceModeChangedLap,
       fuelLoadKg,
       tireTemperatureC: tireState.surfaceTemperatureC,
       tireCarcassTemperatureC: tireState.carcassTemperatureC,

@@ -444,6 +444,17 @@ export type EventPaceCalibration = {
      */
     liveTimingPaceScale?: number
     expectedGreenRaceDeltaSeconds: number
+    /**
+     * Offline scale for the physically integrated race controller. The runtime
+     * first builds a target from qualifying pace plus the observed green-race
+     * delta, then applies this dimensionless scale to account for each track
+     * profile's longitudinal integration response.
+     */
+    racePaceScale?: number
+    /**
+     * Legacy additive calibration retained for old data migrations only.
+     * Runtime race pace must not add this value directly.
+     */
     raceModelCorrectionSeconds: number
     residualSigmaSeconds: number
     calibrationSeedCount: number
@@ -963,6 +974,10 @@ export type CarSnapshot = {
   speedKph: number
   /** Team/driver instruction that changes pace, energy use, and wear. */
   racePaceMode: RacePaceMode
+  /** Completed-lap index on which the automatic pace mode was last evaluated. */
+  racePaceModeDecisionLap: number
+  /** Completed-lap index on which the automatic mode last actually changed. */
+  racePaceModeChangedLap: number
   throttlePercent: number
   brakePercent: number
   rpm: number

@@ -11,6 +11,8 @@
     "update:pace-calibration": "node scripts/update-pace-calibration.mjs",
     "calibrate:pace": "node scripts/calibrate-race-pace.mjs",
     "validate:pace-calibration": "node scripts/validate-pace-calibration.mjs",
+    "validate:long-run": "node scripts/validate-long-run-pace.mjs --enforce",
+    "validate:long-run:quick": "node scripts/validate-long-run-pace.mjs --track=albert-park-approx --seeds=3 --workers=1 --label=quick",
     "lint": "oxlint",
     "test": "vitest run --no-file-parallelism",
     "validate:montecarlo": "vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts",

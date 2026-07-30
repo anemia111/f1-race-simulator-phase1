@@ -32,6 +32,7 @@ import {
   createTrackWaterState,
   gripForSurfaceWater,
 } from './trackWater'
+import { gripWithTrackRubber } from './trackEvolution'
 
 describe('track-dependent systems', () => {
   it('scopes a local yellow to the marshalling sector around the incident', () => {
@@ -381,6 +382,16 @@ describe('track-dependent systems', () => {
     ).toBeGreaterThan(
       gripForSurfaceWater(1, wet.surfaceWaterMmBySector[0], 0),
     )
+  })
+
+  it('preserves rubbered-in dry grip through the water model', () => {
+    const rubberedDryGrip = gripWithTrackRubber(1, 1, 0)
+
+    expect(rubberedDryGrip).toBeGreaterThan(1)
+    expect(gripForSurfaceWater(rubberedDryGrip, 0, 1)).toBe(
+      rubberedDryGrip,
+    )
+    expect(gripForSurfaceWater(rubberedDryGrip, 1.5, 0)).toBeLessThan(1)
   })
 
   it('requires remaining per-lap electrical energy for Overtake', () => {

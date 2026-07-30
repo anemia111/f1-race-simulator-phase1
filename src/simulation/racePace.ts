@@ -20,6 +20,7 @@ type PursuitCar = Pick<
 
 export function automaticRacePaceModeFor(options: {
   car: PursuitCar
+  fuelMarginKg?: number
   gapBehindSeconds: number | null
   isRaceDistance: boolean
   phaseActive: boolean
@@ -29,6 +30,7 @@ export function automaticRacePaceModeFor(options: {
 }): RacePaceMode {
   const {
     car,
+    fuelMarginKg = Number.POSITIVE_INFINITY,
     gapBehindSeconds,
     isRaceDistance,
     phaseActive,
@@ -52,12 +54,18 @@ export function automaticRacePaceModeFor(options: {
     car.tireWearPercent >= 88 || car.tireOverheatingPercent >= 68
   const carAtRisk = car.damage >= 0.45
   const lowEnergy = car.ersBatteryPercent < 24
+  const fuelAtRisk = fuelMarginKg < 1.25
+  const fuelHealthyForPush = fuelMarginKg >= 1.8
   const healthyForPush =
     car.tireWearPercent < 82 &&
     car.tireOverheatingPercent < 55 &&
     car.damage < 0.28
 
   if (tireAtRisk || carAtRisk) {
+    return 'save'
+  }
+
+  if (fuelAtRisk) {
     return 'save'
   }
 
@@ -69,6 +77,7 @@ export function automaticRacePaceModeFor(options: {
     car.gapToAhead > 0 &&
     car.gapToAhead <= 6 &&
     car.ersBatteryPercent >= 18 &&
+    fuelHealthyForPush &&
     healthyForPush
   ) {
     return 'push'
@@ -98,14 +107,24 @@ export function automaticRacePaceModeFor(options: {
   }
 
   // Once the car is near Overtake range, prioritize closing the final gap.
-  if (gap <= 2.4 && car.ersBatteryPercent >= 30 && healthyForPush) {
+  if (
+    gap <= 2.4 &&
+    car.ersBatteryPercent >= 30 &&
+    fuelHealthyForPush &&
+    healthyForPush
+  ) {
     return 'push'
   }
 
-  // Farther back, alternate push and recovery windows instead of draining the
-  // Energy Store every lap. Better managers commit more often and for longer.
-  if (gap <= 5.5 && car.ersBatteryPercent >= 36 && healthyForPush) {
-    const decisionWindow = Math.floor(car.totalDistance * 3)
+  // Farther back, choose one push or recovery plan for the lap instead of
+  // draining the Energy Store with several sub-lap mode reversals.
+  if (
+    gap <= 5.5 &&
+    car.ersBatteryPercent >= 36 &&
+    fuelHealthyForPush &&
+    healthyForPush
+  ) {
+    const decisionWindow = Math.floor(car.totalDistance)
     const gapUrgency = clamp((5.5 - gap) / 3.1, 0, 1)
     const commitment = clamp(
       0.48 +

@@ -33,9 +33,9 @@ const LIVE_QUALIFYING_ITERATIONS = argumentValue(
   'live-qualifying-iterations',
   3,
 )
-const RACE_CALIBRATION_SEEDS = argumentValue('race-calibration-seeds', 8)
+const RACE_CALIBRATION_SEEDS = argumentValue('race-calibration-seeds', 3)
 const RACE_VALIDATION_SEEDS = argumentValue('race-validation-seeds', 100)
-const RACE_SEARCH_ITERATIONS = argumentValue('race-search-iterations', 8)
+const RACE_SEARCH_ITERATIONS = argumentValue('race-search-iterations', 3)
 const MAX_QUALIFYING_ITERATIONS = argumentValue(
   'qualifying-iterations',
   2,
@@ -47,8 +47,10 @@ const VALIDATE_LIVE_QUALIFYING_ONLY = process.argv.includes(
   '--validate-live-qualifying-only',
 )
 const RACE_ONLY = process.argv.includes('--race-only')
+const SKIP_FINAL_VALIDATION = process.argv.includes('--skip-final-validation')
 const VALIDATE_ONLY = process.argv.includes('--validate-only')
 const TRACK_FILTER = stringArgumentValue('track')
+const SERIES_FILTER = stringArgumentValue('series')
 
 const round = (value, digits = 3) =>
   value === null || !Number.isFinite(value)
@@ -262,45 +264,19 @@ function liveQualifyingDistribution(runtime, series, track, seedCount) {
   return median(top3Medians)
 }
 
-function representativeDriver(runtime, series, track) {
-  const result = runtime.runKnockoutQualifying(
-    configFor(
-      series,
-      track,
-      `pace-race-representative:${series.id}:${track.id}`,
-    ),
-  )
-  const fifth = result.classification[Math.min(4, result.classification.length - 1)]
-  const driver = series.drivers.find(
-    (candidate) => candidate.id === fifth.driverId,
-  )
-  const team = series.teams.find(
-    (candidate) => candidate.id === driver?.teamId,
-  )
-
-  return driver && team ? { driver, team } : null
-}
-
 function raceGreenDistribution(runtime, series, track, seedCount) {
   const dryTrack =
     track.rainProbability === 0
       ? track
       : { ...track, rainProbability: 0 }
-  const representative = representativeDriver(runtime, series, dryTrack)
-
-  if (!representative) {
-    return null
-  }
-
-  const lapTimes = []
+  const fastestBySeed = []
+  const representativeBySeed = []
 
   for (let index = 0; index < seedCount; index += 1) {
     const config = configFor(
       series,
       dryTrack,
       `race-pace-calibration:${series.id}:${track.id}:${index}`,
-      [representative.driver],
-      [representative.team],
     )
     let snapshot = runtime.createInitialRace(config)
     const formationSeconds =
@@ -309,45 +285,79 @@ function raceGreenDistribution(runtime, series, track, seedCount) {
     snapshot = runtime.advanceRace(snapshot, formationSeconds, config)
     snapshot = runtime.advanceRace(snapshot, 8, config)
     snapshot = runtime.advanceRace(snapshot, 5, config)
-    snapshot = {
-      ...snapshot,
-      cars: snapshot.cars.map((car) => ({
-        ...car,
-        fuelLoadKg: car.fuelLoadKg * 0.52,
-        tireAgeLaps: Math.max(car.tireAgeLaps, 8),
-        tireWearPercent: Math.max(car.tireWearPercent, 18),
-      })),
-    }
+    const maximumSteps = Math.ceil(
+      (dryTrack.baseLapTime * snapshot.raceLaps * 2.2 + 1_800) / 3,
+    )
 
     for (
       let step = 0;
-      step < 3_000 &&
-      snapshot.cars[0]?.status === 'running' &&
-      snapshot.cars[0].lapHistory.length < 3;
+      step < maximumSteps && snapshot.sessionStatus !== 'finished';
       step += 1
     ) {
-      snapshot = runtime.advanceRace(snapshot, 0.25, config)
+      snapshot = runtime.advanceRace(snapshot, 3, config)
     }
 
-    const stable = snapshot.cars[0]?.lapHistory
-      .slice(1)
-      .map((lap) => lap.lapTimeSeconds)
+    const cleanRaceLaps = snapshot.cars
+      .flatMap((car) => car.lapHistory)
       .filter(
-        (lapTime) =>
-          Number.isFinite(lapTime) &&
-          lapTime > dryTrack.baseLapTime * 0.82 &&
-          lapTime < dryTrack.baseLapTime * 1.25,
+        (lap) =>
+          lap.isValid &&
+          !lap.pitStop &&
+          lap.lap > 1 &&
+          lap.tireAgeLaps >= 2 &&
+          lap.weather === 'clear' &&
+          Number.isFinite(lap.lapTimeSeconds) &&
+          lap.lapTimeSeconds > dryTrack.baseLapTime * 0.82 &&
+          lap.lapTimeSeconds < dryTrack.baseLapTime * 1.35,
       )
 
-    if (stable?.length) {
-      lapTimes.push(...stable)
+    if (cleanRaceLaps.length > 0) {
+      fastestBySeed.push(
+        Math.min(...cleanRaceLaps.map((lap) => lap.lapTimeSeconds)),
+      )
+      const middleWindow = cleanRaceLaps
+        .filter(
+          (lap) =>
+            lap.position <= 5 &&
+            lap.lap >= Math.floor(snapshot.raceLaps * 0.35) &&
+            lap.lap <= Math.floor(snapshot.raceLaps * 0.6),
+        )
+        .map((lap) => lap.lapTimeSeconds)
+      const representative = median(middleWindow)
+      if (representative !== null) {
+        representativeBySeed.push(representative)
+      }
     }
   }
 
-  return median(lapTimes)
+  return {
+    fastestMedianSeconds: median(fastestBySeed),
+    representativeMedianSeconds: median(representativeBySeed),
+  }
 }
 
-function trackWithRaceCorrection(track, correction) {
+function targetRaceFastestSeconds(record) {
+  const qualifyingReference =
+    record.qualifying.poleSeconds ??
+    record.qualifying.selectedReferenceSeconds
+  const expectedGreenDelta =
+    record.simulation.expectedGreenRaceDeltaSeconds ??
+    Math.max(
+      2.2,
+      (record.race.cleanLapReferenceSeconds ?? qualifyingReference + 4) -
+        qualifyingReference,
+    )
+
+  // The fastest race lap is normally set with low fuel and a prepared tire,
+  // so it should beat the representative green-race lap while retaining a
+  // robust gap to qualifying trim.
+  return (
+    qualifyingReference +
+    Math.min(5.8, Math.max(2.2, expectedGreenDelta * 0.78))
+  )
+}
+
+function trackWithRacePaceScale(track, racePaceScale) {
   return {
     ...track,
     paceReference2026: track.paceReference2026
@@ -357,7 +367,7 @@ function trackWithRaceCorrection(track, correction) {
             ...track.paceReference2026.calibration,
             simulation: {
               ...track.paceReference2026.calibration.simulation,
-              raceModelCorrectionSeconds: correction,
+              racePaceScale,
             },
           },
         }
@@ -391,6 +401,10 @@ function isSelectedTrack(track) {
   return TRACK_FILTER === undefined || track.id === TRACK_FILTER
 }
 
+function isSelectedSeries(seriesId) {
+  return SERIES_FILTER === undefined || seriesId === SERIES_FILTER
+}
+
 async function calibrateQualifying() {
   for (
     let iteration = 0;
@@ -402,6 +416,9 @@ async function calibrateQualifying() {
     let maximumError = 0
 
     for (const seriesId of Object.keys(FILES)) {
+      if (!isSelectedSeries(seriesId)) {
+        continue
+      }
       const series = runtime.seriesPackageById.get(seriesId)
 
       if (!series) {
@@ -409,6 +426,9 @@ async function calibrateQualifying() {
       }
 
       for (const track of series.tracks) {
+        if (!isSelectedTrack(track)) {
+          continue
+        }
         const record = recordForTrack(records, seriesId, track.id)
 
         if (!record) {
@@ -570,6 +590,9 @@ async function calibrateRaceResidual() {
   const runtime = await loadRuntime()
 
   for (const seriesId of Object.keys(FILES)) {
+    if (!isSelectedSeries(seriesId)) {
+      continue
+    }
     const series = runtime.seriesPackageById.get(seriesId)
 
     if (!series) {
@@ -577,53 +600,68 @@ async function calibrateRaceResidual() {
     }
 
     for (const track of series.tracks) {
+      if (!isSelectedTrack(track)) {
+        continue
+      }
       const record = recordForTrack(records, seriesId, track.id)
 
-      if (
-        !record ||
-        record.race.status !== 'observed' ||
-        record.race.cleanLapReferenceSeconds === null
-      ) {
+      if (!record) {
         continue
       }
 
-      let fasterBound = -30
-      let slowerBound = 10
-      let correction = 0
-      let observed = null
+      const target = targetRaceFastestSeconds(record)
+      let racePaceScale =
+        record.simulation.racePaceScale ??
+        1.04
+      let best = {
+        absoluteError: Number.POSITIVE_INFINITY,
+        observed: null,
+        scale: racePaceScale,
+      }
 
       for (
         let iteration = 0;
         iteration < RACE_SEARCH_ITERATIONS;
         iteration += 1
       ) {
-        correction = (fasterBound + slowerBound) / 2
-        observed = raceGreenDistribution(
+        const distribution = raceGreenDistribution(
           runtime,
           series,
-          trackWithRaceCorrection(track, correction),
+          trackWithRacePaceScale(track, racePaceScale),
           RACE_CALIBRATION_SEEDS,
         )
+        const observed = distribution.fastestMedianSeconds
 
         if (observed === null) {
           break
         }
 
-        if (observed > record.race.cleanLapReferenceSeconds) {
-          slowerBound = correction
-        } else {
-          fasterBound = correction
+        const absoluteError = Math.abs(observed - target)
+        if (absoluteError < best.absoluteError) {
+          best = {
+            absoluteError,
+            observed,
+            scale: racePaceScale,
+          }
         }
+        if (absoluteError < 0.05) {
+          break
+        }
+
+        racePaceScale = Math.min(
+          1.2,
+          Math.max(0.88, racePaceScale * (observed / target)),
+        )
       }
 
-      if (observed === null) {
+      if (best.observed === null) {
         continue
       }
 
-      correction = (fasterBound + slowerBound) / 2
-      record.simulation.raceModelCorrectionSeconds = round(correction)
+      record.simulation.racePaceScale = round(best.scale, 6)
+      record.simulation.raceModelCorrectionSeconds = 0
       process.stdout.write(
-        `${record.eventName}: race model correction ${correction >= 0 ? '+' : ''}${correction.toFixed(3)}s (search median ${observed.toFixed(3)}s)\n`,
+        `${record.eventName}: race pace scale ${best.scale.toFixed(6)} (${best.observed.toFixed(3)}s vs fastest target ${target.toFixed(3)}s, error ${best.absoluteError.toFixed(3)}s)\n`,
       )
     }
   }
@@ -639,6 +677,9 @@ async function validateFinalCalibration() {
   const report = []
 
   for (const seriesId of Object.keys(FILES)) {
+    if (!isSelectedSeries(seriesId)) {
+      continue
+    }
     const series = runtime.seriesPackageById.get(seriesId)
 
     if (!series) {
@@ -646,6 +687,9 @@ async function validateFinalCalibration() {
     }
 
     for (const track of series.tracks) {
+      if (!isSelectedTrack(track)) {
+        continue
+      }
       const record = recordForTrack(records, seriesId, track.id)
 
       if (!record) {
@@ -661,7 +705,7 @@ async function validateFinalCalibration() {
       const shouldValidateRace =
         record.race.status === 'observed' &&
         record.race.cleanLapReferenceSeconds !== null
-      const raceGreen = shouldValidateRace
+      const raceDistribution = shouldValidateRace
         ? raceGreenDistribution(
             runtime,
             series,
@@ -669,6 +713,7 @@ async function validateFinalCalibration() {
             RACE_VALIDATION_SEEDS,
           )
         : null
+      const raceGreen = raceDistribution?.representativeMedianSeconds ?? null
       const qualifyingError =
         (qualifying.top3MedianSeconds ?? 0) -
         record.qualifying.selectedReferenceSeconds
@@ -717,7 +762,9 @@ if (VALIDATE_ONLY) {
   await validateLiveTimingCalibration()
 } else if (RACE_ONLY) {
   await calibrateRaceResidual()
-  await validateFinalCalibration()
+  if (!SKIP_FINAL_VALIDATION) {
+    await validateFinalCalibration()
+  }
 } else {
   await calibrateQualifying()
   await calibrateLiveTiming()

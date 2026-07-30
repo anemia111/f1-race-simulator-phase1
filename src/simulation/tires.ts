@@ -316,17 +316,36 @@ export function tireDeltaSeconds(
           : 0
   const grainingPenalty = (dynamicState?.grainingPercent ?? 0) * 0.025
   const overheatingPenalty = (dynamicState?.overheatingPercent ?? 0) * 0.032
+  const modeledWearPenalty = wearPerLapSeconds * ageLaps * wearFactor
+  // Age, measured wear, surface temperature and carcass temperature describe
+  // overlapping tire states. Taking the dominant loss from each family avoids
+  // charging the same thermal or wear degradation two and three times.
+  const wearPenalty = Math.min(
+    2.6,
+    Math.max(modeledWearPenalty, surfaceWearPenalty),
+  )
+  const cliffPenalty = Math.min(
+    9,
+    spec.cliffPerLapSeconds * beyondCliff,
+  )
+  const thermalCorePenalty = Math.max(thermalPenalty, carcassPenalty)
+  const transientStatePenalty =
+    Math.max(grainingPenalty, overheatingPenalty) * 0.72
+  const severeState =
+    beyondCliff > 0 ||
+    effectiveWearPercent >= 85 ||
+    (dynamicState?.overheatingPercent ?? 0) >= 72
+  const thermalStatePenalty = Math.min(
+    severeState ? 4.8 : 1.55,
+    thermalCorePenalty + transientStatePenalty,
+  )
 
   return (
     freshPaceOffset +
-    wearPerLapSeconds * ageLaps * wearFactor +
-    spec.cliffPerLapSeconds * beyondCliff +
+    wearPenalty +
+    cliffPenalty +
     weatherPenalty +
-    thermalPenalty +
-    surfaceWearPenalty +
-    carcassPenalty +
-    grainingPenalty +
-    overheatingPenalty
+    thermalStatePenalty
   )
 }
 
