@@ -441,6 +441,41 @@ export type EventPaceCalibration = {
     status: CalibrationStatus
     confidence: number
   }
+  /**
+   * Observed straight-line speed reference for the circuit.
+   *
+   * Two different observables are kept apart on purpose. The FIA speed trap is a
+   * fixed point on one straight, so it measures the car only where the trap
+   * happens to be: at Suzuka the 2026 trap read 308 km/h while the same cars
+   * peaked at 349 km/h elsewhere on the lap. `*FieldPeakKph` is therefore the
+   * maximum of the whole classified field's car telemetry over the session and
+   * is the value a lap-wide simulated peak may be compared against; the trap
+   * values are retained as published context, not as a peak.
+   *
+   * Qualifying and race peaks stay separate because they are not the same
+   * physical state: qualifying runs low fuel and an attack setup in clear air,
+   * while a race peak includes fuel, tow, and Overtake trains.
+   */
+  speed?: {
+    /** Maximum car-telemetry speed across the classified qualifying field. */
+    qualifyingFieldPeakKph: number | null
+    /** Median of each qualifying car's own peak, less sensitive to one sample. */
+    qualifyingDriverPeakMedianKph: number | null
+    /** Maximum car-telemetry speed across the classified race field. */
+    raceFieldPeakKph: number | null
+    /** Median of each race car's own peak. */
+    raceDriverPeakMedianKph: number | null
+    /** Highest published FIA speed-trap value of the race, for context only. */
+    raceTrapMaxKph: number | null
+    /** Median published FIA speed-trap value of the race. */
+    raceTrapMedianKph: number | null
+    /** Highest published FIA speed-trap value of qualifying. */
+    qualifyingTrapMaxKph: number | null
+    telemetrySampleCount: number
+    trapSampleCount: number
+    status: CalibrationStatus
+    confidence: number
+  }
   simulation: {
     neutralBaseLapSeconds: number
     qualifyingOffsetSeconds: number

@@ -1,8 +1,12 @@
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { availableParallelism, tmpdir } from 'node:os'
 import { resolve } from 'node:path'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 
 const ROOT = resolve(import.meta.dirname, '..')
+const SCRIPT_PATH = fileURLToPath(import.meta.url)
 const CALIBRATION_DIRECTORY = resolve(ROOT, 'src', 'data', 'calibration')
 const FILES = {
   'f1-custom': resolve(
@@ -27,15 +31,58 @@ const stringArgumentValue = (name) => {
     ?.slice(prefix.length)
     .trim()
 }
+const floatArgumentValue = (name) => {
+  const raw = stringArgumentValue(name)
+
+  if (raw === undefined || raw === '') {
+    return null
+  }
+
+  const parsed = Number.parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+/**
+ * Worker fan-out for the race seed loop.
+ *
+ * A race seed costs a full race distance, and a complete calibration runs over
+ * a thousand of them, so this is the whole cost of the script. One worker is
+ * held back for the parent process and the operating system.
+ */
+const WORKERS = argumentValue(
+  'workers',
+  Math.max(1, Math.min(12, availableParallelism() - 1)),
+)
+const PARALLEL_RACE_SEED_THRESHOLD = argumentValue(
+  'parallel-race-seed-threshold',
+  8,
+)
+const WORKER_SERIES = stringArgumentValue('worker-series')
+const WORKER_TRACK = stringArgumentValue('worker-track')
+const WORKER_SEED_FROM = Number.parseInt(
+  stringArgumentValue('worker-seed-from') ?? '0',
+  10,
+)
+const WORKER_SEED_COUNT = argumentValue('worker-seed-count', 0)
+const WORKER_RACE_PACE_SCALE = floatArgumentValue('worker-race-pace-scale')
+const WORKER_SEARCH_SERIES = stringArgumentValue('worker-search-series')
+const WORKER_SEARCH_TRACKS = stringArgumentValue('worker-search-tracks')
+const RESULT_FILE = stringArgumentValue('result-file')
+const IS_WORKER = WORKER_TRACK !== undefined && RESULT_FILE !== undefined
+const IS_SEARCH_WORKER =
+  WORKER_SEARCH_SERIES !== undefined && RESULT_FILE !== undefined
 const QUALIFYING_SEEDS = argumentValue('qualifying-seeds', 100)
 const LIVE_QUALIFYING_SEEDS = argumentValue('live-qualifying-seeds', 3)
 const LIVE_QUALIFYING_ITERATIONS = argumentValue(
   'live-qualifying-iterations',
   3,
 )
-const RACE_CALIBRATION_SEEDS = argumentValue('race-calibration-seeds', 3)
+// The search now solves against the representative green lap, a median over
+// mid-race laps rather than one fastest lap, so it needs more seeds per step to
+// see through seed noise and more steps to settle. Track-level parallelism pays
+// for both.
+const RACE_CALIBRATION_SEEDS = argumentValue('race-calibration-seeds', 6)
 const RACE_VALIDATION_SEEDS = argumentValue('race-validation-seeds', 100)
-const RACE_SEARCH_ITERATIONS = argumentValue('race-search-iterations', 3)
+const RACE_SEARCH_ITERATIONS = argumentValue('race-search-iterations', 4)
 const MAX_QUALIFYING_ITERATIONS = argumentValue(
   'qualifying-iterations',
   2,
@@ -264,15 +311,26 @@ function liveQualifyingDistribution(runtime, series, track, seedCount) {
   return median(top3Medians)
 }
 
-function raceGreenDistribution(runtime, series, track, seedCount) {
+/**
+ * Runs a contiguous range of race seeds and returns one sample per seed.
+ *
+ * The seed string is built from the series, track, and absolute seed index, so
+ * a seed produces the same race wherever it runs. That is what makes the shard
+ * split below safe: splitting 100 seeds across workers gives the same set of
+ * samples as running them in one process, only sooner.
+ */
+function raceGreenSeedSamples(runtime, series, track, seedFrom, seedCount) {
   const dryTrack =
     track.rainProbability === 0
       ? track
       : { ...track, rainProbability: 0 }
-  const fastestBySeed = []
-  const representativeBySeed = []
+  const samples = []
 
-  for (let index = 0; index < seedCount; index += 1) {
+  for (
+    let index = seedFrom;
+    index < seedFrom + seedCount;
+    index += 1
+  ) {
     const config = configFor(
       series,
       dryTrack,
@@ -312,9 +370,6 @@ function raceGreenDistribution(runtime, series, track, seedCount) {
       )
 
     if (cleanRaceLaps.length > 0) {
-      fastestBySeed.push(
-        Math.min(...cleanRaceLaps.map((lap) => lap.lapTimeSeconds)),
-      )
       const middleWindow = cleanRaceLaps
         .filter(
           (lap) =>
@@ -323,16 +378,164 @@ function raceGreenDistribution(runtime, series, track, seedCount) {
             lap.lap <= Math.floor(snapshot.raceLaps * 0.6),
         )
         .map((lap) => lap.lapTimeSeconds)
-      const representative = median(middleWindow)
-      if (representative !== null) {
-        representativeBySeed.push(representative)
-      }
+
+      samples.push({
+        fastestSeconds: Math.min(
+          ...cleanRaceLaps.map((lap) => lap.lapTimeSeconds),
+        ),
+        representativeSeconds: median(middleWindow),
+      })
     }
   }
 
+  return samples
+}
+
+function distributionFromSamples(samples) {
   return {
-    fastestMedianSeconds: median(fastestBySeed),
-    representativeMedianSeconds: median(representativeBySeed),
+    fastestMedianSeconds: median(
+      samples.map((sample) => sample.fastestSeconds),
+    ),
+    representativeMedianSeconds: median(
+      samples
+        .map((sample) => sample.representativeSeconds)
+        .filter((value) => value !== null),
+    ),
+  }
+}
+
+function spawnRaceWorker(options) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(
+      process.execPath,
+      [
+        SCRIPT_PATH,
+        `--worker-series=${options.seriesId}`,
+        `--worker-track=${options.trackId}`,
+        `--worker-seed-from=${options.seedFrom}`,
+        `--worker-seed-count=${options.seedCount}`,
+        `--worker-race-pace-scale=${options.racePaceScale ?? ''}`,
+        `--result-file=${options.resultFile}`,
+      ],
+      { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] },
+    )
+
+    child.on('error', reject)
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolvePromise()
+        return
+      }
+
+      reject(
+        new Error(
+          `${options.trackId} race worker exited with code ${code}`,
+        ),
+      )
+    })
+  })
+}
+
+/**
+ * A full race distance costs seconds of wall clock, and the calibration needs
+ * over a thousand of them, so the seed loop is split across processes. Below the
+ * threshold the shard overhead - a Vite SSR start per worker - costs more than
+ * it saves, so short runs stay in process.
+ */
+async function raceGreenDistribution(
+  runtime,
+  series,
+  track,
+  seedCount,
+  racePaceScale,
+) {
+  if (WORKERS <= 1 || seedCount < PARALLEL_RACE_SEED_THRESHOLD || IS_WORKER) {
+    return distributionFromSamples(
+      raceGreenSeedSamples(runtime, series, track, 0, seedCount),
+    )
+  }
+
+  const shardCount = Math.max(1, Math.min(WORKERS, seedCount))
+  const perShard = Math.ceil(seedCount / shardCount)
+  const temporaryDirectory = await mkdtemp(
+    resolve(tmpdir(), 'f1-race-pace-calibration-'),
+  )
+  const shards = []
+
+  for (let index = 0; index < shardCount; index += 1) {
+    const seedFrom = index * perShard
+    const shardSeeds = Math.min(perShard, seedCount - seedFrom)
+
+    if (shardSeeds <= 0) {
+      break
+    }
+
+    shards.push({
+      resultFile: resolve(temporaryDirectory, `shard-${index}.json`),
+      seedCount: shardSeeds,
+      seedFrom,
+    })
+  }
+
+  try {
+    await Promise.all(
+      shards.map((shard) =>
+        spawnRaceWorker({
+          racePaceScale,
+          resultFile: shard.resultFile,
+          seedCount: shard.seedCount,
+          seedFrom: shard.seedFrom,
+          seriesId: series.id,
+          trackId: track.id,
+        }),
+      ),
+    )
+
+    const samples = []
+
+    for (const shard of shards) {
+      samples.push(
+        ...JSON.parse(await readFile(shard.resultFile, 'utf8')),
+      )
+    }
+
+    return distributionFromSamples(samples)
+  } finally {
+    await rm(temporaryDirectory, { force: true, recursive: true })
+  }
+}
+
+async function runRaceWorkerShard() {
+  const runtime = await loadRuntime()
+
+  try {
+    const series = runtime.seriesPackageById.get(WORKER_SERIES)
+
+    if (!series) {
+      throw new Error(`Unknown series ${WORKER_SERIES}`)
+    }
+
+    const track = series.tracks.find(
+      (candidate) => candidate.id === WORKER_TRACK,
+    )
+
+    if (!track) {
+      throw new Error(`Unknown track ${WORKER_TRACK}`)
+    }
+
+    const samples = raceGreenSeedSamples(
+      runtime,
+      series,
+      WORKER_RACE_PACE_SCALE === null
+        ? track
+        : trackWithRacePaceScale(track, WORKER_RACE_PACE_SCALE),
+      WORKER_SEED_FROM,
+      WORKER_SEED_COUNT,
+    )
+
+    await writeFile(RESULT_FILE, JSON.stringify(samples), 'utf8')
+  } finally {
+    await runtime.close()
   }
 }
 
@@ -585,9 +788,80 @@ async function validateLiveTimingCalibration() {
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 }
 
-async function calibrateRaceResidual() {
-  const records = await readCalibration()
-  const runtime = await loadRuntime()
+/**
+ * Solves one track's race pace scale.
+ *
+ * The search is sequential by nature: each step picks the next scale from the
+ * lap time the previous one produced. Tracks are independent of each other,
+ * though, so the parallel axis for this phase is the track, not the seed.
+ *
+ * An event with an observed clean-lap reference is solved against the
+ * representative green-flag lap, which is the value the acceptance limit is
+ * measured on. Solving against the fastest lap instead leaves the scale
+ * optimising one statistic while being graded on another: the two only agree
+ * while the model's own fastest-to-representative spread matches the real one,
+ * and a change to the drag or energy model moves that spread. The fastest-lap
+ * target remains the fallback for an event with no observed race sample.
+ */
+async function solveRacePaceScale(runtime, series, track, record) {
+  const representativeTarget =
+    record.race.status === 'observed' &&
+    Number.isFinite(record.race.cleanLapReferenceSeconds)
+      ? record.race.cleanLapReferenceSeconds
+      : null
+  const target = representativeTarget ?? targetRaceFastestSeconds(record)
+  let racePaceScale = record.simulation.racePaceScale ?? 1.04
+  let best = {
+    absoluteError: Number.POSITIVE_INFINITY,
+    observed: null,
+    scale: racePaceScale,
+  }
+
+  for (
+    let iteration = 0;
+    iteration < RACE_SEARCH_ITERATIONS;
+    iteration += 1
+  ) {
+    const distribution = await raceGreenDistribution(
+      runtime,
+      series,
+      trackWithRacePaceScale(track, racePaceScale),
+      RACE_CALIBRATION_SEEDS,
+      racePaceScale,
+    )
+    const observed =
+      representativeTarget === null
+        ? distribution.fastestMedianSeconds
+        : (distribution.representativeMedianSeconds ??
+          distribution.fastestMedianSeconds)
+
+    if (observed === null) {
+      break
+    }
+
+    const absoluteError = Math.abs(observed - target)
+    if (absoluteError < best.absoluteError) {
+      best = {
+        absoluteError,
+        observed,
+        scale: racePaceScale,
+      }
+    }
+    if (absoluteError < 0.05) {
+      break
+    }
+
+    racePaceScale = Math.min(
+      1.2,
+      Math.max(0.88, racePaceScale * (observed / target)),
+    )
+  }
+
+  return { best, target }
+}
+
+function selectedTrackJobs(runtime, records) {
+  const jobs = []
 
   for (const seriesId of Object.keys(FILES)) {
     if (!isSelectedSeries(seriesId)) {
@@ -605,65 +879,196 @@ async function calibrateRaceResidual() {
       }
       const record = recordForTrack(records, seriesId, track.id)
 
-      if (!record) {
+      if (record) {
+        jobs.push({ record, series, seriesId, track })
+      }
+    }
+  }
+
+  return jobs
+}
+
+function spawnSearchWorker(seriesId, trackIds, resultFile) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(
+      process.execPath,
+      [
+        SCRIPT_PATH,
+        `--worker-search-series=${seriesId}`,
+        `--worker-search-tracks=${trackIds.join(',')}`,
+        `--result-file=${resultFile}`,
+        `--race-calibration-seeds=${RACE_CALIBRATION_SEEDS}`,
+        `--race-search-iterations=${RACE_SEARCH_ITERATIONS}`,
+        '--workers=1',
+      ],
+      { cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'] },
+    )
+
+    child.on('error', reject)
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolvePromise()
+        return
+      }
+
+      reject(new Error(`race search worker exited with code ${code}`))
+    })
+  })
+}
+
+async function runSearchWorkerShard() {
+  const records = await readCalibration()
+  const runtime = await loadRuntime()
+
+  try {
+    const series = runtime.seriesPackageById.get(WORKER_SEARCH_SERIES)
+
+    if (!series) {
+      throw new Error(`Unknown series ${WORKER_SEARCH_SERIES}`)
+    }
+
+    const trackIds = (WORKER_SEARCH_TRACKS ?? '')
+      .split(',')
+      .filter((value) => value.length > 0)
+    const solved = []
+
+    for (const trackId of trackIds) {
+      const track = series.tracks.find(
+        (candidate) => candidate.id === trackId,
+      )
+      const record = recordForTrack(records, WORKER_SEARCH_SERIES, trackId)
+
+      if (!track || !record) {
         continue
       }
 
-      const target = targetRaceFastestSeconds(record)
-      let racePaceScale =
-        record.simulation.racePaceScale ??
-        1.04
-      let best = {
-        absoluteError: Number.POSITIVE_INFINITY,
-        observed: null,
-        scale: racePaceScale,
-      }
-
-      for (
-        let iteration = 0;
-        iteration < RACE_SEARCH_ITERATIONS;
-        iteration += 1
-      ) {
-        const distribution = raceGreenDistribution(
-          runtime,
-          series,
-          trackWithRacePaceScale(track, racePaceScale),
-          RACE_CALIBRATION_SEEDS,
-        )
-        const observed = distribution.fastestMedianSeconds
-
-        if (observed === null) {
-          break
-        }
-
-        const absoluteError = Math.abs(observed - target)
-        if (absoluteError < best.absoluteError) {
-          best = {
-            absoluteError,
-            observed,
-            scale: racePaceScale,
-          }
-        }
-        if (absoluteError < 0.05) {
-          break
-        }
-
-        racePaceScale = Math.min(
-          1.2,
-          Math.max(0.88, racePaceScale * (observed / target)),
-        )
-      }
+      const { best, target } = await solveRacePaceScale(
+        runtime,
+        series,
+        track,
+        record,
+      )
 
       if (best.observed === null) {
         continue
       }
 
-      record.simulation.racePaceScale = round(best.scale, 6)
-      record.simulation.raceModelCorrectionSeconds = 0
-      process.stdout.write(
-        `${record.eventName}: race pace scale ${best.scale.toFixed(6)} (${best.observed.toFixed(3)}s vs fastest target ${target.toFixed(3)}s, error ${best.absoluteError.toFixed(3)}s)\n`,
-      )
+      solved.push({
+        absoluteError: best.absoluteError,
+        eventName: record.eventName,
+        observed: best.observed,
+        scale: best.scale,
+        target,
+        trackId,
+      })
     }
+
+    await writeFile(RESULT_FILE, JSON.stringify(solved), 'utf8')
+  } finally {
+    await runtime.close()
+  }
+}
+
+async function calibrateRaceResidual() {
+  const records = await readCalibration()
+  const runtime = await loadRuntime()
+  const jobs = selectedTrackJobs(runtime, records)
+
+  // Each worker pays a Vite SSR start, so tracks are dealt out round-robin and a
+  // worker keeps its runtime for every track it owns rather than starting one
+  // per track.
+  if (WORKERS > 1 && jobs.length > 1) {
+    await runtime.close()
+
+    const temporaryDirectory = await mkdtemp(
+      resolve(tmpdir(), 'f1-race-pace-search-'),
+    )
+
+    try {
+      const bySeries = new Map()
+
+      for (const job of jobs) {
+        const list = bySeries.get(job.seriesId) ?? []
+        list.push(job.track.id)
+        bySeries.set(job.seriesId, list)
+      }
+
+      const shards = []
+
+      for (const [seriesId, trackIds] of bySeries) {
+        const shardCount = Math.max(1, Math.min(WORKERS, trackIds.length))
+        const buckets = Array.from({ length: shardCount }, () => [])
+
+        trackIds.forEach((trackId, index) => {
+          buckets[index % shardCount].push(trackId)
+        })
+
+        buckets.forEach((bucket, index) => {
+          if (bucket.length > 0) {
+            shards.push({
+              resultFile: resolve(
+                temporaryDirectory,
+                `${seriesId}-${index}.json`,
+              ),
+              seriesId,
+              trackIds: bucket,
+            })
+          }
+        })
+      }
+
+      await Promise.all(
+        shards.map((shard) =>
+          spawnSearchWorker(shard.seriesId, shard.trackIds, shard.resultFile),
+        ),
+      )
+
+      for (const shard of shards) {
+        const solved = JSON.parse(await readFile(shard.resultFile, 'utf8'))
+
+        for (const entry of solved) {
+          const record = recordForTrack(
+            records,
+            shard.seriesId,
+            entry.trackId,
+          )
+
+          if (!record) {
+            continue
+          }
+
+          record.simulation.racePaceScale = round(entry.scale, 6)
+          record.simulation.raceModelCorrectionSeconds = 0
+          process.stdout.write(
+            `${entry.eventName}: race pace scale ${entry.scale.toFixed(6)} (${entry.observed.toFixed(3)}s vs fastest target ${entry.target.toFixed(3)}s, error ${entry.absoluteError.toFixed(3)}s)\n`,
+          )
+        }
+      }
+    } finally {
+      await rm(temporaryDirectory, { force: true, recursive: true })
+    }
+
+    await writeCalibration(records)
+    return
+  }
+
+  for (const job of jobs) {
+    const { best, target } = await solveRacePaceScale(
+      runtime,
+      job.series,
+      job.track,
+      job.record,
+    )
+
+    if (best.observed === null) {
+      continue
+    }
+
+    job.record.simulation.racePaceScale = round(best.scale, 6)
+    job.record.simulation.raceModelCorrectionSeconds = 0
+    process.stdout.write(
+      `${job.record.eventName}: race pace scale ${best.scale.toFixed(6)} (${best.observed.toFixed(3)}s vs fastest target ${target.toFixed(3)}s, error ${best.absoluteError.toFixed(3)}s)\n`,
+    )
   }
 
   await runtime.close()
@@ -706,7 +1111,7 @@ async function validateFinalCalibration() {
         record.race.status === 'observed' &&
         record.race.cleanLapReferenceSeconds !== null
       const raceDistribution = shouldValidateRace
-        ? raceGreenDistribution(
+        ? await raceGreenDistribution(
             runtime,
             series,
             track,
@@ -751,7 +1156,11 @@ async function validateFinalCalibration() {
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 }
 
-if (VALIDATE_ONLY) {
+if (IS_SEARCH_WORKER) {
+  await runSearchWorkerShard()
+} else if (IS_WORKER) {
+  await runRaceWorkerShard()
+} else if (VALIDATE_ONLY) {
   await validateFinalCalibration()
 } else if (QUALIFYING_ONLY) {
   await calibrateQualifying()

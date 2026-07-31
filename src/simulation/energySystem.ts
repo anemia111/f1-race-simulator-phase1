@@ -420,11 +420,48 @@ export function energyDeploymentRequestFor(
     0.06 +
     clamp((straightLengthAheadMeters - 150) / 1_000, 0, 1) * 0.94
   const endOfLapSpend = smoothstep(0.74, 0.98, lapProgress)
-  const straightAllocationPriority =
+  /**
+   * Deployment held while the car is already at high speed on full throttle.
+   *
+   * The allocation priority above chooses which straight to spend the lap budget
+   * on, and it does that by looking at the road ahead. Applied on its own it also
+   * withdrew deployment in the last 150 m before the braking point, which is
+   * where peak speed actually happens: a real driver keeps the electrical power
+   * to the braking point. With that priority alone the model arrived at the trap
+   * on the internal combustion unit alone, and the acceleration-limited circuits
+   * measured 16-22 km/h below their observed 2026 peaks while the circuits with
+   * long enough straights to reach terminal velocity were correct.
+   *
+   * Holding deployment here does not create a top-speed cheat: above the taper
+   * start the regulation de-rate in `ersDeploymentPowerKw` is already cutting the
+   * available power toward zero at the cutoff, so this only restores the power the
+   * rules still allow.
+   */
+  const terminalApproachHold =
+    throttlePercent >= 96
+      ? smoothstep(
+          FIA_2026_REGULATION_PROFILE.energy.deploymentTaperStartKph - 45,
+          FIA_2026_REGULATION_PROFILE.energy.deploymentTaperStartKph,
+          speedKph,
+        )
+      : 0
+  const straightAllocationPriority = Math.max(
     baseStraightAllocationPriority +
-    (1 - baseStraightAllocationPriority) * endOfLapSpend
+      (1 - baseStraightAllocationPriority) * endOfLapSpend,
+    terminalApproachHold,
+  )
+  // Spending less as the car approaches the speed where deployment is de-rated
+  // to nothing. The window is anchored to the regulation cutoff rather than to a
+  // 420 km/h car, which no 2026 machine reaches: observed 2026 peaks run from
+  // 292 km/h at Monaco to 360 km/h at Barcelona.
   const terminalSpeedAllocation =
-    1 - smoothstep(420, 432, speedKph) * 0.65
+    1 -
+    smoothstep(
+      FIA_2026_REGULATION_PROFILE.energy.standardDeploymentCutoffKph - 22,
+      FIA_2026_REGULATION_PROFILE.energy.overtakeDeploymentCutoffKph,
+      speedKph,
+    ) *
+      0.65
 
   const strategicRequest =
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *

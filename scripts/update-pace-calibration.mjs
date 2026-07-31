@@ -515,6 +515,165 @@ async function sessionBundle(sessionKey, endpoints) {
   return bundle
 }
 
+/**
+ * Straight-line speed threshold for the car-telemetry tail request.
+ *
+ * `car_data` is a 3.7 Hz per-car feed, so a whole session is hundreds of
+ * thousands of samples. Only the top of the distribution carries the peak, and
+ * 250 km/h is below the slowest 2026 circuit's peak (Monaco, 292 km/h), so the
+ * filter cannot clip the value being measured.
+ */
+const SPEED_TAIL_THRESHOLD_KPH = 250
+/** Above this a `car_data` sample is a feed artefact, not a Formula car. */
+const SPEED_IMPLAUSIBLE_KPH = 450
+
+async function speedTailSamples(sessionKey, label) {
+  const cachePath = resolve(
+    CACHE_DIRECTORY,
+    `${sessionKey}-car_data-speed-tail.json`,
+  )
+
+  try {
+    return JSON.parse(await readFile(cachePath, 'utf8'))
+  } catch {
+    // Intentionally not part of `sessionBundle`: this endpoint needs the
+    // server-side speed filter, and an unfiltered request would download the
+    // whole session telemetry for one aggregate.
+    try {
+      const samples = await fetchJson('car_data', {
+        session_key: sessionKey,
+        'speed>': SPEED_TAIL_THRESHOLD_KPH - 1,
+      })
+      await mkdir(CACHE_DIRECTORY, { recursive: true })
+      await writeFile(cachePath, JSON.stringify(samples), 'utf8')
+      return samples
+    } catch (error) {
+      process.stderr.write(
+        `Pace update warning: ${label} speed telemetry unavailable (${error.message}).\n`,
+      )
+      return []
+    }
+  }
+}
+
+function trapValues(laps) {
+  return (laps ?? [])
+    .map((lap) => lap.st_speed)
+    .filter(
+      (value) =>
+        typeof value === 'number' &&
+        Number.isFinite(value) &&
+        value >= 100 &&
+        value < SPEED_IMPLAUSIBLE_KPH,
+    )
+}
+
+/**
+ * Aggregates the observed straight-line speed of a session family.
+ *
+ * The field peak is the maximum over every classified car; the driver-peak
+ * median takes each car's own peak first, so one car in an exceptional tow does
+ * not define the circuit. Both are returned because the simulated peak is a
+ * per-car observable and the field maximum is an extreme-value statistic.
+ */
+function speedAggregate(samples) {
+  const peakByDriver = new Map()
+  let sampleCount = 0
+  let fieldPeakKph = 0
+
+  // A session tail is over a hundred thousand samples, so the peak is folded in
+  // place rather than collected into an array and spread into `Math.max`.
+  for (const sample of samples ?? []) {
+    const speed = sample.speed
+
+    if (
+      typeof speed !== 'number' ||
+      !Number.isFinite(speed) ||
+      speed < SPEED_TAIL_THRESHOLD_KPH ||
+      speed >= SPEED_IMPLAUSIBLE_KPH
+    ) {
+      continue
+    }
+
+    sampleCount += 1
+    fieldPeakKph = Math.max(fieldPeakKph, speed)
+    peakByDriver.set(
+      sample.driver_number,
+      Math.max(peakByDriver.get(sample.driver_number) ?? 0, speed),
+    )
+  }
+
+  if (sampleCount === 0) {
+    return {
+      driverCount: 0,
+      driverPeakMedianKph: null,
+      fieldPeakKph: null,
+      sampleCount: 0,
+    }
+  }
+
+  const driverPeaks = [...peakByDriver.values()].sort(
+    (left, right) => left - right,
+  )
+
+  return {
+    driverCount: driverPeaks.length,
+    driverPeakMedianKph: driverPeaks[Math.floor(driverPeaks.length / 2)],
+    fieldPeakKph,
+    sampleCount,
+  }
+}
+
+function speedMetrics(input) {
+  const qualifying = speedAggregate(input.qualifyingSpeedSamples)
+  const race = speedAggregate(input.raceSpeedSamples)
+  const raceTrap = trapValues(input.raceLaps).sort(
+    (left, right) => left - right,
+  )
+  const qualifyingTrap = trapValues(input.qualifyingLaps).sort(
+    (left, right) => left - right,
+  )
+  const telemetrySampleCount = qualifying.sampleCount + race.sampleCount
+  const trapSampleCount = raceTrap.length + qualifyingTrap.length
+
+  if (telemetrySampleCount === 0 && trapSampleCount === 0) {
+    return null
+  }
+
+  // A published FIA trap value is official. A telemetry aggregate is calculated
+  // from measured records after classification, which is `observed`. When both
+  // exist the record carries the weaker of the two claims for the section as a
+  // whole, because the peak fields come from telemetry.
+  const status = telemetrySampleCount > 0 ? 'observed' : 'official'
+  const confidence =
+    telemetrySampleCount > 0
+      ? Math.min(
+          0.9,
+          0.55 +
+            Math.min(0.2, (qualifying.driverCount + race.driverCount) / 220) +
+            (trapSampleCount > 0 ? 0.15 : 0),
+        )
+      : 0.6
+
+  return {
+    qualifyingFieldPeakKph: qualifying.fieldPeakKph,
+    qualifyingDriverPeakMedianKph: qualifying.driverPeakMedianKph,
+    raceFieldPeakKph: race.fieldPeakKph,
+    raceDriverPeakMedianKph: race.driverPeakMedianKph,
+    raceTrapMaxKph: raceTrap.length ? raceTrap[raceTrap.length - 1] : null,
+    raceTrapMedianKph: raceTrap.length
+      ? raceTrap[Math.floor(raceTrap.length / 2)]
+      : null,
+    qualifyingTrapMaxKph: qualifyingTrap.length
+      ? qualifyingTrap[qualifyingTrap.length - 1]
+      : null,
+    telemetrySampleCount,
+    trapSampleCount,
+    status,
+    confidence: round(confidence, 2),
+  }
+}
+
 async function sessionsForYear(year) {
   const cachePath = resolve(
     CACHE_DIRECTORY,
@@ -1095,6 +1254,9 @@ async function buildF1Calibration(event, previous) {
     ),
   ]
   const notes = []
+  let speed = previous?.speed ?? null
+  let qualifyingLaps = null
+  let raceLaps = null
 
   if (!OFFLINE && event.qualifyingSessionKey) {
     const qualifyingBundle = await optionalSessionBundle(
@@ -1111,6 +1273,7 @@ async function buildF1Calibration(event, previous) {
 
     if (qualifyingBundle?.session_result.length > 0) {
       qualifying = qualifyingMetrics(qualifyingBundle, event)
+      qualifyingLaps = qualifyingBundle.laps
       sources.push(
         sessionSource(
           event.qualifyingSessionKey,
@@ -1145,6 +1308,7 @@ async function buildF1Calibration(event, previous) {
         qualifying.selectedReferenceSeconds,
       )
       race = observed.race
+      raceLaps = raceBundle.laps
       expectedGreenRaceDeltaSeconds =
         observed.expectedGreenRaceDeltaSeconds
       residualSigmaSeconds = observed.residualSigmaSeconds
@@ -1156,6 +1320,63 @@ async function buildF1Calibration(event, previous) {
         ),
       )
     }
+  }
+
+  if (!OFFLINE && (qualifyingLaps || raceLaps)) {
+    const qualifyingSpeedSamples = event.qualifyingSessionKey
+      ? await speedTailSamples(
+          event.qualifyingSessionKey,
+          `${event.eventName} qualifying`,
+        )
+      : []
+    const raceSpeedSamples = event.raceSessionKey
+      ? await speedTailSamples(
+          event.raceSessionKey,
+          `${event.eventName} race`,
+        )
+      : []
+    const observedSpeed = speedMetrics({
+      qualifyingLaps,
+      qualifyingSpeedSamples,
+      raceLaps,
+      raceSpeedSamples,
+    })
+
+    if (observedSpeed) {
+      speed = observedSpeed
+
+      if (event.qualifyingSessionKey && qualifyingSpeedSamples.length > 0) {
+        sources.push({
+          provider: 'OpenF1',
+          label: `${event.eventName} qualifying car speed telemetry`,
+          url: `${OPENF1_BASE_URL}/car_data?session_key=${event.qualifyingSessionKey}&speed>=${SPEED_TAIL_THRESHOLD_KPH}`,
+          retrievedAt,
+          documentHash: `sha256:${hash(qualifyingSpeedSamples)}`,
+          sessionKey: event.qualifyingSessionKey,
+        })
+      }
+
+      if (event.raceSessionKey && raceSpeedSamples.length > 0) {
+        sources.push({
+          provider: 'OpenF1',
+          label: `${event.eventName} race car speed telemetry`,
+          url: `${OPENF1_BASE_URL}/car_data?session_key=${event.raceSessionKey}&speed>=${SPEED_TAIL_THRESHOLD_KPH}`,
+          retrievedAt,
+          documentHash: `sha256:${hash(raceSpeedSamples)}`,
+          sessionKey: event.raceSessionKey,
+        })
+      }
+    }
+  }
+
+  if (!speed) {
+    notes.push(
+      'No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.',
+    )
+  } else if (speed.raceFieldPeakKph === null) {
+    notes.push(
+      'Straight-line speed reference has no race sample; only the qualifying peak is observed.',
+    )
   }
 
   if (qualifying.status === 'estimated') {
@@ -1190,6 +1411,7 @@ async function buildF1Calibration(event, previous) {
     eventDate: event.eventDate,
     qualifying,
     race,
+    ...(speed ? { speed } : {}),
     simulation: {
       neutralBaseLapSeconds: event.neutralBaseLapSeconds,
       qualifyingOffsetSeconds: round(
@@ -1897,10 +2119,33 @@ async function main() {
     )
   }
 
-  f1Calibration = f1Calibration.map((record) => ({
-    ...record,
-    sources: dedupeSources(record.sources),
-  }))
+  // `f1Events` is the 2026 calendar, so a rebuild only produces calendar
+  // rounds. Category x course baselines for circuits F1 does not race are not
+  // owned by this script and would be deleted by a full regeneration, so they
+  // are carried through untouched.
+  const generatedEventIds = new Set(
+    f1Calibration.map((record) => record.eventId),
+  )
+  const preservedCourseReferences = (
+    Array.isArray(previousF1) ? previousF1 : []
+  ).filter(
+    (record) =>
+      record.courseReference === true &&
+      !generatedEventIds.has(record.eventId),
+  )
+
+  if (preservedCourseReferences.length > 0) {
+    process.stdout.write(
+      `Preserved ${preservedCourseReferences.length} F1 category x course baselines outside the calendar.\n`,
+    )
+  }
+
+  f1Calibration = [...f1Calibration, ...preservedCourseReferences].map(
+    (record) => ({
+      ...record,
+      sources: dedupeSources(record.sources),
+    }),
+  )
   const sfCalibration = superFormulaCalibration(
     Array.isArray(previousSf) ? previousSf : [],
   ).map((record) => ({
@@ -1929,11 +2174,14 @@ async function main() {
         id: seriesId,
         eventCount: events.length,
         latestObservedEventDate: observedDates.at(-1) ?? null,
+        speedReferenceCount: events.filter(
+          (event) => event.speed !== undefined,
+        ).length,
       }
     }),
     generator: 'scripts/update-pace-calibration.mjs',
     sourcePolicy:
-      'Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions.',
+      'Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions; OpenF1 car telemetry and FIA speed-trap records establish observed straight-line speed.',
   }
 
   await writeJson(F1_OUTPUT, f1Calibration)

@@ -117,48 +117,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 333,
+      "qualifyingDriverPeakMedianKph": 325,
+      "raceFieldPeakKph": 343,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 321,
+      "raceTrapMedianKph": 289,
+      "qualifyingTrapMaxKph": 315,
+      "telemetrySampleCount": 155335,
+      "trapSampleCount": 1253,
+      "status": "observed",
+      "confidence": 0.89
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 79.412,
-      "qualifyingOffsetSeconds": 0.601,
+      "neutralBaseLapSeconds": 78.615,
+      "qualifyingOffsetSeconds": -0.196,
       "expectedGreenRaceDeltaSeconds": 4.623,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.43,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 78.463,
+        "poleMedianSeconds": 78.619,
         "top3MedianSeconds": 78.811,
-        "fieldMedianDeltaSeconds": 0.864,
-        "raceGreenMedianSeconds": 83.456,
+        "fieldMedianDeltaSeconds": 0.689,
+        "raceGreenMedianSeconds": 84.046,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.022,
+        "raceReferenceErrorSeconds": 0.612,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 78.678,
         "liveQualifyingReferenceErrorSeconds": -0.133
       },
-      "racePaceScale": 1.063893,
-      "qualifyingPaceScale": 1.039543
+      "racePaceScale": 1.078739,
+      "qualifyingPaceScale": 1.039543,
+      "liveTimingPaceScale": 0.993488
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Australian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Australian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Australian Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11230",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:10c5ec85a5cd0e8409439a72afaa806b420cd541834cb2d65de9dab8fea984aa",
         "sessionKey": 11230
       },
@@ -166,8 +180,24 @@
         "provider": "OpenF1",
         "label": "Australian Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11234",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:43c0828f5000c517d0450e4eadc88f61c8247e65720218ab7a36c80338952377",
+        "sessionKey": 11234
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Australian Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11230&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:9c4f1112772419c554486b12f3b5f33c1901b8f4c14678f882cb5257936061fc",
+        "sessionKey": 11230
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Australian Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11234&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:eaf375bea65723d1237f39a1b225dc5bb2c45f376636aa5c11fb8c8a1a7c6db9",
         "sessionKey": 11234
       }
     ],
@@ -261,29 +291,42 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 343,
+      "qualifyingDriverPeakMedianKph": 337,
+      "raceFieldPeakKph": 352,
+      "raceDriverPeakMedianKph": 345,
+      "raceTrapMaxKph": 353,
+      "raceTrapMedianKph": 313,
+      "qualifyingTrapMaxKph": 322,
+      "telemetrySampleCount": 125220,
+      "trapSampleCount": 1241,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 92.853,
-      "qualifyingOffsetSeconds": 0.567,
+      "neutralBaseLapSeconds": 92.139,
+      "qualifyingOffsetSeconds": -0.147,
       "expectedGreenRaceDeltaSeconds": 5.106,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.52,
       "calibrationSeedCount": 100,
+      "liveTimingPaceScale": 0.916745,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 91.847,
+        "poleMedianSeconds": 92.063,
         "top3MedianSeconds": 92.286,
-        "fieldMedianDeltaSeconds": 1.019,
-        "raceGreenMedianSeconds": 97.375,
+        "fieldMedianDeltaSeconds": 0.755,
+        "raceGreenMedianSeconds": 98.109,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.017,
+        "raceReferenceErrorSeconds": 0.717,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 91.956,
         "liveQualifyingReferenceErrorSeconds": -0.33
       },
-      "liveTimingPaceScale": 0.910882,
-      "racePaceScale": 1.070248,
+      "racePaceScale": 1.073786,
       "qualifyingPaceScale": 1.118821
     },
     "sources": [
@@ -291,19 +334,19 @@
         "provider": "Formula 1",
         "label": "Chinese Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Chinese Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Chinese Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11241",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:1a5256336ab67b9f89470b193e58cdf715255465bff3effe347fb25373bef4b3",
         "sessionKey": 11241
       },
@@ -311,8 +354,24 @@
         "provider": "OpenF1",
         "label": "Chinese Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11245",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:a65a8341d01a2bb416fbf103f4ad77bca48504aa7a38b4527b9a42cbf38e6317",
+        "sessionKey": 11245
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Chinese Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11241&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:d17f72e0050ae91b078377b4a76b163646a97d92b9546b7175a40d561bb7885c",
+        "sessionKey": 11241
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Chinese Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11245&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:b885093b44b7ee3d55e74336c441f93a46a94f3d58a54e7be7fcaf3b297409ee",
         "sessionKey": 11245
       }
     ],
@@ -399,48 +458,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 339,
+      "qualifyingDriverPeakMedianKph": 332,
+      "raceFieldPeakKph": 349,
+      "raceDriverPeakMedianKph": 339,
+      "raceTrapMaxKph": 308,
+      "raceTrapMedianKph": 284,
+      "qualifyingTrapMaxKph": 291,
+      "telemetrySampleCount": 164000,
+      "trapSampleCount": 1429,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 89.686,
-      "qualifyingOffsetSeconds": 0.61,
+      "neutralBaseLapSeconds": 88.854,
+      "qualifyingOffsetSeconds": -0.222,
       "expectedGreenRaceDeltaSeconds": 5.299,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.438,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 88.642,
+        "poleMedianSeconds": 88.846,
         "top3MedianSeconds": 89.076,
-        "fieldMedianDeltaSeconds": 0.964,
-        "raceGreenMedianSeconds": 94.258,
+        "fieldMedianDeltaSeconds": 0.724,
+        "raceGreenMedianSeconds": 94.905,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.116,
+        "raceReferenceErrorSeconds": 0.531,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 87.416,
         "liveQualifyingReferenceErrorSeconds": -1.66
       },
-      "racePaceScale": 1.133909,
-      "qualifyingPaceScale": 1.087012
+      "racePaceScale": 1.138315,
+      "qualifyingPaceScale": 1.087012,
+      "liveTimingPaceScale": 1.012224
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Japanese Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Japanese Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Japanese Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11249",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:17846c3816a4d35f54b92068500027af119089a90454fcc3d06cffdf44deeac0",
         "sessionKey": 11249
       },
@@ -448,8 +521,24 @@
         "provider": "OpenF1",
         "label": "Japanese Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11253",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:c6f7d88bca78e7cdaff45f384a828c4996cf10e0d9b7edcdc3e7cf65f4022307",
+        "sessionKey": 11253
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Japanese Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11249&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:7d109ed64e3c3bf8f3218221cb992fbee1bb8a7cf245ad19250d43c48dd1c244",
+        "sessionKey": 11249
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Japanese Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11253&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:4fd0b9497b1719911d6cf25444de3c158f70a7e3a084ce0d91e1c62e89c455ca",
         "sessionKey": 11253
       }
     ],
@@ -555,48 +644,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 346,
+      "qualifyingDriverPeakMedianKph": 344,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 346,
+      "raceTrapMaxKph": 334,
+      "raceTrapMedianKph": 309,
+      "qualifyingTrapMaxKph": 327,
+      "telemetrySampleCount": 160008,
+      "trapSampleCount": 1316,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 88.503,
-      "qualifyingOffsetSeconds": 0.539,
+      "neutralBaseLapSeconds": 87.72,
+      "qualifyingOffsetSeconds": -0.244,
       "expectedGreenRaceDeltaSeconds": 5.578,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.469,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 87.546,
+        "poleMedianSeconds": 87.744,
         "top3MedianSeconds": 87.964,
-        "fieldMedianDeltaSeconds": 0.893,
-        "raceGreenMedianSeconds": 93.74,
+        "fieldMedianDeltaSeconds": 0.721,
+        "raceGreenMedianSeconds": 94.446,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.198,
+        "raceReferenceErrorSeconds": 0.904,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 88.067,
         "liveQualifyingReferenceErrorSeconds": 0.103
       },
-      "racePaceScale": 1.0537,
-      "qualifyingPaceScale": 1.032787
+      "racePaceScale": 1.067837,
+      "qualifyingPaceScale": 1.032787,
+      "liveTimingPaceScale": 1.011622
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Miami Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Miami Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Miami Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11276",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:57d642288aaeba6e69d03f202f3e9a22d26855742ba73c9ca3c3e2ab4702ac77",
         "sessionKey": 11276
       },
@@ -604,8 +707,24 @@
         "provider": "OpenF1",
         "label": "Miami Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11280",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:064e1a960bf32c9524ad444e7cc5644d6a9ae254423d8a2576449ddcbb01dcce",
+        "sessionKey": 11280
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Miami Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11276&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:74a091221024ed7ed711f5dec0038bb320565f6f61fb437bb3fc06d065bc2b54",
+        "sessionKey": 11276
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Miami Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11280&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:754b44cd5a422470d6c93686b2ca7a04626d0f9a5afa46a272e559ae9df0845d",
         "sessionKey": 11280
       }
     ],
@@ -717,29 +836,42 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 337,
+      "qualifyingDriverPeakMedianKph": 332,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 339,
+      "raceTrapMaxKph": 348,
+      "raceTrapMedianKph": 305,
+      "qualifyingTrapMaxKph": 329,
+      "telemetrySampleCount": 145797,
+      "trapSampleCount": 1663,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 73.077,
-      "qualifyingOffsetSeconds": 0.431,
+      "neutralBaseLapSeconds": 72.445,
+      "qualifyingOffsetSeconds": -0.201,
       "expectedGreenRaceDeltaSeconds": 3.781,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.696,
       "calibrationSeedCount": 100,
+      "liveTimingPaceScale": 0.925613,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 72.303,
+        "poleMedianSeconds": 72.466,
         "top3MedianSeconds": 72.646,
-        "fieldMedianDeltaSeconds": 0.734,
-        "raceGreenMedianSeconds": 76.427,
+        "fieldMedianDeltaSeconds": 0.585,
+        "raceGreenMedianSeconds": 78.759,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": 2.332,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 73.507,
         "liveQualifyingReferenceErrorSeconds": 0.861
       },
-      "liveTimingPaceScale": 0.90644,
-      "racePaceScale": 0.897724,
+      "racePaceScale": 0.946241,
       "qualifyingPaceScale": 1.012186
     },
     "sources": [
@@ -747,19 +879,19 @@
         "provider": "Formula 1",
         "label": "Canadian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Canadian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Canadian Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11287",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:1c302afd6a8804d860d27454058d41416f0ab1b20879c55bc098d554c928e6ab",
         "sessionKey": 11287
       },
@@ -767,8 +899,24 @@
         "provider": "OpenF1",
         "label": "Canadian Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11291",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:3adc3d4653ffd58fc2500fbc7cd9a847d149d25d8be9be16feced6c63e818487",
+        "sessionKey": 11291
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Canadian Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11287&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:a87d1a0aeee6bed7a598b769f09912e96a68ad494afb463209afd00731a2481e",
+        "sessionKey": 11287
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Canadian Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11291&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:3ecc1f0fee6e9935d7efa43d9cce70bac26a10540b83ebb8af5b7b722442cc91",
         "sessionKey": 11291
       }
     ],
@@ -862,48 +1010,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 291,
+      "qualifyingDriverPeakMedianKph": 288,
+      "raceFieldPeakKph": 292,
+      "raceDriverPeakMedianKph": 284,
+      "raceTrapMaxKph": 287,
+      "raceTrapMedianKph": 270,
+      "qualifyingTrapMaxKph": 285,
+      "telemetrySampleCount": 48668,
+      "trapSampleCount": 1925,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 72.692,
-      "qualifyingOffsetSeconds": 0.598,
+      "neutralBaseLapSeconds": 71.965,
+      "qualifyingOffsetSeconds": -0.129,
       "expectedGreenRaceDeltaSeconds": 6.029,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.352,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 71.701,
+        "poleMedianSeconds": 71.873,
         "top3MedianSeconds": 72.094,
-        "fieldMedianDeltaSeconds": 0.817,
-        "raceGreenMedianSeconds": 78.233,
+        "fieldMedianDeltaSeconds": 0.667,
+        "raceGreenMedianSeconds": 79.636,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.11,
+        "raceReferenceErrorSeconds": 1.513,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 70.718,
         "liveQualifyingReferenceErrorSeconds": -1.376
       },
-      "racePaceScale": 0.997279,
-      "qualifyingPaceScale": 0.976302
+      "racePaceScale": 0.982311,
+      "qualifyingPaceScale": 0.976302,
+      "liveTimingPaceScale": 0.99923
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Monaco Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Monaco Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Monaco Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11295",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:7df386346e633907eb66cee6be90d352a24adfe7a3539ca138f973330ca1e49a",
         "sessionKey": 11295
       },
@@ -911,8 +1073,24 @@
         "provider": "OpenF1",
         "label": "Monaco Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11299",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:154585da95ff4727234a674246c5eef1999feecd9fad576e5d11fff037a921a6",
+        "sessionKey": 11299
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Monaco Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11295&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:4d626f029a1cba5d17d3b0ff5d4d8b8459ffaf035abb612caadb23b99402f5d3",
+        "sessionKey": 11295
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Monaco Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11299&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:de6c7020586129d0bbc42741afdf9eb37be69accde65f976ba9b8a24ded9902f",
         "sessionKey": 11299
       }
     ],
@@ -1038,48 +1216,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 344,
+      "qualifyingDriverPeakMedianKph": 341,
+      "raceFieldPeakKph": 360,
+      "raceDriverPeakMedianKph": 352,
+      "raceTrapMaxKph": 358,
+      "raceTrapMedianKph": 331,
+      "qualifyingTrapMaxKph": 340,
+      "telemetrySampleCount": 92927,
+      "trapSampleCount": 1266,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 75.487,
-      "qualifyingOffsetSeconds": 0.744,
+      "neutralBaseLapSeconds": 74.808,
+      "qualifyingOffsetSeconds": 0.065,
       "expectedGreenRaceDeltaSeconds": 7.586,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.6,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 74.432,
+        "poleMedianSeconds": 74.548,
         "top3MedianSeconds": 74.743,
-        "fieldMedianDeltaSeconds": 0.775,
-        "raceGreenMedianSeconds": 82.402,
+        "fieldMedianDeltaSeconds": 0.615,
+        "raceGreenMedianSeconds": 82.809,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.073,
+        "raceReferenceErrorSeconds": 0.48,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 77.443,
         "liveQualifyingReferenceErrorSeconds": 2.7
       },
       "racePaceScale": 1.074206,
-      "qualifyingPaceScale": 1.041772
+      "qualifyingPaceScale": 1.041772,
+      "liveTimingPaceScale": 0.997671
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Spanish Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Spanish Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Spanish Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11303",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:d9a62739324b284d6fc2421d5607d21e10c196a7c51afef0c5b0a824b24b84e1",
         "sessionKey": 11303
       },
@@ -1087,8 +1279,24 @@
         "provider": "OpenF1",
         "label": "Spanish Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11307",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:7cd3566240fca036590d514f49fb2299d5a3bbf139399ac54b0aede4aee5b3c9",
+        "sessionKey": 11307
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Spanish Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11303&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:68324dd1e275cfded98f9fb5553e8dfcc1bff3209823846d3ce97fec33fd1ed2",
+        "sessionKey": 11303
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Spanish Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11307&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:1eef80a852f525551227d7645ea73239502e774fba2a5ca2dafb3c6c0aa2f7a3",
         "sessionKey": 11307
       }
     ],
@@ -1206,29 +1414,42 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 331,
+      "qualifyingDriverPeakMedianKph": 326,
+      "raceFieldPeakKph": 347,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 334,
+      "raceTrapMedianKph": 300,
+      "qualifyingTrapMaxKph": 323,
+      "telemetrySampleCount": 137852,
+      "trapSampleCount": 1628,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 67.009,
-      "qualifyingOffsetSeconds": 0.66,
+      "neutralBaseLapSeconds": 66.481,
+      "qualifyingOffsetSeconds": 0.132,
       "expectedGreenRaceDeltaSeconds": 5.379,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.63,
       "calibrationSeedCount": 100,
+      "liveTimingPaceScale": 1.10651,
       "validation": {
-        "validatedAt": "2026-07-29T13:40:45.604Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 66.073,
+        "poleMedianSeconds": 66.172,
         "top3MedianSeconds": 66.349,
-        "fieldMedianDeltaSeconds": 0.677,
-        "raceGreenMedianSeconds": 71.662,
+        "fieldMedianDeltaSeconds": 0.542,
+        "raceGreenMedianSeconds": 72.074,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.066,
+        "raceReferenceErrorSeconds": 0.346,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 66.173,
         "liveQualifyingReferenceErrorSeconds": -0.176
       },
-      "liveTimingPaceScale": 1.083026,
-      "racePaceScale": 1.140234,
+      "racePaceScale": 1.142012,
       "qualifyingPaceScale": 1.012753
     },
     "sources": [
@@ -1236,19 +1457,19 @@
         "provider": "Formula 1",
         "label": "Austrian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Austrian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Austrian Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11311",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:db4276b914fdbfe5296a5777d72601516e237d7f80ecf16ad302544a45483e53",
         "sessionKey": 11311
       },
@@ -1256,8 +1477,24 @@
         "provider": "OpenF1",
         "label": "Austrian Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11315",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:c424c843f720e5e59bbe5a0db521748a86495ff494b0da10e113d500298910e6",
+        "sessionKey": 11315
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Austrian Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11311&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:f05cae4a76edd6152534b3fc923a6caf8c1ee5f5f312f8485df34d03c4da6219",
+        "sessionKey": 11311
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Austrian Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11315&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:a0e222651c4d3669e735290ed5cc468e135e71cc2f1a6a130169999c13e65e69",
         "sessionKey": 11315
       }
     ],
@@ -1363,48 +1600,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 323,
+      "qualifyingDriverPeakMedianKph": 316,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 351,
+      "raceTrapMedianKph": 300,
+      "qualifyingTrapMaxKph": 317,
+      "telemetrySampleCount": 203057,
+      "trapSampleCount": 1418,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 88.954,
-      "qualifyingOffsetSeconds": 0.668,
+      "neutralBaseLapSeconds": 88.102,
+      "qualifyingOffsetSeconds": -0.184,
       "expectedGreenRaceDeltaSeconds": 6.49,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.641,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 87.89,
+        "poleMedianSeconds": 88.083,
         "top3MedianSeconds": 88.286,
-        "fieldMedianDeltaSeconds": 0.965,
-        "raceGreenMedianSeconds": 94.866,
+        "fieldMedianDeltaSeconds": 0.758,
+        "raceGreenMedianSeconds": 95.475,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.09,
+        "raceReferenceErrorSeconds": 0.699,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 89.77,
         "liveQualifyingReferenceErrorSeconds": 1.484
       },
-      "racePaceScale": 1.100203,
-      "qualifyingPaceScale": 1.09753
+      "racePaceScale": 1.119914,
+      "qualifyingPaceScale": 1.09753,
+      "liveTimingPaceScale": 0.997204
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "British Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "British Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "British Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11322",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:74a2b35f52addcb2ff4fbad14aad09f26ae439e9d70c850c54b98cce1751d7a3",
         "sessionKey": 11322
       },
@@ -1412,8 +1663,24 @@
         "provider": "OpenF1",
         "label": "British Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11326",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:813a56aac6f42b5fd9a4511859f07e5cba37eadb71b9fc7c5192f62f004959ff",
+        "sessionKey": 11326
+      },
+      {
+        "provider": "OpenF1",
+        "label": "British Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11322&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:e92830ad0a3c9af5adf8920923016eeb1715bb751bb0dbd958b2614196ce7eb0",
+        "sessionKey": 11322
+      },
+      {
+        "provider": "OpenF1",
+        "label": "British Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11326&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:7b27afb598c809d2df7d7c8b26e90d8e1be48a9f9c2aec96fa4c1a5a01e2928d",
         "sessionKey": 11326
       }
     ],
@@ -1525,48 +1792,62 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 344,
+      "qualifyingDriverPeakMedianKph": 331,
+      "raceFieldPeakKph": 349,
+      "raceDriverPeakMedianKph": 342,
+      "raceTrapMaxKph": 323,
+      "raceTrapMedianKph": 298,
+      "qualifyingTrapMaxKph": 315,
+      "telemetrySampleCount": 197365,
+      "trapSampleCount": 1002,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 105.261,
-      "qualifyingOffsetSeconds": 0.583,
+      "neutralBaseLapSeconds": 104.189,
+      "qualifyingOffsetSeconds": -0.489,
       "expectedGreenRaceDeltaSeconds": 5.565,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.46,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 100,
-        "poleMedianSeconds": 104.221,
+        "poleMedianSeconds": 104.465,
         "top3MedianSeconds": 104.678,
-        "fieldMedianDeltaSeconds": 1.134,
-        "raceGreenMedianSeconds": 110.254,
+        "fieldMedianDeltaSeconds": 0.844,
+        "raceGreenMedianSeconds": 110.965,
         "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.011,
+        "raceReferenceErrorSeconds": 0.722,
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 104.136,
         "liveQualifyingReferenceErrorSeconds": -0.542
       },
-      "racePaceScale": 1.12154,
-      "qualifyingPaceScale": 1.093165
+      "racePaceScale": 1.136365,
+      "qualifyingPaceScale": 1.093165,
+      "liveTimingPaceScale": 0.998963
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Belgian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Belgian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Belgian Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11330",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:7663f73a477e90edcd5c151cb6eca82015e5db64e26ba21ad59028de6613be7b",
         "sessionKey": 11330
       },
@@ -1574,8 +1855,24 @@
         "provider": "OpenF1",
         "label": "Belgian Grand Prix race timing and control",
         "url": "https://api.openf1.org/v1/session_result?session_key=11334",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:e5c13f6be5525711a8ba95cb823eada7f0214e56bc93cfdc4560366b2658e824",
+        "sessionKey": 11334
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Belgian Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11330&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:000e4c377c31e824353c65ccb160e39b3c90e0b602e9be986afe5fa992b563b3",
+        "sessionKey": 11330
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Belgian Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11334&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:39a24023508376b56c43631e9c867c2ddc6bba37167e8ab5cf4c2673252c6588",
         "sessionKey": 11334
       }
     ],
@@ -1632,20 +1929,33 @@
         85.611
       ]
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 345,
+      "qualifyingDriverPeakMedianKph": 336,
+      "raceFieldPeakKph": 357,
+      "raceDriverPeakMedianKph": 349,
+      "raceTrapMaxKph": null,
+      "raceTrapMedianKph": null,
+      "qualifyingTrapMaxKph": 336,
+      "telemetrySampleCount": 84458,
+      "trapSampleCount": 200,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
-      "neutralBaseLapSeconds": 77.929,
-      "qualifyingOffsetSeconds": 0.71,
+      "neutralBaseLapSeconds": 77.245,
+      "qualifyingOffsetSeconds": 0.026,
       "expectedGreenRaceDeltaSeconds": 4.196,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 76.866,
+        "poleMedianSeconds": 77.034,
         "top3MedianSeconds": 77.219,
-        "fieldMedianDeltaSeconds": 0.859,
+        "fieldMedianDeltaSeconds": 0.65,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -1654,34 +1964,51 @@
         "liveQualifyingReferenceErrorSeconds": 2.22
       },
       "racePaceScale": 1.077057,
-      "qualifyingPaceScale": 1.049844
+      "qualifyingPaceScale": 1.049844,
+      "liveTimingPaceScale": 0.993785
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Hungarian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Hungarian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "Hungarian Grand Prix qualifying timing",
         "url": "https://api.openf1.org/v1/session_result?session_key=11338",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:f08d402372aada4263c8885e2351f059060382735eef2eb9a7206de683b50842",
         "sessionKey": 11338
       },
       {
         "provider": "OpenF1",
+        "label": "Hungarian Grand Prix qualifying car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11338&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:7c8fdd4ea6262ae39149826965abf4974d50300cd83e75f2c3be2d206e78a50d",
+        "sessionKey": 11338
+      },
+      {
+        "provider": "OpenF1",
+        "label": "Hungarian Grand Prix race car speed telemetry",
+        "url": "https://api.openf1.org/v1/car_data?session_key=11342&speed>=250",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
+        "documentHash": "sha256:c89b80a06b95a1aac966e66da7e23a4e6d2e0d0224079b646995862beff0a994",
+        "sessionKey": 11342
+      },
+      {
+        "provider": "OpenF1",
         "label": "2025 Hungarian Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9924",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:b86b7d0bf1495896f81156030ca75358ff9914d6bc2655570884f770583e516f",
         "sessionKey": 9924
       },
@@ -1689,7 +2016,7 @@
         "provider": "OpenF1",
         "label": "2025 Hungarian Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9928",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:87332ccdc5fb633e39831b87adf6e0359f079a877ab4c74cb8a94a7c23b5bb08",
         "sessionKey": 9928
       }
@@ -1755,19 +2082,20 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 72.318,
-      "qualifyingOffsetSeconds": 0.784,
+      "neutralBaseLapSeconds": 71.644,
+      "qualifyingOffsetSeconds": 0.11,
       "expectedGreenRaceDeltaSeconds": 3.883,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
+      "liveTimingPaceScale": 1.071328,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 71.213,
+        "poleMedianSeconds": 71.366,
         "top3MedianSeconds": 71.534,
-        "fieldMedianDeltaSeconds": 0.795,
+        "fieldMedianDeltaSeconds": 0.626,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -1775,7 +2103,6 @@
         "liveQualifyingTop3MedianSeconds": 72.155,
         "liveQualifyingReferenceErrorSeconds": 0.621
       },
-      "liveTimingPaceScale": 1.072003,
       "racePaceScale": 1.105223,
       "qualifyingPaceScale": 1
     },
@@ -1784,19 +2111,19 @@
         "provider": "Formula 1",
         "label": "Dutch Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Dutch Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Dutch Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9916",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:ba0ce9e7f212c6da08dc997c2be3762bbe5ddbccf71861622a2147b0c700631b",
         "sessionKey": 9916
       },
@@ -1804,7 +2131,7 @@
         "provider": "OpenF1",
         "label": "2025 Dutch Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9920",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:3a1211770e20bd873835083b162ed92f8b6820c9b182d662e7945bbb3876fab8",
         "sessionKey": 9920
       },
@@ -1812,12 +2139,13 @@
         "provider": "OpenF1",
         "label": "2024 Dutch Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9578",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:84aae977e4a50dd58521065801c60889ac0d56f04d24c5b1d4e8326db54b8ce7",
         "sessionKey": 9578
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 balanced comparison events; another dry historical year is used for uncertainty where available.",
@@ -1880,19 +2208,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 82.213,
-      "qualifyingOffsetSeconds": 0.29,
+      "neutralBaseLapSeconds": 81.582,
+      "qualifyingOffsetSeconds": -0.341,
       "expectedGreenRaceDeltaSeconds": 3.244,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 81.546,
+        "poleMedianSeconds": 81.728,
         "top3MedianSeconds": 81.923,
-        "fieldMedianDeltaSeconds": 0.83,
+        "fieldMedianDeltaSeconds": 0.621,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -1900,27 +2228,28 @@
         "liveQualifyingTop3MedianSeconds": 79.766,
         "liveQualifyingReferenceErrorSeconds": -2.157
       },
-      "racePaceScale": 1.008733,
-      "qualifyingPaceScale": 0.956554
+      "racePaceScale": 1.028311,
+      "qualifyingPaceScale": 0.956554,
+      "liveTimingPaceScale": 1.036188
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Italian Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Italian Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Italian Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9908",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:80b33ef691452e3e018cd75addbb822739564dea44e3137d475ad9d276557e33",
         "sessionKey": 9908
       },
@@ -1928,7 +2257,7 @@
         "provider": "OpenF1",
         "label": "2025 Italian Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9912",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:13c53f4f9c21c7a9bbc5c61e5bb3eab10357f37edefcef51a6c5d96de4165bed",
         "sessionKey": 9912
       },
@@ -1936,12 +2265,13 @@
         "provider": "OpenF1",
         "label": "2024 Italian Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9586",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:0a48622cc9cfe0c5f03fc19dc5b824583dc381f61c475beef908bb3495f922f1",
         "sessionKey": 9586
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 high-speed comparison events; another dry historical year is used for uncertainty where available.",
@@ -2004,19 +2334,19 @@
       "confidence": 0.18
     },
     "simulation": {
-      "neutralBaseLapSeconds": 92.685,
-      "qualifyingOffsetSeconds": 0.685,
+      "neutralBaseLapSeconds": 91.767,
+      "qualifyingOffsetSeconds": -0.233,
       "expectedGreenRaceDeltaSeconds": 7.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 91.583,
+        "poleMedianSeconds": 91.764,
         "top3MedianSeconds": 92,
-        "fieldMedianDeltaSeconds": 1.014,
+        "fieldMedianDeltaSeconds": 0.79,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2025,23 +2355,25 @@
         "liveQualifyingReferenceErrorSeconds": 1.344
       },
       "racePaceScale": 1.046739,
-      "qualifyingPaceScale": 1.024079
+      "qualifyingPaceScale": 1.024079,
+      "liveTimingPaceScale": 1.001491
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Spanish Grand Prix at MADRING official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Spanish Grand Prix at MADRING official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "New MADRING circuit: no completed F1 timing exists, so the estimate retains a wide range and low confidence."
@@ -2103,19 +2435,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 104.581,
-      "qualifyingOffsetSeconds": 0.422,
+      "neutralBaseLapSeconds": 103.597,
+      "qualifyingOffsetSeconds": -0.562,
       "expectedGreenRaceDeltaSeconds": 4.479,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 103.726,
+        "poleMedianSeconds": 103.922,
         "top3MedianSeconds": 104.159,
-        "fieldMedianDeltaSeconds": 1.142,
+        "fieldMedianDeltaSeconds": 0.835,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2123,27 +2455,28 @@
         "liveQualifyingTop3MedianSeconds": 104.174,
         "liveQualifyingReferenceErrorSeconds": 0.015
       },
-      "racePaceScale": 1.014306,
-      "qualifyingPaceScale": 1
+      "racePaceScale": 1.036689,
+      "qualifyingPaceScale": 1,
+      "liveTimingPaceScale": 1.024159
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Azerbaijan Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Azerbaijan Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Azerbaijan Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9904",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:fe2a8ee57613a6cc7372a54de6d798d0ada3b2ca1b3e53c7782ad6532be3d00b",
         "sessionKey": 9904
       },
@@ -2151,12 +2484,13 @@
         "provider": "OpenF1",
         "label": "2024 Azerbaijan Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9594",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:09c438ab5db5082d8cb734d91140ece159e10e10047e051b67f36e259785e343",
         "sessionKey": 9594
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2024 same-circuit dry result and 2 completed 2026 street comparison events; another dry historical year is used for uncertainty where available.",
@@ -2219,19 +2553,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 92.207,
-      "qualifyingOffsetSeconds": 0.694,
+      "neutralBaseLapSeconds": 91.303,
+      "qualifyingOffsetSeconds": -0.21,
       "expectedGreenRaceDeltaSeconds": 8.062,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 91.103,
+        "poleMedianSeconds": 91.278,
         "top3MedianSeconds": 91.513,
-        "fieldMedianDeltaSeconds": 1.022,
+        "fieldMedianDeltaSeconds": 0.78,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2240,26 +2574,27 @@
         "liveQualifyingReferenceErrorSeconds": 2.255
       },
       "racePaceScale": 1.073957,
-      "qualifyingPaceScale": 1.051973
+      "qualifyingPaceScale": 1.051973,
+      "liveTimingPaceScale": 0.992781
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Singapore Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Singapore Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Singapore Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9892",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:0a70fdcd5376c87b906f8b21ba1fcf4200ba214a4017f312d40021e3e16d4488",
         "sessionKey": 9892
       },
@@ -2267,7 +2602,7 @@
         "provider": "OpenF1",
         "label": "2025 Singapore Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9896",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:4170e192e11ef2510db552cb16d84590bf29c401090dd30d1e2f29096ab9ac2a",
         "sessionKey": 9896
       },
@@ -2275,12 +2610,13 @@
         "provider": "OpenF1",
         "label": "2024 Singapore Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9602",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:dc44168bf2ac7592d3ec19a251b1625220e705d37ef288e729d64afa403afc5f",
         "sessionKey": 9602
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 2 completed 2026 street comparison events; another dry historical year is used for uncertainty where available.",
@@ -2343,19 +2679,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 97.277,
-      "qualifyingOffsetSeconds": 0.612,
+      "neutralBaseLapSeconds": 96.446,
+      "qualifyingOffsetSeconds": -0.219,
       "expectedGreenRaceDeltaSeconds": 3.207,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 96.269,
+        "poleMedianSeconds": 96.451,
         "top3MedianSeconds": 96.665,
-        "fieldMedianDeltaSeconds": 1.075,
+        "fieldMedianDeltaSeconds": 0.804,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2363,27 +2699,28 @@
         "liveQualifyingTop3MedianSeconds": 98.894,
         "liveQualifyingReferenceErrorSeconds": 2.229
       },
-      "racePaceScale": 1.087284,
-      "qualifyingPaceScale": 1.042768
+      "racePaceScale": 1.097522,
+      "qualifyingPaceScale": 1.042768,
+      "liveTimingPaceScale": 0.99917
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "United States Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "United States Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 United States Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9884",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:80609ceb45604973db603a3572a91a2df841ee475661f914064e9f8196f1f3a9",
         "sessionKey": 9884
       },
@@ -2391,7 +2728,7 @@
         "provider": "OpenF1",
         "label": "2025 United States Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9888",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:93d1dc273f7f6a280119e7d2e56aa8fdefdb2953034e8100ff13f305e7930006",
         "sessionKey": 9888
       },
@@ -2399,12 +2736,13 @@
         "provider": "OpenF1",
         "label": "2024 United States Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9608",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:4ab931b63aec3aeac04e348007d17843fe7ad8ceacc732ced7e9c5af52628475",
         "sessionKey": 9608
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 balanced comparison events; another dry historical year is used for uncertainty where available.",
@@ -2467,19 +2805,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 78.065,
-      "qualifyingOffsetSeconds": 0.523,
+      "neutralBaseLapSeconds": 77.444,
+      "qualifyingOffsetSeconds": -0.098,
       "expectedGreenRaceDeltaSeconds": 5.242,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 77.214,
+        "poleMedianSeconds": 77.336,
         "top3MedianSeconds": 77.542,
-        "fieldMedianDeltaSeconds": 0.797,
+        "fieldMedianDeltaSeconds": 0.626,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2487,27 +2825,28 @@
         "liveQualifyingTop3MedianSeconds": 77.596,
         "liveQualifyingReferenceErrorSeconds": 0.054
       },
-      "racePaceScale": 1.041953,
-      "qualifyingPaceScale": 1
+      "racePaceScale": 1.026444,
+      "qualifyingPaceScale": 1,
+      "liveTimingPaceScale": 1.004293
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Mexico City Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Mexico City Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Mexico City Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9873",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:962cda413e0bb32acd340894a4a86ca45778a980ffba50560ff3e4996a6c568e",
         "sessionKey": 9873
       },
@@ -2515,7 +2854,7 @@
         "provider": "OpenF1",
         "label": "2025 Mexico City Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9877",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:fe5e85669b90691b4670fe306e1b5328c62db1eef95abec994712e6ba6242b7b",
         "sessionKey": 9877
       },
@@ -2523,12 +2862,13 @@
         "provider": "OpenF1",
         "label": "2024 Mexico City Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9621",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:026447fec2a8c739f3f6ecef3be333ebb0c5ea6de8f507b14f1bcdb79eb7a743",
         "sessionKey": 9621
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 power comparison events; another dry historical year is used for uncertainty where available.",
@@ -2591,19 +2931,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 73.133,
-      "qualifyingOffsetSeconds": 0.546,
+      "neutralBaseLapSeconds": 72.6,
+      "qualifyingOffsetSeconds": 0.013,
       "expectedGreenRaceDeltaSeconds": 2.017,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 72.256,
+        "poleMedianSeconds": 72.423,
         "top3MedianSeconds": 72.587,
-        "fieldMedianDeltaSeconds": 0.748,
+        "fieldMedianDeltaSeconds": 0.619,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2611,27 +2951,28 @@
         "liveQualifyingTop3MedianSeconds": 74.861,
         "liveQualifyingReferenceErrorSeconds": 2.274
       },
-      "racePaceScale": 1.084572,
-      "qualifyingPaceScale": 1.061039
+      "racePaceScale": 1.078754,
+      "qualifyingPaceScale": 1.061039,
+      "liveTimingPaceScale": 1.004734
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Sao Paulo Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Sao Paulo Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Sao Paulo Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9865",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:be863bafb702ff5f9fcd583a5fbeabf77c194f76820e07f4042bb00013f7d212",
         "sessionKey": 9865
       },
@@ -2639,12 +2980,13 @@
         "provider": "OpenF1",
         "label": "2025 Sao Paulo Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9869",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:2a5b16f29b84111b09bf0c5183d46c2f877d3d731ceb380e942e150cc58852a0",
         "sessionKey": 9869
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 balanced comparison events; another dry historical year is used for uncertainty where available.",
@@ -2707,19 +3049,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 95.109,
-      "qualifyingOffsetSeconds": 0.452,
+      "neutralBaseLapSeconds": 94.311,
+      "qualifyingOffsetSeconds": -0.346,
       "expectedGreenRaceDeltaSeconds": 3.675,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 94.243,
+        "poleMedianSeconds": 94.45,
         "top3MedianSeconds": 94.657,
-        "fieldMedianDeltaSeconds": 1.04,
+        "fieldMedianDeltaSeconds": 0.763,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2727,27 +3069,28 @@
         "liveQualifyingTop3MedianSeconds": 95.193,
         "liveQualifyingReferenceErrorSeconds": 0.536
       },
-      "racePaceScale": 0.938917,
-      "qualifyingPaceScale": 1
+      "racePaceScale": 0.973528,
+      "qualifyingPaceScale": 1,
+      "liveTimingPaceScale": 1.04436
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Las Vegas Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Las Vegas Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Las Vegas Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9858",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:bcb02fc1c78d0d1b6a8c90c34672486b2bcc360dfafd72cc34055bd33ae2a6e0",
         "sessionKey": 9858
       },
@@ -2755,12 +3098,13 @@
         "provider": "OpenF1",
         "label": "2024 Las Vegas Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9640",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:4c751dbfef0d5f2b7a432867f71ef952bdb667083c36f5fcb67ec2b187a48c76",
         "sessionKey": 9640
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2024 same-circuit dry result and 2 completed 2026 street comparison events; another dry historical year is used for uncertainty where available.",
@@ -2823,19 +3167,20 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 83.346,
-      "qualifyingOffsetSeconds": 0.773,
+      "neutralBaseLapSeconds": 82.573,
+      "qualifyingOffsetSeconds": 0,
       "expectedGreenRaceDeltaSeconds": 4.733,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
+      "liveTimingPaceScale": 1.105802,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 82.185,
+        "poleMedianSeconds": 82.374,
         "top3MedianSeconds": 82.573,
-        "fieldMedianDeltaSeconds": 0.904,
+        "fieldMedianDeltaSeconds": 0.688,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2843,8 +3188,7 @@
         "liveQualifyingTop3MedianSeconds": 82.223,
         "liveQualifyingReferenceErrorSeconds": -0.35
       },
-      "liveTimingPaceScale": 1.116475,
-      "racePaceScale": 1.139869,
+      "racePaceScale": 1.148561,
       "qualifyingPaceScale": 1
     },
     "sources": [
@@ -2852,19 +3196,19 @@
         "provider": "Formula 1",
         "label": "Qatar Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Qatar Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Qatar Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9846",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:424e15c9473cb0ee303df5c235ce239aeef1830e6a653a544f94693fd1441ba3",
         "sessionKey": 9846
       },
@@ -2872,7 +3216,7 @@
         "provider": "OpenF1",
         "label": "2025 Qatar Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9850",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:a157a2f0582b25920937fe5a888346b41c9f7e15d0722c553b60c7d997673cc8",
         "sessionKey": 9850
       },
@@ -2880,12 +3224,13 @@
         "provider": "OpenF1",
         "label": "2024 Qatar Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9646",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:cf2d1ea3834dd75d6c8f868f3134ab332385e86981429e5e090c4d645c96a39c",
         "sessionKey": 9646
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 high-speed comparison events; another dry historical year is used for uncertainty where available.",
@@ -2948,19 +3293,19 @@
       ]
     },
     "simulation": {
-      "neutralBaseLapSeconds": 86.507,
-      "qualifyingOffsetSeconds": 0.667,
+      "neutralBaseLapSeconds": 85.707,
+      "qualifyingOffsetSeconds": -0.133,
       "expectedGreenRaceDeltaSeconds": 3.338,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 85.465,
+        "poleMedianSeconds": 85.651,
         "top3MedianSeconds": 85.84,
-        "fieldMedianDeltaSeconds": 0.919,
+        "fieldMedianDeltaSeconds": 0.708,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null,
@@ -2968,27 +3313,28 @@
         "liveQualifyingTop3MedianSeconds": 88.53,
         "liveQualifyingReferenceErrorSeconds": 2.69
       },
-      "racePaceScale": 1.06917,
-      "qualifyingPaceScale": 1.044787
+      "racePaceScale": 1.097034,
+      "qualifyingPaceScale": 1.044787,
+      "liveTimingPaceScale": 1.008946
     },
     "sources": [
       {
         "provider": "Formula 1",
         "label": "Abu Dhabi Grand Prix official championship results index",
         "url": "https://www.formula1.com/en/results/2026/races",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "FIA",
         "label": "Abu Dhabi Grand Prix official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:15.474Z"
       },
       {
         "provider": "OpenF1",
         "label": "2025 Abu Dhabi Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9835",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:a93896f0998e21811029be32a8af2ed8fd630259ea314658d60d7556b174a0e1",
         "sessionKey": 9835
       },
@@ -2996,7 +3342,7 @@
         "provider": "OpenF1",
         "label": "2025 Abu Dhabi Grand Prix race historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9839",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:09db513d21c9aefc8577b4b5f4ae30a75efe20639e324110c88473f7ab1c00bc",
         "sessionKey": 9839
       },
@@ -3004,12 +3350,13 @@
         "provider": "OpenF1",
         "label": "2024 Abu Dhabi Grand Prix qualifying historical forecast input",
         "url": "https://api.openf1.org/v1/session_result?session_key=9658",
-        "retrievedAt": "2026-07-26T12:22:08.191Z",
+        "retrievedAt": "2026-07-30T12:49:15.474Z",
         "documentHash": "sha256:3932051a5d21130131bc91d35b2b1efc67b1c9fda3c6a1b6ce4b695b59135483",
         "sessionKey": 9658
       }
     ],
     "notes": [
+      "No observed straight-line speed reference: the sessions for this event have not produced car telemetry or speed-trap records.",
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
       "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 balanced comparison events; another dry historical year is used for uncertainty where available.",

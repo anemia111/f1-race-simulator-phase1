@@ -302,6 +302,18 @@ export function dirtyAirDownforceMultiplier(options: {
   return clamp(1 - loss, 0.88, 1)
 }
 
+/**
+ * Largest fraction of drag area a slipstream may remove.
+ *
+ * Drag scales with the square of speed and terminal velocity with the cube root
+ * of drag area, so a 7 % drag reduction is worth about 2.4 % of top speed, or
+ * roughly 8 km/h at 350 km/h. That is the order of a real tow at the speed trap.
+ * The former 19 % cap was worth about 35 km/h, which is why modeled race peaks
+ * sat 43-49 km/h above the 2026 references while qualifying peaks, where cars
+ * run in clear air, were only 14-30 km/h out.
+ */
+export const MAXIMUM_TOW_DRAG_REDUCTION = 0.07
+
 export function towDragReductionFor(options: {
   dynamics: Pick<TrackDynamicPoint, 'straightness'>
   gapSeconds: number
@@ -318,9 +330,9 @@ export function towDragReductionFor(options: {
   return clamp(
     proximity *
       dynamics.straightness *
-      (0.105 + machinePaceRating(team.machine.towSensitivity) * 0.075),
+      (0.038 + machinePaceRating(team.machine.towSensitivity) * 0.028),
     0,
-    0.19,
+    MAXIMUM_TOW_DRAG_REDUCTION,
   )
 }
 
@@ -367,6 +379,41 @@ function activeAeroDragMultiplier(
   return 1
 }
 
+/**
+ * Drag area of a reference-rated 2026 F1 car at the neutral setup with the
+ * moveable wings closed, in m^2.
+ *
+ * This is a physical CdA, not a tuning constant: the setup range below carries
+ * it to about 1.29 m^2 in a maximum-downforce street configuration and 1.07 m^2
+ * in a Monza configuration, and the active-aero multiplier then takes the
+ * straight-line value down from there. The previous formula combined a 1.18 base
+ * with a 0.47 straight-mode multiplier and a much wider setup range, which
+ * produced CdA near 0.38 m^2 - less than half of any Formula car ever measured -
+ * and a terminal velocity near 500 km/h.
+ *
+ * The absolute level is fitted to the observed 2026 straight-line references in
+ * `src/data/calibration` and sits at the lower end of published F1 CdA
+ * estimates. That is a consequence of where the model spends its electrical
+ * energy: by the time a modeled car reaches peak speed its deployment request
+ * has fallen away and it is accelerating on the internal combustion unit almost
+ * alone, so it needs less drag than a real car to reach the same speed. See the
+ * known limits in `docs/PACE_CALIBRATION_2026.md`.
+ */
+export const REFERENCE_DRAG_AREA_M2 = 1.17
+
+/**
+ * How strongly the aerodynamic machine axes move drag area.
+ *
+ * The straight-line spread of the real 2026 field is around 8-10 km/h between
+ * the quickest and the typical car at the same circuit. Terminal velocity goes
+ * with the cube root of drag area, so that spread needs roughly +/-4.5 % of CdA
+ * across the field. The former additive terms moved it by well under 1 %, which
+ * collapsed the field onto one straight-line speed: the modeled peak and the
+ * modeled median car were within half a km/h of each other where the observed
+ * gap is 8.
+ */
+export const DRAG_AREA_RATING_RESPONSE = 0.5
+
 export function vehicleDragAreaM2(options: {
   activeAeroMode: ActiveAeroMode
   categoryPhysics?: CategoryPhysicsProfile
@@ -382,20 +429,33 @@ export function vehicleDragAreaM2(options: {
     towDragReduction = 0,
   } = options
   const machine = team.machine
+  const dragRatingBlend =
+    machinePaceRating(machine.dragEfficiency) * 0.62 +
+    machinePaceRating(machine.aerodynamicEfficiency) * 0.24 +
+    machinePaceRating(machine.straightLineEfficiency) * 0.14
   const baseDragArea =
-    1.18 -
-    machinePaceRating(machine.dragEfficiency) * 0.1 -
-    machinePaceRating(machine.aerodynamicEfficiency) * 0.03 -
-    machinePaceRating(machine.straightLineEfficiency) * 0.025
+    REFERENCE_DRAG_AREA_M2 *
+    clamp(
+      1 -
+        (dragRatingBlend - MACHINE_PERFORMANCE_REFERENCE) *
+          DRAG_AREA_RATING_RESPONSE,
+      0.93,
+      1.07,
+    )
 
   return clamp(
     baseDragArea *
       categoryPhysics.dragAreaScale *
       setupDragAreaMultiplier(setup) *
       activeAeroDragMultiplier(activeAeroMode, team, categoryPhysics) *
-      (1 - clamp(towDragReduction, 0, 0.2)),
-    0.325,
-    1.45,
+      (1 - clamp(towDragReduction, 0, MAXIMUM_TOW_DRAG_REDUCTION)),
+    // A guard against a nonsensical combination, not a working limit. The
+    // bounds sit outside what the terms above can reach on their own - the
+    // lowest reachable value is 0.54 m^2 for the least draggy car in a low-drag
+    // setup, straight-line aero, and a full tow - so the clamp never quietly
+    // flattens the difference between two cars.
+    0.5,
+    1.6,
   )
 }
 
@@ -403,6 +463,13 @@ export function vehicleDragAreaM2(options: {
  * Converts the existing setup controls into aerodynamic drag. The result is a
  * coefficient multiplier, not a top-speed preset, so terminal velocity still
  * emerges from power, air density, wind, slope, tow, and drag.
+ *
+ * The range is bounded by what a wing change is physically worth. Running the
+ * minimum wing instead of the maximum is a large aerodynamic change, but it is
+ * not a 45 % change in the drag area of the whole car: the floor, bodywork,
+ * wheels, and suspension dominate CdA and no setup control touches them. The
+ * former 0.68-1.25 range let a low-drag setup alone remove nearly a third of the
+ * car's drag, which is more than the wings contribute in total.
  */
 export function setupDragAreaMultiplier(setup?: CarSetup) {
   if (!setup) {
@@ -411,12 +478,12 @@ export function setupDragAreaMultiplier(setup?: CarSetup) {
 
   return clamp(
     1 +
-      (setup.frontWing - 5.5) * 0.02 +
-      (setup.rearWing - 5.5) * 0.035 +
-      (setup.rideHeightMm - 28) * 0.004 +
-      (setup.coolingPercent - 50) * 0.0015,
-    0.68,
-    1.25,
+      (setup.frontWing - 5.5) * 0.009 +
+      (setup.rearWing - 5.5) * 0.016 +
+      (setup.rideHeightMm - 28) * 0.002 +
+      (setup.coolingPercent - 50) * 0.0008,
+    0.86,
+    1.14,
   )
 }
 

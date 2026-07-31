@@ -34,6 +34,17 @@ export type CategoryPhysicsProfile = {
  * the official 380 hp, 300 km/h, 2.6 g lateral and 1.9 g braking figures. SF
  * uses JRP's 405 kW and 670 kg specification; its OTS is combustion boost, not
  * an F1-style Energy Store.
+ *
+ * The aerodynamic drag multipliers are derived, not official. The FIA has not
+ * published a drag-area delta for the 2026 moveable-wing modes, and no series
+ * publishes one for its overtake aid, so `straightAeroDragMultiplier` and
+ * `partialAeroDragMultiplier` are fitted to observed straight-line speed. F1's
+ * 0.81 came from the 2026 qualifying and race speed references recorded in
+ * `src/data/calibration`, where the earlier 0.47 implied a drag area under half
+ * of any measured Formula car. The junior categories retain a smaller reduction
+ * than F1 because a rear-wing flap alone moves less drag than a coupled front
+ * and rear wing, and SUPER FORMULA keeps 1: its overtake system is combustion
+ * boost and moves no aerodynamic surface at all.
  */
 const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
@@ -53,9 +64,9 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     minimumMassKg: 768,
     minimumTopGearEfficiency: 0.815,
     overtakeBoostPowerKw: 0,
-    partialAeroDragMultiplier: 0.78,
+    partialAeroDragMultiplier: 0.84,
     rollingResistanceCoefficient: 0.012,
-    straightAeroDragMultiplier: 0.47,
+    straightAeroDragMultiplier: 0.639,
     topGearEfficiencyFalloffPerKph: 0.0062,
     topGearEfficiencyStartKph: 402,
     tractionScale: 1,

@@ -78,6 +78,82 @@ compound, pit-loss, and clean-air versus traffic values. Fuel and tyre effects
 remain separate where the samples can support that split. The runtime never
 downloads these records or silently rebases a live race.
 
+## Straight-Line Speed Reference
+
+Each event record may carry a `speed` section. It exists to calibrate the
+aerodynamic drag model, which a lap time alone cannot constrain: a lap time can
+be reached with the wrong split between straight-line speed and cornering, and
+the session controller scales will absorb the difference.
+
+Two different observables are kept apart, because they are not interchangeable.
+
+**The FIA speed trap is a fixed point on one straight.** It measures the car
+only where the trap happens to be. At Suzuka the 2026 race trap read 308 km/h
+while the same cars peaked at 349 km/h elsewhere on the lap, a 41 km/h
+difference. Trap values are therefore retained as published context and are
+never used as a peak. Where the trap does sit near the fastest point, as at
+Barcelona, it agrees with the telemetry peak to within about 2 km/h.
+
+**The peak is taken from OpenF1 car telemetry** over the whole classified field.
+It is recorded twice:
+
+- `*FieldPeakKph` is the maximum over every car. It is the like-for-like
+  comparison for a simulated maximum, but it is a single draw from the tail of
+  an extreme-value distribution and is sensitive to how many cars a session put
+  into the sample.
+- `*DriverPeakMedianKph` takes each car's own peak first and then the median, so
+  one car in an exceptional tow does not define the circuit.
+
+Qualifying and race are stored separately. They are not the same physical state:
+qualifying runs low fuel and an attack setup in clear air, while a race peak
+includes fuel, tow, and Overtake trains. In 2026 the race peak is consistently
+the higher of the two, by 8 to 27 km/h.
+
+Status follows the same rules as the rest of the file. A telemetry aggregate is
+calculated from measured records, so it is `observed`, not `official`. A record
+whose sessions have not run carries no `speed` section at all, rather than an
+estimate: there is no equivalent of the historical same-circuit forecast used
+for lap time, because a regulation change moves straight-line speed more than it
+moves lap time.
+
+### Observed 2026 F1 straight-line speed
+
+All values are km/h. `Q` and `R` are the qualifying and race field peaks; the
+median is the median of the individual cars' peaks.
+
+| Circuit | Q peak | Q median | R peak | R median | Race trap max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Albert Park | 333 | 325 | 343 | 333 | 321 |
+| Shanghai | 343 | 337 | 352 | 345 | 353 |
+| Suzuka | 339 | 332 | 349 | 339 | 308 |
+| Miami | 346 | 344 | 350 | 346 | 334 |
+| Montreal | 337 | 332 | 350 | 339 | 348 |
+| Monaco | 291 | 288 | 292 | 284 | 287 |
+| Barcelona | 344 | 341 | 360 | 352 | 358 |
+| Red Bull Ring | 331 | 326 | 347 | 333 | 334 |
+| Silverstone | 323 | 316 | — | — | 351 |
+| Spa | 344 | 331 | 349 | 342 | 323 |
+| Hungaroring | 345 | 336 | 357 | 349 | — |
+
+Silverstone has no race telemetry sample and Hungary no race trap sample. Those
+fields stay null rather than being filled from the other session.
+
+### Validating the model against it
+
+```bash
+npm run validate:speed-trap
+```
+
+The script measures a modeled qualifying peak per team in attack trim and a
+modeled race peak through the complete race loop, then compares both the field
+peak and the driver-peak median against the reference.
+
+Acceptance is on the aggregate, not a tight per-circuit band: this is one
+physical drag model fitted to every circuit at once, and a tight per-circuit
+band could only be satisfied by adding per-circuit factors, which is the
+modelling fault the calibration exists to remove. The limits are a mean absolute
+error of 8 km/h, a bias within 5 km/h, and no single circuit past 18 km/h.
+
 ## Completed F1 Sample
 
 All values below are seconds. `Clean laps` is the number of classified
@@ -186,11 +262,19 @@ available:
 ```bash
 npm run update:pace-calibration
 npm run calibrate:pace
+npm run calibrate:qualifying
 npm run validate:pace-calibration
+npm run validate:speed-trap
 npm run lint
 npm run build
 npm test
 ```
+
+A change to the drag or power model is not a pace change with a local effect. It
+moves straight-line speed, which moves lap time, which invalidates every solved
+controller scale. Re-derive the whole set in that case, including
+`node scripts/validate-f1-support-circuits.mjs --calibrate`, rather than
+adjusting the circuits that moved most.
 
 Generated offline data lives in:
 
@@ -222,3 +306,26 @@ only when the underlying observation fingerprint is unchanged.
   not inferred from a result classification alone.
 - Public SUPER FORMULA result coverage is less granular than OpenF1, so the
   race references are deliberately more conservative.
+- The drag area the model settles on sits at the lower end of published F1 CdA
+  estimates. This is a consequence of where the model spends electrical energy
+  rather than of the aerodynamic fit: by the time a modeled car reaches peak
+  speed its deployment request has fallen away and it is accelerating on the
+  400 kW internal combustion unit almost alone, so it needs less drag than a
+  real car to reach the same speed. Correcting that means reworking the energy
+  allocation model, not the drag terms, and it would move lap time everywhere.
+- The 2026 moveable-wing drag reduction is fitted to observed straight-line
+  speed, not published. The FIA has not released a drag-area delta for the wing
+  modes, and neither has any junior series for its overtake aid, so
+  `straightAeroDragMultiplier` and `partialAeroDragMultiplier` must stay
+  labelled derived. The MGU-K cutoff speeds themselves are published; the shape
+  of the ramp reaching them is not, and is likewise derived.
+- The modeled field is more uniform in straight-line speed than the real one.
+  After raising the drag response to the aerodynamic machine axes the modeled
+  gap between the quickest car and the typical car is about 4 km/h against an
+  observed 8. Circuits therefore tend to sit slightly high on the median
+  comparison while the field peak matches.
+- Monaco, Silverstone qualifying, and the Miami and Montreal races carry the
+  largest residuals, 12 to 16 km/h. Silverstone's 2026 qualifying was dry, so
+  its unusually low observed peak is a real property of the session rather than
+  a weather artefact. These are left as residuals of one shared model instead of
+  being removed with per-circuit factors.

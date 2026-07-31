@@ -10,6 +10,9 @@ import type {
 } from '../types'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
 const OVERTAKE_ACTIVATION_LENGTH = 0.12
 const MAX_MGU_K_POWER_KW =
   FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
@@ -258,9 +261,38 @@ function specifiedSectorDeploymentLimitKw() {
 }
 
 /**
+ * Speed-based MGU-K de-rate.
+ *
+ * Deployment is unrestricted up to the taper start and falls to zero at the
+ * regulation cutoff: 345 km/h normally and 355 km/h with Overtake. This is the
+ * mechanism that bounds a 2026 car's terminal velocity, because near the cutoff
+ * the car is accelerating on the 400 kW internal combustion unit alone. It was
+ * declared in `FIA_2026_REGULATION_PROFILE` but never applied, so the model used
+ * to carry full electrical power to any speed and its own energy allocation
+ * reasoned about a 420 km/h car.
+ *
+ * The cutoff speeds are published; the ramp between the taper start and the
+ * cutoff is derived, so it must not be presented as an official power curve.
+ */
+export function speedDeploymentDerateFactor(options: {
+  overtakeStatus: OvertakeStatus
+  speedKph: number
+}) {
+  const { energy } = FIA_2026_REGULATION_PROFILE
+  const cutoffKph =
+    options.overtakeStatus === 'active'
+      ? energy.overtakeDeploymentCutoffKph
+      : energy.standardDeploymentCutoffKph
+  const rangeKph = Math.max(1, cutoffKph - energy.deploymentTaperStartKph)
+
+  return clamp((cutoffKph - options.speedKph) / rangeKph, 0, 1)
+}
+
+/**
  * FIA's April 2026 refinement keeps 350 kW from corner exit to the braking
  * point and limits other parts of the lap to 250 kW. Low-grip values remain
  * non-public, so that curve stays a clearly identified conservative estimate.
+ * The result is then de-rated by speed, see `speedDeploymentDerateFactor`.
  */
 export function ersDeploymentPowerKw(options: {
   curve?: ErsDeploymentCurve
@@ -272,6 +304,7 @@ export function ersDeploymentPowerKw(options: {
     curve = 'standard',
     ersMode,
     overtakeStatus,
+    speedKph,
   } = options
 
   if (ersMode !== 'deploy') {
@@ -282,14 +315,15 @@ export function ersDeploymentPowerKw(options: {
     curve === 'specified-sector'
       ? specifiedSectorDeploymentLimitKw()
       : standardDeploymentLimitKw()
+  const derate = speedDeploymentDerateFactor({ overtakeStatus, speedKph })
 
   if (curve === 'low-grip-estimate') {
-    return Math.round(Math.min(250, basePowerKw))
+    return Math.round(Math.min(250, basePowerKw) * derate)
   }
 
   return Math.round(
-    overtakeStatus === 'active'
+    (overtakeStatus === 'active'
       ? overtakeDeploymentLimitKw(basePowerKw)
-      : basePowerKw,
+      : basePowerKw) * derate,
   )
 }

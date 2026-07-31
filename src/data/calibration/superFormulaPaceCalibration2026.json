@@ -47,36 +47,37 @@
       "confidence": 0.2
     },
     "simulation": {
-      "neutralBaseLapSeconds": 89.773,
-      "qualifyingOffsetSeconds": -0.596,
+      "neutralBaseLapSeconds": 89.396,
+      "qualifyingOffsetSeconds": -0.973,
       "expectedGreenRaceDeltaSeconds": 7.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.72,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 90.293,
+        "poleMedianSeconds": 90.284,
         "top3MedianSeconds": 90.369,
-        "fieldMedianDeltaSeconds": 0.398,
+        "fieldMedianDeltaSeconds": 0.508,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null
-      }
+      },
+      "racePaceScale": 0.972246
     },
     "sources": [
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA Motegi Round 2 official result",
         "url": "https://superformula.net/sf3/race/24415/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA 2026 official calendar and results",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       }
     ],
     "notes": [
@@ -132,42 +133,43 @@
       "confidence": 0.2
     },
     "simulation": {
-      "neutralBaseLapSeconds": 85.478,
-      "qualifyingOffsetSeconds": -0.661,
+      "neutralBaseLapSeconds": 85.257,
+      "qualifyingOffsetSeconds": -0.882,
       "expectedGreenRaceDeltaSeconds": 7.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.72,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 86.064,
+        "poleMedianSeconds": 86.052,
         "top3MedianSeconds": 86.139,
-        "fieldMedianDeltaSeconds": 0.397,
+        "fieldMedianDeltaSeconds": 0.513,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null
-      }
+      },
+      "racePaceScale": 0.988479
     },
     "sources": [
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA Autopolis Round 3 official result",
         "url": "https://superformula.net/sf3/race/24419/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA 2026 official calendar and results",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "Official Autopolis Round 3 replacement procedure",
         "url": "https://superformula.net/sf3/release/27021/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       }
     ],
     "notes": [
@@ -223,36 +225,37 @@
       "confidence": 0.54
     },
     "simulation": {
-      "neutralBaseLapSeconds": 96.781,
-      "qualifyingOffsetSeconds": -0.824,
+      "neutralBaseLapSeconds": 96.503,
+      "qualifyingOffsetSeconds": -1.102,
       "expectedGreenRaceDeltaSeconds": 2.995,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.72,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 97.507,
+        "poleMedianSeconds": 97.521,
         "top3MedianSeconds": 97.605,
-        "fieldMedianDeltaSeconds": 0.431,
+        "fieldMedianDeltaSeconds": 0.568,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null
-      }
+      },
+      "racePaceScale": 1.051099
     },
     "sources": [
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA Suzuka Round 5 official result",
         "url": "https://superformula.net/sf3/race/24422/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA 2026 official calendar and results",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       }
     ],
     "notes": [
@@ -308,36 +311,37 @@
       "confidence": 0.52
     },
     "simulation": {
-      "neutralBaseLapSeconds": 82.009,
-      "qualifyingOffsetSeconds": -0.806,
+      "neutralBaseLapSeconds": 81.818,
+      "qualifyingOffsetSeconds": -0.997,
       "expectedGreenRaceDeltaSeconds": 2.635,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.72,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 82.746,
+        "poleMedianSeconds": 82.748,
         "top3MedianSeconds": 82.815,
-        "fieldMedianDeltaSeconds": 0.371,
+        "fieldMedianDeltaSeconds": 0.488,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null
-      }
+      },
+      "racePaceScale": 0.954136
     },
     "sources": [
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA Fuji Round 7 official result",
         "url": "https://superformula.net/sf3/race/24425/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA 2026 official calendar and results",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       }
     ],
     "notes": [
@@ -393,36 +397,37 @@
       "confidence": 0.16000000000000003
     },
     "simulation": {
-      "neutralBaseLapSeconds": 64.017,
-      "qualifyingOffsetSeconds": -0.483,
+      "neutralBaseLapSeconds": 63.863,
+      "qualifyingOffsetSeconds": -0.637,
       "expectedGreenRaceDeltaSeconds": 4.3,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.72,
       "calibrationSeedCount": 100,
       "validation": {
-        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "validatedAt": "2026-07-31T01:13:42.113Z",
         "qualifyingSeedCount": 100,
         "raceSeedCount": 0,
-        "poleMedianSeconds": 64.422,
+        "poleMedianSeconds": 64.421,
         "top3MedianSeconds": 64.5,
-        "fieldMedianDeltaSeconds": 0.331,
+        "fieldMedianDeltaSeconds": 0.429,
         "raceGreenMedianSeconds": null,
         "qualifyingReferenceErrorSeconds": 0,
         "raceReferenceErrorSeconds": null
-      }
+      },
+      "racePaceScale": 0.939683
     },
     "sources": [
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA Sportsland SUGO official result",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       },
       {
         "provider": "SUPER FORMULA",
         "label": "SUPER FORMULA 2026 official calendar and results",
         "url": "https://superformula.net/sf3/race_taxonomy/2026/",
-        "retrievedAt": "2026-07-26T12:22:08.191Z"
+        "retrievedAt": "2026-07-30T12:49:43.673Z"
       }
     ],
     "notes": [

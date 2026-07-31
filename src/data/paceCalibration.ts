@@ -37,6 +37,27 @@ function assertFiniteSeconds(
   }
 }
 
+/**
+ * A straight-line speed observation. The bounds are the physical envelope of
+ * the categories this file carries: below 150 km/h nothing on a Formula circuit
+ * is a peak, and no Formula car has ever been timed above 400 km/h, so a value
+ * outside that is a unit or parsing error rather than a fast lap.
+ */
+function assertFiniteKph(value: unknown, label: string, nullable = false) {
+  if (nullable && value === null) {
+    return
+  }
+
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    value < 150 ||
+    value > 400
+  ) {
+    throw new Error(`Invalid ${label}: expected 150-400 km/h`)
+  }
+}
+
 function assertConfidence(value: unknown, label: string) {
   if (
     typeof value !== 'number' ||
@@ -200,6 +221,82 @@ export function validatePaceCalibrationRecords(
       value.race.cleanLapReferenceSeconds,
       `${label} race range`,
     )
+    // The speed section is optional: a circuit whose sessions have not run has
+    // no observed straight-line reference, and an absent section is honest about
+    // that where a zero or an estimate would not be.
+    if (value.speed !== undefined) {
+      if (!isRecord(value.speed)) {
+        throw new Error(`Invalid ${label}: speed section`)
+      }
+
+      for (const field of [
+        'qualifyingFieldPeakKph',
+        'qualifyingDriverPeakMedianKph',
+        'raceFieldPeakKph',
+        'raceDriverPeakMedianKph',
+        'raceTrapMaxKph',
+        'raceTrapMedianKph',
+        'qualifyingTrapMaxKph',
+      ] as const) {
+        assertFiniteKph(value.speed[field], `${label} ${field}`, true)
+      }
+
+      for (const field of [
+        'telemetrySampleCount',
+        'trapSampleCount',
+      ] as const) {
+        const count = value.speed[field]
+
+        if (
+          typeof count !== 'number' ||
+          !Number.isSafeInteger(count) ||
+          count < 0
+        ) {
+          throw new Error(`Invalid ${label}: speed ${field}`)
+        }
+      }
+
+      assertStatus(value.speed.status, `${label} speed status`)
+      assertConfidence(value.speed.confidence, `${label} speed confidence`)
+
+      // A field peak is the maximum over every car, so it cannot be below the
+      // median of the individual car peaks. Failing this means the two
+      // aggregates were computed from different populations.
+      for (const [peak, driverMedian, family] of [
+        [
+          value.speed.qualifyingFieldPeakKph,
+          value.speed.qualifyingDriverPeakMedianKph,
+          'qualifying',
+        ],
+        [
+          value.speed.raceFieldPeakKph,
+          value.speed.raceDriverPeakMedianKph,
+          'race',
+        ],
+      ] as const) {
+        if (
+          typeof peak === 'number' &&
+          typeof driverMedian === 'number' &&
+          driverMedian > peak
+        ) {
+          throw new Error(
+            `Invalid ${label}: ${family} driver peak median above field peak`,
+          )
+        }
+      }
+
+      // An observed or official speed reference has to rest on samples. Without
+      // them the status is overstating what the record actually measured.
+      if (
+        (value.speed.status === 'observed' ||
+          value.speed.status === 'official') &&
+        value.speed.telemetrySampleCount === 0 &&
+        value.speed.trapSampleCount === 0
+      ) {
+        throw new Error(`Invalid ${label}: speed status without samples`)
+      }
+    }
+
     assertFiniteSeconds(
       value.simulation.neutralBaseLapSeconds,
       `${label} neutral base`,

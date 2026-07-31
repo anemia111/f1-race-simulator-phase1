@@ -63,6 +63,13 @@ export const FIA_2026_REGULATION_PROFILE = {
     standingStartDeploymentMinKph: 50,
     standardDeploymentCutoffKph: 345,
     overtakeDeploymentCutoffKph: 355,
+    /**
+     * Speed at which the MGU-K de-rate begins. The cutoff speeds above are
+     * published regulation values; the FIA has not published the shape of the
+     * ramp that reaches them, so this start speed and the linear interpolation
+     * in `ersDeploymentPowerKw` are a derived model, not an official curve.
+     */
+    deploymentTaperStartKph: 290,
     article: 'C5.2.7-C5.2.12',
   },
   lowGripPowerCurve: {
