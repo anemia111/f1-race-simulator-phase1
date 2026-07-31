@@ -1605,6 +1605,8 @@
 .broadcast-source.source-pir { color: #ff6576; }
 .broadcast-source.source-cal { color: #bd7cff; }
 .broadcast-source.source-sim { color: #ffd21f; }
+.broadcast-source.source-live { color: #ff4f64; }
+.broadcast-source.source-hist { color: #f4c430; }
 .broadcast-source.source-unavailable { color: #76818c; }
 
 .broadcast-leaderboard {
@@ -2149,6 +2151,20 @@
   text-align: center;
 }
 
+.footer-controls .pit-wall-control {
+  min-width: 74px;
+  padding: 0 7px;
+  border-color: rgba(75, 216, 255, 0.45);
+  color: #cdefff;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.footer-controls .pit-wall-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .footer-controls .formation-skip-control {
   min-width: 105px;
   padding: 0 7px;
@@ -2157,6 +2173,464 @@
   background: #0d2742;
   font-size: 7px;
   font-weight: 900;
+}
+
+/* --- pit wall ----------------------------------------------------------- */
+
+/*
+ * The pit wall is the one large overlay: it sits above the broadcast footer
+ * (z-index 20) and only one of pit wall / classification / race analysis is
+ * ever mounted at a time.
+ *
+ * It starts to the right of the timing tower so an engineer can still select
+ * another car from the tower while the panel is open. The offset mirrors
+ * .broadcast-workspace: 76px sidebar + 6px padding, then the left column's
+ * 0.9 of the 0.9fr/1.5fr split over the remaining width, then the 6px gap.
+ * The 524px floor covers the 430px left-column minimum at narrow widths.
+ * `.pit-wall-panel covers the timing tower` in the playtest guards this.
+ */
+.pit-wall-panel {
+  z-index: 30;
+  top: 52px;
+  right: 14px;
+  left: max(524px, calc(88px + (100vw - 94px) * 0.375));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  /* A fixed working height keeps the command bar in one place as tabs with
+     very different content lengths are switched. */
+  min-height: min(520px, calc(100svh - 104px));
+  max-height: calc(100svh - 104px);
+  padding: 0;
+  background: rgba(4, 8, 12, 0.96);
+  font-variant-numeric: tabular-nums;
+}
+
+.pit-wall-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pit-wall-title {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--accent-cyan);
+}
+
+.pit-wall-identity {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  padding-left: 9px;
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.pit-wall-identity strong {
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.pit-wall-identity b {
+  color: var(--accent-gold);
+  font-size: 11px;
+}
+
+.pit-wall-identity em {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pit-wall-standing {
+  display: inline-flex;
+  gap: 10px;
+  align-items: baseline;
+  flex: 0 0 auto;
+}
+
+.pit-wall-standing strong {
+  color: var(--accent-gold);
+  font-size: 15px;
+}
+
+.pit-wall-standing span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.pit-wall-header button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 0;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+}
+
+.pit-wall-header button:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.pit-wall-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pit-wall-tabs button {
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.pit-wall-tabs button:last-child {
+  border-right: 0;
+}
+
+.pit-wall-tabs button[aria-selected='true'] {
+  color: #e9fbff;
+  background: rgba(75, 216, 255, 0.16);
+  box-shadow: inset 0 -2px 0 var(--accent-cyan);
+}
+
+.pit-wall-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.pit-wall-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+.pit-wall-group {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  padding: 7px 8px 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.pit-wall-group.is-wide {
+  grid-column: span 2;
+}
+
+.pit-wall-group h3 {
+  margin: 0 0 6px;
+  color: var(--accent-cyan);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pit-wall-metric-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.pit-wall-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, auto) 26px;
+  gap: 6px;
+  align-items: center;
+  min-height: 17px;
+}
+
+.pit-wall-metric > span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pit-wall-value {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pit-wall-value.tone-neutral { color: var(--text-main); }
+.pit-wall-value.tone-good { color: #75ef91; }
+.pit-wall-value.tone-watch { color: var(--accent-gold); }
+.pit-wall-value.tone-critical { color: var(--accent-red); }
+
+.pit-wall-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 52px;
+  height: 13px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.pit-wall-badge.tone-neutral { color: var(--text-muted); }
+.pit-wall-badge.tone-good { color: #75ef91; }
+.pit-wall-badge.tone-watch { color: var(--accent-gold); }
+.pit-wall-badge.tone-critical { color: var(--accent-red); }
+
+.pit-wall-gauge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 34px 54px 26px;
+  gap: 6px;
+  align-items: center;
+  min-height: 17px;
+}
+
+.pit-wall-gauge > span:first-child {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pit-wall-gauge-track {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pit-wall-gauge-track i {
+  display: block;
+  height: 100%;
+}
+
+.pit-wall-gauge-track i.tone-good { background: #75ef91; }
+.pit-wall-gauge-track i.tone-watch { background: var(--accent-gold); }
+.pit-wall-gauge-track i.tone-critical { background: var(--accent-red); }
+
+.pit-wall-race-control {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 2fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.pit-wall-message-log {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.pit-wall-filter-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pit-wall-filter-row button {
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.pit-wall-filter-row button[aria-pressed='true'] {
+  color: #e9fbff;
+  border-color: rgba(75, 216, 255, 0.5);
+  background: rgba(75, 216, 255, 0.2);
+}
+
+.pit-wall-message-log ol {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  max-height: 340px;
+  overflow: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.pit-wall-message-log li {
+  display: grid;
+  grid-template-columns: 58px 74px minmax(0, 1fr) 44px;
+  gap: 7px;
+  align-items: center;
+  min-height: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+}
+
+.pit-wall-message-log time {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.pit-wall-message-log span {
+  overflow: hidden;
+  color: var(--text-main);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pit-wall-message-log em {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-style: normal;
+  text-align: right;
+}
+
+.pit-wall-kind {
+  display: inline-grid;
+  place-items: center;
+  height: 13px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--text-muted);
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.pit-wall-kind.kind-flag { color: var(--accent-gold); }
+.pit-wall-kind.kind-penalty,
+.pit-wall-kind.kind-investigation,
+.pit-wall-kind.kind-track-limit { color: var(--accent-red); }
+.pit-wall-kind.kind-accident,
+.pit-wall-kind.kind-contact,
+.pit-wall-kind.kind-incident { color: #ff9f5a; }
+.pit-wall-kind.kind-pit { color: var(--accent-cyan); }
+.pit-wall-kind.kind-overtake,
+.pit-wall-kind.kind-finish { color: #75ef91; }
+
+.pit-wall-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.pit-wall-commands {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 7px 10px;
+  border-top: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pit-wall-commands > div {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pit-wall-commands button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.pit-wall-commands .pit-wall-box-command {
+  border-color: rgba(244, 196, 48, 0.4);
+  color: var(--accent-gold);
+}
+
+.pit-wall-commands .pit-wall-box-command small {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pit-wall-commands .pit-wall-pace-command[aria-pressed='true'] {
+  color: #e9fbff;
+  border-color: rgba(75, 216, 255, 0.5);
+  background: rgba(75, 216, 255, 0.2);
+}
+
+.pit-wall-commands button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.pit-wall-panel :focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+/*
+ * 1280x720 is a verified layout. The panel keeps every control reachable by
+ * scrolling its body rather than growing past the footer.
+ */
+@media (max-height: 780px) {
+  .pit-wall-panel {
+    top: 46px;
+    max-height: calc(100svh - 92px);
+  }
+
+  .pit-wall-message-log ol {
+    max-height: 244px;
+  }
+}
+
+@media (max-width: 1330px) {
+  .pit-wall-columns {
+    grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  }
+
+  .pit-wall-race-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .qualifying-classification-panel {

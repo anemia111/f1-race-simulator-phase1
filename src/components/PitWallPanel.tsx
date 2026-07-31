@@ -1,0 +1,244 @@
+import { MonitorDot, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  pitWallBoxCommands,
+  pitWallCapabilitiesFor,
+  pitWallPaceCommandDisabledReason,
+  pitWallTabs,
+  type PitWallTabId,
+} from '../domain/pitWall'
+import { usePitStrategyOutlook } from '../hooks/usePitStrategyOutlook'
+import { driverAbilityValue } from '../simulation/driverAbility'
+import { tireConditionFor } from '../simulation/tires'
+import { PitWallOverview } from './pitWall/PitWallOverview'
+import { PitWallRaceControl } from './pitWall/PitWallRaceControl'
+import { PitWallStrategy } from './pitWall/PitWallStrategy'
+import { PitWallSystems } from './pitWall/PitWallSystems'
+import { PitWallWeather } from './pitWall/PitWallWeather'
+import type { PitWallCommandProps, PitWallTabProps } from './pitWall/types'
+import type { BroadcastRaceControlEntry } from './BroadcastDashboard'
+import type { EnvironmentReadout } from '../domain/environmentReadout'
+import type { SeriesId } from '../series/types'
+import type {
+  CarSnapshot,
+  Driver,
+  RacePaceMode,
+  RaceSnapshot,
+  TireCompound,
+  TrackDefinition,
+} from '../types'
+
+const paceModes: RacePaceMode[] = ['push', 'standard', 'save', 'defend']
+
+type PitWallPanelProps = PitWallCommandProps & {
+  car: CarSnapshot
+  driver: Driver
+  environment: EnvironmentReadout
+  onClose: () => void
+  openF1Mode: 'LIVE' | 'HIST' | 'SIM'
+  overtakeSystem: 'active-aero' | 'drs' | 'ots'
+  raceControlLog: BroadcastRaceControlEntry[]
+  seriesId: SeriesId
+  snapshot: RaceSnapshot
+  telemetryIsOpenF1: boolean
+  timingIsOpenF1: boolean
+  tireLabels: Record<TireCompound, string>
+  track: TrackDefinition
+}
+
+const tabContent: Record<
+  PitWallTabId,
+  (props: PitWallTabProps) => ReactElement
+> = {
+  overview: PitWallOverview,
+  'race-control': PitWallRaceControl,
+  strategy: PitWallStrategy,
+  systems: PitWallSystems,
+  weather: PitWallWeather,
+}
+
+/**
+ * Race-engineering overlay for the selected car. It renders only state the
+ * simulator already holds; the strategy call and tyre condition are taken from
+ * the same helpers race analysis uses so both screens agree.
+ */
+export function PitWallPanel({
+  car,
+  driver,
+  environment,
+  onClose,
+  onRequestPitStop,
+  onSetDriverPaceMode,
+  openF1Mode,
+  overtakeSystem,
+  raceControlLog,
+  seriesId,
+  snapshot,
+  telemetryIsOpenF1,
+  timingIsOpenF1,
+  tireLabels,
+  track,
+}: PitWallPanelProps) {
+  const [activeTab, setActiveTab] = useState<PitWallTabId>('overview')
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [])
+
+  const capabilities = useMemo(
+    () => pitWallCapabilitiesFor({ overtakeSystem, seriesId }),
+    [overtakeSystem, seriesId],
+  )
+  const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
+  const tireCondition = useMemo(
+    () =>
+      tireConditionFor(
+        car.tire,
+        car.tireAgeLaps,
+        driverAbilityValue(driver, 'tireManagement'),
+        car.tireTemperatureC,
+        car.tireWearPercent,
+        track.tireNomination,
+      ),
+    [
+      car.tire,
+      car.tireAgeLaps,
+      car.tireTemperatureC,
+      car.tireWearPercent,
+      driver,
+      track.tireNomination,
+    ],
+  )
+  const boxCommands = useMemo(() => pitWallBoxCommands(car), [car])
+  const paceDisabledReason = pitWallPaceCommandDisabledReason(car)
+  const ActiveTab = tabContent[activeTab]
+
+  return (
+    <section
+      aria-label={`Pit wall for ${car.code} car ${car.carNumber}`}
+      className="hud pit-wall-panel"
+    >
+      <header className="pit-wall-header">
+        <span className="pit-wall-title">
+          <MonitorDot aria-hidden="true" size={14} />
+          PIT WALL
+        </span>
+        <span
+          className="pit-wall-identity"
+          style={{ borderLeftColor: car.teamColor }}
+        >
+          <strong>{car.code}</strong>
+          <b>#{car.carNumber}</b>
+          <em>{car.teamName}</em>
+        </span>
+        <span className="pit-wall-standing">
+          <strong>P{car.position}</strong>
+          <span>
+            LAP {car.lap} OF {snapshot.raceLaps}
+          </span>
+        </span>
+        <button
+          aria-label="Close pit wall"
+          onClick={onClose}
+          ref={closeButtonRef}
+          title="Close pit wall (Escape)"
+          type="button"
+        >
+          <X aria-hidden="true" size={14} />
+        </button>
+      </header>
+
+      <div aria-label="Pit wall sections" className="pit-wall-tabs" role="tablist">
+        {pitWallTabs.map((tab) => (
+          <button
+            aria-controls="pit-wall-tabpanel"
+            aria-selected={activeTab === tab.id}
+            id={`pit-wall-tab-${tab.id}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div
+        aria-labelledby={`pit-wall-tab-${activeTab}`}
+        className="pit-wall-body"
+        id="pit-wall-tabpanel"
+        role="tabpanel"
+        tabIndex={0}
+      >
+        <ActiveTab
+          capabilities={capabilities}
+          car={car}
+          driver={driver}
+          environment={environment}
+          openF1Mode={openF1Mode}
+          raceControlLog={raceControlLog}
+          snapshot={snapshot}
+          strategy={strategy}
+          telemetryIsOpenF1={telemetryIsOpenF1}
+          timingIsOpenF1={timingIsOpenF1}
+          tireCondition={tireCondition}
+          tireLabels={tireLabels}
+          track={track}
+        />
+      </div>
+
+      <footer className="pit-wall-commands">
+        <div aria-label="Pit stop instruction" role="group">
+          {boxCommands.map((command) => (
+            <button
+              className="pit-wall-box-command"
+              disabled={command.disabled}
+              key={command.compound}
+              onClick={() => onRequestPitStop(car.driverId, command.compound)}
+              title={
+                command.disabledReason ??
+                `Box ${car.code} for ${tireLabels[command.compound]} at the next safe lap crossing (${command.setsRemaining} set${command.setsRemaining === 1 ? '' : 's'} left)`
+              }
+              type="button"
+            >
+              BOX {command.compound}
+              <small>{command.setsRemaining}</small>
+            </button>
+          ))}
+        </div>
+        <div aria-label="Driver pace instruction" role="group">
+          {paceModes.map((mode) => (
+            <button
+              aria-pressed={car.racePaceMode === mode}
+              className="pit-wall-pace-command"
+              disabled={paceDisabledReason !== null}
+              key={mode}
+              onClick={() => onSetDriverPaceMode(car.driverId, mode)}
+              title={
+                paceDisabledReason ?? `Instruct ${car.code} to run ${mode} pace`
+              }
+              type="button"
+            >
+              {mode === 'standard' ? 'STD' : mode.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </footer>
+    </section>
+  )
+}

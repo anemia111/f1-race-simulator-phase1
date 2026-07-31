@@ -7,6 +7,7 @@ import {
 import { RaceClassificationPanel } from './components/RaceClassificationPanel'
 import { QualifyingClassificationPanel } from './components/QualifyingClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
+import { PitWallPanel } from './components/PitWallPanel'
 import { SetupPanel } from './components/SetupPanel'
 import { FreeModeBuilder } from './components/FreeModeBuilder'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
@@ -1200,6 +1201,7 @@ export default function App() {
   const [isDataManagerOpen, setIsDataManagerOpen] = useState(false)
   const [isClassificationOpen, setIsClassificationOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
+  const [isPitWallOpen, setIsPitWallOpen] = useState(false)
   const [showOpenF1Cars, setShowOpenF1Cars] = useState(true)
   const [requestedDataMode, setRequestedDataMode] = useState<DataMode>('SIM')
   const [openF1AccessToken, setOpenF1AccessToken] = useState<string | null>(null)
@@ -3531,6 +3533,11 @@ export default function App() {
       </button>
     </div>
   )
+  const broadcastTireLabels: Record<TireCompound, string> = {
+    ...seriesPackage.rules.tires.dryLabels,
+    I: 'Intermediate',
+    W: 'Wet',
+  }
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
@@ -3572,10 +3579,17 @@ export default function App() {
         onOpenClassification={() => {
           setIsClassificationOpen(true)
           setIsInsightsOpen(false)
+          setIsPitWallOpen(false)
         }}
         onOpenInsights={() => {
           setIsInsightsOpen(true)
           setIsClassificationOpen(false)
+          setIsPitWallOpen(false)
+        }}
+        onOpenPitWall={() => {
+          setIsPitWallOpen(true)
+          setIsClassificationOpen(false)
+          setIsInsightsOpen(false)
         }}
         onOpenSetup={() =>
           applicationMode === 'free'
@@ -3602,11 +3616,7 @@ export default function App() {
         seriesId={selectedSeriesId}
         seriesLabel={seriesPackage.label}
         seriesOptions={seriesPackages.map(({ id, label }) => ({ id, label }))}
-        tireLabels={{
-          ...seriesPackage.rules.tires.dryLabels,
-          I: 'Intermediate',
-          W: 'Wet',
-        }}
+        tireLabels={broadcastTireLabels}
         overtakeSystem={seriesPackage.rules.overtakeSystem}
         timingRows={timingRows}
         track={raceConfig.track}
@@ -3739,6 +3749,26 @@ export default function App() {
           timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
           track={track}
           weekendContext={weekendContext}
+        />
+      ) : null}
+
+      {isPitWallOpen && isRaceProgressSession && selectedDriver ? (
+        <PitWallPanel
+          car={selectedCar}
+          driver={selectedDriver}
+          environment={environmentReadout}
+          onClose={() => setIsPitWallOpen(false)}
+          onRequestPitStop={requestPitStop}
+          onSetDriverPaceMode={setDriverPaceMode}
+          openF1Mode={dataMode}
+          overtakeSystem={seriesPackage.rules.overtakeSystem}
+          raceControlLog={raceControlLog}
+          seriesId={selectedSeriesId}
+          snapshot={snapshot}
+          telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
+          timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
+          tireLabels={broadcastTireLabels}
+          track={track}
         />
       ) : null}
     </div>

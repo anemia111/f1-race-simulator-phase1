@@ -1,11 +1,13 @@
 import { Activity, BarChart3, Flag, Gauge, Route, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { strategyOutlookFor } from '../simulation/strategy'
+import { usePitStrategyOutlook } from '../hooks/usePitStrategyOutlook'
+import { formatLapTime } from '../domain/timingFormat'
 import {
   completedSeasonEventCount,
   rankSeasonEntries,
   type SeasonState,
 } from '../simulation/season'
+import { weakestComponent } from '../simulation/components'
 import { tireConditionFor } from '../simulation/tires'
 import { driverAbilityValue } from '../simulation/driverAbility'
 import type {
@@ -30,13 +32,6 @@ type RaceInsightsPanelProps = {
   season: SeasonState
   onRequestPitStop: (driverId: string, compound: CarSnapshot['tire']) => void
   onSetDriverPaceMode: (driverId: string, mode: RacePaceMode) => void
-}
-
-const formatLapTime = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60)
-  const remaining = (seconds - minutes * 60).toFixed(3).padStart(6, '0')
-
-  return `${minutes}:${remaining}`
 }
 
 const compactWeather = (weather: RaceSnapshot['weather']) =>
@@ -82,71 +77,9 @@ export function RaceInsightsPanel({
       ),
     [car.tire, car.tireAgeLaps, car.tireTemperatureC, car.tireWearPercent, tireManagement, track.tireNomination],
   )
-  const pitForecast = useMemo(() => {
-    const lossSeconds = track.observedCalibration?.pitLaneTransitSeconds ??
-      16 +
-        (80 - (track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
-        (track.kind === 'street' ? 2.5 : 0)
-    const projectedDistance = car.totalDistance - lossSeconds / track.baseLapTime
-    const projectedPosition =
-      1 +
-      snapshot.cars.filter(
-        (candidate) =>
-          candidate.driverId !== car.driverId &&
-          candidate.status === 'running' &&
-          candidate.totalDistance > projectedDistance,
-      ).length
-
-    return { lossSeconds, projectedPosition }
-  }, [car.driverId, car.totalDistance, snapshot.cars, track.baseLapTime, track.kind, track.observedCalibration?.pitLaneTransitSeconds, track.pitLane?.speedLimitKph])
-  const strategy = useMemo(
-    () =>
-      strategyOutlookFor({
-        car,
-        driver,
-        lap: snapshot.leaderLap,
-        raceLaps: snapshot.raceLaps,
-        seed: `${track.id}:${snapshot.weekend.stage}`,
-        trackGrip: snapshot.trackGrip,
-        underSafetyCar: snapshot.flag === 'sc' || snapshot.flag === 'vsc',
-        weather: snapshot.weather,
-        tireNomination: track.tireNomination,
-        observedCalibration: track.observedCalibration,
-        trackCondition: {
-          dryingLine:
-            snapshot.dryingLineBySector.reduce(
-              (total, value) => total + value,
-              0,
-            ) / 3,
-          rainIntensityMmH:
-            snapshot.weather === 'heavy-rain'
-              ? 8
-              : snapshot.weather === 'light-rain'
-                ? 2
-                : 0,
-          surfaceWaterMm:
-            snapshot.surfaceWaterMmBySector.reduce(
-              (total, value) => total + value,
-              0,
-            ) / 3,
-        },
-        pitLaneLossSeconds: pitForecast.lossSeconds,
-        gapToAheadSeconds: car.gapToAhead,
-        projectedRejoinPositionLoss: pitForecast.projectedPosition - car.position,
-        teammateInPit: snapshot.cars.some(
-          (candidate) =>
-            candidate.driverId !== car.driverId &&
-            candidate.teamId === car.teamId &&
-            candidate.pitPhase !== 'none',
-        ),
-      }),
-    [car, driver, pitForecast.lossSeconds, pitForecast.projectedPosition, snapshot.cars, snapshot.dryingLineBySector, snapshot.flag, snapshot.leaderLap, snapshot.raceLaps, snapshot.surfaceWaterMmBySector, snapshot.trackGrip, snapshot.weather, snapshot.weekend.stage, track.id, track.observedCalibration, track.tireNomination],
-  )
+  const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
   const weakestComponentEntry = useMemo(
-    () =>
-      Object.entries(car.components).sort(
-        (left, right) => left[1].conditionPercent - right[1].conditionPercent,
-      )[0],
+    () => weakestComponent(car.components),
     [car.components],
   )
   const recentLaps = useMemo(() => car.lapHistory.slice(-8).reverse(), [car.lapHistory])
@@ -238,13 +171,13 @@ export function RaceInsightsPanel({
       <section className="insight-section">
         <h2><Route aria-hidden="true" size={13} /> Strategy outlook</h2>
         <div className="insight-grid">
-          <span>Call</span><strong className={`strategy-${strategy.urgency}`}>{strategy.urgency.toUpperCase()} / {strategy.reason}</strong>
-          <span>Next stop</span><strong>Lap {strategy.estimatedStopLap}</strong>
-          <span>Next tyre</span><strong>{strategy.compound}</strong>
+          <span>Call</span><strong className={`strategy-${strategy.outlook.urgency}`}>{strategy.outlook.urgency.toUpperCase()} / {strategy.outlook.reason}</strong>
+          <span>Next stop</span><strong>Lap {strategy.outlook.estimatedStopLap}</strong>
+          <span>Next tyre</span><strong>{strategy.outlook.compound}</strong>
           <span>Gap ahead</span><strong>{car.gapToAheadLabel}</strong>
-          <span>Rejoin</span><strong>P{pitForecast.projectedPosition} / {pitForecast.lossSeconds.toFixed(1)}s</strong>
-          <span>Stop now delta</span><strong className={strategy.expectedNetGainSeconds >= 0 ? 'flag-clear' : 'flag-yellow'}>{strategy.expectedNetGainSeconds >= 0 ? '+' : ''}{strategy.expectedNetGainSeconds.toFixed(1)}s / {strategy.confidence}</strong>
-          <span>Effective loss</span><strong>{strategy.estimatedPitLossSeconds.toFixed(1)}s</strong>
+          <span>Rejoin</span><strong>P{strategy.projectedRejoinPosition} / {strategy.pitLaneLossSeconds.toFixed(1)}s</strong>
+          <span>Stop now delta</span><strong className={strategy.outlook.expectedNetGainSeconds >= 0 ? 'flag-clear' : 'flag-yellow'}>{strategy.outlook.expectedNetGainSeconds >= 0 ? '+' : ''}{strategy.outlook.expectedNetGainSeconds.toFixed(1)}s / {strategy.outlook.confidence}</strong>
+          <span>Effective loss</span><strong>{strategy.outlook.estimatedPitLossSeconds.toFixed(1)}s</strong>
           <span>Pit lane / exit</span><strong className={snapshot.pitLaneOpen && snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? (snapshot.pitExitOpen ? 'OPEN' : 'EXIT RED') : 'CLOSED'}</strong>
         </div>
         <div className="manual-strategy">

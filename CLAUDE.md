@@ -80,6 +80,12 @@ remain intentional, separate steps so unrelated work is never swept in.
 - `src/data/f1Performance.csv`: canonical 11-team/30-driver F1 performance data.
 - `src/components/FreeModeBuilder.tsx`, `src/freeMode/`: Free Mode UI,
   validation, persistence, and conversion into the existing `RaceConfig`.
+- `src/components/PitWallPanel.tsx`, `src/components/pitWall/`: race-engineering
+  overlay for the selected car.
+- `src/domain/pitWall.ts`: pit-wall derivations, component-condition
+  thresholds, and race-control classification.
+- `src/hooks/usePitStrategyOutlook.ts`: the shared strategy read-out behind
+  both race analysis and the pit wall.
 - `src/data/motorsportSeries2026.json`: category fields, calendars, and rules.
 - `src/series/seriesRegistry.ts`: validated multi-series domain packages.
 - `src/data/performanceCsv.ts`: strict CSV validation and domain mapping.

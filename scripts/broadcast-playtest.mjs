@@ -414,6 +414,177 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   const strategyControlsVisible = await page.locator('.manual-strategy').isVisible()
   await page.locator('.insights-panel header button').click()
 
+  // --- pit wall ---------------------------------------------------------
+  // Opening the pit wall must retire any other large overlay so two panels
+  // never fight for the same space.
+  await page
+    .getByRole('button', { exact: true, name: 'Classification' })
+    .click()
+  await page.waitForSelector('.classification-panel')
+  const openPitWall = page.getByTitle(/^Open the pit wall/u)
+  await openPitWall.click()
+  await page.waitForSelector('.pit-wall-panel')
+  const pitWallReplacedClassification =
+    (await page.locator('.classification-panel').count()) === 0
+  const pitWallInitialFocus = await page.evaluate(() =>
+    document.activeElement?.getAttribute('aria-label'),
+  )
+  const pitWallSelectedCode = (
+    await page
+      .locator('.leaderboard-rows li.selected .leaderboard-driver strong')
+      .innerText()
+  ).trim()
+  const pitWallHeader = await page.locator('.pit-wall-header').innerText()
+
+  const pitWallTabButtons = page.locator('.pit-wall-tabs button')
+  const pitWallTabCount = await pitWallTabButtons.count()
+  const pitWallTabViews = []
+  for (let index = 0; index < pitWallTabCount; index += 1) {
+    const tab = pitWallTabButtons.nth(index)
+    await tab.click()
+    pitWallTabViews.push({
+      groups: await page
+        .locator('#pit-wall-tabpanel .pit-wall-group h3')
+        .allInnerTexts(),
+      label: (await tab.innerText()).trim(),
+      readouts: await page
+        .locator('#pit-wall-tabpanel .pit-wall-metric, #pit-wall-tabpanel .pit-wall-gauge')
+        .count(),
+      selected: await tab.getAttribute('aria-selected'),
+    })
+  }
+
+  // The race control tab is the last one, so its filters are already visible.
+  const pitWallFilterCounts = []
+  for (const filterLabel of ['ALL', 'FLAGS', 'PENALTIES']) {
+    await page
+      .locator('.pit-wall-filter-row')
+      .getByRole('button', { exact: true, name: filterLabel })
+      .click()
+    pitWallFilterCounts.push({
+      entries: await page.locator('.pit-wall-message-log li').count(),
+      filterLabel,
+    })
+  }
+
+  await pitWallTabButtons.nth(0).click()
+  const pitWallErsReadout = await page
+    .locator('#pit-wall-tabpanel .pit-wall-metric')
+    .filter({ hasText: 'ERS / battery' })
+    .innerText()
+  const pitWallBoxStates = await page
+    .locator('.pit-wall-box-command')
+    .evaluateAll((buttons) =>
+      buttons.map((button) => ({
+        disabled: button.disabled,
+        label: (button.textContent ?? '').trim(),
+        title: button.title,
+      })),
+    )
+
+  // A pace instruction has to reach the selected car, not just repaint the
+  // button, so the assertion reads the value back off the simulation state.
+  await page
+    .locator('.pit-wall-commands')
+    .getByRole('button', { exact: true, name: 'PUSH' })
+    .click()
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.pit-wall-pace-command')).some(
+        (button) =>
+          button.getAttribute('aria-pressed') === 'true' &&
+          (button.textContent ?? '').trim() === 'PUSH',
+      ),
+    null,
+    { timeout: 8000 },
+  )
+  const pitWallPaceApplied = true
+
+  const selectedStopsBefore = Number(
+    await page.locator('.leaderboard-rows li.selected .leaderboard-stops').innerText(),
+  )
+  const enabledBoxCommand = page
+    .locator('.pit-wall-box-command:not([disabled])')
+    .first()
+  const pitWallBoxCommandLabel = (await enabledBoxCommand.innerText()).trim()
+  await enabledBoxCommand.click()
+  await page.getByRole('button', { name: '60x' }).click()
+  let pitWallBoxApplied = false
+  for (let sample = 0; sample < 140; sample += 1) {
+    await page.waitForTimeout(150)
+    const stops = Number(
+      await page
+        .locator('.leaderboard-rows li.selected .leaderboard-stops')
+        .innerText(),
+    )
+
+    if (Number.isFinite(stops) && stops > selectedStopsBefore) {
+      pitWallBoxApplied = true
+      break
+    }
+  }
+  await page.getByRole('button', { name: '1x' }).click()
+
+  const pitWallLayout = await page.evaluate(() => {
+    const panel = document.querySelector('.pit-wall-panel')
+    const body = document.querySelector('.pit-wall-body')
+    const footer = document.querySelector('.broadcast-footer')
+    const leaderboard = document.querySelector('.broadcast-leaderboard')
+
+    if (!panel || !body || !footer) {
+      return null
+    }
+
+    const rect = panel.getBoundingClientRect()
+    const maxScrollTop = Math.max(0, body.scrollHeight - body.clientHeight)
+    body.scrollTop = maxScrollTop
+    const reachedBottom = Math.abs(body.scrollTop - maxScrollTop) <= 1
+    body.scrollTop = 0
+
+    return {
+      bottom: rect.bottom,
+      documentHeight: document.documentElement.scrollHeight,
+      documentWidth: document.documentElement.scrollWidth,
+      footerTop: footer.getBoundingClientRect().top,
+      leaderboardRight:
+        leaderboard?.getBoundingClientRect().right ?? Number.NaN,
+      left: rect.left,
+      reachedBottom,
+      right: rect.right,
+      top: rect.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    }
+  })
+
+  // Selecting another car from the timing tower must retarget the open panel.
+  const otherRow = page.locator('.leaderboard-rows li:not(.selected)').first()
+  const otherDriverCode = (
+    await otherRow.locator('.leaderboard-driver strong').innerText()
+  ).trim()
+  await otherRow.locator('button').click()
+  await page.waitForFunction(
+    (code) =>
+      document.querySelector('.pit-wall-identity strong')?.textContent?.trim() ===
+      code,
+    otherDriverCode,
+    { timeout: 8000 },
+  )
+  const pitWallFollowedDriverSelection = true
+
+  await page.screenshot({
+    path: join(artifactDirectory, `pit-wall-${name}.png`),
+  })
+
+  await page.keyboard.press('Escape')
+  const pitWallEscapeClosed =
+    (await page.locator('.pit-wall-panel').count()) === 0
+  await openPitWall.click()
+  await page.waitForSelector('.pit-wall-panel')
+  await page.getByLabel('Close pit wall').click()
+  const pitWallCloseButtonClosed =
+    (await page.locator('.pit-wall-panel').count()) === 0
+
   const canvas = await waitForCanvasPixels(page)
   const activePitRows = await page.locator('.leaderboard-rows li').evaluateAll(
     (rows) => rows.filter((row) => /\bPIT\b/u.test(row.textContent ?? '')).length,
@@ -503,6 +674,21 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     observedOverallBest,
     overviewNavigationItems,
     pageErrors,
+    pitWallBoxApplied,
+    pitWallBoxCommandLabel,
+    pitWallBoxStates,
+    pitWallCloseButtonClosed,
+    pitWallErsReadout,
+    pitWallEscapeClosed,
+    pitWallFilterCounts,
+    pitWallFollowedDriverSelection,
+    pitWallHeader,
+    pitWallInitialFocus,
+    pitWallLayout,
+    pitWallPaceApplied,
+    pitWallReplacedClassification,
+    pitWallSelectedCode,
+    pitWallTabViews,
     removedBottomPanelLabels,
     resumeVisible,
     screenshotPath,
@@ -547,6 +733,19 @@ async function inspectSeriesModes(browser) {
       cars: await page.locator('.leaderboard-rows li').count(),
       eventName: await page.locator('.broadcast-brand strong').innerText(),
       timingTitle: await page.locator('.broadcast-leaderboard .broadcast-panel-header').innerText(),
+    }
+
+    // F1-only systems must read N/A rather than a fabricated value here.
+    const seriesPitWallButton = page.getByTitle(/^Open the pit wall/u)
+    if (await seriesPitWallButton.isEnabled()) {
+      await seriesPitWallButton.click()
+      await page.waitForSelector('.pit-wall-panel')
+      results[seriesId].pitWallOverview = await page
+        .locator('#pit-wall-tabpanel .pit-wall-metric')
+        .allInnerTexts()
+      await page.getByLabel('Close pit wall').click()
+    } else {
+      results[seriesId].pitWallOverview = null
     }
 
     if (seriesId === 'f3') {
@@ -908,6 +1107,46 @@ try {
     if (result.chaseSelected !== 'true') failures.push('camera switch failed')
     if (!result.setupVisible || !result.classificationVisible || !result.insightsVisible || !result.strategyControlsVisible) failures.push('secondary functional panels failed')
     if (result.lapChartLineCount < EXPECTED_FIELD_SIZE) failures.push(`lap chart drew ${result.lapChartLineCount} of ${EXPECTED_FIELD_SIZE} car lines`)
+
+    // --- pit wall ---
+    if (!result.pitWallReplacedClassification) failures.push('opening the pit wall left the classification overlay on screen')
+    if (result.pitWallInitialFocus !== 'Close pit wall') failures.push(`pit wall did not take keyboard focus: ${result.pitWallInitialFocus}`)
+    if (!result.pitWallHeader.includes(result.pitWallSelectedCode)) failures.push(`pit wall header does not identify the selected car ${result.pitWallSelectedCode}: ${result.pitWallHeader}`)
+    if (!/LAP\s+\d+\s+OF\s+\d+/u.test(result.pitWallHeader)) failures.push(`pit wall header is missing the lap count: ${result.pitWallHeader}`)
+    const expectedPitWallTabs = ['OVERVIEW', 'STRATEGY', 'CAR SYSTEMS', 'WEATHER & TRACK', 'RACE CONTROL']
+    if (result.pitWallTabViews.map((tab) => tab.label).join('|') !== expectedPitWallTabs.join('|')) failures.push(`pit wall tabs are wrong: ${result.pitWallTabViews.map((tab) => tab.label).join(', ')}`)
+    for (const tab of result.pitWallTabViews) {
+      if (tab.selected !== 'true') failures.push(`pit wall tab ${tab.label} did not become the selected tab`)
+      if (tab.groups.length === 0 || tab.readouts === 0) failures.push(`pit wall tab ${tab.label} rendered no read-outs: ${JSON.stringify(tab)}`)
+    }
+    const allFilter = result.pitWallFilterCounts.find((entry) => entry.filterLabel === 'ALL')
+    if (!allFilter || allFilter.entries === 0) failures.push('pit wall race control log is empty')
+    for (const entry of result.pitWallFilterCounts) {
+      if (entry.entries > allFilter.entries) failures.push(`pit wall ${entry.filterLabel} filter returned more rows than ALL`)
+    }
+    if (!/\d+%/u.test(result.pitWallErsReadout)) failures.push(`F1 pit wall must report a measured ERS value: ${result.pitWallErsReadout}`)
+    if (result.pitWallBoxStates.length !== 5) failures.push(`pit wall exposes ${result.pitWallBoxStates.length}/5 box commands`)
+    for (const box of result.pitWallBoxStates) {
+      if (box.title.trim().length === 0) failures.push(`pit wall box command ${box.label} has no explanatory title`)
+      if (box.disabled && !/no .* sets remain|not running/iu.test(box.title)) failures.push(`disabled box command ${box.label} does not explain itself: ${box.title}`)
+      const setsRemaining = Number((box.label.match(/(\d+)$/u) ?? [])[1])
+      if (Number.isFinite(setsRemaining) && setsRemaining === 0 && !box.disabled) failures.push(`box command ${box.label} stays enabled with no tyre sets left`)
+    }
+    if (!result.pitWallBoxStates.some((box) => !box.disabled)) failures.push('every pit wall box command was disabled for a running car')
+    if (!result.pitWallPaceApplied) failures.push('pit wall pace instruction did not reach the selected car')
+    if (!result.pitWallBoxApplied) failures.push(`pit wall ${result.pitWallBoxCommandLabel} instruction never produced a pit stop for the selected car`)
+    if (!result.pitWallFollowedDriverSelection) failures.push('pit wall did not follow the timing tower selection')
+    if (!result.pitWallEscapeClosed) failures.push('Escape did not close the pit wall')
+    if (!result.pitWallCloseButtonClosed) failures.push('the pit wall close button did not close the panel')
+    if (!result.pitWallLayout) {
+      failures.push('pit wall layout could not be measured')
+    } else {
+      const pit = result.pitWallLayout
+      if (pit.top < 0 || pit.left < 0 || pit.right > pit.viewportWidth + 1 || pit.bottom > pit.footerTop + 1) failures.push(`pit wall overflows the workspace: ${JSON.stringify(pit)}`)
+      if (pit.documentWidth !== pit.viewportWidth || pit.documentHeight !== pit.viewportHeight) failures.push(`pit wall forced a page scroll: ${pit.documentWidth}x${pit.documentHeight}`)
+      if (pit.left < pit.leaderboardRight - 1) failures.push(`pit wall covers the timing tower: ${JSON.stringify(pit)}`)
+      if (!pit.reachedBottom) failures.push(`pit wall body cannot scroll to its last read-out: ${JSON.stringify(pit)}`)
+    }
     if (!result.canvas?.ok) failures.push(`canvas pixels invalid: ${JSON.stringify(result.canvas)}`)
     if (result.pageErrors.length > 0) failures.push(`page errors: ${result.pageErrors.join('; ')}`)
     if (result.layout.documentWidth !== result.layout.viewportWidth || result.layout.documentHeight !== result.layout.viewportHeight) failures.push(`viewport overflow ${result.layout.documentWidth}x${result.layout.documentHeight}`)
@@ -930,6 +1169,22 @@ try {
     const result = seriesModes.results[seriesId]
     if (result.cars !== carCount) seriesFailures.push(`${seriesId} rendered ${result.cars}/${carCount} cars`)
     if (!/Leaderboard/iu.test(result.timingTitle)) seriesFailures.push(`${seriesId} leaderboard title is stale: ${result.timingTitle}`)
+
+    // No category outside F1 has a hybrid Energy Store or 2026 active aero, so
+    // the pit wall must say so instead of printing an invented number.
+    if (result.pitWallOverview === null) {
+      seriesFailures.push(`${seriesId} pit wall could not be opened`)
+    } else {
+      for (const label of ['ERS / battery', 'Active aero']) {
+        const row = result.pitWallOverview.find((text) => text.includes(label))
+
+        if (!row) {
+          seriesFailures.push(`${seriesId} pit wall is missing the ${label} row`)
+        } else if (!row.includes('N/A')) {
+          seriesFailures.push(`${seriesId} pit wall reports an F1-only system as a value: ${row.replace(/\s+/gu, ' ')}`)
+        }
+      }
+    }
   }
   const madridSessions = seriesModes.results.f3.madridSessions ?? []
   if (madridSessions.join(',') !== 'fp1,qualifying,qualifying2,sprint,race,race2') {

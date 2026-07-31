@@ -4,6 +4,7 @@ import {
   Flag,
   Gauge,
   Map as MapIcon,
+  MonitorDot,
   Pause,
   Play,
   Radio,
@@ -16,6 +17,10 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  cleanEnvironmentValue,
+  type EnvironmentReadout,
+} from '../domain/environmentReadout'
 import {
   START_LIGHT_COUNT,
   startSignalStateFor,
@@ -99,15 +104,6 @@ export type BroadcastDataDetail = {
   value: string
 }
 
-type EnvironmentReadout = {
-  airLabel: string
-  humidityLabel: string
-  pressureLabel: string
-  rainLabel: string
-  source: string
-  trackLabel: string
-  windLabel: string
-}
 
 type BroadcastDashboardProps = {
   applicationMode: ApplicationMode
@@ -127,6 +123,7 @@ type BroadcastDashboardProps = {
   onOpenFreeMode: () => void
   onOpenClassification: () => void
   onOpenInsights: () => void
+  onOpenPitWall: () => void
   onOpenSetup: () => void
   onPauseChange: () => void
   onSeriesChange: (seriesId: SeriesId) => void
@@ -256,8 +253,6 @@ const formatClock = (seconds: number) => {
 const compactSource = (source: BroadcastTimingRow['source']) =>
   source === 'openf1' ? 'OBS' : 'SIM'
 
-const cleanEnvironmentValue = (value: string) =>
-  value.replace(/\s+(?:OBS|S)$/, '')
 
 const terminalLabel = (car: CarSnapshot) => {
   if (car.status === 'retired') return 'OUT'
@@ -620,6 +615,7 @@ export function BroadcastDashboard({
   onOpenFreeMode,
   onOpenClassification,
   onOpenInsights,
+  onOpenPitWall,
   onOpenSetup,
   onPauseChange,
   onSeriesChange,
@@ -888,6 +884,19 @@ export function BroadcastDashboard({
             </button>
           ) : null}
           {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
+          <button
+            className="pit-wall-control"
+            disabled={!isRaceStage}
+            onClick={onOpenPitWall}
+            title={
+              isRaceStage
+                ? `Open the pit wall for ${selectedCar.code}`
+                : 'The pit wall is a race operations screen and is unavailable outside the race'
+            }
+            type="button"
+          >
+            <MonitorDot size={14}/><span>PIT WALL</span>
+          </button>
           <button onClick={onOpenInsights} title="Selected driver analysis" type="button"><Activity size={14}/>{selectedCar.code}</button>
           <button onClick={onOpenClassification} title="Classification" type="button"><Trophy size={14}/></button>
         </div>
