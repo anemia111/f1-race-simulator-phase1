@@ -12,6 +12,24 @@ export type CategoryPhysicsProfile = {
   lowSpeedOverspeedBrakeBase: number
   lowSpeedOverspeedBrakeCurvatureScale: number
   maximumBrakeDecelerationMps2: number
+  /**
+   * Downforce coefficient times reference area, in m^2. Vertical aerodynamic
+   * load is `0.5 * rho * liftAreaM2 * v^2`, the same form as the drag term, so
+   * grip rises with the square of speed instead of being a fixed multiplier.
+   */
+  liftAreaM2: number
+  /** Peak tyre friction on a dry racing surface at the reference load. */
+  peakTyreFrictionCoefficient: number
+  /**
+   * Real tyres lose grip per newton as load rises. `mu = mu0 * (Fz/Fz_ref)^-k`
+   * with this exponent as `k`, which is what makes load transfer cost lap time
+   * rather than being neutral.
+   */
+  tyreLoadSensitivity: number
+  /** Wheelbase, track width and centre-of-gravity height, in metres. */
+  wheelbaseM: number
+  trackWidthM: number
+  centreOfGravityHeightM: number
   maximumEngineRpm: number
   minimumEngineRpm: number
   minimumMassKg: number
@@ -34,6 +52,12 @@ export type CategoryPhysicsProfile = {
  * the official 380 hp, 300 km/h, 2.6 g lateral and 1.9 g braking figures. SF
  * uses JRP's 405 kW and 670 kg specification; its OTS is combustion boost, not
  * an F1-style Energy Store.
+ *
+ * The aerodynamic and tyre figures below are derived, not published. Teams do
+ * not release lift areas, friction coefficients or centre-of-gravity heights.
+ * They are set so the resulting lateral acceleration matches the peak cornering
+ * loads each category is known to reach, and `tyreForces.test.ts` is what holds
+ * them to that. Never present them as official values.
  */
 const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
@@ -48,6 +72,12 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     lowSpeedOverspeedBrakeBase: 0.26,
     lowSpeedOverspeedBrakeCurvatureScale: 0.5,
     maximumBrakeDecelerationMps2: 49.05,
+    liftAreaM2: 5.0,
+    peakTyreFrictionCoefficient: 1.75,
+    tyreLoadSensitivity: 0.12,
+    wheelbaseM: 3.6,
+    trackWidthM: 2.0,
+    centreOfGravityHeightM: 0.3,
     maximumEngineRpm: 15_000,
     minimumEngineRpm: 4_200,
     minimumMassKg: 768,
@@ -72,6 +102,12 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     lowSpeedOverspeedBrakeBase: 0.15,
     lowSpeedOverspeedBrakeCurvatureScale: 0.16,
     maximumBrakeDecelerationMps2: 34.34,
+    liftAreaM2: 3.05,
+    peakTyreFrictionCoefficient: 1.62,
+    tyreLoadSensitivity: 0.13,
+    wheelbaseM: 3.135,
+    trackWidthM: 1.9,
+    centreOfGravityHeightM: 0.31,
     maximumEngineRpm: 8_750,
     minimumEngineRpm: 3_600,
     minimumMassKg: 795,
@@ -96,6 +132,12 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     lowSpeedOverspeedBrakeBase: 0.1,
     lowSpeedOverspeedBrakeCurvatureScale: 0.08,
     maximumBrakeDecelerationMps2: 18.64,
+    liftAreaM2: 2.25,
+    peakTyreFrictionCoefficient: 1.52,
+    tyreLoadSensitivity: 0.14,
+    wheelbaseM: 3.09,
+    trackWidthM: 1.83,
+    centreOfGravityHeightM: 0.31,
     maximumEngineRpm: 8_000,
     minimumEngineRpm: 3_400,
     minimumMassKg: 699,
@@ -120,6 +162,12 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     lowSpeedOverspeedBrakeBase: 0.13,
     lowSpeedOverspeedBrakeCurvatureScale: 0.12,
     maximumBrakeDecelerationMps2: 43.16,
+    liftAreaM2: 3.95,
+    peakTyreFrictionCoefficient: 1.68,
+    tyreLoadSensitivity: 0.125,
+    wheelbaseM: 3.115,
+    trackWidthM: 1.91,
+    centreOfGravityHeightM: 0.3,
     maximumEngineRpm: 10_500,
     minimumEngineRpm: 4_000,
     minimumMassKg: 670,
