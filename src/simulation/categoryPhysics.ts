@@ -26,6 +26,23 @@ export type CategoryPhysicsProfile = {
    * rather than being neutral.
    */
   tyreLoadSensitivity: number
+  /**
+   * Rolling radius of a driven wheel, in metres. Engine speed follows from
+   * road speed through this and the gearing, so it is a physical input rather
+   * than a display constant.
+   */
+  wheelRadiusM: number
+  /**
+   * Ratio between first and top gear. With the rev limit and the speed top
+   * gear is geared for, this fixes every intermediate ratio.
+   */
+  gearSpread: number
+  /**
+   * Fraction of the rev range where the engine makes peak torque. Power peaks
+   * later, nearer the limiter, which is what makes the torque curve a curve
+   * rather than a constant-power assumption.
+   */
+  peakTorqueRevFraction: number
   /** Wheelbase, track width and centre-of-gravity height, in metres. */
   wheelbaseM: number
   trackWidthM: number
@@ -74,6 +91,9 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     maximumBrakeDecelerationMps2: 49.05,
     liftAreaM2: 5.0,
     peakTyreFrictionCoefficient: 1.75,
+    wheelRadiusM: 0.36,
+    gearSpread: 4.0,
+    peakTorqueRevFraction: 0.7,
     tyreLoadSensitivity: 0.12,
     wheelbaseM: 3.6,
     trackWidthM: 2.0,
@@ -104,6 +124,9 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     maximumBrakeDecelerationMps2: 34.34,
     liftAreaM2: 3.05,
     peakTyreFrictionCoefficient: 1.62,
+    wheelRadiusM: 0.34,
+    gearSpread: 4.2,
+    peakTorqueRevFraction: 0.66,
     tyreLoadSensitivity: 0.13,
     wheelbaseM: 3.135,
     trackWidthM: 1.9,
@@ -134,6 +157,9 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     maximumBrakeDecelerationMps2: 18.64,
     liftAreaM2: 2.25,
     peakTyreFrictionCoefficient: 1.52,
+    wheelRadiusM: 0.33,
+    gearSpread: 4.3,
+    peakTorqueRevFraction: 0.64,
     tyreLoadSensitivity: 0.14,
     wheelbaseM: 3.09,
     trackWidthM: 1.83,
@@ -164,6 +190,9 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     maximumBrakeDecelerationMps2: 43.16,
     liftAreaM2: 3.95,
     peakTyreFrictionCoefficient: 1.68,
+    wheelRadiusM: 0.33,
+    gearSpread: 4.1,
+    peakTorqueRevFraction: 0.68,
     tyreLoadSensitivity: 0.125,
     wheelbaseM: 3.115,
     trackWidthM: 1.91,
