@@ -2129,6 +2129,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       brakePercent: 0,
       rpm: 0,
       gear: 1,
+      turboSpoolFraction: 0,
+      clutchEngagementFraction: 0,
       activeAeroMode: 'corner',
       overtakeStatus: 'disabled',
       overtakeEligibility: null,

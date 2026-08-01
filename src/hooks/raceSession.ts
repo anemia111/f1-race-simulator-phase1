@@ -42,6 +42,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
+const isOptionalUnitInterval = (value: unknown) =>
+  value === undefined ||
+  (isFiniteNumber(value) && value >= 0 && value <= 1)
+
 const isNullableFiniteNumber = (value: unknown) =>
   value === null || isFiniteNumber(value)
 
@@ -74,6 +78,8 @@ function isCompatibleCarSnapshot(
     isFiniteNumber(value.lap) &&
     isFiniteNumber(value.position) &&
     isFiniteNumber(value.speedKph) &&
+    isOptionalUnitInterval(value.turboSpoolFraction) &&
+    isOptionalUnitInterval(value.clutchEngagementFraction) &&
     isFiniteNumber(value.ersBatteryPercent) &&
     isFiniteNumber(value.fuelLoadKg) &&
     isFiniteNumber(value.tireWearPercent) &&

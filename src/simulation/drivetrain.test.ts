@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { categoryPhysicsFor } from './categoryPhysics'
 import {
+  advanceClutchState,
+  advanceTurboState,
   engineRpmFor,
   enginePowerKwAt,
   engineTorqueNm,
@@ -9,10 +11,12 @@ import {
   normalisedTorqueAt,
   peakTorqueNm,
   powerUnitDriveForceN,
+  powerUnitForceInGear,
   powerUnitTorqueNm,
   selectGear,
   turboResponseFraction,
 } from './drivetrain'
+import { remainingEllipseForceN, tyreGripAt } from './tyreForces'
 
 const f1 = categoryPhysicsFor('f1-custom')
 const f2 = categoryPhysicsFor('f2')
@@ -109,10 +113,10 @@ describe('the torque curve', () => {
 describe('mguKTorqueNm', () => {
   it('holds flat torque below base speed and constant power above it', () => {
     const low = mguKTorqueNm({ deploymentPowerKw: 350, physics: f1, rpm: 2000 })
-    const base = mguKTorqueNm({
+    const anotherLow = mguKTorqueNm({
       deploymentPowerKw: 350,
       physics: f1,
-      rpm: f1.maximumEngineRpm * 0.35,
+      rpm: 4000,
     })
     const high = mguKTorqueNm({
       deploymentPowerKw: 350,
@@ -120,8 +124,8 @@ describe('mguKTorqueNm', () => {
       rpm: f1.maximumEngineRpm,
     })
 
-    expect(low).toBeCloseTo(base, 6)
-    expect(high).toBeLessThan(base)
+    expect(low).toBeCloseTo(anotherLow, 6)
+    expect(high).toBeLessThan(anotherLow)
   })
 
   it('is nothing without deployment', () => {
@@ -130,7 +134,7 @@ describe('mguKTorqueNm', () => {
     ).toBe(0)
   })
 
-  it('adds more torque low down than dividing its power by engine speed would', () => {
+  it('caps low-speed torque below the divergent P / omega result', () => {
     const rpm = 3000
     const angularSpeed = (rpm * 2 * Math.PI) / 60
     const constantPowerTorque = (350 * 1000) / angularSpeed
@@ -176,6 +180,92 @@ describe('turboResponseFraction', () => {
 
     expect(high).toBeGreaterThan(low)
   })
+
+  it('keeps spool state between ticks and both builds and decays', () => {
+    const first = advanceTurboState({
+      deltaSeconds: 0.1,
+      physics: f1,
+      previousState: { spoolFraction: 0 },
+      rpm: 7000,
+      throttleFraction: 1,
+    })
+    const second = advanceTurboState({
+      deltaSeconds: 0.1,
+      physics: f1,
+      previousState: first,
+      rpm: 7000,
+      throttleFraction: 1,
+    })
+    const lifted = advanceTurboState({
+      deltaSeconds: 0.2,
+      physics: f1,
+      previousState: second,
+      rpm: 7000,
+      throttleFraction: 0,
+    })
+
+    expect(first.spoolFraction).toBeGreaterThan(0)
+    expect(second.spoolFraction).toBeGreaterThan(first.spoolFraction)
+    expect(lifted.spoolFraction).toBeLessThan(second.spoolFraction)
+    expect(Number.isFinite(lifted.spoolFraction)).toBe(true)
+  })
+})
+
+describe('standing launch', () => {
+  it('produces a finite positive raw drive force from 0 km/h', () => {
+    const selection = selectGear({ physics: f1, speedMps: 0 })
+
+    expect(selection.gear).toBe(1)
+    expect(selection.wheelCoupledRpm).toBe(0)
+    expect(selection.rpm).toBeGreaterThanOrEqual(f1.minimumEngineRpm)
+    expect(selection.clutchSlipping).toBe(true)
+    expect(selection.driveForceN).toBeGreaterThan(0)
+    expect(Number.isFinite(selection.driveForceN)).toBe(true)
+  })
+
+  it('engages the clutch continuously over elapsed time', () => {
+    const first = advanceClutchState({
+      deltaSeconds: 0.1,
+      physics: f1,
+      previousState: { engagementFraction: 0 },
+      speedMps: 0,
+      throttleFraction: 1,
+    })
+    const second = advanceClutchState({
+      deltaSeconds: 0.2,
+      physics: f1,
+      previousState: first,
+      speedMps: mps(10),
+      throttleFraction: 1,
+    })
+
+    expect(first.engagementFraction).toBeGreaterThan(0)
+    expect(second.engagementFraction).toBeGreaterThan(
+      first.engagementFraction,
+    )
+    expect(second.engagementFraction).toBeLessThanOrEqual(1)
+  })
+
+  it('uses a finite launch torque capacity while the clutch slips', () => {
+    const lightlyEngaged = selectGear({
+      clutchEngagementFraction: 0.2,
+      launchTorqueLimitNm: 600,
+      physics: f1,
+      speedMps: 0,
+    })
+    const furtherEngaged = selectGear({
+      clutchEngagementFraction: 0.6,
+      launchTorqueLimitNm: 600,
+      physics: f1,
+      speedMps: 0,
+    })
+
+    expect(lightlyEngaged.driveForceN).toBeGreaterThan(0)
+    expect(furtherEngaged.driveForceN).toBeGreaterThan(
+      lightlyEngaged.driveForceN,
+    )
+    expect(Number.isFinite(furtherEngaged.driveForceN)).toBe(true)
+  })
 })
 
 describe('the power unit as a whole', () => {
@@ -206,6 +296,95 @@ describe('the power unit as a whole', () => {
     expect(laggingWithDeployment).toBeGreaterThan(laggingCombustion * 2)
   })
 
+  it('does not apply turbo lag to electrical torque', () => {
+    const rpm = 5000
+    const laggingCombustion = powerUnitTorqueNm({
+      physics: f1,
+      rpm,
+      turboSpoolFraction: 0,
+    })
+    const laggingWholeUnit = powerUnitTorqueNm({
+      deploymentPowerKw: 350,
+      physics: f1,
+      rpm,
+      turboSpoolFraction: 0,
+    })
+
+    expect(laggingCombustion).toBe(0)
+    expect(laggingWholeUnit).toBeCloseTo(
+      mguKTorqueNm({ deploymentPowerKw: 350, physics: f1, rpm }),
+      6,
+    )
+  })
+
+  it('adds ICE and MGU-K once at the crankshaft', () => {
+    const rpm = 9000
+    const combustion = powerUnitTorqueNm({
+      deploymentPowerKw: 0,
+      physics: f1,
+      rpm,
+      turboSpoolFraction: 0.7,
+    })
+    const electrical = mguKTorqueNm({
+      deploymentPowerKw: 250,
+      physics: f1,
+      rpm,
+    })
+    const combined = powerUnitTorqueNm({
+      deploymentPowerKw: 250,
+      physics: f1,
+      rpm,
+      turboSpoolFraction: 0.7,
+    })
+
+    expect(combined).toBeCloseTo(combustion + electrical, 10)
+  })
+
+  it('increases raw force in order for 0, 250 and 350 kW deployment', () => {
+    const forceAt = (deploymentPowerKw: number) =>
+      selectGear({
+        deploymentPowerKw,
+        physics: f1,
+        speedMps: mps(150),
+      }).driveForceN
+    const withoutDeployment = forceAt(0)
+    const at250Kw = forceAt(250)
+    const at350Kw = forceAt(350)
+
+    expect(at250Kw).toBeGreaterThan(withoutDeployment)
+    expect(at350Kw).toBeGreaterThan(at250Kw)
+  })
+
+  it('can select a different optimum gear when deployment is available', () => {
+    // This explicit synthetic motor has a lower maximum torque and therefore
+    // a higher torque/power crossover speed. It proves selectGear considers
+    // the whole unit without changing the baseline F1 motor map to force a
+    // shift for the test.
+    const syntheticHighBaseSpeedMotor = {
+      mguKBaseSpeedRpm: f1.maximumEngineRpm * 0.82,
+      physics: f1,
+    }
+    const speedWithDifferentGear = Array.from(
+      { length: 321 },
+      (_, index) => index + 60,
+    ).find((speedKph) => {
+      const combustionGear = selectGear({
+        deploymentPowerKw: 0,
+        ...syntheticHighBaseSpeedMotor,
+        speedMps: mps(speedKph),
+      }).gear
+      const hybridGear = selectGear({
+        deploymentPowerKw: 350,
+        ...syntheticHighBaseSpeedMotor,
+        speedMps: mps(speedKph),
+      }).gear
+
+      return combustionGear !== hybridGear
+    })
+
+    expect(speedWithDifferentGear).toBeDefined()
+  })
+
   it('selects a higher gear as speed rises and never exceeds the limiter', () => {
     let previousGear = 0
 
@@ -222,13 +401,43 @@ describe('the power unit as a whole', () => {
 
   it('reports the revs the force was computed from', () => {
     const selection = selectGear({ physics: f1, speedMps: mps(200) })
-    const rpm = engineRpmFor({
+    const evaluated = powerUnitForceInGear({
       gear: selection.gear,
       physics: f1,
       speedMps: mps(200),
     })
 
-    expect(selection.rpm).toBeCloseTo(rpm, 6)
+    expect(selection.rpm).toBeCloseTo(evaluated.rpm, 10)
+    expect(selection.driveForceN).toBeCloseTo(evaluated.driveForceN, 10)
+  })
+
+  it('keeps RPM and force finite on both sides of every shift', () => {
+    let previous = selectGear({ physics: f1, speedMps: mps(40) })
+    let shiftCount = 0
+
+    for (let speedKph = 40.25; speedKph <= 390; speedKph += 0.25) {
+      const current = selectGear({ physics: f1, speedMps: mps(speedKph) })
+
+      for (const value of [
+        previous.rpm,
+        previous.driveForceN,
+        current.rpm,
+        current.driveForceN,
+      ]) {
+        expect(Number.isFinite(value)).toBe(true)
+        expect(value).toBeGreaterThanOrEqual(0)
+      }
+
+      if (current.gear !== previous.gear) {
+        shiftCount += 1
+        expect(current.rpm).toBeLessThanOrEqual(f1.maximumEngineRpm)
+        expect(previous.rpm).toBeLessThanOrEqual(f1.maximumEngineRpm)
+      }
+
+      previous = current
+    }
+
+    expect(shiftCount).toBeGreaterThan(0)
   })
 
   it('falls away with speed, unlike a constant-power assumption', () => {
@@ -266,5 +475,31 @@ describe('the power unit as a whole', () => {
         throttleFraction: 0,
       }),
     ).toBe(0)
+  })
+
+  it('leaves the raw power-unit force for the tyre model to limit', () => {
+    const speedMps = mps(100)
+    const rawDriveForceN = powerUnitDriveForceN({
+      deploymentPowerKw: 350,
+      physics: f1,
+      speedMps,
+      throttleFraction: 1,
+    })
+    const tyreGrip = tyreGripAt({
+      massKg: f1.minimumMassKg,
+      physics: f1,
+      speedMps,
+    })
+    const remainingLongitudinalForceN = remainingEllipseForceN({
+      availableForceN: tyreGrip.availableForceN,
+      usedForceN: tyreGrip.availableForceN * 0.8,
+    })
+    const appliedDriveForceN = Math.min(
+      rawDriveForceN,
+      remainingLongitudinalForceN,
+    )
+
+    expect(rawDriveForceN).toBeGreaterThan(remainingLongitudinalForceN)
+    expect(appliedDriveForceN).toBe(remainingLongitudinalForceN)
   })
 })

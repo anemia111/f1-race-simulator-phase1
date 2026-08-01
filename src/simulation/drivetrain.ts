@@ -30,6 +30,16 @@ import type { CategoryPhysicsProfile } from './categoryPhysics'
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+const finiteOr = (value: number, fallback: number) =>
+  Number.isFinite(value) ? value : fallback
+
+const DEFAULT_TRANSMISSION_EFFICIENCY = 0.94
+const LAUNCH_RPM_FRACTION = 0.38
+const DEFAULT_CLUTCH_BITE_FRACTION = 0.35
+// Preserve the existing category map by default. An absolute crankshaft RPM
+// can be supplied when a category has a documented motor torque limit.
+const DEFAULT_MGU_K_BASE_SPEED_FRACTION = 0.35
+
 /** Ratios from first to top, including the final drive. */
 export function gearRatiosFor(physics: CategoryPhysicsProfile): number[] {
   const wheelCircumferenceM = 2 * Math.PI * physics.wheelRadiusM
@@ -62,7 +72,8 @@ export function engineRpmFor(options: {
   const ratios = gearRatiosFor(physics)
   const ratio = ratios[clamp(gear, 1, ratios.length) - 1]
   const wheelRevsPerSecond =
-    Math.max(0, speedMps) / (2 * Math.PI * physics.wheelRadiusM)
+    Math.max(0, finiteOr(speedMps, 0)) /
+    (2 * Math.PI * physics.wheelRadiusM)
 
   return wheelRevsPerSecond * ratio * 60
 }
@@ -163,36 +174,97 @@ export function turboResponseFraction(options: {
   secondsSinceThrottleOpened: number
 }) {
   const { physics, rpm, secondsSinceThrottleOpened } = options
-  const revFraction = clamp(rpm / Math.max(1, physics.maximumEngineRpm), 0, 1)
-  // Spool takes roughly half a second from low revs and very little near the
-  // top of the range.
-  const timeConstantSeconds = 0.55 - 0.42 * revFraction
-  const elapsed = Math.max(0, secondsSinceThrottleOpened)
+  return advanceTurboState({
+    deltaSeconds: Math.max(0, finiteOr(secondsSinceThrottleOpened, 0)),
+    physics,
+    previousState: { spoolFraction: 0 },
+    rpm,
+    throttleFraction: 1,
+  }).spoolFraction
+}
 
-  return 1 - Math.exp(-elapsed / Math.max(0.05, timeConstantSeconds))
+export type TurboState = {
+  /** Fraction of the available combustion torque currently supported. */
+  spoolFraction: number
+}
+
+/**
+ * Advances turbo spool by one simulation step.
+ *
+ * Spool rises toward the requested throttle and decays again on a lift. The
+ * rise time shortens with crankshaft speed, while the previous value makes the
+ * result continuous between ticks. This state applies only to combustion
+ * torque; the MGU-K is deliberately outside this calculation.
+ */
+export function advanceTurboState(options: {
+  deltaSeconds: number
+  physics: CategoryPhysicsProfile
+  previousState: TurboState
+  rpm: number
+  throttleFraction: number
+}): TurboState {
+  const previous = clamp(
+    finiteOr(options.previousState.spoolFraction, 0),
+    0,
+    1,
+  )
+  const elapsed = Math.max(0, finiteOr(options.deltaSeconds, 0))
+  const throttle = clamp(finiteOr(options.throttleFraction, 0), 0, 1)
+  const revFraction = clamp(
+    finiteOr(options.rpm, 0) /
+      Math.max(1, options.physics.maximumEngineRpm),
+    0,
+    1,
+  )
+  const target = throttle
+  // A loaded turbo builds in about half a second at low revs and much faster
+  // near the limiter. It sheds speed on a lift, but not instantaneously.
+  const timeConstantSeconds =
+    target >= previous ? 0.55 - 0.42 * revFraction : 0.3
+  const retained = Math.exp(
+    -elapsed / Math.max(0.05, timeConstantSeconds),
+  )
+
+  return {
+    spoolFraction: clamp(
+      target + (previous - target) * retained,
+      0,
+      1,
+    ),
+  }
 }
 
 /**
  * MGU-K torque at the crankshaft.
  *
  * An electric motor holds flat torque to its base speed and constant power
- * above it, so at low revs the electrical side contributes far more torque
- * than its power rating divided by engine speed would suggest. This is what
- * makes a 2026 car leave a slow corner the way it does.
+ * above it. `P / omega` tends to infinity as speed tends to zero, so the low
+ * speed side must be capped by the motor's maximum torque; only above base
+ * speed does the power limit determine torque.
  */
 export function mguKTorqueNm(options: {
   deploymentPowerKw: number
+  /** Crankshaft RPM where the motor changes from torque to power limiting. */
+  mguKBaseSpeedRpm?: number
   physics: CategoryPhysicsProfile
   rpm: number
 }) {
-  const { deploymentPowerKw, physics, rpm } = options
+  const { deploymentPowerKw, mguKBaseSpeedRpm, physics, rpm } = options
   const powerW = Math.max(0, deploymentPowerKw) * 1000
 
   if (powerW <= 0 || rpm <= 0) {
     return 0
   }
 
-  const baseSpeedRpm = physics.maximumEngineRpm * 0.35
+  const baseSpeedRpm = clamp(
+    finiteOr(
+      mguKBaseSpeedRpm ??
+        physics.maximumEngineRpm * DEFAULT_MGU_K_BASE_SPEED_FRACTION,
+      physics.maximumEngineRpm * DEFAULT_MGU_K_BASE_SPEED_FRACTION,
+    ),
+    1,
+    physics.maximumEngineRpm,
+  )
   const baseAngularSpeed = (baseSpeedRpm * 2 * Math.PI) / 60
   const flatTorqueNm = powerW / baseAngularSpeed
   const angularSpeed = (rpm * 2 * Math.PI) / 60
@@ -201,47 +273,299 @@ export function mguKTorqueNm(options: {
 }
 
 export type GearSelection = {
+  /** Effective clutch engagement used for this force calculation. */
+  clutchEngagementFraction: number
+  /** Whether crankshaft and driven-wheel speeds differ through clutch slip. */
+  clutchSlipping: boolean
   gear: number
+  /** Crankshaft RPM used by ICE, MGU-K and force calculations. */
   rpm: number
   /** Tractive force at the contact patch before any traction limit. */
   driveForceN: number
+  /** RPM implied by wheel speed and gearing before clutch slip. */
+  wheelCoupledRpm: number
+}
+
+export type ClutchState = {
+  engagementFraction: number
+}
+
+/**
+ * Advances clutch engagement for a standing launch.
+ *
+ * Below the speed at which first gear can hold idle, throttle brings the
+ * clutch to its bite point and wheel speed progressively closes it. Once the
+ * wheel-coupled crankshaft speed reaches idle the clutch can lock. A lift at a
+ * standstill releases it again. This contains no circuit-specific launch
+ * correction.
+ */
+export function advanceClutchState(options: {
+  deltaSeconds: number
+  physics: CategoryPhysicsProfile
+  previousState: ClutchState
+  speedMps: number
+  throttleFraction: number
+}): ClutchState {
+  const previous = clamp(
+    finiteOr(options.previousState.engagementFraction, 0),
+    0,
+    1,
+  )
+  const elapsed = Math.max(0, finiteOr(options.deltaSeconds, 0))
+  const throttle = clamp(finiteOr(options.throttleFraction, 0), 0, 1)
+  const firstGearRpm = engineRpmFor({
+    gear: 1,
+    physics: options.physics,
+    speedMps: options.speedMps,
+  })
+  const couplingProgress = clamp(
+    firstGearRpm / Math.max(1, options.physics.minimumEngineRpm),
+    0,
+    1,
+  )
+  const launchTarget =
+    throttle *
+    (DEFAULT_CLUTCH_BITE_FRACTION +
+      (1 - DEFAULT_CLUTCH_BITE_FRACTION) * couplingProgress)
+  const target = couplingProgress >= 1 ? 1 : launchTarget
+  const timeConstantSeconds = target >= previous ? 0.48 : 0.16
+  const retained = Math.exp(
+    -elapsed / Math.max(0.02, timeConstantSeconds),
+  )
+
+  return {
+    engagementFraction: clamp(
+      target + (previous - target) * retained,
+      0,
+      1,
+    ),
+  }
 }
 
 export type PowerUnitInput = {
+  /** Current clutch engagement. Omit to use the compatible launch default. */
+  clutchEngagementFraction?: number
   /** MGU-K deployment already limited by regulation and state of charge. */
   deploymentPowerKw?: number
+  /** Optional crankshaft torque capacity while the clutch is slipping. */
+  launchTorqueLimitNm?: number
+  /** Optional physical MGU-K torque/power crossover speed at the crankshaft. */
+  mguKBaseSpeedRpm?: number
   physics: CategoryPhysicsProfile
   /** Omit for a fully spooled unit. */
   secondsSinceThrottleOpened?: number
   speedMps: number
   transmissionEfficiency?: number
+  /** Stateful turbo value. Takes precedence over the legacy elapsed time. */
+  turboSpoolFraction?: number
 }
 
 /** Crankshaft torque from the whole unit at a given engine speed. */
 export function powerUnitTorqueNm(options: {
   deploymentPowerKw?: number
+  mguKBaseSpeedRpm?: number
   physics: CategoryPhysicsProfile
   rpm: number
   secondsSinceThrottleOpened?: number
+  turboSpoolFraction?: number
 }) {
   const {
     deploymentPowerKw = 0,
+    mguKBaseSpeedRpm,
     physics,
     rpm,
     secondsSinceThrottleOpened,
+    turboSpoolFraction,
   } = options
+  const combustionAvailability =
+    turboSpoolFraction === undefined
+      ? secondsSinceThrottleOpened === undefined
+        ? 1
+        : turboResponseFraction({
+            physics,
+            rpm,
+            secondsSinceThrottleOpened,
+          })
+      : clamp(finiteOr(turboSpoolFraction, 0), 0, 1)
   const combustionNm =
-    engineTorqueNm({ physics, rpm }) *
-    (secondsSinceThrottleOpened === undefined
-      ? 1
-      : turboResponseFraction({
-          physics,
-          rpm,
-          secondsSinceThrottleOpened,
-        }))
-  const electricalNm = mguKTorqueNm({ deploymentPowerKw, physics, rpm })
+    engineTorqueNm({ physics, rpm }) * combustionAvailability
+  const electricalNm = mguKTorqueNm({
+    deploymentPowerKw,
+    mguKBaseSpeedRpm,
+    physics,
+    rpm,
+  })
 
   return combustionNm + electricalNm
+}
+
+const automaticClutchEngagementFraction = (
+  physics: CategoryPhysicsProfile,
+  speedMps: number,
+) => {
+  const firstGearRpm = engineRpmFor({ gear: 1, physics, speedMps })
+  const progress = clamp(
+    firstGearRpm / Math.max(1, physics.minimumEngineRpm),
+    0,
+    1,
+  )
+
+  return (
+    DEFAULT_CLUTCH_BITE_FRACTION +
+    (1 - DEFAULT_CLUTCH_BITE_FRACTION) * progress
+  )
+}
+
+/**
+ * Crankshaft RPM used for torque while launching. Wheel-coupled RPM remains a
+ * separate value until the clutch locks, avoiding both a stalled 0 RPM engine
+ * and an unbounded `power / speed` launch force.
+ */
+export function powerUnitRpmFor(options: {
+  clutchEngagementFraction?: number
+  gear: number
+  physics: CategoryPhysicsProfile
+  speedMps: number
+}) {
+  const wheelCoupledRpm = engineRpmFor(options)
+
+  if (wheelCoupledRpm >= options.physics.minimumEngineRpm) {
+    return wheelCoupledRpm
+  }
+
+  const engagement = clamp(
+    finiteOr(
+      options.clutchEngagementFraction ??
+        automaticClutchEngagementFraction(
+          options.physics,
+          options.speedMps,
+        ),
+      DEFAULT_CLUTCH_BITE_FRACTION,
+    ),
+    0,
+    1,
+  )
+  const launchRpm = clamp(
+    options.physics.maximumEngineRpm * LAUNCH_RPM_FRACTION,
+    options.physics.minimumEngineRpm,
+    options.physics.maximumEngineRpm,
+  )
+  const slippingRpm =
+    wheelCoupledRpm + (launchRpm - wheelCoupledRpm) * (1 - engagement)
+
+  return Math.max(options.physics.minimumEngineRpm, slippingRpm)
+}
+
+const defaultLaunchTorqueLimitNm = (
+  physics: CategoryPhysicsProfile,
+  mguKBaseSpeedRpm?: number,
+) => {
+  const baseSpeedRpm = clamp(
+    finiteOr(
+      mguKBaseSpeedRpm ??
+        physics.maximumEngineRpm * DEFAULT_MGU_K_BASE_SPEED_FRACTION,
+      physics.maximumEngineRpm * DEFAULT_MGU_K_BASE_SPEED_FRACTION,
+    ),
+    1,
+    physics.maximumEngineRpm,
+  )
+  const maximumElectricalTorqueNm = mguKTorqueNm({
+    deploymentPowerKw: physics.hybridDeploymentPowerLimitKw,
+    mguKBaseSpeedRpm: baseSpeedRpm,
+    physics,
+    rpm: baseSpeedRpm,
+  })
+
+  return peakTorqueNm(physics) + maximumElectricalTorqueNm
+}
+
+/**
+ * Evaluates one gear. `selectGear` uses this same result, so the RPM reported
+ * to telemetry is necessarily the RPM used for ICE torque, MGU-K torque and
+ * contact-patch force.
+ */
+export function powerUnitForceInGear(
+  options: PowerUnitInput & { gear: number },
+): GearSelection {
+  const ratios = gearRatiosFor(options.physics)
+  const gear = clamp(
+    Math.round(finiteOr(options.gear, 1)),
+    1,
+    ratios.length,
+  )
+  const wheelCoupledRpm = engineRpmFor({
+    gear,
+    physics: options.physics,
+    speedMps: options.speedMps,
+  })
+  const clutchEngagementFraction = clamp(
+    finiteOr(
+      options.clutchEngagementFraction ??
+        automaticClutchEngagementFraction(
+          options.physics,
+          options.speedMps,
+        ),
+      DEFAULT_CLUTCH_BITE_FRACTION,
+    ),
+    0,
+    1,
+  )
+  const rpm = powerUnitRpmFor({
+    clutchEngagementFraction,
+    gear,
+    physics: options.physics,
+    speedMps: options.speedMps,
+  })
+  const clutchSlipping = wheelCoupledRpm < options.physics.minimumEngineRpm
+  const crankshaftTorqueNm = powerUnitTorqueNm({
+    deploymentPowerKw: options.deploymentPowerKw,
+    mguKBaseSpeedRpm: options.mguKBaseSpeedRpm,
+    physics: options.physics,
+    rpm,
+    secondsSinceThrottleOpened: options.secondsSinceThrottleOpened,
+    turboSpoolFraction: options.turboSpoolFraction,
+  })
+  const launchTorqueLimitNm = Math.max(
+    0,
+    finiteOr(
+      options.launchTorqueLimitNm ??
+        defaultLaunchTorqueLimitNm(
+          options.physics,
+          options.mguKBaseSpeedRpm,
+        ),
+      0,
+    ),
+  )
+  const transmittedTorqueNm = clutchSlipping
+    ? Math.min(
+        crankshaftTorqueNm,
+        launchTorqueLimitNm * clutchEngagementFraction,
+      )
+    : crankshaftTorqueNm
+  const transmissionEfficiency = clamp(
+    finiteOr(
+      options.transmissionEfficiency ?? DEFAULT_TRANSMISSION_EFFICIENCY,
+      DEFAULT_TRANSMISSION_EFFICIENCY,
+    ),
+    0,
+    1,
+  )
+  const driveForceN =
+    wheelCoupledRpm > options.physics.maximumEngineRpm
+      ? 0
+      : (transmittedTorqueNm *
+          ratios[gear - 1] *
+          transmissionEfficiency) /
+        options.physics.wheelRadiusM
+
+  return {
+    clutchEngagementFraction,
+    clutchSlipping,
+    driveForceN: Math.max(0, finiteOr(driveForceN, 0)),
+    gear,
+    rpm: finiteOr(rpm, options.physics.minimumEngineRpm),
+    wheelCoupledRpm: finiteOr(wheelCoupledRpm, 0),
+  }
 }
 
 /**
@@ -253,50 +577,34 @@ export function powerUnitTorqueNm(options: {
  * different gear from the same car without it.
  */
 export function selectGear(options: PowerUnitInput): GearSelection {
-  const {
-    deploymentPowerKw = 0,
-    physics,
-    secondsSinceThrottleOpened,
-    speedMps,
-    transmissionEfficiency = 0.94,
-  } = options
-  const ratios = gearRatiosFor(physics)
-  const forceAt = (gear: number, rpm: number) =>
-    (powerUnitTorqueNm({
-      deploymentPowerKw,
-      physics,
-      rpm,
-      secondsSinceThrottleOpened,
-    }) *
-      ratios[gear - 1] *
-      transmissionEfficiency) /
-    physics.wheelRadiusM
-  let best: GearSelection = { driveForceN: 0, gear: 1, rpm: 0 }
+  const ratios = gearRatiosFor(options.physics)
+  let best: GearSelection | undefined
 
   for (let gear = 1; gear <= ratios.length; gear += 1) {
-    const rpm = engineRpmFor({ gear, physics, speedMps })
+    const candidate = powerUnitForceInGear({ ...options, gear })
 
-    if (rpm > physics.maximumEngineRpm) {
+    if (candidate.wheelCoupledRpm > options.physics.maximumEngineRpm) {
       continue
     }
 
-    const driveForceN = forceAt(gear, rpm)
-
-    if (driveForceN > best.driveForceN) {
-      best = { driveForceN, gear, rpm }
+    if (best === undefined || candidate.driveForceN > best.driveForceN) {
+      best = candidate
     }
   }
 
-  if (best.driveForceN <= 0) {
-    // Above the top gear's limiter, or stationary. Hold the nearest usable
-    // gear rather than reporting no gear at all.
-    const gear = speedMps <= 0 ? 1 : ratios.length
-    const rpm = Math.min(
-      physics.maximumEngineRpm,
-      engineRpmFor({ gear, physics, speedMps }),
-    )
+  if (best === undefined) {
+    // Above top gear's limiter. Keep a finite dashboard state while the
+    // limiter supplies no further drive force.
+    const fallback = powerUnitForceInGear({
+      ...options,
+      gear: ratios.length,
+    })
 
-    return { driveForceN: forceAt(gear, rpm), gear, rpm }
+    return {
+      ...fallback,
+      driveForceN: 0,
+      rpm: options.physics.maximumEngineRpm,
+    }
   }
 
   return best
@@ -311,5 +619,8 @@ export function powerUnitDriveForceN(
 ) {
   const selection = selectGear(options)
 
-  return selection.driveForceN * clamp(options.throttleFraction, 0, 1)
+  return (
+    selection.driveForceN *
+    clamp(finiteOr(options.throttleFraction, 0), 0, 1)
+  )
 }

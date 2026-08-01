@@ -1001,6 +1001,10 @@ export type CarSnapshot = {
   brakePercent: number
   rpm: number
   gear: number
+  /** Turbo compressor state carried between fixed simulation ticks, 0..1. */
+  turboSpoolFraction?: number
+  /** Driveline clutch connection carried between ticks, 0=open and 1=locked. */
+  clutchEngagementFraction?: number
   /** 2026 front/rear driver-adjustable bodywork state. */
   activeAeroMode: ActiveAeroMode
   /** 2026 electrical Overtake availability, separate from active aero. */

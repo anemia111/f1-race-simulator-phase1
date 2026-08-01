@@ -63,6 +63,64 @@ describe('race session continuity', () => {
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
   })
 
+  it('accepts legacy checkpoints without live drivetrain state', () => {
+    const now = 1_800_000_000_000
+    const checkpoint = JSON.parse(
+      serializeRaceCheckpoint(
+        'session-a',
+        createInitialRace(config),
+        now,
+      )!,
+    ) as { snapshot: { cars: Array<Record<string, unknown>> } }
+
+    for (const car of checkpoint.snapshot.cars) {
+      delete car.turboSpoolFraction
+      delete car.clutchEngagementFraction
+    }
+
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(checkpoint),
+        'session-a',
+        config,
+        now,
+      ),
+    ).not.toBeNull()
+  })
+
+  it('rejects invalid persisted live drivetrain state', () => {
+    const now = 1_800_000_000_000
+    const valid = serializeRaceCheckpoint(
+      'session-a',
+      createInitialRace(config),
+      now,
+    )!
+    const invalidStates = [
+      ['turboSpoolFraction', -0.01],
+      ['turboSpoolFraction', 1.01],
+      ['turboSpoolFraction', Number.NaN],
+      ['clutchEngagementFraction', -0.01],
+      ['clutchEngagementFraction', 1.01],
+      ['clutchEngagementFraction', Number.POSITIVE_INFINITY],
+    ] as const
+
+    for (const [field, value] of invalidStates) {
+      const checkpoint = JSON.parse(valid) as {
+        snapshot: { cars: Array<Record<string, unknown>> }
+      }
+      checkpoint.snapshot.cars[0][field] = value
+
+      expect(
+        parseRaceCheckpoint(
+          JSON.stringify(checkpoint),
+          'session-a',
+          config,
+          now,
+        ),
+      ).toBeNull()
+    }
+  })
+
   it('round-trips a populated multi-lap snapshot within browser storage limits', () => {
     const now = 1_800_000_000_000
     let snapshot = createInitialRace(config)
