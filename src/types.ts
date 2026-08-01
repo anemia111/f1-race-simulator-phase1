@@ -943,7 +943,16 @@ export type CarSnapshot = {
   progress: number
   lap: number
   totalDistance: number
-  /** Compatibility field; normal-track simulation keeps this fixed at zero. */
+  /** Signed physical displacement from the reference line, in metres. */
+  lateralOffsetM: number
+  /** Signed lateral velocity across the track, in metres per second. */
+  lateralVelocityMps: number
+  /** Driver-selected physical lateral target, in metres. */
+  desiredLateralOffsetM: number
+  /**
+   * @deprecated Compatibility alias for `lateralOffsetM`. New simulation code
+   * must write both fields until pre-lateral-dynamics checkpoints age out.
+   */
   trackLateralOffset: number
   battlePhase: BattlePhase
   battleOpponentId: string | null

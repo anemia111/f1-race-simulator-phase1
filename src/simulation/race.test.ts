@@ -56,6 +56,10 @@ import {
   speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
+import {
+  lateralBoundsForTrack,
+  MAX_LATERAL_SPEED_MPS,
+} from './lateralDynamics'
 import { categoryPhysicsFor } from './categoryPhysics'
 import { selectGear } from './drivetrain'
 import { combustionPowerKwFor } from './vehicleDynamics'
@@ -1120,7 +1124,10 @@ describe('physical running order', () => {
       sectorFlags: ['clear', 'double-yellow', 'clear'],
     }
 
-    for (let step = 0; step < 30; step += 1) {
+    // Cars now move laterally around the obstruction before the longitudinal
+    // occupancy model permits them through; allow that continuous manoeuvre
+    // to propagate through the four-car queue.
+    for (let step = 0; step < 80; step += 1) {
       snapshot = advanceRace(snapshot, 0.2, config)
     }
 
@@ -1138,8 +1145,11 @@ describe('physical running order', () => {
       clearedFollowers.every(
         (follower) => follower.totalDistance > stopped.totalDistance,
       ),
-      `stopped=${stopped.totalDistance}/${stopped.battlePhase}/${stopped.battleDeltaSecondsRemaining}/${stopped.damage}/${stopped.speedKph}; followers=${clearedFollowers
-        .map((follower) => follower.totalDistance)
+      `stopped=${stopped.totalDistance}/${stopped.battlePhase}/${stopped.battleDeltaSecondsRemaining}/${stopped.damage}/${stopped.speedKph}/${stopped.lateralOffsetM}/${stopped.desiredLateralOffsetM}; followers=${clearedFollowers
+        .map(
+          (follower) =>
+            `${follower.totalDistance}/${follower.speedKph}/${follower.lateralOffsetM}/${follower.desiredLateralOffsetM}`,
+        )
         .join(',')}`,
     ).toBe(true)
     expect(
@@ -1561,7 +1571,10 @@ describe('start procedure and persisted weekend', () => {
       snapshot = advanceRace(snapshot, 2, config)
     }
 
-    expect(snapshot.flagPhase?.flag).not.toBe('sc')
+    expect(
+      snapshot.flagPhase?.flag,
+      JSON.stringify(snapshot.flagPhase),
+    ).not.toBe('sc')
     expect(snapshot.overtakeEnabled).toBe(false)
     expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
     const controlMessages = snapshot.events.map((event) => event.message)
@@ -3192,7 +3205,7 @@ describe('overtaking', () => {
     expect(snapshot.cars[0].processedBattleSegment).toBeGreaterThanOrEqual(12)
   })
 
-  it('keeps all normal-track battle phases on one fixed line', () => {
+  it('moves attack and defence lines continuously within physical bounds', () => {
     const drivers = initialDrivers.slice(0, 2)
     const teamIds = new Set(drivers.map((driver) => driver.teamId))
     const config: RaceConfig = {
@@ -3232,69 +3245,51 @@ describe('overtaking', () => {
           processedLap: Math.floor(totalDistance),
           progress: totalDistance - Math.floor(totalDistance),
           totalDistance,
+          desiredLateralOffsetM: 0,
+          lateralOffsetM: 0,
+          lateralVelocityMps: 0,
           trackLateralOffset: 0,
         }
       }),
     }
-    let following = advanceRace(prepared, 0.05, config)
+    const tickSeconds = 0.05
+    let snapshot = prepared
+    const attackerOffsets = [0]
+    const leaderOffsets = [0]
 
-    following = advanceRace(following, 0.05, config)
-    const followingAttacker = following.cars.find(
-      (car) => car.driverId === attackerId,
-    )!
-
-    expect(followingAttacker.trackLateralOffset).toBeCloseTo(0, 8)
-    expect(followingAttacker.battlePhaseUntilSeconds).toBeNull()
-
-    let committed: RaceSnapshot = {
-      ...prepared,
-      cars: prepared.cars.map((car) =>
-        car.driverId === attackerId
-          ? {
-              ...car,
-              battleOpponentId: leaderId,
-              battlePhase: 'attacking' as const,
-              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
-              trackLateralOffset: 0.42,
-            }
-          : car,
-      ),
-    }
-    const attackingOffsets: number[] = []
-
-    for (let step = 0; step < 8; step += 1) {
-      committed = advanceRace(committed, 0.005, config)
-      attackingOffsets.push(committed.cars.find(
-        (car) => car.driverId === attackerId,
-      )!.trackLateralOffset)
+    for (let step = 0; step < 20; step += 1) {
+      snapshot = advanceRace(snapshot, tickSeconds, config)
+      attackerOffsets.push(
+        snapshot.cars.find((car) => car.driverId === attackerId)!
+          .lateralOffsetM,
+      )
+      leaderOffsets.push(
+        snapshot.cars.find((car) => car.driverId === leaderId)!.lateralOffsetM,
+      )
     }
 
-    expect(attackingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
-
-    let defending: RaceSnapshot = {
-      ...prepared,
-      cars: prepared.cars.map((car) =>
-        car.driverId === leaderId
-          ? {
-              ...car,
-              battleOpponentId: attackerId,
-              battlePhase: 'defending' as const,
-              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
-              trackLateralOffset: -0.42,
-            }
-          : car,
-      ),
-    }
-    const defendingOffsets: number[] = []
-
-    for (let step = 0; step < 8; step += 1) {
-      defending = advanceRace(defending, 0.005, config)
-      defendingOffsets.push(defending.cars.find(
-        (car) => car.driverId === leaderId,
-      )!.trackLateralOffset)
+    const bounds = lateralBoundsForTrack(config.track)
+    const maximumTickTravelM = MAX_LATERAL_SPEED_MPS * tickSeconds + 1e-6
+    const assertContinuous = (offsets: number[]) => {
+      expect(offsets.some((offset) => Math.abs(offset) > 0.01)).toBe(true)
+      for (let index = 1; index < offsets.length; index += 1) {
+        expect(Math.abs(offsets[index] - offsets[index - 1])).toBeLessThanOrEqual(
+          maximumTickTravelM,
+        )
+      }
     }
 
-    expect(defendingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
+    assertContinuous(attackerOffsets)
+    assertContinuous(leaderOffsets)
+    for (const car of snapshot.cars) {
+      expect(Math.abs(car.lateralOffsetM)).toBeLessThanOrEqual(
+        bounds.maxOffsetM + 1e-6,
+      )
+      expect(Math.abs(car.desiredLateralOffsetM)).toBeLessThanOrEqual(
+        bounds.maxOffsetM + 1e-6,
+      )
+      expect(car.trackLateralOffset).toBeCloseTo(car.lateralOffsetM, 10)
+    }
   })
 })
 

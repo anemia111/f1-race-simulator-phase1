@@ -18,6 +18,7 @@ import {
   pitBoxSlotForTeam,
   progressWithinWrapped,
 } from '../simulation/pitLane'
+import { trackWidthMeters } from '../simulation/physicalLap'
 import { startingGridDistance } from '../simulation/startingGrid'
 import {
   progressAtTime,
@@ -119,6 +120,23 @@ function createRoundMarkerTexture({
 /** Broadcast maps show a timing trace, not a scale model of the asphalt. */
 function presentationTrackWidth(track: TrackDefinition) {
   return clamp(track.width * 0.27, 0.58, 0.92)
+}
+
+/** Convert physical lateral metres into timing-map presentation units. */
+// oxlint-disable-next-line react/only-export-components -- exercised as a pure metres-to-map-unit boundary
+export function presentationLateralOffset(
+  track: TrackDefinition,
+  lateralOffsetM: number,
+) {
+  const physicalWidthM = trackWidthMeters(track)
+  const finiteOffsetM = Number.isFinite(lateralOffsetM) ? lateralOffsetM : 0
+  const boundedOffsetM = clamp(
+    finiteOffsetM,
+    -physicalWidthM / 2,
+    physicalWidthM / 2,
+  )
+
+  return (boundedOffsetM / physicalWidthM) * presentationTrackWidth(track)
 }
 
 function SpriteLabel({
@@ -262,9 +280,16 @@ function displayLaneOffset(
     return startingGridSlotOffset(track, car.gridPosition)
   }
 
-  // Normal running uses one stable trace. Only grid staging and the pit lane
-  // use lateral placement on the timing map.
-  return 0
+  if (car.status !== 'running') {
+    return 0
+  }
+
+  // Older restored snapshots can reach the scene for one React render before
+  // checkpoint migration finishes, so retain the deprecated alias fallback.
+  const physicalOffsetM =
+    car.lateralOffsetM ?? car.trackLateralOffset ?? 0
+
+  return presentationLateralOffset(track, physicalOffsetM)
 }
 
 function displayPoseForCar(
@@ -1359,6 +1384,7 @@ function CameraRig({
   selectedGarageBayIndex,
   pitBoxCount,
   selectedPitSlot,
+  showStartingGridSlots,
   snapshotElapsedSeconds,
   track,
 }: {
@@ -1368,6 +1394,7 @@ function CameraRig({
   selectedGarageBayIndex: number
   pitBoxCount: number
   selectedPitSlot: number
+  showStartingGridSlots: boolean
   snapshotElapsedSeconds: number
   track: TrackDefinition
 }) {
@@ -1414,10 +1441,15 @@ function CameraRig({
     }
   }, [camera, overviewFrame, size.height, size.width])
   const selectedCameraFrame = useMemo(() => {
+    const laneOffset = displayLaneOffset(
+      track,
+      selectedCar,
+      showStartingGridSlots,
+    )
     const pose = displayPoseForCar(
       curve,
       selectedCar,
-      0,
+      laneOffset,
       track,
       selectedPitSlot,
       pitBoxCount,
@@ -1439,6 +1471,7 @@ function CameraRig({
     selectedCar,
     selectedGarageBayIndex,
     selectedPitSlot,
+    showStartingGridSlots,
     snapshotElapsedSeconds,
     track,
   ])
@@ -1650,6 +1683,10 @@ function SceneContents({
         selectedGarageBayIndex={selectedGarageBayIndex}
         pitBoxCount={config.teams.length}
         selectedPitSlot={selectedPitSlot}
+        showStartingGridSlots={
+          snapshot.startProcedure === 'grid' ||
+          snapshot.startProcedure === 'lights'
+        }
         snapshotElapsedSeconds={snapshot.elapsedSeconds}
         track={config.track}
       />

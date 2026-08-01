@@ -12,7 +12,6 @@ import type {
   RaceEvent,
   RaceSnapshot,
   StewardCase,
-  Team,
   TimedSessionSegmentPlan,
   TireCompound,
   WeatherState,
@@ -28,6 +27,10 @@ import {
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
+import {
+  decideDriverBehavior,
+  type DriverDecision,
+} from './driverDecision'
 import { effectiveMachineRating } from './machinePerformance'
 import {
   baselineSetupForTrack,
@@ -69,7 +72,6 @@ import {
 import { hashChance } from './random'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { automaticRacePaceModeFor } from './racePace'
-import { raceConditionTargetLapSeconds } from './racePaceModel'
 import { advanceRetiredCarMotion } from './retirementMotion'
 import { canRejoinTrack } from './trackRejoin'
 import {
@@ -83,7 +85,6 @@ import {
   isPracticeStage,
   isRaceDistanceSession,
   isTimedLapSession,
-  performanceSessionForWeekendStage,
   sessionDurationSecondsFor,
   weekendStageLabelFor,
 } from './sessionRules'
@@ -130,6 +131,19 @@ import {
   speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
+import { trackWidthMeters } from './physicalLap'
+import {
+  advanceLateralState,
+  lateralBoundsForTrack,
+  lateralTrafficContext,
+  reserveDesiredLateralOffsets,
+  resolveLongitudinalOccupancy,
+  type LateralVehicle,
+} from './lateralDynamics'
+import {
+  FORMULA_VEHICLE_HALF_WIDTH_M,
+  TRACK_EDGE_SAFETY_MARGIN_M,
+} from './vehicleGeometry'
 import {
   compliesWithGrandPrixTireRule,
   FIA_2026_REGULATION_PROFILE,
@@ -155,7 +169,6 @@ import {
   fuelBurnKgPerLap,
   fuelMassEffects,
   initialFuelLoadKg,
-  performanceLapGainSeconds,
   driverFuelUseMultiplier,
 } from './vehicleDynamics'
 import {
@@ -859,108 +872,8 @@ function practiceFuelLoadKgFor(
   )
 }
 
-type RaceReferenceModel = {
-  expectedGreenRaceDeltaSeconds: number
-  qualifyingReferenceSeconds: number
-  referenceEvolutionGainSeconds: number
-  referenceLapTimeSeconds: number
-  referenceTireDeltaSeconds: number
-}
-
-const raceReferenceModelCache = new WeakMap<
-  RaceConfig['track'],
-  WeakMap<Driver, Map<number, RaceReferenceModel>>
->()
-
-function fallbackGreenRaceDeltaSeconds(track: RaceConfig['track']) {
-  const layoutCost =
-    track.kind === 'street' ? 1.15 : track.kind === 'hybrid' ? 0.55 : 0.2
-
-  return Math.min(
-    8,
-    Math.max(2.2, track.baseLapTime * 0.041 + layoutCost),
-  )
-}
-
-function referenceTireCalibration(
-  track: RaceConfig['track'],
-  compound: TireCompound,
-) {
-  return {
-    degradationPerLapSeconds:
-      track.observedCalibration?.tireDegradationByCompound[compound],
-    paceOffsetSeconds:
-      track.observedCalibration?.tirePaceOffsetByCompound[compound],
-    sampleCount:
-      track.observedCalibration?.tireSampleCountByCompound[compound],
-  }
-}
-
-function raceReferenceModelFor(
-  driver: Driver,
-  config: RaceConfig,
-  raceLaps: number,
-): RaceReferenceModel {
-  let byDriver = raceReferenceModelCache.get(config.track)
-
-  if (!byDriver) {
-    byDriver = new WeakMap()
-    raceReferenceModelCache.set(config.track, byDriver)
-  }
-
-  let byDistance = byDriver.get(driver)
-
-  if (!byDistance) {
-    byDistance = new Map()
-    byDriver.set(driver, byDistance)
-  }
-
-  const cached = byDistance.get(raceLaps)
-
-  if (cached) {
-    return cached
-  }
-
-  const calibration = config.track.paceReference2026?.calibration
-  const qualifyingReferenceSeconds =
-    calibration?.qualifying.selectedReferenceSeconds ??
-    config.track.paceReference2026?.qualifyingSeconds ??
-    config.track.baseLapTime
-  const expectedGreenRaceDeltaSeconds =
-    calibration?.simulation.expectedGreenRaceDeltaSeconds ??
-    fallbackGreenRaceDeltaSeconds(config.track)
-  const referenceLapTimeSeconds =
-    qualifyingReferenceSeconds + expectedGreenRaceDeltaSeconds
-  const referenceTireDeltaSeconds = tireDeltaSeconds(
-    'M',
-    8,
-    driverPerformanceAbility(driver, 'tireManagement'),
-    'clear',
-    1,
-    undefined,
-    18,
-    config.track.tireNomination,
-    referenceTireCalibration(config.track, 'M'),
-  )
-  const referenceEvolutionGainSeconds = trackEvolutionGainSecondsFor(
-    0.55,
-    config.track,
-  )
-  const model = {
-    expectedGreenRaceDeltaSeconds,
-    qualifyingReferenceSeconds,
-    referenceEvolutionGainSeconds,
-    referenceLapTimeSeconds,
-    referenceTireDeltaSeconds,
-  }
-
-  byDistance.set(raceLaps, model)
-  return model
-}
-
 function projectedLapTime(
   driver: Driver,
-  team: Team,
   car: CarSnapshot,
   config: RaceConfig,
   elapsedSeconds: number,
@@ -972,25 +885,8 @@ function projectedLapTime(
   trackCondition?: TireTrackCondition,
 ) {
   const weather = weatherOverride ?? weatherFor(config.seed, config.track, elapsedSeconds)
-  const performanceGain = performanceLapGainSeconds({
-    driver,
-    team,
-    track: config.track,
-    weather,
-    session: performanceSessionForWeekendStage(
-      config.weekendStage ?? 'race',
-    ),
-  })
   const trackGrip = trackGripOverride ?? trackGripForWeather(config.seed, config.track, elapsedSeconds)
   const isTimedSession = isTimedLapSession(config.weekendStage ?? 'race')
-  const tireCalibration = {
-    degradationPerLapSeconds:
-      config.track.observedCalibration?.tireDegradationByCompound[car.tire],
-    paceOffsetSeconds:
-      config.track.observedCalibration?.tirePaceOffsetByCompound[car.tire],
-    sampleCount:
-      config.track.observedCalibration?.tireSampleCountByCompound[car.tire],
-  }
   const tireDelta = tireDeltaSeconds(
     car.tire,
     car.tireAgeLaps,
@@ -1000,7 +896,7 @@ function projectedLapTime(
     car.tireTemperatureC,
     car.tireWearPercent,
     config.track.tireNomination,
-    tireCalibration,
+    undefined,
     car.tireThermalStressPercent ?? 0,
     trackCondition,
     {
@@ -1028,32 +924,13 @@ function projectedLapTime(
     baselineSetupForTrack(config.track)
   const setupPenalty = setupPaceDeltaSeconds(config.track, configuredSetup)
   const componentPenalty = componentPacePenaltySeconds(car.components)
-  const isRaceDistance = isRaceDistanceSession(config.weekendStage ?? 'race')
-  const raceReference = isRaceDistance
-      ? raceReferenceModelFor(
-        driver,
-        config,
-        Math.max(
-          1,
-          sessionDistanceLapsFor(
-            config.track,
-            config.weekendStage ?? 'race',
-            config.categoryRaceFormat,
-          ),
-        ),
-      )
-    : null
   const conditionLapTime =
-    raceReference === null
-      ? config.track.baseLapTime + tireDelta - evolution
-      : raceConditionTargetLapSeconds({
-          currentEvolutionGainSeconds: evolution,
-          currentTireDeltaSeconds: tireDelta,
-          referenceEvolutionGainSeconds:
-            raceReference.referenceEvolutionGainSeconds,
-          referenceLapTimeSeconds: raceReference.referenceLapTimeSeconds,
-          referenceTireDeltaSeconds: raceReference.referenceTireDeltaSeconds,
-        })
+    referenceProfileLapTimeSeconds(
+      config.track,
+      categoryPhysicsFor(config.seriesId),
+    ) +
+    tireDelta -
+    evolution
   const modeDelta: Record<RacePaceMode, number> = {
     defend: -0.12,
     push: -0.3,
@@ -1062,8 +939,7 @@ function projectedLapTime(
   }
 
   return (
-    conditionLapTime -
-    performanceGain +
+    conditionLapTime +
     dirtyAir +
     damageCost +
     restartLoss +
@@ -2055,6 +1931,12 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         ? startingGridDistance(gridIndex)
       : (config.track.pitLane?.exitProgress ?? 0.13)
     const lap = Math.floor(totalDistance)
+    const gridLateralOffsetM =
+      isRaceDistance && !startsFromPitLane
+        ? gridIndex % 2 === 0
+          ? -1.35
+          : 1.35
+        : 0
 
     const car: CarSnapshot = {
       driverId: driver.id,
@@ -2067,7 +1949,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       progress: clamp01(totalDistance - lap),
       lap,
       totalDistance,
-      trackLateralOffset: 0,
+      lateralOffsetM: gridLateralOffsetM,
+      lateralVelocityMps: 0,
+      desiredLateralOffsetM: gridLateralOffsetM,
+      trackLateralOffset: gridLateralOffsetM,
       battlePhase: 'single-file',
       battleOpponentId: null,
       battlePhaseUntilSeconds: null,
@@ -3920,6 +3805,248 @@ export function advanceRace(
         }
       : null
 
+  // Driver intent is decided from one immutable physical field before any car
+  // advances. This keeps decisions seed-deterministic and independent of array
+  // traversal order, including when the nearest traffic is a lapped car.
+  const lapLengthM = config.track.lengthKm * 1000
+  const frameCarById = new Map(
+    frameCars.map((car) => [car.driverId, car] as const),
+  )
+  const lateralVehicles: LateralVehicle[] = frameCars
+    .filter(
+      (car) =>
+        !car.hiddenFromTrack &&
+        car.status !== 'finished' &&
+        car.status !== 'disqualified' &&
+        car.status !== 'dns' &&
+        car.status !== 'pit',
+    )
+    .map((car) => ({
+      driverId: car.driverId,
+      lateralOffsetM: car.lateralOffsetM,
+      totalDistanceM: car.totalDistance * lapLengthM,
+    }))
+  const driverDecisionById = new Map<string, DriverDecision>()
+  const physicalAheadById = new Map<string, CarSnapshot>()
+  const physicalGapSecondsById = new Map<string, number>()
+  const lateralBounds = lateralBoundsForTrack(config.track)
+  const trackHalfWidthM = trackWidthMeters(config.track) / 2
+
+  for (const car of frameCars) {
+    if (car.status !== 'running') {
+      continue
+    }
+
+    const driver = drivers.get(car.driverId)
+
+    if (!driver) {
+      continue
+    }
+
+    const subject = lateralVehicles.find(
+      (candidate) => candidate.driverId === car.driverId,
+    )
+
+    if (!subject) {
+      continue
+    }
+
+    const nearby = lateralTrafficContext({
+      lapLengthM,
+      maxLongitudinalDistanceM: 140,
+      subject,
+      vehicles: lateralVehicles,
+    })
+    const nearestAhead = nearby.find(
+      (candidate) => candidate.signedLongitudinalDistanceM > 0,
+    )
+    const nearestBehind = nearby.find(
+      (candidate) => candidate.signedLongitudinalDistanceM < 0,
+    )
+    const aheadCar = nearestAhead
+      ? frameCarById.get(nearestAhead.driverId)
+      : undefined
+    const behindCar = nearestBehind
+      ? frameCarById.get(nearestBehind.driverId)
+      : undefined
+    const representativeSpeedMps = Math.max(5, car.speedKph / 3.6)
+    const gapAheadSeconds = nearestAhead
+      ? nearestAhead.signedLongitudinalDistanceM / representativeSpeedMps
+      : Number.POSITIVE_INFINITY
+    const gapBehindSeconds = nearestBehind
+      ? Math.abs(nearestBehind.signedLongitudinalDistanceM) /
+        Math.max(5, (behindCar?.speedKph ?? car.speedKph) / 3.6)
+      : Number.POSITIVE_INFINITY
+    const carSector = sectorIndexForProgress(
+      car.progress,
+      config.track.sectorMarks,
+    )
+    const controlPhase = phase ?? restartControlPhase ?? timedYellowControlPhase
+    const localControlPhase = flagPhaseForProgress(
+      controlPhase,
+      car.progress,
+      carSector,
+    )
+    const dynamics = trackDynamicsAt(
+      config.track,
+      car.progress,
+      categoryPhysics,
+    )
+    const emergencyVehicle = nearby.find((candidate) => {
+      const trafficCar = frameCarById.get(candidate.driverId)
+
+      return (
+        candidate.signedLongitudinalDistanceM >= 0 &&
+        candidate.signedLongitudinalDistanceM < 55 &&
+        trafficCar !== undefined &&
+        (trafficCar.status === 'retired' ||
+          (trafficCar.incidentTrackState ?? 'clear') !== 'clear')
+      )
+    })
+    const attackIntensity = Number.isFinite(gapAheadSeconds)
+      ? clamp01(1 - gapAheadSeconds / 1.8)
+      : 0
+    const defendIntensity = Number.isFinite(gapBehindSeconds)
+      ? clamp01(1 - gapBehindSeconds / 1.6)
+      : 0
+    const decision = decideDriverBehavior({
+      seed: config.seed,
+      driver,
+      lap: Math.max(0, Math.floor(car.totalDistance)),
+      trackProgress: car.progress,
+      flagState:
+        localControlPhase?.flag === 'yellow' &&
+        localControlPhase.yellowSeverity === 'double'
+          ? 'double-yellow'
+          : (localControlPhase?.flag ?? 'clear'),
+      currentLateralOffsetM: car.lateralOffsetM,
+      physicalReferenceLineOffsetM: dynamics.referenceLineOffsetM,
+      trackHalfWidthM,
+      edgeClearanceM:
+        FORMULA_VEHICLE_HALF_WIDTH_M + TRACK_EDGE_SAFETY_MARGIN_M,
+      pit: {
+        requested:
+          car.pitPhase !== 'none' ||
+          Boolean(manualPitRequests?.has(car.driverId)),
+        pitLaneLateralOffsetM: lateralBounds.maxOffsetM,
+      },
+      emergency: emergencyVehicle
+        ? {
+            active: true,
+            obstacleId: emergencyVehicle.driverId,
+            obstacleLateralOffsetM: emergencyVehicle.lateralOffsetM,
+            severity: clamp01(
+              1 - emergencyVehicle.signedLongitudinalDistanceM / 55,
+            ),
+          }
+        : undefined,
+      attack:
+        aheadCar?.status === 'running'
+          ? {
+              active: attackIntensity > 0,
+              opponentId: aheadCar.driverId,
+              opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
+              intensity: attackIntensity,
+            }
+          : undefined,
+      defend:
+        behindCar?.status === 'running'
+          ? {
+              active: defendIntensity > 0,
+              opponentId: behindCar.driverId,
+              opponentLateralOffsetM: nearestBehind!.lateralOffsetM,
+              intensity: defendIntensity,
+            }
+          : undefined,
+      dirtyAir:
+        aheadCar?.status === 'running'
+          ? {
+              active:
+                gapAheadSeconds < 2.5 && dynamics.curvature >= 0.025,
+              opponentId: aheadCar.driverId,
+              opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
+              intensity: clamp01(1 - gapAheadSeconds / 2.5),
+            }
+          : undefined,
+      tow:
+        aheadCar?.status === 'running'
+          ? {
+              active:
+                gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72,
+              opponentId: aheadCar.driverId,
+              opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
+              intensity: clamp01(1 - gapAheadSeconds / 1.8),
+            }
+          : undefined,
+    })
+
+    driverDecisionById.set(car.driverId, decision)
+
+    if (aheadCar?.status === 'running' && nearestAhead) {
+      physicalAheadById.set(car.driverId, aheadCar)
+      physicalGapSecondsById.set(car.driverId, gapAheadSeconds)
+    }
+  }
+
+  const reservationPriority = (decision: DriverDecision) => {
+    switch (decision.role) {
+      case 'emergency':
+        return 100
+      case 'pit':
+        return 90
+      case 'controlled-flag':
+        return 80
+      case 'defend':
+        return 70
+      case 'attack':
+        return 65
+      case 'dirty-air':
+        return 55
+      case 'tow':
+        return 50
+      case 'reference':
+        return 40
+    }
+  }
+  const reservedLateralOffsets = reserveDesiredLateralOffsets({
+    lapLengthM,
+    track: config.track,
+    requests: lateralVehicles.flatMap((vehicle) => {
+      const decision = driverDecisionById.get(vehicle.driverId)
+
+      return decision
+        ? [
+            {
+              ...vehicle,
+              desiredLateralOffsetM: decision.desiredLateralOffsetM,
+              priority: reservationPriority(decision),
+            },
+          ]
+        : []
+    }),
+  })
+  const lateralStateById = new Map(
+    frameCars.flatMap((car) => {
+      const decision = driverDecisionById.get(car.driverId)
+
+      return decision
+        ? [
+            [
+              car.driverId,
+              advanceLateralState({
+                deltaSeconds,
+                desiredLateralOffsetM:
+                  reservedLateralOffsets.get(car.driverId) ??
+                  decision.desiredLateralOffsetM,
+                state: car,
+                track: config.track,
+              }),
+            ] as const,
+          ]
+        : []
+    }),
+  )
+
   const cars = frameCars.map((car, index) => {
     const driver = drivers.get(car.driverId)
     const team = teams.get(car.teamId)
@@ -3928,6 +4055,12 @@ export function advanceRace(
       return car
     }
 
+    const driverDecision = driverDecisionById.get(car.driverId)
+    const lateralState = lateralStateById.get(car.driverId) ?? {
+      desiredLateralOffsetM: car.desiredLateralOffsetM,
+      lateralOffsetM: car.lateralOffsetM,
+      lateralVelocityMps: car.lateralVelocityMps,
+    }
     const requestedPaceMode = manualPaceModes?.get(car.driverId)
 
     // --- Non-running states -------------------------------------------------
@@ -4452,7 +4585,6 @@ export function advanceRace(
           : 1
     const lapTime = projectedLapTime(
       driver,
-      team,
       paceManagedCar,
       config,
       elapsedSeconds,
@@ -4463,20 +4595,13 @@ export function advanceRace(
       trackRubber.rubberLevelBySector[carSector],
       localTireTrackCondition,
     )
-    const performanceGain = performanceLapGainSeconds({
-      driver,
-      team,
-      track: config.track,
-      weather: localWeather,
-      session: performanceSessionForWeekendStage(weekendStage),
-    })
     const baselineEffectiveLapTime = Math.max(
       40,
       lapTime * timedRun.paceFactor,
     )
     const uncoupledConditionLapTime = Math.max(
       40,
-      (lapTime + performanceGain) * timedRun.paceFactor,
+      lapTime * timedRun.paceFactor,
     )
     const carAhead =
       index > 0 &&
@@ -4548,11 +4673,19 @@ export function advanceRace(
             1 - driverPerformanceAbility(driver, 'raceAwareness'),
           ) *
             0.11
+    const physicalAhead = physicalAheadById.get(car.driverId)
+    const physicalGapSeconds = physicalGapSecondsById.get(car.driverId)
+    const telemetryCar = {
+      ...paceManagedCar,
+      gapToAhead: physicalGapSeconds ?? Number.POSITIVE_INFINITY,
+    }
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
-      car: paceManagedCar,
+      car: telemetryCar,
+      aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
       categoryPhysics,
       deltaSeconds,
       driver,
+      driverDecision,
       elapsedSeconds,
       phase: localControlPhase,
       localFlagPaceScale,
@@ -4807,19 +4940,11 @@ export function advanceRace(
       car.battlePhaseUntilSeconds > elapsedSeconds
         ? car.battlePhaseUntilSeconds
         : null
-    const trackLateralOffset = 0
     const wearPercentPerLap = tireWearPercentPerLap(
       car.tire,
       driverPerformanceAbility(driver, 'tireManagement'),
       config.track.tireNomination,
-      {
-        degradationPerLapSeconds:
-          config.track.observedCalibration?.tireDegradationByCompound[car.tire],
-        paceOffsetSeconds:
-          config.track.observedCalibration?.tirePaceOffsetByCompound[car.tire],
-        sampleCount:
-          config.track.observedCalibration?.tireSampleCountByCompound[car.tire],
-      },
+      undefined,
     )
     const wearScale = wearScaleForControlPhase(localControlPhase)
     const tireLapFraction =
@@ -5104,7 +5229,10 @@ export function advanceRace(
         ),
       currentLapSectorTimes,
       currentLapMiniSectorTimes,
-      trackLateralOffset,
+      desiredLateralOffsetM: lateralState.desiredLateralOffsetM,
+      lateralOffsetM: lateralState.lateralOffsetM,
+      lateralVelocityMps: lateralState.lateralVelocityMps,
+      trackLateralOffset: lateralState.lateralOffsetM,
       offTrackSinceSeconds: waitingForSafeRejoin
         ? offTrackSinceSeconds
         : null,
@@ -5267,7 +5395,7 @@ export function advanceRace(
         !frame.proposedPhase &&
         hasCrossedRestartLine
       ) {
-        const defenderCar = index > 0 ? snapshot.cars[index - 1] : null
+        const defenderCar = physicalAheadById.get(car.driverId) ?? null
         const defender = defenderCar ? drivers.get(defenderCar.driverId) : null
 
         if (defenderCar && defender) {
@@ -5279,7 +5407,16 @@ export function advanceRace(
             attackerCar: next,
             defenderCar,
             lap: battleSegment,
-            gapToAheadSeconds: car.gapToAhead,
+            gapToAheadSeconds:
+              physicalGapSecondsById.get(car.driverId) ?? car.gapToAhead,
+            lateralSeparationM: Math.abs(
+              next.lateralOffsetM - defenderCar.lateralOffsetM,
+            ),
+            longitudinalSeparationM:
+              (physicalGapSecondsById.get(car.driverId) ?? car.gapToAhead) *
+              Math.max(5, car.speedKph / 3.6),
+            attemptedOvertake: driverDecision?.attemptedOvertake,
+            decisionContactRisk: driverDecision?.contactRisk,
             isOpeningLap: battleLap <= 2,
             inRestartWindow,
             weather: localWeather,
@@ -5291,16 +5428,21 @@ export function advanceRace(
           })
 
           if (battle) {
-            newEvents.push(
-              makeEvent(
-                `battle-${driver.id}-${defender.id}-${battleSegment}`,
-                battle.kind === 'contact' || battle.kind === 'crash'
-                  ? 'contact'
-                  : 'overtake',
-                elapsedSeconds,
-                battle.message,
-              ),
-            )
+            // A successful roll is an attempt, not an instantaneous pass. The
+            // pass message is emitted only after physical distance order
+            // actually crosses below. Contact/defence remain immediate events.
+            if (battle.kind !== 'pass') {
+              newEvents.push(
+                makeEvent(
+                  `battle-${driver.id}-${defender.id}-${battleSegment}`,
+                  battle.kind === 'contact' || battle.kind === 'crash'
+                    ? 'contact'
+                    : 'overtake',
+                  elapsedSeconds,
+                  battle.message,
+                ),
+              )
+            }
 
             if (battle.stewardReview) {
               const review = battle.stewardReview
@@ -5342,22 +5484,20 @@ export function advanceRace(
               }
             }
 
-            if (battle.attackerTimeGainSeconds > 0) {
+            if (battle.kind === 'pass' || battle.kind === 'defended') {
               next = {
                 ...next,
-                battleDeltaSecondsRemaining:
-                  next.battleDeltaSecondsRemaining +
-                  battle.attackerTimeGainSeconds,
                 battlePhase:
-                  battle.kind === 'pass' ? 'side-by-side' : next.battlePhase,
+                  battle.kind === 'pass' ? 'side-by-side' : 'attacking',
                 battleOpponentId: defender.id,
                 battlePhaseUntilSeconds: elapsedSeconds + 1.6,
               }
             }
 
             if (
-              battle.attackerTimeLossSeconds > 0 ||
-              battle.attackerDamageDelta > 0
+              (battle.kind === 'contact' || battle.kind === 'crash') &&
+              (battle.attackerTimeLossSeconds > 0 ||
+                battle.attackerDamageDelta > 0)
             ) {
               const battleIncidentTrackState =
                 battle.kind === 'crash' && battle.stoppingLocation
@@ -5368,8 +5508,7 @@ export function advanceRace(
                 battleDeltaSecondsRemaining:
                   next.battleDeltaSecondsRemaining -
                   battle.attackerTimeLossSeconds,
-                battlePhase:
-                  battle.kind === 'defended' ? 'attacking' : 'resolved',
+                battlePhase: 'resolved',
                 battleOpponentId: defender.id,
                 battlePhaseUntilSeconds: elapsedSeconds + 1.6,
                 damage: Math.min(1, next.damage + battle.attackerDamageDelta),
@@ -6709,7 +6848,86 @@ export function advanceRace(
     return next
   })
 
-  const carsWithBattleEffects = cars.map((car) => {
+  // Longitudinal candidates are reconciled only after every car has produced
+  // an immutable candidate. Same-lane cars cannot pass through one another;
+  // once both ends of a tick have lateral clearance, the physical speed
+  // difference is free to complete the pass.
+  const occupancyCandidates = cars.flatMap((car) => {
+    const previous = frameCarById.get(car.driverId)
+
+    return previous &&
+      previous.status === 'running' &&
+      car.status === 'running' &&
+      previous.offTrackSinceSeconds === null &&
+      car.offTrackSinceSeconds === null &&
+      car.pitPhase === 'none'
+      ? [
+          {
+            driverId: car.driverId,
+            totalDistanceM: previous.totalDistance * lapLengthM,
+            candidateTotalDistanceM: car.totalDistance * lapLengthM,
+            lateralOffsetM: previous.lateralOffsetM,
+            candidateLateralOffsetM: car.lateralOffsetM,
+            priority: 1000 - previous.position,
+          },
+        ]
+      : []
+  })
+  const resolvedLongitudinalM = resolveLongitudinalOccupancy({
+    candidates: occupancyCandidates,
+    lapLengthM,
+  })
+  const occupancyResolvedCars = cars.map((car) => {
+    const previous = frameCarById.get(car.driverId)
+    const resolvedDistanceM = resolvedLongitudinalM.get(car.driverId)
+
+    if (
+      !previous ||
+      resolvedDistanceM === undefined ||
+      resolvedDistanceM >= car.totalDistance * lapLengthM - 1e-6
+    ) {
+      return car
+    }
+
+    const totalDistance = resolvedDistanceM / lapLengthM
+    const speedKph = Math.max(
+      0,
+      ((resolvedDistanceM - previous.totalDistance * lapLengthM) /
+        Math.max(0.001, deltaSeconds)) *
+        3.6,
+    )
+    const team = teams.get(car.teamId)
+    const driveScale = car.superClippingDrivePowerScale ?? 1
+    const powerUnit = team
+      ? selectGear({
+          clutchEngagementFraction: car.clutchEngagementFraction,
+          combustionPowerKw:
+            (combustionPowerKwFor(team, categoryPhysics) +
+              (config.overtakeSystem === 'ots' &&
+              car.overtakeStatus === 'active'
+                ? categoryPhysics.overtakeBoostPowerKw
+                : 0)) *
+            driveScale,
+          deploymentPowerKw: car.ersPowerKw,
+          physics: categoryPhysics,
+          speedMps: speedKph / 3.6,
+          transmissionEfficiency: categoryPhysics.drivetrainEfficiency,
+          turboSpoolFraction: car.turboSpoolFraction,
+        })
+      : null
+
+    return {
+      ...car,
+      totalDistance,
+      lap: Math.floor(totalDistance),
+      progress: clamp01(totalDistance - Math.floor(totalDistance)),
+      speedKph: Number(speedKph.toFixed(2)),
+      gear: powerUnit?.gear ?? car.gear,
+      rpm: powerUnit?.rpm ?? car.rpm,
+    }
+  })
+
+  const carsWithBattleEffects = occupancyResolvedCars.map((car) => {
     const effect = deferredBattleEffects.get(car.driverId)
 
     if (
@@ -6878,6 +7096,65 @@ export function advanceRace(
   }
 
   const rankedCars = rankCars(carsWithTimedPenalties, config)
+
+  if (isRaceDistance && phase === null && frame.proposedPhase === null) {
+    const previousById = new Map(
+      snapshot.cars.map((car) => [car.driverId, car] as const),
+    )
+    const currentById = new Map(
+      rankedCars.map((car) => [car.driverId, car] as const),
+    )
+
+    for (const attacker of rankedCars) {
+      const previousAttacker = previousById.get(attacker.driverId)
+
+      if (
+        !previousAttacker ||
+        previousAttacker.status !== 'running' ||
+        attacker.status !== 'running'
+      ) {
+        continue
+      }
+
+      for (const previousDefender of snapshot.cars) {
+        if (
+          previousDefender.driverId === attacker.driverId ||
+          previousDefender.status !== 'running' ||
+          previousAttacker.totalDistance > previousDefender.totalDistance
+        ) {
+          continue
+        }
+
+        const defender = currentById.get(previousDefender.driverId)
+
+        if (
+          !defender ||
+          defender.status !== 'running' ||
+          attacker.totalDistance <= defender.totalDistance
+        ) {
+          continue
+        }
+
+        const lateralSeparationM = Math.abs(
+          attacker.lateralOffsetM - defender.lateralOffsetM,
+        )
+        const assistance =
+          attacker.overtakeStatus === 'active'
+            ? ' with Overtake'
+            : lateralSeparationM < 1.1
+              ? ' after using the tow'
+              : ''
+        newEvents.push(
+          makeEvent(
+            `pass-crossing-${attacker.driverId}-${defender.driverId}-${Math.floor(elapsedSeconds * 10)}`,
+            'overtake',
+            elapsedSeconds,
+            `${attacker.code} passes ${defender.code}${assistance}.`,
+          ),
+        )
+      }
+    }
+  }
   const leader = rankedCars[0]
   const leaderLap = Math.max(1, Math.min(Math.floor(leader.totalDistance), raceLaps))
   const racingElapsedSeconds = Math.max(

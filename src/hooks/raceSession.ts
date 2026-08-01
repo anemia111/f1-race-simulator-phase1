@@ -10,6 +10,12 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
 export const RACE_SIMULATION_MODEL_VERSION = '2026.07.26.2'
 const RACE_CHECKPOINT_VERSION = 1
 const MAX_CHECKPOINT_LENGTH = 4_500_000
+/**
+ * Persistence only rejects clearly corrupt lateral state. The live lateral
+ * model applies the circuit-specific track-width clamp after restoration.
+ */
+const MAX_PERSISTED_LATERAL_OFFSET_M = 100
+const MAX_PERSISTED_LATERAL_VELOCITY_MPS = 100
 
 type StorageAdapter = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>
 
@@ -46,6 +52,10 @@ const isOptionalUnitInterval = (value: unknown) =>
   value === undefined ||
   (isFiniteNumber(value) && value >= 0 && value <= 1)
 
+const isOptionalFiniteWithin = (value: unknown, absoluteLimit: number) =>
+  value === undefined ||
+  (isFiniteNumber(value) && Math.abs(value) <= absoluteLimit)
+
 const isNullableFiniteNumber = (value: unknown) =>
   value === null || isFiniteNumber(value)
 
@@ -78,6 +88,22 @@ function isCompatibleCarSnapshot(
     isFiniteNumber(value.lap) &&
     isFiniteNumber(value.position) &&
     isFiniteNumber(value.speedKph) &&
+    isOptionalFiniteWithin(
+      value.lateralOffsetM,
+      MAX_PERSISTED_LATERAL_OFFSET_M,
+    ) &&
+    isOptionalFiniteWithin(
+      value.trackLateralOffset,
+      MAX_PERSISTED_LATERAL_OFFSET_M,
+    ) &&
+    isOptionalFiniteWithin(
+      value.desiredLateralOffsetM,
+      MAX_PERSISTED_LATERAL_OFFSET_M,
+    ) &&
+    isOptionalFiniteWithin(
+      value.lateralVelocityMps,
+      MAX_PERSISTED_LATERAL_VELOCITY_MPS,
+    ) &&
     isOptionalUnitInterval(value.turboSpoolFraction) &&
     isOptionalUnitInterval(value.clutchEngagementFraction) &&
     isFiniteNumber(value.ersBatteryPercent) &&
@@ -93,6 +119,47 @@ function isCompatibleCarSnapshot(
     isRecord(value.tireSetsRemaining)
   )
 }
+
+function migrateRaceSnapshot(value: unknown): RaceSnapshot {
+  const snapshot = value as unknown as RaceSnapshot
+
+  return {
+    ...snapshot,
+    cars: snapshot.cars.map((car) => {
+      const persisted = car as CarSnapshotWithLegacyLateralState
+      const lateralOffsetM =
+        persisted.lateralOffsetM ?? persisted.trackLateralOffset ?? 0
+      const lateralVelocityMps = persisted.lateralVelocityMps ?? 0
+      const desiredLateralOffsetM =
+        persisted.desiredLateralOffsetM ?? lateralOffsetM
+
+      return {
+        ...car,
+        desiredLateralOffsetM,
+        lateralOffsetM,
+        lateralVelocityMps,
+        trackLateralOffset: lateralOffsetM,
+      }
+    }),
+  }
+}
+
+type CarSnapshotWithLegacyLateralState = Omit<
+  RaceSnapshot['cars'][number],
+  | 'desiredLateralOffsetM'
+  | 'lateralOffsetM'
+  | 'lateralVelocityMps'
+  | 'trackLateralOffset'
+> &
+  Partial<
+    Pick<
+      RaceSnapshot['cars'][number],
+      | 'desiredLateralOffsetM'
+      | 'lateralOffsetM'
+      | 'lateralVelocityMps'
+      | 'trackLateralOffset'
+    >
+  >
 
 function isCompatibleRaceSnapshot(value: unknown, config: RaceConfig) {
   if (!isRecord(value)) {
@@ -194,7 +261,7 @@ export function parseRaceCheckpoint(
       return null
     }
 
-    return parsed.snapshot as RaceSnapshot
+    return migrateRaceSnapshot(parsed.snapshot)
   } catch {
     return null
   }

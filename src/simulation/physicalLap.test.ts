@@ -12,6 +12,7 @@ import {
   trackWidthMeters,
 } from './physicalLap'
 import { corneringSpeedLimitMps } from './tyreForces'
+import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
 
 const f1 = categoryPhysicsFor('f1-custom')
 const f2 = categoryPhysicsFor('f2')
@@ -72,6 +73,26 @@ describe('trackGeometry', () => {
     })
 
     expect(hairpin - 30).toBeLessThan(sweeper - 30)
+  })
+
+  it('shares the regulated vehicle half-width with the lateral model', () => {
+    const silverstone = trackById('silverstone-approx')
+    const usableHalfWidthM =
+      trackWidthMeters(silverstone) / 2 - FORMULA_VEHICLE_HALF_WIDTH_M
+    const corner = trackGeometry(silverstone).find(
+      (point) =>
+        Number.isFinite(point.centrelineRadiusMeters) &&
+        point.cornerArcRadians > 0,
+    )!
+
+    expect(corner.radiusMeters).toBeCloseTo(
+      racingLineRadiusMeters({
+        centrelineRadiusMeters: corner.centrelineRadiusMeters,
+        cornerArcRadians: corner.cornerArcRadians,
+        usableHalfWidthMeters: usableHalfWidthM,
+      }),
+      10,
+    )
   })
 
   it('gives a narrow circuit less line to work with', () => {

@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { seriesPackageById } from '../series/seriesRegistry'
+import type { SeriesPackage } from '../series/types'
 import type { Driver, Team, WeatherState } from '../types'
+import { baselineSetupForTrack } from './engineering'
 import { incidentForLap } from './incidents'
+import {
+  timedSessionDriverExecutionLossSeconds,
+  timedSessionPhysicalLapSeconds,
+} from './qualifying'
 import { createInitialRace } from './race'
 import { overtakeForLap } from './overtaking'
 import { tireDeltaSeconds } from './tires'
-import { performanceLapGainSeconds } from './vehicleDynamics'
 
 const MONTE_CARLO_SAMPLES = 10_000
 const f1 = seriesPackageById.get('f1-custom')!
@@ -33,111 +38,161 @@ function mean(values: number[]) {
   return values.reduce((total, value) => total + value, 0) / values.length
 }
 
-function rankingForTrack(trackIndex: number, weather: WeatherState) {
-  const track = f1.tracks[trackIndex % f1.tracks.length]
-  const controlDriver = uniformDriver(f1.drivers[0], 0.9)
+function conditionForWeather(weather: WeatherState) {
+  return {
+    compound:
+      weather === 'heavy-rain'
+        ? ('W' as const)
+        : weather === 'light-rain'
+          ? ('I' as const)
+          : ('S' as const),
+    trackGrip:
+      weather === 'heavy-rain' ? 0.62 : weather === 'light-rain' ? 0.82 : 1,
+  }
+}
 
-  return f1.teams
+function rankingForTrack(
+  series: SeriesPackage,
+  trackIndex: number,
+  weather: WeatherState,
+) {
+  const track = series.tracks[trackIndex % series.tracks.length]
+  const config = {
+    drivers: series.drivers,
+    seed: `monte-carlo-physical-ranking:${series.id}:${track.id}:${weather}`,
+    seriesId: series.id,
+    teams: series.teams,
+    track,
+  }
+  const condition = conditionForWeather(weather)
+  const setup = baselineSetupForTrack(track)
+
+  return series.teams
     .map((team) => ({
       id: team.id,
-      gain: performanceLapGainSeconds({
-        driver: controlDriver,
-        session: 'race',
+      lapTimeSeconds: timedSessionPhysicalLapSeconds({
+        ...condition,
+        config,
+        fuelLoadKg: 8,
+        setup,
         team,
-        track,
         weather,
       }),
     }))
-    .sort((left, right) => right.gain - left.gain)
-}
-
-function spearman(leftOrder: string[], rightOrder: string[]) {
-  const rightRank = new Map(rightOrder.map((id, index) => [id, index]))
-  const squaredDistance = leftOrder.reduce((total, id, index) => {
-    const distance = index - (rightRank.get(id) ?? index)
-    return total + distance * distance
-  }, 0)
-  const count = leftOrder.length
-  return 1 - (6 * squaredDistance) / (count * (count * count - 1))
+    .sort((left, right) => left.lapTimeSeconds - right.lapTimeSeconds)
 }
 
 describe('10,000-run statistical acceptance', () => {
-  it('keeps a 100-rated driver clearly ahead of a 70-rated driver in matched conditions', () => {
+  it('gives a precise driver lower 10,000-run behavioral loss in matched physics', () => {
     const base = f1.drivers[0]
     const high = uniformDriver(base, 1)
     const low = uniformDriver(base, 0.7)
     const team = f1.teams.find((candidate) => candidate.id === base.teamId)!
-    const conditions = f1.tracks.flatMap((track) =>
-      (['clear', 'heavy-rain'] as const).map((weather) => ({ track, weather })),
-    )
-    const gainCache = conditions.map(({ track, weather }) => ({
-      high: performanceLapGainSeconds({ driver: high, team, track, weather }),
-      low: performanceLapGainSeconds({ driver: low, team, track, weather }),
-      lap: track.baseLapTime,
-    }))
+    const conditions = f1.tracks.flatMap((track) => {
+      const config = {
+        drivers: [high, low],
+        seed: `monte-carlo-driver-execution:${track.id}`,
+        seriesId: f1.id,
+        teams: [team],
+        track,
+      }
+      const setup = baselineSetupForTrack(track)
+
+      return (['clear', 'heavy-rain'] as const).map((weather) => ({
+        ...conditionForWeather(weather),
+        config,
+        fuelLoadKg: 8,
+        setup,
+        team,
+        weather,
+      }))
+    })
     let highTotal = 0
     let lowTotal = 0
 
     for (let sample = 0; sample < MONTE_CARLO_SAMPLES; sample += 1) {
-      const condition = gainCache[sample % gainCache.length]
-      const commonRaceNoise = Math.sin(sample * 1.61803398875) * 0.42
-      highTotal += condition.lap - condition.high + commonRaceNoise
-      lowTotal += condition.lap - condition.low + commonRaceNoise
+      const condition = conditions[sample % conditions.length]
+      const common = {
+        ...condition,
+        run: sample,
+        seed: `monte-carlo-driver-execution:${sample}`,
+      }
+
+      highTotal += timedSessionDriverExecutionLossSeconds({
+        ...common,
+        driver: high,
+      })
+      lowTotal += timedSessionDriverExecutionLossSeconds({
+        ...common,
+        driver: low,
+      })
     }
 
-    expect(lowTotal / MONTE_CARLO_SAMPLES - highTotal / MONTE_CARLO_SAMPLES).toBeGreaterThan(0.7)
-  })
-
-  it('preserves F1 source ordering without making every circuit ranking identical', () => {
-    const sourceOrder = f1.teams
-      .slice()
-      .sort(
-        (left, right) =>
-          (right.performanceSource?.overall ?? 0) -
-          (left.performanceSource?.overall ?? 0),
-      )
-      .map((team) => team.id)
-    const rankings = [
-      rankingForTrack(0, 'clear'),
-      rankingForTrack(3, 'heavy-rain'),
-      rankingForTrack(12, 'clear'),
-      rankingForTrack(20, 'light-rain'),
-    ]
-    const averageRank = new Map<string, number>()
-    for (const ranking of rankings) {
-      ranking.forEach((entry, index) =>
-        averageRank.set(entry.id, (averageRank.get(entry.id) ?? 0) + index),
-      )
-    }
-    const modeledOrder = [...averageRank.entries()]
-      .sort((left, right) => left[1] - right[1])
-      .map(([id]) => id)
-
-    expect(spearman(sourceOrder, modeledOrder)).toBeGreaterThan(0.72)
-    expect(rankings[0].map((entry) => entry.id)).not.toEqual(
-      rankings[1].map((entry) => entry.id),
+    expect(highTotal).toBeGreaterThanOrEqual(0)
+    expect(lowTotal / MONTE_CARLO_SAMPLES).toBeGreaterThan(
+      highTotal / MONTE_CARLO_SAMPLES,
     )
   })
 
-  it('keeps one-make fields compact and avoids a team-order cliff', () => {
-    for (const series of [f2, f3]) {
-      const controlDriver = uniformDriver(series.drivers[0], 0.9)
-      const track = series.tracks[0]
-      const gains = series.teams
-        .map((team) =>
-          performanceLapGainSeconds({
-            driver: controlDriver,
-            session: 'race',
-            team,
-            track,
-            weather: 'clear',
-          }),
-        )
-        .sort((left, right) => right - left)
-      const adjacentGaps = gains.slice(1).map((gain, index) => gains[index] - gain)
+  it('creates real F1 team differences from physical inputs on every circuit', () => {
+    const rankings = [
+      rankingForTrack(f1, 0, 'clear'),
+      rankingForTrack(f1, 3, 'heavy-rain'),
+      rankingForTrack(f1, 12, 'clear'),
+      rankingForTrack(f1, 20, 'light-rain'),
+    ]
 
-      expect(gains[0] - gains.at(-1)!).toBeLessThan(0.75)
-      expect(Math.max(...adjacentGaps)).toBeLessThan(0.2)
+    expect(
+      rankings.every(
+        (ranking) =>
+          new Set(
+            ranking.map((entry) => entry.lapTimeSeconds.toFixed(5)),
+          ).size >= Math.ceil(f1.teams.length * 0.7),
+      ),
+    ).toBe(true)
+    expect(rankings[0].map((entry) => entry.lapTimeSeconds)).not.toEqual(
+      rankings[1].map((entry) => entry.lapTimeSeconds),
+    )
+  })
+
+  it('keeps one-make fields physical and reacts monotonically to PU output', () => {
+    for (const series of [f2, f3]) {
+      const track = series.tracks[0]
+      const baseTeam = series.teams[0]
+      const weaker = {
+        ...baseTeam,
+        machine: { ...baseTeam.machine, puOutput: 0.6 },
+      }
+      const stronger = {
+        ...baseTeam,
+        machine: { ...baseTeam.machine, puOutput: 1 },
+      }
+      const config = {
+        drivers: series.drivers,
+        seed: `monte-carlo-one-make:${series.id}`,
+        seriesId: series.id,
+        teams: [weaker, stronger],
+        track,
+      }
+      const common = {
+        compound: 'S' as const,
+        config,
+        fuelLoadKg: 8,
+        setup: baselineSetupForTrack(track),
+        trackGrip: 1,
+        weather: 'clear' as const,
+      }
+      const weakerLap = timedSessionPhysicalLapSeconds({
+        ...common,
+        team: weaker,
+      })
+      const strongerLap = timedSessionPhysicalLapSeconds({
+        ...common,
+        team: stronger,
+      })
+
+      expect(Number.isFinite(weakerLap)).toBe(true)
+      expect(strongerLap).toBeLessThan(weakerLap)
     }
   })
 

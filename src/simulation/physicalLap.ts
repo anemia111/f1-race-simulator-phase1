@@ -19,6 +19,7 @@
  */
 import { categoryPhysicsFor, type CategoryPhysicsProfile } from './categoryPhysics'
 import { powerUnitDriveForceN } from './drivetrain'
+import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
 import {
   aerodynamicDownforceN,
   corneringSpeedLimitMps,
@@ -124,8 +125,6 @@ export type TrackGeometryPoint = {
   turnDirection: -1 | 0 | 1
 }
 
-/** Half a modern single-seater's width, kept off the usable track edge. */
-const CAR_HALF_WIDTH_M = 1
 /** Above this the road is straight enough that it is not a corner. */
 const CORNER_RADIUS_LIMIT_M = 900
 
@@ -296,7 +295,7 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
   })
   const usableHalfWidthMeters = Math.max(
     0,
-    trackWidthMeters(track) / 2 - CAR_HALF_WIDTH_M,
+    trackWidthMeters(track) / 2 - FORMULA_VEHICLE_HALF_WIDTH_M,
   )
   /** How far the corner this point belongs to turns, in radians. */
   const cornerArcRadians = centrelineRadii.map((radius, index) => {
@@ -652,7 +651,7 @@ export function simulatePhysicalLap(
   }, 0)
   const usableHalfWidthMeters = Math.max(
     0,
-    trackWidthMeters(track) / 2 - CAR_HALF_WIDTH_M,
+    trackWidthMeters(track) / 2 - FORMULA_VEHICLE_HALF_WIDTH_M,
   )
   const points = geometry.map((point, index): PhysicalLapPoint => {
     const currentSpeedMps = speeds[index]

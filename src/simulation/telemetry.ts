@@ -22,6 +22,10 @@ import {
 } from './categoryPhysics'
 import { driverSkillBlend } from './driverAbility'
 import {
+  driverBehaviorTraits,
+  type DriverDecision,
+} from './driverDecision'
+import {
   advanceEnergyStore,
   energyDeploymentRequestFor,
   normalizeEnergyStoreState,
@@ -142,8 +146,11 @@ type CalculatedTelemetry = {
 
 export function calculateCarTelemetry(options: {
   car: CarSnapshot
+  /** Physical lateral position of the nearest car ahead, when one exists. */
+  aheadLateralOffsetM?: number
   deltaSeconds: number
   driver: Driver
+  driverDecision?: DriverDecision
   elapsedSeconds: number
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
@@ -177,9 +184,11 @@ export function calculateCarTelemetry(options: {
 }): CalculatedTelemetry {
   const {
     car,
+    aheadLateralOffsetM,
     categoryPhysics = categoryPhysicsFor(undefined),
     deltaSeconds,
     driver,
+    driverDecision,
     elapsedSeconds,
     phase,
     localFlagPaceScale = 1,
@@ -209,6 +218,11 @@ export function calculateCarTelemetry(options: {
   } = options
   const hasHybridEnergyStore =
     categoryHasHybridEnergyStore(categoryPhysics)
+  const behaviorTraits = driverDecision?.traits ?? driverBehaviorTraits(driver)
+  const lateralSeparationM =
+    aheadLateralOffsetM === undefined
+      ? undefined
+      : car.lateralOffsetM - aheadLateralOffsetM
   const isPreparationLap =
     timedRunPhase === 'out-lap' ||
     timedRunPhase === 'in-lap' ||
@@ -267,6 +281,7 @@ export function calculateCarTelemetry(options: {
     : dirtyAirDownforceMultiplier({
         dynamics,
         gapSeconds: car.gapToAhead,
+        lateralSeparationM,
         team,
       })
   const compoundGrip = tireTrackGripMultiplier(car.tire, trackCondition)
@@ -276,6 +291,10 @@ export function calculateCarTelemetry(options: {
     trackCondition.dryingLine,
   )
   const localGrip = clamp(surfaceGrip * compoundGrip, 0.34, 1.08)
+  // Skill controls how much of the physical tyre envelope the driver can use;
+  // it never raises the tyre above its modelled maximum.
+  const utilisedGrip =
+    localGrip * (0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
   // Geometry and the offline look-ahead event come from physicalLap, but the
   // limits themselves are solved again for this car's live mass, setup,
   // surface and wake. The offline terminal/deployment policy never becomes a
@@ -293,7 +312,7 @@ export function calculateCarTelemetry(options: {
       dirtyAirDownforceMultiplier: dirtyAirDownforce,
       evaluationSpeedKph,
       fuelLoadKg: car.fuelLoadKg,
-      gripMultiplier: localGrip,
+      gripMultiplier: utilisedGrip,
       radiusMeters,
       setup,
       team,
@@ -331,12 +350,17 @@ export function calculateCarTelemetry(options: {
   )
   const currentSpeedMps = car.speedKph / 3.6
   const brakingTargetSpeedMps = brakingTargetSpeedKph / 3.6
+  const brakingDistanceWithDriverTimingM = Math.max(
+    1,
+    dynamics.brakingDistanceAheadMeters -
+      currentSpeedMps * (driverDecision?.brakeOnsetDeltaSeconds ?? 0),
+  )
   const liveRequiredBrakingDecelerationMps2 =
     dynamics.brakingDistanceAheadMeters > 0
       ? Math.max(
           0,
           (currentSpeedMps ** 2 - brakingTargetSpeedMps ** 2) /
-            (2 * dynamics.brakingDistanceAheadMeters),
+            (2 * brakingDistanceWithDriverTimingM),
         )
       : 0
   const requiredBrakeUtilization = clamp(
@@ -367,17 +391,16 @@ export function calculateCarTelemetry(options: {
     car.pitPhase !== 'box'
       ? track.pitLane?.speedLimitKph ?? 80
       : null
+  const immobilizedIncident =
+    car.incidentTrackState === 'on-track-stopped' &&
+    car.battleDeltaSecondsRemaining < -0.01
   const pitLaneBrakeDemand =
     pitLaneSpeedLimitKph === null
       ? 0
       : clamp((car.speedKph - pitLaneSpeedLimitKph) * 1.8, 0, 55)
   const profileBrakeDemand =
     Math.max(requiredBrakeUtilization, localOverspeedBrakeUtilization) * 100 +
-    pitLaneBrakeDemand +
-    (phase?.flag === 'yellow'
-      ? (phase.yellowSeverity === 'double' ? 11 : 7) +
-        car.speedKph * 0.01
-      : 0)
+    pitLaneBrakeDemand
   const brakeControl = driverSkillBlend(driver, {
     brakingSkill: 0.58,
     precision: 0.24,
@@ -385,9 +408,11 @@ export function calculateCarTelemetry(options: {
   })
   const brakePercent = Math.round(
     clamp(
-      phase?.flag === 'red'
+      phase?.flag === 'red' || immobilizedIncident
         ? 100
-        : profileBrakeDemand * (1.04 - brakeControl * 0.08),
+        : profileBrakeDemand *
+          (driverDecision?.brakePressureScale ??
+            (0.96 + brakeControl * 0.04)),
       0,
       100,
     ),
@@ -423,9 +448,24 @@ export function calculateCarTelemetry(options: {
     requestedThrottlePercent,
     preparationThrottleCeiling,
   )
+  const throttleTimingScale =
+    driverDecision === undefined
+      ? 1
+      : driverDecision.throttleTimingDeltaSeconds >= 0
+        ? clamp(1 - driverDecision.throttleTimingDeltaSeconds / 0.5, 0, 1)
+        : clamp(1 - driverDecision.throttleTimingDeltaSeconds * 0.4, 1, 1.08)
+  const behaviorManagedThrottlePercent = Math.round(
+    clamp(
+      phaseManagedThrottlePercent *
+        throttleTimingScale *
+        (driverDecision?.throttleOpeningScale ?? 1),
+      0,
+      100,
+    ),
+  )
   const throttlePercent = timedTrafficYield
-    ? Math.min(38, phaseManagedThrottlePercent)
-    : phaseManagedThrottlePercent
+    ? Math.min(38, behaviorManagedThrottlePercent)
+    : behaviorManagedThrottlePercent
   const otsAvailable =
     overtakeSystem === 'ots' &&
     !isPreparationLap &&
@@ -652,11 +692,12 @@ export function calculateCarTelemetry(options: {
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
   )
   const ersBatteryPercent = Math.round(energyStore.stateOfCharge * 100)
-  const towDragReduction = phase || car.position <= 1 || car.gapToAhead <= 0
+  const towDragReduction = phase || car.gapToAhead <= 0
     ? 0
     : towDragReductionFor({
         dynamics,
         gapSeconds: car.gapToAhead,
+        lateralSeparationM,
         team,
       })
   const longitudinalStep = integrateVehicleLongitudinalStep({
@@ -679,7 +720,7 @@ export function calculateCarTelemetry(options: {
     extraCombustionPowerKw:
       otsActive ? categoryPhysics.overtakeBoostPowerKw : 0,
     fuelLoadKg: car.fuelLoadKg,
-    gripMultiplier: localGrip,
+    gripMultiplier: utilisedGrip,
     headwindMps,
     regenerativeResistancePowerKw:
       energyStep.regenerativeResistancePowerKw,
@@ -695,12 +736,14 @@ export function calculateCarTelemetry(options: {
   })
   // The timing tower, map movement, and lap clock all consume this integrated
   // result. The profile only controls pedals; it never overwrites road speed.
-  const powerUnitStopped = phase?.flag === 'red' || car.pitPhase === 'box'
+  const powerUnitStopped =
+    phase?.flag === 'red' || car.pitPhase === 'box' || immobilizedIncident
   const speedKph = powerUnitStopped
     ? 0
     : Number(longitudinalStep.speedKph.toFixed(2))
   // A running car at 0 km/h is launching in first with clutch slip. Only an
-  // explicit stopped state (red flag or pit box) reports neutral and 0 RPM.
+  // explicit stopped state (red flag, incident, or pit box) reports neutral
+  // and 0 RPM.
   const gear = powerUnitStopped ? 0 : longitudinalStep.gear
   const rpm = powerUnitStopped ? 0 : longitudinalStep.rpm
   const tireWindow = tireOperatingWindowFor(car.tire, track.tireNomination)

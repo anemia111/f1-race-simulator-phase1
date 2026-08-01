@@ -58,7 +58,7 @@ Verification:
 
 ### Stage 2 - production physics path (Issue #4)
 
-Status: complete; commit pending at the time of this entry.
+Status: complete; commit `2017cf4`.
 
 - `trackDynamics` is now a category-keyed wrapper over `physicalLap`. It
   exposes curvature, effective radius, banking, physical line, live-relevant
@@ -97,11 +97,38 @@ Verification:
 
 ### Stage 3 - lateral state and driver decisions (Issue #5)
 
-Status: pending.
+Status: complete; commit pending at the time of this entry.
 
-Planned boundaries: continuous, width-constrained per-car lateral state;
-racing/overtake/defence/avoidance/pit line choice; occupancy constraints;
-seeded driver control and risk decisions; no direct ACE pace multiplier.
+- Each car now stores canonical lateral offset, velocity and desired offset in
+  physical metres. Checkpoint migration accepts the deprecated render alias,
+  while the scene converts metres using the published track-width dataset
+  rather than the render-only `width` field.
+- Lateral motion is continuous and bounded by track edges, vehicle footprint,
+  lateral speed and acceleration. Deterministic reservations and rectangular
+  occupancy prevent cars from teleporting through one another; longitudinal
+  passing completes only after real lateral clearance exists.
+- Seeded per-driver decisions select reference, attack, defence, tow,
+  dirty-air avoidance, emergency and pit lines. Driver skills and style affect
+  pedal timing, pressure/opening, line accuracy, attempts, mistakes and contact
+  risk; displayed overall/ACE metadata is not a speed or lap-time input.
+- Dirty air and tow depend on physical lateral alignment. Contact requires a
+  physical longitudinal/lateral opportunity, and a pass is recorded only when
+  integrated positions cross.
+- Qualifying and practice now use physical category/team/setup lap simulations.
+  Driver separation is a non-negative control-execution loss sampled over the
+  same decision windows, with no `baseLapTime`, ACE gain or old seconds stack.
+- A stopped on-track incident is an explicit immobilised state. Followers
+  choose a continuous avoidance line under yellow before occupancy permits
+  them through. SC/VSC/yellow speed ceilings remain operational controller
+  targets and are not applied a second time as a driver pace multiplier.
+
+Verification:
+
+- Focused driver/lateral/traffic/SC/qualifying regressions: passed.
+- Full suite: 70 files / 768 tests passed in 713.06 s.
+- `npm run lint -- --deny-warnings`: passed.
+- `npx tsc -b --pretty false`: passed.
+- `git diff --check`: passed (line-ending conversion warnings only).
 
 ### Stage 4 - physics calibration and validation (Issue #6)
 

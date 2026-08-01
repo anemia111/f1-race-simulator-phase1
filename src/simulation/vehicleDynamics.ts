@@ -9,15 +9,10 @@ import type {
   WeatherState,
   WeekendStage,
 } from '../types'
-import {
-  DRIVER_PERFORMANCE_INTERNAL_MAX,
-  driverPerformanceAbility,
-  driverSkillBlend,
-} from './driverAbility'
+import { driverSkillBlend } from './driverAbility'
 import {
   effectiveMachineRating,
   MACHINE_PERFORMANCE_REFERENCE,
-  MACHINE_PERFORMANCE_SPREAD_FACTOR,
 } from './machinePerformance'
 import {
   categoryPhysicsFor,
@@ -42,27 +37,6 @@ const clamp = (value: number, min: number, max: number) =>
 const finiteOr = (value: number, fallback: number) =>
   Number.isFinite(value) ? value : fallback
 
-export const MACHINE_PACE_REFERENCE = MACHINE_PERFORMANCE_REFERENCE
-export const MACHINE_PACE_SPREAD_FACTOR = MACHINE_PERFORMANCE_SPREAD_FACTOR
-export const MACHINE_SEGMENT_RESPONSE = 0.135
-export const DRIVER_SEGMENT_RESPONSE = 0.14
-/**
- * Blended skill of a front-running driver. Pace deviations are measured from
- * here, so the leaders stay on their calibrated lap time while the response
- * factor controls how far the rest of the field falls back.
- */
-export const DRIVER_SKILL_REFERENCE = 0.9175
-/**
- * Extra pace for a genuine top-of-the-scale ace. The threshold corresponds to
- * roughly 95 on the authored 0-100 scale, so the current F1 ceiling can still
- * reach the real-world calibration without lifting the midfield or junior
- * categories. The cap prevents a custom 100-rated driver from creating grip
- * or power beyond the former top-driver calibration.
- */
-export const ACE_PACE_THRESHOLD = 0.9764
-export const ACE_PACE_GAIN = 2.8
-export const ACE_PACE_MAX_GAIN = 0.0157
-export const ACE_RACE_PACE_MAX_GAIN = 0.0035
 export const machinePaceRating = effectiveMachineRating
 
 export type TrackLoadProfile = {
@@ -145,10 +119,6 @@ export type LongitudinalStepResult = {
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
-const performanceLapGainCache = new WeakMap<
-  TrackDefinition,
-  WeakMap<Team, WeakMap<Driver, Map<string, number>>>
->()
 const liveCorneringLimitCache = new Map<string, number>()
 
 export function trackLoadProfileFor(track: TrackDefinition): TrackLoadProfile {
@@ -189,161 +159,11 @@ export function trackLoadProfileFor(track: TrackDefinition): TrackLoadProfile {
   return profile
 }
 
-function machineCornerScore(team: Team, dynamics: TrackDynamicPoint) {
-  const machine = team.machine
-
-  switch (dynamics.cornerClass) {
-    case 'low':
-      return (
-        machinePaceRating(machine.lowSpeedCornerPerformance) * 0.38 +
-        machinePaceRating(machine.mechanicalGrip) * 0.25 +
-        machinePaceRating(machine.traction) * 0.22 +
-        machinePaceRating(machine.rideCompliance) * 0.15
-      )
-    case 'medium':
-      return (
-        machinePaceRating(machine.mediumSpeedCornerPerformance) * 0.4 +
-        machinePaceRating(machine.downforceGeneration) * 0.25 +
-        machinePaceRating(machine.mechanicalGrip) * 0.2 +
-        machinePaceRating(machine.aerodynamicEfficiency) * 0.15
-      )
-    case 'high':
-      return (
-        machinePaceRating(machine.highSpeedCornerPerformance) * 0.42 +
-        machinePaceRating(machine.downforceGeneration) * 0.3 +
-        machinePaceRating(machine.aerodynamicEfficiency) * 0.18 +
-        machinePaceRating(machine.rideCompliance) * 0.1
-      )
-    default:
-      return (
-        machinePaceRating(machine.straightLineEfficiency) * 0.35 +
-        machinePaceRating(machine.dragEfficiency) * 0.3 +
-        machinePaceRating(machine.puOutput) * 0.25 +
-        machinePaceRating(machine.activeAeroEfficiency) * 0.1
-      )
-  }
-}
-
-export function machineSegmentCapability(options: {
-  dynamics: TrackDynamicPoint
-  session?: 'qualifying' | 'race'
-  team: Team
-  weather?: WeatherState
-}) {
-  const { dynamics, session = 'race', team, weather = 'clear' } = options
-  const machine = team.machine
-  const cornerScore = machineCornerScore(team, dynamics)
-  const brakingScore =
-    machinePaceRating(machine.brakingPerformance) * 0.55 +
-    machinePaceRating(machine.brakingStability) * 0.45
-  const wetScore =
-    weather === 'heavy-rain'
-      ? machinePaceRating(machine.wetPerformance)
-      : weather === 'light-rain'
-        ? machinePaceRating(machine.intermediatePerformance)
-        : machinePaceRating(machine.racePace)
-  const localScore =
-    cornerScore * (1 - dynamics.brakingSeverity * 0.3) +
-    brakingScore * dynamics.brakingSeverity * 0.3
-  const weatherSpecialtyWeight =
-    weather === 'heavy-rain' ? 0.78 : weather === 'light-rain' ? 0.48 : 0
-  const wetSpecialty =
-    wetScore - machinePaceRating(machine.racePace)
-  const weatherAdjusted =
-    localScore + wetSpecialty * weatherSpecialtyWeight
-  const sessionPace =
-    machinePaceRating(
-      session === 'qualifying' ? machine.qualifyingPace : machine.racePace,
-    )
-  const sessionAdjusted = weatherAdjusted * 0.94 + sessionPace * 0.06
-
-  // Each axis decides where a car gains or loses time. The source data keeps
-  // the lower field competitive while the response preserves visible car gaps.
-  return clamp(
-    1 +
-      (sessionAdjusted - MACHINE_PACE_REFERENCE) *
-        MACHINE_SEGMENT_RESPONSE,
-    0.96,
-    1.035,
-  )
-}
-
-export function driverSegmentExecution(options: {
-  driver: Driver
-  dynamics: TrackDynamicPoint
-  pressure?: number
-  session?: 'qualifying' | 'race'
-  weather?: WeatherState
-}) {
-  const {
-    driver,
-    dynamics,
-    pressure = 0.45,
-    session = 'race',
-    weather = 'clear',
-  } = options
-  const cornerSkill =
-    dynamics.cornerClass === 'low'
-      ? driverPerformanceAbility(driver, 'lowSpeedCornerSkill')
-      : dynamics.cornerClass === 'medium'
-        ? driverPerformanceAbility(driver, 'mediumSpeedCornerSkill')
-        : dynamics.cornerClass === 'high'
-          ? driverPerformanceAbility(driver, 'highSpeedCornerSkill')
-          : driverPerformanceAbility(driver, 'throttleControl')
-  const wetSkill =
-    weather === 'heavy-rain'
-      ? driverPerformanceAbility(driver, 'wetSkill')
-      : weather === 'light-rain'
-        ? driverPerformanceAbility(driver, 'intermediateSkill')
-        : 0.9
-  const sessionPace =
-    session === 'qualifying'
-      ? driverPerformanceAbility(driver, 'qualifyingPace')
-      : driverPerformanceAbility(driver, 'racePace')
-  const skill = clamp(
-    sessionPace * 0.24 +
-      cornerSkill * 0.22 +
-      driverPerformanceAbility(driver, 'precision') * 0.12 +
-      driverPerformanceAbility(driver, 'brakingSkill') *
-        dynamics.brakingSeverity *
-        0.14 +
-      driverPerformanceAbility(driver, 'tractionControl') *
-        (1 - dynamics.straightness) *
-        0.1 +
-      wetSkill * 0.1 +
-      driverPerformanceAbility(driver, 'pressureHandling') * pressure * 0.08,
-    0,
-    DRIVER_PERFORMANCE_INTERNAL_MAX,
-  )
-
-  // Drivers cannot create grip or power beyond the machine limit. Their skills
-  // determine how closely and consistently they approach it. Deviations are
-  // measured from a front-running reference rather than a perfect score, so
-  // raising the response separates the field without slowing every car.
-  // The floor has to clear the bottom of the shared rating scale, which now
-  // reaches into the junior categories, so a weak driver is not silently
-  // lifted to midfield pace.
-  // A genuine number-one ace (top-band race pace) gains extra segment pace on
-  // top of the normal calibration. It is zero for the midfield down, so it
-  // separates a standout leader without spreading the whole field, changing
-  // junior-category racing, or reducing attrition.
-  const aceBonus = Math.min(
-    session === 'qualifying'
-      ? ACE_PACE_MAX_GAIN
-      : ACE_RACE_PACE_MAX_GAIN,
-    Math.max(0, sessionPace - ACE_PACE_THRESHOLD) * ACE_PACE_GAIN,
-  )
-
-  return clamp(
-    1 - (DRIVER_SKILL_REFERENCE - skill) * DRIVER_SEGMENT_RESPONSE + aceBonus,
-    0.9,
-    1.16,
-  )
-}
-
 export function dirtyAirDownforceMultiplier(options: {
   dynamics: Pick<TrackDynamicPoint, 'curvature' | 'straightness'>
   gapSeconds: number
+  /** Physical centre-to-centre offset. A car outside the wake loses less load. */
+  lateralSeparationM?: number
   team: Team
 }) {
   const { dynamics, gapSeconds, team } = options
@@ -355,7 +175,16 @@ export function dirtyAirDownforceMultiplier(options: {
   const proximity = 1 - clamp(gapSeconds / 2.5, 0, 1)
   const sensitivity =
     1.08 - machinePaceRating(team.machine.dirtyAirTolerance) * 0.22
-  const loss = proximity ** 1.35 * dynamics.curvature * 0.115 * sensitivity
+  const wakeAlignment =
+    options.lateralSeparationM === undefined
+      ? 1
+      : clamp(1 - Math.abs(options.lateralSeparationM) / 3.2, 0, 1) ** 1.35
+  const loss =
+    proximity ** 1.35 *
+    dynamics.curvature *
+    0.115 *
+    sensitivity *
+    wakeAlignment
 
   return clamp(1 - loss, 0.88, 1)
 }
@@ -363,6 +192,8 @@ export function dirtyAirDownforceMultiplier(options: {
 export function towDragReductionFor(options: {
   dynamics: Pick<TrackDynamicPoint, 'straightness'>
   gapSeconds: number
+  /** Physical centre-to-centre offset. Tow vanishes when cars do not align. */
+  lateralSeparationM?: number
   team: Team
 }) {
   const { dynamics, gapSeconds, team } = options
@@ -372,11 +203,16 @@ export function towDragReductionFor(options: {
   }
 
   const proximity = 1 - clamp((gapSeconds - 0.08) / 1.72, 0, 1)
+  const wakeAlignment =
+    options.lateralSeparationM === undefined
+      ? 1
+      : clamp(1 - Math.abs(options.lateralSeparationM) / 2.8, 0, 1) ** 1.2
 
   return clamp(
     proximity *
       dynamics.straightness *
-      (0.105 + machinePaceRating(team.machine.towSensitivity) * 0.075),
+      (0.105 + machinePaceRating(team.machine.towSensitivity) * 0.075) *
+      wakeAlignment,
     0,
     0.19,
   )
@@ -532,7 +368,10 @@ export function vehicleDownforceMultiplier(options: {
   )
 }
 
-function tyreGripMultiplierForTeam(team: Team, surfaceMultiplier: number) {
+export function vehicleTyreGripMultiplierForTeam(
+  team: Team,
+  surfaceMultiplier: number,
+) {
   const physicalTyreScale = clamp(
     1 +
       (machinePaceRating(team.machine.mechanicalGrip) -
@@ -582,7 +421,7 @@ export function liveCorneringSpeedLimitKph(options: {
     setup: options.setup,
     team: options.team,
   })
-  const exactGripMultiplier = tyreGripMultiplierForTeam(
+  const exactGripMultiplier = vehicleTyreGripMultiplierForTeam(
     options.team,
     options.gripMultiplier,
   )
@@ -773,7 +612,7 @@ export function integrateVehicleLongitudinalStep(
     setup: input.setup,
     team: input.team,
   })
-  const gripMultiplier = tyreGripMultiplierForTeam(
+  const gripMultiplier = vehicleTyreGripMultiplierForTeam(
     input.team,
     input.gripMultiplier,
   )
@@ -1043,85 +882,6 @@ export function integrateVehicleLongitudinalStep(
 /** Backward-compatible scalar wrapper for callers that only consume speed. */
 export function integrateVehicleSpeedKph(input: LongitudinalStepInput) {
   return integrateVehicleLongitudinalStep(input).speedKph
-}
-
-export function vehicleSpeedPerformanceMultiplier(options: {
-  driver: Driver
-  dynamics: TrackDynamicPoint
-  session?: 'qualifying' | 'race'
-  team: Team
-  weather?: WeatherState
-}) {
-  return (
-    machineSegmentCapability(options) *
-    driverSegmentExecution({
-      driver: options.driver,
-      dynamics: options.dynamics,
-      session: options.session,
-      weather: options.weather,
-    })
-  )
-}
-
-export function performanceLapGainSeconds(options: {
-  driver: Driver
-  team: Team
-  track: TrackDefinition
-  weather?: WeatherState
-  session?: 'qualifying' | 'race'
-}) {
-  let byTeam = performanceLapGainCache.get(options.track)
-
-  if (!byTeam) {
-    byTeam = new WeakMap()
-    performanceLapGainCache.set(options.track, byTeam)
-  }
-
-  let byDriver = byTeam.get(options.team)
-
-  if (!byDriver) {
-    byDriver = new WeakMap()
-    byTeam.set(options.team, byDriver)
-  }
-
-  let byCondition = byDriver.get(options.driver)
-
-  if (!byCondition) {
-    byCondition = new Map()
-    byDriver.set(options.driver, byCondition)
-  }
-
-  const conditionKey = `${options.session ?? 'race'}:${options.weather ?? 'clear'}`
-  const cached = byCondition.get(conditionKey)
-
-  if (cached !== undefined) {
-    return cached
-  }
-
-  const samples = Array.from({ length: 120 }, (_, index) =>
-    trackDynamicsAt(options.track, index / 120),
-  )
-  const baselineSliceSeconds = options.track.baseLapTime / samples.length
-  const modeledSeconds = samples.reduce((total, dynamics) => {
-    const machine = machineSegmentCapability({
-      dynamics,
-      session: options.session,
-      team: options.team,
-      weather: options.weather,
-    })
-    const driver = driverSegmentExecution({
-      driver: options.driver,
-      dynamics,
-      session: options.session,
-      weather: options.weather,
-    })
-
-    return total + baselineSliceSeconds / (machine * driver)
-  }, 0)
-
-  const result = options.track.baseLapTime - modeledSeconds
-  byCondition.set(conditionKey, result)
-  return result
 }
 
 export function baseFuelBurnKgPerLap(track: TrackDefinition) {
