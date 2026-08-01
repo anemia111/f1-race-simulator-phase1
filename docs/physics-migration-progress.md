@@ -37,7 +37,7 @@ work session. It is a work log, not a source of calibration constants.
 
 ### Stage 1 - drivetrain readiness
 
-Status: complete; commit pending at the time of this entry.
+Status: complete; commit `3b15346`.
 
 - Stateful turbo and clutch APIs, finite launch RPM/torque, and one RPM source
   for gear selection and force are implemented.
@@ -58,12 +58,42 @@ Verification:
 
 ### Stage 2 - production physics path (Issue #4)
 
-Status: pending.
+Status: complete; commit pending at the time of this entry.
 
-Planned boundaries: category-keyed physical track profile; physical planning
-limits in `trackDynamics`; actual energy-store deployment into `drivetrain`;
-force integration in `vehicleDynamics`/`telemetry`; coherent persisted gear and
-RPM; removal of legacy lap-time and speed calibration layers.
+- `trackDynamics` is now a category-keyed wrapper over `physicalLap`. It
+  exposes curvature, effective radius, banking, physical line, live-relevant
+  lateral geometry and braking-target geometry without rescaling to
+  `baseLapTime`.
+- The reference terminal/deployment envelope remains explicitly offline. Live
+  speed is never copied from it: `telemetry` turns physical limits and
+  operational ceilings into pedal requests, and `vehicleDynamics` integrates
+  drivetrain force, drag, grade, mass, braking and the tyre friction ellipse.
+- Actual mechanical Energy Store deployment enters the MGU-K exactly once.
+  SOC and thermal limits change live acceleration independently. ICE/OTS,
+  MGU-K, clutch, turbo, gear, RPM and contact-patch force share one drivetrain
+  evaluation.
+- Live lateral and forward braking limits are recalculated for current fuel
+  mass, regulatory mass, team/setup, air density, dirty-air downforce, tyre and
+  surface grip. Surface water has one grip path; tow affects drag only.
+- Live gaps and neutralisation spacing use metric arc distance and road speed,
+  not `baseLapTime`. Tyre wear advances from physical distance. Blue flags
+  shape throttle instead of multiplying post-physics travel.
+- F1/F2/F3/SF have separate mass, tyre, aero, PU, gearbox and deployment
+  profiles and separate cached reference profiles. Running cars at a clamped
+  zero road speed retain first gear and finite launch/idle RPM.
+- Removed the old raw speed factor, 68/395 clamp, 12.5/44 envelope, 20-pass
+  base-lap scaling, +38 km/h straight boost, internal acceleration scale,
+  top-gear efficiency falloff, `power / speed` live drive force, duplicate
+  wet/fuel/traction/brake speed factors and display-only gear/RPM path.
+
+Verification:
+
+- Focused race/track/profile/vehicle regression: 217 passed.
+- Full suite: 65 files / 720 tests passed in 532.93 s.
+- `npm run lint -- --deny-warnings`: passed.
+- `npx tsc -b --pretty false`: passed.
+- `git diff --check`: passed (line-ending conversion warnings only).
+- Legacy Stage 2 symbol search: no production matches.
 
 ### Stage 3 - lateral state and driver decisions (Issue #5)
 

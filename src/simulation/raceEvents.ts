@@ -420,11 +420,20 @@ export function distanceRespectingLocalYellowOrder(options: {
   aheadProjectedDistance: number
   currentDistance: number
   projectedDistance: number
-  referenceLapTimeSeconds: number
+  /** @deprecated Compatibility fallback for callers without metric geometry. */
+  referenceLapTimeSeconds?: number
+  /** Live road speed used to turn the operational time gap into metres. */
+  referenceSpeedKph?: number
+  trackLengthMeters?: number
 }): number {
   const minimumGapDistance =
-    phaseThreeTuning.localYellowMinimumGapSeconds /
-    Math.max(40, options.referenceLapTimeSeconds)
+    options.trackLengthMeters !== undefined &&
+    options.referenceSpeedKph !== undefined
+      ? (phaseThreeTuning.localYellowMinimumGapSeconds *
+          Math.max(0, options.referenceSpeedKph / 3.6)) /
+        Math.max(1, options.trackLengthMeters)
+      : phaseThreeTuning.localYellowMinimumGapSeconds /
+        Math.max(40, options.referenceLapTimeSeconds ?? 90)
 
   return Math.min(
     options.projectedDistance,

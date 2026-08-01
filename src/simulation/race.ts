@@ -96,11 +96,12 @@ import {
 } from './strategy'
 import { startingGridDistance } from './startingGrid'
 import { calculateCarTelemetry } from './telemetry'
+import { categoryPhysicsFor } from './categoryPhysics'
 import {
-  categoryEngineRpmForSpeed,
-  categoryGearForSpeed,
-  categoryPhysicsFor,
-} from './categoryPhysics'
+  advanceTurboState,
+  powerUnitRpmFor,
+  selectGear,
+} from './drivetrain'
 import {
   blueFlagDecision,
   jumpStartDecision,
@@ -125,6 +126,7 @@ import {
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
   progressForProfileSpeed,
+  referenceProfileLapTimeSeconds,
   speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
@@ -139,7 +141,6 @@ import {
 import {
   advanceTrackWater,
   createTrackWaterState,
-  gripForSurfaceWater,
 } from './trackWater'
 import {
   advanceTrackRubber,
@@ -150,6 +151,7 @@ import {
 } from './trackEvolution'
 import {
   baseFuelBurnKgPerLap,
+  combustionPowerKwFor,
   fuelBurnKgPerLap,
   fuelMassEffects,
   initialFuelLoadKg,
@@ -171,7 +173,6 @@ import {
   heatHazardMassIncreaseKgFor,
   heatIndexCFor,
   simulatedHumidityPercentFor,
-  trackGripForSector,
   trackGripForWeather,
   simulatedTemperaturesFor,
   weatherFor,
@@ -204,15 +205,6 @@ const FUEL_SAMPLE_RESERVE_KG = 0.8
  * car was already committed to when the boards came out.
  */
 const VSC_DEPLOYMENT_ALLOWANCE_SECTORS = 2
-/**
- * Share of the calibrated timed-session scale that free practice realises. The
- * scale is solved against a qualifying attack lap; a practice best lap runs a
- * lower engine map on less prepared tires and a greener track, so it stays a
- * second or two behind the qualifying reference instead of matching it.
- */
-const PRACTICE_TIMED_SCALE_RESPONSE = 0.52
-/** Initial settling margin for legacy additive-to-scale calibration migration. */
-const LEGACY_RACE_PACE_SCALE_SETTLING = 0.979
 /**
  * How close a lapping car must be before the blue flag is shown. Race Control
  * warns a driver who is about to be lapped, not one whose lap deficit merely
@@ -869,7 +861,6 @@ function practiceFuelLoadKgFor(
 
 type RaceReferenceModel = {
   expectedGreenRaceDeltaSeconds: number
-  physicsPaceScale: number
   qualifyingReferenceSeconds: number
   referenceEvolutionGainSeconds: number
   referenceLapTimeSeconds: number
@@ -940,16 +931,6 @@ function raceReferenceModelFor(
     fallbackGreenRaceDeltaSeconds(config.track)
   const referenceLapTimeSeconds =
     qualifyingReferenceSeconds + expectedGreenRaceDeltaSeconds
-  const referenceFuelLoadKg =
-    initialFuelLoadKg({
-      raceLaps,
-      stage: 'race',
-      track: config.track,
-    }) * 0.52
-  const legacyReferenceFuelDeltaSeconds = fuelMassEffects({
-    fuelLoadKg: referenceFuelLoadKg,
-    track: config.track,
-  }).lapTimeDeltaSeconds
   const referenceTireDeltaSeconds = tireDeltaSeconds(
     'M',
     8,
@@ -965,34 +946,8 @@ function raceReferenceModelFor(
     0.55,
     config.track,
   )
-  const explicitScale = calibration?.simulation.racePaceScale
-  const legacyReferenceControllerSeconds =
-    config.track.baseLapTime +
-    legacyReferenceFuelDeltaSeconds +
-    referenceTireDeltaSeconds -
-    referenceEvolutionGainSeconds +
-    (calibration?.simulation.raceModelCorrectionSeconds ?? 0)
-  // Old records stored an additive controller correction. Convert it to the
-  // equivalent dimensionless scale only as a compatibility fallback; new
-  // calibration writes racePaceScale explicitly and never adds the old seconds.
-  const compatibilityScale =
-    referenceLapTimeSeconds /
-    Math.max(40, legacyReferenceControllerSeconds) *
-    LEGACY_RACE_PACE_SCALE_SETTLING
-  const physicsPaceScale = Math.min(
-    1.22,
-    Math.max(
-      0.9,
-      explicitScale !== undefined &&
-        Number.isFinite(explicitScale) &&
-        explicitScale > 0
-        ? explicitScale
-        : compatibilityScale,
-    ),
-  )
   const model = {
     expectedGreenRaceDeltaSeconds,
-    physicsPaceScale,
     qualifyingReferenceSeconds,
     referenceEvolutionGainSeconds,
     referenceLapTimeSeconds,
@@ -1056,7 +1011,11 @@ function projectedLapTime(
   )
   const evolution = trackEvolutionGainSecondsFor(rubberLevel, config.track)
   // No wheel-to-wheel racing under a flag, so no dirty-air penalty either.
-  const localDynamics = trackDynamicsAt(config.track, car.progress)
+  const localDynamics = trackDynamicsAt(
+    config.track,
+    car.progress,
+    categoryPhysicsFor(config.seriesId),
+  )
   const dirtyAir =
     phase || isTimedSession
       ? 0
@@ -1569,6 +1528,18 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   // by frozen distance (which collapses at the line).
   const finishTime = (car: CarSnapshot) =>
     (car.finishedAtSeconds ?? 0) + car.penaltySeconds
+  const physicalGapSeconds = (ahead: CarSnapshot, behind: CarSnapshot) => {
+    const arcDistanceMeters =
+      Math.max(0, ahead.totalDistance - behind.totalDistance) *
+      config.track.lengthKm *
+      1000
+    const representativeSpeedMps = Math.max(
+      5,
+      (Math.max(0, ahead.speedKph) + Math.max(0, behind.speedKph)) / 7.2,
+    )
+
+    return arcDistanceMeters / representativeSpeedMps
+  }
 
   const finished = cars
     .filter((car) => car.status === 'finished')
@@ -1695,14 +1666,14 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
         ? 0
         : car.status === 'finished' && leader.status === 'finished'
           ? finishTime(car) - finishTime(leader)
-          : (trackGap(leader) - trackGap(car)) * lapTime
+          : physicalGapSeconds(leader, car)
     const ahead = index === 0 ? null : ordered[index - 1]
     const gapToAhead =
       !ahead || ahead.status === 'retired'
         ? 0
         : car.status === 'finished' && ahead.status === 'finished'
           ? finishTime(car) - finishTime(ahead)
-          : (trackGap(ahead) - trackGap(car)) * lapTime
+          : physicalGapSeconds(ahead, car)
 
     return {
       ...car,
@@ -2772,6 +2743,24 @@ export function advanceRace(
         driver !== undefined &&
         hashChance(`${config.seed}:low-power-start:${driver.id}`) <
           0.004 + Math.max(0, 70 - weakestCondition) * 0.0005
+      const lightsRpm = powerUnitRpmFor({
+        clutchEngagementFraction: 0,
+        gear: 1,
+        physics: categoryPhysics,
+        speedMps: 0,
+      })
+      const stagedTurboSpoolFraction =
+        nextProcedure === 'lights'
+          ? advanceTurboState({
+              deltaSeconds,
+              physics: categoryPhysics,
+              previousState: {
+                spoolFraction: car.turboSpoolFraction ?? 0,
+              },
+              rpm: lightsRpm,
+              throttleFraction: 0.36,
+            }).spoolFraction
+          : car.turboSpoolFraction ?? 0
 
       if (jumpStart) {
         newEvents.push(
@@ -2811,8 +2800,10 @@ export function advanceRace(
           speedKph: 0,
           throttlePercent: 0,
           brakePercent: nextProcedure === 'lights' ? 54 : 18,
-          rpm: nextProcedure === 'lights' ? 7200 : 0,
+          rpm: nextProcedure === 'lights' ? Math.round(lightsRpm) : 0,
           gear: 1,
+          turboSpoolFraction: stagedTurboSpoolFraction,
+          clutchEngagementFraction: 0,
           activeAeroMode: 'corner' as const,
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
@@ -2863,13 +2854,15 @@ export function advanceRace(
                 : 20,
         ersMode: nextProcedure === 'lights' ? ('balanced' as const) : ('harvest' as const),
         rpm:
-          nextProcedure === 'lights'
-            ? 10800
+          nextProcedure === 'lights' || lightsOut
+            ? Math.round(lightsRpm)
             : nextProcedure === 'formation'
               ? 6200
               : snapshot.formationBehindSafetyCar
                 ? 9200
                 : 0,
+        gear:
+          nextProcedure === 'lights' || lightsOut ? 1 : car.gear,
         speedKph:
           nextProcedure === 'formation'
             ? Math.round(
@@ -2886,9 +2879,7 @@ export function advanceRace(
             : snapshot.formationBehindSafetyCar && nextProcedure === 'racing'
               ? 145
             : lightsOut
-              ? lowPowerStart
-                ? 42
-                : Math.round(50 + launchExecution * 16)
+              ? 0
               : 0,
         throttlePercent:
           nextProcedure === 'lights'
@@ -2900,6 +2891,11 @@ export function advanceRace(
                 : lightsOut
                   ? Math.round(52 + launchExecution * 24)
                   : 0,
+        turboSpoolFraction: stagedTurboSpoolFraction,
+        clutchEngagementFraction:
+          nextProcedure === 'lights' || lightsOut
+            ? 0
+            : car.clutchEngagementFraction,
         tireTemperatureC: Math.min(104, car.tireTemperatureC + deltaSeconds * 0.35),
         tireCarcassTemperatureC: Math.min(
           96,
@@ -4277,20 +4273,14 @@ export function advanceRace(
       elapsedSeconds,
       carSector,
     )
-    const baseLocalTrackGrip = trackGripForSector(
-      config.seed,
-      config.track,
-      elapsedSeconds,
-      carSector,
-    )
-    const localTrackGrip = gripForSurfaceWater(
-      gripWithTrackRubber(
-        baseLocalTrackGrip,
-        trackRubber.rubberLevelBySector[carSector],
-        trackWater.surfaceWaterMmBySector[carSector],
-      ),
+    // Surface water is the single live wet-grip authority. Rainfall drives
+    // that state; it is not also multiplied into tyre force as a second
+    // weather-derived grip loss.
+    const baseLocalTrackGrip = 1
+    const localTrackGrip = gripWithTrackRubber(
+      baseLocalTrackGrip,
+      trackRubber.rubberLevelBySector[carSector],
       trackWater.surfaceWaterMmBySector[carSector],
-      trackWater.dryingLineBySector[carSector],
     )
     const localTireTrackCondition: TireTrackCondition = {
       dryingLine: trackWater.dryingLineBySector[carSector],
@@ -4532,63 +4522,38 @@ export function advanceRace(
       lowGripConditions,
       stage: weekendStage,
     })
-    const battlePaceScale =
-      car.battleDeltaSecondsRemaining > 0
-        ? 1 +
-          Math.min(0.035, car.battleDeltaSecondsRemaining * 0.018)
-        : car.battleDeltaSecondsRemaining < 0
-          ? Math.max(
-              0.55,
-              1 + car.battleDeltaSecondsRemaining * 0.08,
-            )
-          : 1
-    const liveTimingPaceScale =
-      isTimedSession && timedRun.physicsPhase === 'attack-lap'
-        ? (config.track.paceReference2026?.calibration.simulation
-            .liveTimingPaceScale ?? 1)
-        : 1
-    // The offline scale calibrates green-flag race pace. Under a neutralised
-    // track the delta targets are absolute fractions of the reference speed,
-    // so Race Control's own pace scale stays the only authority there.
-    const racePhysicsPaceScale =
-      isRaceDistance && localControlPhase === null
-        ? raceReferenceModelFor(driver, config, raceLaps).physicsPaceScale
-        : 1
-    const weatherAdjustedRacePhysicsScale =
-      1 +
-      (racePhysicsPaceScale - 1) *
-        (localWeather === 'clear' ? 1 : 0.6)
-    // Free practice and qualifying run the same physical controller as the
-    // race but against a lap-record-style target, so they carry their own
-    // offline scale instead of borrowing the race calibration. The scale is
-    // solved on a qualifying attack lap, and practice only realises part of
-    // that trim: a lower engine map, less tire preparation and a greener track
-    // leave the best practice lap behind the qualifying reference.
-    const calibratedTimedPaceScale =
-      config.track.paceReference2026?.calibration.simulation
-        .qualifyingPaceScale ?? 1
-    const timedPhysicsPaceScale =
-      !isRaceDistance && localControlPhase === null
-        ? isPracticeStage(config.weekendStage ?? 'race')
-          ? 1 +
-            (calibratedTimedPaceScale - 1) * PRACTICE_TIMED_SCALE_RESPONSE
-          : calibratedTimedPaceScale
-        : 1
-    const weatherAdjustedTimedPhysicsScale =
-      1 +
-      (timedPhysicsPaceScale - 1) * (localWeather === 'clear' ? 1 : 0.6)
+    const blueFlagApproachingCar =
+      isRaceDistance &&
+      !localControlPhase &&
+      hasCrossedRestartLine &&
+      !waitingForSafeRejoin
+        ? blueFlagApproachingCarFor(
+            car,
+            snapshot.cars,
+            referenceProfileLapTimeSeconds(config.track, categoryPhysics),
+          )
+        : null
+    const blueFlag = blueFlagApproachingCar !== null
+    const blueFlagSinceSeconds = blueFlag
+      ? (car.blueFlagSinceSeconds ?? elapsedSeconds)
+      : null
+    const ignoresBlueFlag =
+      blueFlag &&
+      hashChance(
+        `${config.seed}:blue-flag-compliance:${driver.id}:${Math.floor(blueFlagSinceSeconds ?? elapsedSeconds)}`,
+      ) <
+        0.012 +
+          Math.max(
+            0,
+            1 - driverPerformanceAbility(driver, 'raceAwareness'),
+          ) *
+            0.11
     const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
       car: paceManagedCar,
       categoryPhysics,
       deltaSeconds,
       driver,
       elapsedSeconds,
-      paceScale:
-        (config.track.baseLapTime / conditionEffectiveLapTime) *
-        battlePaceScale *
-        liveTimingPaceScale *
-        weatherAdjustedRacePhysicsScale *
-        weatherAdjustedTimedPhysicsScale,
       phase: localControlPhase,
       localFlagPaceScale,
       lowGripConditions,
@@ -4597,14 +4562,12 @@ export function advanceRace(
       maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       overtakeSystem: config.overtakeSystem,
-      performanceSession:
-        timedRun.practicePlan?.energyIntent === 'qualifying'
-          ? 'qualifying'
-          : performanceSessionForWeekendStage(weekendStage),
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.physicsPhase,
-      timedTrafficYield: timedTrafficYield?.shouldYield ?? false,
+      timedTrafficYield:
+        (timedTrafficYield?.shouldYield ?? false) ||
+        (blueFlag && !ignoresBlueFlag),
       standingStartLaunchActive,
       standingStartMguKRestricted,
       track: config.track,
@@ -4788,32 +4751,6 @@ export function advanceRace(
       }
     }
 
-    const blueFlagApproachingCar =
-      isRaceDistance &&
-      !localControlPhase &&
-      hasCrossedRestartLine &&
-      !waitingForSafeRejoin
-      ? blueFlagApproachingCarFor(
-          car,
-          snapshot.cars,
-          Math.max(baseLapTime, car.projectedLapTime),
-        )
-      : null
-    const blueFlag = blueFlagApproachingCar !== null
-    const blueFlagSinceSeconds = blueFlag
-      ? (car.blueFlagSinceSeconds ?? elapsedSeconds)
-      : null
-    const ignoresBlueFlag =
-      blueFlag &&
-      hashChance(
-        `${config.seed}:blue-flag-compliance:${driver.id}:${Math.floor(blueFlagSinceSeconds ?? elapsedSeconds)}`,
-      ) <
-        0.012 +
-          Math.max(
-            0,
-            1 - driverPerformanceAbility(driver, 'raceAwareness'),
-          ) *
-            0.11
     const carBehind = snapshot.cars[index + 1]
     const attacking =
       car.position > 1 &&
@@ -4888,8 +4825,12 @@ export function advanceRace(
     const tireLapFraction =
       waitingForSafeRejoin
         ? 0
-        : (deltaSeconds / Math.max(40, effectiveLapTime)) * wearScale.tire
-    const localDynamics = trackDynamicsAt(config.track, car.progress)
+        : Math.max(0, totalDistance - car.totalDistance) * wearScale.tire
+    const localDynamics = trackDynamicsAt(
+      config.track,
+      car.progress,
+      categoryPhysics,
+    )
     const fuelEffects = fuelMassEffects({
       fuelLoadKg: car.fuelLoadKg,
       localDynamics,
@@ -4957,11 +4898,6 @@ export function advanceRace(
         ? Math.min(180, car.brakeOverheatSeconds + deltaSeconds)
         : Math.max(0, car.brakeOverheatSeconds - deltaSeconds * 2.5)
     if (blueFlag) {
-      const yieldedTravel =
-        Math.max(0, totalDistance - car.totalDistance) *
-        (ignoresBlueFlag ? 0.985 : 0.82)
-      totalDistance = car.totalDistance + yieldedTravel
-
       if (!car.blueFlag) {
         newEvents.push(
           makeEvent(
@@ -4979,7 +4915,8 @@ export function advanceRace(
         aheadProjectedDistance: aheadTotal,
         currentDistance: car.totalDistance,
         projectedDistance: totalDistance,
-        referenceLapTimeSeconds: baseLapTime,
+        referenceSpeedKph: Math.max(5, displayTelemetry.speedKph),
+        trackLengthMeters: config.track.lengthKm * 1000,
       })
     }
 
@@ -4991,10 +4928,13 @@ export function advanceRace(
       aheadTotal !== null &&
       !mayUnlap
     ) {
-      const spacing =
-        (controlPhase.flag === 'sc'
+      const minimumGapSeconds =
+        controlPhase.flag === 'sc'
           ? SAFETY_CAR_QUEUE_MIN_GAP_SECONDS
-          : VSC_QUEUE_MIN_GAP_SECONDS) / baseLapTime
+          : VSC_QUEUE_MIN_GAP_SECONDS
+      const spacing =
+        (minimumGapSeconds * Math.max(5, displayTelemetry.speedKph / 3.6)) /
+        Math.max(1, config.track.lengthKm * 1000)
       totalDistance = Math.min(
         totalDistance,
         Math.max(car.totalDistance, aheadTotal - spacing),
@@ -5007,17 +4947,35 @@ export function advanceRace(
       totalDistance,
       deltaSeconds,
     )
-    const actualTravelGear = categoryGearForSpeed(
-      actualTravelSpeedKph,
-      categoryPhysics,
-    )
-    const actualTravelRpm = categoryEngineRpmForSpeed({
-      brakePercent: displayTelemetry.brakePercent,
-      gear: actualTravelGear,
-      profile: categoryPhysics,
-      speedKph: actualTravelSpeedKph,
-      throttlePercent: displayTelemetry.throttlePercent,
-    })
+    // Queue, pit and incident constraints can shorten the distance after the
+    // force step. Reconcile the displayed driveline at that actual road speed
+    // with the same PU model, without advancing turbo or clutch state twice.
+    const reconciledDrivePowerScale =
+      displayTelemetry.superClippingDrivePowerScale
+    const reconciledCombustionPowerKw =
+      (combustionPowerKwFor(team, categoryPhysics) +
+        (config.overtakeSystem === 'ots' &&
+        displayTelemetry.overtakeStatus === 'active'
+          ? categoryPhysics.overtakeBoostPowerKw
+          : 0)) *
+      reconciledDrivePowerScale
+    const powerUnitExplicitlyStopped =
+      localControlPhase?.flag === 'red' || car.pitPhase === 'box'
+    const actualTravelPowerUnit =
+      !powerUnitExplicitlyStopped
+        ? selectGear({
+            clutchEngagementFraction:
+              displayTelemetry.clutchEngagementFraction,
+            combustionPowerKw: reconciledCombustionPowerKw,
+            deploymentPowerKw: displayTelemetry.ersPowerKw,
+            physics: categoryPhysics,
+            speedMps: actualTravelSpeedKph / 3.6,
+            transmissionEfficiency: categoryPhysics.drivetrainEfficiency,
+            turboSpoolFraction: displayTelemetry.turboSpoolFraction,
+          })
+        : null
+    const actualTravelGear = actualTravelPowerUnit?.gear ?? 0
+    const actualTravelRpm = actualTravelPowerUnit?.rpm ?? 0
     const overtakeEligibility = isRaceDistance
       ? updateOvertakeEligibilityAfterTravel({
           car,
@@ -5050,7 +5008,11 @@ export function advanceRace(
         (displayTelemetry.ersMode === 'deploy' ? 0.24 : 0),
       team,
     })
-    const referenceSpeed = trackDynamicsAt(config.track, car.progress).referenceSpeedKph
+    const referenceSpeed = trackDynamicsAt(
+      config.track,
+      car.progress,
+      categoryPhysics,
+    ).referenceSpeedKph
     const allowedVscSpeed = Math.max(
       35,
       referenceSpeed * phaseThreeTuning.vscMinimumTimePace,

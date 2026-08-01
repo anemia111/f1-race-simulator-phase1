@@ -15,10 +15,11 @@
  * through the same ratios; it is a motor, so it makes flat torque up to its
  * base speed and constant power above it, which is a different shape from the
  * combustion curve. The turbocharger appears as the delay before combustion
- * torque arrives, not as separate power. What the Energy Store will release,
- * and the regulatory speed de-rate on it, stay in `energySystem.ts` and
- * `activeAero.ts`: this module takes the resulting kW and asks what force it
- * makes at these revs.
+ * torque arrives, not as separate power. What the Energy Store will release
+ * and which regulatory deployment zone is active stay in `energySystem.ts`
+ * and `activeAero.ts`; this module takes the resulting kW and asks what force
+ * it makes at these revs. State-of-charge and thermal limits remain outside
+ * this module, and no inferred road-speed de-rate is applied here.
  *
  * Gear ratios are derived rather than published: teams do not release them.
  * Top gear is geared so the rev limit arrives at the speed the category is
@@ -33,33 +34,46 @@ const clamp = (value: number, min: number, max: number) =>
 const finiteOr = (value: number, fallback: number) =>
   Number.isFinite(value) ? value : fallback
 
-const DEFAULT_TRANSMISSION_EFFICIENCY = 0.94
 const LAUNCH_RPM_FRACTION = 0.38
 const DEFAULT_CLUTCH_BITE_FRACTION = 0.35
 // Preserve the existing category map by default. An absolute crankshaft RPM
 // can be supplied when a category has a documented motor torque limit.
 const DEFAULT_MGU_K_BASE_SPEED_FRACTION = 0.35
+const gearRatioCache = new WeakMap<CategoryPhysicsProfile, number[]>()
+const bestPowerPerTorqueCache = new WeakMap<CategoryPhysicsProfile, number>()
 
 /** Ratios from first to top, including the final drive. */
 export function gearRatiosFor(physics: CategoryPhysicsProfile): number[] {
+  const cached = gearRatioCache.get(physics)
+
+  if (cached) {
+    return cached
+  }
+
   const wheelCircumferenceM = 2 * Math.PI * physics.wheelRadiusM
-  const topSpeedMps = physics.topGearEfficiencyStartKph / 3.6
+  const topSpeedMps = physics.topGearDesignSpeedKph / 3.6
   // Top gear reaches the limiter at the speed the category is geared for.
   const topRatio =
     (physics.maximumEngineRpm / 60) * (wheelCircumferenceM / topSpeedMps)
   const gearCount = Math.max(1, physics.gearCount)
 
   if (gearCount === 1) {
-    return [topRatio]
+    const ratios = [topRatio]
+
+    gearRatioCache.set(physics, ratios)
+    return ratios
   }
 
   const firstRatio = topRatio * physics.gearSpread
   const step = Math.pow(topRatio / firstRatio, 1 / (gearCount - 1))
 
-  return Array.from(
+  const ratios = Array.from(
     { length: gearCount },
     (_, index) => firstRatio * Math.pow(step, index),
   )
+
+  gearRatioCache.set(physics, ratios)
+  return ratios
 }
 
 /** Engine speed for a road speed in a given gear. Gear is 1-based. */
@@ -114,24 +128,35 @@ export function normalisedTorqueAt(
  * category's rated output. The published kW stays the constraint; the curve
  * decides where in the rev range it is reached.
  */
-export function peakTorqueNm(physics: CategoryPhysicsProfile) {
-  let bestPowerPerNm = 0
+export function peakTorqueNm(
+  physics: CategoryPhysicsProfile,
+  combustionPowerKw = physics.combustionPowerKw,
+) {
+  let bestPowerPerNm = bestPowerPerTorqueCache.get(physics)
 
-  for (let step = 0; step <= 100; step += 1) {
-    const fraction = step / 100
-    const rpm = fraction * physics.maximumEngineRpm
-    const angularSpeed = (rpm * 2 * Math.PI) / 60
-    const powerPerNm =
-      normalisedTorqueAt(fraction, physics.peakTorqueRevFraction) *
-      angularSpeed
+  if (bestPowerPerNm === undefined) {
+    bestPowerPerNm = 0
 
-    bestPowerPerNm = Math.max(bestPowerPerNm, powerPerNm)
+    for (let step = 0; step <= 100; step += 1) {
+      const fraction = step / 100
+      const rpm = fraction * physics.maximumEngineRpm
+      const angularSpeed = (rpm * 2 * Math.PI) / 60
+      const powerPerNm =
+        normalisedTorqueAt(fraction, physics.peakTorqueRevFraction) *
+        angularSpeed
+
+      bestPowerPerNm = Math.max(bestPowerPerNm, powerPerNm)
+    }
+
+    bestPowerPerTorqueCache.set(physics, bestPowerPerNm)
   }
 
-  return (physics.combustionPowerKw * 1000) / Math.max(1, bestPowerPerNm)
+  return (Math.max(0, finiteOr(combustionPowerKw, 0)) * 1000) /
+    Math.max(1, bestPowerPerNm)
 }
 
 export function engineTorqueNm(options: {
+  combustionPowerKw?: number
   physics: CategoryPhysicsProfile
   rpm: number
 }) {
@@ -142,7 +167,7 @@ export function engineTorqueNm(options: {
   }
 
   return (
-    peakTorqueNm(physics) *
+    peakTorqueNm(physics, options.combustionPowerKw) *
     normalisedTorqueAt(
       rpm / Math.max(1, physics.maximumEngineRpm),
       physics.peakTorqueRevFraction,
@@ -151,6 +176,7 @@ export function engineTorqueNm(options: {
 }
 
 export function enginePowerKwAt(options: {
+  combustionPowerKw?: number
   physics: CategoryPhysicsProfile
   rpm: number
 }) {
@@ -343,6 +369,8 @@ export function advanceClutchState(options: {
 }
 
 export type PowerUnitInput = {
+  /** Physical combustion output available at the crankshaft. */
+  combustionPowerKw?: number
   /** Current clutch engagement. Omit to use the compatible launch default. */
   clutchEngagementFraction?: number
   /** MGU-K deployment already limited by regulation and state of charge. */
@@ -362,6 +390,7 @@ export type PowerUnitInput = {
 
 /** Crankshaft torque from the whole unit at a given engine speed. */
 export function powerUnitTorqueNm(options: {
+  combustionPowerKw?: number
   deploymentPowerKw?: number
   mguKBaseSpeedRpm?: number
   physics: CategoryPhysicsProfile
@@ -388,7 +417,11 @@ export function powerUnitTorqueNm(options: {
           })
       : clamp(finiteOr(turboSpoolFraction, 0), 0, 1)
   const combustionNm =
-    engineTorqueNm({ physics, rpm }) * combustionAvailability
+    engineTorqueNm({
+      combustionPowerKw: options.combustionPowerKw,
+      physics,
+      rpm,
+    }) * combustionAvailability
   const electricalNm = mguKTorqueNm({
     deploymentPowerKw,
     mguKBaseSpeedRpm,
@@ -458,6 +491,7 @@ export function powerUnitRpmFor(options: {
 
 const defaultLaunchTorqueLimitNm = (
   physics: CategoryPhysicsProfile,
+  combustionPowerKw?: number,
   mguKBaseSpeedRpm?: number,
 ) => {
   const baseSpeedRpm = clamp(
@@ -476,7 +510,7 @@ const defaultLaunchTorqueLimitNm = (
     rpm: baseSpeedRpm,
   })
 
-  return peakTorqueNm(physics) + maximumElectricalTorqueNm
+  return peakTorqueNm(physics, combustionPowerKw) + maximumElectricalTorqueNm
 }
 
 /**
@@ -518,6 +552,7 @@ export function powerUnitForceInGear(
   })
   const clutchSlipping = wheelCoupledRpm < options.physics.minimumEngineRpm
   const crankshaftTorqueNm = powerUnitTorqueNm({
+    combustionPowerKw: options.combustionPowerKw,
     deploymentPowerKw: options.deploymentPowerKw,
     mguKBaseSpeedRpm: options.mguKBaseSpeedRpm,
     physics: options.physics,
@@ -531,6 +566,7 @@ export function powerUnitForceInGear(
       options.launchTorqueLimitNm ??
         defaultLaunchTorqueLimitNm(
           options.physics,
+          options.combustionPowerKw,
           options.mguKBaseSpeedRpm,
         ),
       0,
@@ -544,8 +580,8 @@ export function powerUnitForceInGear(
     : crankshaftTorqueNm
   const transmissionEfficiency = clamp(
     finiteOr(
-      options.transmissionEfficiency ?? DEFAULT_TRANSMISSION_EFFICIENCY,
-      DEFAULT_TRANSMISSION_EFFICIENCY,
+      options.transmissionEfficiency ?? options.physics.drivetrainEfficiency,
+      options.physics.drivetrainEfficiency,
     ),
     0,
     1,

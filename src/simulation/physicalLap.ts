@@ -38,10 +38,26 @@ export type PhysicalLapOptions = {
   /** Surface and compound state, as in `tyreForces`. */
   gripMultiplier?: number
   massKg?: number
-  /** MGU-K deployment assumed available under acceleration. */
+  /**
+   * MGU-K deployment assumed available under acceleration while constructing
+   * an offline reference profile. This is never a live Energy Store command.
+   */
   deploymentPowerKw?: number
   physics?: CategoryPhysicsProfile
 }
+
+/**
+ * Deployment policy used only by the offline/reference lap planner.
+ *
+ * The planner assumes the category limit is available wherever full power is
+ * requested. A live simulation must instead pass the power authorised by its
+ * Energy Store and deployment state into the drivetrain on every tick. This
+ * policy deliberately has no state-of-charge, harvesting or lap strategy.
+ */
+export const REFERENCE_DEPLOYMENT_POLICY = {
+  scope: 'offline-reference-only',
+  strategy: 'category-limit-under-acceleration',
+} as const
 
 export type BankedSection = {
   /** Lap progress the banking runs between, 0 to 1. */
@@ -102,6 +118,10 @@ export type TrackGeometryPoint = {
   cornerArcRadians: number
   /** Distance to the next point, in metres. */
   segmentLengthMeters: number
+  /** Signed local change in heading, in radians. */
+  signedTurnRadians: number
+  /** Direction of the local turn; zero when effectively straight. */
+  turnDirection: -1 | 0 | 1
 }
 
 /** Half a modern single-seater's width, kept off the usable track edge. */
@@ -253,6 +273,27 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
   const centrelineRadii = points.map((_, index) =>
     Math.min(circumradiusAtSpan(index, 1), circumradiusAtSpan(index, 2)),
   )
+  const signedTurns = points.map((_, index) => {
+    const previous = at(index - 1)
+    const current = at(index)
+    const next = at(index + 1)
+    const incomingX = current[0] - previous[0]
+    const incomingZ = current[2] - previous[2]
+    const outgoingX = next[0] - current[0]
+    const outgoingZ = next[2] - current[2]
+    const incomingLength = Math.max(1e-9, Math.hypot(incomingX, incomingZ))
+    const outgoingLength = Math.max(1e-9, Math.hypot(outgoingX, outgoingZ))
+    const dot = clamp(
+      (incomingX * outgoingX + incomingZ * outgoingZ) /
+        (incomingLength * outgoingLength),
+      -1,
+      1,
+    )
+    const magnitude = Math.acos(dot)
+    const cross = incomingX * outgoingZ - incomingZ * outgoingX
+
+    return magnitude * (cross >= 0 ? 1 : -1)
+  })
   const usableHalfWidthMeters = Math.max(
     0,
     trackWidthMeters(track) / 2 - CAR_HALF_WIDTH_M,
@@ -287,16 +328,28 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
     return arc
   })
 
-  return points.map((_, index) => ({
-    centrelineRadiusMeters: centrelineRadii[index],
-    cornerArcRadians: cornerArcRadians[index],
-    radiusMeters: racingLineRadiusMeters({
+  return points.map((_, index) => {
+    const signedTurnRadians = signedTurns[index]
+    const turnDirection: -1 | 0 | 1 =
+      Math.abs(signedTurnRadians) < 0.002
+        ? 0
+        : signedTurnRadians > 0
+          ? 1
+          : -1
+
+    return {
       centrelineRadiusMeters: centrelineRadii[index],
       cornerArcRadians: cornerArcRadians[index],
-      usableHalfWidthMeters,
-    }),
-    segmentLengthMeters: segmentLengths[index],
-  }))
+      radiusMeters: racingLineRadiusMeters({
+        centrelineRadiusMeters: centrelineRadii[index],
+        cornerArcRadians: cornerArcRadians[index],
+        usableHalfWidthMeters,
+      }),
+      segmentLengthMeters: segmentLengths[index],
+      signedTurnRadians,
+      turnDirection,
+    }
+  })
 }
 
 function resolveOptions(options: PhysicalLapOptions) {
@@ -362,6 +415,93 @@ export type PhysicalLapResult = {
   speedsMps: number[]
   maximumSpeedKph: number
   minimumSpeedKph: number
+  /** One offline planning point for every centreline point. */
+  points: PhysicalLapPoint[]
+  /** Constant deployment assumption used to construct this reference only. */
+  referenceDeploymentPowerKw: number
+}
+
+export type PhysicalReferenceLinePhase =
+  | 'straight'
+  | 'entry'
+  | 'apex'
+  | 'exit'
+
+export type PhysicalLapPoint = {
+  /** Banking applied only to this part of the circuit. */
+  bankingDegrees: number
+  /** Banking at the end of the current braking event. */
+  brakingTargetBankingDegrees: number
+  /** Corner radius at the end of the current braking event. */
+  brakingTargetCornerRadiusM: number
+  /** Speed dictated by tyres, radius and banking before the longitudinal sweeps. */
+  corneringSpeedLimitMps: number
+  /** Signed inverse effective radius. Zero represents a straight. */
+  curvaturePerMeter: number
+  /** Distance from this point to the braking target, or zero off the brakes. */
+  brakingDistanceAheadMeters: number
+  /** Reference speed at the end of the current braking event. */
+  brakingTargetSpeedMps: number
+  /** Finite racing-line radius; a very large value represents a straight. */
+  effectiveCornerRadiusM: number
+  /** Physical lateral offset from the centreline, in metres. */
+  referenceLineOffsetM: number
+  referenceLinePhase: PhysicalReferenceLinePhase
+  /** Speed selected by the complete forward/backward physical envelope. */
+  referenceSpeedMps: number
+  /** Average deceleration needed to reach the target, or zero off the brakes. */
+  requiredBrakingDecelerationMps2: number
+  segmentLengthMeters: number
+  signedTurnRadians: number
+  turnDirection: -1 | 0 | 1
+}
+
+const STRAIGHT_EFFECTIVE_RADIUS_M = 1_000_000_000
+
+function referenceLinePlanAt(
+  geometry: TrackGeometryPoint[],
+  index: number,
+  usableHalfWidthMeters: number,
+) {
+  const point = geometry[index]
+
+  if (point.turnDirection === 0 || !Number.isFinite(point.radiusMeters)) {
+    return {
+      offsetM: 0,
+      phase: 'straight' as const,
+    }
+  }
+
+  const curvatureAt = (candidateIndex: number) => {
+    const candidate =
+      geometry[
+        ((candidateIndex % geometry.length) + geometry.length) %
+          geometry.length
+      ]
+
+    return Number.isFinite(candidate.radiusMeters)
+      ? 1 / Math.max(1, candidate.radiusMeters)
+      : 0
+  }
+  const curvature = curvatureAt(index)
+  const previousCurvature = curvatureAt(index - 3)
+  const nextCurvature = curvatureAt(index + 3)
+  const phase: PhysicalReferenceLinePhase =
+    nextCurvature > curvature * 1.08
+      ? 'entry'
+      : previousCurvature > curvature * 1.08
+        ? 'exit'
+        : 'apex'
+  const realisedHalfWidth =
+    Math.max(0, usableHalfWidthMeters) * RACING_LINE_REALISATION
+  const offsetM =
+    phase === 'apex'
+      ? -point.turnDirection * realisedHalfWidth
+      : phase === 'entry'
+        ? point.turnDirection * realisedHalfWidth * 0.85
+        : point.turnDirection * realisedHalfWidth * 0.65
+
+  return { offsetM, phase }
 }
 
 /**
@@ -388,21 +528,27 @@ export function simulatePhysicalLap(
     massKg: resolved.massKg,
     physics: resolved.physics,
   }
-  // Grip-limited speed for each corner, capped by what the car can actually
-  // reach on this circuit.
-  const speeds = geometry.map((point, index) => {
+  // Keep the lateral limit separate from the offline reference envelope. The
+  // latter is capped by the reference PU/drag policy so a quasi-steady lap can
+  // be integrated, but live control must never mistake that terminal-speed
+  // assumption for a cornering limit on a straight.
+  const corneringSpeedLimits = geometry.map((point, index) => {
+    const lateralSearchCeilingMps = Math.max(200, ceilingMps * 1.5)
     const limit = corneringSpeedLimitMps({
       ...gripArgs,
       // Banking only helps where the road is actually turning.
       bankingDegrees: Number.isFinite(point.centrelineRadiusMeters)
         ? bankingDegreesAt(track, index / count)
         : 0,
-      ceilingMps: ceilingMps + 1,
+      ceilingMps: lateralSearchCeilingMps,
       radiusMeters: point.radiusMeters,
     })
 
-    return Math.min(ceilingMps, limit)
+    return Number.isFinite(limit) ? limit : lateralSearchCeilingMps
   })
+  const speeds = corneringSpeedLimits.map((limit) =>
+    Math.min(ceilingMps, limit),
+  )
   /** Fraction of the friction ellipse already spent turning at this speed. */
   const lateralUseFraction = (index: number, speedMps: number) => {
     const radius = geometry[index].radiusMeters
@@ -504,11 +650,98 @@ export function simulatePhysicalLap(
 
     return total + point.segmentLengthMeters / averageMps
   }, 0)
+  const usableHalfWidthMeters = Math.max(
+    0,
+    trackWidthMeters(track) / 2 - CAR_HALF_WIDTH_M,
+  )
+  const points = geometry.map((point, index): PhysicalLapPoint => {
+    const currentSpeedMps = speeds[index]
+    const nextSpeedMps = speeds[(index + 1) % count]
+    let brakingTargetSpeedMps = currentSpeedMps
+    let brakingDistanceAheadMeters = 0
+    let brakingTargetIndex = index
+
+    // A braking event is the monotonically falling portion of the completed
+    // reference envelope. Its target is the local minimum at the end of that
+    // event, rather than a speed guessed from a fixed look-ahead window.
+    if (nextSpeedMps < currentSpeedMps - 1e-6) {
+      let distanceMeters = 0
+      let previousSpeedMps = currentSpeedMps
+
+      for (let step = 1; step < count; step += 1) {
+        distanceMeters +=
+          geometry[(index + step - 1) % count].segmentLengthMeters
+        const candidateSpeedMps = speeds[(index + step) % count]
+
+        if (candidateSpeedMps < brakingTargetSpeedMps) {
+          brakingTargetSpeedMps = candidateSpeedMps
+          brakingDistanceAheadMeters = distanceMeters
+          brakingTargetIndex = (index + step) % count
+        }
+
+        if (candidateSpeedMps > previousSpeedMps + 1e-6) {
+          break
+        }
+
+        previousSpeedMps = candidateSpeedMps
+      }
+    }
+
+    const requiredBrakingDecelerationMps2 =
+      brakingDistanceAheadMeters > 0
+        ? Math.max(
+            0,
+            (currentSpeedMps ** 2 - brakingTargetSpeedMps ** 2) /
+              (2 * brakingDistanceAheadMeters),
+          )
+        : 0
+    const effectiveCornerRadiusM = Number.isFinite(point.radiusMeters)
+      ? point.radiusMeters
+      : STRAIGHT_EFFECTIVE_RADIUS_M
+    const referenceLine = referenceLinePlanAt(
+      geometry,
+      index,
+      usableHalfWidthMeters,
+    )
+
+    return {
+      bankingDegrees: Number.isFinite(point.centrelineRadiusMeters)
+        ? bankingDegreesAt(track, index / count)
+        : 0,
+      brakingDistanceAheadMeters,
+      brakingTargetBankingDegrees: Number.isFinite(
+        geometry[brakingTargetIndex].centrelineRadiusMeters,
+      )
+        ? bankingDegreesAt(track, brakingTargetIndex / count)
+        : 0,
+      brakingTargetCornerRadiusM: Number.isFinite(
+        geometry[brakingTargetIndex].radiusMeters,
+      )
+        ? geometry[brakingTargetIndex].radiusMeters
+        : STRAIGHT_EFFECTIVE_RADIUS_M,
+      brakingTargetSpeedMps,
+      corneringSpeedLimitMps: corneringSpeedLimits[index],
+      curvaturePerMeter:
+        point.turnDirection === 0
+          ? 0
+          : point.turnDirection / effectiveCornerRadiusM,
+      effectiveCornerRadiusM,
+      referenceLineOffsetM: referenceLine.offsetM,
+      referenceLinePhase: referenceLine.phase,
+      referenceSpeedMps: currentSpeedMps,
+      requiredBrakingDecelerationMps2,
+      segmentLengthMeters: point.segmentLengthMeters,
+      signedTurnRadians: point.signedTurnRadians,
+      turnDirection: point.turnDirection,
+    }
+  })
 
   return {
     lapTimeSeconds,
     maximumSpeedKph: Math.max(...speeds) * 3.6,
     minimumSpeedKph: Math.min(...speeds) * 3.6,
+    points,
+    referenceDeploymentPowerKw: resolved.deploymentPowerKw,
     speedsMps: speeds,
   }
 }

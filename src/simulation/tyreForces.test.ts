@@ -6,6 +6,7 @@ import {
   corneringSpeedLimitMps,
   GRAVITY_MPS2,
   lateralLoadsN,
+  longitudinalTyreForceCapacityAt,
   maximumLateralAccelerationMps2,
   remainingEllipseForceN,
   tyreFrictionCoefficient,
@@ -135,6 +136,23 @@ describe('tyreGripAt', () => {
     expect(wet.availableForceN).toBeLessThan(dry.availableForceN)
     expect(wet.availableForceN / dry.availableForceN).toBeCloseTo(0.7, 6)
   })
+
+  it('turns a wake-induced downforce loss into a physical grip loss', () => {
+    const clean = tyreGripAt({
+      massKg: massFor(f1),
+      physics: f1,
+      speedMps: mps(250),
+    })
+    const dirtyAir = tyreGripAt({
+      downforceMultiplier: 0.8,
+      massKg: massFor(f1),
+      physics: f1,
+      speedMps: mps(250),
+    })
+
+    expect(dirtyAir.verticalLoadN).toBeLessThan(clean.verticalLoadN)
+    expect(dirtyAir.availableForceN).toBeLessThan(clean.availableForceN)
+  })
 })
 
 describe('remainingEllipseForceN', () => {
@@ -204,6 +222,36 @@ describe('load transfer', () => {
     }).availableAccelerationMps2
 
     expect(balanced).toBeLessThan(withoutLoadSensitivity)
+  })
+
+  it('moves the driven-axle traction cap with longitudinal load transfer', () => {
+    const neutral = longitudinalTyreForceCapacityAt({
+      longitudinalAccelerationMps2: 0,
+      massKg: massFor(f1),
+      physics: f1,
+      speedMps: mps(100),
+    })
+    const accelerating = longitudinalTyreForceCapacityAt({
+      longitudinalAccelerationMps2: 10,
+      massKg: massFor(f1),
+      physics: f1,
+      speedMps: mps(100),
+    })
+    const cornering = longitudinalTyreForceCapacityAt({
+      lateralForceN: neutral.drivenAxleForceCapacityN,
+      longitudinalAccelerationMps2: 10,
+      massKg: massFor(f1),
+      physics: f1,
+      speedMps: mps(100),
+    })
+
+    expect(accelerating.rearAxleLoadN).toBeGreaterThan(neutral.rearAxleLoadN)
+    expect(accelerating.drivenAxleForceCapacityN).toBeGreaterThan(
+      neutral.drivenAxleForceCapacityN,
+    )
+    expect(cornering.drivenAxleForceCapacityN).toBeLessThan(
+      accelerating.drivenAxleForceCapacityN,
+    )
   })
 })
 

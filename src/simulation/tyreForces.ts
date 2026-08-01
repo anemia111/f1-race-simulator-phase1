@@ -25,6 +25,9 @@ export const GRAVITY_MPS2 = 9.80665
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+const finiteOr = (value: number, fallback: number) =>
+  Number.isFinite(value) ? value : fallback
+
 /**
  * Aerodynamic vertical load, the same `0.5 * rho * A * v^2` form as drag.
  * `liftAreaM2` already folds the coefficient into the area.
@@ -35,9 +38,15 @@ export function aerodynamicDownforceN(options: {
   speedMps: number
 }) {
   const { airDensityKgM3, liftAreaM2, speedMps } = options
-  const speed = Math.max(0, speedMps)
+  const speed = Math.max(0, finiteOr(speedMps, 0))
 
-  return 0.5 * airDensityKgM3 * Math.max(0, liftAreaM2) * speed * speed
+  return (
+    0.5 *
+    Math.max(0, finiteOr(airDensityKgM3, 0)) *
+    Math.max(0, finiteOr(liftAreaM2, 0)) *
+    speed *
+    speed
+  )
 }
 
 /**
@@ -54,8 +63,8 @@ export function tyreFrictionCoefficient(options: {
   verticalLoadN: number
 }) {
   const { physics, referenceLoadN, verticalLoadN } = options
-  const reference = Math.max(1, referenceLoadN)
-  const load = Math.max(1, verticalLoadN)
+  const reference = Math.max(1, finiteOr(referenceLoadN, 1))
+  const load = Math.max(1, finiteOr(verticalLoadN, reference))
 
   return (
     physics.peakTyreFrictionCoefficient *
@@ -82,6 +91,8 @@ export type TyreGripState = {
  */
 export function tyreGripAt(options: {
   airDensityKgM3?: number
+  /** Physical change in generated downforce, for setup and wake effects. */
+  downforceMultiplier?: number
   gripMultiplier?: number
   massKg: number
   physics: CategoryPhysicsProfile
@@ -89,15 +100,18 @@ export function tyreGripAt(options: {
 }): TyreGripState {
   const {
     airDensityKgM3 = 1.225,
+    downforceMultiplier = 1,
     gripMultiplier = 1,
     massKg,
     physics,
     speedMps,
   } = options
-  const weightN = Math.max(1, massKg) * GRAVITY_MPS2
+  const mass = Math.max(1, finiteOr(massKg, 1))
+  const weightN = mass * GRAVITY_MPS2
   const downforceN = aerodynamicDownforceN({
     airDensityKgM3,
-    liftAreaM2: physics.liftAreaM2,
+    liftAreaM2:
+      physics.liftAreaM2 * clamp(finiteOr(downforceMultiplier, 1), 0, 1.5),
     speedMps,
   })
   const verticalLoadN = weightN + downforceN
@@ -112,7 +126,7 @@ export function tyreGripAt(options: {
   const availableForceN = frictionCoefficient * verticalLoadN
 
   return {
-    availableAccelerationMps2: availableForceN / Math.max(1, massKg),
+    availableAccelerationMps2: availableForceN / mass,
     availableForceN,
     frictionCoefficient,
     verticalLoadN,
@@ -130,8 +144,12 @@ export function remainingEllipseForceN(options: {
   availableForceN: number
   usedForceN: number
 }) {
-  const available = Math.max(0, options.availableForceN)
-  const used = clamp(Math.abs(options.usedForceN), 0, available)
+  const available = Math.max(0, finiteOr(options.availableForceN, 0))
+  const used = clamp(
+    Math.abs(finiteOr(options.usedForceN, available)),
+    0,
+    available,
+  )
   const remainingFraction = Math.sqrt(
     Math.max(0, 1 - (used / Math.max(1, available)) ** 2),
   )
@@ -168,14 +186,127 @@ export function axleLoadsN(options: {
   } = options
   const share = clamp(staticFrontShare, 0.2, 0.8)
   const transferN =
-    (Math.max(1, massKg) *
-      longitudinalAccelerationMps2 *
+    (Math.max(1, finiteOr(massKg, 1)) *
+      finiteOr(longitudinalAccelerationMps2, 0) *
       physics.centreOfGravityHeightM) /
     Math.max(0.5, physics.wheelbaseM)
 
   return {
     frontN: Math.max(0, totalVerticalLoadN * share - transferN),
     rearN: Math.max(0, totalVerticalLoadN * (1 - share) + transferN),
+  }
+}
+
+export type LongitudinalTyreForceCapacity = {
+  brakeForceCapacityN: number
+  drivenAxleForceCapacityN: number
+  frontAxleLoadN: number
+  rearAxleLoadN: number
+  totalVerticalLoadN: number
+}
+
+/**
+ * Longitudinal force left at the contact patches after cornering demand and
+ * longitudinal load transfer. The car is rear-wheel drive, while braking is
+ * shared according to the physical brake-bias setting. Axle loads are evaluated
+ * separately so moving load forward under braking and rearward under power is
+ * not cancelled out before tyre load sensitivity is applied.
+ */
+export function longitudinalTyreForceCapacityAt(options: {
+  airDensityKgM3?: number
+  brakeBiasFraction?: number
+  downforceMultiplier?: number
+  gripMultiplier?: number
+  lateralForceN?: number
+  longitudinalAccelerationMps2: number
+  massKg: number
+  physics: CategoryPhysicsProfile
+  speedMps: number
+  staticFrontShare?: number
+}): LongitudinalTyreForceCapacity {
+  const mass = Math.max(1, finiteOr(options.massKg, 1))
+  const gripMultiplier = clamp(
+    finiteOr(options.gripMultiplier ?? 1, 1),
+    0.05,
+    1.2,
+  )
+  const staticFrontShare = clamp(
+    finiteOr(options.staticFrontShare ?? 0.45, 0.45),
+    0.35,
+    0.6,
+  )
+  const grip = tyreGripAt({
+    airDensityKgM3: options.airDensityKgM3,
+    downforceMultiplier: options.downforceMultiplier,
+    gripMultiplier: 1,
+    massKg: mass,
+    physics: options.physics,
+    speedMps: options.speedMps,
+  })
+  const axleLoads = axleLoadsN({
+    longitudinalAccelerationMps2: finiteOr(
+      options.longitudinalAccelerationMps2,
+      0,
+    ),
+    massKg: mass,
+    physics: options.physics,
+    staticFrontShare,
+    totalVerticalLoadN: grip.verticalLoadN,
+  })
+  const referenceWeightN =
+    Math.max(1, options.physics.minimumMassKg) * GRAVITY_MPS2
+  const frontForceCapacityN =
+    tyreFrictionCoefficient({
+      physics: options.physics,
+      referenceLoadN: referenceWeightN * staticFrontShare,
+      verticalLoadN: axleLoads.frontN,
+    }) *
+    axleLoads.frontN *
+    gripMultiplier
+  const rearForceCapacityN =
+    tyreFrictionCoefficient({
+      physics: options.physics,
+      referenceLoadN: referenceWeightN * (1 - staticFrontShare),
+      verticalLoadN: axleLoads.rearN,
+    }) *
+    axleLoads.rearN *
+    gripMultiplier
+  const lateralForceN = clamp(
+    Math.abs(finiteOr(options.lateralForceN ?? 0, 0)),
+    0,
+    frontForceCapacityN + rearForceCapacityN,
+  )
+  const frontLateralForceN =
+    lateralForceN *
+    (axleLoads.frontN / Math.max(1, grip.verticalLoadN))
+  const rearLateralForceN = lateralForceN - frontLateralForceN
+  const frontLongitudinalCapacityN = remainingEllipseForceN({
+    availableForceN: frontForceCapacityN,
+    usedForceN: frontLateralForceN,
+  })
+  const rearLongitudinalCapacityN = remainingEllipseForceN({
+    availableForceN: rearForceCapacityN,
+    usedForceN: rearLateralForceN,
+  })
+  const brakeBiasFraction = clamp(
+    finiteOr(options.brakeBiasFraction ?? 0.56, 0.56),
+    0.4,
+    0.75,
+  )
+  const brakeForceCapacityN = Math.min(
+    frontLongitudinalCapacityN / brakeBiasFraction,
+    rearLongitudinalCapacityN / (1 - brakeBiasFraction),
+  )
+
+  return {
+    brakeForceCapacityN: Math.max(0, finiteOr(brakeForceCapacityN, 0)),
+    drivenAxleForceCapacityN: Math.max(
+      0,
+      finiteOr(rearLongitudinalCapacityN, 0),
+    ),
+    frontAxleLoadN: axleLoads.frontN,
+    rearAxleLoadN: axleLoads.rearN,
+    totalVerticalLoadN: grip.verticalLoadN,
   }
 }
 
@@ -279,6 +410,7 @@ export function maximumLateralAccelerationMps2(options: {
    * makes a higher lateral acceleration than it can on the flat.
    */
   bankingDegrees?: number
+  downforceMultiplier?: number
   gripMultiplier?: number
   /** Longitudinal force already being used, as a fraction of the total. */
   longitudinalUseFraction?: number
@@ -289,6 +421,7 @@ export function maximumLateralAccelerationMps2(options: {
   const {
     airDensityKgM3 = 1.225,
     bankingDegrees = 0,
+    downforceMultiplier = 1,
     gripMultiplier = 1,
     longitudinalUseFraction = 0,
     massKg,
@@ -297,6 +430,7 @@ export function maximumLateralAccelerationMps2(options: {
   } = options
   const grip = tyreGripAt({
     airDensityKgM3,
+    downforceMultiplier,
     gripMultiplier,
     massKg,
     physics,
@@ -369,6 +503,7 @@ export function maximumLateralAccelerationMps2(options: {
 export function corneringSpeedLimitMps(options: {
   airDensityKgM3?: number
   bankingDegrees?: number
+  downforceMultiplier?: number
   gripMultiplier?: number
   longitudinalUseFraction?: number
   massKg: number
@@ -392,7 +527,9 @@ export function corneringSpeedLimitMps(options: {
   let low = 0
   let high = ceilingMps
 
-  for (let iteration = 0; iteration < 40; iteration += 1) {
+  // 28 bisections resolve a 200 m/s search interval to well below telemetry
+  // precision while keeping the live per-car solve tractable.
+  for (let iteration = 0; iteration < 28; iteration += 1) {
     const middle = (low + high) / 2
 
     if (balanceAt(middle) > 0) {

@@ -3,11 +3,13 @@ import { tracks } from '../data/tracks'
 import { categoryPhysicsFor } from './categoryPhysics'
 import {
   bankingDegreesAt,
+  REFERENCE_DEPLOYMENT_POLICY,
   racingLineRadiusMeters,
   resistanceForceN,
   simulatePhysicalLap,
   terminalSpeedMps,
   trackGeometry,
+  trackWidthMeters,
 } from './physicalLap'
 import { corneringSpeedLimitMps } from './tyreForces'
 
@@ -269,6 +271,58 @@ describe('simulatePhysicalLap', () => {
 
     expect(simulatePhysicalLap(suzuka, { physics: f1 }).speedsMps).toHaveLength(
       suzuka.centerline.length,
+    )
+  })
+
+  it('returns a finite physical planning point for every centreline point', () => {
+    const zandvoort = trackById('zandvoort-approx')
+    const result = simulatePhysicalLap(zandvoort, { physics: f1 })
+
+    expect(result.points).toHaveLength(zandvoort.centerline.length)
+    expect(
+      result.points.some(
+        (point) => point.requiredBrakingDecelerationMps2 > 0,
+      ),
+    ).toBe(true)
+    expect(result.points.some((point) => point.bankingDegrees > 0)).toBe(true)
+
+    for (const point of result.points) {
+      const numericValues = [
+        point.bankingDegrees,
+        point.brakingDistanceAheadMeters,
+        point.brakingTargetBankingDegrees,
+        point.brakingTargetCornerRadiusM,
+        point.brakingTargetSpeedMps,
+        point.corneringSpeedLimitMps,
+        point.curvaturePerMeter,
+        point.effectiveCornerRadiusM,
+        point.referenceLineOffsetM,
+        point.referenceSpeedMps,
+        point.requiredBrakingDecelerationMps2,
+        point.segmentLengthMeters,
+        point.signedTurnRadians,
+      ]
+
+      expect(numericValues.every(Number.isFinite)).toBe(true)
+      expect(point.segmentLengthMeters).toBeGreaterThan(0)
+      expect(point.referenceSpeedMps).toBeGreaterThan(0)
+      expect(point.corneringSpeedLimitMps).toBeGreaterThanOrEqual(
+        point.referenceSpeedMps,
+      )
+      expect(Math.abs(point.referenceLineOffsetM)).toBeLessThanOrEqual(
+        trackWidthMeters(zandvoort) / 2,
+      )
+    }
+  })
+
+  it('labels full deployment as an offline reference assumption only', () => {
+    const result = simulatePhysicalLap(trackById('suzuka-approx'), {
+      physics: f1,
+    })
+
+    expect(REFERENCE_DEPLOYMENT_POLICY.scope).toBe('offline-reference-only')
+    expect(result.referenceDeploymentPowerKw).toBe(
+      f1.hybridDeploymentPowerLimitKw,
     )
   })
 })

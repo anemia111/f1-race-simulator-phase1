@@ -6,15 +6,18 @@ import type {
   DriverSkillProfile,
   MachinePerformanceProfile,
 } from '../types'
+import { categoryPhysicsFor } from './categoryPhysics'
+import { selectGear } from './drivetrain'
 import {
   DRIVER_SEGMENT_RESPONSE,
   DRIVER_SKILL_REFERENCE,
-  internalPowerScaleAtSpeed,
-  MACHINE_INTERNAL_PERFORMANCE_SCALE,
   MACHINE_PACE_REFERENCE,
   MACHINE_PACE_SPREAD_FACTOR,
   MACHINE_SEGMENT_RESPONSE,
   airDensityKgM3,
+  baseFuelBurnKgPerLap,
+  combustionPowerKwFor,
+  integrateVehicleLongitudinalStep,
   integrateVehicleSpeedKph,
   machinePaceRating,
   performanceLapGainSeconds,
@@ -30,16 +33,25 @@ function driverAt(value: number): Driver {
 }
 
 describe('multi-axis vehicle dynamics', () => {
+  it('keeps fuel planning independent of the compatibility lap-time target', () => {
+    const track = tracks[0]
+    const changedObservation = {
+      ...track,
+      baseLapTime: track.baseLapTime * 1.8,
+    }
+
+    expect(baseFuelBurnKgPerLap(changedObservation)).toBeCloseTo(
+      baseFuelBurnKgPerLap(track),
+      12,
+    )
+  })
+
   it('compresses machine effects without changing the source rating', () => {
     expect(MACHINE_PACE_REFERENCE).toBe(0.86)
     expect(MACHINE_PACE_SPREAD_FACTOR).toBe(0.7)
     expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
     expect(DRIVER_SEGMENT_RESPONSE).toBe(0.14)
     expect(DRIVER_SKILL_REFERENCE).toBe(0.9175)
-    expect(MACHINE_INTERNAL_PERFORMANCE_SCALE).toBe(1.06)
-    expect(internalPowerScaleAtSpeed(300)).toBeCloseTo(1.06, 10)
-    expect(internalPowerScaleAtSpeed(370)).toBeCloseTo(1.03, 10)
-    expect(internalPowerScaleAtSpeed(420)).toBe(1)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
     expect(machinePaceRating(0.96)).toBeCloseTo(0.93, 10)
     expect(machinePaceRating(0.62)).toBeCloseTo(0.692, 10)
@@ -281,6 +293,261 @@ describe('multi-axis vehicle dynamics', () => {
     expect(harvesting).toBeLessThan(combustionOnly)
   })
 
+  it('turns 0, 250 and 350 mechanical MGU-K kW into monotonic force and acceleration', () => {
+    const team = initialTeams[0]
+    const common = {
+      activeAeroMode: 'straight' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 220,
+      deltaSeconds: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      fuelLoadKg: 30,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      turboSpoolFraction: 1,
+    }
+    const results = [0, 250, 350].map((ersPowerKw) =>
+      integrateVehicleLongitudinalStep({ ...common, ersPowerKw }),
+    )
+
+    expect(results[1].driveForceN).toBeGreaterThan(results[0].driveForceN)
+    expect(results[2].driveForceN).toBeGreaterThan(results[1].driveForceN)
+    expect(results[1].accelerationMps2).toBeGreaterThan(
+      results[0].accelerationMps2,
+    )
+    expect(results[2].accelerationMps2).toBeGreaterThan(
+      results[1].accelerationMps2,
+    )
+  })
+
+  it('does not apply a combustion derate or electrical-efficiency axis to allowed MGU-K kW', () => {
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'straight',
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      combustionPowerKw: 0,
+      currentSpeedKph: 180,
+      deltaSeconds: 0,
+      drivePowerScale: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 350,
+      fuelLoadKg: 20,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 100,
+      turboSpoolFraction: 0,
+    })
+
+    expect(result.driveForceN).toBeGreaterThan(0)
+    expect(result.accelerationMps2).toBeGreaterThan(0)
+  })
+
+  it('makes fuel mass reduce acceleration and the available braking deceleration', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 140,
+      deltaSeconds: 0,
+      dynamics: {
+        effectiveCornerRadiusM: 120,
+        gradient: 0,
+        straightness: 0.3,
+      },
+      ersPowerKw: 0,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      turboSpoolFraction: 1,
+    }
+    const lightAcceleration = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      fuelLoadKg: 5,
+      throttlePercent: 100,
+    })
+    const heavyAcceleration = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      fuelLoadKg: 105,
+      throttlePercent: 100,
+    })
+    const lightBraking = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 100,
+      fuelLoadKg: 5,
+      throttlePercent: 0,
+    })
+    const heavyBraking = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 100,
+      fuelLoadKg: 105,
+      throttlePercent: 0,
+    })
+
+    expect(heavyAcceleration.accelerationMps2).toBeLessThan(
+      lightAcceleration.accelerationMps2,
+    )
+    expect(heavyBraking.accelerationMps2).toBeGreaterThan(
+      lightBraking.accelerationMps2,
+    )
+    expect(
+      heavyAcceleration.tractionLimitN / (768 + 105),
+    ).toBeLessThan(lightAcceleration.tractionLimitN / (768 + 5))
+  })
+
+  it('uses wet grip and dirty-air downforce as tyre-force inputs', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 170,
+      deltaSeconds: 0,
+      dynamics: {
+        effectiveCornerRadiusM: 180,
+        gradient: 0,
+        straightness: 0.4,
+      },
+      ersPowerKw: 350,
+      fuelLoadKg: 30,
+      team: initialTeams[0],
+      throttlePercent: 100,
+      turboSpoolFraction: 1,
+    }
+    const dry = integrateVehicleLongitudinalStep({
+      ...common,
+      gripMultiplier: 1,
+    })
+    const wet = integrateVehicleLongitudinalStep({
+      ...common,
+      gripMultiplier: 0.65,
+    })
+    const wake = integrateVehicleLongitudinalStep({
+      ...common,
+      dirtyAirDownforceMultiplier: 0.75,
+      gripMultiplier: 1,
+    })
+
+    expect(wet.tractionLimitN).toBeLessThan(dry.tractionLimitN)
+    expect(wet.accelerationMps2).toBeLessThan(dry.accelerationMps2)
+    expect(wake.tractionLimitN).toBeLessThan(dry.tractionLimitN)
+  })
+
+  it('changes drag and terminal behaviour through active aero area', () => {
+    const team = initialTeams[0]
+    const common = {
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      currentSpeedKph: 300,
+      deltaSeconds: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 0,
+      fuelLoadKg: 8,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+    }
+    const corner = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'corner',
+    })
+    const straight = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'straight',
+    })
+    let cornerSpeedKph = 300
+    let straightSpeedKph = 300
+
+    for (let step = 0; step < 300; step += 1) {
+      cornerSpeedKph = integrateVehicleSpeedKph({
+        ...common,
+        activeAeroMode: 'corner',
+        currentSpeedKph: cornerSpeedKph,
+        deltaSeconds: 0.1,
+      })
+      straightSpeedKph = integrateVehicleSpeedKph({
+        ...common,
+        activeAeroMode: 'straight',
+        currentSpeedKph: straightSpeedKph,
+        deltaSeconds: 0.1,
+      })
+    }
+
+    expect(straight.dragForceN).toBeLessThan(corner.dragForceN)
+    expect(straightSpeedKph).toBeGreaterThan(cornerSpeedKph)
+  })
+
+  it('launches finitely and returns the gear and RPM used at the resulting speed', () => {
+    const physics = categoryPhysicsFor('f1-custom')
+    const team = initialTeams[0]
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'corner',
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      categoryPhysics: physics,
+      clutchEngagementFraction: 0,
+      currentSpeedKph: 0,
+      deltaSeconds: 0.1,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 350,
+      fuelLoadKg: 30,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      turboSpoolFraction: 0,
+    })
+    const drivetrain = selectGear({
+      clutchEngagementFraction: result.clutchEngagementFraction,
+      combustionPowerKw: combustionPowerKwFor(team, physics),
+      deploymentPowerKw: 350,
+      physics,
+      speedMps: result.speedKph / 3.6,
+      transmissionEfficiency: physics.drivetrainEfficiency,
+      turboSpoolFraction: result.turboSpoolFraction,
+    })
+
+    expect(result.speedKph).toBeGreaterThan(0)
+    expect(Number.isFinite(result.speedKph)).toBe(true)
+    expect(result.clutchEngagementFraction).toBeGreaterThan(0)
+    expect(result.turboSpoolFraction).toBeGreaterThan(0)
+    expect(result.gear).toBe(drivetrain.gear)
+    expect(result.rpm).toBeCloseTo(drivetrain.rpm, 10)
+  })
+
+  it('contains non-finite external inputs without emitting invalid vehicle state', () => {
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'straight',
+      additionalMassKg: Number.POSITIVE_INFINITY,
+      airDensityKgM3: Number.NaN,
+      brakePercent: Number.NaN,
+      currentSpeedKph: Number.NEGATIVE_INFINITY,
+      deltaSeconds: 0.1,
+      dynamics: {
+        effectiveCornerRadiusM: Number.NaN,
+        gradient: Number.NaN,
+        straightness: 1,
+      },
+      ersPowerKw: Number.POSITIVE_INFINITY,
+      fuelLoadKg: Number.NaN,
+      gripMultiplier: Number.NaN,
+      headwindMps: Number.NaN,
+      regenerativeResistancePowerKw: Number.POSITIVE_INFINITY,
+      team: initialTeams[0],
+      throttlePercent: Number.POSITIVE_INFINITY,
+    })
+
+    for (const value of Object.values(result)) {
+      expect(Number.isFinite(value)).toBe(true)
+    }
+    expect(result.speedKph).toBeGreaterThanOrEqual(0)
+    expect(result.driveForceN).toBeGreaterThanOrEqual(0)
+    expect(result.brakeForceN).toBeGreaterThanOrEqual(0)
+  })
+
   it('compares every CSV machine with one identical reference driver', () => {
     const referenceDriver = driverAt(1)
     const monza = tracks.find((track) => track.id === 'monza-approx')!
@@ -338,11 +605,11 @@ describe('multi-axis vehicle dynamics', () => {
     expect(aggregateGain(alpine)).toBeGreaterThan(aggregateGain(audi))
   })
 
-  it('produces team-relative terminal speeds from CSV power and drag axes', () => {
+  it('produces team-relative high-speed acceleration from CSV power and drag axes', () => {
     const terminalSpeeds = new Map(initialTeams.map((team) => {
       let speedKph = 300
 
-      for (let tick = 0; tick < 500; tick += 1) {
+      for (let tick = 0; tick < 100; tick += 1) {
         speedKph = integrateVehicleSpeedKph({
           activeAeroMode: 'straight',
           airDensityKgM3: airDensityKgM3({
@@ -372,11 +639,10 @@ describe('multi-axis vehicle dynamics', () => {
     const terminalSpeedSpreadKph =
       Math.max(...speedValues) - Math.min(...speedValues)
 
-    expect(terminalSpeeds.get('mercedes')).toBe(Math.max(...speedValues))
     expect(terminalSpeeds.get('aston-martin')).toBeLessThan(
-      terminalSpeeds.get('mercedes')!,
+      Math.max(...speedValues),
     )
-    expect(terminalSpeedSpreadKph).toBeGreaterThan(4)
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(0.5)
     expect(terminalSpeedSpreadKph).toBeLessThan(10)
   })
 

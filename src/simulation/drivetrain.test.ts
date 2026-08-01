@@ -38,7 +38,7 @@ describe('gearRatiosFor', () => {
     const rpm = engineRpmFor({
       gear: f1.gearCount,
       physics: f1,
-      speedMps: mps(f1.topGearEfficiencyStartKph),
+      speedMps: mps(f1.topGearDesignSpeedKph),
     })
 
     expect(rpm).toBeCloseTo(f1.maximumEngineRpm, 0)
@@ -338,6 +338,23 @@ describe('the power unit as a whole', () => {
     })
 
     expect(combined).toBeCloseTo(combustion + electrical, 10)
+  })
+
+  it('routes a physical combustion-power override through the same curve and gearing', () => {
+    const baseline = selectGear({
+      combustionPowerKw: 400,
+      physics: f1,
+      speedMps: mps(180),
+    })
+    const boosted = selectGear({
+      combustionPowerKw: 437,
+      physics: f1,
+      speedMps: mps(180),
+    })
+
+    expect(boosted.driveForceN).toBeGreaterThan(baseline.driveForceN)
+    expect(boosted.rpm).toBeGreaterThanOrEqual(f1.minimumEngineRpm)
+    expect(Number.isFinite(boosted.driveForceN)).toBe(true)
   })
 
   it('increases raw force in order for 0, 250 and 350 kW deployment', () => {

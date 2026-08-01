@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialDrivers, initialTeams } from '../data/grid2026'
+import { initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type { TireCompound } from '../types'
 import {
@@ -10,10 +10,14 @@ import {
   tireTrackPenaltySeconds,
   type TireTrackCondition,
 } from './tires'
-import { calculateCarTelemetry } from './telemetry'
 import { trackDynamicsAt } from './trackDynamics'
-import { createInitialRace } from './race'
 import { legalStartCompoundForConditions } from './weekendTires'
+import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  airDensityKgM3,
+  liveCorneringSpeedLimitKph,
+} from './vehicleDynamics'
+import { gripForSurfaceWater } from './trackWater'
 
 function condition(surfaceWaterMm: number): TireTrackCondition {
   return {
@@ -140,53 +144,35 @@ describe('surface-water tire crossover', () => {
     )
   })
 
-  it('makes the actual corner speed progressively slower as track water rises', () => {
+  it('makes the live corner limit progressively slower as track water rises', () => {
     const track = tracks.find((candidate) => candidate.id === 'monza-approx')!
-    const driver = initialDrivers[0]
-    const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
-    const progress = track.centerline
-      .map((_, index) => index / track.centerline.length)
-      .filter((candidate) => trackDynamicsAt(track, candidate).curvature > 0.2)[0]
-    const initial = createInitialRace({
-      drivers: [driver],
-      seed: 'water-speed-progression',
-      teams: [team],
-      track,
-    }).cars[0]
-    const speedAt = (compound: TireCompound, surfaceWaterMm: number) => {
-      let car = {
-        ...initial,
-        gapToAhead: 10,
-        progress,
-        speedKph: 260,
-        tire: compound,
-        totalDistance: 1 + progress,
-      }
-
-      for (let step = 0; step < 30; step += 1) {
-        const telemetry = calculateCarTelemetry({
-          car,
-          deltaSeconds: 0.1,
-          driver,
-          elapsedSeconds: step * 0.1,
-          lowGripConditions: surfaceWaterMm > 0.8,
-          phase: null,
-          raceLap: 2,
-          team,
-          track,
-          trackCondition: condition(surfaceWaterMm),
-          trackGrip: 1,
-          weather: surfaceWaterMm >= 3.5 ? 'heavy-rain' : surfaceWaterMm > 0.8 ? 'light-rain' : 'clear',
-        })
-
-        car = { ...car, ...telemetry }
-      }
-
-      return car.speedKph
-    }
-    const drySpeed = speedAt('M', 0.4)
-    const intermediateSpeed = speedAt('I', 1.8)
-    const wetSpeed = speedAt('W', 4)
+    const team = initialTeams[0]
+    const physics = categoryPhysicsFor('f1-custom')
+    const dynamics = track.centerline
+      .map((_, index) =>
+        trackDynamicsAt(track, index / track.centerline.length, physics),
+      )
+      .sort(
+        (left, right) =>
+          left.effectiveCornerRadiusM - right.effectiveCornerRadiusM,
+      )[0]
+    const speedAt = (surfaceWaterMm: number) =>
+      liveCorneringSpeedLimitKph({
+        airDensityKgM3: airDensityKgM3({
+          altitudeMeters: track.altitudeMeters,
+          temperatureC: 25,
+        }),
+        bankingDegrees: dynamics.bankingDegrees,
+        categoryPhysics: physics,
+        evaluationSpeedKph: dynamics.referenceSpeedKph,
+        fuelLoadKg: 30,
+        gripMultiplier: gripForSurfaceWater(1, surfaceWaterMm, 0),
+        radiusMeters: dynamics.effectiveCornerRadiusM,
+        team,
+      })
+    const drySpeed = speedAt(0.4)
+    const intermediateSpeed = speedAt(1.8)
+    const wetSpeed = speedAt(4)
 
     expect(drySpeed).toBeGreaterThan(intermediateSpeed)
     expect(intermediateSpeed).toBeGreaterThan(wetSpeed)
