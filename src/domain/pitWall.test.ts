@@ -6,13 +6,15 @@ import {
   pitWallBoxCommands,
   pitWallCapabilitiesFor,
   pitWallIntervals,
+  pitWallLapLog,
   pitWallObservedSource,
   pitWallPaceCommandDisabledReason,
   pitWallRaceControlEntries,
+  pitWallSessionFor,
   pitWallTabs,
   raceControlKindFromMessage,
 } from './pitWall'
-import type { CarSnapshot, RaceEvent } from '../types'
+import type { CarSnapshot, LapRecord, RaceEvent } from '../types'
 
 const carStub = (overrides: Partial<CarSnapshot>): CarSnapshot =>
   ({
@@ -34,15 +36,137 @@ const eventStub = (overrides: Partial<RaceEvent>): RaceEvent => ({
   ...overrides,
 })
 
+const lapStub = (overrides: Partial<LapRecord>): LapRecord =>
+  ({
+    invalidReason: null,
+    isValid: true,
+    lap: 1,
+    lapTimeSeconds: 90,
+    pitStop: false,
+    position: 1,
+    sectors: [30, 30, 30],
+    tire: 'M',
+    tireAgeLaps: 1,
+    ...overrides,
+  }) as LapRecord
+
 describe('pit wall tabs', () => {
-  it('exposes the five operational sections in order', () => {
+  it('exposes the six operational sections in order', () => {
     expect(pitWallTabs.map((tab) => tab.id)).toEqual([
       'overview',
+      'lap-log',
       'strategy',
       'systems',
       'weather',
       'race-control',
     ])
+  })
+})
+
+describe('pitWallSessionFor', () => {
+  it('treats every race-distance stage as a race', () => {
+    for (const stage of ['race', 'race2', 'sprint'] as const) {
+      const session = pitWallSessionFor(stage)
+
+      expect(session.mode).toBe('race')
+      expect(session.runsRaceDistance).toBe(true)
+    }
+  })
+
+  it('marks practice and qualifying as having no race distance', () => {
+    for (const stage of ['fp1', 'fp2', 'fp3'] as const) {
+      expect(pitWallSessionFor(stage)).toMatchObject({
+        label: 'PRACTICE',
+        mode: 'practice',
+        runsRaceDistance: false,
+      })
+    }
+
+    for (const stage of [
+      'qualifying',
+      'qualifying2',
+      'sprintQualifying',
+    ] as const) {
+      expect(pitWallSessionFor(stage)).toMatchObject({
+        label: 'QUALIFYING',
+        mode: 'qualifying',
+        runsRaceDistance: false,
+      })
+    }
+  })
+
+  it('always explains why a race-only read-out is unavailable', () => {
+    expect(pitWallSessionFor('fp2').raceOnlyReason).toContain('practice')
+    expect(pitWallSessionFor('qualifying').raceOnlyReason).toContain(
+      'qualifying',
+    )
+  })
+})
+
+describe('pitWallLapLog', () => {
+  it('returns the newest lap first', () => {
+    const rows = pitWallLapLog([
+      lapStub({ lap: 1 }),
+      lapStub({ lap: 2 }),
+      lapStub({ lap: 3 }),
+    ])
+
+    expect(rows.map((row) => row.lap)).toEqual([3, 2, 1])
+  })
+
+  it('marks the fastest valid lap and the fastest valid split', () => {
+    const rows = pitWallLapLog([
+      lapStub({ lap: 1, lapTimeSeconds: 92, sectors: [31, 31, 30] }),
+      lapStub({ lap: 2, lapTimeSeconds: 90, sectors: [30, 30, 30] }),
+      lapStub({ lap: 3, lapTimeSeconds: 91, sectors: [29, 31, 31] }),
+    ])
+    const byLap = new Map(rows.map((row) => [row.lap, row]))
+
+    expect(byLap.get(2)?.isPersonalBestLap).toBe(true)
+    expect(byLap.get(1)?.isPersonalBestLap).toBe(false)
+    expect(byLap.get(3)?.isPersonalBestSector[0]).toBe(true)
+    expect(byLap.get(2)?.isPersonalBestSector[1]).toBe(true)
+  })
+
+  it('never lets a deleted lap own a personal best', () => {
+    const rows = pitWallLapLog([
+      lapStub({
+        invalidReason: 'Track limits',
+        isValid: false,
+        lap: 1,
+        lapTimeSeconds: 85,
+        sectors: [27, 29, 29],
+      }),
+      lapStub({ lap: 2, lapTimeSeconds: 90, sectors: [30, 30, 30] }),
+    ])
+    const byLap = new Map(rows.map((row) => [row.lap, row]))
+
+    expect(byLap.get(1)?.isPersonalBestLap).toBe(false)
+    expect(byLap.get(1)?.isPersonalBestSector).toEqual([false, false, false])
+    expect(byLap.get(2)?.isPersonalBestLap).toBe(true)
+    expect(byLap.get(2)?.isPersonalBestSector).toEqual([true, true, true])
+  })
+
+  it('ignores unmeasured splits when picking a best sector', () => {
+    const rows = pitWallLapLog([
+      lapStub({ lap: 1, sectors: [0, 30, 30] }),
+      lapStub({ lap: 2, sectors: [31, 30, 30] }),
+    ])
+    const byLap = new Map(rows.map((row) => [row.lap, row]))
+
+    expect(byLap.get(1)?.isPersonalBestSector[0]).toBe(false)
+    expect(byLap.get(2)?.isPersonalBestSector[0]).toBe(true)
+  })
+
+  it('carries the qualifying segment through so each row states its session', () => {
+    const rows = pitWallLapLog([lapStub({ lap: 4, segment: 'Q2' })])
+
+    expect(rows[0].segment).toBe('Q2')
+    expect(pitWallLapLog([lapStub({ lap: 4 })])[0].segment).toBeNull()
+  })
+
+  it('returns nothing before the car has completed a lap', () => {
+    expect(pitWallLapLog([])).toEqual([])
   })
 })
 

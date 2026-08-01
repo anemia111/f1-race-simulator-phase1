@@ -192,18 +192,33 @@ driving game.
 - Analysis includes tire condition, strategy outlook, manual box compound,
   push/standard/save/defend pace, lap history, championship, and track profile.
 - The footer PIT WALL button opens a race-engineering overlay for the selected
-  car: OVERVIEW, STRATEGY, CAR SYSTEMS, WEATHER & TRACK, and RACE CONTROL tabs
-  over a persistent BOX S/M/H/I/W and PUSH/STD/SAVE/DEFEND command bar. It is
-  race-only, closes on Escape, follows the timing tower selection, and is
-  mutually exclusive with Classification and Race analysis.
+  car: OVERVIEW, LAP LOG, STRATEGY, CAR SYSTEMS, WEATHER & TRACK, and RACE
+  CONTROL tabs over a persistent BOX S/M/H/I/W and PUSH/STD/SAVE/DEFEND command
+  bar. It closes on Escape and is mutually exclusive with Classification and
+  Race analysis.
+- The pit wall is available in every session and in Free Mode, not only the
+  race. `pitWallSessionFor` in `src/domain/pitWall.ts` is the single place that
+  decides what a session may show: practice and qualifying have no race
+  distance, so the stint plan, rejoin projection, grid slot, and lap-of-total
+  counter report `N/A` instead of being computed against a distance the session
+  will never run. The pit-lane transit cost, the pit lane state, and the tyre
+  allocation are physical facts and stay live in every session.
+- The panel covers the timing tower rather than the 3D map, because the track
+  picture has no substitute elsewhere on screen. That makes the tower
+  unclickable while it is open, so the panel header carries its own
+  previous/next car selector, which moves the app-wide selection too.
+- LAP LOG lists every completed lap with its three measured splits, tyre, and
+  position. The car's own fastest lap and fastest split are marked, and a
+  deleted lap is struck through and can never own a personal best.
 - Every pit-wall read-out carries a source chip and shows `--`, `N/A`, or
   `UNAVAILABLE` rather than a value the simulator does not hold. F1-only
   systems (hybrid Energy Store, 2026 active aero) report `N/A` outside F1.
   Electrical Overtake is labelled separately from active aero.
 - `src/hooks/usePitStrategyOutlook.ts` is the single owner of the pit-loss,
   rejoin, and `strategyOutlookFor` read-out shared by race analysis and the pit
-  wall. `src/domain/pitWall.ts` owns the component-condition thresholds and the
-  race-control classification; do not re-derive either in a component.
+  wall. `src/domain/pitWall.ts` owns the component-condition thresholds, the
+  session capability set, the lap-log derivation, and the race-control
+  classification; do not re-derive any of them in a component.
 - A dedicated Web Worker owns a deterministic 50ms fixed tick and publishes
   immutable snapshots at 10Hz. A main-thread fallback uses the same cadence.
 
@@ -314,7 +329,7 @@ npm run benchmark
 - Lint: passed
 - Build: passed; the main UI and lazy Three.js scene chunks still emit the
   expected large-chunk warning
-- Tests: 612 passed across 61 files. The heaviest suites
+- Tests: 621 passed across 61 files. The heaviest suites
   (`retirementCalibration`, `raceStability`, `race`, `freeModeRuntime`) assert
   against per-test timeouts, so under a saturated machine they time out rather
   than fail an assertion. Re-run those files alone before treating a timeout as
@@ -325,9 +340,11 @@ npm run benchmark
   Free Mode build with unique visible numbers and SIM-only data mode
 - Playtest also drives the pit wall: every tab, the race-control filters, an
   applied BOX call and pace instruction read back off simulation state, Escape
-  and close-button dismissal, timing-tower retargeting, and `N/A` F1-only
-  systems in F2/F3/SF. `npm run playtest` previews the existing `dist`, so run
-  `npm run build` first after any UI or CSS change
+  and close-button dismissal, the in-panel car selector moving the app-wide
+  selection, the lap log's measured lap and sector columns, an untouched track
+  map, the `N/A` race-only rows in FP1 and qualifying, the panel opening in
+  Free Mode, and `N/A` F1-only systems in F2/F3/SF. `npm run playtest` previews
+  the existing `dist`, so run `npm run build` first after any UI or CSS change
 - Monte Carlo: 6 acceptance groups passed across 10,000 matched-condition
   production-model samples
 - Benchmark: records the normal field and 40-car Free Mode, including renderer

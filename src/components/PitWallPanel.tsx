@@ -1,15 +1,17 @@
-import { MonitorDot, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, MonitorDot, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import {
   pitWallBoxCommands,
   pitWallCapabilitiesFor,
   pitWallPaceCommandDisabledReason,
+  pitWallSessionFor,
   pitWallTabs,
   type PitWallTabId,
 } from '../domain/pitWall'
 import { usePitStrategyOutlook } from '../hooks/usePitStrategyOutlook'
 import { driverAbilityValue } from '../simulation/driverAbility'
 import { tireConditionFor } from '../simulation/tires'
+import { PitWallLapLog } from './pitWall/PitWallLapLog'
 import { PitWallOverview } from './pitWall/PitWallOverview'
 import { PitWallRaceControl } from './pitWall/PitWallRaceControl'
 import { PitWallStrategy } from './pitWall/PitWallStrategy'
@@ -26,6 +28,7 @@ import type {
   RaceSnapshot,
   TireCompound,
   TrackDefinition,
+  WeekendStage,
 } from '../types'
 
 const paceModes: RacePaceMode[] = ['push', 'standard', 'save', 'defend']
@@ -35,11 +38,18 @@ type PitWallPanelProps = PitWallCommandProps & {
   driver: Driver
   environment: EnvironmentReadout
   onClose: () => void
+  /**
+   * The panel covers the timing tower, so it carries its own car selector.
+   * Without it an engineer would have to close the screen to change car.
+   */
+  onSelectDriver: (driverId: string) => void
   openF1Mode: 'LIVE' | 'HIST' | 'SIM'
   overtakeSystem: 'active-aero' | 'drs' | 'ots'
   raceControlLog: BroadcastRaceControlEntry[]
   seriesId: SeriesId
   snapshot: RaceSnapshot
+  /** Decides which race-only read-outs the panel may show. */
+  stage: WeekendStage
   telemetryIsOpenF1: boolean
   timingIsOpenF1: boolean
   tireLabels: Record<TireCompound, string>
@@ -50,6 +60,7 @@ const tabContent: Record<
   PitWallTabId,
   (props: PitWallTabProps) => ReactElement
 > = {
+  'lap-log': PitWallLapLog,
   overview: PitWallOverview,
   'race-control': PitWallRaceControl,
   strategy: PitWallStrategy,
@@ -68,12 +79,14 @@ export function PitWallPanel({
   environment,
   onClose,
   onRequestPitStop,
+  onSelectDriver,
   onSetDriverPaceMode,
   openF1Mode,
   overtakeSystem,
   raceControlLog,
   seriesId,
   snapshot,
+  stage,
   telemetryIsOpenF1,
   timingIsOpenF1,
   tireLabels,
@@ -102,6 +115,7 @@ export function PitWallPanel({
     () => pitWallCapabilitiesFor({ overtakeSystem, seriesId }),
     [overtakeSystem, seriesId],
   )
+  const session = useMemo(() => pitWallSessionFor(stage), [stage])
   const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
   const tireCondition = useMemo(
     () =>
@@ -122,6 +136,23 @@ export function PitWallPanel({
       track.tireNomination,
     ],
   )
+  // Ordered by classification so the selector walks the field the same way
+  // the timing tower it covers does.
+  const runningOrder = useMemo(
+    () =>
+      snapshot.cars
+        .slice()
+        .sort((left, right) => left.position - right.position),
+    [snapshot.cars],
+  )
+  const selectedIndex = runningOrder.findIndex(
+    (entry) => entry.driverId === car.driverId,
+  )
+  const carAhead = selectedIndex > 0 ? runningOrder[selectedIndex - 1] : null
+  const carBehind =
+    selectedIndex >= 0 && selectedIndex + 1 < runningOrder.length
+      ? runningOrder[selectedIndex + 1]
+      : null
   const boxCommands = useMemo(() => pitWallBoxCommands(car), [car])
   const paceDisabledReason = pitWallPaceCommandDisabledReason(car)
   const ActiveTab = tabContent[activeTab]
@@ -144,10 +175,39 @@ export function PitWallPanel({
           <b>#{car.carNumber}</b>
           <em>{car.teamName}</em>
         </span>
+        <span aria-label="Select car" className="pit-wall-car-select" role="group">
+          <button
+            aria-label="Pit wall previous car"
+            disabled={carAhead === null}
+            onClick={() => carAhead && onSelectDriver(carAhead.driverId)}
+            title={
+              carAhead
+                ? `Read the pit wall for ${carAhead.code} (P${carAhead.position})`
+                : 'This car leads the session'
+            }
+            type="button"
+          >
+            <ChevronUp aria-hidden="true" size={13} />
+          </button>
+          <button
+            aria-label="Pit wall next car"
+            disabled={carBehind === null}
+            onClick={() => carBehind && onSelectDriver(carBehind.driverId)}
+            title={
+              carBehind
+                ? `Read the pit wall for ${carBehind.code} (P${carBehind.position})`
+                : 'This car is last on the road'
+            }
+            type="button"
+          >
+            <ChevronDown aria-hidden="true" size={13} />
+          </button>
+        </span>
         <span className="pit-wall-standing">
           <strong>P{car.position}</strong>
           <span>
-            LAP {car.lap} OF {snapshot.raceLaps}
+            {session.label} / LAP {car.lap}
+            {session.runsRaceDistance ? ` OF ${snapshot.raceLaps}` : ''}
           </span>
         </span>
         <button
@@ -192,6 +252,7 @@ export function PitWallPanel({
           environment={environment}
           openF1Mode={openF1Mode}
           raceControlLog={raceControlLog}
+          session={session}
           snapshot={snapshot}
           strategy={strategy}
           telemetryIsOpenF1={telemetryIsOpenF1}

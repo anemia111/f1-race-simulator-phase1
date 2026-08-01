@@ -6,13 +6,20 @@
  * a value is not modelled for the active category, these helpers return an
  * explicit unavailable marker rather than a plausible-looking number.
  */
+import {
+  isPracticeStage,
+  isQualifyingStage,
+  isRaceDistanceSession,
+} from '../simulation/sessionRules'
 import type { SeriesId } from '../series/types'
 import type {
   CarComponents,
   CarSnapshot,
+  LapRecord,
   RaceEvent,
   RaceEventKind,
   TireCompound,
+  WeekendStage,
 } from '../types'
 
 /** Rendered wherever the simulator holds no measured value. */
@@ -22,6 +29,7 @@ export const PIT_WALL_NOT_APPLICABLE = 'N/A'
 
 export type PitWallTabId =
   | 'overview'
+  | 'lap-log'
   | 'strategy'
   | 'systems'
   | 'weather'
@@ -29,6 +37,7 @@ export type PitWallTabId =
 
 export const pitWallTabs: Array<{ id: PitWallTabId; label: string }> = [
   { id: 'overview', label: 'OVERVIEW' },
+  { id: 'lap-log', label: 'LAP LOG' },
   { id: 'strategy', label: 'STRATEGY' },
   { id: 'systems', label: 'CAR SYSTEMS' },
   { id: 'weather', label: 'WEATHER & TRACK' },
@@ -107,6 +116,49 @@ export const componentDisplayLabels: Record<keyof CarComponents, string> = {
   ice: 'ICE',
   mguK: 'MGU-K',
   turbo: 'Turbo',
+}
+
+// --- session mode ----------------------------------------------------------
+
+export type PitWallSessionMode = 'race' | 'practice' | 'qualifying'
+
+export type PitWallSession = {
+  mode: PitWallSessionMode
+  /** Shown in the header so the screen states which session it is reading. */
+  label: string
+  /**
+   * True only for a race-distance session. Race strategy, the rejoin
+   * projection, the grid slot, and the lap-of-total counter are meaningless in
+   * a timed session, so they are reported as not applicable rather than
+   * computed from a race distance the session will never run.
+   */
+  runsRaceDistance: boolean
+  /** Explains, in a tooltip, why a race-only read-out is not applicable. */
+  raceOnlyReason: string
+}
+
+/**
+ * The pit wall is available in every session, but a practice or qualifying
+ * session has no race distance, no grid, and no stint plan. This is the single
+ * place that decides which read-outs those sessions may show.
+ */
+export function pitWallSessionFor(stage: WeekendStage): PitWallSession {
+  const label = isPracticeStage(stage)
+    ? 'PRACTICE'
+    : isQualifyingStage(stage)
+      ? 'QUALIFYING'
+      : 'RACE'
+
+  return {
+    label,
+    mode: isRaceDistanceSession(stage)
+      ? 'race'
+      : isQualifyingStage(stage)
+        ? 'qualifying'
+        : 'practice',
+    raceOnlyReason: `This is a ${label.toLowerCase()} session, so it has no race distance to plan a stop against`,
+    runsRaceDistance: isRaceDistanceSession(stage),
+  }
 }
 
 // --- category capabilities -------------------------------------------------
@@ -200,6 +252,79 @@ export function pitWallIntervals(
     intervalAheadSeconds: ahead ? running[index].gapToAhead : null,
     intervalBehindSeconds: behind ? behind.gapToAhead : null,
   }
+}
+
+// --- lap log ---------------------------------------------------------------
+
+export type PitWallLapLogRow = {
+  invalidReason: string | null
+  isPersonalBestLap: boolean
+  /** Per sector, true when this lap owns the car's best measured split. */
+  isPersonalBestSector: [boolean, boolean, boolean]
+  isValid: boolean
+  lap: number
+  lapTimeSeconds: number
+  pitStop: boolean
+  position: number
+  /** Q1/Q2/Q3 or SQ1-3 for a timed session; absent on a race lap. */
+  segment: string | null
+  sectors: [number, number, number]
+  tire: TireCompound
+  tireAgeLaps: number
+}
+
+/** A split is only comparable once it has actually been measured. */
+function measured(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+/**
+ * Per-lap log with the car's own purple laps and splits marked.
+ *
+ * A deleted lap can never own a personal best, which matches how the timing
+ * screen scopes its own bests, and rows are returned newest first so the last
+ * lap is readable without scrolling a long race.
+ */
+export function pitWallLapLog(laps: LapRecord[]): PitWallLapLogRow[] {
+  const valid = laps.filter((lap) => lap.isValid)
+  const bestLapTime = valid.reduce<number | null>(
+    (best, lap) =>
+      measured(lap.lapTimeSeconds) && (best === null || lap.lapTimeSeconds < best)
+        ? lap.lapTimeSeconds
+        : best,
+    null,
+  )
+  const bestSectors = [0, 1, 2].map((index) =>
+    valid.reduce<number | null>((best, lap) => {
+      const split = lap.sectors[index]
+
+      return measured(split) && (best === null || split < best) ? split : best
+    }, null),
+  )
+
+  return laps
+    .slice()
+    .sort((left, right) => right.lap - left.lap)
+    .map((lap) => ({
+      invalidReason: lap.invalidReason,
+      isPersonalBestLap:
+        lap.isValid && bestLapTime !== null && lap.lapTimeSeconds === bestLapTime,
+      isPersonalBestSector: [0, 1, 2].map(
+        (index) =>
+          lap.isValid &&
+          bestSectors[index] !== null &&
+          lap.sectors[index] === bestSectors[index],
+      ) as [boolean, boolean, boolean],
+      isValid: lap.isValid,
+      lap: lap.lap,
+      lapTimeSeconds: lap.lapTimeSeconds,
+      pitStop: lap.pitStop,
+      position: lap.position,
+      sectors: lap.sectors,
+      segment: lap.segment ?? null,
+      tire: lap.tire,
+      tireAgeLaps: lap.tireAgeLaps,
+    }))
 }
 
 // --- manual commands -------------------------------------------------------

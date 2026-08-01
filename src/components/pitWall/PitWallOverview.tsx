@@ -32,6 +32,7 @@ export function PitWallOverview({
   capabilities,
   car,
   openF1Mode,
+  session,
   snapshot,
   telemetryIsOpenF1,
   timingIsOpenF1,
@@ -121,12 +122,30 @@ export function PitWallOverview({
         <PitWallMetric
           label="Lap"
           source={timingSource}
-          value={`${car.lap} / ${snapshot.raceLaps}`}
+          title={
+            session.runsRaceDistance
+              ? undefined
+              : `Laps completed in this ${session.label.toLowerCase()} session`
+          }
+          value={
+            session.runsRaceDistance
+              ? `${car.lap} / ${snapshot.raceLaps}`
+              : String(car.lap)
+          }
         />
         <PitWallMetric
           label="Grid"
-          source="SIM"
-          value={`P${car.gridPosition}`}
+          source={session.runsRaceDistance ? 'SIM' : 'UNAVAILABLE'}
+          title={
+            session.runsRaceDistance
+              ? undefined
+              : 'A grid slot only exists once qualifying has set it for the race'
+          }
+          value={
+            session.runsRaceDistance
+              ? `P${car.gridPosition}`
+              : PIT_WALL_NOT_APPLICABLE
+          }
         />
       </PitWallGroup>
 

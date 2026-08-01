@@ -81,9 +81,10 @@ remain intentional, separate steps so unrelated work is never swept in.
 - `src/components/FreeModeBuilder.tsx`, `src/freeMode/`: Free Mode UI,
   validation, persistence, and conversion into the existing `RaceConfig`.
 - `src/components/PitWallPanel.tsx`, `src/components/pitWall/`: race-engineering
-  overlay for the selected car.
+  overlay for the selected car, available in every session and in Free Mode.
 - `src/domain/pitWall.ts`: pit-wall derivations, component-condition
-  thresholds, and race-control classification.
+  thresholds, per-session capabilities, the lap log, and race-control
+  classification.
 - `src/hooks/usePitStrategyOutlook.ts`: the shared strategy read-out behind
   both race analysis and the pit wall.
 - `src/data/motorsportSeries2026.json`: category fields, calendars, and rules.

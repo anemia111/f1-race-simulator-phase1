@@ -886,13 +886,8 @@ export function BroadcastDashboard({
           {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
           <button
             className="pit-wall-control"
-            disabled={!isRaceStage}
             onClick={onOpenPitWall}
-            title={
-              isRaceStage
-                ? `Open the pit wall for ${selectedCar.code}`
-                : 'The pit wall is a race operations screen and is unavailable outside the race'
-            }
+            title={`Open the pit wall for ${selectedCar.code}`}
             type="button"
           >
             <MonitorDot size={14}/><span>PIT WALL</span>

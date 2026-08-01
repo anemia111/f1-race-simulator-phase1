@@ -1,4 +1,5 @@
 import {
+  PIT_WALL_NOT_APPLICABLE,
   PIT_WALL_UNAVAILABLE,
   pitWallBoxCompounds,
 } from '../../domain/pitWall'
@@ -16,9 +17,16 @@ const urgencyTone = {
  * Read-out for the strategy call. Every number here comes from
  * `usePitStrategyOutlook`, which is the same source race analysis reads, so
  * the two screens can never recommend different stops.
+ *
+ * A practice or qualifying session has no race distance, so the stint plan and
+ * the rejoin projection are reported as not applicable instead of being
+ * computed against a distance the session will never run. The pit lane, the
+ * transit cost, and the tyre allocation are physical facts that hold in every
+ * session, so those groups stay live.
  */
 export function PitWallStrategy({
   car,
+  session,
   snapshot,
   strategy,
   tireCondition,
@@ -31,44 +39,50 @@ export function PitWallStrategy({
     (total, compound) => total + (car.tireSetsRemaining[compound] ?? 0),
     0,
   )
+  const plansRaceStint = session.runsRaceDistance
+  // One shared shape for every race-only row so a timed session can never
+  // print a stint number beside an N/A source chip.
+  const raceOnly = (value: string, tone?: 'good' | 'watch' | 'critical') =>
+    plansRaceStint
+      ? { source: 'SIM' as const, tone, value }
+      : {
+          source: 'UNAVAILABLE' as const,
+          title: session.raceOnlyReason,
+          tone: undefined,
+          value: PIT_WALL_NOT_APPLICABLE,
+        }
 
   return (
     <div className="pit-wall-columns">
       <PitWallGroup title="Recommendation">
         <PitWallMetric
           label="Call"
-          source="SIM"
-          tone={urgencyTone[outlook.urgency]}
-          value={outlook.urgency.toUpperCase()}
+          {...raceOnly(outlook.urgency.toUpperCase(), urgencyTone[outlook.urgency])}
         />
-        <PitWallMetric label="Reason" source="SIM" value={outlook.reason} />
+        <PitWallMetric label="Reason" {...raceOnly(outlook.reason)} />
         <PitWallMetric
           label="Target stop"
-          source="SIM"
-          value={`Lap ${outlook.estimatedStopLap}`}
+          {...raceOnly(`Lap ${outlook.estimatedStopLap}`)}
         />
         <PitWallMetric
           label="Next tyre"
-          source="SIM"
-          title={tireLabels[outlook.compound]}
-          value={outlook.compound}
+          title={plansRaceStint ? tireLabels[outlook.compound] : undefined}
+          {...raceOnly(outlook.compound)}
         />
         <PitWallMetric
           label="Confidence"
-          source="SIM"
-          tone={
+          {...raceOnly(
+            outlook.confidence.toUpperCase(),
             outlook.confidence === 'high'
               ? 'good'
               : outlook.confidence === 'medium'
                 ? 'watch'
-                : 'critical'
-          }
-          value={outlook.confidence.toUpperCase()}
+                : 'critical',
+          )}
         />
         <PitWallMetric
           label="Laps remaining"
-          source="SIM"
-          value={String(lapsRemaining)}
+          {...raceOnly(String(lapsRemaining))}
         />
       </PitWallGroup>
 
@@ -87,27 +101,28 @@ export function PitWallStrategy({
         />
         <PitWallMetric
           label="Rejoin"
-          source="SIM"
-          title="Projected position if the car boxes on this lap"
-          value={`P${strategy.projectedRejoinPosition}`}
+          title={
+            plansRaceStint
+              ? 'Projected position if the car boxes on this lap'
+              : undefined
+          }
+          {...raceOnly(`P${strategy.projectedRejoinPosition}`)}
         />
         <PitWallMetric
           label="Rejoin change"
-          source="SIM"
-          tone={
-            strategy.projectedRejoinPositionChange > 0 ? 'watch' : 'good'
-          }
-          value={
+          {...raceOnly(
             strategy.projectedRejoinPositionChange === 0
               ? 'HOLD'
-              : `${strategy.projectedRejoinPositionChange > 0 ? 'LOSE' : 'GAIN'} ${Math.abs(strategy.projectedRejoinPositionChange)}`
-          }
+              : `${strategy.projectedRejoinPositionChange > 0 ? 'LOSE' : 'GAIN'} ${Math.abs(strategy.projectedRejoinPositionChange)}`,
+            strategy.projectedRejoinPositionChange > 0 ? 'watch' : 'good',
+          )}
         />
         <PitWallMetric
           label="Expected delta"
-          source="SIM"
-          tone={outlook.expectedNetGainSeconds >= 0 ? 'good' : 'watch'}
-          value={formatSignedSeconds(outlook.expectedNetGainSeconds)}
+          {...raceOnly(
+            formatSignedSeconds(outlook.expectedNetGainSeconds),
+            outlook.expectedNetGainSeconds >= 0 ? 'good' : 'watch',
+          )}
         />
         <PitWallMetric
           label="Gap ahead"

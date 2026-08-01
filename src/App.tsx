@@ -3752,19 +3752,21 @@ export default function App() {
         />
       ) : null}
 
-      {isPitWallOpen && isRaceProgressSession && selectedDriver ? (
+      {isPitWallOpen && selectedDriver ? (
         <PitWallPanel
           car={selectedCar}
           driver={selectedDriver}
           environment={environmentReadout}
           onClose={() => setIsPitWallOpen(false)}
           onRequestPitStop={requestPitStop}
+          onSelectDriver={focusDriver}
           onSetDriverPaceMode={setDriverPaceMode}
           openF1Mode={dataMode}
           overtakeSystem={seriesPackage.rules.overtakeSystem}
           raceControlLog={raceControlLog}
           seriesId={selectedSeriesId}
           snapshot={snapshot}
+          stage={selectedWeekendStage}
           telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
           timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
           tireLabels={broadcastTireLabels}

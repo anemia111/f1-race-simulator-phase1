@@ -1,4 +1,7 @@
-import type { PitWallCapabilities } from '../../domain/pitWall'
+import type {
+  PitWallCapabilities,
+  PitWallSession,
+} from '../../domain/pitWall'
 import type { PitStrategyOutlook } from '../../hooks/usePitStrategyOutlook'
 import type { TireCondition } from '../../simulation/tires'
 import type { BroadcastRaceControlEntry } from '../BroadcastDashboard'
@@ -22,6 +25,8 @@ export type PitWallTabProps = {
   environment: EnvironmentReadout
   openF1Mode: 'LIVE' | 'HIST' | 'SIM'
   raceControlLog: BroadcastRaceControlEntry[]
+  /** Decides which race-only read-outs this session is allowed to show. */
+  session: PitWallSession
   snapshot: RaceSnapshot
   /** Computed once by the panel so every tab reports the same tyre state. */
   strategy: PitStrategyOutlook

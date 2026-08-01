@@ -447,6 +447,11 @@ async function runViewport(browser, name, viewport, screenshotPath) {
         .locator('#pit-wall-tabpanel .pit-wall-group h3')
         .allInnerTexts(),
       label: (await tab.innerText()).trim(),
+      // The lap log is a table rather than metric groups, so it reports its
+      // own row count and every other tab reports read-outs.
+      lapLogRows: await page
+        .locator('#pit-wall-tabpanel .pit-wall-lap-log tbody tr')
+        .count(),
       readouts: await page
         .locator('#pit-wall-tabpanel .pit-wall-metric, #pit-wall-tabpanel .pit-wall-gauge')
         .count(),
@@ -466,6 +471,31 @@ async function runViewport(browser, name, viewport, screenshotPath) {
       filterLabel,
     })
   }
+
+  // Every logged lap must carry a lap time and three measured splits. The log
+  // is empty until the car first crosses the line, so the session is wound on
+  // until there is a completed lap to read.
+  await pitWallTabButtons.nth(1).click()
+  await page.getByRole('button', { name: '60x' }).click()
+  await page.waitForSelector('.pit-wall-lap-log tbody tr', { timeout: 60_000 })
+  await page.getByRole('button', { name: '1x' }).click()
+  const pitWallLapLogSample = await page
+    .locator('.pit-wall-lap-log tbody tr')
+    .first()
+    .evaluate((row) => ({
+      cells: Array.from(row.querySelectorAll('th, td')).map((cell) =>
+        (cell.textContent ?? '').trim(),
+      ),
+    }))
+  const pitWallLapLogScrolls = await page
+    .locator('.pit-wall-lap-log-scroll')
+    .evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    }))
+  await page.screenshot({
+    path: join(artifactDirectory, `pit-wall-lap-log-${name}.png`),
+  })
 
   await pitWallTabButtons.nth(0).click()
   const pitWallErsReadout = await page
@@ -540,12 +570,21 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     body.scrollTop = maxScrollTop
     const reachedBottom = Math.abs(body.scrollTop - maxScrollTop) <= 1
     body.scrollTop = 0
+    // The track map has no substitute elsewhere on screen, so the panel is
+    // measured against the canvas it must never cover.
+    const canvasRect = document.querySelector('canvas')?.getBoundingClientRect()
 
     return {
       bottom: rect.bottom,
+      canvasLeft: canvasRect?.left ?? Number.NaN,
+      canvasVisibleWidth: canvasRect
+        ? Math.max(0, canvasRect.right - Math.max(canvasRect.left, rect.right))
+        : Number.NaN,
+      canvasWidth: canvasRect?.width ?? Number.NaN,
       documentHeight: document.documentElement.scrollHeight,
       documentWidth: document.documentElement.scrollWidth,
       footerTop: footer.getBoundingClientRect().top,
+      leaderboardLeft: leaderboard?.getBoundingClientRect().left ?? Number.NaN,
       leaderboardRight:
         leaderboard?.getBoundingClientRect().right ?? Number.NaN,
       left: rect.left,
@@ -557,20 +596,30 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     }
   })
 
-  // Selecting another car from the timing tower must retarget the open panel.
-  const otherRow = page.locator('.leaderboard-rows li:not(.selected)').first()
-  const otherDriverCode = (
-    await otherRow.locator('.leaderboard-driver strong').innerText()
+  // The panel covers the timing tower, so its own selector is the way to
+  // change car. It must move the whole app selection, not just the panel.
+  const pitWallCodeBefore = (
+    await page.locator('.pit-wall-identity strong').innerText()
   ).trim()
-  await otherRow.locator('button').click()
+  await page.getByLabel('Pit wall next car').click()
   await page.waitForFunction(
     (code) =>
-      document.querySelector('.pit-wall-identity strong')?.textContent?.trim() ===
+      document.querySelector('.pit-wall-identity strong')?.textContent?.trim() !==
       code,
-    otherDriverCode,
+    pitWallCodeBefore,
     { timeout: 8000 },
   )
-  const pitWallFollowedDriverSelection = true
+  const pitWallCodeAfter = (
+    await page.locator('.pit-wall-identity strong').innerText()
+  ).trim()
+  const pitWallSelectorMovedTimingTower = await page.evaluate(
+    (code) =>
+      document
+        .querySelector('.leaderboard-rows li.selected .leaderboard-driver strong')
+        ?.textContent?.trim() === code,
+    pitWallCodeAfter,
+  )
+  const pitWallFollowedDriverSelection = pitWallCodeAfter !== pitWallCodeBefore
 
   await page.screenshot({
     path: join(artifactDirectory, `pit-wall-${name}.png`),
@@ -584,6 +633,53 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByLabel('Close pit wall').click()
   const pitWallCloseButtonClosed =
     (await page.locator('.pit-wall-panel').count()) === 0
+
+  // The pit wall is available in every session, but practice and qualifying
+  // have no race distance, so the stint plan must report itself unavailable
+  // rather than plan a stop against a distance the session will never run.
+  const pitWallTimedSessions = []
+  for (const timedStage of ['fp1', 'qualifying']) {
+    await page.getByLabel('Weekend session').selectOption(timedStage)
+    await page.waitForFunction(
+      (value) =>
+        document.querySelector('.broadcast-session-switch select')?.value ===
+        value,
+      timedStage,
+      { timeout: 8000 },
+    )
+    const timedPitWallButton = page.getByTitle(/^Open the pit wall/u)
+    const enabled = await timedPitWallButton.isEnabled()
+    await timedPitWallButton.click()
+    await page.waitForSelector('.pit-wall-panel')
+    const header = await page.locator('.pit-wall-header').innerText()
+    const targetStop = await page
+      .locator('#pit-wall-tabpanel .pit-wall-metric')
+      .filter({ hasText: 'Target stop' })
+      .innerText()
+      .catch(() => '')
+    // STRATEGY is the third tab; read the race-only rows from it.
+    await page.locator('.pit-wall-tabs button').nth(2).click()
+    const strategyRows = await page
+      .locator('#pit-wall-tabpanel .pit-wall-metric')
+      .evaluateAll((rows) =>
+        rows.map((row) => ({
+          label: (row.querySelector('span')?.textContent ?? '').trim(),
+          value: (
+            row.querySelector('.pit-wall-value')?.textContent ?? ''
+          ).trim(),
+        })),
+      )
+    await page.getByLabel('Close pit wall').click()
+    pitWallTimedSessions.push({ enabled, header, stage: timedStage, strategyRows, targetStop })
+  }
+  await page.getByLabel('Weekend session').selectOption('race')
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.broadcast-session-switch select')?.value ===
+      'race',
+    undefined,
+    { timeout: 8000 },
+  )
 
   const canvas = await waitForCanvasPixels(page)
   const activePitRows = await page.locator('.leaderboard-rows li').evaluateAll(
@@ -684,11 +780,15 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     pitWallFollowedDriverSelection,
     pitWallHeader,
     pitWallInitialFocus,
+    pitWallLapLogSample,
+    pitWallLapLogScrolls,
     pitWallLayout,
     pitWallPaceApplied,
     pitWallReplacedClassification,
     pitWallSelectedCode,
+    pitWallSelectorMovedTimingTower,
     pitWallTabViews,
+    pitWallTimedSessions,
     removedBottomPanelLabels,
     resumeVisible,
     screenshotPath,
@@ -965,6 +1065,18 @@ async function inspectFreeMode(browser) {
   if (await skipFormation.isVisible()) {
     await skipFormation.click()
   }
+
+  // Free Mode runs the same engine, so the pit wall has to work there too.
+  await page.getByTitle(/^Open the pit wall/u).click()
+  await page.waitForSelector('.pit-wall-panel')
+  const freePitWallHeader = await page
+    .locator('.pit-wall-header')
+    .innerText()
+  const freePitWallReadouts = await page
+    .locator('#pit-wall-tabpanel .pit-wall-metric')
+    .count()
+  await page.getByLabel('Close pit wall').click()
+
   await page.getByRole('button', { exact: true, name: '60x' }).click()
   await page.waitForFunction(
     () =>
@@ -1026,6 +1138,8 @@ async function inspectFreeMode(browser) {
     dataModes,
     escapeClosed,
     freeLapChartLineCount,
+    freePitWallHeader,
+    freePitWallReadouts,
     initialFocus,
     keyboardNumberEdited,
     leaderboardScroll,
@@ -1112,12 +1226,43 @@ try {
     if (!result.pitWallReplacedClassification) failures.push('opening the pit wall left the classification overlay on screen')
     if (result.pitWallInitialFocus !== 'Close pit wall') failures.push(`pit wall did not take keyboard focus: ${result.pitWallInitialFocus}`)
     if (!result.pitWallHeader.includes(result.pitWallSelectedCode)) failures.push(`pit wall header does not identify the selected car ${result.pitWallSelectedCode}: ${result.pitWallHeader}`)
-    if (!/LAP\s+\d+\s+OF\s+\d+/u.test(result.pitWallHeader)) failures.push(`pit wall header is missing the lap count: ${result.pitWallHeader}`)
-    const expectedPitWallTabs = ['OVERVIEW', 'STRATEGY', 'CAR SYSTEMS', 'WEATHER & TRACK', 'RACE CONTROL']
+    if (!/RACE\s*\/\s*LAP\s+\d+\s+OF\s+\d+/u.test(result.pitWallHeader)) failures.push(`pit wall header is missing the session and lap count: ${result.pitWallHeader}`)
+    const expectedPitWallTabs = ['OVERVIEW', 'LAP LOG', 'STRATEGY', 'CAR SYSTEMS', 'WEATHER & TRACK', 'RACE CONTROL']
     if (result.pitWallTabViews.map((tab) => tab.label).join('|') !== expectedPitWallTabs.join('|')) failures.push(`pit wall tabs are wrong: ${result.pitWallTabViews.map((tab) => tab.label).join(', ')}`)
     for (const tab of result.pitWallTabViews) {
       if (tab.selected !== 'true') failures.push(`pit wall tab ${tab.label} did not become the selected tab`)
-      if (tab.groups.length === 0 || tab.readouts === 0) failures.push(`pit wall tab ${tab.label} rendered no read-outs: ${JSON.stringify(tab)}`)
+      const rendered = tab.label === 'LAP LOG' ? tab.lapLogRows > 0 : tab.groups.length > 0 && tab.readouts > 0
+      if (!rendered) failures.push(`pit wall tab ${tab.label} rendered no read-outs: ${JSON.stringify(tab)}`)
+    }
+
+    // --- pit wall lap log ---
+    if (!result.pitWallLapLogSample) {
+      failures.push('pit wall lap log rendered no lap row')
+    } else {
+      const cells = result.pitWallLapLogSample.cells
+      if (cells.length !== 8) failures.push(`pit wall lap log row has ${cells.length}/8 columns: ${JSON.stringify(cells)}`)
+      if (!/^\d+$/u.test(cells[0] ?? '')) failures.push(`pit wall lap log row has no lap number: ${JSON.stringify(cells)}`)
+      if (!/^\d+:\d{2}\.\d{3}$/u.test(cells[1] ?? '')) failures.push(`pit wall lap log row has no lap time: ${JSON.stringify(cells)}`)
+      for (const index of [2, 3, 4]) {
+        if (!/^\d+\.\d{3}$/u.test(cells[index] ?? '')) failures.push(`pit wall lap log sector ${index - 1} is not a measured split: ${JSON.stringify(cells)}`)
+      }
+    }
+    if (result.pitWallLapLogScrolls?.overflowY !== 'auto') failures.push(`pit wall lap log does not own its scroller: ${JSON.stringify(result.pitWallLapLogScrolls)}`)
+
+    // --- pit wall in practice and qualifying ---
+    for (const timed of result.pitWallTimedSessions ?? []) {
+      if (!timed.enabled) failures.push(`pit wall is unavailable in ${timed.stage}`)
+      const expectedLabel = timed.stage === 'fp1' ? 'PRACTICE' : 'QUALIFYING'
+      if (!timed.header.includes(expectedLabel)) failures.push(`pit wall header does not name the ${timed.stage} session: ${timed.header}`)
+      if (/OF\s+\d+/u.test(timed.header)) failures.push(`pit wall printed a race distance in ${timed.stage}: ${timed.header}`)
+      const raceOnlyLabels = ['Target stop', 'Laps remaining', 'Rejoin', 'Rejoin change', 'Expected delta']
+      for (const label of raceOnlyLabels) {
+        const row = timed.strategyRows.find((entry) => entry.label === label)
+        if (!row) failures.push(`pit wall ${timed.stage} strategy is missing the ${label} row`)
+        else if (row.value !== 'N/A') failures.push(`pit wall ${timed.stage} printed a race-only ${label} value: ${row.value}`)
+      }
+      const pitLoss = timed.strategyRows.find((entry) => entry.label === 'Pit lane loss')
+      if (!pitLoss || !/\d+\.\d+s/u.test(pitLoss.value)) failures.push(`pit wall ${timed.stage} lost the pit-lane transit cost, which is a physical fact in every session: ${JSON.stringify(pitLoss)}`)
     }
     const allFilter = result.pitWallFilterCounts.find((entry) => entry.filterLabel === 'ALL')
     if (!allFilter || allFilter.entries === 0) failures.push('pit wall race control log is empty')
@@ -1135,7 +1280,8 @@ try {
     if (!result.pitWallBoxStates.some((box) => !box.disabled)) failures.push('every pit wall box command was disabled for a running car')
     if (!result.pitWallPaceApplied) failures.push('pit wall pace instruction did not reach the selected car')
     if (!result.pitWallBoxApplied) failures.push(`pit wall ${result.pitWallBoxCommandLabel} instruction never produced a pit stop for the selected car`)
-    if (!result.pitWallFollowedDriverSelection) failures.push('pit wall did not follow the timing tower selection')
+    if (!result.pitWallFollowedDriverSelection) failures.push('the pit wall car selector did not change car')
+    if (!result.pitWallSelectorMovedTimingTower) failures.push('the pit wall car selector did not move the app-wide selection behind it')
     if (!result.pitWallEscapeClosed) failures.push('Escape did not close the pit wall')
     if (!result.pitWallCloseButtonClosed) failures.push('the pit wall close button did not close the panel')
     if (!result.pitWallLayout) {
@@ -1144,7 +1290,10 @@ try {
       const pit = result.pitWallLayout
       if (pit.top < 0 || pit.left < 0 || pit.right > pit.viewportWidth + 1 || pit.bottom > pit.footerTop + 1) failures.push(`pit wall overflows the workspace: ${JSON.stringify(pit)}`)
       if (pit.documentWidth !== pit.viewportWidth || pit.documentHeight !== pit.viewportHeight) failures.push(`pit wall forced a page scroll: ${pit.documentWidth}x${pit.documentHeight}`)
-      if (pit.left < pit.leaderboardRight - 1) failures.push(`pit wall covers the timing tower: ${JSON.stringify(pit)}`)
+      // The panel deliberately covers the timing tower, but the track map has
+      // no substitute elsewhere on screen and must stay fully visible.
+      if (pit.right > pit.canvasLeft + 1) failures.push(`pit wall covers the track map: ${JSON.stringify(pit)}`)
+      if (!(pit.canvasVisibleWidth >= pit.canvasWidth - 1)) failures.push(`pit wall hid part of the track map: ${JSON.stringify(pit)}`)
       if (!pit.reachedBottom) failures.push(`pit wall body cannot scroll to its last read-out: ${JSON.stringify(pit)}`)
     }
     if (!result.canvas?.ok) failures.push(`canvas pixels invalid: ${JSON.stringify(result.canvas)}`)
@@ -1228,6 +1377,16 @@ try {
   }
   if (freeMode.startDisabled) {
     freeModeFailures.push('valid 40-car configuration cannot start')
+  }
+  if (!freeMode.freePitWallHeader?.includes('PIT WALL')) {
+    freeModeFailures.push(
+      `pit wall did not open in Free Mode: ${freeMode.freePitWallHeader}`,
+    )
+  }
+  if (!(freeMode.freePitWallReadouts > 0)) {
+    freeModeFailures.push(
+      `Free Mode pit wall rendered ${freeMode.freePitWallReadouts} read-outs`,
+    )
   }
   if (!freeMode.keyboardNumberEdited || !freeMode.rowValidationWorked) {
     freeModeFailures.push(

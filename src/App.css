@@ -2182,23 +2182,26 @@
  * (z-index 20) and only one of pit wall / classification / race analysis is
  * ever mounted at a time.
  *
- * It starts to the right of the timing tower so an engineer can still select
- * another car from the tower while the panel is open. The offset mirrors
- * .broadcast-workspace: 76px sidebar + 6px padding, then the left column's
- * 0.9 of the 0.9fr/1.5fr split over the remaining width, then the 6px gap.
- * The 524px floor covers the 430px left-column minimum at narrow widths.
- * `.pit-wall-panel covers the timing tower` in the playtest guards this.
+ * It covers the timing tower rather than the 3D map: an engineer reads the
+ * car's own state here, but the track picture has no substitute elsewhere on
+ * the screen. The geometry mirrors .broadcast-workspace: 76px sidebar + 6px
+ * padding puts the left column at 82px, and that column is 0.9 of the
+ * 0.9fr/1.5fr split over the remaining width. The panel is allowed to run a
+ * little past the column so five metric groups stay legible, but it always
+ * stops short of the map. `.pit-wall-panel leaves the track map visible` in
+ * the playtest guards this.
  */
 .pit-wall-panel {
   z-index: 30;
   top: 52px;
-  right: 14px;
-  left: max(524px, calc(88px + (100vw - 94px) * 0.375));
+  left: 82px;
+  width: max(430px, calc((100vw - 94px) * 0.375));
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  /* A fixed working height keeps the command bar in one place as tabs with
-     very different content lengths are switched. */
-  min-height: min(520px, calc(100svh - 104px));
+  /* Full column height, which keeps the command bar in one place as tabs with
+     very different content lengths are switched and stops a half-covered
+     timing tower peeking out below the panel. */
+  height: calc(100svh - 104px);
   max-height: calc(100svh - 104px);
   padding: 0;
   background: rgba(4, 8, 12, 0.96);
@@ -2207,7 +2210,7 @@
 
 .pit-wall-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   gap: 12px;
   align-items: center;
   padding: 8px 10px;
@@ -2288,17 +2291,23 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+/*
+ * Two clean rows of three. Six tabs across the width of the timing tower
+ * leaves about 100px each, which is too narrow for WEATHER & TRACK to sit on
+ * one line and leaves the last tab orphaned on a row of its own.
+ */
 .pit-wall-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--panel-border);
 }
 
 .pit-wall-tabs button {
   min-width: 0;
-  height: 28px;
+  height: 26px;
   border: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -2306,10 +2315,15 @@
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
-.pit-wall-tabs button:last-child {
+.pit-wall-tabs button:nth-child(3n) {
   border-right: 0;
+}
+
+.pit-wall-tabs button:nth-last-child(-n + 3) {
+  border-bottom: 0;
 }
 
 .pit-wall-tabs button[aria-selected='true'] {
@@ -2324,9 +2338,150 @@
   padding: 10px;
 }
 
+/* The panel covers the timing tower, so changing car happens in here. */
+.pit-wall-car-select {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.pit-wall-car-select button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.pit-wall-car-select button:disabled {
+  opacity: 0.35;
+}
+
+/* --- pit wall lap log ---------------------------------------------------- */
+
+.pit-wall-lap-log {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  min-height: 0;
+  /* Fills the body so the log keeps one frame as laps accumulate. */
+  height: 100%;
+}
+
+.pit-wall-lap-log-summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* The log is the one pit-wall view that can outgrow the body, so it owns its
+   own scroller and keeps the header row pinned while the race runs. */
+.pit-wall-lap-log-scroll {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+}
+
+.pit-wall-lap-log table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pit-wall-lap-log thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(8, 14, 20, 0.98);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.pit-wall-lap-log thead th:first-child,
+.pit-wall-lap-log thead th:last-child {
+  text-align: left;
+}
+
+.pit-wall-lap-log tbody th,
+.pit-wall-lap-log tbody td {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pit-wall-lap-log tbody th {
+  font-weight: 800;
+  text-align: left;
+}
+
+.pit-wall-lap-log tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pit-wall-lap-log td small {
+  margin-left: 3px;
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+/* Purple is the timing screen's personal-best colour; the cell also keeps its
+   plain time so the marking never carries meaning by colour alone. */
+.pit-wall-lap-log .is-personal-best {
+  color: var(--accent-purple, #b07cff);
+  font-weight: 800;
+}
+
+.pit-wall-lap-log tr.is-deleted th,
+.pit-wall-lap-log tr.is-deleted td {
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: line-through;
+}
+
+.pit-wall-lap-log tr.is-deleted .pit-wall-lap-log-note {
+  text-decoration: none;
+}
+
+.pit-wall-lap-log-note {
+  max-width: 132px;
+  overflow: hidden;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-align: left !important;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.pit-wall-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+/*
+ * Two columns at both verified widths now that the panel is only as wide as
+ * the timing tower it covers: 1280 leaves 444px here and 1440 leaves 505px.
+ */
 .pit-wall-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
   gap: 8px;
   align-items: start;
 }
@@ -2615,6 +2770,7 @@
 @media (max-height: 780px) {
   .pit-wall-panel {
     top: 46px;
+    height: calc(100svh - 92px);
     max-height: calc(100svh - 92px);
   }
 
@@ -2625,7 +2781,7 @@
 
 @media (max-width: 1330px) {
   .pit-wall-columns {
-    grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .pit-wall-race-control {
