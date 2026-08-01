@@ -208,6 +208,63 @@ export function lateralLoadsN(options: {
 }
 
 /**
+ * Lateral acceleration on a banked surface.
+ *
+ * On the flat the tyres carry the whole cornering load. Banked, the road is
+ * tilted into the turn, so the surface takes part of it and the centripetal
+ * force presses the car into the track instead of trying to slide it off.
+ * Resolving along and perpendicular to the surface:
+ *
+ *   a = [mu (g cos0 + D/m) + g sin0] / (cos0 - mu sin0)
+ *
+ * At zero degrees this collapses to `mu (g + D/m)`, the flat case. As the
+ * banking steepens the denominator shrinks, which is why a steeply banked
+ * corner can be taken far faster than its radius alone suggests.
+ */
+export function bankedLateralAccelerationMps2(options: {
+  bankingDegrees: number
+  downforceN: number
+  lateralForceBudgetN: number
+  massKg: number
+  verticalLoadN: number
+}) {
+  const {
+    bankingDegrees,
+    downforceN,
+    lateralForceBudgetN,
+    massKg,
+    verticalLoadN,
+  } = options
+  const mass = Math.max(1, massKg)
+  const flatAcceleration = lateralForceBudgetN / mass
+
+  if (Math.abs(bankingDegrees) < 0.05) {
+    return flatAcceleration
+  }
+
+  // Effective coefficient implied by the budget already worked out above, so
+  // load sensitivity and the friction ellipse both carry through.
+  const effectiveMu = lateralForceBudgetN / Math.max(1, verticalLoadN)
+  const angle = (Math.abs(bankingDegrees) * Math.PI) / 180
+  const sin = Math.sin(angle)
+  const cos = Math.cos(angle)
+  const denominator = cos - effectiveMu * sin
+
+  if (denominator <= 0.05) {
+    // Banking steep enough that friction is no longer the limit. Cap rather
+    // than return an asymptote; no circuit in these categories is near this.
+    return flatAcceleration * 4
+  }
+
+  const banked =
+    (effectiveMu * (GRAVITY_MPS2 * cos + downforceN / mass) +
+      GRAVITY_MPS2 * sin) /
+    denominator
+
+  return Math.max(flatAcceleration, banked)
+}
+
+/**
  * Steady-state lateral acceleration the car can hold at a given speed.
  *
  * Lateral load transfer depends on the lateral acceleration it is trying to
@@ -216,6 +273,12 @@ export function lateralLoadsN(options: {
  */
 export function maximumLateralAccelerationMps2(options: {
   airDensityKgM3?: number
+  /**
+   * Banking angle in degrees. On a banked corner part of the cornering load is
+   * carried by the road surface rather than by the tyres, so the same tyre
+   * makes a higher lateral acceleration than it can on the flat.
+   */
+  bankingDegrees?: number
   gripMultiplier?: number
   /** Longitudinal force already being used, as a fraction of the total. */
   longitudinalUseFraction?: number
@@ -225,6 +288,7 @@ export function maximumLateralAccelerationMps2(options: {
 }) {
   const {
     airDensityKgM3 = 1.225,
+    bankingDegrees = 0,
     gripMultiplier = 1,
     longitudinalUseFraction = 0,
     massKg,
@@ -279,7 +343,13 @@ export function maximumLateralAccelerationMps2(options: {
         clamp(longitudinalUseFraction, 0, 1),
     })
 
-    lateralAccelerationMps2 = transferredBudgetN / Math.max(1, massKg)
+    lateralAccelerationMps2 = bankedLateralAccelerationMps2({
+      bankingDegrees,
+      downforceN: grip.verticalLoadN - weightN,
+      lateralForceBudgetN: transferredBudgetN,
+      massKg,
+      verticalLoadN: grip.verticalLoadN,
+    })
   }
 
   return lateralAccelerationMps2
@@ -298,6 +368,7 @@ export function maximumLateralAccelerationMps2(options: {
  */
 export function corneringSpeedLimitMps(options: {
   airDensityKgM3?: number
+  bankingDegrees?: number
   gripMultiplier?: number
   longitudinalUseFraction?: number
   massKg: number
