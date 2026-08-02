@@ -8,14 +8,16 @@
     {
       "id": "f1-custom",
       "eventCount": 26,
-      "latestObservedEventDate": "2026-07-26"
+      "latestObservedEventDate": "2026-07-26",
+      "speedReferenceCount": 11
     },
     {
       "id": "super-formula",
       "eventCount": 5,
-      "latestObservedEventDate": "2026-07-19"
+      "latestObservedEventDate": "2026-07-19",
+      "speedReferenceCount": 0
     }
   ],
   "generator": "scripts/update-pace-calibration.mjs",
-  "sourcePolicy": "Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions."
+  "sourcePolicy": "Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions; OpenF1 car telemetry and FIA speed-trap records establish observed straight-line speed."
 }

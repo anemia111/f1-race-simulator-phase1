@@ -117,6 +117,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 333,
+      "qualifyingDriverPeakMedianKph": 325,
+      "raceFieldPeakKph": 343,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 321,
+      "raceTrapMedianKph": 289,
+      "qualifyingTrapMaxKph": 315,
+      "telemetrySampleCount": 155335,
+      "trapSampleCount": 1253,
+      "status": "observed",
+      "confidence": 0.89
+    },
     "simulation": {
       "neutralBaseLapSeconds": 79.412,
       "qualifyingOffsetSeconds": 0.601,
@@ -259,6 +272,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 343,
+      "qualifyingDriverPeakMedianKph": 337,
+      "raceFieldPeakKph": 352,
+      "raceDriverPeakMedianKph": 345,
+      "raceTrapMaxKph": 353,
+      "raceTrapMedianKph": 313,
+      "qualifyingTrapMaxKph": 322,
+      "telemetrySampleCount": 125220,
+      "trapSampleCount": 1241,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
       "neutralBaseLapSeconds": 92.853,
       "qualifyingOffsetSeconds": 0.567,
@@ -393,6 +419,19 @@
       "tireDegradationPerLapSeconds": 0,
       "status": "observed",
       "confidence": 0.88
+    },
+    "speed": {
+      "qualifyingFieldPeakKph": 339,
+      "qualifyingDriverPeakMedianKph": 332,
+      "raceFieldPeakKph": 349,
+      "raceDriverPeakMedianKph": 339,
+      "raceTrapMaxKph": 308,
+      "raceTrapMedianKph": 284,
+      "qualifyingTrapMaxKph": 291,
+      "telemetrySampleCount": 164000,
+      "trapSampleCount": 1429,
+      "status": "observed",
+      "confidence": 0.9
     },
     "simulation": {
       "neutralBaseLapSeconds": 89.686,
@@ -547,6 +586,19 @@
       "tireDegradationPerLapSeconds": 0.0192,
       "status": "observed",
       "confidence": 0.88
+    },
+    "speed": {
+      "qualifyingFieldPeakKph": 346,
+      "qualifyingDriverPeakMedianKph": 344,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 346,
+      "raceTrapMaxKph": 334,
+      "raceTrapMedianKph": 309,
+      "qualifyingTrapMaxKph": 327,
+      "telemetrySampleCount": 160008,
+      "trapSampleCount": 1316,
+      "status": "observed",
+      "confidence": 0.9
     },
     "simulation": {
       "neutralBaseLapSeconds": 88.503,
@@ -708,6 +760,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 337,
+      "qualifyingDriverPeakMedianKph": 332,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 339,
+      "raceTrapMaxKph": 348,
+      "raceTrapMedianKph": 305,
+      "qualifyingTrapMaxKph": 329,
+      "telemetrySampleCount": 145797,
+      "trapSampleCount": 1663,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
       "neutralBaseLapSeconds": 73.077,
       "qualifyingOffsetSeconds": 0.431,
@@ -849,6 +914,19 @@
       "tireDegradationPerLapSeconds": 0.0195,
       "status": "observed",
       "confidence": 0.88
+    },
+    "speed": {
+      "qualifyingFieldPeakKph": 291,
+      "qualifyingDriverPeakMedianKph": 288,
+      "raceFieldPeakKph": 292,
+      "raceDriverPeakMedianKph": 284,
+      "raceTrapMaxKph": 287,
+      "raceTrapMedianKph": 270,
+      "qualifyingTrapMaxKph": 285,
+      "telemetrySampleCount": 48668,
+      "trapSampleCount": 1925,
+      "status": "observed",
+      "confidence": 0.9
     },
     "simulation": {
       "neutralBaseLapSeconds": 72.692,
@@ -1024,6 +1102,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 344,
+      "qualifyingDriverPeakMedianKph": 341,
+      "raceFieldPeakKph": 360,
+      "raceDriverPeakMedianKph": 352,
+      "raceTrapMaxKph": 358,
+      "raceTrapMedianKph": 331,
+      "qualifyingTrapMaxKph": 340,
+      "telemetrySampleCount": 92927,
+      "trapSampleCount": 1266,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
       "neutralBaseLapSeconds": 75.487,
       "qualifyingOffsetSeconds": 0.744,
@@ -1190,6 +1281,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 331,
+      "qualifyingDriverPeakMedianKph": 326,
+      "raceFieldPeakKph": 347,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 334,
+      "raceTrapMedianKph": 300,
+      "qualifyingTrapMaxKph": 323,
+      "telemetrySampleCount": 137852,
+      "trapSampleCount": 1628,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
       "neutralBaseLapSeconds": 67.009,
       "qualifyingOffsetSeconds": 0.66,
@@ -1343,6 +1447,19 @@
       "tireDegradationPerLapSeconds": 0.0183,
       "status": "observed",
       "confidence": 0.88
+    },
+    "speed": {
+      "qualifyingFieldPeakKph": 323,
+      "qualifyingDriverPeakMedianKph": 316,
+      "raceFieldPeakKph": 350,
+      "raceDriverPeakMedianKph": 333,
+      "raceTrapMaxKph": 351,
+      "raceTrapMedianKph": 300,
+      "qualifyingTrapMaxKph": 317,
+      "telemetrySampleCount": 203057,
+      "trapSampleCount": 1418,
+      "status": "observed",
+      "confidence": 0.9
     },
     "simulation": {
       "neutralBaseLapSeconds": 88.954,
@@ -1504,6 +1621,19 @@
       "status": "observed",
       "confidence": 0.88
     },
+    "speed": {
+      "qualifyingFieldPeakKph": 344,
+      "qualifyingDriverPeakMedianKph": 331,
+      "raceFieldPeakKph": 349,
+      "raceDriverPeakMedianKph": 342,
+      "raceTrapMaxKph": 323,
+      "raceTrapMedianKph": 298,
+      "qualifyingTrapMaxKph": 315,
+      "telemetrySampleCount": 197365,
+      "trapSampleCount": 1002,
+      "status": "observed",
+      "confidence": 0.9
+    },
     "simulation": {
       "neutralBaseLapSeconds": 105.261,
       "qualifyingOffsetSeconds": 0.583,
@@ -1608,6 +1738,19 @@
         77.219,
         85.611
       ]
+    },
+    "speed": {
+      "qualifyingFieldPeakKph": 345,
+      "qualifyingDriverPeakMedianKph": 336,
+      "raceFieldPeakKph": 357,
+      "raceDriverPeakMedianKph": 349,
+      "raceTrapMaxKph": null,
+      "raceTrapMedianKph": null,
+      "qualifyingTrapMaxKph": 336,
+      "telemetrySampleCount": 84458,
+      "trapSampleCount": 200,
+      "status": "observed",
+      "confidence": 0.9
     },
     "simulation": {
       "neutralBaseLapSeconds": 77.929,

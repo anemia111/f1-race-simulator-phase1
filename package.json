@@ -10,6 +10,7 @@
     "generate:support-tracks": "node scripts/generate-support-track-layouts.mjs",
     "update:pace-calibration": "node scripts/update-pace-calibration.mjs",
     "validate:physics-calibration": "node scripts/validate-physics-calibration.mjs",
+    "validate:speed-trap": "node scripts/validate-speed-trap.mjs --enforce",
     "validate:f1-support-circuits": "node scripts/validate-f1-support-circuits.mjs --enforce",
     "validate:long-run": "node scripts/validate-long-run-pace.mjs --enforce",
     "validate:long-run:quick": "node scripts/validate-long-run-pace.mjs --track=albert-park-approx --seeds=3 --workers=1 --label=quick",

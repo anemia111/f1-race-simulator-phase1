@@ -89,6 +89,13 @@ The validator reads the existing files; it does not fetch or manufacture data:
   Fifteen qualifying and sixteen race sections are estimated rather than
   observed. All ten observed races contain compound medians and a derived tyre
   degradation field; none contains an observed fuel-gain value.
+- `src/data/calibration/f1PaceCalibration2026.json` also carries an optional
+  `speed` section on eleven records: the observed 2026 straight-line peaks from
+  OpenF1 car telemetry, plus the published FIA speed-trap values. The two are
+  kept apart deliberately. The trap is a fixed point on one straight, so it is
+  context and never a peak: the Suzuka 2026 race trap read 308 km/h while the
+  same cars peaked at 349 km/h elsewhere on the lap. A circuit whose sessions
+  have not run carries no section rather than an estimate.
 - `src/data/calibration/superFormulaPaceCalibration2026.json`: five records.
   Four have official qualifying results; none has an observed race sample.
   Suzuka supplies the one common official F1/SUPER FORMULA category-order
@@ -177,6 +184,37 @@ The overall largest absolute error is Silverstone: -5.33 s (-6.04%). The
 smallest is Hungaroring: -0.40 s (-0.52%). These are outputs, not per-track
 corrections. The Suzuka model ranking is F1, SUPER FORMULA, F2, F3; the shared
 official F1/SUPER FORMULA observation has the same order.
+
+### Straight-line speed
+
+Run on 2026-08-02 against the eleven observed qualifying peaks:
+
+| Metric | Value |
+| --- | ---: |
+| Circuits compared | 11 |
+| Mean absolute error | 23.23 km/h |
+| Bias | +23.23 km/h |
+| Worst | Silverstone +41.7 km/h |
+| Best | Hungaroring +2.7 km/h |
+
+**The model is too fast on every circuit compared**, which is why the bias
+equals the mean absolute error. This is reported, not corrected: the causes are
+physical parameters, and changing them is a separate piece of work from
+establishing the observation.
+
+`npm run validate:speed-trap` measures the same thing through full driven laps
+rather than reference laps, and separates qualifying from race trim. **It fails
+today** — median mean absolute error 18.98 km/h and peak 29.28 km/h against
+limits of 8 km/h. Its baseline is checked in at
+`qa/speed-trap-2026/master-baseline-speed-trap.json`.
+
+That run also exposes a defect that the per-circuit reference-lap comparison
+does not reach, because it only covers circuits with an observation: on the
+longest straights the longitudinal model has no terminal velocity. A full race
+lap currently peaks at **842 km/h at Baku** and **626 km/h at Montreal**. The
+FIA 2026 speed-based MGU-K de-rate is the mechanism that should bound it;
+`standardDeploymentCutoffKph` and `overtakeDeploymentCutoffKph` are declared in
+`FIA_2026_REGULATION_PROFILE` and are currently read by nothing.
 
 The model-only Suzuka perturbations currently report a +1.70% lap for the
 heavier mass case, +22.34% for the 0.70 wet-grip case, +9.15% with deployment
