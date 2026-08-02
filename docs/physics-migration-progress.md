@@ -97,7 +97,7 @@ Verification:
 
 ### Stage 3 - lateral state and driver decisions (Issue #5)
 
-Status: complete; commit pending at the time of this entry.
+Status: complete; commit `29b28de`.
 
 - Each car now stores canonical lateral offset, velocity and desired offset in
   physical metres. Checkpoint migration accepts the deprecated render alias,
@@ -132,11 +132,57 @@ Verification:
 
 ### Stage 4 - physics calibration and validation (Issue #6)
 
-Status: pending.
+Status: complete.
 
-Planned boundaries: documented physical/behavioural parameters, explicit
-calibration/validation split, and metrics covering lap/vehicle/category,
-energy, tyres, drivers, traffic, determinism and long-run stability.
+- `physicsCalibration` holds the calibration policy: a parameter allow-list
+  with a classification, unit, scope and sanity bounds for each entry.
+  Regulatory and published inputs are catalogued with `calibratable: false` so
+  a report can name them without a tuning pass being able to move them.
+  `validatePhysicsCalibrationCandidates` rejects `trackId`, `eventId`,
+  `baseLapTime`, `paceScale` and `lapTimeMultiplier` outright, along with
+  duplicates, out-of-range values and category/global scope mismatches. The
+  module contains no optimiser and writes no production data.
+- `F1_PHYSICS_VALIDATION_SPLIT` fixes a five-circuit calibration set and a
+  six-circuit holdout set. `compareLapTimes`, `rankCategoryPace` and
+  `buildPhysicsValidationReport` are read-only comparisons against the
+  checked-in observations, and `REQUIRED_VALIDATION_DOMAINS` forces a report to
+  declare a metric — or an explicit unavailable reason — for lap/vehicle
+  speed, acceleration, braking, fuel mass, wet pace, deployment, state of
+  charge, tyres, driver dispersion, overtakes, contact, finishing, seed
+  determinism and long-run stability.
+- The retired per-track controller multipliers `liveTimingPaceScale`,
+  `racePaceScale` and `qualifyingPaceScale` are gone from the type, the
+  runtime, the validator and the checked-in data: 57 values were removed from
+  26 records in `src/data/calibration/f1PaceCalibration2026.json`, and
+  `validatePaceCalibrationRecords` now rejects the keys instead of
+  range-checking them. `update-pace-calibration` drops them when preserving
+  previous simulation metadata, so an observation refresh cannot reintroduce a
+  track-specific pace backdoor.
+- The parallel lap-time delta stack that fed the retired scales is removed:
+  `projectedLapTime`, `lineDeviationPenaltySeconds`, `packFollowingLapTime`,
+  the dirty-air/restart/setup/component seconds terms and
+  `telemetry.performanceDeltaSeconds` no longer exist on the live path. Live
+  gaps convert penalty-adjusted arc distance with road speed, and timed-session
+  traffic uses metres and physical speed rather than `baseLapTime`.
+- `docs/physics-calibration.md` records the policy, the parameter register with
+  physical meaning and sensitivity per parameter, and the separate operational
+  and behavioural constant register.
+
+Verification:
+
+- Full suite: 69 files / 767 tests passed in 814.10 s.
+- Focused race/timed-session regression after the gap fix: 153 passed.
+- `npx oxlint --deny-warnings`: passed.
+- `npx tsc -b --pretty false`: passed.
+
+Known limits:
+
+- `projectedLapTime` is now a per-track/category reference datum rather than a
+  per-car projection. Recorded lap times come from actual timing-line crossings
+  and are unaffected; only the pre-lap projection column is less specific.
+- `baseLapTime` survives in scheduling and display roles (formation lap length,
+  safety-car spacing, practice program duration, `fuelEffectSeconds`). None of
+  these feed speed, force or progress.
 
 ### Stage 5 - cleanup and final verification
 
