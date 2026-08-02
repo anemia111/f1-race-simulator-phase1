@@ -72,14 +72,21 @@ describe('pace calibration data', () => {
       validatePaceCalibrationRecords(duplicateSource, 'f1-custom'),
     ).toThrow(/duplicate source provenance/)
 
-    const invalidLiveTimingScale = clone(f1PaceCalibration2026)
-    invalidLiveTimingScale[0].simulation.liveTimingPaceScale = 1.5
-    expect(() =>
-      validatePaceCalibrationRecords(
-        invalidLiveTimingScale,
-        'f1-custom',
-      ),
-    ).toThrow(/live timing pace scale/)
+  })
+
+  it('rejects retired per-track pace multipliers', () => {
+    for (const key of [
+      'liveTimingPaceScale',
+      'qualifyingPaceScale',
+      'racePaceScale',
+    ]) {
+      const invalid = clone(f1PaceCalibration2026)
+      Object.assign(invalid[0].simulation, { [key]: 1 })
+
+      expect(() =>
+        validatePaceCalibrationRecords(invalid, 'f1-custom'),
+      ).toThrow(/retired per-track pace scale/)
+    }
   })
 
   it('rejects duplicate event identities but permits the same track across series', () => {
@@ -171,22 +178,18 @@ describe('pace calibration data', () => {
     )
   })
 
-  it('leaves the legacy additive race correction retired', () => {
-    // A single additive term used to calibrate qualifying and the race at once.
-    // Each session family now owns a bounded dimensionless scale instead.
+  it('leaves track-specific pace corrections retired', () => {
+    const retiredKeys = [
+      'liveTimingPaceScale',
+      'qualifyingPaceScale',
+      'racePaceScale',
+    ]
+
     for (const record of allPaceCalibration2026) {
       expect(record.simulation.raceModelCorrectionSeconds).toBe(0)
 
-      for (const scale of [
-        record.simulation.racePaceScale,
-        record.simulation.qualifyingPaceScale,
-      ]) {
-        if (scale === undefined) {
-          continue
-        }
-
-        expect(scale).toBeGreaterThanOrEqual(0.75)
-        expect(scale).toBeLessThanOrEqual(1.25)
+      for (const key of retiredKeys) {
+        expect(Object.hasOwn(record.simulation, key)).toBe(false)
       }
     }
   })

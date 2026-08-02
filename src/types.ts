@@ -444,27 +444,7 @@ export type EventPaceCalibration = {
   simulation: {
     neutralBaseLapSeconds: number
     qualifyingOffsetSeconds: number
-    /**
-     * Offline controller calibration for limited-time attack laps. It changes
-     * pedal targets before longitudinal integration; it never advances map
-     * position independently from the displayed telemetry speed.
-     */
-    liveTimingPaceScale?: number
     expectedGreenRaceDeltaSeconds: number
-    /**
-     * Offline scale for the physically integrated race controller. The runtime
-     * first builds a target from qualifying pace plus the observed green-race
-     * delta, then applies this dimensionless scale to account for each track
-     * profile's longitudinal integration response.
-     */
-    racePaceScale?: number
-    /**
-     * Offline scale for the physically integrated timed-session controller
-     * (free practice and qualifying). The removed additive correction used to
-     * carry this alongside the race controller; each session family now owns
-     * its own dimensionless scale so one cannot silently calibrate the other.
-     */
-    qualifyingPaceScale?: number
     /**
      * Legacy additive calibration retained for old data migrations only.
      * Runtime race pace must not add this value directly.

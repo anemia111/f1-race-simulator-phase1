@@ -1031,17 +1031,6 @@ function estimatedQualifying(event) {
 }
 
 function withPreservedSimulation(generated, previous) {
-  const generatedWithLiveTimingScale =
-    previous?.simulation.liveTimingPaceScale === undefined
-      ? generated
-      : {
-          ...generated,
-          simulation: {
-            ...generated.simulation,
-            liveTimingPaceScale:
-              previous.simulation.liveTimingPaceScale,
-          },
-        }
   const qualifyingUnchanged =
     previous &&
     Math.abs(
@@ -1054,14 +1043,25 @@ function withPreservedSimulation(generated, previous) {
       generated.race.cleanLapReferenceSeconds
 
   if (!qualifyingUnchanged || !raceUnchanged) {
-    return generatedWithLiveTimingScale
+    return generated
   }
 
+  // Preserve validation evidence and observation-derived metadata only. Old
+  // files may still contain controller multipliers from the retired fitting
+  // workflow; destructuring them here prevents an observation refresh from
+  // reintroducing a track-specific pace backdoor.
+  const {
+    liveTimingPaceScale: _liveTimingPaceScale,
+    qualifyingPaceScale: _qualifyingPaceScale,
+    racePaceScale: _racePaceScale,
+    ...preservedSimulation
+  } = previous.simulation
+
   return {
-    ...generatedWithLiveTimingScale,
+    ...generated,
     simulation: {
-      ...generatedWithLiveTimingScale.simulation,
-      ...previous.simulation,
+      ...generated.simulation,
+      ...preservedSimulation,
     },
   }
 }

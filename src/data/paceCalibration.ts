@@ -14,6 +14,11 @@ const calibrationStatuses = new Set<CalibrationStatus>([
   'estimated',
   'unverified',
 ])
+const retiredPerTrackPaceScaleKeys = [
+  'liveTimingPaceScale',
+  'qualifyingPaceScale',
+  'racePaceScale',
+] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -204,30 +209,12 @@ export function validatePaceCalibrationRecords(
       value.simulation.neutralBaseLapSeconds,
       `${label} neutral base`,
     )
-    if (
-      value.simulation.liveTimingPaceScale !== undefined &&
-      (typeof value.simulation.liveTimingPaceScale !== 'number' ||
-        !Number.isFinite(value.simulation.liveTimingPaceScale) ||
-        value.simulation.liveTimingPaceScale < 0.7 ||
-        value.simulation.liveTimingPaceScale > 1.3)
-    ) {
-      throw new Error(`Invalid ${label}: live timing pace scale`)
-    }
 
-    // A controller scale is a correction, not a pace source. A record that
-    // needs more than a quarter of the lap is papering over a modelling fault
-    // that belongs in the physics instead.
-    for (const scaleName of ['racePaceScale', 'qualifyingPaceScale'] as const) {
-      const scale = value.simulation[scaleName]
-
-      if (
-        scale !== undefined &&
-        (typeof scale !== 'number' ||
-          !Number.isFinite(scale) ||
-          scale < 0.75 ||
-          scale > 1.25)
-      ) {
-        throw new Error(`Invalid ${label}: ${scaleName}`)
+    for (const key of retiredPerTrackPaceScaleKeys) {
+      if (key in value.simulation) {
+        throw new Error(
+          `Invalid ${label}: retired per-track pace scale ${key}`,
+        )
       }
     }
 
