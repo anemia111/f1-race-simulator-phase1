@@ -137,9 +137,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 78.678,
         "liveQualifyingReferenceErrorSeconds": -0.133
-      },
-      "racePaceScale": 1.063893,
-      "qualifyingPaceScale": 1.039543
+      }
     },
     "sources": [
       {
@@ -281,10 +279,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 91.956,
         "liveQualifyingReferenceErrorSeconds": -0.33
-      },
-      "liveTimingPaceScale": 0.910882,
-      "racePaceScale": 1.070248,
-      "qualifyingPaceScale": 1.118821
+      }
     },
     "sources": [
       {
@@ -419,9 +414,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 87.416,
         "liveQualifyingReferenceErrorSeconds": -1.66
-      },
-      "racePaceScale": 1.133909,
-      "qualifyingPaceScale": 1.087012
+      }
     },
     "sources": [
       {
@@ -575,9 +568,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 88.067,
         "liveQualifyingReferenceErrorSeconds": 0.103
-      },
-      "racePaceScale": 1.0537,
-      "qualifyingPaceScale": 1.032787
+      }
     },
     "sources": [
       {
@@ -737,10 +728,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 73.507,
         "liveQualifyingReferenceErrorSeconds": 0.861
-      },
-      "liveTimingPaceScale": 0.90644,
-      "racePaceScale": 0.897724,
-      "qualifyingPaceScale": 1.012186
+      }
     },
     "sources": [
       {
@@ -882,9 +870,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 70.718,
         "liveQualifyingReferenceErrorSeconds": -1.376
-      },
-      "racePaceScale": 0.997279,
-      "qualifyingPaceScale": 0.976302
+      }
     },
     "sources": [
       {
@@ -1058,9 +1044,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 77.443,
         "liveQualifyingReferenceErrorSeconds": 2.7
-      },
-      "racePaceScale": 1.074206,
-      "qualifyingPaceScale": 1.041772
+      }
     },
     "sources": [
       {
@@ -1226,10 +1210,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 66.173,
         "liveQualifyingReferenceErrorSeconds": -0.176
-      },
-      "liveTimingPaceScale": 1.083026,
-      "racePaceScale": 1.140234,
-      "qualifyingPaceScale": 1.012753
+      }
     },
     "sources": [
       {
@@ -1383,9 +1364,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 89.77,
         "liveQualifyingReferenceErrorSeconds": 1.484
-      },
-      "racePaceScale": 1.100203,
-      "qualifyingPaceScale": 1.09753
+      }
     },
     "sources": [
       {
@@ -1545,9 +1524,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 104.136,
         "liveQualifyingReferenceErrorSeconds": -0.542
-      },
-      "racePaceScale": 1.12154,
-      "qualifyingPaceScale": 1.093165
+      }
     },
     "sources": [
       {
@@ -1652,9 +1629,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 79.439,
         "liveQualifyingReferenceErrorSeconds": 2.22
-      },
-      "racePaceScale": 1.077057,
-      "qualifyingPaceScale": 1.049844
+      }
     },
     "sources": [
       {
@@ -1774,10 +1749,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 72.155,
         "liveQualifyingReferenceErrorSeconds": 0.621
-      },
-      "liveTimingPaceScale": 1.072003,
-      "racePaceScale": 1.105223,
-      "qualifyingPaceScale": 1
+      }
     },
     "sources": [
       {
@@ -1899,9 +1871,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 79.766,
         "liveQualifyingReferenceErrorSeconds": -2.157
-      },
-      "racePaceScale": 1.008733,
-      "qualifyingPaceScale": 0.956554
+      }
     },
     "sources": [
       {
@@ -2023,9 +1993,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 93.344,
         "liveQualifyingReferenceErrorSeconds": 1.344
-      },
-      "racePaceScale": 1.046739,
-      "qualifyingPaceScale": 1.024079
+      }
     },
     "sources": [
       {
@@ -2122,9 +2090,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 104.174,
         "liveQualifyingReferenceErrorSeconds": 0.015
-      },
-      "racePaceScale": 1.014306,
-      "qualifyingPaceScale": 1
+      }
     },
     "sources": [
       {
@@ -2238,9 +2204,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 93.768,
         "liveQualifyingReferenceErrorSeconds": 2.255
-      },
-      "racePaceScale": 1.073957,
-      "qualifyingPaceScale": 1.051973
+      }
     },
     "sources": [
       {
@@ -2362,9 +2326,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 98.894,
         "liveQualifyingReferenceErrorSeconds": 2.229
-      },
-      "racePaceScale": 1.087284,
-      "qualifyingPaceScale": 1.042768
+      }
     },
     "sources": [
       {
@@ -2486,9 +2448,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 77.596,
         "liveQualifyingReferenceErrorSeconds": 0.054
-      },
-      "racePaceScale": 1.041953,
-      "qualifyingPaceScale": 1
+      }
     },
     "sources": [
       {
@@ -2610,9 +2570,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 74.861,
         "liveQualifyingReferenceErrorSeconds": 2.274
-      },
-      "racePaceScale": 1.084572,
-      "qualifyingPaceScale": 1.061039
+      }
     },
     "sources": [
       {
@@ -2726,9 +2684,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 95.193,
         "liveQualifyingReferenceErrorSeconds": 0.536
-      },
-      "racePaceScale": 0.938917,
-      "qualifyingPaceScale": 1
+      }
     },
     "sources": [
       {
@@ -2842,10 +2798,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 82.223,
         "liveQualifyingReferenceErrorSeconds": -0.35
-      },
-      "liveTimingPaceScale": 1.116475,
-      "racePaceScale": 1.139869,
-      "qualifyingPaceScale": 1
+      }
     },
     "sources": [
       {
@@ -2967,9 +2920,7 @@
         "liveQualifyingSeedCount": 3,
         "liveQualifyingTop3MedianSeconds": 88.53,
         "liveQualifyingReferenceErrorSeconds": 2.69
-      },
-      "racePaceScale": 1.06917,
-      "qualifyingPaceScale": 1.044787
+      }
     },
     "sources": [
       {
@@ -3092,9 +3043,7 @@
         "liveQualifyingSeedCount": 100,
         "liveQualifyingTop3MedianSeconds": 86,
         "liveQualifyingReferenceErrorSeconds": 0
-      },
-      "qualifyingPaceScale": 1.053268,
-      "racePaceScale": 1.06583
+      }
     },
     "sources": [
       {
@@ -3192,9 +3141,7 @@
         "liveQualifyingSeedCount": 100,
         "liveQualifyingTop3MedianSeconds": 77.212,
         "liveQualifyingReferenceErrorSeconds": 0.212
-      },
-      "qualifyingPaceScale": 1.097027,
-      "racePaceScale": 1.092758
+      }
     },
     "sources": [
       {
@@ -3292,9 +3239,7 @@
         "liveQualifyingSeedCount": 100,
         "liveQualifyingTop3MedianSeconds": 60.664,
         "liveQualifyingReferenceErrorSeconds": 0.164
-      },
-      "qualifyingPaceScale": 1.069701,
-      "racePaceScale": 1.095631
+      }
     },
     "sources": [
       {
@@ -3392,9 +3337,7 @@
         "liveQualifyingSeedCount": 100,
         "liveQualifyingTop3MedianSeconds": 80.393,
         "liveQualifyingReferenceErrorSeconds": -0.007
-      },
-      "qualifyingPaceScale": 1.082373,
-      "racePaceScale": 1.096306
+      }
     },
     "sources": [
       {

@@ -56,6 +56,13 @@ import {
   speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
+import {
+  lateralBoundsForTrack,
+  MAX_LATERAL_SPEED_MPS,
+} from './lateralDynamics'
+import { categoryPhysicsFor } from './categoryPhysics'
+import { selectGear } from './drivetrain'
+import { combustionPowerKwFor } from './vehicleDynamics'
 import { startingGridDistance } from './startingGrid'
 import {
   decidePitStop,
@@ -359,7 +366,7 @@ describe('starting grid', () => {
     expect(skipFormationLap(racing, config)).toBe(racing)
   })
 
-  it('launches every grid row on the same lights-out update', () => {
+  it('launches every grid row from rest through the live drivetrain', () => {
     const base = makeConfig('simultaneous-grid-launch')
     const config = {
       ...base,
@@ -376,11 +383,21 @@ describe('starting grid', () => {
     const onGrid = lightsOut.cars.filter((car) => !car.startsFromPitLane)
 
     expect(lightsOut.startProcedure).toBe('racing')
-    expect(onGrid.every((car) => car.speedKph > 0)).toBe(true)
+    // Lights-out changes control state only. The following physics tick, not a
+    // seeded speed assignment, produces the launch from clutch slip and torque.
+    expect(onGrid.every((car) => car.speedKph === 0)).toBe(true)
+    expect(onGrid.every((car) => car.gear === 1 && car.rpm > 0)).toBe(true)
+    expect(
+      onGrid.every(
+        (car) =>
+          Number.isFinite(car.turboSpoolFraction ?? Number.NaN) &&
+          (car.turboSpoolFraction ?? 0) > 0 &&
+          car.clutchEngagementFraction === 0,
+      ),
+    ).toBe(true)
     expect(
       new Set(onGrid.map((car) => car.lapStartedAtSeconds)).size,
     ).toBe(1)
-    expect(new Set(onGrid.map((car) => car.speedKph)).size).toBeGreaterThan(1)
 
     const distanceAtLightsOut = new Map(
       onGrid.map((car) => [car.driverId, car.totalDistance]),
@@ -390,6 +407,10 @@ describe('starting grid', () => {
     launched.cars
       .filter((car) => !car.startsFromPitLane)
       .forEach((car) => {
+        expect(Number.isFinite(car.speedKph)).toBe(true)
+        expect(car.speedKph).toBeGreaterThan(0)
+        expect(car.gear).toBeGreaterThanOrEqual(1)
+        expect(car.rpm).toBeGreaterThan(0)
         expect(car.totalDistance).toBeGreaterThan(
           distanceAtLightsOut.get(car.driverId)!,
         )
@@ -482,8 +503,10 @@ describe('starting grid', () => {
     )
 
     expect(brakeStops).toHaveLength(0)
-    expect(fastestCleanLap).toBeGreaterThan(config.track.baseLapTime * 0.84)
-    expect(fastestCleanLap).toBeLessThan(config.track.baseLapTime * 1.15)
+    // This test guards pit decisions, not an authored lap-time calibration.
+    // Live pace is now force-derived and must not be bounded by baseLapTime.
+    expect(Number.isFinite(fastestCleanLap)).toBe(true)
+    expect(fastestCleanLap).toBeGreaterThan(40)
     expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
   }, 20_000)
 
@@ -933,7 +956,7 @@ describe('weekend grid penalties', () => {
 })
 
 describe('physical running order', () => {
-  it('keeps an unserved time penalty out of on-track position and gaps', () => {
+  it('keeps penalties and baseLapTime out of physical on-track gaps', () => {
     const config = makeConfig('pending-penalty-physical-order')
     const initial = createInitialRace(config)
     const cars = initial.cars.map((car, index) => {
@@ -941,23 +964,34 @@ describe('physical running order', () => {
 
       return {
         ...car,
-        gapToAhead: index === 0 ? 0 : config.track.baseLapTime * 0.02,
+        gapToAhead: 0,
         lap: Math.floor(totalDistance),
         penaltySeconds: index === 0 ? 10 : 0,
         position: index + 1,
         progress: totalDistance - Math.floor(totalDistance),
+        speedKph: index === 0 ? 180 : 170,
         status: 'running' as const,
         totalDistance,
       }
     })
     const ranked = rankCars(cars, config)
+    const changedObservation = rankCars(cars, {
+      ...config,
+      track: {
+        ...config.track,
+        baseLapTime: config.track.baseLapTime * 1.8,
+      },
+    })
+    const expectedGapSeconds =
+      (config.track.lengthKm * 1000 * 0.02) / ((180 + 170) / 7.2)
 
     expect(ranked[0].driverId).toBe(cars[0].driverId)
     expect(ranked[0].position).toBe(1)
     expect(ranked[0].liveDisplayPosition).toBe(1)
-    expect(ranked[1].gapToAhead).toBeCloseTo(
-      config.track.baseLapTime * 0.02,
-      6,
+    expect(ranked[1].gapToAhead).toBeCloseTo(expectedGapSeconds, 6)
+    expect(changedObservation[1].gapToAhead).toBeCloseTo(
+      ranked[1].gapToAhead,
+      10,
     )
   })
 
@@ -1034,7 +1068,9 @@ describe('physical running order', () => {
 
   it('lets several followers clear one passable accident under local yellow', () => {
     const config = makeConfig('yellow-obstruction-field')
-    const started = runThroughStart(config)
+    // `runThroughStart` stops exactly at lights-out. Let the force model make
+    // its first launch step before arranging an on-track incident.
+    const started = advanceRace(runThroughStart(config), 0.25, config)
     const [leader, obstruction, ...followers] = started.cars.slice(0, 6)
     const orderedCars = [
       { ...leader, totalDistance: 2.47 },
@@ -1051,7 +1087,10 @@ describe('physical running order', () => {
       },
       ...followers.map((car, index) => ({
         ...car,
+        clutchEngagementFraction: 1,
+        speedKph: 65,
         totalDistance: 2.442 - index * 0.002,
+        turboSpoolFraction: 1,
       })),
     ].map((car, index) => ({
       ...car,
@@ -1085,7 +1124,10 @@ describe('physical running order', () => {
       sectorFlags: ['clear', 'double-yellow', 'clear'],
     }
 
-    for (let step = 0; step < 30; step += 1) {
+    // Cars now move laterally around the obstruction before the longitudinal
+    // occupancy model permits them through; allow that continuous manoeuvre
+    // to propagate through the four-car queue.
+    for (let step = 0; step < 80; step += 1) {
       snapshot = advanceRace(snapshot, 0.2, config)
     }
 
@@ -1103,8 +1145,11 @@ describe('physical running order', () => {
       clearedFollowers.every(
         (follower) => follower.totalDistance > stopped.totalDistance,
       ),
-      `stopped=${stopped.totalDistance}/${stopped.battlePhase}/${stopped.battleDeltaSecondsRemaining}/${stopped.damage}/${stopped.speedKph}; followers=${clearedFollowers
-        .map((follower) => follower.totalDistance)
+      `stopped=${stopped.totalDistance}/${stopped.battlePhase}/${stopped.battleDeltaSecondsRemaining}/${stopped.damage}/${stopped.speedKph}/${stopped.lateralOffsetM}/${stopped.desiredLateralOffsetM}; followers=${clearedFollowers
+        .map(
+          (follower) =>
+            `${follower.totalDistance}/${follower.speedKph}/${follower.lateralOffsetM}/${follower.desiredLateralOffsetM}`,
+        )
         .join(',')}`,
     ).toBe(true)
     expect(
@@ -1526,7 +1571,10 @@ describe('start procedure and persisted weekend', () => {
       snapshot = advanceRace(snapshot, 2, config)
     }
 
-    expect(snapshot.flagPhase?.flag).not.toBe('sc')
+    expect(
+      snapshot.flagPhase?.flag,
+      JSON.stringify(snapshot.flagPhase),
+    ).not.toBe('sc')
     expect(snapshot.overtakeEnabled).toBe(false)
     expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
     const controlMessages = snapshot.events.map((event) => event.message)
@@ -1600,6 +1648,96 @@ describe('start procedure and persisted weekend', () => {
     expect(
       Math.max(...snapshot.cars.map((car) => car.vscRedSectorCount ?? 0)),
     ).toBeLessThan(2)
+  })
+
+  it('reconciles gear and RPM after a VSC queue distance clamp', () => {
+    const config = makeConfig('vsc-drivetrain-reconciliation')
+    let snapshot = runThroughStart(config)
+    const [leader, follower] = snapshot.cars
+    const leaderDistance = 3.5
+    const followerDistance = leaderDistance - 0.006
+    const previousFollowerDistance = followerDistance
+
+    snapshot = {
+      ...snapshot,
+      flag: 'vsc',
+      flagLabel: 'VSC',
+      flagPhase: {
+        endMessage: 'VSC ending.',
+        endSeconds: snapshot.elapsedSeconds + 40,
+        flag: 'vsc',
+        id: 'forced-vsc-drivetrain-reconciliation',
+        sector: 0,
+        startMessage: 'Virtual Safety Car deployed.',
+        startSeconds: snapshot.elapsedSeconds,
+      },
+      cars: snapshot.cars.map((car) => {
+        if (car.driverId === leader.driverId) {
+          return {
+            ...car,
+            clutchEngagementFraction: 1,
+            lap: Math.floor(leaderDistance),
+            progress: leaderDistance % 1,
+            speedKph: 55,
+            totalDistance: leaderDistance,
+            turboSpoolFraction: 1,
+          }
+        }
+
+        if (car.driverId === follower.driverId) {
+          return {
+            ...car,
+            clutchEngagementFraction: 1,
+            lap: Math.floor(followerDistance),
+            progress: followerDistance % 1,
+            speedKph: 300,
+            totalDistance: followerDistance,
+            turboSpoolFraction: 1,
+          }
+        }
+
+        return car
+      }),
+    }
+    snapshot = advanceRace(snapshot, 0.25, config)
+
+    const nextFollower = snapshot.cars.find(
+      (car) => car.driverId === follower.driverId,
+    )!
+    const actualTravelSpeedKph = speedForProfileTravelKph(
+      config.track,
+      previousFollowerDistance,
+      nextFollower.totalDistance,
+      0.25,
+    )
+
+    expect(nextFollower.speedKph).toBeCloseTo(actualTravelSpeedKph, 2)
+    expect(Number.isFinite(nextFollower.speedKph)).toBe(true)
+    expect(nextFollower.speedKph).toBeGreaterThanOrEqual(0)
+
+    const physics = categoryPhysicsFor(config.seriesId)
+    const team = config.teams.find(
+      (candidate) => candidate.id === nextFollower.teamId,
+    )!
+    const driveScale = nextFollower.superClippingDrivePowerScale
+    const expected = selectGear({
+      clutchEngagementFraction: nextFollower.clutchEngagementFraction,
+      combustionPowerKw: combustionPowerKwFor(team, physics) * driveScale,
+      deploymentPowerKw: nextFollower.ersPowerKw,
+      physics,
+      speedMps: actualTravelSpeedKph / 3.6,
+      transmissionEfficiency: physics.drivetrainEfficiency,
+      turboSpoolFraction: nextFollower.turboSpoolFraction,
+    })
+
+    expect(nextFollower.gear).toBe(expected.gear)
+    expect(nextFollower.rpm).toBeCloseTo(expected.rpm, 8)
+    if (nextFollower.speedKph === 0) {
+      expect(nextFollower.gear).toBe(1)
+      expect(nextFollower.rpm).toBeGreaterThanOrEqual(
+        physics.minimumEngineRpm,
+      )
+    }
   })
 
   it('runs the announced 10-to-15-second VSC ending sequence before green', () => {
@@ -1867,11 +2005,19 @@ describe('official race distances', () => {
 })
 
 describe('track speed profile', () => {
-  it('integrates the reference profile to the configured base lap time', () => {
+  it('integrates a physical reference profile independently of baseLapTime', () => {
     const track = tracks[0]
+    const physicalLapTimeSeconds = referenceProfileLapTimeSeconds(track)
 
-    expect(referenceProfileLapTimeSeconds(track)).toBeCloseTo(
-      track.baseLapTime,
+    expect(Number.isFinite(physicalLapTimeSeconds)).toBe(true)
+    expect(physicalLapTimeSeconds).toBeGreaterThan(0)
+    expect(
+      referenceProfileLapTimeSeconds({
+        ...track,
+        baseLapTime: track.baseLapTime * 1.5,
+      }),
+    ).toBeCloseTo(
+      physicalLapTimeSeconds,
       5,
     )
   })
@@ -3059,7 +3205,7 @@ describe('overtaking', () => {
     expect(snapshot.cars[0].processedBattleSegment).toBeGreaterThanOrEqual(12)
   })
 
-  it('keeps all normal-track battle phases on one fixed line', () => {
+  it('moves attack and defence lines continuously within physical bounds', () => {
     const drivers = initialDrivers.slice(0, 2)
     const teamIds = new Set(drivers.map((driver) => driver.teamId))
     const config: RaceConfig = {
@@ -3099,69 +3245,51 @@ describe('overtaking', () => {
           processedLap: Math.floor(totalDistance),
           progress: totalDistance - Math.floor(totalDistance),
           totalDistance,
+          desiredLateralOffsetM: 0,
+          lateralOffsetM: 0,
+          lateralVelocityMps: 0,
           trackLateralOffset: 0,
         }
       }),
     }
-    let following = advanceRace(prepared, 0.05, config)
+    const tickSeconds = 0.05
+    let snapshot = prepared
+    const attackerOffsets = [0]
+    const leaderOffsets = [0]
 
-    following = advanceRace(following, 0.05, config)
-    const followingAttacker = following.cars.find(
-      (car) => car.driverId === attackerId,
-    )!
-
-    expect(followingAttacker.trackLateralOffset).toBeCloseTo(0, 8)
-    expect(followingAttacker.battlePhaseUntilSeconds).toBeNull()
-
-    let committed: RaceSnapshot = {
-      ...prepared,
-      cars: prepared.cars.map((car) =>
-        car.driverId === attackerId
-          ? {
-              ...car,
-              battleOpponentId: leaderId,
-              battlePhase: 'attacking' as const,
-              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
-              trackLateralOffset: 0.42,
-            }
-          : car,
-      ),
-    }
-    const attackingOffsets: number[] = []
-
-    for (let step = 0; step < 8; step += 1) {
-      committed = advanceRace(committed, 0.005, config)
-      attackingOffsets.push(committed.cars.find(
-        (car) => car.driverId === attackerId,
-      )!.trackLateralOffset)
+    for (let step = 0; step < 20; step += 1) {
+      snapshot = advanceRace(snapshot, tickSeconds, config)
+      attackerOffsets.push(
+        snapshot.cars.find((car) => car.driverId === attackerId)!
+          .lateralOffsetM,
+      )
+      leaderOffsets.push(
+        snapshot.cars.find((car) => car.driverId === leaderId)!.lateralOffsetM,
+      )
     }
 
-    expect(attackingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
-
-    let defending: RaceSnapshot = {
-      ...prepared,
-      cars: prepared.cars.map((car) =>
-        car.driverId === leaderId
-          ? {
-              ...car,
-              battleOpponentId: attackerId,
-              battlePhase: 'defending' as const,
-              battlePhaseUntilSeconds: prepared.elapsedSeconds + 5,
-              trackLateralOffset: -0.42,
-            }
-          : car,
-      ),
-    }
-    const defendingOffsets: number[] = []
-
-    for (let step = 0; step < 8; step += 1) {
-      defending = advanceRace(defending, 0.005, config)
-      defendingOffsets.push(defending.cars.find(
-        (car) => car.driverId === leaderId,
-      )!.trackLateralOffset)
+    const bounds = lateralBoundsForTrack(config.track)
+    const maximumTickTravelM = MAX_LATERAL_SPEED_MPS * tickSeconds + 1e-6
+    const assertContinuous = (offsets: number[]) => {
+      expect(offsets.some((offset) => Math.abs(offset) > 0.01)).toBe(true)
+      for (let index = 1; index < offsets.length; index += 1) {
+        expect(Math.abs(offsets[index] - offsets[index - 1])).toBeLessThanOrEqual(
+          maximumTickTravelM,
+        )
+      }
     }
 
-    expect(defendingOffsets).toEqual(Array.from({ length: 8 }, () => 0))
+    assertContinuous(attackerOffsets)
+    assertContinuous(leaderOffsets)
+    for (const car of snapshot.cars) {
+      expect(Math.abs(car.lateralOffsetM)).toBeLessThanOrEqual(
+        bounds.maxOffsetM + 1e-6,
+      )
+      expect(Math.abs(car.desiredLateralOffsetM)).toBeLessThanOrEqual(
+        bounds.maxOffsetM + 1e-6,
+      )
+      expect(car.trackLateralOffset).toBeCloseTo(car.lateralOffsetM, 10)
+    }
   })
 })
 

@@ -444,27 +444,7 @@ export type EventPaceCalibration = {
   simulation: {
     neutralBaseLapSeconds: number
     qualifyingOffsetSeconds: number
-    /**
-     * Offline controller calibration for limited-time attack laps. It changes
-     * pedal targets before longitudinal integration; it never advances map
-     * position independently from the displayed telemetry speed.
-     */
-    liveTimingPaceScale?: number
     expectedGreenRaceDeltaSeconds: number
-    /**
-     * Offline scale for the physically integrated race controller. The runtime
-     * first builds a target from qualifying pace plus the observed green-race
-     * delta, then applies this dimensionless scale to account for each track
-     * profile's longitudinal integration response.
-     */
-    racePaceScale?: number
-    /**
-     * Offline scale for the physically integrated timed-session controller
-     * (free practice and qualifying). The removed additive correction used to
-     * carry this alongside the race controller; each session family now owns
-     * its own dimensionless scale so one cannot silently calibrate the other.
-     */
-    qualifyingPaceScale?: number
     /**
      * Legacy additive calibration retained for old data migrations only.
      * Runtime race pace must not add this value directly.
@@ -943,7 +923,16 @@ export type CarSnapshot = {
   progress: number
   lap: number
   totalDistance: number
-  /** Compatibility field; normal-track simulation keeps this fixed at zero. */
+  /** Signed physical displacement from the reference line, in metres. */
+  lateralOffsetM: number
+  /** Signed lateral velocity across the track, in metres per second. */
+  lateralVelocityMps: number
+  /** Driver-selected physical lateral target, in metres. */
+  desiredLateralOffsetM: number
+  /**
+   * @deprecated Compatibility alias for `lateralOffsetM`. New simulation code
+   * must write both fields until pre-lateral-dynamics checkpoints age out.
+   */
   trackLateralOffset: number
   battlePhase: BattlePhase
   battleOpponentId: string | null
@@ -1001,6 +990,10 @@ export type CarSnapshot = {
   brakePercent: number
   rpm: number
   gear: number
+  /** Turbo compressor state carried between fixed simulation ticks, 0..1. */
+  turboSpoolFraction?: number
+  /** Driveline clutch connection carried between ticks, 0=open and 1=locked. */
+  clutchEngagementFraction?: number
   /** 2026 front/rear driver-adjustable bodywork state. */
   activeAeroMode: ActiveAeroMode
   /** 2026 electrical Overtake availability, separate from active aero. */

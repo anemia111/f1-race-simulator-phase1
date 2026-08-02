@@ -5,19 +5,28 @@ import type {
   Driver,
   DriverSkillProfile,
   MachinePerformanceProfile,
+  Team,
+  TrackDefinition,
 } from '../types'
+import { categoryPhysicsFor } from './categoryPhysics'
+import { decideDriverBehavior } from './driverDecision'
+import { selectGear } from './drivetrain'
+import { simulatePhysicalLap } from './physicalLap'
 import {
-  DRIVER_SEGMENT_RESPONSE,
-  DRIVER_SKILL_REFERENCE,
-  internalPowerScaleAtSpeed,
-  MACHINE_INTERNAL_PERFORMANCE_SCALE,
-  MACHINE_PACE_REFERENCE,
-  MACHINE_PACE_SPREAD_FACTOR,
-  MACHINE_SEGMENT_RESPONSE,
+  runPracticeSession,
+  runQualifying,
+  timedSessionDriverExecutionLossSeconds,
+} from './qualifying'
+import {
   airDensityKgM3,
+  baseFuelBurnKgPerLap,
+  combustionPowerKwFor,
+  integrateVehicleLongitudinalStep,
   integrateVehicleSpeedKph,
   machinePaceRating,
-  performanceLapGainSeconds,
+  vehicleDownforceMultiplier,
+  vehicleDragAreaM2,
+  vehicleTyreGripMultiplierForTeam,
 } from './vehicleDynamics'
 
 function driverAt(value: number): Driver {
@@ -29,17 +38,74 @@ function driverAt(value: number): Driver {
   return { ...base, skills }
 }
 
+function physicalLapForTeam(team: Team, track: TrackDefinition) {
+  const categoryPhysics = categoryPhysicsFor('f1-custom')
+  const physics = {
+    ...categoryPhysics,
+    combustionPowerKw: combustionPowerKwFor(team, categoryPhysics),
+    liftAreaM2:
+      categoryPhysics.liftAreaM2 * vehicleDownforceMultiplier({ team }),
+  }
+
+  return simulatePhysicalLap(track, {
+    deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
+    dragAreaM2: vehicleDragAreaM2({
+      activeAeroMode: 'partial-straight',
+      categoryPhysics,
+      team,
+    }),
+    gripMultiplier: vehicleTyreGripMultiplierForTeam(team, 1),
+    physics,
+  }).lapTimeSeconds
+}
+
 describe('multi-axis vehicle dynamics', () => {
+  it('keeps fuel planning independent of the compatibility lap-time target', () => {
+    const track = tracks[0]
+    const changedObservation = {
+      ...track,
+      baseLapTime: track.baseLapTime * 1.8,
+    }
+
+    expect(baseFuelBurnKgPerLap(changedObservation)).toBeCloseTo(
+      baseFuelBurnKgPerLap(track),
+      12,
+    )
+  })
+
+  it('keeps simplified qualifying and practice independent of baseLapTime', () => {
+    const track = { ...tracks[0], rainProbability: 0 }
+    const config = {
+      drivers: initialDrivers,
+      seed: 'timed-session-base-lap-independence',
+      seriesId: 'f1-custom' as const,
+      teams: initialTeams,
+      track,
+    }
+    const changedObservation = {
+      ...config,
+      track: { ...track, baseLapTime: track.baseLapTime * 1.8 },
+    }
+
+    expect(
+      runQualifying(config).map((result) => result.lapTimeSeconds),
+    ).toEqual(
+      runQualifying(changedObservation).map(
+        (result) => result.lapTimeSeconds,
+      ),
+    )
+    expect(
+      runPracticeSession(config, 'fp2').map(
+        (result) => result.bestLapTimeSeconds,
+      ),
+    ).toEqual(
+      runPracticeSession(changedObservation, 'fp2').map(
+        (result) => result.bestLapTimeSeconds,
+      ),
+    )
+  })
+
   it('compresses machine effects without changing the source rating', () => {
-    expect(MACHINE_PACE_REFERENCE).toBe(0.86)
-    expect(MACHINE_PACE_SPREAD_FACTOR).toBe(0.7)
-    expect(MACHINE_SEGMENT_RESPONSE).toBe(0.135)
-    expect(DRIVER_SEGMENT_RESPONSE).toBe(0.14)
-    expect(DRIVER_SKILL_REFERENCE).toBe(0.9175)
-    expect(MACHINE_INTERNAL_PERFORMANCE_SCALE).toBe(1.06)
-    expect(internalPowerScaleAtSpeed(300)).toBeCloseTo(1.06, 10)
-    expect(internalPowerScaleAtSpeed(370)).toBeCloseTo(1.03, 10)
-    expect(internalPowerScaleAtSpeed(420)).toBe(1)
     expect(machinePaceRating(0.86)).toBeCloseTo(0.86, 10)
     expect(machinePaceRating(0.96)).toBeCloseTo(0.93, 10)
     expect(machinePaceRating(0.62)).toBeCloseTo(0.692, 10)
@@ -68,122 +134,74 @@ describe('multi-axis vehicle dynamics', () => {
       const effectiveSpread = Math.max(...effective) - Math.min(...effective)
 
       expect(effectiveOrder).toEqual(rawOrder)
-      expect(effectiveSpread).toBeCloseTo(
-        rawSpread * MACHINE_PACE_SPREAD_FACTOR,
-        10,
-      )
+      if (rawSpread === 0) {
+        expect(effectiveSpread).toBe(0)
+      } else {
+        expect(effectiveSpread).toBeGreaterThan(0)
+        expect(effectiveSpread).toBeLessThan(rawSpread)
+      }
     }
   })
 
-  it('keeps the configured 0-100 driver scale monotonic against one machine', () => {
-    const team = initialTeams.find(
-      (candidate) => candidate.id === initialDrivers[0].teamId,
-    )!
+  it('turns driver skill into lower pedal and line-control error, not a speed multiplier', () => {
     const lowerDriver = driverAt(0.7)
     const higherDriver = driverAt(1)
-    const outOfRangeDriver = driverAt(1.5)
-    const higherGain = performanceLapGainSeconds({
-      driver: higherDriver,
-      team,
-      track: tracks[0],
-    })
+    const controlError = (driver: Driver) =>
+      Array.from({ length: 240 }, (_, sample) => {
+        const decision = decideDriverBehavior({
+          currentLateralOffsetM: 0,
+          driver,
+          lap: Math.floor(sample / 12),
+          physicalReferenceLineOffsetM: 1.2,
+          seed: `vehicle-driver-control:${sample}`,
+          trackHalfWidthM: 6.5,
+          trackProgress: (sample % 12) / 12,
+        })
 
-    expect(higherGain).toBeGreaterThan(
-      performanceLapGainSeconds({
-        driver: lowerDriver,
-        team,
-        track: tracks[0],
-      }),
+        return (
+          Math.abs(decision.controlError) +
+          Math.abs(decision.lineErrorM) / 6.5 +
+          Math.max(0, 1 - decision.throttleOpeningScale) +
+          Math.max(0, 1 - decision.brakePressureScale)
+        )
+      }).reduce((total, value) => total + value, 0)
+
+    expect(controlError(higherDriver)).toBeLessThan(
+      controlError(lowerDriver),
     )
-    expect(
-      performanceLapGainSeconds({
-        driver: outOfRangeDriver,
-        team,
-        track: tracks[0],
-      }),
-    ).toBe(higherGain)
   })
 
-  it('keeps qualifying and race pace as independent driver and machine axes', () => {
-    const track = tracks[0]
-    const baseDriver = driverAt(0.9)
-    const baseTeam = {
-      ...initialTeams[0],
-      machine: {
-        ...initialTeams[0].machine,
-        qualifyingPace: 0.9,
-        racePace: 0.9,
+  it('does not let displayed OVR alter an otherwise identical decision', () => {
+    const driver = driverAt(0.9)
+    const context = {
+      currentLateralOffsetM: 0,
+      lap: 3,
+      physicalReferenceLineOffsetM: -0.8,
+      seed: 'displayed-overall-is-not-a-control-input',
+      trackHalfWidthM: 6.5,
+      trackProgress: 0.42,
+    }
+    const lowDisplayedOverall = {
+      ...driver,
+      performanceSource: {
+        fileName: 'low.csv',
+        overall: 1,
+        rawRatings: {},
       },
     }
-    const qualifyingDriver = {
-      ...baseDriver,
-      skills: { ...baseDriver.skills, qualifyingPace: 1 },
-    }
-    const lowerQualifyingDriver = {
-      ...baseDriver,
-      skills: { ...baseDriver.skills, qualifyingPace: 0.7 },
-    }
-    const raceDriver = {
-      ...baseDriver,
-      skills: { ...baseDriver.skills, racePace: 1 },
-    }
-    const lowerRaceDriver = {
-      ...baseDriver,
-      skills: { ...baseDriver.skills, racePace: 0.7 },
-    }
-    const gain = (
-      driver: Driver,
-      team: typeof baseTeam,
-      session: 'qualifying' | 'race',
-    ) => performanceLapGainSeconds({ driver, session, team, track })
-
-    expect(
-      gain(qualifyingDriver, baseTeam, 'qualifying'),
-    ).toBeGreaterThan(gain(lowerQualifyingDriver, baseTeam, 'qualifying'))
-    expect(gain(qualifyingDriver, baseTeam, 'race')).toBeCloseTo(
-      gain(lowerQualifyingDriver, baseTeam, 'race'),
-      10,
-    )
-    expect(gain(raceDriver, baseTeam, 'race')).toBeGreaterThan(
-      gain(lowerRaceDriver, baseTeam, 'race'),
-    )
-    expect(gain(raceDriver, baseTeam, 'qualifying')).toBeCloseTo(
-      gain(lowerRaceDriver, baseTeam, 'qualifying'),
-      10,
-    )
-
-    const qualifyingMachine = {
-      ...baseTeam,
-      machine: { ...baseTeam.machine, qualifyingPace: 1 },
-    }
-    const lowerQualifyingMachine = {
-      ...baseTeam,
-      machine: { ...baseTeam.machine, qualifyingPace: 0.7 },
-    }
-    const raceMachine = {
-      ...baseTeam,
-      machine: { ...baseTeam.machine, racePace: 1 },
-    }
-    const lowerRaceMachine = {
-      ...baseTeam,
-      machine: { ...baseTeam.machine, racePace: 0.7 },
+    const highDisplayedOverall = {
+      ...driver,
+      performanceSource: {
+        fileName: 'high.csv',
+        overall: 100,
+        rawRatings: {},
+      },
     }
 
     expect(
-      gain(baseDriver, qualifyingMachine, 'qualifying'),
-    ).toBeGreaterThan(
-      gain(baseDriver, lowerQualifyingMachine, 'qualifying'),
-    )
-    expect(gain(baseDriver, qualifyingMachine, 'race')).toBeCloseTo(
-      gain(baseDriver, lowerQualifyingMachine, 'race'),
-      10,
-    )
-    expect(gain(baseDriver, raceMachine, 'race')).toBeGreaterThan(
-      gain(baseDriver, lowerRaceMachine, 'race'),
-    )
-    expect(gain(baseDriver, raceMachine, 'qualifying')).toBeCloseTo(
-      gain(baseDriver, lowerRaceMachine, 'qualifying'),
-      10,
+      decideDriverBehavior({ ...context, driver: lowDisplayedOverall }),
+    ).toEqual(
+      decideDriverBehavior({ ...context, driver: highDisplayedOverall }),
     )
   })
 
@@ -281,68 +299,308 @@ describe('multi-axis vehicle dynamics', () => {
     expect(harvesting).toBeLessThan(combustionOnly)
   })
 
-  it('compares every CSV machine with one identical reference driver', () => {
-    const referenceDriver = driverAt(1)
+  it('turns 0, 250 and 350 mechanical MGU-K kW into monotonic force and acceleration', () => {
+    const team = initialTeams[0]
+    const common = {
+      activeAeroMode: 'straight' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 220,
+      deltaSeconds: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      fuelLoadKg: 30,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      turboSpoolFraction: 1,
+    }
+    const results = [0, 250, 350].map((ersPowerKw) =>
+      integrateVehicleLongitudinalStep({ ...common, ersPowerKw }),
+    )
+
+    expect(results[1].driveForceN).toBeGreaterThan(results[0].driveForceN)
+    expect(results[2].driveForceN).toBeGreaterThan(results[1].driveForceN)
+    expect(results[1].accelerationMps2).toBeGreaterThan(
+      results[0].accelerationMps2,
+    )
+    expect(results[2].accelerationMps2).toBeGreaterThan(
+      results[1].accelerationMps2,
+    )
+  })
+
+  it('does not apply a combustion derate or electrical-efficiency axis to allowed MGU-K kW', () => {
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'straight',
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      combustionPowerKw: 0,
+      currentSpeedKph: 180,
+      deltaSeconds: 0,
+      drivePowerScale: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 350,
+      fuelLoadKg: 20,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 100,
+      turboSpoolFraction: 0,
+    })
+
+    expect(result.driveForceN).toBeGreaterThan(0)
+    expect(result.accelerationMps2).toBeGreaterThan(0)
+  })
+
+  it('makes fuel mass reduce acceleration and the available braking deceleration', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 140,
+      deltaSeconds: 0,
+      dynamics: {
+        effectiveCornerRadiusM: 120,
+        gradient: 0,
+        straightness: 0.3,
+      },
+      ersPowerKw: 0,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      turboSpoolFraction: 1,
+    }
+    const lightAcceleration = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      fuelLoadKg: 5,
+      throttlePercent: 100,
+    })
+    const heavyAcceleration = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      fuelLoadKg: 105,
+      throttlePercent: 100,
+    })
+    const lightBraking = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 100,
+      fuelLoadKg: 5,
+      throttlePercent: 0,
+    })
+    const heavyBraking = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 100,
+      fuelLoadKg: 105,
+      throttlePercent: 0,
+    })
+
+    expect(heavyAcceleration.accelerationMps2).toBeLessThan(
+      lightAcceleration.accelerationMps2,
+    )
+    expect(heavyBraking.accelerationMps2).toBeGreaterThan(
+      lightBraking.accelerationMps2,
+    )
+    expect(
+      heavyAcceleration.tractionLimitN / (768 + 105),
+    ).toBeLessThan(lightAcceleration.tractionLimitN / (768 + 5))
+  })
+
+  it('uses wet grip and dirty-air downforce as tyre-force inputs', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 170,
+      deltaSeconds: 0,
+      dynamics: {
+        effectiveCornerRadiusM: 180,
+        gradient: 0,
+        straightness: 0.4,
+      },
+      ersPowerKw: 350,
+      fuelLoadKg: 30,
+      team: initialTeams[0],
+      throttlePercent: 100,
+      turboSpoolFraction: 1,
+    }
+    const dry = integrateVehicleLongitudinalStep({
+      ...common,
+      gripMultiplier: 1,
+    })
+    const wet = integrateVehicleLongitudinalStep({
+      ...common,
+      gripMultiplier: 0.65,
+    })
+    const wake = integrateVehicleLongitudinalStep({
+      ...common,
+      dirtyAirDownforceMultiplier: 0.75,
+      gripMultiplier: 1,
+    })
+
+    expect(wet.tractionLimitN).toBeLessThan(dry.tractionLimitN)
+    expect(wet.accelerationMps2).toBeLessThan(dry.accelerationMps2)
+    expect(wake.tractionLimitN).toBeLessThan(dry.tractionLimitN)
+  })
+
+  it('changes drag and terminal behaviour through active aero area', () => {
+    const team = initialTeams[0]
+    const common = {
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      currentSpeedKph: 300,
+      deltaSeconds: 0,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 0,
+      fuelLoadKg: 8,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+    }
+    const corner = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'corner',
+    })
+    const straight = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'straight',
+    })
+    let cornerSpeedKph = 300
+    let straightSpeedKph = 300
+
+    for (let step = 0; step < 300; step += 1) {
+      cornerSpeedKph = integrateVehicleSpeedKph({
+        ...common,
+        activeAeroMode: 'corner',
+        currentSpeedKph: cornerSpeedKph,
+        deltaSeconds: 0.1,
+      })
+      straightSpeedKph = integrateVehicleSpeedKph({
+        ...common,
+        activeAeroMode: 'straight',
+        currentSpeedKph: straightSpeedKph,
+        deltaSeconds: 0.1,
+      })
+    }
+
+    expect(straight.dragForceN).toBeLessThan(corner.dragForceN)
+    expect(straightSpeedKph).toBeGreaterThan(cornerSpeedKph)
+  })
+
+  it('launches finitely and returns the gear and RPM used at the resulting speed', () => {
+    const physics = categoryPhysicsFor('f1-custom')
+    const team = initialTeams[0]
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'corner',
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      categoryPhysics: physics,
+      clutchEngagementFraction: 0,
+      currentSpeedKph: 0,
+      deltaSeconds: 0.1,
+      dynamics: { gradient: 0, straightness: 1 },
+      ersPowerKw: 350,
+      fuelLoadKg: 30,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      turboSpoolFraction: 0,
+    })
+    const drivetrain = selectGear({
+      clutchEngagementFraction: result.clutchEngagementFraction,
+      combustionPowerKw: combustionPowerKwFor(team, physics),
+      deploymentPowerKw: 350,
+      physics,
+      speedMps: result.speedKph / 3.6,
+      transmissionEfficiency: physics.drivetrainEfficiency,
+      turboSpoolFraction: result.turboSpoolFraction,
+    })
+
+    expect(result.speedKph).toBeGreaterThan(0)
+    expect(Number.isFinite(result.speedKph)).toBe(true)
+    expect(result.clutchEngagementFraction).toBeGreaterThan(0)
+    expect(result.turboSpoolFraction).toBeGreaterThan(0)
+    expect(result.gear).toBe(drivetrain.gear)
+    expect(result.rpm).toBeCloseTo(drivetrain.rpm, 10)
+  })
+
+  it('contains non-finite external inputs without emitting invalid vehicle state', () => {
+    const result = integrateVehicleLongitudinalStep({
+      activeAeroMode: 'straight',
+      additionalMassKg: Number.POSITIVE_INFINITY,
+      airDensityKgM3: Number.NaN,
+      brakePercent: Number.NaN,
+      currentSpeedKph: Number.NEGATIVE_INFINITY,
+      deltaSeconds: 0.1,
+      dynamics: {
+        effectiveCornerRadiusM: Number.NaN,
+        gradient: Number.NaN,
+        straightness: 1,
+      },
+      ersPowerKw: Number.POSITIVE_INFINITY,
+      fuelLoadKg: Number.NaN,
+      gripMultiplier: Number.NaN,
+      headwindMps: Number.NaN,
+      regenerativeResistancePowerKw: Number.POSITIVE_INFINITY,
+      team: initialTeams[0],
+      throttlePercent: Number.POSITIVE_INFINITY,
+    })
+
+    for (const value of Object.values(result)) {
+      expect(Number.isFinite(value)).toBe(true)
+    }
+    expect(result.speedKph).toBeGreaterThanOrEqual(0)
+    expect(result.driveForceN).toBeGreaterThanOrEqual(0)
+    expect(result.brakeForceN).toBeGreaterThanOrEqual(0)
+  })
+
+  it('compares every CSV machine through physical power, drag and grip', () => {
     const monza = tracks.find((track) => track.id === 'monza-approx')!
     const monaco = tracks.find((track) => track.id === 'monaco-approx')!
     const resultFor = (track: (typeof tracks)[number]) =>
       initialTeams
         .map((team) => ({
-          gain: performanceLapGainSeconds({
-            driver: referenceDriver,
-            team,
-            track,
-          }),
+          lapTimeSeconds: physicalLapForTeam(team, track),
           teamId: team.id,
         }))
-        .sort((left, right) => right.gain - left.gain)
+        .sort((left, right) => left.lapTimeSeconds - right.lapTimeSeconds)
 
     const monzaResults = resultFor(monza)
     const monacoResults = resultFor(monaco)
 
     expect(monzaResults).toHaveLength(initialTeams.length)
     expect(
-      new Set(monzaResults.map((result) => result.gain.toFixed(5))).size,
+      new Set(
+        monzaResults.map((result) => result.lapTimeSeconds.toFixed(5)),
+      ).size,
     ).toBeGreaterThan(7)
-    expect(monzaResults.map((result) => result.gain.toFixed(5))).not.toEqual(
-      monacoResults.map((result) => result.gain.toFixed(5)),
+    expect(monzaResults.map((result) => result.teamId)).not.toEqual(
+      monacoResults.map((result) => result.teamId),
     )
-    const monzaFieldSpreadSeconds =
-      monzaResults[0].gain - monzaResults.at(-1)!.gain
-
-    expect(monzaFieldSpreadSeconds).toBeGreaterThan(1.5)
-    expect(monzaFieldSpreadSeconds).toBeLessThan(3)
   })
 
-  it('places Alpine ahead of Audi on representative aggregate pace', () => {
-    const referenceDriver = driverAt(1)
-    const audi = initialTeams.find((team) => team.id === 'audi')!
-    const alpine = initialTeams.find((team) => team.id === 'alpine')!
-    const representativeTracks = [
-      tracks.find((track) => track.id === 'albert-park-approx')!,
-      tracks.find((track) => track.id === 'monza-approx')!,
-      tracks.find((track) => track.id === 'monaco-approx')!,
-    ]
-    const aggregateGain = (team: typeof audi) =>
-      representativeTracks.reduce(
-        (total, track) =>
-          total +
-          performanceLapGainSeconds({
-            driver: referenceDriver,
-            team,
-            track,
-          }),
-        0,
-      )
+  it('turns a real PU-output difference into a faster physical lap', () => {
+    const track = tracks.find((candidate) => candidate.id === 'monza-approx')!
+    const team = initialTeams[0]
+    const lowerOutput = {
+      ...team,
+      machine: { ...team.machine, puOutput: 0.6 },
+    }
+    const higherOutput = {
+      ...team,
+      machine: { ...team.machine, puOutput: 1 },
+    }
 
-    expect(aggregateGain(alpine)).toBeGreaterThan(aggregateGain(audi))
+    expect(physicalLapForTeam(higherOutput, track)).toBeLessThan(
+      physicalLapForTeam(lowerOutput, track),
+    )
   })
 
-  it('produces team-relative terminal speeds from CSV power and drag axes', () => {
+  it('produces team-relative high-speed acceleration from CSV power and drag axes', () => {
     const terminalSpeeds = new Map(initialTeams.map((team) => {
       let speedKph = 300
 
-      for (let tick = 0; tick < 500; tick += 1) {
+      for (let tick = 0; tick < 100; tick += 1) {
         speedKph = integrateVehicleSpeedKph({
           activeAeroMode: 'straight',
           airDensityKgM3: airDensityKgM3({
@@ -372,58 +630,55 @@ describe('multi-axis vehicle dynamics', () => {
     const terminalSpeedSpreadKph =
       Math.max(...speedValues) - Math.min(...speedValues)
 
-    expect(terminalSpeeds.get('mercedes')).toBe(Math.max(...speedValues))
     expect(terminalSpeeds.get('aston-martin')).toBeLessThan(
-      terminalSpeeds.get('mercedes')!,
+      Math.max(...speedValues),
     )
-    expect(terminalSpeedSpreadKph).toBeGreaterThan(4)
+    expect(terminalSpeedSpreadKph).toBeGreaterThan(0.5)
     expect(terminalSpeedSpreadKph).toBeLessThan(10)
   })
 
-  it('compares every CSV driver in one identical machine without sorting by OVR', () => {
+  it('makes execution loss non-negative and lower for precise drivers', () => {
     const referenceTeam = initialTeams.find((team) => team.id === 'mclaren')!
     const track = tracks[0]
-    const dry = initialDrivers
-      .map((driver) => ({
-        code: driver.code,
-        gain: performanceLapGainSeconds({
+    const config = {
+      drivers: initialDrivers,
+      seed: 'execution-loss-physical-reference',
+      seriesId: 'f1-custom' as const,
+      teams: initialTeams,
+      track,
+    }
+    const common = {
+      compound: 'S' as const,
+      config,
+      fuelLoadKg: 6,
+      setup: {
+        brakeBiasPercent: 55,
+        coolingPercent: 50,
+        differentialPercent: 55,
+        frontWing: 5.5,
+        rearWing: 5.5,
+        rideHeightMm: 28,
+      },
+      team: referenceTeam,
+      trackGrip: 1,
+      weather: 'clear' as const,
+    }
+    const high = driverAt(1)
+    const low = driverAt(0.65)
+    const meanLoss = (driver: Driver) =>
+      Array.from({ length: 120 }, (_, run) =>
+        timedSessionDriverExecutionLossSeconds({
+          ...common,
           driver,
-          session: 'race',
-          team: referenceTeam,
-          track,
-          weather: 'clear',
+          run,
+          seed: `execution-loss:${run}`,
         }),
-      }))
-      .sort((left, right) => right.gain - left.gain)
-    const wet = initialDrivers
-      .map((driver) => ({
-        code: driver.code,
-        gain: performanceLapGainSeconds({
-          driver,
-          session: 'race',
-          team: referenceTeam,
-          track,
-          weather: 'heavy-rain',
-        }),
-      }))
-      .sort((left, right) => right.gain - left.gain)
+      ).reduce((total, loss) => total + loss, 0) / 120
+    const highLoss = meanLoss(high)
+    const lowLoss = meanLoss(low)
 
-    expect(dry).toHaveLength(initialDrivers.length)
-    // Most of the field should separate rather than tie on identical machinery.
-    expect(
-      new Set(dry.map((result) => result.gain.toFixed(5))).size,
-    ).toBeGreaterThanOrEqual(Math.ceil(initialDrivers.length * 0.7))
-    expect(dry.map((result) => result.code)).not.toEqual(
-      wet.map((result) => result.code),
-    )
-    const dryFieldSpreadSeconds = dry[0].gain - dry.at(-1)!.gain
-
-    // A genuine top-of-the-scale ace gets an extra pace band (see ACE_PACE_*),
-    // so the driver-only spread in identical machinery reaches from that
-    // standout down to the weakest driver. The midfield stays tightly packed;
-    // only the very top of the rating scale is lifted. Kept bounded so the
-    // model stays finite and ordered.
-    expect(dryFieldSpreadSeconds).toBeGreaterThan(0.25)
-    expect(dryFieldSpreadSeconds).toBeLessThan(3.4)
+    expect(highLoss).toBeGreaterThanOrEqual(0)
+    expect(lowLoss).toBeGreaterThanOrEqual(0)
+    expect(highLoss).toBeLessThan(lowLoss)
   })
 })

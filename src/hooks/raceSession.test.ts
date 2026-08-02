@@ -63,6 +63,149 @@ describe('race session continuity', () => {
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
   })
 
+  it('migrates legacy checkpoints without drivetrain or lateral state', () => {
+    const now = 1_800_000_000_000
+    const checkpoint = JSON.parse(
+      serializeRaceCheckpoint(
+        'session-a',
+        createInitialRace(config),
+        now,
+      )!,
+    ) as { snapshot: { cars: Array<Record<string, unknown>> } }
+
+    for (const [index, car] of checkpoint.snapshot.cars.entries()) {
+      delete car.turboSpoolFraction
+      delete car.clutchEngagementFraction
+      delete car.lateralOffsetM
+      delete car.lateralVelocityMps
+      delete car.desiredLateralOffsetM
+
+      if (index === 0) {
+        car.trackLateralOffset = 2.25
+      } else {
+        delete car.trackLateralOffset
+      }
+    }
+
+    const restored = parseRaceCheckpoint(
+      JSON.stringify(checkpoint),
+      'session-a',
+      config,
+      now,
+    )
+
+    expect(restored).not.toBeNull()
+    expect(restored?.cars[0]).toMatchObject({
+      desiredLateralOffsetM: 2.25,
+      lateralOffsetM: 2.25,
+      lateralVelocityMps: 0,
+      trackLateralOffset: 2.25,
+    })
+    expect(restored?.cars[1]).toMatchObject({
+      desiredLateralOffsetM: 0,
+      lateralOffsetM: 0,
+      lateralVelocityMps: 0,
+      trackLateralOffset: 0,
+    })
+  })
+
+  it('round-trips and normalizes physical lateral state', () => {
+    const now = 1_800_000_000_000
+    const initial = createInitialRace(config)
+    const snapshot = {
+      ...initial,
+      cars: initial.cars.map((car, index) => ({
+        ...car,
+        desiredLateralOffsetM: index === 0 ? -2.5 : 0,
+        lateralOffsetM: index === 0 ? 1.75 : 0,
+        lateralVelocityMps: index === 0 ? -0.4 : 0,
+        // Deliberately stale: the canonical physical field wins on restore.
+        trackLateralOffset: index === 0 ? -8 : 0,
+      })),
+    }
+
+    const restored = parseRaceCheckpoint(
+      serializeRaceCheckpoint('session-a', snapshot, now),
+      'session-a',
+      config,
+      now,
+    )
+
+    expect(restored?.cars[0]).toMatchObject({
+      desiredLateralOffsetM: -2.5,
+      lateralOffsetM: 1.75,
+      lateralVelocityMps: -0.4,
+      trackLateralOffset: 1.75,
+    })
+  })
+
+  it('rejects invalid persisted live drivetrain state', () => {
+    const now = 1_800_000_000_000
+    const valid = serializeRaceCheckpoint(
+      'session-a',
+      createInitialRace(config),
+      now,
+    )!
+    const invalidStates = [
+      ['turboSpoolFraction', -0.01],
+      ['turboSpoolFraction', 1.01],
+      ['turboSpoolFraction', Number.NaN],
+      ['clutchEngagementFraction', -0.01],
+      ['clutchEngagementFraction', 1.01],
+      ['clutchEngagementFraction', Number.POSITIVE_INFINITY],
+    ] as const
+
+    for (const [field, value] of invalidStates) {
+      const checkpoint = JSON.parse(valid) as {
+        snapshot: { cars: Array<Record<string, unknown>> }
+      }
+      checkpoint.snapshot.cars[0][field] = value
+
+      expect(
+        parseRaceCheckpoint(
+          JSON.stringify(checkpoint),
+          'session-a',
+          config,
+          now,
+        ),
+      ).toBeNull()
+    }
+  })
+
+  it('rejects invalid persisted lateral state', () => {
+    const now = 1_800_000_000_000
+    const valid = serializeRaceCheckpoint(
+      'session-a',
+      createInitialRace(config),
+      now,
+    )!
+    const invalidStates = [
+      ['lateralOffsetM', 100.01],
+      ['lateralOffsetM', Number.NaN],
+      ['trackLateralOffset', Number.NEGATIVE_INFINITY],
+      ['desiredLateralOffsetM', -100.01],
+      ['desiredLateralOffsetM', 'outside'],
+      ['lateralVelocityMps', 100.01],
+      ['lateralVelocityMps', Number.POSITIVE_INFINITY],
+    ] as const
+
+    for (const [field, value] of invalidStates) {
+      const checkpoint = JSON.parse(valid) as {
+        snapshot: { cars: Array<Record<string, unknown>> }
+      }
+      checkpoint.snapshot.cars[0][field] = value
+
+      expect(
+        parseRaceCheckpoint(
+          JSON.stringify(checkpoint),
+          'session-a',
+          config,
+          now,
+        ),
+      ).toBeNull()
+    }
+  })
+
   it('round-trips a populated multi-lap snapshot within browser storage limits', () => {
     const now = 1_800_000_000_000
     let snapshot = createInitialRace(config)

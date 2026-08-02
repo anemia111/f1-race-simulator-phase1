@@ -266,7 +266,12 @@ export function ersDeploymentPowerKw(options: {
   curve?: ErsDeploymentCurve
   ersMode: ErsMode
   overtakeStatus: OvertakeStatus
-  speedKph: number
+  /**
+   * @deprecated Deployment is selected by the declared regulatory zone and
+   * operating state, not by an inferred road-speed curve. Retained so older
+   * callers remain source-compatible.
+   */
+  speedKph?: number
 }) {
   const {
     curve = 'standard',

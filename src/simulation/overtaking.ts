@@ -56,6 +56,13 @@ export type OvertakeContext = {
   defenderCar: CarSnapshot
   lap: number
   gapToAheadSeconds: number
+  /** Actual centre-to-centre clearances supplied by the live occupancy model. */
+  lateralSeparationM?: number
+  longitudinalSeparationM?: number
+  /** Low-frequency driver decision; false means no move is committed. */
+  attemptedOvertake?: boolean
+  /** Behavioural contact risk, never a pace or speed multiplier. */
+  decisionContactRisk?: number
   isOpeningLap: boolean
   inRestartWindow: boolean
   weather: WeatherState
@@ -327,6 +334,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   if (
     gapToAheadSeconds <= 0 ||
     gapToAheadSeconds > attackWindow ||
+    context.attemptedOvertake === false ||
     attackerCar.status !== 'running' ||
     defenderCar.status !== 'running'
   ) {
@@ -372,22 +380,35 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
 
   const detail = hashChance(`${key}:detail`)
   const sector = currentSector ?? Math.floor(hashChance(`${key}:sector`) * 3)
-  const contactChance = clamp(
-    battleIncidentTuning.contactBaseChance +
-      driverErrorRate(attacker) *
-        battleIncidentTuning.attackerErrorContactWeight +
-      driverErrorRate(defender) *
-        battleIncidentTuning.defenderErrorContactWeight +
-      (1 - trackGrip) * 0.16 +
-      (isOpeningLap ? battleIncidentTuning.openingLapContactBonus : 0) +
-      (inRestartWindow ? battleIncidentTuning.restartContactBonus : 0) +
-      Math.max(0, -skillEdge) * 0.08 +
-      (zone === 'corner'
-        ? battleIncidentTuning.cornerContactBonus
-        : -battleIncidentTuning.straightContactReduction),
-    0.02,
-    0.34,
-  )
+  const contactProximity =
+    context.lateralSeparationM === undefined ||
+    context.longitudinalSeparationM === undefined
+      ? 1
+      : clamp01(
+          1 - Math.abs(context.longitudinalSeparationM) / 8.5,
+        ) *
+        clamp01(1 - Math.abs(context.lateralSeparationM) / 2.6)
+  const contactChance =
+    contactProximity <= 0
+      ? 0
+      : clamp(
+          (battleIncidentTuning.contactBaseChance +
+            driverErrorRate(attacker) *
+              battleIncidentTuning.attackerErrorContactWeight +
+            driverErrorRate(defender) *
+              battleIncidentTuning.defenderErrorContactWeight +
+            (1 - trackGrip) * 0.16 +
+            (isOpeningLap ? battleIncidentTuning.openingLapContactBonus : 0) +
+            (inRestartWindow ? battleIncidentTuning.restartContactBonus : 0) +
+            Math.max(0, -skillEdge) * 0.08 +
+            (zone === 'corner'
+              ? battleIncidentTuning.cornerContactBonus
+              : -battleIncidentTuning.straightContactReduction) +
+            clamp01(context.decisionContactRisk ?? 0) * 0.55) *
+            contactProximity,
+          0,
+          0.34,
+        )
   const passChance = clamp(
     0.22 +
       gapPressure * 0.5 +

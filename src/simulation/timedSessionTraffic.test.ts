@@ -30,11 +30,13 @@ function timedCar(options: {
   phase: CarSnapshot['timedRunPhase']
   practiceProgram?: CarSnapshot['practiceProgram']
   progress: number
+  speedKph?: number
 }) {
   return {
     driverId: options.driverId,
     practiceProgram: options.practiceProgram ?? null,
     progress: options.progress,
+    speedKph: options.speedKph ?? 200,
     status: 'running' as const,
     timedRunPhase: options.phase,
   }
@@ -79,6 +81,9 @@ describe('timed-session traffic etiquette', () => {
   it('asks the lower-priority car to lift only at a safe passing point', () => {
     const track = tracks[0]
     const progress = safeStraightProgress()
+    const attackSpeedKph = 216
+    const requestedGapSeconds = 1.5
+    const gapMeters = (attackSpeedKph / 3.6) * requestedGapSeconds
     const preparationCar = timedCar({
       driverId: 'preparation',
       phase: 'out-lap',
@@ -88,7 +93,9 @@ describe('timed-session traffic etiquette', () => {
       driverId: 'attack',
       phase: 'attack-lap',
       practiceProgram: 'qualifying-simulation',
-      progress: (progress - 1.5 / track.baseLapTime + 1) % 1,
+      progress:
+        (progress - gapMeters / (track.lengthKm * 1_000) + 1) % 1,
+      speedKph: attackSpeedKph,
     })
     const decision = timedSessionYieldDecision({
       car: preparationCar,
@@ -98,7 +105,8 @@ describe('timed-session traffic etiquette', () => {
     })
 
     expect(decision.approachingDriverId).toBe('attack')
-    expect(decision.gapSeconds).toBeCloseTo(1.5, 5)
+    expect(decision.gapMeters).toBeCloseTo(gapMeters, 5)
+    expect(decision.gapSeconds).toBeCloseTo(requestedGapSeconds, 5)
     expect(decision.safePassingPoint).toBe(true)
     expect(decision.shouldYield).toBe(true)
   })
@@ -115,7 +123,8 @@ describe('timed-session traffic etiquette', () => {
     const outLapCar = timedCar({
       driverId: 'out',
       phase: 'out-lap',
-      progress: (progress - 1 / track.baseLapTime + 1) % 1,
+      progress:
+        (progress - (200 / 3.6) / (track.lengthKm * 1_000) + 1) % 1,
     })
 
     expect(
@@ -126,5 +135,33 @@ describe('timed-session traffic etiquette', () => {
         track,
       }).shouldYield,
     ).toBe(false)
+  })
+
+  it('is exactly independent of the legacy base lap target', () => {
+    const track = tracks[0]
+    const progress = safeStraightProgress()
+    const preparationCar = timedCar({
+      driverId: 'preparation',
+      phase: 'out-lap',
+      progress,
+      speedKph: 150,
+    })
+    const attackCar = timedCar({
+      driverId: 'attack',
+      phase: 'attack-lap',
+      practiceProgram: 'qualifying-simulation',
+      progress:
+        (progress - 80 / (track.lengthKm * 1_000) + 1) % 1,
+      speedKph: 240,
+    })
+    const decide = (baseLapTime: number) =>
+      timedSessionYieldDecision({
+        car: preparationCar,
+        cars: [preparationCar, attackCar],
+        stage: 'fp2',
+        track: { ...track, baseLapTime },
+      })
+
+    expect(decide(40)).toEqual(decide(400))
   })
 })

@@ -18,19 +18,32 @@ import {
 import {
   baselineSetupForTrack,
   practiceSetupRecommendation,
-  qualifyingSetupPenaltySeconds,
 } from './engineering'
+import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  decideDriverBehavior,
+  DRIVER_DECISION_WINDOWS_PER_LAP,
+} from './driverDecision'
 import { effectiveMachineReliability } from './machinePerformance'
+import {
+  simulatePhysicalLap,
+  trackWidthMeters,
+  type PhysicalLapResult,
+} from './physicalLap'
 import { hashChance } from './random'
 import {
   buildQualifyingReleaseSchedule,
   type QualifyingReleaseSlot,
 } from './qualifyingStrategy'
-import { tireDeltaSeconds } from './tires'
+import { tireTrackGripMultiplier } from './tires'
+import { gripForSurfaceWater } from './trackWater'
 import {
+  airDensityKgM3,
   baseFuelBurnKgPerLap,
-  fuelMassEffects,
-  performanceLapGainSeconds,
+  combustionPowerKwFor,
+  vehicleDownforceMultiplier,
+  vehicleDragAreaM2,
+  vehicleTyreGripMultiplierForTeam,
 } from './vehicleDynamics'
 import {
   practiceDryCompoundFor,
@@ -44,7 +57,12 @@ import {
   type PracticeSessionName,
   type QualifyingSegmentName,
 } from './sessionRules'
-import { trackGripForWeather, weatherFor, weatherLabelFor } from './weather'
+import {
+  simulatedTemperaturesFor,
+  trackGripForWeather,
+  weatherFor,
+  weatherLabelFor,
+} from './weather'
 
 export const QUALIFYING_GRID_SPACING = 0.018
 export type { PracticeSessionName, QualifyingSegmentName }
@@ -146,88 +164,228 @@ type QualifyingRun = {
 
 const byId = <T extends { id: string }>(items: T[]) =>
   new Map(items.map((item) => [item.id, item]))
-const qualifyingPerformanceCenterCache = new WeakMap<
+const timedPhysicalLapCache = new WeakMap<
   RaceConfig,
-  Map<WeatherState, number>
+  Map<string, PhysicalLapResult>
 >()
-const F1_QUALIFYING_FIELD_SPREAD_SCALE = 0.27
 
-function medianNumber(values: number[]) {
-  const sorted = [...values].sort((left, right) => left - right)
-  const middle = Math.floor(sorted.length / 2)
-
-  return sorted.length === 0
-    ? 0
-    : sorted.length % 2 === 0
-      ? (sorted[middle - 1] + sorted[middle]) / 2
-      : sorted[middle]
+type TimedPhysicalLapOptions = {
+  compound: TireCompound
+  config: RaceConfig
+  fuelLoadKg: number
+  setup: CarSetup
+  team: Team
+  trackGrip: number
+  weather: WeatherState
 }
 
-function calibratedQualifyingPerformanceGain(
-  config: RaceConfig,
-  driver: Driver,
-  team: Team,
-  weather: WeatherState,
-) {
-  const rawGain = performanceLapGainSeconds({
-    driver,
-    session: 'qualifying',
-    team,
-    track: config.track,
+const finiteKey = (value: number) =>
+  Number.isFinite(value) ? value.toFixed(5) : 'invalid'
+
+function physicalLapCacheKey(options: TimedPhysicalLapOptions) {
+  const { compound, config, fuelLoadKg, setup, team, trackGrip, weather } =
+    options
+  const machine = team.machine
+
+  return [
+    config.seriesId ?? 'f1-custom',
+    config.track.id,
     weather,
+    compound,
+    finiteKey(fuelLoadKg),
+    finiteKey(trackGrip),
+    finiteKey(machine.puOutput),
+    finiteKey(machine.dragEfficiency),
+    finiteKey(machine.aerodynamicEfficiency),
+    finiteKey(machine.straightLineEfficiency),
+    finiteKey(machine.activeAeroEfficiency),
+    finiteKey(machine.downforceGeneration),
+    finiteKey(machine.mechanicalGrip),
+    finiteKey(machine.traction),
+    finiteKey(setup.frontWing),
+    finiteKey(setup.rearWing),
+    finiteKey(setup.rideHeightMm),
+    finiteKey(setup.coolingPercent),
+  ].join(':')
+}
+
+function surfaceWaterForWeather(weather: WeatherState) {
+  return weather === 'heavy-rain' ? 1.2 : weather === 'light-rain' ? 0.35 : 0
+}
+
+/**
+ * Builds the common force-derived lap used by simplified timed sessions.
+ * `baseLapTime` and observed event pace are deliberately absent: category
+ * hardware, team power/aero/grip, setup, carried mass and surface condition
+ * are the only inputs that can change the reference lap.
+ */
+function timedPhysicalLap(options: TimedPhysicalLapOptions) {
+  let cache = timedPhysicalLapCache.get(options.config)
+
+  if (!cache) {
+    cache = new Map()
+    timedPhysicalLapCache.set(options.config, cache)
+  }
+
+  const key = physicalLapCacheKey(options)
+  const cached = cache.get(key)
+
+  if (cached) {
+    return cached
+  }
+
+  const {
+    compound,
+    config,
+    fuelLoadKg,
+    setup,
+    team,
+    trackGrip,
+    weather,
+  } = options
+  const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const waterMm = surfaceWaterForWeather(weather)
+  const trackCondition = {
+    dryingLine: weather === 'clear' ? 1 : 0,
+    rainIntensityMmH:
+      weather === 'heavy-rain' ? 8 : weather === 'light-rain' ? 2 : 0,
+    surfaceWaterMm: waterMm,
+  }
+  const surfaceGrip = gripForSurfaceWater(
+    trackGrip,
+    waterMm,
+    trackCondition.dryingLine,
+  )
+  const compoundGrip = tireTrackGripMultiplier(compound, trackCondition)
+  const downforceScale = vehicleDownforceMultiplier({ setup, team })
+  const physics = {
+    ...categoryPhysics,
+    combustionPowerKw: combustionPowerKwFor(team, categoryPhysics),
+    liftAreaM2: categoryPhysics.liftAreaM2 * downforceScale,
+  }
+  const temperatures = simulatedTemperaturesFor(
+    `${config.seed}:timed-physical-lap:${weather}`,
+    config.track,
+    weather,
+  )
+  const result = simulatePhysicalLap(config.track, {
+    airDensityKgM3: airDensityKgM3({
+      altitudeMeters: config.track.altitudeMeters,
+      temperatureC: temperatures.airTemperatureC,
+    }),
+    deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
+    dragAreaM2: vehicleDragAreaM2({
+      activeAeroMode: 'partial-straight',
+      categoryPhysics,
+      setup,
+      team,
+    }),
+    gripMultiplier: vehicleTyreGripMultiplierForTeam(
+      team,
+      surfaceGrip * compoundGrip,
+    ),
+    massKg: categoryPhysics.minimumMassKg + Math.max(0, fuelLoadKg),
+    physics,
   })
 
-  if (
-    config.seriesId !== undefined &&
-    config.seriesId !== 'f1-custom'
-  ) {
-    return rawGain
-  }
-
-  let centers = qualifyingPerformanceCenterCache.get(config)
-
-  if (!centers) {
-    centers = new Map()
-    qualifyingPerformanceCenterCache.set(config, centers)
-  }
-
-  let center = centers.get(weather)
-
-  if (center === undefined) {
-    const teams = byId(config.teams)
-    center = medianNumber(
-      config.drivers.flatMap((candidate) => {
-        const candidateTeam = teams.get(candidate.teamId)
-
-        return candidateTeam
-          ? [
-              performanceLapGainSeconds({
-                driver: candidate,
-                session: 'qualifying',
-                team: candidateTeam,
-                track: config.track,
-                weather,
-              }),
-            ]
-          : []
-      }),
-    )
-    centers.set(weather, center)
-  }
-
-  return (
-    center +
-    (rawGain - center) * F1_QUALIFYING_FIELD_SPREAD_SCALE
-  )
+  cache.set(key, result)
+  return result
 }
 
-const clampAbility = (value: number) => Math.min(1.5, Math.max(0, value))
+export function timedSessionPhysicalLapSeconds(
+  options: TimedPhysicalLapOptions,
+) {
+  return timedPhysicalLap(options).lapTimeSeconds
+}
 
-function wetSkill(driver: Driver): number {
-  return clampAbility(
-    driverPerformanceAbility(driver, 'wetSkill') * 0.78 +
-      driverPerformanceAbility(driver, 'adaptability') * 0.22,
-  )
+type TimedDriverExecutionOptions = TimedPhysicalLapOptions & {
+  driver: Driver
+  run: number
+  seed: string
+}
+
+/**
+ * Converts low-frequency braking, throttle and line choices into time lost
+ * relative to the force-derived lap. It cannot improve on that lap and it does
+ * not read displayed overall ratings or special-driver thresholds.
+ */
+export function timedSessionDriverExecutionLossSeconds(
+  options: TimedDriverExecutionOptions,
+) {
+  const plan = timedPhysicalLap(options)
+  const trackHalfWidthM = trackWidthMeters(options.config.track) / 2
+  const wetSeverity =
+    options.weather === 'heavy-rain'
+      ? 1
+      : options.weather === 'light-rain'
+        ? 0.45
+        : 0
+  const wetControl = driverSkillBlend(options.driver, {
+    wetSkill: 0.58,
+    adaptability: 0.2,
+    brakingSkill: 0.12,
+    throttleControl: 0.1,
+  })
+  const windowTimeSeconds =
+    plan.lapTimeSeconds / DRIVER_DECISION_WINDOWS_PER_LAP
+  let lossSeconds = 0
+
+  for (
+    let window = 0;
+    window < DRIVER_DECISION_WINDOWS_PER_LAP;
+    window += 1
+  ) {
+    const progress =
+      (window + 0.5) / DRIVER_DECISION_WINDOWS_PER_LAP
+    const point =
+      plan.points[
+        Math.min(
+          plan.points.length - 1,
+          Math.floor(progress * plan.points.length),
+        )
+      ]
+    const decision = decideDriverBehavior({
+      currentLateralOffsetM: 0,
+      driver: options.driver,
+      lap: options.run,
+      physicalReferenceLineOffsetM: point?.referenceLineOffsetM ?? 0,
+      seed: options.seed,
+      trackHalfWidthM,
+      trackProgress: progress,
+    })
+    const cornerDemand = Number.isFinite(point?.effectiveCornerRadiusM)
+      ? Math.min(1, 180 / Math.max(18, point!.effectiveCornerRadiusM))
+      : 0
+    const brakingLoss =
+      Math.abs(decision.brakeOnsetDeltaSeconds) *
+      (0.18 + cornerDemand * 0.32) +
+      Math.max(0, 1 - decision.brakePressureScale) *
+        windowTimeSeconds *
+        (0.006 + cornerDemand * 0.012)
+    const throttleLoss =
+      Math.max(0, decision.throttleTimingDeltaSeconds) *
+        (0.16 + cornerDemand * 0.24) +
+      Math.max(0, 1 - decision.throttleOpeningScale) *
+        windowTimeSeconds *
+        0.016
+    const lineLoss =
+      (Math.abs(decision.lineErrorM) / Math.max(1, trackHalfWidthM)) *
+      windowTimeSeconds *
+      (0.006 + cornerDemand * 0.022)
+    const controlLoss =
+      Math.abs(decision.controlError) * windowTimeSeconds * 0.014
+    const errorLoss = decision.errorTriggered
+      ? windowTimeSeconds * (0.018 + Math.abs(decision.controlError) * 0.04)
+      : 0
+    const wetRiskScale =
+      1 + wetSeverity * (0.22 + (1 - wetControl) * 0.9)
+
+    lossSeconds +=
+      (brakingLoss + throttleLoss + lineLoss + controlLoss + errorLoss) *
+      wetRiskScale
+  }
+
+  return Math.max(0, lossSeconds)
 }
 
 export function qualifyingCutSizes(driverCount: number) {
@@ -261,24 +419,6 @@ function durationForSegment(
       ]
 }
 
-// Track rubbers in through the session, so the same lap is worth more time in
-// each later segment. The steps are deliberately clear so Q1 > Q2 > Q3 pace
-// reads on the timing screen (in dry running).
-function segmentEvolutionFor(segment: QualifyingSegmentName) {
-  switch (segment) {
-    case 'Q3':
-      return 0.85
-    case 'Q2':
-      return 0.4
-    case 'SQ3':
-      return 0.5
-    case 'SQ2':
-      return 0.24
-    default:
-      return 0
-  }
-}
-
 function compoundForQualifyingSegment(
   segment: QualifyingSegmentName,
   weather: WeatherState,
@@ -299,21 +439,6 @@ function compoundForQualifyingSegment(
   return configuredDryCompound ?? 'S'
 }
 
-function qualifyingCompoundPenalty(compound: TireCompound) {
-  switch (compound) {
-    case 'S':
-      return 0
-    case 'M':
-      return 0.78
-    case 'H':
-      return 1.52
-    case 'I':
-      return 0.35
-    case 'W':
-      return 0.8
-  }
-}
-
 function qualifyingRunLapTime(
   seed: string,
   segment: QualifyingSegmentName,
@@ -325,60 +450,30 @@ function qualifyingRunLapTime(
   compound: TireCompound,
   run: number,
 ): number {
-  const performanceGain = calibratedQualifyingPerformanceGain(
-    config,
-    driver,
-    team,
-    weather,
-  )
-  const consistency = driverPerformanceAbility(driver, 'consistency')
-  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
-  const segmentEvolution = segmentEvolutionFor(segment)
-  const compoundPenalty = qualifyingCompoundPenalty(compound)
-  const wetPenalty =
-    weather === 'clear'
-      ? 0
-      : weather === 'light-rain'
-        ? 4.8 + (1 - wetSkill(driver)) * 2.7 + (1 - trackGrip) * 3.3
-        : 10 + (1 - wetSkill(driver)) * 4.3 + (1 - trackGrip) * 5.6
-  const key = `${seed}:qualifying:${segment}:${driver.id}:${run}`
-  const variance =
-    (hashChance(`${key}:variance`) - 0.5) *
-    (1.45 - consistency * 0.65) *
-    0.82
-  const trafficLoss =
-    segment === 'Q1' &&
-    hashChance(`${key}:traffic`) < 0.12 + Math.max(0, 0.84 - awareness) * 0.12
-      ? 0.15 + hashChance(`${key}:traffic-loss`) * 0.8
-      : 0
-  const mistakeControl = driverSkillBlend(driver, {
-    consistency: 0.35,
-    mistakeResistance: 0.3,
-    precision: 0.2,
-    pressureHandling: 0.15,
-  })
-  const mistakeChance = 0.008 + Math.max(0, 1 - mistakeControl) * 0.12
-  const mistake =
-    hashChance(`${key}:mistake`) < mistakeChance
-      ? 0.35 + hashChance(`${key}:mistake-loss`) * 3.8
-      : 0
   const setup =
     config.weekendContext?.setupByDriver?.[driver.id] ??
     baselineSetupForTrack(config.track)
-  const setupPenalty = qualifyingSetupPenaltySeconds(config.track, setup, driver)
-
-  return Math.max(
-    55,
-    config.track.baseLapTime -
-      performanceGain -
-      segmentEvolution +
-      compoundPenalty +
-      wetPenalty +
-      variance +
-      trafficLoss +
-      mistake +
-      setupPenalty,
+  const fuelLoadKg = Math.max(4, baseFuelBurnKgPerLap(config.track) * 2)
+  const physicalOptions = {
+    compound,
+    config,
+    fuelLoadKg,
+    setup,
+    team,
+    trackGrip,
+    weather,
+  }
+  const physicalLapTimeSeconds = timedSessionPhysicalLapSeconds(
+    physicalOptions,
   )
+  const executionLossSeconds = timedSessionDriverExecutionLossSeconds({
+    ...physicalOptions,
+    driver,
+    run,
+    seed: `${seed}:qualifying:${segment}:${driver.id}:${run}`,
+  })
+
+  return Math.max(20, physicalLapTimeSeconds + executionLossSeconds)
 }
 
 function qualifyingRunsForDriver(
@@ -422,12 +517,13 @@ function qualifyingRunsForDriver(
       hashChance(`${runKey}:track-limit`) <
         0.008 + Math.max(0, 1 - awareness) * 0.035
     const lapTimeSeconds = rawLapTimeSeconds + trafficLossSeconds
-    const rainMultiplier = weather === 'heavy-rain' ? 1.18 : weather === 'light-rain' ? 1.08 : 1
-    // Every car runs the out and in laps at the same measured pace, so the gap
-    // set by the pit-release wave is preserved and nobody reels in the car ahead
-    // on their flying lap.
-    const outLapTimeSeconds = config.track.baseLapTime * rainMultiplier * 1.46
-    const inLapTimeSeconds = config.track.baseLapTime * rainMultiplier * 1.56
+    // Preparation laps are operationally slower than the same car's physical
+    // flying lap. Their schedule is anchored to that lap, never to an observed
+    // event target.
+    const outLapTimeSeconds =
+      rawLapTimeSeconds + Math.max(20, rawLapTimeSeconds * 0.4)
+    const inLapTimeSeconds =
+      rawLapTimeSeconds + Math.max(25, rawLapTimeSeconds * 0.5)
     const releaseSlot = releaseSlots[run]
     const latestPitExit = Math.max(0, sessionDurationSeconds - outLapTimeSeconds - 1)
     const pitExitAtSeconds = Math.min(
@@ -673,25 +769,12 @@ function runQualifyingSegment(
     const setsUsed = segment.startsWith('SQ')
       ? 1
       : Math.max(1, Math.ceil(runs.length / 2))
+    const fallbackRun = playedRuns[0]!
     const bestRun =
       validRuns.slice().sort((a, b) => a.lapTimeSeconds - b.lapTimeSeconds)[0] ??
       ({
-        aborted: true,
-        deleted: false,
-        compound: compoundForQualifyingSegment(
-          segment,
-          weather,
-          config.qualifyingDryCompound,
-        ),
-        pitExitAtSeconds: 0,
-        outLapTimeSeconds: config.track.baseLapTime * 1.5,
-        flyingLapStartedAtSeconds: 0,
-        flyingLapCompletedAtSeconds: sessionDurationSeconds,
-        inLapTimeSeconds: config.track.baseLapTime * 1.55,
+        ...fallbackRun,
         isValid: false,
-        pitReturnAtSeconds: sessionDurationSeconds + config.track.baseLapTime * 1.55,
-        lapTimeSeconds: config.track.baseLapTime + 40,
-        trafficLossSeconds: 0,
       } satisfies QualifyingRun)
 
     return {
@@ -1122,12 +1205,6 @@ export function runPracticeSession(
     )
     const adaptability = driverPerformanceAbility(driver, 'adaptability')
     const consistency = driverPerformanceAbility(driver, 'consistency')
-    const wetPenalty =
-      weather === 'clear'
-        ? 0
-        : weather === 'light-rain'
-          ? 4 + (1 - wetSkill(driver)) * 2.1 + (1 - trackGrip) * 2.7
-          : 9 + (1 - wetSkill(driver)) * 3.8 + (1 - trackGrip) * 4.8
     const scheduledPrograms = Array.from({ length: 4 }, (_, runIndex) => {
       const plan = practiceProgramFor({
         driverId: driver.id,
@@ -1189,40 +1266,55 @@ export function runPracticeSession(
       7,
       plannedLaps - weatherLostLaps,
     )
-    const performanceGain = performanceLapGainSeconds({
-      driver,
-      session: 'race',
-      team,
-      track: config.track,
-      weather,
-    })
-    const practiceBestOffset =
-      stage === 'fp1' ? 2.4 : stage === 'fp2' ? 0.75 : 0.35
-    const bestLapTimeSeconds =
-      config.track.baseLapTime +
-      practiceBestOffset -
-      performanceGain +
-      wetPenalty +
-      (hashChance(`${config.seed}:practice:${stage}:${driver.id}:best`) - 0.5) * 1.6
-    const longRunFuelDelta =
-      fuelMassEffects({ fuelLoadKg: 58, track: config.track }).lapTimeDeltaSeconds -
-      fuelMassEffects({ fuelLoadKg: 10, track: config.track }).lapTimeDeltaSeconds
-    const longRunTireDelta = tireDeltaSeconds(
-      'M',
-      8,
-      driverPerformanceAbility(driver, 'tireManagement'),
-      weather,
-      trackGrip,
-      96,
-      28,
-      config.track.tireNomination,
+    const sessionSetup =
+      config.weekendContext?.setupByDriver?.[driver.id] ??
+      baselineSetupForTrack(config.track)
+    const bestProgram = programs.reduce(
+      (best, candidate) =>
+        candidate.fuelLoadKg < best.fuelLoadKg ? candidate : best,
+      programs[0]!,
     )
+    const longRunProgram =
+      programs.find((program) => program.kind === 'race-simulation') ??
+      programs.reduce(
+        (longest, candidate) =>
+          candidate.fuelLoadKg > longest.fuelLoadKg ? candidate : longest,
+        programs[0]!,
+      )
+    const bestPhysicalOptions = {
+      compound: bestProgram.compound,
+      config,
+      fuelLoadKg: bestProgram.fuelLoadKg,
+      setup: sessionSetup,
+      team,
+      trackGrip,
+      weather,
+    }
+    const bestLapTimeSeconds =
+      timedSessionPhysicalLapSeconds(bestPhysicalOptions) +
+      timedSessionDriverExecutionLossSeconds({
+        ...bestPhysicalOptions,
+        driver,
+        run: stageIndex,
+        seed: `${config.seed}:practice:${stage}:${driver.id}:best`,
+      })
+    const longRunPhysicalOptions = {
+      compound: longRunProgram.compound,
+      config,
+      fuelLoadKg: longRunProgram.fuelLoadKg,
+      setup: sessionSetup,
+      team,
+      trackGrip,
+      weather,
+    }
     const longRunPaceSeconds =
-      bestLapTimeSeconds +
-      longRunFuelDelta +
-      longRunTireDelta +
-      hashChance(`${config.seed}:practice:${stage}:${driver.id}:long`) *
-        (1.25 - consistency * 0.45)
+      timedSessionPhysicalLapSeconds(longRunPhysicalOptions) +
+      timedSessionDriverExecutionLossSeconds({
+        ...longRunPhysicalOptions,
+        driver,
+        run: stageIndex + 10,
+        seed: `${config.seed}:practice:${stage}:${driver.id}:long`,
+      })
     const setupScore = Math.round(
       Math.max(
         1,

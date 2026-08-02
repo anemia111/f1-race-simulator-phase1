@@ -16,13 +16,15 @@ import {
   overtakeStatusFor,
 } from './activeAero'
 import {
-  categoryEngineRpmForSpeed,
-  categoryGearForSpeed,
   categoryHasHybridEnergyStore,
   categoryPhysicsFor,
   type CategoryPhysicsProfile,
 } from './categoryPhysics'
 import { driverSkillBlend } from './driverAbility'
+import {
+  driverBehaviorTraits,
+  type DriverDecision,
+} from './driverDecision'
 import {
   advanceEnergyStore,
   energyDeploymentRequestFor,
@@ -34,19 +36,18 @@ import {
   type SuperClippingResult,
 } from './superClipping'
 import {
-  effectiveLineWaterMm,
   tireOperatingWindowFor,
   tireTrackGripMultiplier,
   type TireTrackCondition,
 } from './tires'
 import { trackDynamicsAt } from './trackDynamics'
+import { gripForSurfaceWater } from './trackWater'
 import {
   airDensityKgM3,
   dirtyAirDownforceMultiplier,
-  driverSegmentExecution,
   fuelMassEffects,
-  integrateVehicleSpeedKph,
-  machineSegmentCapability,
+  integrateVehicleLongitudinalStep,
+  liveCorneringSpeedLimitKph,
   towDragReductionFor,
 } from './vehicleDynamics'
 
@@ -121,7 +122,6 @@ type CalculatedTelemetry = {
   ersMode: ErsMode
   ersPowerKw: number
   gear: number
-  performanceDeltaSeconds: number
   rpm: number
   speedKph: number
   throttlePercent: number
@@ -139,12 +139,17 @@ type CalculatedTelemetry = {
   superClippingStartedAtSeconds: number | null
   superClippingStartedAtProgress: number | null
   superClippingDurationSeconds: number
+  turboSpoolFraction: number
+  clutchEngagementFraction: number
 }
 
 export function calculateCarTelemetry(options: {
   car: CarSnapshot
+  /** Physical lateral position of the nearest car ahead, when one exists. */
+  aheadLateralOffsetM?: number
   deltaSeconds: number
   driver: Driver
+  driverDecision?: DriverDecision
   elapsedSeconds: number
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
@@ -154,7 +159,6 @@ export function calculateCarTelemetry(options: {
   raceControlOvertakeEnabled?: boolean
   overtakeSystem?: 'active-aero' | 'drs' | 'ots'
   regulatoryMassIncreaseKg?: number
-  paceScale?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number
   sessionType?: 'race-distance' | 'limited-time'
@@ -177,9 +181,11 @@ export function calculateCarTelemetry(options: {
 }): CalculatedTelemetry {
   const {
     car,
+    aheadLateralOffsetM,
     categoryPhysics = categoryPhysicsFor(undefined),
     deltaSeconds,
     driver,
+    driverDecision,
     elapsedSeconds,
     phase,
     localFlagPaceScale = 1,
@@ -189,10 +195,7 @@ export function calculateCarTelemetry(options: {
     raceControlOvertakeEnabled = true,
     overtakeSystem = 'active-aero',
     regulatoryMassIncreaseKg = 0,
-    paceScale = 1,
     sessionType = 'race-distance',
-    performanceSession =
-      sessionType === 'limited-time' ? 'qualifying' : 'race',
     raceLap,
     timedRunPhase = car.timedRunPhase,
     timedTrafficYield = false,
@@ -212,6 +215,11 @@ export function calculateCarTelemetry(options: {
   } = options
   const hasHybridEnergyStore =
     categoryHasHybridEnergyStore(categoryPhysics)
+  const behaviorTraits = driverDecision?.traits ?? driverBehaviorTraits(driver)
+  const lateralSeparationM =
+    aheadLateralOffsetM === undefined
+      ? undefined
+      : car.lateralOffsetM - aheadLateralOffsetM
   const isPreparationLap =
     timedRunPhase === 'out-lap' ||
     timedRunPhase === 'in-lap' ||
@@ -234,10 +242,14 @@ export function calculateCarTelemetry(options: {
       rainIntensityMmH: 0,
       surfaceWaterMm,
     } satisfies TireTrackCondition)
-  const effectiveWaterMm = effectiveLineWaterMm(trackCondition)
+  const ambientAirDensityKgM3 = airDensityKgM3({
+    altitudeMeters: track.altitudeMeters,
+    temperatureC: airTemperatureC,
+  })
   const dynamics = trackDynamicsAt(
     track,
     standingStartLaunchActive && car.progress >= 0.88 ? 0 : car.progress,
+    categoryPhysics,
   )
   const energyStoreAtFrameStart = normalizeEnergyStoreState(
     car.energyStore,
@@ -261,118 +273,131 @@ export function calculateCarTelemetry(options: {
           phase,
           track,
         })
-  const machineCapability = machineSegmentCapability({
-    dynamics,
-    session: performanceSession,
-    team,
-    weather,
-  })
-  const driverExecution = driverSegmentExecution({
-    driver,
-    dynamics,
-    session: performanceSession,
-    weather,
-  })
-  const dirtyAirMultiplier = phase
+  const dirtyAirDownforce = phase
     ? 1
     : dirtyAirDownforceMultiplier({
         dynamics,
         gapSeconds: car.gapToAhead,
+        lateralSeparationM,
         team,
       })
-  const waterGrip = clamp(1 - effectiveWaterMm * 0.055, 0.72, 1)
   const compoundGrip = tireTrackGripMultiplier(car.tire, trackCondition)
-  const localGrip = clamp(trackGrip * waterGrip * compoundGrip, 0.34, 1.08)
-  const gripSpeedMultiplier = clamp(
-    1 -
-      Math.max(0, 1 - localGrip) *
-        (0.24 + dynamics.curvature * 0.76) +
-      Math.max(0, localGrip - 1) *
-        (0.18 + dynamics.curvature * 0.65),
-    0.54,
-    1.025,
+  const surfaceGrip = gripForSurfaceWater(
+    trackGrip,
+    trackCondition.surfaceWaterMm,
+    trackCondition.dryingLine,
   )
-  const longStraightOpportunity = Math.max(
-    clamp((dynamics.straightLengthAheadMeters - 650) / 1_150, 0, 1),
-    clamp((dynamics.referenceSpeedKph - 340) / 55, 0, 1),
+  const localGrip = clamp(surfaceGrip * compoundGrip, 0.34, 1.08)
+  // Skill controls how much of the physical tyre envelope the driver can use;
+  // it never raises the tyre above its modelled maximum.
+  const utilisedGrip =
+    localGrip * (0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
+  // Geometry and the offline look-ahead event come from physicalLap, but the
+  // limits themselves are solved again for this car's live mass, setup,
+  // surface and wake. The offline terminal/deployment policy never becomes a
+  // live speed target.
+  const liveLimitFor = (
+    radiusMeters: number,
+    bankingDegrees: number,
+    evaluationSpeedKph: number,
+  ) =>
+    liveCorneringSpeedLimitKph({
+      additionalMassKg: Math.max(0, regulatoryMassIncreaseKg),
+      airDensityKgM3: ambientAirDensityKgM3,
+      bankingDegrees,
+      categoryPhysics,
+      dirtyAirDownforceMultiplier: dirtyAirDownforce,
+      evaluationSpeedKph,
+      fuelLoadKg: car.fuelLoadKg,
+      gripMultiplier: utilisedGrip,
+      radiusMeters,
+      setup,
+      team,
+    })
+  const corneringSpeedLimitKph = liveLimitFor(
+    dynamics.effectiveCornerRadiusM,
+    dynamics.bankingDegrees,
+    car.speedKph,
   )
-  const longStraightTargetHeadroomKph =
-    38 * longStraightOpportunity * Math.pow(dynamics.straightness, 1.5)
-  const racingTargetSpeedKph =
-    (dynamics.referenceSpeedKph + longStraightTargetHeadroomKph) *
-    clamp(paceScale, 0.42, 1.32) *
-    clamp(localFlagPaceScale, 0.42, 1) *
-    machineCapability *
-    driverExecution *
-    dirtyAirMultiplier *
-    gripSpeedMultiplier *
-    fuelEffects.cornerSpeedMultiplier *
-    preparationPaceScale
-  // The VSC delta is a minimum sector time measured against the plain local
-  // reference speed, so Race Control's pace scale is the ceiling on its own.
-  // Racing pace, straight headroom and car performance must not lift a car
-  // above the delta while its driver is obeying the same instruction.
-  const neutralisedCeilingKph =
-    phase?.flag === 'vsc'
-      ? dynamics.referenceSpeedKph * clamp(localFlagPaceScale, 0.42, 1)
+  const liveBrakingTargetSpeedKph =
+    dynamics.brakingDistanceAheadMeters > 0
+      ? liveLimitFor(
+          dynamics.brakingTargetCornerRadiusM,
+          dynamics.brakingTargetBankingDegrees,
+          dynamics.brakingTargetSpeedKph,
+        )
       : Number.POSITIVE_INFINITY
+  const brakingTargetSpeedKph = Number.isFinite(
+    liveBrakingTargetSpeedKph,
+  )
+    ? liveBrakingTargetSpeedKph
+    : dynamics.brakingTargetSpeedKph
+  // Neutralisation and preparation rules are operational speed ceilings. They
+  // shape pedal demand without scaling engine power or the integrated speed.
+  const neutralisedSpeedCeilingKph = phase
+    ? dynamics.referenceSpeedKph * clamp(localFlagPaceScale, 0.42, 1)
+    : Number.POSITIVE_INFINITY
+  const preparationSpeedCeilingKph = isPreparationLap
+    ? dynamics.referenceSpeedKph * preparationPaceScale
+    : Number.POSITIVE_INFINITY
   const targetSpeedKph = Math.min(
-    racingTargetSpeedKph,
-    neutralisedCeilingKph,
+    corneringSpeedLimitKph,
+    neutralisedSpeedCeilingKph,
+    preparationSpeedCeilingKph,
   )
-  const speedExcess = Math.max(0, car.speedKph - targetSpeedKph)
-  const brakingActivation = clamp(
-    (car.speedKph / Math.max(1, targetSpeedKph) - 0.78) / 0.22,
-    0,
+  const currentSpeedMps = car.speedKph / 3.6
+  const brakingTargetSpeedMps = brakingTargetSpeedKph / 3.6
+  const brakingDistanceWithDriverTimingM = Math.max(
     1,
+    dynamics.brakingDistanceAheadMeters -
+      currentSpeedMps * (driverDecision?.brakeOnsetDeltaSeconds ?? 0),
   )
+  const liveRequiredBrakingDecelerationMps2 =
+    dynamics.brakingDistanceAheadMeters > 0
+      ? Math.max(
+          0,
+          (currentSpeedMps ** 2 - brakingTargetSpeedMps ** 2) /
+            (2 * brakingDistanceWithDriverTimingM),
+        )
+      : 0
   const requiredBrakeUtilization = clamp(
-    dynamics.requiredBrakingDecelerationMps2 /
+    liveRequiredBrakingDecelerationMps2 /
       Math.max(1, categoryPhysics.maximumBrakeDecelerationMps2),
     0,
-    1.25,
+    1,
   )
-  const brakeCommitment = clamp(
-    (requiredBrakeUtilization - 0.04) / 0.12,
+  // If the car is already inside a corner above its lateral limit, resolve
+  // the required local deceleration over the current physical segment. This
+  // replaces the former category-specific overspeed gains with the same
+  // kinematic relation used by the look-ahead braking plan.
+  const targetSpeedMps = targetSpeedKph / 3.6
+  const localOverspeedDecelerationMps2 = Math.max(
+    0,
+    (currentSpeedMps ** 2 - targetSpeedMps ** 2) /
+      (2 * Math.max(1, dynamics.segmentLengthMeters)),
+  )
+  const localOverspeedBrakeUtilization = clamp(
+    localOverspeedDecelerationMps2 /
+      Math.max(1, categoryPhysics.maximumBrakeDecelerationMps2),
     0,
     1,
   )
-  const holdsFullThrottle =
-    dynamics.fullThrottle &&
-    requiredBrakeUtilization <
-      categoryPhysics.fullThrottleBrakeUtilizationLimit
-  const kinematicBrakeDemand =
-    holdsFullThrottle
-      ? 0
-      : requiredBrakeUtilization * brakeCommitment * 100
-  const cornerOverspeedBrakeGain =
-    targetSpeedKph < 180
-      ? categoryPhysics.lowSpeedOverspeedBrakeBase +
-        dynamics.curvature *
-          categoryPhysics.lowSpeedOverspeedBrakeCurvatureScale
-      : 0.12 + dynamics.brakingSeverity * 0.18
-  const overspeedBrakeDemand =
-    dynamics.fullThrottle && kinematicBrakeDemand < 1
-      ? 0
-      : speedExcess * cornerOverspeedBrakeGain
   const pitLaneSpeedLimitKph =
     car.status === 'pit' &&
     car.pitPhase !== 'none' &&
     car.pitPhase !== 'box'
       ? track.pitLane?.speedLimitKph ?? 80
       : null
+  const immobilizedIncident =
+    car.incidentTrackState === 'on-track-stopped' &&
+    car.battleDeltaSecondsRemaining < -0.01
   const pitLaneBrakeDemand =
     pitLaneSpeedLimitKph === null
       ? 0
       : clamp((car.speedKph - pitLaneSpeedLimitKph) * 1.8, 0, 55)
   const profileBrakeDemand =
-    kinematicBrakeDemand * brakingActivation +
-    overspeedBrakeDemand +
-    pitLaneBrakeDemand +
-    (phase?.flag === 'yellow'
-      ? (phase.yellowSeverity === 'double' ? 11 : 7) +
-        car.speedKph * 0.01
-      : 0)
+    Math.max(requiredBrakeUtilization, localOverspeedBrakeUtilization) * 100 +
+    pitLaneBrakeDemand
   const brakeControl = driverSkillBlend(driver, {
     brakingSkill: 0.58,
     precision: 0.24,
@@ -380,10 +405,11 @@ export function calculateCarTelemetry(options: {
   })
   const brakePercent = Math.round(
     clamp(
-      phase?.flag === 'red'
+      phase?.flag === 'red' || immobilizedIncident
         ? 100
-        : profileBrakeDemand * fuelEffects.brakeLoadMultiplier *
-            (1.04 - brakeControl * 0.08),
+        : profileBrakeDemand *
+          (driverDecision?.brakePressureScale ??
+            (0.96 + brakeControl * 0.04)),
       0,
       100,
     ),
@@ -419,9 +445,24 @@ export function calculateCarTelemetry(options: {
     requestedThrottlePercent,
     preparationThrottleCeiling,
   )
+  const throttleTimingScale =
+    driverDecision === undefined
+      ? 1
+      : driverDecision.throttleTimingDeltaSeconds >= 0
+        ? clamp(1 - driverDecision.throttleTimingDeltaSeconds / 0.5, 0, 1)
+        : clamp(1 - driverDecision.throttleTimingDeltaSeconds * 0.4, 1, 1.08)
+  const behaviorManagedThrottlePercent = Math.round(
+    clamp(
+      phaseManagedThrottlePercent *
+        throttleTimingScale *
+        (driverDecision?.throttleOpeningScale ?? 1),
+      0,
+      100,
+    ),
+  )
   const throttlePercent = timedTrafficYield
-    ? Math.min(38, phaseManagedThrottlePercent)
-    : phaseManagedThrottlePercent
+    ? Math.min(38, behaviorManagedThrottlePercent)
+    : behaviorManagedThrottlePercent
   const otsAvailable =
     overtakeSystem === 'ots' &&
     !isPreparationLap &&
@@ -648,55 +689,60 @@ export function calculateCarTelemetry(options: {
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
   )
   const ersBatteryPercent = Math.round(energyStore.stateOfCharge * 100)
-  const towDragReduction = phase || car.position <= 1 || car.gapToAhead <= 0
+  const towDragReduction = phase || car.gapToAhead <= 0
     ? 0
     : towDragReductionFor({
         dynamics,
         gapSeconds: car.gapToAhead,
+        lateralSeparationM,
         team,
       })
-  const physicallyIntegratedSpeedKph = integrateVehicleSpeedKph({
+  const longitudinalStep = integrateVehicleLongitudinalStep({
     activeAeroMode,
-    airDensityKgM3: airDensityKgM3({
-      altitudeMeters: track.altitudeMeters,
-      temperatureC: trackTemperatureC,
-    }),
+    additionalMassKg: Math.max(0, regulatoryMassIncreaseKg),
+    airDensityKgM3: ambientAirDensityKgM3,
     brakePercent,
     brakeReleaseSpeedKph:
       pitLaneSpeedLimitKph ??
-      (brakePercent > 3 ? targetSpeedKph * 0.98 : undefined),
+      (brakePercent > 3
+        ? Math.min(targetSpeedKph, brakingTargetSpeedKph) * 0.98
+        : undefined),
     categoryPhysics,
     currentSpeedKph: car.speedKph,
     deltaSeconds,
+    dirtyAirDownforceMultiplier: dirtyAirDownforce,
     drivePowerScale: superClipping.drivePowerScale,
     dynamics,
     ersPowerKw,
-    extraDrivePowerKw:
+    extraCombustionPowerKw:
       otsActive ? categoryPhysics.overtakeBoostPowerKw : 0,
     fuelLoadKg: car.fuelLoadKg,
-    gripMultiplier: localGrip,
+    gripMultiplier: utilisedGrip,
     headwindMps,
     regenerativeResistancePowerKw:
       energyStep.regenerativeResistancePowerKw,
+    requestedBrakeDecelerationMps2:
+      (brakePercent / 100) *
+      categoryPhysics.maximumBrakeDecelerationMps2,
     setup,
     team,
     throttlePercent,
     towDragReduction,
+    turboSpoolFraction: car.turboSpoolFraction,
+    clutchEngagementFraction: car.clutchEngagementFraction,
   })
   // The timing tower, map movement, and lap clock all consume this integrated
   // result. The profile only controls pedals; it never overwrites road speed.
-  const speedKph =
-    phase?.flag === 'red' || car.pitPhase === 'box'
-      ? 0
-      : Number(physicallyIntegratedSpeedKph.toFixed(2))
-  const gear = categoryGearForSpeed(speedKph, categoryPhysics)
-  const rpm = categoryEngineRpmForSpeed({
-    brakePercent,
-    gear,
-    profile: categoryPhysics,
-    speedKph,
-    throttlePercent,
-  })
+  const powerUnitStopped =
+    phase?.flag === 'red' || car.pitPhase === 'box' || immobilizedIncident
+  const speedKph = powerUnitStopped
+    ? 0
+    : Number(longitudinalStep.speedKph.toFixed(2))
+  // A running car at 0 km/h is launching in first with clutch slip. Only an
+  // explicit stopped state (red flag, incident, or pit box) reports neutral
+  // and 0 RPM.
+  const gear = powerUnitStopped ? 0 : longitudinalStep.gear
+  const rpm = powerUnitStopped ? 0 : longitudinalStep.rpm
   const tireWindow = tireOperatingWindowFor(car.tire, track.tireNomination)
   const paceModeHeat =
     car.racePaceMode === 'push'
@@ -768,7 +814,6 @@ export function calculateCarTelemetry(options: {
     ersMode,
     ersPowerKw,
     gear,
-    performanceDeltaSeconds: 0,
     rpm,
     speedKph,
     throttlePercent,
@@ -787,5 +832,7 @@ export function calculateCarTelemetry(options: {
     superClippingStartedAtSeconds,
     superClippingStartedAtProgress,
     superClippingDurationSeconds,
+    turboSpoolFraction: longitudinalStep.turboSpoolFraction,
+    clutchEngagementFraction: longitudinalStep.clutchEngagementFraction,
   }
 }

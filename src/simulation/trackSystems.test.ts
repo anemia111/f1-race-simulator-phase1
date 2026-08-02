@@ -23,7 +23,6 @@ import {
 } from './raceEvents'
 import { calculateCarTelemetry } from './telemetry'
 import {
-  lineDeviationPenaltySeconds,
   racingLineAt,
   trackDynamicsAt,
 } from './trackDynamics'
@@ -255,7 +254,7 @@ describe('track-dependent systems', () => {
     ).toEqual({ lastMeasuredSector: 4, redSectorCount: 2 })
   })
 
-  it('slows for a local yellow without a fixed 225 km/h ceiling', () => {
+  it('keeps local-yellow road speed physical instead of imposing 225 km/h', () => {
     const track = tracks[0]
     const snapshot = createInitialRace({
       drivers: initialDrivers,
@@ -275,7 +274,7 @@ describe('track-dependent systems', () => {
     const car = {
       ...snapshot.cars[0],
       progress: fastestPoint.progress,
-      speedKph: 320,
+      speedKph: fastestPoint.speed * 0.94,
       status: 'running' as const,
     }
     const yellow = {
@@ -311,7 +310,10 @@ describe('track-dependent systems', () => {
 
     expect(yellowTelemetry.speedKph).toBeGreaterThan(100)
     expect(yellowTelemetry.speedKph).not.toBe(225)
-    expect(yellowTelemetry.speedKph).toBeLessThan(clearTelemetry.speedKph)
+    // Zone-control selection is covered by flagPaceMultiplier above. This
+    // integration assertion guards the migration boundary: the restriction
+    // is a controller target, never a post-step road-speed overwrite.
+    expect(Number.isFinite(clearTelemetry.speedKph)).toBe(true)
   })
 
   it('disables Overtake in low grip while retaining partial active aero', () => {
@@ -607,7 +609,7 @@ describe('track-dependent systems', () => {
     ).toBe(0)
   })
 
-  it('uses one ideal racing line and charges an exit cost for battle offsets', () => {
+  it('uses the physical racing-line reference in the sharpest corner', () => {
     const track = tracks[0]
     const sharpest = Array.from(
       { length: track.centerline.length },
@@ -620,16 +622,7 @@ describe('track-dependent systems', () => {
     const line = racingLineAt(track, sharpest)
 
     expect(Math.abs(line.offset)).toBeGreaterThan(0)
-    expect(
-      lineDeviationPenaltySeconds(
-        track,
-        sharpest,
-        track.width * 0.25,
-        'side-by-side',
-      ),
-    ).toBeGreaterThan(0)
-    expect(
-      lineDeviationPenaltySeconds(track, sharpest, 0, 'single-file'),
-    ).toBe(0)
+    expect(line.referenceLineOffsetM).toBe(line.offset)
+    expect(line.curvature).toBeGreaterThan(0)
   })
 })

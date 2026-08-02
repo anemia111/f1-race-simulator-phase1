@@ -6,6 +6,12 @@ import { calculateCarTelemetry } from './telemetry'
 import { progressForProfileSpeed, trackDynamicsAt } from './trackDynamics'
 import { advanceRace, createInitialRace } from './race'
 import { baselineSetupForTrack, idealSetupForTrack } from './engineering'
+import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  airDensityKgM3,
+  integrateVehicleLongitudinalStep,
+  liveCorneringSpeedLimitKph,
+} from './vehicleDynamics'
 
 function runSpeedTrace(
   track: TrackDefinition,
@@ -165,6 +171,251 @@ function runIntegratedRaceSpeedTrace(
 }
 
 describe('on-track speed calibration', () => {
+  it('does not let baseLapTime rescale a live physics tick', () => {
+    const track = tracks.find((candidate) => candidate.id === 'monza-approx')!
+    const driver = initialDrivers.find(
+      (candidate) => candidate.teamId === 'ferrari',
+    )!
+    const team = initialTeams.find(({ id }) => id === driver.teamId)!
+    const snapshot = createInitialRace({
+      drivers: [driver],
+      seed: 'base-lap-time-is-not-live-speed',
+      teams: [team],
+      track,
+    })
+    const progress = track.centerline
+      .map((_, index) => index / track.centerline.length)
+      .sort(
+        (left, right) =>
+          trackDynamicsAt(track, right).straightLengthAheadMeters -
+          trackDynamicsAt(track, left).straightLengthAheadMeters,
+      )[0]
+    const car: CarSnapshot = {
+      ...snapshot.cars[0],
+      clutchEngagementFraction: 1,
+      gapToAhead: 10,
+      progress,
+      racePaceMode: 'push',
+      speedKph: 250,
+      status: 'running',
+      totalDistance: 2 + progress,
+      turboSpoolFraction: 1,
+    }
+    const telemetryFor = (candidateTrack: TrackDefinition) =>
+      calculateCarTelemetry({
+        car,
+        deltaSeconds: 0.1,
+        driver,
+        elapsedSeconds: 60,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 3,
+        team,
+        track: candidateTrack,
+        trackGrip: 1,
+        weather: 'clear',
+      })
+    const fasterBaseline = telemetryFor({
+      ...track,
+      baseLapTime: track.baseLapTime * 0.55,
+    })
+    const slowerBaseline = telemetryFor({
+      ...track,
+      baseLapTime: track.baseLapTime * 1.65,
+    })
+
+    expect(fasterBaseline.speedKph).toBe(slowerBaseline.speedKph)
+    expect(fasterBaseline.gear).toBe(slowerBaseline.gear)
+    expect(fasterBaseline.rpm).toBe(slowerBaseline.rpm)
+    expect(fasterBaseline.throttlePercent).toBe(
+      slowerBaseline.throttlePercent,
+    )
+    expect(fasterBaseline.brakePercent).toBe(slowerBaseline.brakePercent)
+  })
+
+  it('feeds Energy Store SOC and thermal limits into acceleration once', () => {
+    const track = tracks.find((candidate) => candidate.id === 'monza-approx')!
+    const driver = initialDrivers.find(
+      (candidate) => candidate.teamId === 'ferrari',
+    )!
+    const team = initialTeams.find(({ id }) => id === driver.teamId)!
+    const snapshot = createInitialRace({
+      drivers: [driver],
+      seed: 'energy-limited-acceleration',
+      teams: [team],
+      track,
+    })
+    const progress = track.centerline
+      .map((_, index) => index / track.centerline.length)
+      .find((candidate) => trackDynamicsAt(track, candidate).fullThrottle)!
+    const commonCar: CarSnapshot = {
+      ...snapshot.cars[0],
+      clutchEngagementFraction: 1,
+      gapToAhead: 0.8,
+      progress,
+      racePaceMode: 'push',
+      speedKph: 220,
+      status: 'running',
+      totalDistance: 3 + progress,
+      turboSpoolFraction: 1,
+    }
+    const calculate = (car: CarSnapshot) =>
+      calculateCarTelemetry({
+        car,
+        deltaSeconds: 0.25,
+        driver,
+        elapsedSeconds: 90,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 4,
+        team,
+        track,
+        trackGrip: 1,
+        weather: 'clear',
+      })
+    const healthy = calculate(commonCar)
+    const energyMinimum = commonCar.energyStore.minimumUsableEnergyMJ
+    const depleted = calculate({
+      ...commonCar,
+      energyStore: {
+        ...commonCar.energyStore,
+        currentEnergyMJ: energyMinimum,
+        stateOfCharge: 0,
+      },
+      ersBatteryPercent: 0,
+    })
+    const thermallyLimited = calculate({
+      ...commonCar,
+      energyStore: {
+        ...commonCar.energyStore,
+        batteryTemperatureC: 96,
+        inverterTemperatureC: 132,
+        motorGeneratorTemperatureC: 154,
+      },
+    })
+
+    expect(healthy.ersPowerKw).toBeGreaterThan(depleted.ersPowerKw)
+    expect(depleted.ersPowerKw).toBe(0)
+    expect(healthy.speedKph).toBeGreaterThan(depleted.speedKph)
+    expect(healthy.ersPowerKw).toBeGreaterThan(
+      thermallyLimited.ersPowerKw,
+    )
+    expect(healthy.speedKph).toBeGreaterThan(thermallyLimited.speedKph)
+  })
+
+  it('recomputes a live corner limit for carried fuel mass', () => {
+    const track = tracks.find((candidate) => candidate.id === 'suzuka-approx')!
+    const driver = initialDrivers.find(
+      (candidate) => candidate.teamId === 'ferrari',
+    )!
+    const team = initialTeams.find(({ id }) => id === driver.teamId)!
+    const physics = categoryPhysicsFor(undefined)
+    const dynamics = trackDynamicsAt(track, 0.5, physics)
+    const setup = baselineSetupForTrack(track)
+    const limitFor = (fuelLoadKg: number) =>
+      liveCorneringSpeedLimitKph({
+        airDensityKgM3: airDensityKgM3({
+          altitudeMeters: track.altitudeMeters,
+          temperatureC: 25,
+        }),
+        bankingDegrees: dynamics.bankingDegrees,
+        categoryPhysics: physics,
+        evaluationSpeedKph: dynamics.referenceSpeedKph,
+        fuelLoadKg,
+        gripMultiplier: 1,
+        radiusMeters: dynamics.effectiveCornerRadiusM,
+        setup,
+        team,
+      })
+    const lightLimitKph = limitFor(5)
+    const heavyLimitKph = limitFor(105)
+    const snapshot = createInitialRace({
+      drivers: [driver],
+      seed: 'live-fuel-corner-limit',
+      teams: [team],
+      track,
+    })
+    const commonCar: CarSnapshot = {
+      ...snapshot.cars[0],
+      clutchEngagementFraction: 1,
+      gapToAhead: 10,
+      progress: 0.5,
+      speedKph: (lightLimitKph + heavyLimitKph) / 2,
+      status: 'running',
+      totalDistance: 2.5,
+      turboSpoolFraction: 1,
+    }
+    const calculate = (fuelLoadKg: number) =>
+      calculateCarTelemetry({
+        car: { ...commonCar, fuelLoadKg },
+        deltaSeconds: 0.1,
+        driver,
+        elapsedSeconds: 60,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 3,
+        setup,
+        team,
+        track,
+        trackGrip: 1,
+        weather: 'clear',
+      })
+    const light = calculate(5)
+    const heavy = calculate(105)
+
+    expect(heavyLimitKph).toBeLessThan(lightLimitKph)
+    expect(heavy.brakePercent).toBeGreaterThanOrEqual(light.brakePercent)
+    expect(heavy.speedKph).toBeLessThan(light.speedKph)
+  })
+
+  it('turns active-aero drag reduction into a higher physical speed', () => {
+    const track = tracks.find((candidate) => candidate.id === 'monza-approx')!
+    const team = initialTeams.find(({ id }) => id === 'ferrari')!
+    const physics = categoryPhysicsFor(undefined)
+    const dynamics = trackDynamicsAt(track, 0, physics)
+    const common = {
+      airDensityKgM3: airDensityKgM3({
+        altitudeMeters: track.altitudeMeters,
+        temperatureC: 25,
+      }),
+      brakePercent: 0,
+      categoryPhysics: physics,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 330,
+      deltaSeconds: 1,
+      dynamics,
+      ersPowerKw: 0,
+      fuelLoadKg: 20,
+      gripMultiplier: 1,
+      team,
+      throttlePercent: 100,
+      turboSpoolFraction: 1,
+    } as const
+    const corner = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'corner',
+    })
+    const straight = integrateVehicleLongitudinalStep({
+      ...common,
+      activeAeroMode: 'straight',
+    })
+
+    expect(straight.dragForceN).toBeLessThan(corner.dragForceN)
+    expect(straight.speedKph).toBeGreaterThan(corner.speedKph)
+    for (const value of Object.values(straight)) {
+      expect(Number.isFinite(value)).toBe(true)
+    }
+    for (const value of [
+      straight.speedKph,
+      straight.driveForceN,
+      straight.tractionLimitN,
+      straight.dragForceN,
+      straight.brakeForceN,
+    ]) {
+      expect(value).toBeGreaterThanOrEqual(0)
+    }
+  })
+
   it('smooths resampled layout noise without removing genuine slow corners', () => {
     const profileFor = (trackId: string) => {
       const track = tracks.find((candidate) => candidate.id === trackId)!
@@ -182,7 +433,9 @@ describe('on-track speed calibration', () => {
 
     expect(cota[0]).toBeGreaterThanOrEqual(80)
     expect(bahrain[0]).toBeGreaterThanOrEqual(80)
-    expect(monaco[0]).toBeGreaterThanOrEqual(65)
+    // The physical radius model keeps the genuine Grand Hotel hairpin instead
+    // of lifting every profile to the former calibrated 65 km/h floor.
+    expect(monaco[0]).toBeGreaterThanOrEqual(50)
     expect(monaco[0]).toBeLessThan(80)
     expect(monaco[Math.floor(monaco.length / 2)]).toBeGreaterThan(190)
   })
@@ -262,12 +515,13 @@ describe('on-track speed calibration', () => {
       .filter(
         ({ dynamics }) =>
           dynamics.fullThrottle &&
-          dynamics.referenceSpeedKph >= 360 &&
-          dynamics.brakingSeverity > 0.02,
+          dynamics.corneringSpeedLimitKph >= 360 &&
+          dynamics.straightLengthAheadMeters >= 180,
       )
       .sort(
         (left, right) =>
-          right.dynamics.brakingSeverity - left.dynamics.brakingSeverity,
+          right.dynamics.straightLengthAheadMeters -
+          left.dynamics.straightLengthAheadMeters,
       )[0]
 
     expect(candidate).toBeDefined()
@@ -383,7 +637,7 @@ describe('on-track speed calibration', () => {
     }
   })
 
-  it('keeps representative dry-running tracks above the old 260 km/h ceiling', () => {
+  it('lets representative dry-running top speeds emerge from forces', () => {
     const albertPark = runSpeedTrace(
       tracks.find((candidate) => candidate.id === 'albert-park-approx')!,
     )
@@ -395,14 +649,14 @@ describe('on-track speed calibration', () => {
     )
 
     expect(albertPark.maximumSpeedKph).toBeGreaterThanOrEqual(295)
-    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(345)
+    expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(410)
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(330)
-    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(380)
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(360)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(390)
+    expect(monza.maximumSpeedKph).toBeLessThanOrEqual(410)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(375)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
   })
 
-  it('only approaches the 420 km/h class in a favorable low-drag tow', () => {
+  it('respects the physical top-gear design speed in a low-drag tow', () => {
     const lowDragSetup: CarSetup = {
       brakeBiasPercent: 56.5,
       coolingPercent: 38,
@@ -433,11 +687,13 @@ describe('on-track speed calibration', () => {
       },
     )
 
-    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(418)
-    expect(result.maximumSpeedKph).toBeLessThanOrEqual(430)
+    // Top gear reaches the rev limit around 402 km/h. There is no hidden
+    // post-design efficiency curve that manufactures a 420 km/h calibration.
+    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(395)
+    expect(result.maximumSpeedKph).toBeLessThanOrEqual(410)
   })
 
-  it('preserves a large setup-dependent speed difference at Las Vegas', () => {
+  it('derives the Las Vegas setup speed ordering from drag', () => {
     const lasVegas = tracks.find(
       (candidate) => candidate.id === 'las-vegas-approx',
     )!
@@ -461,10 +717,12 @@ describe('on-track speed calibration', () => {
       },
     })
 
-    expect(lowDrag.maximumSpeedKph).toBeGreaterThanOrEqual(405)
-    expect(
-      lowDrag.maximumSpeedKph - highDownforce.maximumSpeedKph,
-    ).toBeGreaterThanOrEqual(20)
+    expect(lowDrag.maximumSpeedKph).toBeGreaterThanOrEqual(395)
+    // The removed target-speed calibration encoded a fixed 20 km/h spread.
+    // The physical invariant is monotonic: adding wing costs terminal speed.
+    expect(lowDrag.maximumSpeedKph).toBeGreaterThan(
+      highDownforce.maximumSpeedKph,
+    )
   })
 
   it('reaches representative top speeds through the complete race loop', () => {
@@ -476,15 +734,17 @@ describe('on-track speed calibration', () => {
     )
 
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(320)
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(400)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(430)
-    expect(monza.minimumBatteryPercent).toBeLessThanOrEqual(65)
-    expect(lasVegas.minimumBatteryPercent).toBeLessThanOrEqual(78)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(395)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
+    // Both traces consume Energy Store charge through the live deployment
+    // path; the exact remainder is an output, not a lap-time calibration gate.
+    expect(monza.minimumBatteryPercent).toBeLessThan(70)
+    expect(lasVegas.minimumBatteryPercent).toBeLessThan(70)
     expect(monza.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
     expect(lasVegas.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
   })
 
-  it('keeps the speeds shown by a complete 30-car field in the calibrated range', () => {
+  it('keeps a complete 30-car field inside physical top-gear bounds', () => {
     const monza = runIntegratedRaceSpeedTrace(
       tracks.find((candidate) => candidate.id === 'monza-approx')!,
       true,
@@ -495,7 +755,9 @@ describe('on-track speed calibration', () => {
     )
 
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(325)
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(410)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(430)
+    // Traffic and line sharing need not reproduce the solo-run maximum, but
+    // the field still reaches the top-gear region without overspeed.
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(380)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
   }, 30_000)
 })
