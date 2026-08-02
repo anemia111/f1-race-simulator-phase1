@@ -5,6 +5,17 @@ import type {
   SectorFlagState,
 } from '../types'
 import { hashChance } from './random'
+import {
+  FORMULA_VEHICLE_HALF_WIDTH_M,
+  OVERTAKE_LATERAL_SAFETY_MARGIN_M,
+} from './vehicleGeometry'
+
+/**
+ * Centre separation a pass needs before the occupancy model will let it
+ * complete. A driver committing to a move aims past this, not short of it.
+ */
+const PASSING_LATERAL_SEPARATION_M =
+  FORMULA_VEHICLE_HALF_WIDTH_M * 2 + OVERTAKE_LATERAL_SAFETY_MARGIN_M
 
 /**
  * Driver choices are deliberately sampled at a lower frequency than the
@@ -590,10 +601,16 @@ function nominalLineFor(
       )
       const side = openSide(context, chosen.role, chosen.opponentId, opponent)
       const intensity = clamp01(finiteOr(context.attack?.intensity, 0))
+      // Aim past what a pass requires rather than short of it. The old floor
+      // of 1.25 m was below the separation the occupancy model needs, so a
+      // committed attacker was steering for a line that could not complete the
+      // move however much quicker the car was.
       const separation = clamp(
-        1.25 + intensity * 0.7 + traits.overtakeCommitment * 0.35,
-        1.25,
-        2.3,
+        PASSING_LATERAL_SEPARATION_M +
+          intensity * 0.45 +
+          traits.overtakeCommitment * 0.3,
+        PASSING_LATERAL_SEPARATION_M,
+        PASSING_LATERAL_SEPARATION_M + 0.75,
       )
 
       return clamp(
