@@ -425,6 +425,50 @@ export function f1QualifyingLapObservations(
     .sort((left, right) => left.trackId.localeCompare(right.trackId))
 }
 
+export type SpeedObservation = {
+  eventId: string
+  /** Median of the individual cars' own peaks; robust to one stray sample. */
+  observedDriverPeakMedianKph: number
+  /** Maximum over the classified field's car telemetry for the session. */
+  observedFieldPeakKph: number
+  sourceUrls: string[]
+  telemetrySampleCount: number
+  trackId: string
+}
+
+/**
+ * Observed qualifying straight-line peaks, for circuits that carry one.
+ *
+ * Qualifying rather than race, because it is the cleanest drag observable:
+ * low fuel, attack setup, and effectively no tow. The FIA speed trap is
+ * deliberately not used — it reads one fixed point on one straight, so it is
+ * not a lap-wide peak and comparing a simulated peak against it understates
+ * the model. Coverage is partial by design: a circuit whose sessions have not
+ * run has no reference, and is absent rather than estimated.
+ */
+export function f1QualifyingSpeedObservations(
+  records: readonly EventPaceCalibration[] = f1PaceCalibration2026,
+): SpeedObservation[] {
+  return records
+    .filter(
+      (record): record is EventPaceCalibration &
+        Required<Pick<EventPaceCalibration, 'speed'>> =>
+        record.series === 'f1-custom' &&
+        record.speed !== undefined &&
+        typeof record.speed.qualifyingFieldPeakKph === 'number' &&
+        typeof record.speed.qualifyingDriverPeakMedianKph === 'number',
+    )
+    .map((record) => ({
+      eventId: record.eventId,
+      observedDriverPeakMedianKph: record.speed.qualifyingDriverPeakMedianKph!,
+      observedFieldPeakKph: record.speed.qualifyingFieldPeakKph!,
+      sourceUrls: record.sources.map((source) => source.url),
+      telemetrySampleCount: record.speed.telemetrySampleCount,
+      trackId: record.trackId,
+    }))
+    .sort((left, right) => left.trackId.localeCompare(right.trackId))
+}
+
 export type PaceCalibrationEvidenceSummary = {
   compoundMedianRecords: number
   eventRecords: number

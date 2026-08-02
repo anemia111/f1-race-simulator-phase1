@@ -61,6 +61,7 @@ try {
   const {
     buildPhysicsValidationReport,
     f1QualifyingLapObservations,
+  f1QualifyingSpeedObservations,
     summarizePaceCalibrationEvidence,
   } = runtime.calibration
   const { categoryPhysicsFor } = runtime.categories
@@ -141,6 +142,31 @@ try {
 
     return simulatePhysicalLap(track, { physics: f1Physics })
   })
+  // Compare each circuit's modeled peak with its own observed peak. A single
+  // field-wide mean would let a circuit that is far too fast be cancelled by one
+  // that is too slow, which is the error this comparison exists to expose.
+  const speedObservations = f1QualifyingSpeedObservations(f1PaceCalibration2026)
+  const modeledPeakByTrack = new Map(
+    observations.map((observation, index) => [
+      observation.trackId,
+      physicalAcrossObservedTracks[index].maximumSpeedKph,
+    ]),
+  )
+  const speedComparisons = speedObservations
+    .filter((observation) => modeledPeakByTrack.has(observation.trackId))
+    .map((observation) => {
+      const modeledPeakKph = modeledPeakByTrack.get(observation.trackId)
+
+      return {
+        errorKph: modeledPeakKph - observation.observedFieldPeakKph,
+        modeledPeakKph,
+        observedDriverPeakMedianKph: observation.observedDriverPeakMedianKph,
+        observedFieldPeakKph: observation.observedFieldPeakKph,
+        trackId: observation.trackId,
+      }
+    })
+    .sort((left, right) => Math.abs(right.errorKph) - Math.abs(left.errorKph))
+
   const report = buildPhysicsValidationReport({
     categoryPredictions,
     evidence: {
@@ -168,7 +194,8 @@ try {
         unit: 's and lap ratio',
       },
       'maximum-speed': {
-        basis: 'Physical reference laps on official qualifying comparison tracks',
+        basis:
+          'Physical reference laps compared per circuit with observed 2026 qualifying car-telemetry peaks',
         modelValue: {
           maximumKph: Math.max(
             ...physicalAcrossObservedTracks.map((lap) => lap.maximumSpeedKph),
@@ -176,9 +203,23 @@ try {
           meanKph: average(
             physicalAcrossObservedTracks.map((lap) => lap.maximumSpeedKph),
           ),
+          perCircuit: speedComparisons,
+          meanAbsoluteErrorKph: speedComparisons.length
+            ? average(speedComparisons.map((entry) => Math.abs(entry.errorKph)))
+            : null,
+          biasKph: speedComparisons.length
+            ? average(speedComparisons.map((entry) => entry.errorKph))
+            : null,
         },
-        observedValue: null,
-        sampleCount: physicalAcrossObservedTracks.length,
+        observedValue: speedComparisons.length
+          ? {
+              circuitCount: speedComparisons.length,
+              meanFieldPeakKph: average(
+                speedComparisons.map((entry) => entry.observedFieldPeakKph),
+              ),
+            }
+          : null,
+        sampleCount: speedComparisons.length,
         unit: 'km/h',
       },
       'minimum-corner-speed': {

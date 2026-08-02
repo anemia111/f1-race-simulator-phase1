@@ -5,6 +5,7 @@ import {
   compareLapTimes,
   F1_PHYSICS_VALIDATION_SPLIT,
   f1QualifyingLapObservations,
+  f1QualifyingSpeedObservations,
   PHYSICS_CALIBRATION_PARAMETERS,
   rankCategoryPace,
   REQUIRED_VALIDATION_DOMAINS,
@@ -294,5 +295,56 @@ describe('physics validation metrics', () => {
       value: { modelValue: true, observedValue: true },
     })
     expect(report.fitPerformed).toBe(false)
+  })
+})
+
+describe('observed straight-line speed references', () => {
+  it('reads only circuits that carry a checked-in observation', () => {
+    const observations = f1QualifyingSpeedObservations(f1PaceCalibration2026)
+    const withSpeed = f1PaceCalibration2026.filter(
+      (record) =>
+        record.speed !== undefined &&
+        typeof record.speed.qualifyingFieldPeakKph === 'number',
+    )
+
+    expect(observations.length).toBe(withSpeed.length)
+    expect(observations.length).toBeGreaterThan(0)
+    // Coverage is partial by design; an unrun event must not be invented.
+    expect(observations.length).toBeLessThan(f1PaceCalibration2026.length)
+  })
+
+  it('keeps every observation physically ordered and sourced', () => {
+    f1QualifyingSpeedObservations(f1PaceCalibration2026).forEach(
+      (observation) => {
+        // The field maximum is taken over every car, so a median of the cars'
+        // own peaks can never exceed it.
+        expect(
+          observation.observedDriverPeakMedianKph,
+          observation.trackId,
+        ).toBeLessThanOrEqual(observation.observedFieldPeakKph)
+        expect(observation.telemetrySampleCount).toBeGreaterThan(0)
+        expect(observation.sourceUrls.length).toBeGreaterThan(0)
+        expect(observation.observedFieldPeakKph).toBeGreaterThan(150)
+        expect(observation.observedFieldPeakKph).toBeLessThan(400)
+      },
+    )
+  })
+
+  it('does not use the FIA speed trap as a peak', () => {
+    // The trap reads one fixed point on one straight. Suzuka 2026 is the
+    // standing example: 308 km/h at the trap against a 339 km/h lap peak.
+    const suzuka = f1PaceCalibration2026.find(
+      (record) => record.trackId === 'suzuka-approx',
+    )!
+    const observation = f1QualifyingSpeedObservations(f1PaceCalibration2026).find(
+      (entry) => entry.trackId === 'suzuka-approx',
+    )!
+
+    expect(suzuka.speed?.raceTrapMaxKph).toBeLessThan(
+      suzuka.speed!.raceFieldPeakKph!,
+    )
+    expect(observation.observedFieldPeakKph).toBe(
+      suzuka.speed!.qualifyingFieldPeakKph,
+    )
   })
 })
