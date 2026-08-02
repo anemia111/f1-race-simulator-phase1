@@ -194,8 +194,11 @@ export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
     return driverOverallAbilityPoints(driver)
   }
 
+  // Bounded by the limit-break ceiling rather than the published scale, so a
+  // rating deliberately placed past 100 is displayed as authored instead of
+  // being shown as 100 while the physics uses the higher figure.
   return Math.round(
-    Math.min(DRIVER_ABILITY_SCALE_MAX, Math.max(0, configuredOverall)),
+    Math.min(DRIVER_ABILITY_LIMIT_BREAK_MAX, Math.max(0, configuredOverall)),
   )
 }
 

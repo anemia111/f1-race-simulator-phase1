@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import performanceCsv from './f1Performance.csv?raw'
 import {
+  DRIVER_ABILITY_LIMIT_BREAK_MAX,
   driverConfiguredOverallAbilityPoints,
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
@@ -65,24 +66,29 @@ describe('CSV performance source of truth', () => {
       teamId: 'ferrari',
     })
     expect(tsunoda?.id).not.toBe(nakayama?.id)
-    expect(nakayama?.performanceSource?.overall).toBe(100)
-    expect(nakayama?.potential).toBe(1)
+    // 中山裕樹 is the one profile deliberately placed past the published
+    // scale; see DRIVER_ABILITY_LIMIT_BREAK_MAX. Every other driver stays
+    // within 0-100, which the scale test below still checks.
+    expect(nakayama?.performanceSource?.overall).toBe(120)
+    expect(nakayama?.potential).toBe(1.2)
     expect(
       Object.values(nakayama?.performanceSource?.rawRatings ?? {}).every(
-        (rating) => rating === 100,
+        (rating) => rating === 120,
       ),
     ).toBe(true)
-    expect(Object.values(nakayama?.skills ?? {}).every((skill) => skill === 1)).toBe(
-      true,
-    )
+    expect(
+      Object.values(nakayama?.skills ?? {}).every((skill) => skill === 1.2),
+    ).toBe(true)
   })
 
   it('uses the common 0-100 scale without a hidden category subtraction', () => {
     const nakayama = initialDrivers.find((driver) => driver.code === 'NAK')!
     const verstappen = initialDrivers.find((driver) => driver.code === 'VER')!
 
-    expect(driverOverallAbilityPoints(nakayama)).toBe(100)
-    expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(100)
+    // 中山裕樹 is deliberately placed past the published scale; see
+    // DRIVER_ABILITY_LIMIT_BREAK_MAX. Everyone else stays on 0-100.
+    expect(driverOverallAbilityPoints(nakayama)).toBe(120)
+    expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(120)
     expect(driverOverallAbilityPoints(verstappen)).toBe(95)
     expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(95)
     expect(
@@ -92,10 +98,21 @@ describe('CSV performance source of truth', () => {
           driverConfiguredOverallAbilityPoints(driver),
       ),
     ).toBe(true)
+    // The scale still holds for the field. Exactly one profile is authored
+    // past it, and even that one is bounded by the limit-break ceiling, so a
+    // typo cannot ride in behind the exception.
+    const beyondScale = initialDrivers.filter((driver) =>
+      Object.values(driver.performanceSource?.rawRatings ?? {}).some(
+        (rating) => rating > 100,
+      ),
+    )
+
+    expect(beyondScale.map((driver) => driver.id)).toEqual(['yuki_nakayama'])
     expect(
       initialDrivers.every((driver) =>
         Object.values(driver.performanceSource?.rawRatings ?? {}).every(
-          (rating) => rating >= 0 && rating <= 100,
+          (rating) =>
+            rating >= 0 && rating <= DRIVER_ABILITY_LIMIT_BREAK_MAX,
         ),
       ),
     ).toBe(true)
@@ -225,7 +242,7 @@ describe('CSV performance source of truth', () => {
     const duplicateCode = performanceCsv.replace(',LEC,16,', ',NAK,16,')
     const duplicateNumber = performanceCsv.replace(',LEC,16,', ',LEC,31,')
     const invalid = performanceCsv.replace(
-      /^(yuki_nakayama,[^\r\n]*?,regular,)100,/mu,
+      /^(yuki_nakayama,[^\r\n]*?,regular,)\d+,/mu,
       '$1not-a-number,',
     )
 

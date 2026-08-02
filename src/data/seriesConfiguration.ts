@@ -1,5 +1,6 @@
 import {
   DRIVER_ABILITY_GROUPS,
+  DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_STATS,
   clampDriverAbility,
   driverAbilityGroupValue,
@@ -511,7 +512,12 @@ function parseStoredDrivers(
     const skills = Object.fromEntries(
       DRIVER_ABILITY_STATS.map((stat) => [
         stat,
-        boundedNumber(candidateSkills[stat], `${id}.${stat}`, 0, 1),
+        boundedNumber(
+          candidateSkills[stat],
+          `${id}.${stat}`,
+          0,
+          DRIVER_ABILITY_INTERNAL_MAX,
+        ),
       ]),
     ) as DriverSkillProfile
     const usesLegacyF1DriverProfile =
@@ -531,7 +537,12 @@ function parseStoredDrivers(
       id,
       name: requiredText(candidate.name, `${id}.name`),
       nationality: optionalText(candidate.nationality, `${id}.nationality`),
-      potential: boundedNumber(candidate.potential ?? 0, `${id}.potential`, 0, 1),
+      potential: boundedNumber(
+        candidate.potential ?? 0,
+        `${id}.potential`,
+        0,
+        DRIVER_ABILITY_INTERNAL_MAX,
+      ),
       seatRole: role as DriverRole,
       skills: migratedSkills,
       style: { ...base.style },

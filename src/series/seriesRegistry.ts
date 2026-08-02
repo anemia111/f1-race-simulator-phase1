@@ -2,6 +2,10 @@ import seriesDataJson from '../data/motorsportSeries2026.json'
 import { expandedDriverSkills, type CompactDriverRatings } from '../data/driverProfiles'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { reserveDrivers } from '../data/performanceCsv'
+import {
+  DRIVER_ABILITY_INTERNAL_MAX,
+  DRIVER_ABILITY_LIMIT_BREAK_MAX,
+} from '../simulation/driverAbility'
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks as f1Tracks } from '../data/tracks'
 import {
@@ -570,16 +574,22 @@ export function validateSeriesPackage(pkg: SeriesPackage) {
       !Number.isFinite(overall) ||
       overall === undefined ||
       overall < 0 ||
-      overall > 100 ||
+      overall > DRIVER_ABILITY_LIMIT_BREAK_MAX ||
       !Number.isFinite(driver.potential) ||
       driver.potential === undefined ||
       driver.potential < 0 ||
-      driver.potential > 1 ||
+      driver.potential > DRIVER_ABILITY_INTERNAL_MAX ||
       Object.values(driver.skills).some(
-        (rating) => !Number.isFinite(rating) || rating < 0 || rating > 1,
+        (rating) =>
+          !Number.isFinite(rating) ||
+          rating < 0 ||
+          rating > DRIVER_ABILITY_INTERNAL_MAX,
       )
     ) {
-      throw new Error(`${DATA_FILE}: invalid 0-100 profile for ${driver.id}`)
+      // The published scale is still 0-100; the bound is the limit-break
+      // ceiling so a rating deliberately placed past the scale is not read as
+      // corrupt data. Anything above the ceiling still is.
+      throw new Error(`${DATA_FILE}: invalid driver profile for ${driver.id}`)
     }
   }
 

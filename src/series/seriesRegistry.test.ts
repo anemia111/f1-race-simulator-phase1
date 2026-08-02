@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { reversedSprintGrid, runSeriesQualifying } from '../simulation/qualifying'
 import { sessionDistanceLapsFor } from '../simulation/regulations'
-import { driverOverallAbilityPoints } from '../simulation/driverAbility'
+import {
+  DRIVER_ABILITY_INTERNAL_MAX,
+  DRIVER_ABILITY_LIMIT_BREAK_MAX,
+  driverOverallAbilityPoints,
+} from '../simulation/driverAbility'
 import { buildWeekendTirePlan } from '../simulation/weekendTires'
 import {
   driverAssignments2026,
@@ -64,19 +68,40 @@ describe('2026 multi-series registry', () => {
   })
 
   it('stores every category rating once on the common 0-100 scale', () => {
+    // The scale is 0-100 for the field. `yuki_nakayama` is authored past it on
+    // purpose; see DRIVER_ABILITY_LIMIT_BREAK_MAX. Everyone else is checked
+    // against the scale, and the exception is still bounded by the ceiling so
+    // corrupt data cannot ride in behind it.
+    const beyondScale: string[] = []
+
     for (const series of seriesPackages) {
       for (const driver of series.drivers) {
+        const onScale =
+          (driver.performanceSource?.overall ?? 0) <= 100 &&
+          (driver.potential ?? 0) <= 1 &&
+          Object.values(driver.skills).every((rating) => rating <= 1)
+
+        if (!onScale) {
+          beyondScale.push(driver.id)
+        }
+
         expect(driver.performanceSource?.overall).toBeGreaterThanOrEqual(0)
-        expect(driver.performanceSource?.overall).toBeLessThanOrEqual(100)
+        expect(driver.performanceSource?.overall).toBeLessThanOrEqual(
+          DRIVER_ABILITY_LIMIT_BREAK_MAX,
+        )
         expect(driver.potential).toBeGreaterThanOrEqual(0)
-        expect(driver.potential).toBeLessThanOrEqual(1)
+        expect(driver.potential).toBeLessThanOrEqual(
+          DRIVER_ABILITY_INTERNAL_MAX,
+        )
         expect(
           Object.values(driver.skills).every(
-            (rating) => rating >= 0 && rating <= 1,
+            (rating) => rating >= 0 && rating <= DRIVER_ABILITY_INTERNAL_MAX,
           ),
         ).toBe(true)
       }
     }
+
+    expect([...new Set(beyondScale)]).toEqual(['yuki_nakayama'])
   })
 
   it('turns support-team operations into distinct but close machine packages', () => {
