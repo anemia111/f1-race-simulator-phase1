@@ -8,7 +8,10 @@ import type {
   TireCompound,
 } from '../types'
 import { effectiveMachineRating } from './machinePerformance'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
+import {
+  deploymentPowerLimitKwForSpeed,
+  FIA_2026_REGULATION_PROFILE,
+} from './regulations'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -72,6 +75,8 @@ export type AdvanceEnergyStoreOptions = {
   driverWetSkill: number
   gripMultiplier: number
   maxRechargePerLapMj: number
+  /** Manual Override raises the regulation's deployment cutoff speed. */
+  overtakeActive?: boolean
   recoveryRequestScale?: number
   speedKph: number
   state: EnergyStoreState
@@ -605,9 +610,20 @@ function advanceEnergyStoreSubstep(
   const energyLimitedMechanicalPowerKw =
     (availableStoredEnergyMJ * totalDeploymentEfficiency * 1000) /
     Math.max(0.000001, deltaSeconds)
+  // The regulation's speed ramp is a hard limit on permitted deployment, not a
+  // strategy preference, so it belongs beside the state-of-charge and thermal
+  // limits rather than in the allocation heuristic. It is what gives the car a
+  // terminal velocity: without it the unit carries full electrical power to any
+  // speed and a long straight has no end.
+  const regulationSpeedLimitedPowerKw = deploymentPowerLimitKwForSpeed({
+    overtakeActive: options.overtakeActive,
+    requestedPowerKw: maximumDeploymentPowerKw,
+    speedKph,
+  })
   const actualDeploymentPowerKw = Math.min(
     requestedDeploymentPowerKw,
     maximumDeploymentPowerKw,
+    regulationSpeedLimitedPowerKw,
     socPowerLimitKw,
     maximumDeploymentPowerKw * deploymentThermalFactor,
     energyLimitedMechanicalPowerKw,
