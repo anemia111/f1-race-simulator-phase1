@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
-import { strategyOutlookFor } from '../simulation/strategy'
+import {
+  PIT_LANE_TRANSIT_BASE_SECONDS,
+  strategyOutlookFor,
+} from '../simulation/strategy'
 import type { StrategyOutlook } from '../simulation/strategy'
 import type {
   CarSnapshot,
@@ -36,9 +39,12 @@ export function usePitStrategyOutlook(options: {
 }): PitStrategyOutlook {
   const { car, driver, snapshot, track } = options
   const pitForecast = useMemo(() => {
+    // The engineer's read-out and the stop the race actually applies come from
+    // the same base. They used to differ by 2 s, so the pit wall quoted a cost
+    // the car never paid.
     const lossSeconds =
       track.observedCalibration?.pitLaneTransitSeconds ??
-      16 +
+      PIT_LANE_TRANSIT_BASE_SECONDS +
         (80 - (track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
         (track.kind === 'street' ? 2.5 : 0)
     const projectedDistance = car.totalDistance - lossSeconds / track.baseLapTime

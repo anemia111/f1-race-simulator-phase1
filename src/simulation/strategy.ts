@@ -118,9 +118,29 @@ export function effectivePitLaneLossSecondsForControlPhase(options: {
   )
 }
 
+/**
+ * Time lost in the pit lane against staying on track, before the crew touches
+ * the car.
+ *
+ * A Formula 1 pit lane runs about 400 m under the limit. At 80 km/h that is
+ * 18.0 s, against roughly 7.2 s to cover the same ground on track at the
+ * ~200 km/h the section is taken at, so the lane itself costs about 10.8 s.
+ * Braking from racing speed to the limit before the entry line and rebuilding
+ * it after the exit adds a little under 6 s. That puts the transit near 16.5 s,
+ * and a stop with an average crew near 21.4 s, which is where published dry
+ * pit losses sit for most permanent circuits.
+ *
+ * It is deliberately one number for every circuit. Real losses spread about
+ * 8 s, from roughly 19 s at Monaco to 27 s at Singapore, but that spread comes
+ * from pit lane length, and every track in this repository carries the same
+ * placeholder pit lane geometry (entry 0.940, exit 0.055). Deriving a
+ * per-circuit loss from that would dress a placeholder up as a measurement.
+ */
+export const PIT_LANE_TRANSIT_BASE_SECONDS = 16.5
+
 export const pitTuning = {
   /** Fixed pit-lane transit loss vs staying out (seconds). */
-  pitLaneLossSeconds: 16,
+  pitLaneLossSeconds: PIT_LANE_TRANSIT_BASE_SECONDS,
   /** Base stationary time for the crew (seconds). */
   crewBaseSeconds: 2.0,
   /** Extra stationary time for the slowest crews. */

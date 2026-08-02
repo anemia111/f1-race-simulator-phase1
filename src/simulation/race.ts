@@ -86,6 +86,7 @@ import {
   decideRedFlagTireChange,
   effectivePitLaneLossSecondsForControlPhase,
   overtakeDifficultyForTrack,
+  PIT_LANE_TRANSIT_BASE_SECONDS,
   pitStopLossSeconds,
 } from './strategy'
 import { startingGridDistance } from './startingGrid'
@@ -6358,7 +6359,7 @@ export function advanceRace(
       }
       const modeledPitLaneLossSeconds =
         config.track.observedCalibration?.pitLaneTransitSeconds ??
-        (14 +
+        (PIT_LANE_TRANSIT_BASE_SECONDS +
           (80 - (config.track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
           (config.track.kind === 'street' ? 2.5 : 0))
       const pitControlPhase =
