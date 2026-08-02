@@ -3,6 +3,10 @@ import type {
   OvertakeControlLine,
   TrackDefinition,
 } from '../types'
+import {
+  deriveAeroActivationZones,
+  pointDistance,
+} from './aeroZoneGeometry'
 import { realTrackLayouts } from './realTrackLayouts'
 import { tireNominationForTrack } from './tireNominations2026'
 import { calendar2026ByTrackId } from './calendar2026'
@@ -731,109 +735,7 @@ const fallbackTrackWidth = (track: Pick<TrackDefinition, 'id' | 'kind'>) => {
   return 2.85
 }
 
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 const wrapProgress = (value: number) => ((value % 1) + 1) % 1
-
-const pointDistance = (
-  a: TrackDefinition['centerline'][number],
-  b: TrackDefinition['centerline'][number],
-) => Math.hypot(b[0] - a[0], b[2] - a[2])
-
-const straightnessAt = (centerline: TrackDefinition['centerline'], index: number) => {
-  const length = centerline.length
-  const pointAt = (offset: number) => centerline[(index + offset + length) % length]
-  const previous = pointAt(-2)
-  const center = pointAt(0)
-  const next = pointAt(2)
-  const inVector = { x: center[0] - previous[0], z: center[2] - previous[2] }
-  const outVector = { x: next[0] - center[0], z: next[2] - center[2] }
-  const inLength = Math.hypot(inVector.x, inVector.z) || 1
-  const outLength = Math.hypot(outVector.x, outVector.z) || 1
-  const dot =
-    (inVector.x * outVector.x + inVector.z * outVector.z) / (inLength * outLength)
-  const angle = Math.acos(Math.min(1, Math.max(-1, dot)))
-
-  return clamp01(1 - angle / 1.15)
-}
-
-const runDistance = (
-  centerline: TrackDefinition['centerline'],
-  startIndex: number,
-  endIndex: number,
-) => {
-  let distance = 0
-
-  for (let index = startIndex; index < endIndex; index += 1) {
-    distance += pointDistance(centerline[index], centerline[(index + 1) % centerline.length])
-  }
-
-  return distance
-}
-
-const deriveAeroActivationZones = (
-  centerline: TrackDefinition['centerline'],
-  kind: TrackDefinition['kind'],
-): AeroActivationZone[] => {
-  const threshold = kind === 'street' ? 0.82 : 0.78
-  const minimumSpan = kind === 'street' ? 0.035 : 0.045
-  const targetCount = kind === 'street' ? 2 : 3
-  const runs: Array<{ startIndex: number; endIndex: number; distance: number }> = []
-  let startIndex: number | null = null
-
-  for (let index = 0; index < centerline.length; index += 1) {
-    const isStraight = straightnessAt(centerline, index) >= threshold
-
-    if (isStraight && startIndex === null) {
-      startIndex = index
-    }
-
-    if ((!isStraight || index === centerline.length - 1) && startIndex !== null) {
-      const endIndex = isStraight ? index + 1 : index
-      const span = (endIndex - startIndex) / centerline.length
-
-      if (span >= minimumSpan) {
-        runs.push({
-          startIndex,
-          endIndex,
-          distance: runDistance(centerline, startIndex, endIndex),
-        })
-      }
-
-      startIndex = null
-    }
-  }
-
-  const selectedRuns = runs
-    .sort((a, b) => b.distance - a.distance)
-    .slice(0, targetCount)
-    .sort((a, b) => a.startIndex - b.startIndex)
-
-  const usableRuns =
-    selectedRuns.length > 0
-      ? selectedRuns
-      : centerline
-          .slice(0, -1)
-          .map((_, startIndex) => ({
-            startIndex,
-            endIndex: startIndex + 1,
-            distance: pointDistance(
-              centerline[startIndex],
-              centerline[startIndex + 1],
-            ),
-          }))
-          .sort((a, b) => b.distance - a.distance)
-          .slice(0, targetCount)
-          .sort((a, b) => a.startIndex - b.startIndex)
-
-  return usableRuns
-    .map((run, index) => ({
-      end: Number(clamp01(run.endIndex / centerline.length).toFixed(3)),
-      label: `SM A${index + 1}`,
-      lowGripMode: 'partial' as const,
-      source: 'derived' as const,
-      start: Number(clamp01(run.startIndex / centerline.length).toFixed(3)),
-    }))
-}
 
 const progressWithin = (progress: number, start: number, end: number) =>
   start <= end

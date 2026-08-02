@@ -8,6 +8,7 @@ import { RaceClassificationPanel } from './components/RaceClassificationPanel'
 import { QualifyingClassificationPanel } from './components/QualifyingClassificationPanel'
 import { RaceInsightsPanel } from './components/RaceInsightsPanel'
 import { PitWallPanel } from './components/PitWallPanel'
+import type { PitWallSectorTiming } from './components/pitWall/types'
 import { SetupPanel } from './components/SetupPanel'
 import { FreeModeBuilder } from './components/FreeModeBuilder'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
@@ -122,6 +123,7 @@ import type {
   DriverTunableStat,
   GridSource,
   MachineTunableStat,
+  MiniSectorState,
   RaceConfig,
   RaceSnapshot,
   SectorTimingStatus,
@@ -302,14 +304,6 @@ type TimingRow = {
   tirePaceDeltaSeconds: number
   tireTemperatureC: number
 }
-
-type MiniSectorState =
-  | 'dim'
-  | 'yellow'
-  | 'green'
-  | 'purple'
-  | 'pit'
-  | 'stopped'
 
 type TimingRowWithoutSectorStatuses = Omit<TimingRow, 'sectorStatuses'>
 
@@ -2647,6 +2641,34 @@ export default function App() {
       timingCars,
     ],
   )
+  // The pit wall shows the same splits as the timing tower rather than deriving
+  // its own, so an engineer and the screen they are covering cannot disagree
+  // about which lap is displayed or which segment is purple.
+  const selectedCarTiming = useMemo<PitWallSectorTiming>(() => {
+    const row = timingRows.find(
+      (candidate) => candidate.car.driverId === selectedCar.driverId,
+    )
+
+    if (!row) {
+      return {
+        isCurrentLap: false,
+        lapNumber: null,
+        miniSectors: Array.from({ length: 3 }, () =>
+          Array.from({ length: microSectorCount }, () => 'dim' as const),
+        ),
+        sectors: [null, null, null],
+        sectorStatuses: ['pending', 'pending', 'pending'],
+      }
+    }
+
+    return {
+      isCurrentLap: row.microSectorDisplayIsCurrent,
+      lapNumber: row.sectorLapNumber,
+      miniSectors: row.microSectors,
+      sectors: row.sectors,
+      sectorStatuses: row.sectorStatuses,
+    }
+  }, [selectedCar.driverId, timingRows])
   const openF1LoadedEndpoints =
     openF1Bundle?.endpointStatuses.filter((status) => status.count > 0).length ?? 0
   const openF1RequestedEndpoints = openF1Bundle?.endpointStatuses.length ?? 0
@@ -3768,6 +3790,7 @@ export default function App() {
           snapshot={snapshot}
           stage={selectedWeekendStage}
           telemetryIsOpenF1={openF1CarDataByCode.has(selectedCar.code)}
+          timing={selectedCarTiming}
           timingIsOpenF1={openF1TimingSources.has(selectedCar.code)}
           tireLabels={broadcastTireLabels}
           track={track}
