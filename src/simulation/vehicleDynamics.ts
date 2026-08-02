@@ -208,13 +208,16 @@ export function towDragReductionFor(options: {
       ? 1
       : clamp(1 - Math.abs(options.lateralSeparationM) / 2.8, 0, 1) ** 1.2
 
+  // A 19 % drag reduction is worth roughly 35 km/h of top speed, which is why
+  // race peaks ran far further from observation than clear-air qualifying
+  // peaks did. A tow is a real but far smaller effect than an open rear wing.
   return clamp(
     proximity *
       dynamics.straightness *
-      (0.105 + machinePaceRating(team.machine.towSensitivity) * 0.075) *
+      (0.039 + machinePaceRating(team.machine.towSensitivity) * 0.028) *
       wakeAlignment,
     0,
-    0.19,
+    0.07,
   )
 }
 
@@ -309,8 +312,11 @@ export function setupDragAreaMultiplier(setup?: CarSetup) {
       (setup.rearWing - 5.5) * 0.035 +
       (setup.rideHeightMm - 28) * 0.004 +
       (setup.coolingPercent - 50) * 0.0015,
-    0.68,
-    1.25,
+    // Wings trim a car between its Monza and Monaco configurations. That is
+    // real but bounded: it does not move a third of the drag area in each
+    // direction, which the old 0.68-1.25 range allowed.
+    0.86,
+    1.14,
   )
 }
 
