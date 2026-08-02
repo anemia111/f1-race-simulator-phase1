@@ -1,4 +1,4 @@
-import type { BattlePhase, TrackDefinition } from '../types'
+import type { TrackDefinition } from '../types'
 import {
   categoryPhysicsFor,
   type CategoryPhysicsProfile,
@@ -6,7 +6,6 @@ import {
 import {
   simulatePhysicalLap,
   trackGeometry,
-  trackWidthMeters,
   type PhysicalReferenceLinePhase,
   type TrackGeometryPoint,
 } from './physicalLap'
@@ -251,49 +250,6 @@ export function racingLineAt(
     offset: point.referenceLineOffsetM,
     phase: profile.linePhases[index],
   }
-}
-
-/** Local time cost of leaving the ideal line during an active battle. */
-export function lineDeviationPenaltySeconds(
-  track: TrackDefinition,
-  progress: number,
-  dynamicOffset: number,
-  battlePhase: BattlePhase,
-  physics: CategoryPhysicsProfile = categoryPhysicsFor(undefined),
-) {
-  if (Math.abs(dynamicOffset) < 0.02) {
-    return 0
-  }
-
-  const line = racingLineAt(track, progress, physics)
-  const usableHalfWidthMeters = Math.max(0.4, trackWidthMeters(track) / 2 - 1)
-  const normalizedOffset = clamp(
-    Math.abs(dynamicOffset) / usableHalfWidthMeters,
-    0,
-    1.5,
-  )
-  const phaseCost =
-    line.phase === 'exit'
-      ? 1.35
-      : line.phase === 'apex'
-        ? 0.9
-        : line.phase === 'entry'
-          ? 0.52
-          : 0.12
-  const battleCost =
-    battlePhase === 'side-by-side'
-      ? 1.2
-      : battlePhase === 'attacking' || battlePhase === 'defending'
-        ? 1
-        : 0.45
-
-  return (
-    normalizedOffset ** 1.25 *
-    (0.18 + line.curvature * 0.82) *
-    phaseCost *
-    battleCost *
-    0.92
-  )
 }
 
 export function progressForSpeed(

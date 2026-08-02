@@ -122,7 +122,6 @@ type CalculatedTelemetry = {
   ersMode: ErsMode
   ersPowerKw: number
   gear: number
-  performanceDeltaSeconds: number
   rpm: number
   speedKph: number
   throttlePercent: number
@@ -160,8 +159,6 @@ export function calculateCarTelemetry(options: {
   raceControlOvertakeEnabled?: boolean
   overtakeSystem?: 'active-aero' | 'drs' | 'ots'
   regulatoryMassIncreaseKg?: number
-  /** @deprecated Live speed is force-integrated and ignores lap-time scales. */
-  paceScale?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number
   sessionType?: 'race-distance' | 'limited-time'
@@ -817,7 +814,6 @@ export function calculateCarTelemetry(options: {
     ersMode,
     ersPowerKw,
     gear,
-    performanceDeltaSeconds: 0,
     rpm,
     speedKph,
     throttlePercent,

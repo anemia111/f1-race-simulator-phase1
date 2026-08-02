@@ -32,10 +32,7 @@ import {
   type DriverDecision,
 } from './driverDecision'
 import { effectiveMachineRating } from './machinePerformance'
-import {
-  baselineSetupForTrack,
-  setupPaceDeltaSeconds,
-} from './engineering'
+import { baselineSetupForTrack } from './engineering'
 import {
   advanceEnergyStore,
   createInitialEnergyStore,
@@ -44,7 +41,6 @@ import {
 } from './energySystem'
 import {
   advanceComponentWear,
-  componentPacePenaltySeconds,
   createCarComponents,
   normalizeCarComponents,
   weakestComponent,
@@ -54,15 +50,12 @@ import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
   advanceVscMarshallingSectorTracking,
   distanceRespectingLocalYellowOrder,
-  dirtyAirDeltaSeconds,
   flagLabelFor,
   flagPaceMultiplier,
   flagPhaseForProgress,
   lapHasTrackLimitWarning,
-  packFollowingLapTime,
   penaltyFromWarnings,
   phaseThreeTuning,
-  restartGripLossSeconds,
   sectorFlagStatesFor,
   sectorIndexForProgress,
   vscPaceScaleForDelta,
@@ -120,7 +113,6 @@ import { updateOvertakeEligibilityAfterTravel } from './activeAero'
 import {
   advanceTireDynamicState,
   preferredTireCategoryFor,
-  tireDeltaSeconds,
   tireWearPercentPerLap,
   type TireTrackCondition,
 } from './tires'
@@ -160,7 +152,6 @@ import {
   advanceTrackRubber,
   createTrackRubberState,
   gripWithTrackRubber,
-  trackEvolutionGainSecondsFor,
   trackEvolutionLevelFor,
 } from './trackEvolution'
 import {
@@ -872,83 +863,6 @@ function practiceFuelLoadKgFor(
   )
 }
 
-function projectedLapTime(
-  driver: Driver,
-  car: CarSnapshot,
-  config: RaceConfig,
-  elapsedSeconds: number,
-  phase: ActiveFlagPhase | null,
-  restartUntilSeconds: number | null,
-  weatherOverride?: WeatherState,
-  trackGripOverride?: number,
-  rubberLevel = 0,
-  trackCondition?: TireTrackCondition,
-) {
-  const weather = weatherOverride ?? weatherFor(config.seed, config.track, elapsedSeconds)
-  const trackGrip = trackGripOverride ?? trackGripForWeather(config.seed, config.track, elapsedSeconds)
-  const isTimedSession = isTimedLapSession(config.weekendStage ?? 'race')
-  const tireDelta = tireDeltaSeconds(
-    car.tire,
-    car.tireAgeLaps,
-    driverPerformanceAbility(driver, 'tireManagement'),
-    weather,
-    trackGrip,
-    car.tireTemperatureC,
-    car.tireWearPercent,
-    config.track.tireNomination,
-    undefined,
-    car.tireThermalStressPercent ?? 0,
-    trackCondition,
-    {
-      carcassTemperatureC: car.tireCarcassTemperatureC,
-      grainingPercent: car.tireGrainingPercent,
-      overheatingPercent: car.tireOverheatingPercent,
-    },
-  )
-  const evolution = trackEvolutionGainSecondsFor(rubberLevel, config.track)
-  // No wheel-to-wheel racing under a flag, so no dirty-air penalty either.
-  const localDynamics = trackDynamicsAt(
-    config.track,
-    car.progress,
-    categoryPhysicsFor(config.seriesId),
-  )
-  const dirtyAir =
-    phase || isTimedSession
-      ? 0
-      : dirtyAirDeltaSeconds(car.gapToAhead) *
-        (0.42 + localDynamics.curvature * 1.18)
-  const damageCost = car.damage * phaseThreeTuning.damageLapCostSeconds
-  const restartLoss = restartGripLossSeconds(elapsedSeconds, restartUntilSeconds)
-  const configuredSetup =
-    config.weekendContext?.setupByDriver?.[driver.id] ??
-    baselineSetupForTrack(config.track)
-  const setupPenalty = setupPaceDeltaSeconds(config.track, configuredSetup)
-  const componentPenalty = componentPacePenaltySeconds(car.components)
-  const conditionLapTime =
-    referenceProfileLapTimeSeconds(
-      config.track,
-      categoryPhysicsFor(config.seriesId),
-    ) +
-    tireDelta -
-    evolution
-  const modeDelta: Record<RacePaceMode, number> = {
-    defend: -0.12,
-    push: -0.3,
-    save: 0.28,
-    standard: 0,
-  }
-
-  return (
-    conditionLapTime +
-    dirtyAir +
-    damageCost +
-    restartLoss +
-    setupPenalty +
-    componentPenalty +
-    modeDelta[car.racePaceMode]
-  )
-}
-
 function measuredSectorTimesAfterTravel({
   current,
   deltaSeconds,
@@ -1395,7 +1309,6 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
     return rankTimedSessionCars(cars, config)
   }
 
-  const lapTime = config.track.baseLapTime
   // Pending time penalties do not move a car on the road. They remain a
   // separate timing-screen item until served or applied at the finish.
   // On-track order is shared by the physics and live timing paths.
@@ -1404,9 +1317,13 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
   // by frozen distance (which collapses at the line).
   const finishTime = (car: CarSnapshot) =>
     (car.finishedAtSeconds ?? 0) + car.penaltySeconds
+  // Converts a lap-count separation into seconds through arc distance and road
+  // speed instead of `baseLapTime`. It reads the same penalty-adjusted distance
+  // as the ordering above, so a lap penalty moves the gap and the position
+  // together rather than only the position.
   const physicalGapSeconds = (ahead: CarSnapshot, behind: CarSnapshot) => {
     const arcDistanceMeters =
-      Math.max(0, ahead.totalDistance - behind.totalDistance) *
+      Math.max(0, trackGap(ahead) - trackGap(behind)) *
       config.track.lengthKm *
       1000
     const representativeSpeedMps = Math.max(
@@ -1480,14 +1397,14 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
           ? 0
           : car.status === 'finished' && liveLeader.status === 'finished'
             ? finishTime(car) - finishTime(liveLeader)
-            : (trackGap(liveLeader) - trackGap(car)) * lapTime
+            : physicalGapSeconds(liveLeader, car)
       const liveAhead = index === 0 ? null : liveOrdered[index - 1]
       const gapToAheadOnTrack =
         !liveAhead || liveAhead.status === 'retired'
           ? 0
           : car.status === 'finished' && liveAhead.status === 'finished'
             ? finishTime(car) - finishTime(liveAhead)
-            : (trackGap(liveAhead) - trackGap(car)) * lapTime
+            : physicalGapSeconds(liveAhead, car)
       // A finisher short of the reference's classified laps shows the lap
       // deficit, never the raw crossing-time difference at the flag.
       const lappedToLeader =
@@ -1958,7 +1875,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       battlePhaseUntilSeconds: null,
       battleDeltaSecondsRemaining: 0,
       gridPosition: gridIndex + 1,
-      projectedLapTime: config.track.baseLapTime,
+      projectedLapTime: referenceProfileLapTimeSeconds(
+        config.track,
+        categoryPhysicsFor(config.seriesId),
+      ),
       lastLapTimeSeconds: null,
       bestLapTimeSeconds: null,
       bestLapLap: null,
@@ -4583,43 +4503,14 @@ export function advanceRace(
               ? phaseThreeTuning.scCatchUpPace
               : paceMultiplier
           : 1
-    const lapTime = projectedLapTime(
-      driver,
-      paceManagedCar,
-      config,
-      elapsedSeconds,
-      localControlPhase,
-      restartUntilSeconds,
-      localWeather,
-      localTrackGrip,
-      trackRubber.rubberLevelBySector[carSector],
-      localTireTrackCondition,
+    const lapTime = referenceProfileLapTimeSeconds(
+      config.track,
+      categoryPhysics,
     )
     const baselineEffectiveLapTime = Math.max(
       40,
       lapTime * timedRun.paceFactor,
     )
-    const uncoupledConditionLapTime = Math.max(
-      40,
-      lapTime * timedRun.paceFactor,
-    )
-    const carAhead =
-      index > 0 &&
-      frameCars[index - 1]?.status === 'running' &&
-      frameCars[index - 1]?.offTrackSinceSeconds == null
-        ? frameCars[index - 1]
-        : null
-    const conditionEffectiveLapTime = isTimedSession
-      ? uncoupledConditionLapTime
-      : packFollowingLapTime({
-          aheadLapTimeSeconds: carAhead?.projectedLapTime ?? null,
-          gapToAheadSeconds: car.gapToAhead,
-          ownLapTimeSeconds: uncoupledConditionLapTime,
-          phaseActive:
-            localControlPhase !== null || waitingForSafeRejoin,
-        })
-    const packPaceSupportSeconds =
-      uncoupledConditionLapTime - conditionEffectiveLapTime
     const restartLineTarget =
       overtakeEnableTargetsByDriver?.[car.driverId]
     const hasCrossedRestartLine =
@@ -4679,7 +4570,7 @@ export function advanceRace(
       ...paceManagedCar,
       gapToAhead: physicalGapSeconds ?? Number.POSITIVE_INFINITY,
     }
-    const { performanceDeltaSeconds, ...telemetry } = calculateCarTelemetry({
+    const telemetry = calculateCarTelemetry({
       car: telemetryCar,
       aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
       categoryPhysics,
@@ -4790,12 +4681,7 @@ export function advanceRace(
       save: 0.78,
       standard: 1,
     }
-    const effectiveLapTime = Math.max(
-      40,
-      baselineEffectiveLapTime +
-        performanceDeltaSeconds -
-        packPaceSupportSeconds,
-    )
+    const effectiveLapTime = baselineEffectiveLapTime
     const battleDeltaStep = waitingForSafeRejoin
       ? 0
       : Math.sign(car.battleDeltaSecondsRemaining) *
