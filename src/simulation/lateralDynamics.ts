@@ -87,6 +87,21 @@ export type LongitudinalOccupancyCandidate = LateralVehicle & {
   candidateTotalDistanceM: number
   /** Used only to break an exact same-position tie deterministically. */
   priority?: number
+  /**
+   * The driver has conceded the road and is not defending it.
+   *
+   * The occupancy rule exists so two cars cannot occupy the same rectangle,
+   * and it is the right rule between drivers who are racing. It is the wrong
+   * rule when one has been told to let the other past: a lapped car under a
+   * blue flag lifts and waves the leader through long before a full car width
+   * plus margin of centre separation exists, and holding the leader behind
+   * until that separation is measured leaves the flag with no effect at all.
+   *
+   * When set, the lateral requirement is treated as met without requiring the
+   * offset to be reached. The concession stands in for the movement rather
+   * than the movement being simulated.
+   */
+  concedesRoad?: boolean
 }
 
 export type OccupancyMargins = {
@@ -597,6 +612,11 @@ export function capRearLongitudinalCandidateM(options: {
     currentLateralSeparationM >= requiredLateralM &&
     candidateLateralSeparationM >= requiredLateralM
   ) {
+    return rearCandidateM
+  }
+
+  // A conceded road is clear by declaration. See `concedesRoad`.
+  if (options.front.concedesRoad === true) {
     return rearCandidateM
   }
 

@@ -37,6 +37,7 @@ export type DriverDecisionIntent =
   | 'defend'
   | 'dirty-air-avoidance'
   | 'tow-alignment'
+  | 'blue-flag-yield'
   | 'physical-reference-line'
 
 export type DriverDecisionRole =
@@ -47,6 +48,7 @@ export type DriverDecisionRole =
   | 'defend'
   | 'dirty-air'
   | 'tow'
+  | 'yield'
   | 'reference'
 
 export type DriverBattleCue = {
@@ -73,6 +75,21 @@ export type DriverEmergencyCue = {
   preferredSide?: -1 | 1
 }
 
+/**
+ * A blue flag shown to a lapped car. Slowing alone does not let the faster car
+ * through: the occupancy model needs a full car width plus margin of lateral
+ * separation before the rear car may advance past the front one, so a car that
+ * only lifts while holding the racing line blocks the leader indefinitely.
+ */
+export type DriverYieldCue = {
+  active: boolean
+  approachingId?: string
+  /** Lateral offset of the car being let through. */
+  approachingLateralOffsetM: number
+  /** Centre separation the occupancy model needs before a pass may complete. */
+  requiredSeparationM: number
+}
+
 export type DriverPitCue = {
   requested: boolean
   pitLaneLateralOffsetM: number
@@ -95,6 +112,7 @@ export type DriverDecisionContext = {
   defend?: DriverBattleCue
   dirtyAir?: DriverWakeCue
   tow?: DriverWakeCue
+  yield?: DriverYieldCue
 }
 
 export type DriverDecision = {
@@ -437,6 +455,17 @@ function chooseIntent(
     }
   }
 
+  // A lapped car under a blue flag is not racing the car behind it. Yielding
+  // outranks attack and defence so it cannot be overridden by a battle cue
+  // against the very car it is being told to let past.
+  if (context.yield?.active === true) {
+    return {
+      intent: 'blue-flag-yield',
+      role: 'yield',
+      opponentId: context.yield.approachingId,
+    }
+  }
+
   const battleIntent = chooseBattleIntent(context, traits)
   if (battleIntent) {
     return battleIntent
@@ -603,6 +632,35 @@ function nominalLineFor(
         usableHalfWidthM,
       )
     }
+    case 'blue-flag-yield': {
+      const approaching = clamp(
+        finiteOr(context.yield?.approachingLateralOffsetM, reference),
+        -usableHalfWidthM,
+        usableHalfWidthM,
+      )
+      // Clear the occupancy requirement outright rather than approach it. A
+      // yield that lands just short of the threshold reads as compliance on
+      // the timing screen while still blocking the road.
+      const required =
+        Math.max(0, finiteOr(context.yield?.requiredSeparationM, 2.25)) + 0.3
+      const negativeFits = approaching - required >= -usableHalfWidthM
+      const positiveFits = approaching + required <= usableHalfWidthM
+      const side = negativeFits && positiveFits
+        ? openSide(context, chosen.role, chosen.opponentId, approaching)
+        : negativeFits
+          ? -1
+          : positiveFits
+            ? 1
+            : approaching <= 0
+              ? 1
+              : -1
+
+      return clamp(
+        approaching + side * required,
+        -usableHalfWidthM,
+        usableHalfWidthM,
+      )
+    }
     case 'tow-alignment': {
       const opponent = clamp(
         finiteOr(context.tow?.opponentLateralOffsetM, reference),
@@ -665,6 +723,15 @@ function nominalControls(intent: DriverDecisionIntent): {
         brakePressureScale: 1,
         throttleTimingDeltaSeconds: 0,
         throttleOpeningScale: 1,
+      }
+    case 'blue-flag-yield':
+      // The blue-flag speed reduction is applied by the pace controller. What
+      // belongs here is only the cost of driving offline while lifting.
+      return {
+        brakeOnsetDeltaSeconds: 0.04,
+        brakePressureScale: 0.98,
+        throttleTimingDeltaSeconds: 0.05,
+        throttleOpeningScale: 0.94,
       }
     case 'pit-entry':
       return {

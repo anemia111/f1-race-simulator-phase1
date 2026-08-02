@@ -135,6 +135,7 @@ import {
 } from './lateralDynamics'
 import {
   FORMULA_VEHICLE_HALF_WIDTH_M,
+  requiredLateralCentreSeparationM,
   TRACK_EDGE_SAFETY_MARGIN_M,
 } from './vehicleGeometry'
 import {
@@ -3899,6 +3900,21 @@ export function advanceRace(
               intensity: clamp01(1 - gapAheadSeconds / 1.8),
             }
           : undefined,
+      // The blue flag from the previous tick. Without this the lapped car only
+      // lifts, holds the racing line, and the occupancy model then refuses the
+      // leader the road for as long as the two stay nose to tail.
+      yield:
+        car.blueFlag && behindCar?.status === 'running'
+          ? {
+              active: true,
+              approachingId: behindCar.driverId,
+              approachingLateralOffsetM: nearestBehind!.lateralOffsetM,
+              requiredSeparationM: requiredLateralCentreSeparationM(
+                undefined,
+                undefined,
+              ),
+            }
+          : undefined,
     })
 
     driverDecisionById.set(car.driverId, decision)
@@ -3917,6 +3933,10 @@ export function advanceRace(
         return 90
       case 'controlled-flag':
         return 80
+      // A yielding car must win its reservation against the driver it is
+      // letting past, or it never reaches the offset that clears the road.
+      case 'yield':
+        return 75
       case 'defend':
         return 70
       case 'attack':
@@ -6755,6 +6775,10 @@ export function advanceRace(
             candidateTotalDistanceM: car.totalDistance * lapLengthM,
             lateralOffsetM: previous.lateralOffsetM,
             candidateLateralOffsetM: car.lateralOffsetM,
+            // Under a blue flag the driver has conceded, so the occupancy rule
+            // stops holding the leader behind while it waits for a measured
+            // gap that a yielding car has no reason to open.
+            concedesRoad: car.blueFlag === true,
             priority: 1000 - previous.position,
           },
         ]
