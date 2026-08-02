@@ -1,3 +1,4 @@
+import { DRIVER_ABILITY_LIMIT_BREAK_MAX } from '../simulation/driverAbility'
 import type {
   Driver,
   DriverStyleProfile,
@@ -474,9 +475,16 @@ export function loadPerformanceCsv(
     driverCodes.add(code)
     carNumbers.add(carNumber)
 
-    const rawRatings = rawNumericRatings(record, DRIVER_COLUMNS, fileName, 100)
+    const rawRatings = rawNumericRatings(
+      record,
+      DRIVER_COLUMNS,
+      fileName,
+      DRIVER_ABILITY_LIMIT_BREAK_MAX,
+    )
     const rating = (column: (typeof DRIVER_COLUMNS)[number]) =>
-      normalizeCsvAbility(requiredNumber(record, column, fileName, 0, 100))
+      normalizeCsvAbility(
+      requiredNumber(record, column, fileName, 0, DRIVER_ABILITY_LIMIT_BREAK_MAX),
+    )
     const skills = expandedDriverSkills({
       adaptability: rating('Adaptability'),
       consistency: rating('Consistency'),

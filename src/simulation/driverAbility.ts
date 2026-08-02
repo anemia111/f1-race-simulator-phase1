@@ -1,8 +1,15 @@
 import type { Driver, DriverTunableStat } from '../types'
 
 export const DRIVER_ABILITY_SCALE_MAX = 100
-export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_SCALE_MAX
-export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
+/**
+ * A rating may exceed the published scale. The scale itself stays at 100 so
+ * every other driver's normalisation is untouched — raising the scale would
+ * make the whole grid slower rather than one driver faster.
+ */
+export const DRIVER_ABILITY_LIMIT_BREAK_MAX = 120
+export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_LIMIT_BREAK_MAX
+export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_LIMIT_BREAK_MAX / 100
+export const DRIVER_ABILITY_SCALE_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0
 export const DRIVER_PERFORMANCE_INTERNAL_MIN = 0.55
 export const DRIVER_PERFORMANCE_INTERNAL_MAX = 1
@@ -138,7 +145,7 @@ export function driverPerformanceValue(value: number): number {
   const rating = clampDriverAbility(value)
   const normalized =
     (rating - DRIVER_ABILITY_INTERNAL_MIN) /
-    (DRIVER_ABILITY_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
+    (DRIVER_ABILITY_SCALE_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
 
   return (
     DRIVER_PERFORMANCE_INTERNAL_MIN +
@@ -229,4 +236,24 @@ export function driverSkillBlend(
 
 export function driverAbilityDeficit(value: number): number {
   return Math.max(0, 1 - driverPerformanceValue(value))
+}
+
+/**
+ * How far past the published scale a driver's rating sits, as a fraction of
+ * the scale. Zero for every rating up to 100, 0.2 at 120.
+ *
+ * The quasi-steady reference lap deliberately gives away
+ * `DRIVER_TRANSIENT_EFFICIENCY` worth of grip to yaw inertia, load-transfer
+ * settling and steering corrections. A rating on the published scale can at
+ * best execute that lap perfectly, which is why a driver at 100 already loses
+ * nothing and cannot be made faster by raising the number. This fraction is
+ * the only handle a rating above the scale has: it recovers part of what the
+ * reference conceded, and nothing more.
+ */
+export function driverLimitBreakFraction(driver: Driver): number {
+  const abilities = DRIVER_ABILITY_STATS.map((stat) => driver.skills[stat])
+  const mean =
+    abilities.reduce((total, value) => total + value, 0) / abilities.length
+
+  return Math.max(0, mean - DRIVER_ABILITY_SCALE_INTERNAL_MAX)
 }

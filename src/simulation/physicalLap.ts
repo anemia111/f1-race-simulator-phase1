@@ -152,7 +152,7 @@ const RACING_LINE_REALISATION = 0.28
  * simulation normally carries a factor of this kind, and it is one global
  * constant rather than a per-circuit target.
  */
-const DRIVER_TRANSIENT_EFFICIENCY = 0.97
+export const DRIVER_TRANSIENT_EFFICIENCY = 0.97
 
 /**
  * Carriageway width in metres.
