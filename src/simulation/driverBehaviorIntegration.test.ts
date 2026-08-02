@@ -88,8 +88,7 @@ describe('driver behaviour integration', () => {
     const late = telemetryFor(-0.18, 0.72)
 
     expect(early.brakePercent).toBeGreaterThan(late.brakePercent)
-    expect(early.performanceDeltaSeconds).toBe(0)
-    expect(late.performanceDeltaSeconds).toBe(0)
+    expect(early.speedKph).not.toBe(late.speedKph)
   })
 
   it('uses lateral alignment for dirty air and tow', () => {

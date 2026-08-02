@@ -23,7 +23,6 @@ import {
 } from './raceEvents'
 import { calculateCarTelemetry } from './telemetry'
 import {
-  lineDeviationPenaltySeconds,
   racingLineAt,
   trackDynamicsAt,
 } from './trackDynamics'
@@ -610,7 +609,7 @@ describe('track-dependent systems', () => {
     ).toBe(0)
   })
 
-  it('uses one ideal racing line and charges an exit cost for battle offsets', () => {
+  it('uses the physical racing-line reference in the sharpest corner', () => {
     const track = tracks[0]
     const sharpest = Array.from(
       { length: track.centerline.length },
@@ -623,16 +622,7 @@ describe('track-dependent systems', () => {
     const line = racingLineAt(track, sharpest)
 
     expect(Math.abs(line.offset)).toBeGreaterThan(0)
-    expect(
-      lineDeviationPenaltySeconds(
-        track,
-        sharpest,
-        track.width * 0.25,
-        'side-by-side',
-      ),
-    ).toBeGreaterThan(0)
-    expect(
-      lineDeviationPenaltySeconds(track, sharpest, 0, 'single-file'),
-    ).toBe(0)
+    expect(line.referenceLineOffsetM).toBe(line.offset)
+    expect(line.curvature).toBeGreaterThan(0)
   })
 })
