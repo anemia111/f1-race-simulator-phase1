@@ -12,6 +12,7 @@ import { trackWidthMeters } from './physicalLap'
 import {
   DEFAULT_FORMULA_VEHICLE_FOOTPRINT,
   LATERAL_VEHICLE_SAFETY_MARGIN_M,
+  OVERTAKE_LATERAL_SAFETY_MARGIN_M,
   LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M,
   resolveVehicleFootprint,
   requiredLateralCentreSeparationM,
@@ -591,12 +592,14 @@ export function capRearLongitudinalCandidateM(options: {
     options.front.candidateLateralOffsetM,
     finiteOr(options.front.lateralOffsetM, 0),
   )
+  // Passing uses the committed-racing margin, not the relaxed one. See
+  // OVERTAKE_LATERAL_SAFETY_MARGIN_M.
   const requiredLateralM = requiredLateralCentreSeparationM(
     options.rear.footprint,
     options.front.footprint,
     finiteSafetyMargin(
       options.margins?.lateralSafetyMarginM,
-      LATERAL_VEHICLE_SAFETY_MARGIN_M,
+      OVERTAKE_LATERAL_SAFETY_MARGIN_M,
     ),
   )
   const currentLateralSeparationM = Math.abs(
