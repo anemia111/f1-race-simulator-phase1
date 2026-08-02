@@ -6776,11 +6776,18 @@ export function advanceRace(
     }
 
     const totalDistance = resolvedDistanceM / lapLengthM
-    const speedKph = Math.max(
-      0,
-      ((resolvedDistanceM - previous.totalDistance * lapLengthM) /
-        Math.max(0.001, deltaSeconds)) *
-        3.6,
+    // Road speed is arc distance over time, not a lap-fraction difference
+    // scaled by lap length. Centerline points are not evenly spaced, so the two
+    // only agree where they happen to be uniform. Baku is the worst case: its
+    // closing segment is 6.1 m against a 39 m typical, so a lap fraction is
+    // worth a sixth of its usual distance immediately before the timing line
+    // and its full value immediately after. Differencing across the line that
+    // way reported a car at 829 km/h.
+    const speedKph = speedForProfileTravelKph(
+      config.track,
+      previous.totalDistance,
+      totalDistance,
+      deltaSeconds,
     )
     const team = teams.get(car.teamId)
     const driveScale = car.superClippingDrivePowerScale ?? 1

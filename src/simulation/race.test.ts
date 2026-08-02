@@ -3757,3 +3757,51 @@ describe('race session completion', () => {
     ).toContain('sprint')
   })
 })
+
+describe('road speed across the timing line', () => {
+  // Centerline points are not evenly spaced, and the closing segment is where
+  // that bites: Baku's is 6.1 m against a 39 m typical. Any code that turns a
+  // lap-fraction difference into metres by scaling with lap length reads a
+  // sixth of the real distance just before the line and the full value just
+  // after, so differencing across the line invents speed. That is how a car
+  // was reported at 829 km/h here.
+  const nonUniformClosingSegmentTracks = [
+    'baku-approx',
+    'montreal-approx',
+  ]
+
+  it.each(nonUniformClosingSegmentTracks)(
+    'keeps every car under the physical ceiling at %s',
+    (trackId) => {
+      const track = tracks.find((candidate) => candidate.id === trackId)!
+      const config: RaceConfig = {
+        drivers: initialDrivers,
+        seed: 'timing-line-speed',
+        teams: initialTeams,
+        track,
+      }
+      let snapshot = createInitialRace(config)
+      let maximumSpeedKph = 0
+      let lapsCompleted = 0
+
+      // Long enough for the field to cross the timing line several times.
+      for (let step = 0; step < 2_400; step += 1) {
+        snapshot = advanceRace(snapshot, 0.25, config)
+
+        for (const car of snapshot.cars) {
+          maximumSpeedKph = Math.max(maximumSpeedKph, car.speedKph)
+        }
+      }
+
+      lapsCompleted = Math.max(...snapshot.cars.map((car) => car.lap))
+
+      // The test is only meaningful once cars have crossed the line.
+      expect(lapsCompleted, trackId).toBeGreaterThan(1)
+      // Comfortably above the model's terminal velocity and far below the
+      // values the lap-fraction difference produced.
+      expect(maximumSpeedKph, trackId).toBeLessThan(430)
+      expect(maximumSpeedKph, trackId).toBeGreaterThan(200)
+    },
+    120_000,
+  )
+})
