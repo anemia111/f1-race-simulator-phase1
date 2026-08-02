@@ -8,16 +8,30 @@ import {
 import {
   formatLapTime,
   formatSectorTime,
+  miniSectorSummary,
   UNMEASURED_SECTOR_TIME,
 } from '../../domain/timingFormat'
-import { PitWallGroup, PitWallMetric } from './PitWallShared'
+import { MiniSectorStrip } from '../MiniSectorStrip'
+import { PitWallGroup, PitWallMetric, PitWallSourceTag } from './PitWallShared'
 import type { PitWallTabProps } from './types'
+import type { SectorTimingStatus } from '../../types'
 
 const paceModeLabels: Record<string, string> = {
   defend: 'DEFEND',
   push: 'PUSH',
   save: 'SAVE',
   standard: 'STANDARD',
+}
+
+/**
+ * Printed beside every split. The tower can lean on colour alone because it is
+ * read at a glance; the pit wall is read for decisions, so the word is shown.
+ */
+const sectorStatusLabels: Record<SectorTimingStatus, string> = {
+  'overall-best': 'SESSION BEST',
+  pending: 'NO TIME',
+  'personal-best': 'PERSONAL BEST',
+  slower: 'SLOWER',
 }
 
 const formatInterval = (seconds: number | null, code: string | null) => {
@@ -35,6 +49,7 @@ export function PitWallOverview({
   session,
   snapshot,
   telemetryIsOpenF1,
+  timing,
   timingIsOpenF1,
   tireCondition,
   tireLabels,
@@ -45,27 +60,14 @@ export function PitWallOverview({
     () => pitWallIntervals(snapshot.cars, car.driverId),
     [car.driverId, snapshot.cars],
   )
-  // All three splits must come from one lap. Once the current lap has its
-  // first measured sector the row switches to it whole, so S1 of this lap is
-  // never shown beside S3 of the previous one.
-  const sectorSource = useMemo(() => {
-    const lastCompletedLap = car.lapHistory[car.lapHistory.length - 1] ?? null
-    const current = car.currentLapSectorTimes
-
-    if (current.some((value) => value !== null)) {
-      return { times: current, title: `Current lap ${car.lap} splits` }
-    }
-
-    return lastCompletedLap
-      ? {
-          times: lastCompletedLap.sectors,
-          title: `Completed lap ${lastCompletedLap.lap} splits`,
-        }
-      : {
-          times: [null, null, null] as const,
-          title: 'No measured split yet',
-        }
-  }, [car.currentLapSectorTimes, car.lap, car.lapHistory])
+  // All three splits come from one lap, resolved once by the timing tower. The
+  // pit wall only labels which lap that is.
+  const splitsTitle =
+    timing.lapNumber === null
+      ? 'No measured split yet'
+      : timing.isCurrentLap
+        ? `Current lap ${timing.lapNumber} splits`
+        : `Completed lap ${timing.lapNumber} splits`
   const unservedPenalties = car.penalties.filter((penalty) => !penalty.served)
   const pendingPenaltyLabel =
     car.penaltySeconds > 0 || car.penaltyLaps > 0 || unservedPenalties.length > 0
@@ -165,23 +167,40 @@ export function PitWallOverview({
           }
           value={formatLapTime(car.bestLapTimeSeconds)}
         />
-        {[0, 1, 2].map((index) => {
-          const measured = sectorSource.times[index]
+      </PitWallGroup>
 
-          return (
-            <PitWallMetric
-              key={`sector-${index}`}
-              label={`Sector ${index + 1}`}
-              source={measured === null ? 'UNAVAILABLE' : timingSource}
-              title={sectorSource.title}
-              value={
-                measured === null
-                  ? UNMEASURED_SECTOR_TIME
-                  : formatSectorTime(measured)
-              }
-            />
-          )
-        })}
+      <PitWallGroup title="Sectors and mini sectors" wide>
+        <div className="pit-wall-sector-board" title={splitsTitle}>
+          {[0, 1, 2].map((index) => {
+            const measured = timing.sectors[index]
+            const status = timing.sectorStatuses[index]
+            const states = timing.miniSectors[index] ?? []
+
+            return (
+              <div className="pit-wall-sector" key={`sector-${index}`}>
+                <span className="pit-wall-sector-head">
+                  <span>S{index + 1}</span>
+                  <strong
+                    className={`pit-wall-value sector-value sector-status-${status}`}
+                  >
+                    {measured === null
+                      ? UNMEASURED_SECTOR_TIME
+                      : formatSectorTime(measured)}
+                  </strong>
+                  <PitWallSourceTag
+                    source={measured === null ? 'UNAVAILABLE' : timingSource}
+                  />
+                </span>
+                <MiniSectorStrip sectorIndex={index} states={states} />
+                {/* Colour is never the only carrier: both words are printed. */}
+                <span className="pit-wall-sector-legend">
+                  <b>{sectorStatusLabels[status]}</b>
+                  <em>{miniSectorSummary(states)}</em>
+                </span>
+              </div>
+            )
+          })}
+        </div>
       </PitWallGroup>
 
       <PitWallGroup title="Car state">

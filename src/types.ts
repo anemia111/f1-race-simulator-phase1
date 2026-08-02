@@ -869,6 +869,19 @@ export type SectorTimingStatus =
   | 'personal-best'
   | 'slower'
 
+/**
+ * Display state of one measured timing segment. `dim` is an uncompleted
+ * segment; `pit` and `stopped` are car states that outrank a comparison. Shared
+ * so the timing tower and the pit wall cannot drift into two colour vocabularies.
+ */
+export type MiniSectorState =
+  | 'dim'
+  | 'yellow'
+  | 'green'
+  | 'purple'
+  | 'pit'
+  | 'stopped'
+
 /** Immutable record written only when a car crosses the timing line. */
 export type LapRecord = {
   lap: number

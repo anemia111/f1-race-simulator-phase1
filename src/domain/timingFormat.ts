@@ -3,6 +3,7 @@
  * all read the same measured values, so they must render them identically
  * instead of each keeping a private formatter.
  */
+import type { MiniSectorState } from '../types'
 
 /** Placeholder for a value the simulation has not measured yet. */
 export const UNMEASURED_LAP_TIME = '--:--.---'
@@ -35,4 +36,28 @@ export function formatSignedSeconds(
   }
 
   return `${seconds >= 0 ? '+' : ''}${seconds.toFixed(fractionDigits)}s`
+}
+
+export const miniSectorStateLabels: Record<MiniSectorState, string> = {
+  dim: 'not completed',
+  green: 'personal best',
+  pit: 'pit lane',
+  purple: 'overall best',
+  stopped: 'stopped',
+  yellow: 'slower',
+}
+
+/**
+ * Spoken summary of one mini-sector strip, so its colours never carry meaning
+ * on their own.
+ */
+export function miniSectorSummary(states: readonly MiniSectorState[]) {
+  return (Object.keys(miniSectorStateLabels) as MiniSectorState[])
+    .map((state) => ({
+      count: states.filter((candidate) => candidate === state).length,
+      state,
+    }))
+    .filter(({ count }) => count > 0)
+    .map(({ count, state }) => `${count} ${miniSectorStateLabels[state]}`)
+    .join(', ')
 }

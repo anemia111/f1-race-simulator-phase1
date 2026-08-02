@@ -17,7 +17,11 @@ import { PitWallRaceControl } from './pitWall/PitWallRaceControl'
 import { PitWallStrategy } from './pitWall/PitWallStrategy'
 import { PitWallSystems } from './pitWall/PitWallSystems'
 import { PitWallWeather } from './pitWall/PitWallWeather'
-import type { PitWallCommandProps, PitWallTabProps } from './pitWall/types'
+import type {
+  PitWallCommandProps,
+  PitWallSectorTiming,
+  PitWallTabProps,
+} from './pitWall/types'
 import type { BroadcastRaceControlEntry } from './BroadcastDashboard'
 import type { EnvironmentReadout } from '../domain/environmentReadout'
 import type { SeriesId } from '../series/types'
@@ -51,6 +55,8 @@ type PitWallPanelProps = PitWallCommandProps & {
   /** Decides which race-only read-outs the panel may show. */
   stage: WeekendStage
   telemetryIsOpenF1: boolean
+  /** Resolved by the timing tower so both screens show the same splits. */
+  timing: PitWallSectorTiming
   timingIsOpenF1: boolean
   tireLabels: Record<TireCompound, string>
   track: TrackDefinition
@@ -88,6 +94,7 @@ export function PitWallPanel({
   snapshot,
   stage,
   telemetryIsOpenF1,
+  timing,
   timingIsOpenF1,
   tireLabels,
   track,
@@ -256,6 +263,7 @@ export function PitWallPanel({
           snapshot={snapshot}
           strategy={strategy}
           telemetryIsOpenF1={telemetryIsOpenF1}
+          timing={timing}
           timingIsOpenF1={timingIsOpenF1}
           tireCondition={tireCondition}
           tireLabels={tireLabels}

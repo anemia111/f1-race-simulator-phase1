@@ -25,9 +25,11 @@ import {
   START_LIGHT_COUNT,
   startSignalStateFor,
 } from '../domain/startSignal'
+import { MiniSectorStrip } from './MiniSectorStrip'
 import type {
   CameraMode,
   CarSnapshot,
+  MiniSectorState,
   RaceSnapshot,
   SectorTimingStatus,
   SpeedMultiplier,
@@ -38,7 +40,6 @@ import type { SeriesId } from '../series/types'
 import type { ApplicationMode } from '../freeMode/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
-type MiniSectorState = 'dim' | 'yellow' | 'green' | 'purple' | 'pit' | 'stopped'
 type DashboardView = 'map' | 'data'
 
 const practiceProgramLabels: Record<
@@ -303,14 +304,6 @@ const layoutSourceTag = (
       ? 'OBS'
       : 'SIM'
 
-const miniSectorStateLabels: Record<MiniSectorState, string> = {
-  dim: 'not completed',
-  green: 'personal best',
-  pit: 'pit lane',
-  purple: 'overall best',
-  stopped: 'stopped',
-  yellow: 'slower',
-}
 const sectorFlagLabels: Record<
   RaceSnapshot['sectorFlags'][number],
   string
@@ -321,34 +314,6 @@ const sectorFlagLabels: Record<
   sc: 'SC',
   vsc: 'VSC',
   yellow: 'YELLOW',
-}
-
-function MiniSectorStrip({
-  sectorIndex,
-  states,
-}: {
-  sectorIndex: number
-  states: MiniSectorState[]
-}) {
-  const summary = (Object.keys(miniSectorStateLabels) as MiniSectorState[])
-    .map((state) => ({
-      count: states.filter((candidate) => candidate === state).length,
-      state,
-    }))
-    .filter(({ count }) => count > 0)
-    .map(({ count, state }) => `${count} ${miniSectorStateLabels[state]}`)
-    .join(', ')
-
-  return (
-    <span
-      className="broadcast-mini-sectors"
-      aria-label={`Sector ${sectorIndex + 1} mini sectors: ${summary}`}
-    >
-      {states.map((state, index) => (
-        <span aria-hidden="true" className={`mini-${state}`} key={`${state}-${index}`} />
-      ))}
-    </span>
-  )
 }
 
 function TireUsage({
