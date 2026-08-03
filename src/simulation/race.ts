@@ -3833,6 +3833,24 @@ export function advanceRace(
           (trafficCar.incidentTrackState ?? 'clear') !== 'clear')
       )
     })
+    // A pass has to be paid for with pace. Without this a car that is merely
+    // in the tow commits to a move, gets ahead on the slipstream alone, and is
+    // taken straight back on the next straight by the car it just passed: the
+    // event log fills with overtakes while the order barely moves. Measured at
+    // Monaco, 160 passes across 76 pairs, 2.1 per pair and up to seven between
+    // the same two cars.
+    //
+    // The case can be a faster recent lap, fresher rubber, or Overtake in
+    // hand. Before either car has a lap on the board there is nothing to
+    // compare, so the opening laps are left alone.
+    const attackerLastLap = car.lastLapTimeSeconds
+    const defenderLastLap = aheadCar?.lastLapTimeSeconds ?? null
+    const hasPaceCase =
+      attackerLastLap === null ||
+      defenderLastLap === null ||
+      attackerLastLap < defenderLastLap ||
+      car.tireAgeLaps + 4 < (aheadCar?.tireAgeLaps ?? car.tireAgeLaps) ||
+      car.overtakeStatus === 'active'
     const attackIntensity = Number.isFinite(gapAheadSeconds)
       ? clamp01(1 - gapAheadSeconds / 1.8)
       : 0
@@ -3873,7 +3891,7 @@ export function advanceRace(
       attack:
         aheadCar?.status === 'running'
           ? {
-              active: attackIntensity > 0,
+              active: attackIntensity > 0 && hasPaceCase,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
               intensity: attackIntensity,
