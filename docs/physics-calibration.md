@@ -306,12 +306,29 @@ OpenF1 records the whole stop, so the observed p90 of 7.8 s is mostly penalties
 rather than slow pit work, and the simulation already models penalties
 elsewhere. Matching that tail would count them twice.
 
-Two things this does not fix. The model still cannot produce the quickest
-observed stop, because `crewBaseSeconds` plus the best crew's share of
-`crewSpreadSeconds` is 2.16 s. And team identity still explains only 0.76 s of
-stop time. Both are the same missing measurement: `pitCrewSpeed` is derived
-from DHL award winning frequency, which is a ranking, and the file says so.
-Turning it into seconds needs observed per-team stationary times, which are not
-in this repository. The pit endpoint carries them per driver, but mapping
-drivers to teams needs the OpenF1 `drivers` endpoint, which the calibration
-cache does not hold.
+### Crew ratings
+
+`pitCrewSpeed` used to come off the DHL fastest-stop award. Winning frequency
+ranks the grid but says nothing about how many seconds separate first from
+last, so the ratings were compressed into a band 0.19 wide, and through
+`crewSpreadSeconds` that put the whole grid 0.76 s apart.
+
+They are now the inverse of the model that consumes them, taken against each
+team's observed lower quartile, and the grid spans 1.10 s. Fetching the OpenF1
+`drivers` endpoint for the six race sessions is what made this possible; it
+supplies the driver-to-team mapping the pit endpoint lacks.
+
+The quartile is the calibration statistic rather than the median for the same
+reason the pooled tail is not a target. Team medians span 1.80 s, which is the
+1.5 to 2 s the audit quoted, but that spread is partly penalties: a team with
+two penalties in fourteen stops has its median dragged up by something its crew
+did not do. The lower quartile sits clear of the affected eighth of the sample.
+
+Two consequences beyond the spread. The order is now the measurement's rather
+than the award's, so Red Bull and McLaren are no longer assumed to be at the
+front of it. And Cadillac has a rating at all: absent from the award table, it
+had been taking the neutral baseline, which put a crew that is second slowest
+in the observed data into midfield.
+
+Sample sizes are 8 to 18 stops per team. This is ranking evidence with a scale
+attached, not a precise per-team time.
