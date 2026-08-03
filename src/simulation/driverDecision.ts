@@ -601,16 +601,18 @@ function nominalLineFor(
       )
       const side = openSide(context, chosen.role, chosen.opponentId, opponent)
       const intensity = clamp01(finiteOr(context.attack?.intensity, 0))
-      // Aim past what a pass requires rather than short of it. The old floor
-      // of 1.25 m was below the separation the occupancy model needs, so a
-      // committed attacker was steering for a line that could not complete the
-      // move however much quicker the car was.
+      // Commitment decides how far offline to run, and only a committed move
+      // reaches the separation a pass needs. Holding every follower out at the
+      // passing line instead cost more lap time than the clearance was worth:
+      // the attack cue opens at 1.8 s, so the whole train drove two metres off
+      // the racing line for the entire lap.
+      const commitment = clamp01(
+        intensity * 0.72 + traits.overtakeCommitment * 0.28,
+      )
       const separation = clamp(
-        PASSING_LATERAL_SEPARATION_M +
-          intensity * 0.45 +
-          traits.overtakeCommitment * 0.3,
-        PASSING_LATERAL_SEPARATION_M,
-        PASSING_LATERAL_SEPARATION_M + 0.75,
+        1.25 + commitment * (PASSING_LATERAL_SEPARATION_M + 0.3 - 1.25),
+        1.25,
+        PASSING_LATERAL_SEPARATION_M + 0.3,
       )
 
       return clamp(
