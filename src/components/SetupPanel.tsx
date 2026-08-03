@@ -20,7 +20,7 @@ import {
 } from '../simulation/engineering'
 import {
   DRIVER_ABILITY_GROUPS,
-  DRIVER_ABILITY_INTERNAL_MAX,
+  DRIVER_ABILITY_SCALE_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
   driverAbilityGroupValue,
   driverAbilityPoints,
@@ -646,7 +646,10 @@ export function SetupPanel({
             <SliderRow
               key={group.key}
               label={group.label}
-              max={DRIVER_ABILITY_INTERNAL_MAX}
+              // The editor works on the published scale. A rating past it is
+              // authored in the source data on purpose, not handed out with a
+              // slider, so this stays at 100 points.
+              max={DRIVER_ABILITY_SCALE_INTERNAL_MAX}
               onChange={(value) => {
                 for (const stat of group.stats) {
                   onDriverStatChange(selectedDriver.id, stat, value)
