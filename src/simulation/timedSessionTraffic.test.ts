@@ -3,6 +3,7 @@ import { tracks } from '../data/tracks'
 import type { CarSnapshot } from '../types'
 import { trackDynamicsAt } from './trackDynamics'
 import {
+  TIMED_TRAFFIC_PRIORITY,
   timedSessionTrafficPriority,
   timedSessionYieldDecision,
 } from './timedSessionTraffic'
@@ -54,7 +55,7 @@ describe('timed-session traffic etiquette', () => {
         }),
         'fp2',
       ),
-    ).toBe(3)
+    ).toBe(TIMED_TRAFFIC_PRIORITY.qualifyingAttackLap)
     expect(
       timedSessionTrafficPriority(
         timedCar({
@@ -65,7 +66,7 @@ describe('timed-session traffic etiquette', () => {
         }),
         'fp2',
       ),
-    ).toBe(2)
+    ).toBe(TIMED_TRAFFIC_PRIORITY.attackLap)
     expect(
       timedSessionTrafficPriority(
         timedCar({
@@ -75,7 +76,32 @@ describe('timed-session traffic etiquette', () => {
         }),
         'fp2',
       ),
-    ).toBe(1)
+    ).toBe(TIMED_TRAFFIC_PRIORITY.transitLap)
+  })
+
+  it('puts a long run above a lap on its way to or from the pits', () => {
+    const longRun = timedSessionTrafficPriority(
+      timedCar({
+        driverId: 'long-run',
+        phase: null,
+        practiceProgram: 'race-simulation',
+        progress: 0,
+      }),
+      'fp2',
+    )
+    const inLap = timedSessionTrafficPriority(
+      timedCar({ driverId: 'in', phase: 'in-lap', progress: 0 }),
+      'fp2',
+    )
+    const attack = timedSessionTrafficPriority(
+      timedCar({ driverId: 'attack', phase: 'attack-lap', progress: 0 }),
+      'fp2',
+    )
+
+    // Measured work outranks a transit lap. This used to be the other way
+    // round, so a driver mid-stint gave way to one heading for the pits.
+    expect(longRun).toBeGreaterThan(inLap)
+    expect(attack).toBeGreaterThan(longRun)
   })
 
   it('asks the lower-priority car to lift only at a safe passing point', () => {

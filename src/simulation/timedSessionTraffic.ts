@@ -17,6 +17,23 @@ type TimedTrafficCar = Pick<
   | 'timedRunPhase'
 >
 
+/**
+ * Who has the right to the road in a timed session, highest first.
+ *
+ * A lap on the clock outranks everything: it is the only run that cannot be
+ * taken again cheaply. A long run is measured work and outranks a transit lap,
+ * which is the reordering this replaces — an in-lap used to sit above a long
+ * run, so a driver mid-stint gave way to one on their way to the pits.
+ * Standing still ranks below all of it.
+ */
+export const TIMED_TRAFFIC_PRIORITY = {
+  qualifyingAttackLap: 4,
+  attackLap: 3,
+  longRun: 2,
+  transitLap: 1,
+  stopped: 0,
+} as const
+
 const qualifyingPracticePrograms = new Set<PracticeProgramKind>([
   'qualifying-preparation',
   'qualifying-simulation',
@@ -27,7 +44,7 @@ export function timedSessionTrafficPriority(
   stage: WeekendStage,
 ) {
   if (car.status !== 'running') {
-    return 0
+    return TIMED_TRAFFIC_PRIORITY.stopped
   }
 
   if (car.timedRunPhase === 'attack-lap') {
@@ -39,10 +56,10 @@ export function timedSessionTrafficPriority(
         car.practiceProgram !== undefined &&
         qualifyingPracticePrograms.has(car.practiceProgram))
     ) {
-      return 3
+      return TIMED_TRAFFIC_PRIORITY.qualifyingAttackLap
     }
 
-    return 2
+    return TIMED_TRAFFIC_PRIORITY.attackLap
   }
 
   if (
@@ -50,10 +67,10 @@ export function timedSessionTrafficPriority(
     car.timedRunPhase === 'in-lap' ||
     car.timedRunPhase === 'cooldown'
   ) {
-    return 1
+    return TIMED_TRAFFIC_PRIORITY.transitLap
   }
 
-  return 0
+  return TIMED_TRAFFIC_PRIORITY.longRun
 }
 
 function forwardProgress(from: number, to: number) {

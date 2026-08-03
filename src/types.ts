@@ -1181,6 +1181,14 @@ export type CarSnapshot = {
   hasUnlappedUnderSafetyCar: boolean
   blueFlag: boolean
   blueFlagSinceSeconds: number | null
+  /**
+   * The driver is giving way to faster traffic in a timed session.
+   *
+   * Separate from `blueFlag`, which is a race-control instruction to a lapped
+   * car. This is practice and qualifying etiquette: nobody is racing, so a
+   * driver on a transit lap lets a lap on the clock through.
+   */
+  timedTrafficYield: boolean
   startsFromPitLane: boolean
   lowPowerStartDetected: boolean
   warningLightsUntilSeconds: number | null
