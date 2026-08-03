@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import {
-  PIT_LANE_TRANSIT_BASE_SECONDS,
+  pitLaneLossSecondsForTrack,
   strategyOutlookFor,
 } from '../simulation/strategy'
 import type { StrategyOutlook } from '../simulation/strategy'
@@ -42,11 +42,7 @@ export function usePitStrategyOutlook(options: {
     // The engineer's read-out and the stop the race actually applies come from
     // the same base. They used to differ by 2 s, so the pit wall quoted a cost
     // the car never paid.
-    const lossSeconds =
-      track.observedCalibration?.pitLaneTransitSeconds ??
-      PIT_LANE_TRANSIT_BASE_SECONDS +
-        (80 - (track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
-        (track.kind === 'street' ? 2.5 : 0)
+    const lossSeconds = pitLaneLossSecondsForTrack(track)
     const projectedDistance = car.totalDistance - lossSeconds / track.baseLapTime
     const projectedPosition =
       1 +

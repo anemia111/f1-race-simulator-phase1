@@ -332,3 +332,42 @@ in the observed data into midfield.
 
 Sample sizes are 8 to 18 stops per team. This is ranking evidence with a scale
 attached, not a precise per-team time.
+
+## Pit lane loss per circuit
+
+The loss was one number for all twenty-four circuits. The comment above it
+explained why: the only per-circuit input available was pit lane geometry, and
+every track carries the same placeholder for it, so deriving a loss from that
+would have dressed a placeholder up as a measurement.
+
+The OpenF1 pit endpoint measures the lane directly. Pooling
+`lane_duration - stop_duration` over the fetched race sessions gives a median
+transit for seventeen of the twenty-two F1 circuits, spanning 15.02 s at
+Zandvoort to 25.79 s at Lusail.
+
+A circuit is positioned against the mean of those medians, never against an
+absolute time, so the calendar-wide level stays where it was set and only the
+differences are observed. The difference is scaled by
+`PIT_LANE_LOSS_PER_TRANSIT_SECOND`: a longer lane costs more time in the lane
+but also replaces a longer stretch of track, and the loss keeps
+1 - limit/racing of the difference, which is three fifths at an 80 km/h limit.
+Using the raw lane-time difference would overstate the spread by about two
+thirds. Modelled losses now run 13.6 s to 20.0 s.
+
+Five circuits have no row and take the base. Monaco and Silverstone are the
+unfortunate ones, being known outliers.
+
+### A transit time is not a loss
+
+`TrackObservedCalibration.pitLaneTransitSeconds` was being fed straight in as
+the loss whenever live telemetry had been fetched. It is a lane time, which is
+about three and a half seconds longer, so a fetched session silently moved the
+pit stop. Both observed paths now go through the same conversion, and
+`pitLaneLossSecondsForTrack` is the single place the race and the pit wall read
+it from - they had been duplicating the expression.
+
+The same trap is still live in the calibration data. `pitLaneLossSeconds` in
+`f1PaceCalibration2026.json` holds the median `lane_duration`, including the
+stationary time, while `openF1Performance.ts` subtracts the stop for the same
+concept. Nothing reads the JSON field today, which is the only reason it has
+not caused a bug.
