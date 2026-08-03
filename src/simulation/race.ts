@@ -2025,6 +2025,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       hasUnlappedUnderSafetyCar: false,
       blueFlag: false,
       blueFlagSinceSeconds: null,
+      timedTrafficYield: false,
       startsFromPitLane,
       lowPowerStartDetected: false,
       warningLightsUntilSeconds: null,
@@ -5219,6 +5220,7 @@ export function advanceRace(
             : car.stewardNote,
       blueFlag,
       blueFlagSinceSeconds,
+      timedTrafficYield: timedTrafficYield?.shouldYield ?? false,
       warningLightsUntilSeconds:
         car.warningLightsUntilSeconds !== null &&
         elapsedSeconds >= car.warningLightsUntilSeconds
@@ -6810,10 +6812,14 @@ export function advanceRace(
             candidateTotalDistanceM: car.totalDistance * lapLengthM,
             lateralOffsetM: previous.lateralOffsetM,
             candidateLateralOffsetM: car.lateralOffsetM,
-            // Under a blue flag the driver has conceded, so the occupancy rule
-            // stops holding the leader behind while it waits for a measured
-            // gap that a yielding car has no reason to open.
-            concedesRoad: car.blueFlag === true,
+            // A driver who has conceded is not defending the road, so the
+            // occupancy rule stops holding the faster car behind while it
+            // waits for a measured gap that neither of them has a reason to
+            // open. A blue flag is race control telling a lapped car to move;
+            // the timed-session yield is practice and qualifying etiquette,
+            // where nobody is racing in the first place.
+            concedesRoad:
+              car.blueFlag === true || car.timedTrafficYield === true,
             priority: 1000 - previous.position,
           },
         ]
