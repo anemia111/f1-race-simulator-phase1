@@ -2894,6 +2894,18 @@ export default function App() {
     if (stage !== selectedWeekendStage) {
       setSeed(createAutoScenarioSeed())
       setSelectedWeekendStage(stage)
+      return
+    }
+
+    // Selecting the session you are already on restarts it, and a restart
+    // deserves a new grid. The seed is persisted with the weekend, so without
+    // this the same seed is restored, qualifying resolves the same way, and
+    // every race starts from the identical order.
+    //
+    // Only once the session has finished. An in-progress race must not be
+    // thrown away by a stray click on the stage it is already running.
+    if (snapshot.sessionStatus === 'finished') {
+      setSeed(createAutoScenarioSeed())
     }
   }
 
