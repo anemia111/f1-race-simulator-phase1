@@ -119,12 +119,13 @@ export function automaticRacePaceModeFor(options: {
 
   const gap = car.gapToAhead
 
-  // Covering the car behind outranks chasing the one ahead when the attacker
-  // is close enough to be the more immediate loss.
+  // Cover only when there is nothing to chase. A driver with a car in
+  // Overtake range ahead attacks and takes the risk behind; defending is what
+  // you do when the road ahead is out of reach.
   if (
     underAttack &&
     car.ersBatteryPercent >= 30 &&
-    (gap <= 0 || gap > 1.4)
+    (gap <= 0 || gap > 2.4)
   ) {
     return 'defend'
   }
