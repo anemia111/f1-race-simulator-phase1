@@ -436,6 +436,17 @@ export type PhysicalLapResult = {
   points: PhysicalLapPoint[]
   /** Constant deployment assumption used to construct this reference only. */
   referenceDeploymentPowerKw: number
+  /**
+   * MGU-K energy the lap assumes, in megajoules.
+   *
+   * `REFERENCE_DEPLOYMENT_POLICY` grants the category limit wherever full
+   * power is requested and keeps no account of what that costs, so this is
+   * what the lap spends rather than what it is allowed. Comparing it with
+   * `FIA_2026_REGULATION_PROFILE.energy` is the point of reporting it:
+   * a lap that spends more than the regulation permits is not a lap the rules
+   * allow, however well its time matches.
+   */
+  deploymentEnergyMj: number
 }
 
 export type PhysicalReferenceLinePhase =
@@ -756,7 +767,31 @@ export function simulatePhysicalLap(
     }
   })
 
+  // Deployment is requested wherever the lap is gaining speed, which is what
+  // the acceleration sweep assumed when it built the profile. Integrating the
+  // permitted power over exactly those segments gives what the finished lap
+  // spends.
+  const deploymentEnergyMj = geometry.reduce((total, point, index) => {
+    const entryMps = speeds[index]
+    const exitMps = speeds[(index + 1) % count]
+
+    if (exitMps <= entryMps) {
+      return total
+    }
+
+    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
+    const secondsOnSegment = point.segmentLengthMeters / averageMps
+
+    return (
+      total +
+      (permittedDeploymentKw(resolved.deploymentPowerKw, averageMps) *
+        secondsOnSegment) /
+        1000
+    )
+  }, 0)
+
   return {
+    deploymentEnergyMj,
     lapTimeSeconds,
     maximumSpeedKph: Math.max(...speeds) * 3.6,
     minimumSpeedKph: Math.min(...speeds) * 3.6,

@@ -416,3 +416,48 @@ reads it are timing scales - safety-car durations, session budgets, the pit
 wall's projected position. For that purpose it is about 6 % quicker than an
 observed green-flag lap on every one of the ten measured events, which is a
 separate question from this one.
+
+## Reference laps spend two and a half times the MGU-K energy the rules allow
+
+Measured, not fixed. `deployment-energy-budget` is a validation domain now, so
+the number is in the report rather than in a note.
+
+`REFERENCE_DEPLOYMENT_POLICY` grants the category deployment limit wherever
+full power is requested and says so plainly: it "deliberately has no
+state-of-charge, harvesting or lap strategy", and a live simulation "must
+instead pass the power authorised by its Energy Store". Qualifying is a live
+session and does not. `qualifying.ts` passes
+`categoryPhysics.hybridDeploymentPowerLimitKw` straight through, so every
+modelled qualifying lap deploys as if the Energy Store were bottomless.
+
+Integrating the permitted power over the segments where the finished lap gains
+speed gives what each lap actually spends. All eleven measured circuits exceed
+the limit, averaging 2.38 times it:
+
+| | MJ per lap | against a 7 MJ qualifying limit |
+| --- | ---: | ---: |
+| Shanghai | 20.00 | 2.86x |
+| Spa | 18.79 | 2.68x |
+| Suzuka | 18.57 | 2.65x |
+| Miami | 17.25 | 2.46x |
+
+A real car deploys full power for roughly a third of its accelerating time.
+This one does it for all of it.
+
+### What this does and does not explain
+
+It does not explain the per-circuit spread. Simulated qualifying runs from
+7.9 s fast at Baku to 4.8 s slow at Madrid, and the energy figures do not
+follow that at all - Shanghai and Madrid spend the most and are the two
+slowest. Enforcing a budget would not close it.
+
+It does bear on the mean. The same twenty-two circuits average 2.5 s fast, and
+an eleven-megajoule overspend is worth several seconds of lap time, so the
+level and this are plausibly the same finding.
+
+Enforcing the budget is deliberately not done here. It would slow every lap in
+the simulator by more than the 2.5 s mean error, which means it cannot be
+separated from the straight-line drag calibration those laps were fitted
+against, and it needs a rule for where in the lap the budget is spent - a real
+driver spends it on slow corner exits, not evenly. Measuring first is what
+makes that a decision rather than a guess.

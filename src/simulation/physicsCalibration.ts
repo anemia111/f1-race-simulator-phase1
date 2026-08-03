@@ -758,6 +758,7 @@ export const REQUIRED_VALIDATION_DOMAINS = [
   'fuel-mass-sensitivity',
   'wet-pace-sensitivity',
   'deployment-power-sensitivity',
+  'deployment-energy-budget',
   'state-of-charge',
   'tyre-behaviour',
   'driver-dispersion',
