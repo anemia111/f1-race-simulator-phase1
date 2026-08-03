@@ -19,13 +19,20 @@ async function loadRuntime() {
   })
 
   try {
-    const [calibration, categories, physicsLap, trackData, paceData] =
-      await Promise.all([
+    const [
+      calibration,
+      categories,
+      physicsLap,
+      trackData,
+      paceData,
+      regulationData,
+    ] = await Promise.all([
         server.ssrLoadModule('/src/simulation/physicsCalibration.ts'),
         server.ssrLoadModule('/src/simulation/categoryPhysics.ts'),
         server.ssrLoadModule('/src/simulation/physicalLap.ts'),
         server.ssrLoadModule('/src/data/tracks.ts'),
         server.ssrLoadModule('/src/data/paceCalibration.ts'),
+        server.ssrLoadModule('/src/simulation/regulations.ts'),
       ])
 
     return {
@@ -33,6 +40,7 @@ async function loadRuntime() {
       categories,
       paceData,
       physicsLap,
+      regulationData,
       server,
       trackData,
     }
@@ -71,6 +79,7 @@ try {
     f1PaceCalibration2026,
     superFormulaPaceCalibration2026,
   } = runtime.paceData
+  const { FIA_2026_REGULATION_PROFILE } = runtime.regulationData
   const trackById = new Map(tracks.map((track) => [track.id, track]))
   const observations = f1QualifyingLapObservations(
     f1PaceCalibration2026,
@@ -167,6 +176,21 @@ try {
     })
     .sort((left, right) => Math.abs(right.errorKph) - Math.abs(left.errorKph))
 
+  // The reference lap grants the category deployment limit wherever full power
+  // is requested and keeps no account of what that costs. Measuring the bill
+  // is the only way the gap between it and the regulation becomes visible.
+  const qualifyingLimitMj =
+    FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj
+  const energyComparisons = observations
+    .map((observation, index) => ({
+      trackId: observation.trackId,
+      modelMj: physicalAcrossObservedTracks[index].deploymentEnergyMj,
+      ratioOfLimit:
+        physicalAcrossObservedTracks[index].deploymentEnergyMj /
+        qualifyingLimitMj,
+    }))
+    .sort((left, right) => right.ratioOfLimit - left.ratioOfLimit)
+
   const report = buildPhysicsValidationReport({
     categoryPredictions,
     evidence: {
@@ -181,6 +205,31 @@ try {
         observedValue: null,
         sampleCount: 1,
         unit: 's and lap ratio',
+      },
+      'deployment-energy-budget': {
+        basis:
+          'MGU-K energy each reference lap spends, against the qualifying recharge limit in FIA_2026_REGULATION_PROFILE (article C5.2.7-C5.2.12)',
+        modelValue: {
+          perCircuit: energyComparisons,
+          meanMj: average(energyComparisons.map((entry) => entry.modelMj)),
+          maximumMj: Math.max(
+            ...energyComparisons.map((entry) => entry.modelMj),
+          ),
+          meanRatioOfLimit: average(
+            energyComparisons.map((entry) => entry.ratioOfLimit),
+          ),
+          circuitsOverLimit: energyComparisons.filter(
+            (entry) => entry.ratioOfLimit > 1,
+          ).length,
+        },
+        observedValue: {
+          qualifyingLimitMj:
+            FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj,
+          raceLimitMj: FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
+          article: FIA_2026_REGULATION_PROFILE.energy.article,
+        },
+        sampleCount: energyComparisons.length,
+        unit: 'MJ per lap',
       },
       'fuel-mass-sensitivity': {
         basis: 'Suzuka reference lap at default mass versus minimum mass + 80 kg',

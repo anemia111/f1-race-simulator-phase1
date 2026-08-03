@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tracks } from '../data/tracks'
 import { categoryPhysicsFor } from './categoryPhysics'
+import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import {
   bankingDegreesAt,
   REFERENCE_DEPLOYMENT_POLICY,
@@ -349,5 +350,27 @@ describe('simulatePhysicalLap', () => {
     expect(result.referenceDeploymentPowerKw).toBe(
       f1.hybridDeploymentPowerLimitKw,
     )
+  })
+
+  it('reports the MGU-K energy the lap spends, which the rules do not allow', () => {
+    const f1 = categoryPhysicsFor('f1-custom')
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
+    const result = simulatePhysicalLap(suzuka, { physics: f1 })
+
+    // REFERENCE_DEPLOYMENT_POLICY grants the category limit wherever full
+    // power is requested and keeps no account of the cost, so a reference lap
+    // spends far more than a qualifying lap is permitted. This test does not
+    // approve of that; it records it, so that a change which closes the gap
+    // shows up here rather than silently.
+    expect(result.deploymentEnergyMj).toBeGreaterThan(
+      2 * FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj,
+    )
+
+    // Removing deployment must remove the bill with it, which is what makes
+    // the figure an integral of deployment rather than of lap time.
+    expect(
+      simulatePhysicalLap(suzuka, { deploymentPowerKw: 0, physics: f1 })
+        .deploymentEnergyMj,
+    ).toBe(0)
   })
 })
