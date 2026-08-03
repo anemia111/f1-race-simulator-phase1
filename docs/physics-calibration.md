@@ -285,3 +285,33 @@ Future work should add provenance-bearing speed traps, corner traces,
 acceleration/braking tests, wet-session comparisons, energy traces and
 multi-race traffic statistics. Those observations can populate the existing
 evidence fields without changing the no-fit reporting architecture.
+
+## Pit stop stationary time
+
+The per-stop variance was a uniform band 1.8 s wide. A uniform draw cannot
+describe a pit stop: it adds half its width to every stop, so the crew's own
+capability stops being the floor and the tail stops at a fixed ceiling. Against
+148 observed 2026 race stops the model's median sat at 3.54 s against 3.20, its
+tenth percentile at 2.74 against 2.40, and its quickest possible stop at 2.16
+against an observed 2.00.
+
+It is now an exponential draw of mean 0.78 s, which has a floor and a tail. The
+modelled median lands on the observed 3.20 s and the tenth percentile falls to
+about 2.6.
+
+`F1_PIT_STOP_STATIONARY_OBSERVATIONS_2026` records the observed figures per
+session. Only the lower half of that distribution is a calibration target. A
+five- or ten-second penalty is served with the car stationary in its box and
+OpenF1 records the whole stop, so the observed p90 of 7.8 s is mostly penalties
+rather than slow pit work, and the simulation already models penalties
+elsewhere. Matching that tail would count them twice.
+
+Two things this does not fix. The model still cannot produce the quickest
+observed stop, because `crewBaseSeconds` plus the best crew's share of
+`crewSpreadSeconds` is 2.16 s. And team identity still explains only 0.76 s of
+stop time. Both are the same missing measurement: `pitCrewSpeed` is derived
+from DHL award winning frequency, which is a ranking, and the file says so.
+Turning it into seconds needs observed per-team stationary times, which are not
+in this repository. The pit endpoint carries them per driver, but mapping
+drivers to teams needs the OpenF1 `drivers` endpoint, which the calibration
+cache does not hold.
