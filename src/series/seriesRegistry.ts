@@ -9,6 +9,7 @@ import {
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks as f1Tracks } from '../data/tracks'
 import {
+  baseLapTimeSourceForPaceReference,
   paceReference2026For,
   simulationBaseLapTimeForPaceReference,
 } from '../data/paceReferences2026'
@@ -462,7 +463,8 @@ function tracksFor(definition: RawSeries) {
           paceReference2026,
           scaledBaseLapTime,
         ),
-        baseLapTimeSource: paceReference2026 ? '2026-reference' : 'estimated',
+        baseLapTimeSource:
+          baseLapTimeSourceForPaceReference(paceReference2026),
         isSprintWeekend: Boolean(event?.sprint),
         paceReference2026,
         raceLaps: Math.max(

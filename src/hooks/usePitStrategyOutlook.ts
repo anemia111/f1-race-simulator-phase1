@@ -54,15 +54,10 @@ export function usePitStrategyOutlook(options: {
       ).length
 
     return { lossSeconds, projectedPosition }
-  }, [
-    car.driverId,
-    car.totalDistance,
-    snapshot.cars,
-    track.baseLapTime,
-    track.kind,
-    track.observedCalibration?.pitLaneTransitSeconds,
-    track.pitLane?.speedLimitKph,
-  ])
+    // `pitLaneLossSecondsForTrack` reads several fields off the track, so the
+    // track itself is the dependency rather than the handful this used to
+    // list.
+  }, [car.driverId, car.totalDistance, snapshot.cars, track])
   const teammateInPitCar = useMemo(
     () =>
       snapshot.cars.find(

@@ -11,6 +11,7 @@ import { realTrackLayouts } from './realTrackLayouts'
 import { tireNominationForTrack } from './tireNominations2026'
 import { calendar2026ByTrackId } from './calendar2026'
 import {
+  baseLapTimeSourceForPaceReference,
   paceReference2026For,
   simulationBaseLapTimeForPaceReference,
 } from './paceReferences2026'
@@ -990,7 +991,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
       paceReference2026,
       track.baseLapTime,
     ),
-    baseLapTimeSource: paceReference2026 ? '2026-reference' : 'estimated',
+    baseLapTimeSource: baseLapTimeSourceForPaceReference(paceReference2026),
     marshalPosts: realLayout?.marshalPosts,
     name: displayTrackName(track.name),
     paceReference2026,

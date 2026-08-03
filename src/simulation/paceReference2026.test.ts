@@ -258,4 +258,25 @@ describe('2026 pace references', () => {
       runKnockoutQualifying(sfConfig),
     )
   })
+
+  it('produces qualifying lap times that baseLapTime cannot move', () => {
+    // `timedPhysicalLap` says baseLapTime is deliberately absent from the
+    // force-derived lap. Until this test existed that was only a comment, and
+    // the pace calibration script was adjusting baseLapTime by the qualifying
+    // error every iteration - moving a number that could not affect the
+    // quantity it was measuring, so it never converged and each pass added the
+    // same error again.
+    const track = tracks.find((entry) => entry.id === 'suzuka-approx')!
+    const lapTimesFor = (baseLapTime: number) =>
+      runKnockoutQualifying({
+        drivers: initialDrivers,
+        seed: 'base-lap-time-independence',
+        seriesId: 'f1-custom' as const,
+        teams: initialTeams,
+        track: { ...track, baseLapTime, rainProbability: 0 },
+      }).classification.map((entry) => entry.lapTimeSeconds)
+
+    expect(lapTimesFor(60)).toEqual(lapTimesFor(track.baseLapTime))
+    expect(lapTimesFor(120)).toEqual(lapTimesFor(track.baseLapTime))
+  })
 })

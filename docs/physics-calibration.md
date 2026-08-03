@@ -371,3 +371,48 @@ The same trap is still live in the calibration data. `pitLaneLossSeconds` in
 stationary time, while `openF1Performance.ts` subtracts the stop for the same
 concept. Nothing reads the JSON field today, which is the only reason it has
 not caused a bug.
+
+## The qualifying calibration loop could not converge
+
+`calibrate-race-pace.mjs` adjusted `neutralBaseLapSeconds` by the difference
+between simulated and reference qualifying pace, once per iteration, stopping
+when that difference fell below 0.015 s. It never could. Qualifying lap times
+come from forces and do not read `baseLapTime` at all - the doc comment on
+`timedPhysicalLap` says so, and it is now held to that by a test in
+`paceReference2026.test.ts`, which runs the same session at 60 s, 120 s and the
+real value and gets identical lap times to the millisecond.
+
+So the loop moved a number with no influence on the quantity it measured. The
+error never changed, the break never fired, and every pass added the same error
+again. With two iterations per call and two calls per run, running the script
+would have moved every base lap time by up to 31 s.
+
+It now reports rather than adjusts, and what it reports is a real finding:
+
+| | error |
+| --- | ---: |
+| Baku | +7.9 s |
+| Monza | +6.2 s |
+| Spa | +6.1 s |
+| Silverstone | +6.0 s |
+| Madrid | -4.8 s |
+| Shanghai | -3.4 s |
+| Lusail | -3.0 s |
+
+Positive is the simulation running fast. That is the same straight-against-
+corner axis the reference-lap holdout shows, on the same circuits, and it is
+much larger than the 2.65 s holdout figure because a driven qualifying session
+compounds what a single reference lap only hints at. No base lap time can
+absorb it.
+
+### The provenance label claimed more than it had
+
+`baseLapTimeSource` was `2026-reference` whenever a pace reference existed, and
+every circuit has one, so every circuit claimed it - including the sixteen
+whose own race record says `estimated`. It now follows the record.
+
+`baseLapTime` itself is left alone. It no longer sets pace anywhere; what still
+reads it are timing scales - safety-car durations, session budgets, the pit
+wall's projected position. For that purpose it is about 6 % quicker than an
+observed green-flag lap on every one of the ten measured events, which is a
+separate question from this one.

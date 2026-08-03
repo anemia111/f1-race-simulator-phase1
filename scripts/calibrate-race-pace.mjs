@@ -405,6 +405,27 @@ function isSelectedSeries(seriesId) {
   return SERIES_FILTER === undefined || seriesId === SERIES_FILTER
 }
 
+/**
+ * Reports how far simulated qualifying pace sits from the reference.
+ *
+ * This used to adjust `neutralBaseLapSeconds` by that error every iteration
+ * and stop once the error fell below 0.015 s. It cannot work. Qualifying lap
+ * times are produced from forces and do not read `baseLapTime` at all - the
+ * doc comment on `timedPhysicalLap` says so, and `qualifying.test.ts` now
+ * holds it to that - so the loop was moving a number that has no influence on
+ * the quantity it measured. The error never changed, the break never fired,
+ * and every pass added the same error again.
+ *
+ * The errors today run from -4.8 s to +7.9 s. With two iterations per call and
+ * two calls per run, running this script would have moved every base lap time
+ * by up to 31 s.
+ *
+ * So it reports instead of adjusting. The spread it prints is a real finding
+ * about the pace model, not something a base lap time can absorb: the
+ * simulation is fast at Baku, Monza, Spa and Silverstone and slow at Shanghai,
+ * Madrid and Lusail, which is the same straight-against-corner axis the
+ * physics calibration holdout shows.
+ */
 async function calibrateQualifying() {
   for (
     let iteration = 0;
@@ -445,12 +466,17 @@ async function calibrateQualifying() {
         const error =
           target - (distribution.top3MedianSeconds ?? target)
         maximumError = Math.max(maximumError, Math.abs(error))
-        record.simulation.neutralBaseLapSeconds = round(
-          record.simulation.neutralBaseLapSeconds + error,
-        )
-        record.simulation.qualifyingOffsetSeconds = round(
-          record.simulation.neutralBaseLapSeconds - target,
-        )
+
+        if (Math.abs(error) >= 0.5) {
+          process.stdout.write(
+            `  ${seriesId} ${track.id}: simulated top-three ${(
+              distribution.top3MedianSeconds ?? target
+            ).toFixed(3)}s against reference ${target.toFixed(3)}s (${
+              error > 0 ? '+' : ''
+            }${error.toFixed(3)}s)\n`,
+          )
+        }
+
         record.simulation.calibrationSeedCount = QUALIFYING_SEEDS
         record.simulation.raceModelCorrectionSeconds ??= 0
       }
@@ -459,12 +485,12 @@ async function calibrateQualifying() {
     await runtime.close()
     await writeCalibration(records)
     process.stdout.write(
-      `Qualifying iteration ${iteration + 1}: maximum top-three error before adjustment ${maximumError.toFixed(3)}s\n`,
+      `Qualifying pace check: worst top-three error ${maximumError.toFixed(3)}s\n`,
     )
 
-    if (maximumError < 0.015) {
-      break
-    }
+    // Nothing here changes between passes now that the error is only reported,
+    // so one is enough.
+    break
   }
 }
 

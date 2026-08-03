@@ -118,7 +118,13 @@ describe('Free Mode registry and validation', () => {
         qualifyingReferenceSeconds,
       )
       expect(config.track.freeModeProvenance?.pace).toBe('category-reference')
-      expect(config.track.baseLapTimeSource).toBe('2026-reference')
+      // What this test is about is that F1 gets its own reference on a Super
+      // Formula circuit, which the two assertions above establish. The source
+      // label is a separate claim, and for these four the record's own race
+      // status is `estimated`; it used to read `2026-reference` because the
+      // label followed whether a reference existed rather than what it said.
+      expect(config.track.baseLapTimeSource).toBe('estimated')
+      expect(reference?.calibration.race.status).toBe('estimated')
       // The Super Formula base lap describes a different car on the same asphalt.
       expect(config.track.baseLapTime).toBeLessThan(
         superFormulaTrack.baseLapTime,

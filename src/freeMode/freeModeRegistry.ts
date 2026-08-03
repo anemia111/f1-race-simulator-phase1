@@ -1,4 +1,5 @@
 import {
+  baseLapTimeSourceForPaceReference,
   paceReference2026For,
   simulationBaseLapTimeForPaceReference,
 } from '../data/paceReferences2026'
@@ -409,9 +410,8 @@ function trackForConfiguration(
             ).toFixed(3),
           ),
         ),
-        baseLapTimeSource: categoryReference
-          ? ('2026-reference' as const)
-          : ('estimated' as const),
+        baseLapTimeSource:
+          baseLapTimeSourceForPaceReference(categoryReference),
         paceReference2026: categoryReference,
         raceLaps: suggestFreeModeRaceLaps(series, trackOption.physicalTrack),
         raceLapsSource: 'estimated' as const,
