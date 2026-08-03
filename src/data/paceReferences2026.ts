@@ -120,3 +120,20 @@ export function simulationBaseLapTimeForPaceReference(
     ? Number(calibrated.toFixed(3))
     : fallbackSeconds
 }
+
+/**
+ * What a base lap time taken from a pace reference may honestly claim.
+ *
+ * The presence of a reference used to be enough to label the number
+ * `2026-reference`, and every circuit has one, so every circuit claimed it -
+ * including the sixteen whose own race record says `estimated`. The label
+ * exists to tell a reader whether a number was measured, so it now follows the
+ * record rather than its existence.
+ */
+export function baseLapTimeSourceForPaceReference(
+  reference: PaceReference | undefined,
+): 'estimated' | '2026-reference' {
+  return reference?.calibration.race.status === 'observed'
+    ? '2026-reference'
+    : 'estimated'
+}
