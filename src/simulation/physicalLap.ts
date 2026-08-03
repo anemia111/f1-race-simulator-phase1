@@ -19,6 +19,7 @@
  */
 import { categoryPhysicsFor, type CategoryPhysicsProfile } from './categoryPhysics'
 import { powerUnitDriveForceN } from './drivetrain'
+import { deploymentPowerLimitKwForSpeed } from './regulations'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
 import {
   aerodynamicDownforceN,
@@ -351,6 +352,20 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
   })
 }
 
+
+/**
+ * The reference lap is offline, but it is still a 2026 car: the regulation's
+ * speed-based MGU-K ramp applies here exactly as it does live, or the offline
+ * profile would report a terminal speed the live car can never reach.
+ * Manual Override is a driver action and has no place on a reference lap, so
+ * the standard cutoff is used.
+ */
+const permittedDeploymentKw = (requestedPowerKw: number, speedMps: number) =>
+  deploymentPowerLimitKwForSpeed({
+    requestedPowerKw,
+    speedKph: Math.max(0, speedMps) * 3.6,
+  })
+
 function resolveOptions(options: PhysicalLapOptions) {
   const physics = options.physics ?? categoryPhysicsFor(undefined)
 
@@ -393,7 +408,10 @@ export function terminalSpeedMps(options: PhysicalLapOptions = {}) {
     const middle = (low + high) / 2
     const surplus =
       powerUnitDriveForceN({
-        deploymentPowerKw: resolved.deploymentPowerKw,
+        deploymentPowerKw: permittedDeploymentKw(
+          resolved.deploymentPowerKw,
+          middle,
+        ),
         physics: resolved.physics,
         speedMps: middle,
         throttleFraction: 1,
@@ -570,7 +588,10 @@ export function simulatePhysicalLap(
     })
     const driveForceN = Math.min(
       powerUnitDriveForceN({
-        deploymentPowerKw: resolved.deploymentPowerKw,
+        deploymentPowerKw: permittedDeploymentKw(
+          resolved.deploymentPowerKw,
+          speedMps,
+        ),
         physics: resolved.physics,
         speedMps,
         throttleFraction: 1,

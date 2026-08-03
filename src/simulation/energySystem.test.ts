@@ -480,6 +480,12 @@ describe('physical Energy Store integration', () => {
     )
   })
 
+  // Split by phase, because the two halves happen at different speeds. The
+  // store is drained at 280 km/h, where deployment is legal: the regulation's
+  // ramp takes permitted MGU-K power to zero by 345, so the old 355 and 390
+  // asked for a state the rules do not allow and nothing drained. Clipping is
+  // then judged at 340, on the straight, which is where it happens. What the
+  // test checks is unchanged.
   it('ENERGY-14: excessive early deployment creates real clipping recovery demand', () => {
     let state = createInitialEnergyStore(team, 0.88)
 
@@ -487,7 +493,7 @@ describe('physical Energy Store integration', () => {
       state = step(state, {
         deltaSeconds: 0.5,
         deploymentRequest: 1,
-        speedKph: 355,
+        speedKph: 280,
       }).state
     }
     const clipping = advanceSuperClipping({
@@ -507,7 +513,7 @@ describe('physical Energy Store integration', () => {
       phaseActive: false,
       racePaceMode: 'standard',
       sessionType: 'race-distance',
-      speedKph: 390,
+      speedKph: 340,
       straightLengthAheadMeters: 900,
       straightness: 1,
       team,
@@ -518,7 +524,7 @@ describe('physical Energy Store integration', () => {
         clipping.regenerativeResistancePowerKw,
       deltaSeconds: 1,
       deploymentRequest: 1,
-      speedKph: 390,
+      speedKph: 340,
     }).state
 
     expect(state.stateOfCharge).toBeLessThan(0.15)

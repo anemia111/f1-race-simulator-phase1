@@ -61,6 +61,12 @@ export const FIA_2026_REGULATION_PROFILE = {
     normalCompetitionReducedLimitMj: 7,
     qualifyingMinimumLimitMj: 5,
     standingStartDeploymentMinKph: 50,
+    /**
+     * Road speed where the MGU-K power ramp begins. Above it the permitted
+     * deployment falls linearly to zero at the cutoff, which is the mechanism
+     * that bounds a 2026 car's terminal velocity.
+     */
+    deploymentTaperStartKph: 290,
     standardDeploymentCutoffKph: 345,
     overtakeDeploymentCutoffKph: 355,
     article: 'C5.2.7-C5.2.12',
@@ -206,4 +212,51 @@ export function compliesWithGrandPrixTireRule(
   }
 
   return new Set(car.compoundsUsed.filter(isDryCompound)).size >= 2
+}
+
+/**
+ * Permitted MGU-K deployment at a given road speed.
+ *
+ * The 2026 power unit does not carry full electrical power to any speed: the
+ * permitted deployment ramps down above `deploymentTaperStartKph` and reaches
+ * zero at the cutoff, higher when the driver has Manual Override active. This
+ * is what gives the car a terminal velocity. Without it the combustion power
+ * alone must balance drag, and on a long enough straight a model with an
+ * under-stated drag area simply keeps accelerating.
+ *
+ * Returns the requested power unchanged for categories with no hybrid system,
+ * so a non-hybrid category is not silently given an electrical limit.
+ */
+export function deploymentPowerLimitKwForSpeed(options: {
+  overtakeActive?: boolean
+  requestedPowerKw: number
+  speedKph: number
+}) {
+  const { overtakeActive = false, requestedPowerKw, speedKph } = options
+
+  if (!Number.isFinite(requestedPowerKw) || requestedPowerKw <= 0) {
+    return 0
+  }
+
+  if (!Number.isFinite(speedKph)) {
+    return requestedPowerKw
+  }
+
+  const { deploymentTaperStartKph } = FIA_2026_REGULATION_PROFILE.energy
+  const cutoffKph = overtakeActive
+    ? FIA_2026_REGULATION_PROFILE.energy.overtakeDeploymentCutoffKph
+    : FIA_2026_REGULATION_PROFILE.energy.standardDeploymentCutoffKph
+
+  if (speedKph <= deploymentTaperStartKph) {
+    return requestedPowerKw
+  }
+
+  if (speedKph >= cutoffKph) {
+    return 0
+  }
+
+  const remainingFraction =
+    (cutoffKph - speedKph) / (cutoffKph - deploymentTaperStartKph)
+
+  return requestedPowerKw * Math.min(1, Math.max(0, remainingFraction))
 }

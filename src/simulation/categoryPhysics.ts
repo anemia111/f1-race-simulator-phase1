@@ -95,7 +95,16 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     overtakeBoostPowerKw: 0,
     partialAeroDragMultiplier: 0.78,
     rollingResistanceCoefficient: 0.012,
-    straightAeroDragMultiplier: 0.47,
+    /**
+     * Straight-mode bodywork leaves roughly a third of the drag area behind,
+     * not two thirds. At 0.47 the reference car's straight-mode CdA came out
+     * near 0.38 m2, less than half of any Formula car ever measured, and gave
+     * it a terminal velocity around 500 km/h. Solving the power balance the
+     * other way — an ICE-only 376 kW at the wheels against a 340 km/h peak,
+     * which is what the regulation's deployment ramp leaves at that speed —
+     * asks for about 0.73 m2, which this multiplier produces.
+     */
+    straightAeroDragMultiplier: 0.639,
     topGearDesignSpeedKph: 402,
   },
   f2: {

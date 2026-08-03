@@ -628,6 +628,7 @@ export function calculateCarTelemetry(options: {
     }),
     gripMultiplier: localGrip,
     maxRechargePerLapMj: hasHybridEnergyStore ? maxRechargePerLapMj : 0,
+    overtakeActive: overtakeStatus === 'active',
     recoveryRequestScale: !hasHybridEnergyStore
       ? 0
       : isQualifyingAttack
