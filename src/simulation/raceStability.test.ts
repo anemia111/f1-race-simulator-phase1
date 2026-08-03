@@ -73,6 +73,10 @@ describe('multi-circuit race stability', () => {
         }
       }
     },
-    120_000,
+    // Full races across several circuits, so the budget is machine speed
+    // rather than a claim about the product. It measured 137.9 s on master and
+    // 140.7 s here, so 120 s was already short of what the work costs on this
+    // hardware and the two are within noise of each other.
+    240_000,
   )
 })
