@@ -11,6 +11,10 @@ import type {
   TrackObservedCalibration,
   WeatherState,
 } from '../types'
+import {
+  F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
+  observedPitLaneTransitSeconds,
+} from '../data/f1PitLaneObservations2026'
 import { trackWidthMeters } from './physicalLap'
 import { hashChance } from './random'
 import { driverPerformanceAbility, driverSkillBlend } from './driverAbility'
@@ -137,13 +141,64 @@ export function effectivePitLaneLossSecondsForControlPhase(options: {
  * and a stop with an average crew near 21.4 s, which is where published dry
  * pit losses sit for most permanent circuits.
  *
- * It is deliberately one number for every circuit. Real losses spread about
- * 8 s, from roughly 19 s at Monaco to 27 s at Singapore, but that spread comes
- * from pit lane length, and every track in this repository carries the same
- * placeholder pit lane geometry (entry 0.940, exit 0.055). Deriving a
- * per-circuit loss from that would dress a placeholder up as a measurement.
+ * This is the calendar-wide level. It used to be the whole model, because the
+ * only per-circuit input available was the pit lane geometry, and every track
+ * in this repository carries the same placeholder for it (entry 0.940, exit
+ * 0.055); deriving a per-circuit loss from that would have dressed a
+ * placeholder up as a measurement. `F1_PIT_LANE_TRANSIT_OBSERVATIONS` now
+ * supplies measured lane times instead, and a circuit is positioned against
+ * their mean by `pitLaneLossSecondsForTrack`, so the level here is untouched
+ * and only the differences between circuits are observed.
  */
 export const PIT_LANE_TRANSIT_BASE_SECONDS = 16.5
+
+/**
+ * How much of a difference in lane time becomes a difference in loss.
+ *
+ * A longer pit lane costs more time in the lane, but it also replaces a longer
+ * stretch of track, and the loss is the difference between the two. Extra
+ * length adds distance/limit in the lane against distance/racing speed on
+ * track, so the loss keeps 1 - limit/racing of it: at an 80 km/h limit and the
+ * ~200 km/h the section is taken at, three fifths.
+ *
+ * Applying the raw lane-time difference instead would overstate the spread by
+ * about two thirds.
+ */
+export const PIT_LANE_LOSS_PER_TRANSIT_SECOND = 1 - 80 / 200
+
+/**
+ * Time lost in the pit lane for a circuit, before the crew touches the car.
+ *
+ * Live telemetry wins over the checked-in observation, which wins over the
+ * speed-limit and street-circuit heuristic. Both observed paths carry a lane
+ * transit time, which is longer than a loss, so both go through the same
+ * conversion; feeding one straight in as a loss put the pit wall and the race
+ * about three and a half seconds apart whenever a session had been fetched.
+ */
+export function pitLaneLossSecondsForTrack(track: {
+  id: string
+  kind?: TrackDefinition['kind']
+  observedCalibration?: { pitLaneTransitSeconds?: number | null }
+  pitLane?: { speedLimitKph?: number }
+}) {
+  const observedTransitSeconds =
+    track.observedCalibration?.pitLaneTransitSeconds ??
+    observedPitLaneTransitSeconds(track.id)
+
+  if (observedTransitSeconds !== null && observedTransitSeconds !== undefined) {
+    return (
+      PIT_LANE_TRANSIT_BASE_SECONDS +
+      PIT_LANE_LOSS_PER_TRANSIT_SECOND *
+        (observedTransitSeconds - F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS)
+    )
+  }
+
+  return (
+    PIT_LANE_TRANSIT_BASE_SECONDS +
+    (80 - (track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
+    (track.kind === 'street' ? 2.5 : 0)
+  )
+}
 
 export const pitTuning = {
   /** Fixed pit-lane transit loss vs staying out (seconds). */

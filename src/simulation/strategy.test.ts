@@ -6,7 +6,18 @@ import {
   F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026,
   F1_PIT_STOP_STATIONARY_POOLED_2026,
 } from '../data/f1PitStopObservations2026'
-import { decidePitStop, pitStopLossSeconds, pitTuning } from './strategy'
+import {
+  F1_PIT_LANE_TRANSIT_OBSERVATIONS,
+  F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
+} from '../data/f1PitLaneObservations2026'
+import {
+  decidePitStop,
+  PIT_LANE_LOSS_PER_TRANSIT_SECOND,
+  PIT_LANE_TRANSIT_BASE_SECONDS,
+  pitLaneLossSecondsForTrack,
+  pitStopLossSeconds,
+  pitTuning,
+} from './strategy'
 import type { WeatherForecast } from './weather'
 
 const driver = initialDrivers[0]
@@ -214,6 +225,61 @@ describe('stationary time against observed 2026 stops', () => {
 
   it('never beats the quickest crew flat out', () => {
     expect(samples[0]).toBeGreaterThanOrEqual(pitTuning.crewBaseSeconds)
+  })
+})
+
+describe('per-circuit pit lane loss', () => {
+  const lossFor = (trackId: string) =>
+    pitLaneLossSecondsForTrack({ id: trackId })
+
+  it('separates the circuits the observations separate', () => {
+    // Zandvoort has the shortest measured lane of the set and Lusail the
+    // longest. They used to cost exactly the same.
+    expect(lossFor('lusail-approx') - lossFor('zandvoort-approx')).toBeCloseTo(
+      PIT_LANE_LOSS_PER_TRANSIT_SECOND * (25.79 - 15.02),
+      6,
+    )
+  })
+
+  it('leaves the calendar-wide level where it was set', () => {
+    const observed = F1_PIT_LANE_TRANSIT_OBSERVATIONS.map((entry) =>
+      lossFor(entry.trackId),
+    )
+    const mean =
+      observed.reduce((total, value) => total + value, 0) / observed.length
+
+    expect(mean).toBeCloseTo(PIT_LANE_TRANSIT_BASE_SECONDS, 1)
+  })
+
+  it('falls back to the base for a circuit with no observation', () => {
+    // Monaco and Silverstone have no row, and both are known outliers.
+    expect(lossFor('monaco-approx')).toBeCloseTo(
+      PIT_LANE_TRANSIT_BASE_SECONDS,
+      6,
+    )
+  })
+
+  it('converts a live transit time rather than using it as a loss', () => {
+    // Feeding a lane time straight in as a loss is what put the pit wall and
+    // the race apart, so a transit equal to the reference must produce the
+    // base rather than the reference.
+    expect(
+      pitLaneLossSecondsForTrack({
+        id: 'monaco-approx',
+        observedCalibration: {
+          pitLaneTransitSeconds: F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
+        },
+      }),
+    ).toBeCloseTo(PIT_LANE_TRANSIT_BASE_SECONDS, 6)
+  })
+
+  it('lets live telemetry override the checked-in observation', () => {
+    expect(
+      pitLaneLossSecondsForTrack({
+        id: 'lusail-approx',
+        observedCalibration: { pitLaneTransitSeconds: 15.02 },
+      }),
+    ).toBeCloseTo(lossFor('zandvoort-approx'), 6)
   })
 })
 
