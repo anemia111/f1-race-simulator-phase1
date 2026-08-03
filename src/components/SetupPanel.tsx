@@ -20,7 +20,9 @@ import {
 } from '../simulation/engineering'
 import {
   DRIVER_ABILITY_GROUPS,
+  DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_INTERNAL_MAX,
+  DRIVER_ABILITY_STATS,
   DRIVER_ABILITY_SCALE_MAX,
   driverAbilityGroupValue,
   driverAbilityPoints,
@@ -197,6 +199,25 @@ function formatClock(seconds: number) {
   const remaining = Math.floor(seconds % 60)
 
   return `${minutes}:${remaining.toString().padStart(2, '0')}`
+}
+
+/**
+ * Upper bound for this driver's ability sliders.
+ *
+ * The published scale for everyone, except for a driver whose source data
+ * already places them past it: they keep their authored ceiling so the editor
+ * does not silently pull them back onto the scale. It never lets a driver be
+ * raised past where their data already sits.
+ */
+function driverEditableAbilityCeiling(driver: Driver) {
+  const highest = Math.max(
+    ...DRIVER_ABILITY_STATS.map((stat) => driver.skills[stat] ?? 0),
+  )
+
+  return Math.min(
+    DRIVER_ABILITY_INTERNAL_MAX,
+    Math.max(DRIVER_ABILITY_SCALE_INTERNAL_MAX, highest),
+  )
 }
 
 export function SetupPanel({
@@ -646,10 +667,12 @@ export function SetupPanel({
             <SliderRow
               key={group.key}
               label={group.label}
-              // The editor works on the published scale. A rating past it is
-              // authored in the source data on purpose, not handed out with a
-              // slider, so this stays at 100 points.
-              max={DRIVER_ABILITY_SCALE_INTERNAL_MAX}
+              // The editor works on the published scale, so a slider cannot be
+              // used to push a driver past it. A driver already authored past
+              // the scale keeps their own headroom, otherwise opening the
+              // panel would quietly clip them back to 100 the moment anything
+              // was dragged.
+              max={driverEditableAbilityCeiling(selectedDriver)}
               onChange={(value) => {
                 for (const stat of group.stats) {
                   onDriverStatChange(selectedDriver.id, stat, value)
