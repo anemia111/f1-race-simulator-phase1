@@ -152,8 +152,23 @@ export const pitTuning = {
   crewBaseSeconds: 2.0,
   /** Extra stationary time for the slowest crews. */
   crewSpreadSeconds: 4,
-  /** Deterministic per-stop variance range. */
-  stopVarianceSeconds: 1.8,
+  /**
+   * Mean of the per-stop variance, in seconds.
+   *
+   * This used to be the width of a uniform band, which cannot describe a pit
+   * stop. A uniform draw adds half its width to every single stop, so the
+   * crew's own capability stopped being the floor: the quickest stop the model
+   * could produce was 2.16 s against an observed 2.00, and its tenth
+   * percentile sat at 2.74 against an observed 2.40. Real stop times are a
+   * hard floor with a tail off it, so the draw is exponential and its median
+   * is 0.69 of this figure rather than half a band.
+   *
+   * Set so the modelled median matches the observed 3.2 s in
+   * `F1_PIT_STOP_STATIONARY_POOLED_2026`. That target is itself lengthened by
+   * penalties served in the box, so matching it leaves the model, if anything,
+   * a little slow.
+   */
+  stopVarianceScaleSeconds: 0.78,
   /** Chance of a slow stop (stuck wheel nut). */
   slowStopChance: 0.06,
   slowStopExtraSeconds: 6,
@@ -1095,6 +1110,24 @@ export function strategyOutlookFor(options: {
   }
 }
 
+/**
+ * Per-stop variance drawn from an exponential distribution, in seconds.
+ *
+ * A pit stop has a floor and a tail: the crew cannot beat its own best, but
+ * anything from a reluctant wheel nut to a driver stopping half a metre long
+ * costs time off that floor. An exponential draw is the simplest shape with
+ * that property, and unlike the uniform band it replaces it leaves the fast
+ * stops fast.
+ *
+ * Truncated at the far tail so a hash landing next to 1 cannot return an
+ * unbounded time. Genuine failures are the separate slow-stop draw.
+ */
+export function stopVarianceSecondsFor(uniform: number) {
+  const bounded = clamp(uniform, 0, 0.999)
+
+  return -Math.log(1 - bounded) * pitTuning.stopVarianceScaleSeconds
+}
+
 /** Total time lost for a pit stop (lane transit + stationary + variance). */
 export function pitStopLossSeconds(
   seed: string,
@@ -1104,9 +1137,9 @@ export function pitStopLossSeconds(
   repairsDamage: boolean,
   modeledPitLaneLossSeconds: number = pitTuning.pitLaneLossSeconds,
 ): number {
-  const variance =
-    hashChance(`${seed}:stop-var:${driverId}:${stopIndex}`) *
-    pitTuning.stopVarianceSeconds
+  const variance = stopVarianceSecondsFor(
+    hashChance(`${seed}:stop-var:${driverId}:${stopIndex}`),
+  )
   const slowStop =
     hashChance(`${seed}:slow-stop:${driverId}:${stopIndex}`) <
     pitTuning.slowStopChance

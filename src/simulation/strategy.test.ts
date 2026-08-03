@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { isDryCompound } from './tires'
-import { decidePitStop, pitStopLossSeconds } from './strategy'
+import { F1_PIT_STOP_STATIONARY_POOLED_2026 } from '../data/f1PitStopObservations2026'
+import { decidePitStop, pitStopLossSeconds, pitTuning } from './strategy'
 import type { WeatherForecast } from './weather'
 
 const driver = initialDrivers[0]
@@ -152,5 +153,62 @@ describe('team pit-stop loss', () => {
         18,
       ) - ferrariLoss,
     ).toBe(3)
+  })
+})
+
+describe('stationary time against observed 2026 stops', () => {
+  const stationarySeconds = (index: number) => {
+    const team = initialTeams[index % initialTeams.length]
+
+    // Zero lane transit, so what comes back is the stationary time alone.
+    return pitStopLossSeconds(
+      'stationary-distribution',
+      `driver-${index}`,
+      team,
+      index,
+      false,
+      0,
+    )
+  }
+  const samples = Array.from({ length: 4000 }, (_, index) =>
+    stationarySeconds(index),
+  ).sort((first, second) => first - second)
+  const quantile = (fraction: number) =>
+    samples[Math.floor(fraction * samples.length)]
+
+  it('matches the observed median', () => {
+    // The observed median carries penalties served in the box, so it is an
+    // upper bound on a routine stop. Landing on it keeps the model from being
+    // optimistic; the tolerance is the resolution of the observed data, which
+    // OpenF1 reports to a tenth.
+    expect(quantile(0.5)).toBeCloseTo(
+      F1_PIT_STOP_STATIONARY_POOLED_2026.medianSeconds,
+      1,
+    )
+  })
+
+  it('leaves the quick stops quick', () => {
+    // The uniform band this replaced put the tenth percentile at 2.74 s, above
+    // every per-session p10 in the observed sample.
+    expect(quantile(0.1)).toBeLessThan(2.7)
+    // It does not reach the observed 2.4 s, and this records that. What is
+    // left is the floor: `crewBaseSeconds` plus the quickest crew's share of
+    // `crewSpreadSeconds` is 2.16 s, so no draw can go lower. Closing it means
+    // moving the crew rating scale, which has no observed counterpart in this
+    // repository - the ratings come from award winning frequency, not from
+    // stationary times.
+    expect(quantile(0.1)).toBeGreaterThan(
+      F1_PIT_STOP_STATIONARY_POOLED_2026.p10Seconds,
+    )
+  })
+
+  it('keeps a tail rather than a ceiling', () => {
+    // A uniform draw cannot do this: its widest result was the crew's own
+    // time plus a fixed band.
+    expect(quantile(0.99)).toBeGreaterThan(2 * quantile(0.5))
+  })
+
+  it('never beats the quickest crew flat out', () => {
+    expect(samples[0]).toBeGreaterThanOrEqual(pitTuning.crewBaseSeconds)
   })
 })
