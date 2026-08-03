@@ -135,6 +135,7 @@ import {
 } from './lateralDynamics'
 import {
   FORMULA_VEHICLE_HALF_WIDTH_M,
+  OVERTAKE_LATERAL_SAFETY_MARGIN_M,
   requiredLateralCentreSeparationM,
   TRACK_EDGE_SAFETY_MARGIN_M,
 } from './vehicleGeometry'
@@ -6825,9 +6826,34 @@ export function advanceRace(
         ]
       : []
   })
+  // How much room a driver wants alongside before committing, by circuit.
+  //
+  // The bodywork clearance is the same everywhere; the margin on top of it is
+  // not. Between barriers a driver leaves room they would use at a circuit
+  // with run-off, and that is the difference between passing at Monaco and
+  // passing at Monza. `overtakeDifficultyForTrack` already scores it from
+  // street layout, activation zones and measured width, and until now only
+  // priced a pit-stop rejoin: nothing about the circuit reached the racing,
+  // so Monaco produced as many passes as Monza.
+  //
+  // At the hardest end this asks for about 2.4 m between centres against 1.95 m
+  // at the easiest. A wider spread reads better against real pass counts but
+  // the file-past under local yellow stops holding its order, so it is capped
+  // here rather than tuned further; see the note below.
+  //
+  // This gates whether a car may complete a move. It does not move anybody:
+  // routing the same score through attack commitment changed where drivers
+  // placed the car, and followers began gaining places on each other while
+  // filing past an accident under local yellow.
+  const circuitDifficulty = overtakeDifficultyForTrack(config.track)
   const resolvedLongitudinalM = resolveLongitudinalOccupancy({
     candidates: occupancyCandidates,
     lapLengthM,
+    margins: {
+      lateralSafetyMarginM:
+        OVERTAKE_LATERAL_SAFETY_MARGIN_M +
+        clamp01((circuitDifficulty - 0.25) / 0.65) * 0.65,
+    },
   })
   const occupancyResolvedCars = cars.map((car) => {
     const previous = frameCarById.get(car.driverId)
