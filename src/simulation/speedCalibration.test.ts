@@ -652,8 +652,14 @@ describe('on-track speed calibration', () => {
     expect(albertPark.maximumSpeedKph).toBeLessThanOrEqual(410)
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(330)
     expect(monza.maximumSpeedKph).toBeLessThanOrEqual(410)
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(375)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
+    // Bounds come from the checked-in 2026 telemetry, not from the gearing.
+    // Observed field peaks run 291 km/h at Monaco to 360 km/h at Barcelona;
+    // `topGearDesignSpeedKph` is 402 km/h and `physics-calibration.md` records
+    // it as "never a top-speed clamp". These assertions used to demand 375 to
+    // 400 km/h, which is the removed 68/395 clamp and above anything the
+    // telemetry shows.
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(335)
+    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(375)
   })
 
   it('respects the physical top-gear design speed in a low-drag tow', () => {
@@ -687,10 +693,11 @@ describe('on-track speed calibration', () => {
       },
     )
 
-    // Top gear reaches the rev limit around 402 km/h. There is no hidden
-    // post-design efficiency curve that manufactures a 420 km/h calibration.
-    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(395)
-    expect(result.maximumSpeedKph).toBeLessThanOrEqual(410)
+    // Top gear reaches the rev limit around 402 km/h, and the point is that
+    // drag stops the car well short of it. Demanding the car nearly reach the
+    // design speed treated a gearing input as a performance target.
+    expect(result.maximumSpeedKph).toBeGreaterThanOrEqual(350)
+    expect(result.maximumSpeedKph).toBeLessThan(402)
   })
 
   it('derives the Las Vegas setup speed ordering from drag', () => {
@@ -717,7 +724,7 @@ describe('on-track speed calibration', () => {
       },
     })
 
-    expect(lowDrag.maximumSpeedKph).toBeGreaterThanOrEqual(395)
+    expect(lowDrag.maximumSpeedKph).toBeGreaterThanOrEqual(345)
     // The removed target-speed calibration encoded a fixed 20 km/h spread.
     // The physical invariant is monotonic: adding wing costs terminal speed.
     expect(lowDrag.maximumSpeedKph).toBeGreaterThan(
@@ -734,8 +741,8 @@ describe('on-track speed calibration', () => {
     )
 
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(320)
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(395)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(340)
+    expect(lasVegas.maximumSpeedKph).toBeLessThan(402)
     // Both traces consume Energy Store charge through the live deployment
     // path; the exact remainder is an output, not a lap-time calibration gate.
     expect(monza.minimumBatteryPercent).toBeLessThan(70)
@@ -757,7 +764,7 @@ describe('on-track speed calibration', () => {
     expect(monza.maximumSpeedKph).toBeGreaterThanOrEqual(325)
     // Traffic and line sharing need not reproduce the solo-run maximum, but
     // the field still reaches the top-gear region without overspeed.
-    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(380)
-    expect(lasVegas.maximumSpeedKph).toBeLessThanOrEqual(410)
+    expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(330)
+    expect(lasVegas.maximumSpeedKph).toBeLessThan(402)
   }, 30_000)
 })

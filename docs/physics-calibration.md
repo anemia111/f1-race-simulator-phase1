@@ -203,9 +203,26 @@ physical parameters, and changing them is a separate piece of work from
 establishing the observation.
 
 `npm run validate:speed-trap` measures the same thing through full driven laps
-rather than reference laps, and separates qualifying from race trim. **It fails
-today** — median mean absolute error 18.98 km/h and peak 29.28 km/h against
-limits of 8 km/h. Its baseline is checked in at
+rather than reference laps, and separates qualifying from race trim. Its four
+aggregate gates now pass: median mean absolute error 7.66 km/h and peak
+7.64 km/h against a limit of 8, with biases of -1.08 and -3.10 against a limit
+of +/-5. Silverstone remains too fast and Hungaroring too slow by more than the
+18 km/h per-circuit bound.
+
+That took four parameters, applied together because each alone moves the error
+to the other side: the straight-mode active aero multiplier from 0.47 to 0.639,
+the tow ceiling from 19 % to 7 %, the setup drag range from 0.68-1.25 to
+0.86-1.14, and the FIA speed-based MGU-K ramp, which was declared in
+`FIA_2026_REGULATION_PROFILE` and read by nothing.
+
+Nine tests asserted top speeds of 375 to 400 km/h and were rewritten against
+the checked-in telemetry, where field peaks span 291 km/h at Monaco to 360 at
+Barcelona. They were reading `topGearDesignSpeedKph` as a target the car should
+approach; this document already records it as "never a top-speed clamp", and
+`physics-migration-progress.md` records the 395 figure as a clamp the migration
+removed. The tests had kept it. One further test drained the Energy Store at
+355 and 390 km/h, which the deployment ramp does not permit, so nothing
+drained; it now deploys at 280 and judges clipping at 340. Its baseline is checked in at
 `qa/speed-trap-2026/master-baseline-speed-trap.json`.
 
 That run also exposes a defect that the per-circuit reference-lap comparison

@@ -226,8 +226,12 @@ describe('multi-axis vehicle dynamics', () => {
       })
     }
 
-    expect(speedKph).toBeGreaterThan(400)
-    expect(speedKph).toBeLessThan(438)
+    // What this checks is that speed converges on a drag limit rather than a
+    // stored top-speed constant. The limit itself is now the physical one: the
+    // tow ceiling is 7 %, so the 0.15 requested above is clamped, and observed
+    // field peaks run 291 to 360 km/h.
+    expect(speedKph).toBeGreaterThan(340)
+    expect(speedKph).toBeLessThan(402)
   })
 
   it('keeps coarse simulation ticks close to fine-grained integration', () => {

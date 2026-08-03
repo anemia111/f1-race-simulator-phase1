@@ -169,8 +169,11 @@ describe('super clipping physical integration', () => {
     const speedLossKph = normalTopSpeed - clipped.speedKph
     const firstSecond = clipped.trace[0]
 
-    expect(normalTopSpeed).toBeGreaterThanOrEqual(395)
-    expect(normalTopSpeed).toBeLessThanOrEqual(410)
+    // Against the checked-in telemetry rather than the gearing: observed 2026
+    // field peaks run 291 to 360 km/h, and `topGearDesignSpeedKph` of 402 is
+    // recorded as never being a top-speed clamp.
+    expect(normalTopSpeed).toBeGreaterThanOrEqual(345)
+    expect(normalTopSpeed).toBeLessThan(402)
     expect(firstSecond.speedKph).toBeLessThan(normalTopSpeed)
     expect(firstSecond.speedKph).toBeGreaterThan(normalTopSpeed - 35)
     expect(speedLossKph).toBeGreaterThanOrEqual(30)
