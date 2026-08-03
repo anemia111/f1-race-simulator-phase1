@@ -87,13 +87,30 @@ export function automaticRacePaceModeFor(options: {
     return 'save'
   }
 
+  // Defending is not the leader's privilege. Any driver with a car in range
+  // behind covers, and the mode is what makes that visible on the pit wall.
+  const underAttack =
+    gapBehindSeconds !== null &&
+    gapBehindSeconds > 0 &&
+    gapBehindSeconds < 1.05
+
   if (car.position === 1) {
-    if (
+    // A leader with clear air and the resources to use it builds the gap
+    // rather than sitting on the pace. Escaping is worth more than covering
+    // while the car behind is still reachable but not yet alongside.
+    const canEscape =
       gapBehindSeconds !== null &&
-      gapBehindSeconds > 0 &&
-      gapBehindSeconds < 1.05 &&
-      car.ersBatteryPercent >= 30
-    ) {
+      gapBehindSeconds >= 1.05 &&
+      gapBehindSeconds <= 3.2 &&
+      car.ersBatteryPercent >= 46 &&
+      fuelHealthyForPush &&
+      healthyForPush
+
+    if (canEscape) {
+      return 'push'
+    }
+
+    if (underAttack && car.ersBatteryPercent >= 30) {
       return 'defend'
     }
 
@@ -101,6 +118,17 @@ export function automaticRacePaceModeFor(options: {
   }
 
   const gap = car.gapToAhead
+
+  // Cover only when there is nothing to chase. A driver with a car in
+  // Overtake range ahead attacks and takes the risk behind; defending is what
+  // you do when the road ahead is out of reach.
+  if (
+    underAttack &&
+    car.ersBatteryPercent >= 30 &&
+    (gap <= 0 || gap > 2.4)
+  ) {
+    return 'defend'
+  }
 
   if (gap <= 0) {
     return 'standard'

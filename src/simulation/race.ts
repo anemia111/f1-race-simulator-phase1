@@ -135,6 +135,7 @@ import {
 } from './lateralDynamics'
 import {
   FORMULA_VEHICLE_HALF_WIDTH_M,
+  requiredLateralCentreSeparationM,
   TRACK_EDGE_SAFETY_MARGIN_M,
 } from './vehicleGeometry'
 import {
@@ -193,6 +194,14 @@ const TICKER_EVENT_WINDOW_SECONDS = 12
 const WRECK_CLEAR_SECONDS = 25
 /** The worker's largest real-time step is 3 seconds at 60x. */
 const MAX_REALTIME_STEP_SECONDS = 3
+/** Mini sectors per lap: eight per timing sector, as the tower displays them. */
+const PACE_MODE_WINDOWS_PER_LAP = 24
+/**
+ * Mini sectors a mode must hold before it may change again. Long enough that a
+ * driver is not flicking between plans inside one corner, short enough that a
+ * move developing on a straight is answered on that straight.
+ */
+const PACE_MODE_MINIMUM_HOLD_WINDOWS = 8
 const PHYSICS_INTEGRATION_STEP_SECONDS = 0.5
 const SAFETY_CAR_QUEUE_MIN_GAP_SECONDS = 0.22
 /** VSC cars retain their track gaps but cannot overlap while overtaking is banned. */
@@ -3899,6 +3908,21 @@ export function advanceRace(
               intensity: clamp01(1 - gapAheadSeconds / 1.8),
             }
           : undefined,
+      // The blue flag from the previous tick. Without this the lapped car only
+      // lifts, holds the racing line, and the occupancy model then refuses the
+      // leader the road for as long as the two stay nose to tail.
+      yield:
+        car.blueFlag && behindCar?.status === 'running'
+          ? {
+              active: true,
+              approachingId: behindCar.driverId,
+              approachingLateralOffsetM: nearestBehind!.lateralOffsetM,
+              requiredSeparationM: requiredLateralCentreSeparationM(
+                undefined,
+                undefined,
+              ),
+            }
+          : undefined,
     })
 
     driverDecisionById.set(car.driverId, decision)
@@ -3917,6 +3941,10 @@ export function advanceRace(
         return 90
       case 'controlled-flag':
         return 80
+      // A yielding car must win its reservation against the driver it is
+      // letting past, or it never reaches the offset that clears the road.
+      case 'yield':
+        return 75
       case 'defend':
         return 70
       case 'attack':
@@ -4394,9 +4422,13 @@ export function advanceRace(
           ? ('save' as const)
           : ('standard' as const)
       : null
+    // Evaluated once per mini sector rather than once per lap. A battle is
+    // decided inside a lap, so a decision cadence of one lap meant the mode on
+    // the pit wall described a situation that had already passed.
     const automaticPaceDecisionLap = Math.max(
       0,
-      Math.floor(car.totalDistance) - 1,
+      Math.floor(car.totalDistance * PACE_MODE_WINDOWS_PER_LAP) -
+        PACE_MODE_WINDOWS_PER_LAP,
     )
     const remainingRaceDistanceLaps = Math.max(
       0,
@@ -4440,7 +4472,8 @@ export function advanceRace(
     const automaticRacePaceMode =
       localControlPhase === null &&
       proposedAutomaticRacePaceMode !== car.racePaceMode &&
-      automaticPaceDecisionLap - car.racePaceModeChangedLap < 2 &&
+      automaticPaceDecisionLap - car.racePaceModeChangedLap <
+        PACE_MODE_MINIMUM_HOLD_WINDOWS &&
       !urgentPaceConservation
         ? car.racePaceMode
         : proposedAutomaticRacePaceMode
@@ -6486,6 +6519,10 @@ export function advanceRace(
               trackGrip: localTrackGrip,
               forecast: weatherForecast,
               gapToAheadSeconds: next.gapToAhead,
+              // The overcut plays on a car that has already committed to its
+              // stop: it has stopped more times than this one has.
+              carAheadHasPitted:
+                (snapshot.cars[index - 1]?.pitStops ?? 0) > next.pitStops,
               gapBehindSeconds: snapshot.cars[index + 1]?.gapToAhead ?? null,
               position: next.position,
               availableCompounds: next.tireSetsRemaining,
@@ -6755,6 +6792,10 @@ export function advanceRace(
             candidateTotalDistanceM: car.totalDistance * lapLengthM,
             lateralOffsetM: previous.lateralOffsetM,
             candidateLateralOffsetM: car.lateralOffsetM,
+            // Under a blue flag the driver has conceded, so the occupancy rule
+            // stops holding the leader behind while it waits for a measured
+            // gap that a yielding car has no reason to open.
+            concedesRoad: car.blueFlag === true,
             priority: 1000 - previous.position,
           },
         ]

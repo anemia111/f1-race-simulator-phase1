@@ -23,9 +23,13 @@ const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
 
 describe('driver ability scale', () => {
   it('uses the specification-wide 0-100 source and editor scale', () => {
+    // The published scale is unchanged. Only the ceiling a rating may be
+    // authored past moves, so every driver on the scale normalises exactly as
+    // before and one placed beyond it is not silently clipped back.
     expect(DRIVER_ABILITY_SCALE_MAX).toBe(100)
-    expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1)
-    expect(clampDriverAbility(2)).toBe(1)
+    expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.2)
+    expect(clampDriverAbility(2)).toBe(1.2)
+    expect(clampDriverAbility(1)).toBe(1)
     expect(driverAbilityPoints(1)).toBe(100)
     expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBe(1)
     expect(driverPerformanceValue(0)).toBe(0.55)

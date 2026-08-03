@@ -18,6 +18,18 @@ export const FORMULA_VEHICLE_LENGTH_M = 5.2
 export const TRACK_EDGE_SAFETY_MARGIN_M = 0.25
 /** Side-to-side clearance between rectangular vehicle envelopes. */
 export const LATERAL_VEHICLE_SAFETY_MARGIN_M = 0.35
+/**
+ * Side-to-side clearance demanded before one car may complete a pass on
+ * another.
+ *
+ * The general margin is the room a driver leaves when there is no reason not
+ * to. Committing to a pass is the case where there is a reason: drivers race
+ * wheel to wheel with centimetres, not with a third of a metre, and requiring
+ * the relaxed figure refused most attempts on clearance rather than on pace.
+ * Two half-widths still separate the bodywork, so this permits a pass that
+ * comes close, not one that drives through.
+ */
+export const OVERTAKE_LATERAL_SAFETY_MARGIN_M = 0.05
 /** Nose-to-tail clearance in addition to the two half-lengths. */
 export const LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M = 1.25
 

@@ -2706,7 +2706,14 @@ describe('manual strategy request', () => {
           : car,
       ),
     }
-    snapshot = advanceRace(snapshot, 0.1, config)
+    // Pace is decided once per mini sector and a mode holds one timing sector
+    // before it may change, so the decision is not visible within a tick. Run
+    // out that hold rather than asserting on a state the model has not been
+    // given the chance to reach.
+    for (let second = 0; second < 30; second += 1) {
+      snapshot = advanceRace(snapshot, 1, config)
+    }
+
     const pursuing = snapshot.cars.find(
       (car) => car.driverId === target.driverId,
     )!

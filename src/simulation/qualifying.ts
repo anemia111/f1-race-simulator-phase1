@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import type { SeriesRules } from '../series/types'
 import {
+  driverLimitBreakFraction,
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
@@ -20,6 +21,7 @@ import {
   practiceSetupRecommendation,
 } from './engineering'
 import { categoryPhysicsFor } from './categoryPhysics'
+import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
 import {
   decideDriverBehavior,
   DRIVER_DECISION_WINDOWS_PER_LAP,
@@ -306,8 +308,15 @@ type TimedDriverExecutionOptions = TimedPhysicalLapOptions & {
 
 /**
  * Converts low-frequency braking, throttle and line choices into time lost
- * relative to the force-derived lap. It cannot improve on that lap and it does
- * not read displayed overall ratings or special-driver thresholds.
+ * relative to the force-derived lap. It does not read displayed overall
+ * ratings or special-driver thresholds.
+ *
+ * A rating on the published scale can at best execute the reference lap
+ * perfectly, so the loss floors at zero. A rating past the scale floors below
+ * it, but only by the share of `DRIVER_TRANSIENT_EFFICIENCY` its excess buys:
+ * the reference concedes 3 % of the friction limit to transients it cannot
+ * model, and this is a claim on part of that, not a free lap-time bonus. At
+ * 120 the excess is 0.2, worth 0.2 x 3.09 % of the lap.
  */
 export function timedSessionDriverExecutionLossSeconds(
   options: TimedDriverExecutionOptions,
@@ -385,7 +394,15 @@ export function timedSessionDriverExecutionLossSeconds(
       wetRiskScale
   }
 
-  return Math.max(0, lossSeconds)
+  const limitBreak = driverLimitBreakFraction(options.driver)
+  const recoverableSeconds =
+    limitBreak > 0
+      ? plan.lapTimeSeconds *
+        limitBreak *
+        (1 / DRIVER_TRANSIENT_EFFICIENCY - 1)
+      : 0
+
+  return Math.max(-recoverableSeconds, lossSeconds - recoverableSeconds)
 }
 
 export function qualifyingCutSizes(driverCount: number) {

@@ -12,6 +12,7 @@ import { trackWidthMeters } from './physicalLap'
 import {
   DEFAULT_FORMULA_VEHICLE_FOOTPRINT,
   LATERAL_VEHICLE_SAFETY_MARGIN_M,
+  OVERTAKE_LATERAL_SAFETY_MARGIN_M,
   LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M,
   resolveVehicleFootprint,
   requiredLateralCentreSeparationM,
@@ -87,6 +88,21 @@ export type LongitudinalOccupancyCandidate = LateralVehicle & {
   candidateTotalDistanceM: number
   /** Used only to break an exact same-position tie deterministically. */
   priority?: number
+  /**
+   * The driver has conceded the road and is not defending it.
+   *
+   * The occupancy rule exists so two cars cannot occupy the same rectangle,
+   * and it is the right rule between drivers who are racing. It is the wrong
+   * rule when one has been told to let the other past: a lapped car under a
+   * blue flag lifts and waves the leader through long before a full car width
+   * plus margin of centre separation exists, and holding the leader behind
+   * until that separation is measured leaves the flag with no effect at all.
+   *
+   * When set, the lateral requirement is treated as met without requiring the
+   * offset to be reached. The concession stands in for the movement rather
+   * than the movement being simulated.
+   */
+  concedesRoad?: boolean
 }
 
 export type OccupancyMargins = {
@@ -576,12 +592,14 @@ export function capRearLongitudinalCandidateM(options: {
     options.front.candidateLateralOffsetM,
     finiteOr(options.front.lateralOffsetM, 0),
   )
+  // Passing uses the committed-racing margin, not the relaxed one. See
+  // OVERTAKE_LATERAL_SAFETY_MARGIN_M.
   const requiredLateralM = requiredLateralCentreSeparationM(
     options.rear.footprint,
     options.front.footprint,
     finiteSafetyMargin(
       options.margins?.lateralSafetyMarginM,
-      LATERAL_VEHICLE_SAFETY_MARGIN_M,
+      OVERTAKE_LATERAL_SAFETY_MARGIN_M,
     ),
   )
   const currentLateralSeparationM = Math.abs(
@@ -597,6 +615,11 @@ export function capRearLongitudinalCandidateM(options: {
     currentLateralSeparationM >= requiredLateralM &&
     candidateLateralSeparationM >= requiredLateralM
   ) {
+    return rearCandidateM
+  }
+
+  // A conceded road is clear by declaration. See `concedesRoad`.
+  if (options.front.concedesRoad === true) {
     return rearCandidateM
   }
 
