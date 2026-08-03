@@ -402,7 +402,46 @@ export function timedSessionDriverExecutionLossSeconds(
         (1 / DRIVER_TRANSIENT_EFFICIENCY - 1)
       : 0
 
-  return Math.max(-recoverableSeconds, lossSeconds - recoverableSeconds)
+  // How well this particular lap came together, independent of every other
+  // driver's.
+  //
+  // Without it the only run-to-run variation is the session's own grip and
+  // weather, which moves the whole field together and leaves the order
+  // untouched. Measured at Albert Park, each driver's spread across sessions
+  // was 0.62 to 0.85 s and near-identical between them, while adjacent grid
+  // slots were 0.18 s apart: everyone drifted the same way, so nobody swapped.
+  //
+  // A great driver leaves less on the table than a poor one, but nobody nails
+  // it every time, so this never reaches zero. Sampled once per run, not per
+  // window, because it stands for the lap as a whole.
+  // Half the draws tidy the lap up and half spoil it, so the population keeps
+  // its pace while individual runs move around it.
+  const executionQuality =
+    hashChance(
+      `${options.seed}:lap-execution:${options.driver.id}:${options.run}`,
+    ) *
+      2 -
+    1
+  const consistency = driverSkillBlend(options.driver, {
+    consistency: 0.46,
+    precision: 0.28,
+    pressureHandling: 0.26,
+  })
+  // Sized against the grid it has to move. Adjacent slots at Albert Park sit
+  // 0.18 s apart, so a run has to be worth a couple of tenths before the order
+  // can change at all. This lands a consistent driver near 0.15 s and an
+  // erratic one near 0.35 s, which swaps neighbours without scrambling the
+  // field: pace still decides where a driver belongs, the lap decides whether
+  // they got there.
+  const runVariationSeconds =
+    Math.abs(executionQuality) *
+    plan.lapTimeSeconds *
+    (0.004 + (1 - consistency) * 0.012)
+
+  return Math.max(
+    -recoverableSeconds,
+    lossSeconds + runVariationSeconds - recoverableSeconds,
+  )
 }
 
 export function qualifyingCutSizes(driverCount: number) {
