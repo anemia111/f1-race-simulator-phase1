@@ -354,9 +354,18 @@ describe('series configuration import and export', () => {
     expect(restored!.teams.map((team) => team.pitCrewSpeed)).toEqual(
       f1.teams.map((team) => team.pitCrewSpeed),
     )
+    // The migration has to recover the calibrated spread, not a uniform value.
+    // Counting distinct values against the grid rather than a literal keeps
+    // this honest when two teams share an observed quartile, as McLaren and
+    // Racing Bulls do.
+    const calibratedDistinct = new Set(
+      f1.teams.map((team) => team.pitCrewSpeed),
+    ).size
+
+    expect(calibratedDistinct).toBeGreaterThan(1)
     expect(
       new Set(restored!.teams.map((team) => team.pitCrewSpeed)).size,
-    ).toBe(10)
+    ).toBe(calibratedDistinct)
   })
 
   it('updates untouched legacy F1 driver ratings and preserves edited ones', () => {

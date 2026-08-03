@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { isDryCompound } from './tires'
-import { F1_PIT_STOP_STATIONARY_POOLED_2026 } from '../data/f1PitStopObservations2026'
+import { f1PitCrewSpeedForTeam } from '../data/f1PitCrewCalibration'
+import {
+  F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026,
+  F1_PIT_STOP_STATIONARY_POOLED_2026,
+} from '../data/f1PitStopObservations2026'
 import { decidePitStop, pitStopLossSeconds, pitTuning } from './strategy'
 import type { WeatherForecast } from './weather'
 
@@ -210,5 +214,58 @@ describe('stationary time against observed 2026 stops', () => {
 
   it('never beats the quickest crew flat out', () => {
     expect(samples[0]).toBeGreaterThanOrEqual(pitTuning.crewBaseSeconds)
+  })
+})
+
+describe('crew ratings against observed team stationary times', () => {
+  const teamStationaryP25 = (team: (typeof initialTeams)[number]) => {
+    const draws = Array.from({ length: 4000 }, (_, index) =>
+      pitStopLossSeconds(
+        `crew-${team.id}`,
+        `driver-${index}`,
+        team,
+        index,
+        false,
+        0,
+      ),
+    ).sort((first, second) => first - second)
+
+    return draws[Math.floor(0.25 * draws.length)]
+  }
+
+  it.each(F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026)(
+    'reproduces the observed lower quartile for $team',
+    (observation) => {
+      const team = initialTeams.find(
+        (candidate) => candidate.name === observation.team,
+      )
+
+      // A team the grid data does not carry cannot be checked here; the
+      // calibration still holds its observation.
+      if (!team) {
+        return
+      }
+
+      // The slow-stop draw fires on 6 % of stops, so it does not reach the
+      // lower quartile. What is left is the crew floor plus the variance
+      // quartile, which is exactly what the rating inverts.
+      expect(teamStationaryP25(team)).toBeCloseTo(observation.p25Seconds, 1)
+    },
+  )
+
+  it('spans the observed range rather than the award-derived one', () => {
+    const quartiles = F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026.map(
+      (observation) => observation.p25Seconds,
+    )
+    const observedSpread = Math.max(...quartiles) - Math.min(...quartiles)
+    const ratings = F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026.map((observation) =>
+      f1PitCrewSpeedForTeam(observation.team),
+    )
+    const modelledSpread =
+      (Math.max(...ratings) - Math.min(...ratings)) * pitTuning.crewSpreadSeconds
+
+    // The award-derived ratings spanned 0.76 s.
+    expect(modelledSpread).toBeGreaterThan(1)
+    expect(modelledSpread).toBeCloseTo(observedSpread, 1)
   })
 })

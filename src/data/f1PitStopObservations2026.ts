@@ -58,7 +58,53 @@ export const F1_PIT_STOP_STATIONARY_POOLED_2026 = {
   p90Seconds: 7.8,
 } as const
 
+/**
+ * The same stops, split by team through the OpenF1 `drivers` endpoint.
+ *
+ * WHY THE CALIBRATION STATISTIC IS THE LOWER QUARTILE
+ *
+ * A team's median is contaminated by the penalties described above, and
+ * unevenly so: a team that collected two penalties in fourteen stops has its
+ * median dragged upwards by something its pit crew did not do. Roughly an
+ * eighth of all stops are affected, so the lower quartile sits well clear of
+ * them while still describing a normal stop rather than a single lucky one.
+ *
+ * That distinction matters for the headline number. Team medians span 1.80 s
+ * here, which is the 1.5 to 2 s figure the audit quoted, but the quartiles
+ * span 1.10 s. The difference is penalties, not pit work, and 1.10 s is what a
+ * crew model should reproduce.
+ *
+ * Sample sizes are 8 to 18 stops per team, which is small. These are ranking
+ * evidence with a scale attached, not precise per-team times.
+ */
+export type PitCrewStationaryObservation = {
+  /** OpenF1 `team_name`, matched verbatim against the grid data. */
+  team: string
+  sampleCount: number
+  minimumSeconds: number
+  /** The calibration statistic. */
+  p25Seconds: number
+  /** Recorded for completeness; contaminated by served penalties. */
+  medianSeconds: number
+}
+
+export const F1_PIT_CREW_STATIONARY_OBSERVATIONS_2026: readonly PitCrewStationaryObservation[] =
+  [
+    { team: 'Ferrari', sampleCount: 14, minimumSeconds: 2.0, p25Seconds: 2.3, medianSeconds: 2.5 },
+    { team: 'Mercedes', sampleCount: 12, minimumSeconds: 2.2, p25Seconds: 2.4, medianSeconds: 2.6 },
+    { team: 'McLaren', sampleCount: 8, minimumSeconds: 2.2, p25Seconds: 2.5, medianSeconds: 2.8 },
+    { team: 'Racing Bulls', sampleCount: 11, minimumSeconds: 2.4, p25Seconds: 2.5, medianSeconds: 2.9 },
+    { team: 'Audi', sampleCount: 11, minimumSeconds: 2.1, p25Seconds: 2.6, medianSeconds: 3.1 },
+    { team: 'Red Bull Racing', sampleCount: 16, minimumSeconds: 2.3, p25Seconds: 2.7, medianSeconds: 2.95 },
+    { team: 'Williams', sampleCount: 18, minimumSeconds: 2.1, p25Seconds: 2.7, medianSeconds: 3.25 },
+    { team: 'Aston Martin', sampleCount: 15, minimumSeconds: 2.4, p25Seconds: 2.8, medianSeconds: 3.2 },
+    { team: 'Alpine', sampleCount: 12, minimumSeconds: 2.6, p25Seconds: 2.9, medianSeconds: 2.95 },
+    { team: 'Cadillac', sampleCount: 17, minimumSeconds: 2.9, p25Seconds: 3.3, medianSeconds: 4.2 },
+    { team: 'Haas F1 Team', sampleCount: 14, minimumSeconds: 3.3, p25Seconds: 3.4, medianSeconds: 4.3 },
+  ] as const
+
 export const F1_PIT_STOP_OBSERVATION_SOURCE = {
-  label: 'OpenF1 pit endpoint, 2026 race sessions',
+  label: 'OpenF1 pit and drivers endpoints, 2026 race sessions',
   url: 'https://api.openf1.org/v1/pit',
+  teamMappingUrl: 'https://api.openf1.org/v1/drivers',
 } as const

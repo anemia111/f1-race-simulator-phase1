@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import performanceCsv from './f1Performance.csv?raw'
+import { f1PitCrewSpeedForTeam } from './f1PitCrewCalibration'
 import {
   DRIVER_ABILITY_LIMIT_BREAK_MAX,
   driverConfiguredOverallAbilityPoints,
@@ -191,11 +192,17 @@ describe('CSV performance source of truth', () => {
     expect(pitCrewByTeam.Ferrari).toBeGreaterThan(
       pitCrewByTeam['Aston Martin'],
     )
-    expect(
-      Object.values(pitCrewByTeam).every(
-        (rating) => rating >= 0.75 && rating <= 0.97,
-      ),
-    ).toBe(true)
+    // Every team carries the rating its own observation produces. This used
+    // to be a bare 0.75 to 0.97 band, which described the compressed spread of
+    // the award-derived ratings rather than anything about a pit crew, and it
+    // rejected the measured ones.
+    for (const [name, rating] of Object.entries(pitCrewByTeam)) {
+      expect(rating).toBe(f1PitCrewSpeedForTeam(name))
+      // 1 is a crew whose normal stop is the modelled floor, so nothing may
+      // exceed it; the scale has no meaning at or below 0.
+      expect(rating).toBeGreaterThan(0)
+      expect(rating).toBeLessThanOrEqual(1)
+    }
   })
 
   it('CSV-4: preserves raw ratings and uses one monotonic normalization', () => {
