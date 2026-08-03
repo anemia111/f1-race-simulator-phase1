@@ -61,6 +61,8 @@ export type PitOpportunityEstimate = {
   degradationAvoidedSeconds: number
   controlPhaseSavingSeconds: number
   undercutOpportunitySeconds: number
+  /** Positive means staying out is worth time; it subtracts from the net gain. */
+  overcutOpportunitySeconds: number
   rejoinTrafficCostSeconds: number
   doubleStackCostSeconds: number
   estimatedPitLossSeconds: number
@@ -179,6 +181,10 @@ export function estimatePitOpportunity(options: {
   pitEntrySecondsAway?: number
   overtakeDifficulty?: number
   gapToAheadSeconds?: number | null
+  /** True while the car ahead is in the pit lane or has just rejoined. */
+  carAheadHasPitted?: boolean
+  /** 0-1 grip left in hand; a car with life left can extend and jump back. */
+  tireLifeRemaining?: number
   projectedRejoinPositionLoss?: number
   teammateInPit?: boolean
 }): PitOpportunityEstimate {
@@ -196,6 +202,8 @@ export function estimatePitOpportunity(options: {
     gapToAheadSeconds,
     projectedRejoinPositionLoss = 0,
     teammateInPit = false,
+    carAheadHasPitted = false,
+    tireLifeRemaining = 1,
   } = options
   const controlPhase = normalizedPitControlPhase({
     controlPhase: requestedControlPhase,
@@ -225,6 +233,22 @@ export function estimatePitOpportunity(options: {
     gapToAheadSeconds < 1.6
       ? (1.6 - gapToAheadSeconds) * 0.9
       : 0
+  // The mirror of the undercut. When the car ahead has already stopped and
+  // this one still has grip in hand, the laps it can run on an empty road are
+  // worth more than the position it would concede by following them in. It
+  // subtracts from the net gain, so a strong overcut case delays the stop
+  // rather than adding a reason to take it.
+  const overcutOpportunitySeconds =
+    !underNeutralisation &&
+    carAheadHasPitted &&
+    clamp(tireLifeRemaining, 0, 1) > 0.35
+      ? clamp(tireLifeRemaining, 0, 1) * 1.9 +
+        (typeof gapToAheadSeconds === 'number' &&
+        gapToAheadSeconds > 0 &&
+        gapToAheadSeconds < 4
+          ? (4 - gapToAheadSeconds) * 0.35
+          : 0)
+      : 0
   const rejoinTrafficCostSeconds =
     Math.max(0, projectedRejoinPositionLoss) *
     (0.48 + clamp(overtakeDifficulty, 0, 1) * 0.58)
@@ -233,6 +257,7 @@ export function estimatePitOpportunity(options: {
     degradationAvoidedSeconds +
     controlPhaseSavingSeconds +
     undercutOpportunitySeconds -
+    overcutOpportunitySeconds -
     rejoinTrafficCostSeconds -
     doubleStackCostSeconds
 
@@ -241,6 +266,7 @@ export function estimatePitOpportunity(options: {
     degradationAvoidedSeconds,
     controlPhaseSavingSeconds,
     undercutOpportunitySeconds,
+    overcutOpportunitySeconds,
     rejoinTrafficCostSeconds,
     doubleStackCostSeconds,
     estimatedPitLossSeconds:
@@ -431,6 +457,8 @@ export function decidePitStop(options: {
   pitLaneOpen?: boolean
   projectedRejoinPosition?: number | null
   teammateInPit?: boolean
+  /** The car ahead has already stopped, which is what an overcut plays on. */
+  carAheadHasPitted?: boolean
   pitLaneOccupancy?: number
   tireNomination?: TireNomination
   mandatoryTwoDryCompounds?: boolean
@@ -467,6 +495,7 @@ export function decidePitStop(options: {
     pitLaneOpen = true,
     projectedRejoinPosition,
     teammateInPit = false,
+    carAheadHasPitted = false,
     pitLaneOccupancy = 0,
     tireNomination,
     mandatoryTwoDryCompounds = true,
@@ -704,6 +733,8 @@ export function decidePitStop(options: {
     gapToAheadSeconds,
     projectedRejoinPositionLoss: rejoinLoss,
     teammateInPit,
+    carAheadHasPitted,
+    tireLifeRemaining: clamp(1 - age / Math.max(1, strategicCliff), 0, 1),
   })
 
   if (
@@ -908,6 +939,8 @@ export function strategyOutlookFor(options: {
   gapToAheadSeconds?: number | null
   projectedRejoinPositionLoss?: number
   teammateInPit?: boolean
+  /** The car ahead has already stopped, which is what an overcut plays on. */
+  carAheadHasPitted?: boolean
   observedCalibration?: Pick<
     TrackObservedCalibration,
     'medianStintLapsByCompound' | 'strategySampleCount'
@@ -928,6 +961,7 @@ export function strategyOutlookFor(options: {
     gapToAheadSeconds,
     projectedRejoinPositionLoss,
     teammateInPit,
+    carAheadHasPitted,
     observedCalibration,
     trackCondition,
   } = options
@@ -984,6 +1018,12 @@ export function strategyOutlookFor(options: {
     gapToAheadSeconds,
     projectedRejoinPositionLoss,
     teammateInPit,
+    carAheadHasPitted,
+    tireLifeRemaining: clamp(
+      1 - car.tireAgeLaps / Math.max(1, strategicCliff),
+      0,
+      1,
+    ),
   })
   const confidence: StrategyOutlook['confidence'] =
     weatherMismatch || underSafetyCar || effectiveWearPercent >= 82
