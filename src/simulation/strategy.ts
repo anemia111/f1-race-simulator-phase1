@@ -11,6 +11,7 @@ import type {
   TrackObservedCalibration,
   WeatherState,
 } from '../types'
+import { trackWidthMeters } from './physicalLap'
 import { hashChance } from './random'
 import { driverPerformanceAbility, driverSkillBlend } from './driverAbility'
 import {
@@ -78,7 +79,11 @@ export type RedFlagTireDecision = {
 export function overtakeDifficultyForTrack(track: TrackDefinition) {
   const streetPremium = track.kind === 'street' ? 0.17 : 0
   const zoneRelief = Math.min(0.2, (track.overtakeControlLines?.length ?? 0) * 0.055)
-  const widthRelief = clamp((track.width - 4.5) * 0.045, 0, 0.12)
+  // Measured carriageway, not `TrackDefinition.width`, which is a rendering
+  // value in scene units. Against the old formula's metre thresholds every
+  // circuit scored 2.2 to 2.85 and the relief was flat zero for all of them,
+  // so width never separated Monaco from Monza.
+  const widthRelief = clamp((trackWidthMeters(track) - 9) * 0.02, 0, 0.12)
 
   return clamp(0.6 + streetPremium - zoneRelief - widthRelief, 0.25, 0.9)
 }
