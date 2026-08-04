@@ -17,9 +17,13 @@
  * here; the car is assumed to be on the limit of a friction ellipse whose size
  * comes from `tyreForces`.
  */
+import { activeAeroZoneAt } from './activeAero'
 import { categoryPhysicsFor, type CategoryPhysicsProfile } from './categoryPhysics'
 import { powerUnitDriveForceN } from './drivetrain'
-import { deploymentPowerLimitKwForSpeed } from './regulations'
+import {
+  deploymentPowerLimitKwForSpeed,
+  FIA_2026_REGULATION_PROFILE,
+} from './regulations'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
 import {
   aerodynamicDownforceN,
@@ -45,21 +49,65 @@ export type PhysicalLapOptions = {
    * an offline reference profile. This is never a live Energy Store command.
    */
   deploymentPowerKw?: number
+  /**
+   * MGU-K energy the lap is allowed to spend, in MJ.
+   *
+   * Omitted, an F1 lap takes the regulation's qualifying recharge limit,
+   * because a reference lap that spends more than the rules permit is not a
+   * lap the rules allow however well its time matches. `null` removes the
+   * budget and restores the unbounded capability envelope; only a consumer
+   * that wants "what the car could do here" rather than "what one lap does"
+   * should ask for that.
+   */
+  deploymentEnergyBudgetMj?: number | null
+  /**
+   * Whether the lap opens the active-aero flap in the circuit's declared
+   * zones. True for any caller asking what one lap does.
+   *
+   * A caller that wants the car's capability envelope rather than a particular
+   * lap should pass false, and generally wants `deploymentEnergyBudgetMj:
+   * null` for the same reason. Corner speeds and braking are unaffected either
+   * way: the flap is shut on the brakes and in the corners.
+   */
+  activeAeroZones?: boolean
   physics?: CategoryPhysicsProfile
 }
 
 /**
  * Deployment policy used only by the offline/reference lap planner.
  *
- * The planner assumes the category limit is available wherever full power is
- * requested. A live simulation must instead pass the power authorised by its
- * Energy Store and deployment state into the drivetrain on every tick. This
- * policy deliberately has no state-of-charge, harvesting or lap strategy.
+ * The planner grants the category power limit, bounded by the regulation's
+ * speed ramp and by a lap energy budget. A live simulation must instead pass
+ * the power authorised by its Energy Store and deployment state into the
+ * drivetrain on every tick. This policy deliberately has no state-of-charge or
+ * harvesting model: it spends a fixed allowance and never asks where the
+ * allowance came from.
  */
 export const REFERENCE_DEPLOYMENT_POLICY = {
   scope: 'offline-reference-only',
-  strategy: 'category-limit-under-acceleration',
+  strategy: 'regulation-energy-budget-by-marginal-value',
 } as const
+
+/**
+ * How many times the allocation is re-costed against the profile it produced.
+ *
+ * The ranking is computed once, from the fully deployed profile, so it cannot
+ * oscillate. Only the point where the budget runs out moves: withdrawing
+ * deployment slows the car, a slower car spends longer on each segment, and
+ * the same segments therefore cost more than they did at full power. Three
+ * passes is where the spend stops moving by more than a few kJ on the
+ * circuits in the calibration split.
+ */
+const DEPLOYMENT_ALLOCATION_PASSES = 3
+
+/**
+ * How many times the finished profile is given back the energy it overspent.
+ *
+ * Two is enough because the first trim removes the whole overshoot and the
+ * second only confirms that re-sweeping the trimmed profile did not create a
+ * new one.
+ */
+const DEPLOYMENT_TRIM_PASSES = 2
 
 export type BankedSection = {
   /** Lap progress the banking runs between, 0 to 1. */
@@ -366,11 +414,52 @@ const permittedDeploymentKw = (requestedPowerKw: number, speedMps: number) =>
     speedKph: Math.max(0, speedMps) * 3.6,
   })
 
+/**
+ * Lap energy allowance, in MJ, or null where the concept does not apply.
+ *
+ * A category with no MGU-K has nothing to budget. For one that has, the
+ * allowance is what a clear qualifying lap can actually put on the road, which
+ * is the sum of two published numbers and not a fitted one:
+ *
+ * - `qualifyingRechargeLimitMj`, the energy the lap may recover as it runs;
+ * - `usableStateOfChargeWindowMj`, the store the car arrives with, having
+ *   filled it on the out lap.
+ *
+ * The recharge limit alone would describe a lap repeated forever in a steady
+ * state, and the reference lap is documented as the opposite of that: a single
+ * clear attack lap. A driver on that lap empties the store and banks nothing
+ * for the next one, which is why the window is spendable here and is not
+ * double counting. `energySystem.ts` reaches the same total from the other
+ * side, capping recovery per lap and letting deployment draw the store down.
+ */
+function resolveEnergyBudgetMj(
+  options: PhysicalLapOptions,
+  physics: CategoryPhysicsProfile,
+) {
+  if (physics.hybridDeploymentPowerLimitKw <= 0) {
+    return null
+  }
+
+  if (options.deploymentEnergyBudgetMj === undefined) {
+    return (
+      FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj +
+      FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
+    )
+  }
+
+  const requested = options.deploymentEnergyBudgetMj
+
+  return requested === null || !Number.isFinite(requested)
+    ? null
+    : Math.max(0, requested)
+}
+
 function resolveOptions(options: PhysicalLapOptions) {
   const physics = options.physics ?? categoryPhysicsFor(undefined)
 
   return {
     airDensityKgM3: options.airDensityKgM3 ?? 1.225,
+    deploymentEnergyBudgetMj: resolveEnergyBudgetMj(options, physics),
     deploymentPowerKw:
       options.deploymentPowerKw ?? physics.hybridDeploymentPowerLimitKw,
     dragAreaM2: options.dragAreaM2 ?? 1.05 * physics.dragAreaScale,
@@ -380,17 +469,25 @@ function resolveOptions(options: PhysicalLapOptions) {
   }
 }
 
-/** Aerodynamic drag plus rolling resistance, in newtons. */
+/**
+ * Aerodynamic drag plus rolling resistance, in newtons.
+ *
+ * `dragAreaScale` is the active-aero state: 1 is the closed-wing corner
+ * configuration, and a value below 1 is the shed drag of an open flap. The
+ * reference lap passes the same multiplier the race path applies in
+ * `vehicleDragAreaM2`, so both read one number for the same effect.
+ */
 export function resistanceForceN(
   speedMps: number,
   options: PhysicalLapOptions = {},
+  dragAreaScale = 1,
 ) {
   const { airDensityKgM3, dragAreaM2, massKg, physics } =
     resolveOptions(options)
   const speed = Math.max(0, speedMps)
 
   return (
-    0.5 * airDensityKgM3 * dragAreaM2 * speed * speed +
+    0.5 * airDensityKgM3 * dragAreaM2 * dragAreaScale * speed * speed +
     massKg * GRAVITY_MPS2 * physics.rollingResistanceCoefficient
   )
 }
@@ -399,7 +496,10 @@ export function resistanceForceN(
  * Speed where the power unit can no longer overcome drag. This is the physical
  * replacement for the old constant speed ceiling.
  */
-export function terminalSpeedMps(options: PhysicalLapOptions = {}) {
+export function terminalSpeedMps(
+  options: PhysicalLapOptions = {},
+  dragAreaScale = 1,
+) {
   const resolved = resolveOptions(options)
   let low = 0
   let high = 200
@@ -415,7 +515,7 @@ export function terminalSpeedMps(options: PhysicalLapOptions = {}) {
         physics: resolved.physics,
         speedMps: middle,
         throttleFraction: 1,
-      }) - resistanceForceN(middle, options)
+      }) - resistanceForceN(middle, options, dragAreaScale)
 
     if (surplus > 0) {
       low = middle
@@ -546,7 +646,24 @@ export function simulatePhysicalLap(
   const resolved = resolveOptions(options)
   const geometry = trackGeometry(track)
   const count = geometry.length
-  const ceilingMps = terminalSpeedMps(options)
+  // Active aero is a property of where the car is on the road, not of the car,
+  // so the reference lap reads the same declared zones the race path reads
+  // through `activeAeroModeFor`. Without this the lap runs the closed-wing
+  // drag area everywhere, one terminal speed serves the whole calendar, and
+  // every circuit long enough to reach it peaks at the same number.
+  const straightDragScale =
+    options.activeAeroZones === false
+      ? 1
+      : clamp(resolved.physics.straightAeroDragMultiplier, 0.45, 1)
+  const dragScaleAt = geometry.map((_, index) =>
+    activeAeroZoneAt(track, index / count) ? straightDragScale : 1,
+  )
+  const cornerCeilingMps = terminalSpeedMps(options)
+  const straightCeilingMps = terminalSpeedMps(options, straightDragScale)
+  const ceilingAt = dragScaleAt.map((scale) =>
+    scale < 1 ? straightCeilingMps : cornerCeilingMps,
+  )
+  const ceilingMps = straightCeilingMps
   const gripArgs = {
     airDensityKgM3: resolved.airDensityKgM3,
     // The transient efficiency rides on the same multiplier the surface and
@@ -574,8 +691,15 @@ export function simulatePhysicalLap(
 
     return Number.isFinite(limit) ? limit : lateralSearchCeilingMps
   })
-  const speeds = corneringSpeedLimits.map((limit) =>
-    Math.min(ceilingMps, limit),
+  /**
+   * Share of the deployment limit this segment is allowed to draw.
+   *
+   * The lap starts unbudgeted; `allocateDeployment` below replaces this once
+   * the profile it produces has been costed against the energy allowance.
+   */
+  let deploymentShare = new Array<number>(count).fill(1)
+  let speeds = corneringSpeedLimits.map((limit, index) =>
+    Math.min(ceilingAt[index], limit),
   )
   /** Fraction of the friction ellipse already spent turning at this speed. */
   const lateralUseFraction = (index: number, speedMps: number) => {
@@ -590,7 +714,15 @@ export function simulatePhysicalLap(
 
     return clamp(demandN / Math.max(1, grip.availableForceN), 0, 1)
   }
-  const tractionLimitedAccelerationMps2 = (index: number, speedMps: number) => {
+  /**
+   * Longitudinal acceleration available at a point, drawing `share` of the
+   * permitted MGU-K power. `share` 0 is the combustion engine alone.
+   */
+  const accelerationWithShareMps2 = (
+    index: number,
+    speedMps: number,
+    share: number,
+  ) => {
     const grip = tyreGripAt({ ...gripArgs, speedMps })
     const longitudinalBudgetN = remainingEllipseForceN({
       availableForceN: grip.availableForceN,
@@ -600,7 +732,7 @@ export function simulatePhysicalLap(
     const driveForceN = Math.min(
       powerUnitDriveForceN({
         deploymentPowerKw: permittedDeploymentKw(
-          resolved.deploymentPowerKw,
+          resolved.deploymentPowerKw * share,
           speedMps,
         ),
         physics: resolved.physics,
@@ -611,9 +743,13 @@ export function simulatePhysicalLap(
     )
 
     return (
-      (driveForceN - resistanceForceN(speedMps, options)) / resolved.massKg
+      (driveForceN -
+        resistanceForceN(speedMps, options, dragScaleAt[index])) /
+      resolved.massKg
     )
   }
+  const tractionLimitedAccelerationMps2 = (index: number, speedMps: number) =>
+    accelerationWithShareMps2(index, speedMps, deploymentShare[index])
   const brakingDecelerationMps2 = (index: number, speedMps: number) => {
     const grip = tyreGripAt({ ...gripArgs, speedMps })
     const longitudinalBudgetN = remainingEllipseForceN({
@@ -629,47 +765,221 @@ export function simulatePhysicalLap(
       resolved.physics.maximumBrakeDecelerationMps2 * resolved.massKg,
     )
 
+    // Braking runs the closed-wing drag area even inside a zone: the flap
+    // shuts on the brake pedal, so a car slowing down never has the shed drag
+    // helping it stop.
     return (
       (brakeForceN + resistanceForceN(speedMps, options)) / resolved.massKg
     )
   }
 
-  // Two laps of each sweep so the profile closes on itself at the line.
-  for (let pass = 0; pass < 2; pass += 1) {
-    for (let step = 0; step < count; step += 1) {
-      const index = step % count
-      const nextIndex = (index + 1) % count
-      const accelerationMps2 = Math.max(
-        0,
-        tractionLimitedAccelerationMps2(index, speeds[index]),
-      )
-      const reachableMps = Math.sqrt(
-        Math.max(
-          0,
-          speeds[index] ** 2 +
-            2 * accelerationMps2 * geometry[index].segmentLengthMeters,
-        ),
-      )
+  /** The complete envelope for the deployment shares currently in force. */
+  const sweepSpeeds = () => {
+    const profile = corneringSpeedLimits.map((limit, index) =>
+      Math.min(ceilingAt[index], limit),
+    )
 
-      speeds[nextIndex] = Math.min(speeds[nextIndex], reachableMps)
+    // Two laps of each sweep so the profile closes on itself at the line.
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (let step = 0; step < count; step += 1) {
+        const index = step % count
+        const nextIndex = (index + 1) % count
+        const accelerationMps2 = Math.max(
+          0,
+          tractionLimitedAccelerationMps2(index, profile[index]),
+        )
+        const reachableMps = Math.sqrt(
+          Math.max(
+            0,
+            profile[index] ** 2 +
+              2 * accelerationMps2 * geometry[index].segmentLengthMeters,
+          ),
+        )
+
+        profile[nextIndex] = Math.min(profile[nextIndex], reachableMps)
+      }
+
+      for (let step = count - 1; step >= 0; step -= 1) {
+        const index = step % count
+        const nextIndex = (index + 1) % count
+        const decelerationMps2 = brakingDecelerationMps2(
+          nextIndex,
+          profile[nextIndex],
+        )
+        const entryMps = Math.sqrt(
+          Math.max(
+            0,
+            profile[nextIndex] ** 2 +
+              2 * decelerationMps2 * geometry[index].segmentLengthMeters,
+          ),
+        )
+
+        profile[index] = Math.min(profile[index], entryMps)
+      }
     }
 
-    for (let step = count - 1; step >= 0; step -= 1) {
-      const index = step % count
-      const nextIndex = (index + 1) % count
-      const decelerationMps2 = brakingDecelerationMps2(
-        nextIndex,
-        speeds[nextIndex],
-      )
-      const entryMps = Math.sqrt(
-        Math.max(
-          0,
-          speeds[nextIndex] ** 2 +
-            2 * decelerationMps2 * geometry[index].segmentLengthMeters,
-        ),
-      )
+    return profile
+  }
 
-      speeds[index] = Math.min(speeds[index], entryMps)
+  /**
+   * Seconds and megajoules a segment costs when it draws `share`, taken on its
+   * own from a given entry speed. This is the marginal quantity the ranking
+   * needs; what the lap is actually billed is `energyDrawMj` below.
+   */
+  const segmentCost = (index: number, entryMps: number, share: number) => {
+    const lengthMeters = geometry[index].segmentLengthMeters
+    const accelerationMps2 = accelerationWithShareMps2(index, entryMps, share)
+    const exitMps = Math.sqrt(
+      Math.max(0, entryMps ** 2 + 2 * accelerationMps2 * lengthMeters),
+    )
+    // The same trapezoidal rule the lap time and the energy integral use, so a
+    // segment's ranking and its bill are computed the same way.
+    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
+    const seconds = lengthMeters / averageMps
+
+    return {
+      energyMj:
+        (permittedDeploymentKw(resolved.deploymentPowerKw * share, averageMps) *
+          seconds) /
+        1000,
+      seconds,
+    }
+  }
+
+  /**
+   * What a segment adds to the lap's bill in a completed profile.
+   *
+   * This is the energy integral's own rule, and the allocation has to use it
+   * too. A segment where the finished lap is braking or holding a cornering
+   * limit is not drive-force limited, so deployment there changes nothing and
+   * is charged nothing; costing it as if it were spent would make the
+   * allocation buy far less than the allowance actually pays for.
+   */
+  const energyDrawMj = (index: number, profile: number[]) => {
+    const entryMps = profile[index]
+    const exitMps = profile[(index + 1) % count]
+
+    if (exitMps <= entryMps) {
+      return 0
+    }
+
+    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
+
+    return (
+      (permittedDeploymentKw(resolved.deploymentPowerKw, averageMps) *
+        (geometry[index].segmentLengthMeters / averageMps)) /
+      1000
+    )
+  }
+
+  /**
+   * Spends the lap's MGU-K allowance where it buys the most lap time.
+   *
+   * At constant power the extra force is P/v, so the time a joule buys falls
+   * steeply with speed: a segment's value works out proportional to its length
+   * over the cube of its speed. Slow corner exits therefore come first and the
+   * top end of a straight comes last, which is where a real driver spends the
+   * allowance and why spending it evenly is the wrong comparison. Two effects
+   * fall out of ranking by measured value rather than by speed alone: a
+   * traction-limited exit is skipped, because electrical power the tyres
+   * cannot put down buys nothing, and so is anything above the regulation's
+   * speed ramp, because there is no power to spend there.
+   *
+   * The ranking is taken once, from the fully deployed profile. Only the point
+   * where the allowance runs out is re-costed, so the allocation cannot chase
+   * its own output around in a circle.
+   */
+  const rankedCandidates = () => {
+    const fullyDeployed = speeds
+
+    return geometry
+      .map((_point, index) => {
+        const entryMps = fullyDeployed[index]
+        const deployed = segmentCost(index, entryMps, 1)
+        const coasting = segmentCost(index, entryMps, 0)
+        const benefitSeconds = coasting.seconds - deployed.seconds
+
+        return {
+          index,
+          value:
+            deployed.energyMj > 1e-9 && benefitSeconds > 1e-9
+              ? benefitSeconds / deployed.energyMj
+              : 0,
+        }
+      })
+      .filter((candidate) => candidate.value > 0)
+      .sort((left, right) =>
+        right.value === left.value
+          ? left.index - right.index
+          : right.value - left.value,
+      )
+      .map((candidate) => candidate.index)
+  }
+
+  speeds = sweepSpeeds()
+
+  if (resolved.deploymentEnergyBudgetMj !== null) {
+    const order = rankedCandidates()
+
+    for (let pass = 0; pass < DEPLOYMENT_ALLOCATION_PASSES; pass += 1) {
+      const next = new Array<number>(count).fill(0)
+      let remainingMj = resolved.deploymentEnergyBudgetMj
+
+      for (const index of order) {
+        if (remainingMj <= 0) {
+          break
+        }
+
+        const drawMj = energyDrawMj(index, speeds)
+
+        if (drawMj <= 0) {
+          // Free: the finished lap is not drive-force limited here, so the
+          // share cannot change either the speed or the bill.
+          next[index] = 1
+          continue
+        }
+
+        // The segment the allowance runs out on takes the share it can pay
+        // for, rather than being switched off, so the profile stays continuous.
+        next[index] = Math.min(1, remainingMj / drawMj)
+        remainingMj -= drawMj
+      }
+
+      deploymentShare = next
+      speeds = sweepSpeeds()
+    }
+
+    // Each allocation is costed against the profile it inherited, and the
+    // profile it produces is slightly slower, so the finished lap can end a
+    // few hundred joules the wrong side of the allowance. Give the lowest
+    // valued granted segments back until it is inside. Trimming only ever
+    // removes energy, so this cannot run away.
+    for (let trim = 0; trim < DEPLOYMENT_TRIM_PASSES; trim += 1) {
+      const spentMj = order.reduce(
+        (total, index) => total + energyDrawMj(index, speeds) * deploymentShare[index],
+        0,
+      )
+      let excessMj = spentMj - resolved.deploymentEnergyBudgetMj
+
+      if (excessMj <= 0) {
+        break
+      }
+
+      for (let rank = order.length - 1; rank >= 0 && excessMj > 0; rank -= 1) {
+        const index = order[rank]
+        const spentHereMj =
+          energyDrawMj(index, speeds) * deploymentShare[index]
+
+        if (spentHereMj <= 0) {
+          continue
+        }
+
+        const releasedMj = Math.min(spentHereMj, excessMj)
+        deploymentShare[index] *= 1 - releasedMj / spentHereMj
+        excessMj -= releasedMj
+      }
+
+      speeds = sweepSpeeds()
     }
   }
 
@@ -767,10 +1077,10 @@ export function simulatePhysicalLap(
     }
   })
 
-  // Deployment is requested wherever the lap is gaining speed, which is what
-  // the acceleration sweep assumed when it built the profile. Integrating the
-  // permitted power over exactly those segments gives what the finished lap
-  // spends.
+  // Deployment is drawn wherever the lap is gaining speed, at the share the
+  // allocation granted that segment. Integrating the permitted power over
+  // exactly those segments gives what the finished lap spends, which is the
+  // number `deployment-energy-budget` compares with the regulation.
   const deploymentEnergyMj = geometry.reduce((total, point, index) => {
     const entryMps = speeds[index]
     const exitMps = speeds[(index + 1) % count]
@@ -784,7 +1094,10 @@ export function simulatePhysicalLap(
 
     return (
       total +
-      (permittedDeploymentKw(resolved.deploymentPowerKw, averageMps) *
+      (permittedDeploymentKw(
+        resolved.deploymentPowerKw * deploymentShare[index],
+        averageMps,
+      ) *
         secondsOnSegment) /
         1000
     )

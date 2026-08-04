@@ -114,7 +114,23 @@ function buildProfile(
   track: TrackDefinition,
   physics: CategoryPhysicsProfile,
 ): CachedProfile {
-  const physical = simulatePhysicalLap(track, { physics })
+  // The capability envelope, not one metered lap. This profile answers "what
+  // can the car do at this point of the road", and the live model reads it to
+  // classify corners, straights and full-throttle sections and to decide where
+  // deployment is worth asking for.
+  //
+  // No energy budget, because spending an allowance here as well would put two
+  // energy plans in series and the Energy Store in `energySystem` owns the
+  // live one. No active-aero zones, because `cornerClass` and `fullThrottle`
+  // are cut at fixed speeds: letting the declared zones raise the profile's
+  // speeds would make a corner's class depend on whether a flap opens on the
+  // straight before it, and the zones are themselves declared per track, so
+  // the classifier would be reading back its own input.
+  const physical = simulatePhysicalLap(track, {
+    activeAeroZones: false,
+    deploymentEnergyBudgetMj: null,
+    physics,
+  })
   const maximumCorneringLimitMps = Math.max(
     ...physical.points.map((point) => point.corneringSpeedLimitMps),
   )

@@ -62,7 +62,8 @@ they cannot become an undocumented second calibration layer.
 | `drivetrain.ts` launch | launch RPM 0.38 of rev limit; clutch bite 0.35 engagement; MGU-K base speed 0.35 of rev limit | Current global defaults with category RPM/gear inputs | Engineering shape assumptions. High standing-start and low-speed force sensitivity, little steady-lap sensitivity. A category-specific override needs published motor/clutch evidence. |
 | `drivetrain.ts` turbo | spool time constant 0.55 s at zero rev, falling linearly to 0.13 s at the limiter; lift decay 0.30 s | Stateful combustion response, category physical behaviour | Commented engineering estimate. High throttle-transient sensitivity; zero effect on electrical torque. Validate against time-resolved acceleration, never lap time alone. |
 | `drivetrain.ts` clutch | engagement time constant 0.48 s; release 0.16 s; numerical floor 0.02 s | Stateful standing launch, category physical behaviour | Engineering estimate. High launch sensitivity. Must remain continuous and traction-limited in the launch tests. |
-| `physicalLap.ts` reference deployment | category MGU-K limit whenever the offline planner requests full acceleration | Explicit offline policy, category | Not a live SOC assumption or calibration. Live deployment comes from `energySystem.ts`; comparing this reference with a race requires that limitation to be stated. |
+| `physicalLap.ts` reference deployment | category MGU-K limit, bounded by the regulation speed ramp and by an 11 MJ lap allowance (7 MJ recharge limit + 4 MJ usable store window); 3 allocation passes and 2 trim passes | Explicit offline policy, category | Not a live SOC assumption or calibration. The allowance is two published regulation numbers added; the pass counts are numerical convergence, not tuning. Where the allowance is spent is ranked by seconds bought per joule. Live deployment still comes from `energySystem.ts`. |
+| `physicalLap.ts` reference active aero | flap open in the circuit's declared `aeroActivationZones`, drag scaled by `straightAeroDragMultiplier`; shut under braking and in corners | Explicit offline policy, category | Reads the same declared zones and the same multiplier as the driven path in `vehicleDragAreaM2`, so one number owns the effect. `trackDynamics.buildProfile` opts out with `activeAeroZones: false` because it is a geometry classifier, not a lap. |
 | `vehicleGeometry.ts` footprint | width 1.90 m; length 5.20 m; track-edge margin 0.25 m; lateral margin 0.35 m; longitudinal margin 1.25 m | Published/inferred geometry and global collision envelope | Width is regulation-derived; length and margins are conservative simulation envelopes. High occupancy/contact sensitivity, no clear-air lap sensitivity. Category-specific geometry should replace these when sourced. |
 | `lateralDynamics.ts` response | maximum lateral speed 2.8 m/s; acceleration 4.0 m/s2; target response 0.25 s | Global lateral-control dynamics | Behavioural/engineering assumptions. High pass, defence and avoidance sensitivity. Validate with lane-change traces; do not fit finishing order. |
 | `driverDecision.ts` sampling | 12 decision windows per lap | Global algorithmic/behavioural resolution | Low-frequency deterministic choice boundary. High reaction opportunity sensitivity on very short/long circuits; the same seed/window remains reproducible. A time- or distance-based replacement needs a separate design change. |
@@ -172,35 +173,76 @@ with a zero, estimate, expectation or test tolerance.
 
 ## Current read-only result
 
-Run on 2026-08-01 against the checked-in official qualifying observations:
+Run on 2026-08-04 against the checked-in official qualifying observations,
+after the deployment allowance and the reference lap's active aero:
 
 | Set | Samples | Mean lap ratio | MAPE | Mean absolute error |
 | --- | ---: | ---: | ---: | ---: |
-| Calibration | 5 | 0.9962 | 1.79% | 1.42 s |
-| Holdout | 6 | 0.9887 | 3.84% | 3.39 s |
-| Overall | 11 | 0.9921 | 2.91% | 2.49 s |
+| Calibration | 5 | 0.9975 | 1.67% | 1.32 s |
+| Holdout | 6 | 0.9923 | 3.49% | 3.02 s |
+| Overall | 11 | 0.9946 | 2.66% | 2.24 s |
 
-The overall largest absolute error is Silverstone: -5.33 s (-6.04%). The
-smallest is Hungaroring: -0.40 s (-0.52%). These are outputs, not per-track
-corrections. The Suzuka model ranking is F1, SUPER FORMULA, F2, F3; the shared
-official F1/SUPER FORMULA observation has the same order.
+Against the previous run, on the same observations:
+
+| Set | Mean absolute error | Mean lap ratio |
+| --- | ---: | ---: |
+| Calibration | 1.02 s -> 1.32 s | 1.0082 -> 0.9975 |
+| Holdout | 2.65 s -> 3.02 s | 1.0003 -> 0.9923 |
+| Overall | 1.91 s -> 2.24 s | 1.0039 -> 0.9946 |
+
+**Lap-time accuracy got worse and this is not being tuned away.** Two defects
+were fixed and the number that measures a third got larger. The holdout was
+read once, after both values were fixed, and neither was chosen against it.
+
+What moved is scatter, not level: the mean ratio went from 0.4 % slow to 0.5 %
+fast, so the model is no better and no worse centred than it was, and the
+growth is on the straight-against-corner axis that the per-circuit spread has
+always shown. Both fixes act on straights, so both push circuits apart along
+exactly that axis; a model that cannot yet tell a long straight from a short
+one gets a larger error when its straights start behaving differently from
+each other. That axis is still unexplained, and is recorded as such below.
+
+The Suzuka model ranking is F1, SUPER FORMULA, F2, F3; the shared official
+F1/SUPER FORMULA observation has the same order.
+
+The alternative was measured rather than argued. The deployment allowance on
+its own, with the reference lap still blind to active aero, gives calibration
+1.04 s, holdout 2.59 s and overall 1.88 s - slightly better than before on lap
+time - but leaves peak-speed error at 18.13 km/h and the modelled peaks spread
+over 6.1 km/h across circuits whose observed peaks span 55. That was the
+trade: a better lap-time number and a reference lap that still cannot
+distinguish one circuit's straight from another's. The spread was taken.
 
 ### Straight-line speed
 
-Run on 2026-08-02 against the eleven observed qualifying peaks:
+Run on 2026-08-04 against the eleven observed qualifying peaks:
 
-| Metric | Value |
-| --- | ---: |
-| Circuits compared | 11 |
-| Mean absolute error | 23.23 km/h |
-| Bias | +23.23 km/h |
-| Worst | Silverstone +41.7 km/h |
-| Best | Hungaroring +2.7 km/h |
+| Metric | 2026-08-02 | Now |
+| --- | ---: | ---: |
+| Circuits compared | 11 | 11 |
+| Mean absolute error | 23.23 km/h | 7.82 km/h |
+| Bias | +23.23 km/h | +6.64 km/h |
+| Modelled peak range | 323.4-325.6 km/h | 319.0-345.3 km/h |
 
-**The model is too fast on every circuit compared**, which is why the bias
-equals the mean absolute error. This is reported, not corrected: the causes are
-physical parameters, and changing them is a separate piece of work from
-establishing the observation.
+The reference lap now reads the circuit's declared active-aero zones, so the
+range is the interesting column. It used to span 2.2 km/h across a calendar
+whose observed peaks span 55: the lap ran the closed-wing drag area
+everywhere, one terminal speed served every circuit, and modelled peak speed
+carried no circuit information at all. It now spans 26.3 km/h. That is still
+half the observed spread, but it is the first version of this model that can
+tell a long straight from a short one.
+
+The deployment allowance is what makes that spread real rather than a shifted
+constant. Reading the aero zones alone moves the ceiling and the car still
+reaches it nearly everywhere, which is what the earlier investigation found:
+peaks spread 10.8 km/h and the bias merely crossed zero. Once reaching the
+ceiling costs energy the lap has to take from somewhere else, only the
+circuits that can afford it get there.
+
+`npm run validate:speed-trap` is unchanged to the last reported digit -
+median mean absolute error 7.66 km/h and peak 7.64, biases -1.08 and -3.10 -
+because it measures driven laps and nothing on that path moved. See below for
+why it must not be moved to close the gap above.
 
 `npm run validate:speed-trap` measures the same thing through full driven laps
 rather than reference laps, and separates qualifying from race trim. Its four
@@ -417,18 +459,19 @@ wall's projected position. For that purpose it is about 6 % quicker than an
 observed green-flag lap on every one of the ten measured events, which is a
 separate question from this one.
 
-## Reference laps spend two and a half times the MGU-K energy the rules allow
+## Reference laps spent two and a half times the MGU-K energy the rules allow
 
-Measured, not fixed. `deployment-energy-budget` is a validation domain now, so
+Measured on 2026-08-03, fixed on 2026-08-04; the section below the measurement
+records what the fix was. `deployment-energy-budget` is a validation domain, so
 the number is in the report rather than in a note.
 
-`REFERENCE_DEPLOYMENT_POLICY` grants the category deployment limit wherever
-full power is requested and says so plainly: it "deliberately has no
+`REFERENCE_DEPLOYMENT_POLICY` granted the category deployment limit wherever
+full power was requested and said so plainly: it "deliberately has no
 state-of-charge, harvesting or lap strategy", and a live simulation "must
 instead pass the power authorised by its Energy Store". Qualifying is a live
-session and does not. `qualifying.ts` passes
+session and did not. `qualifying.ts` passed
 `categoryPhysics.hybridDeploymentPowerLimitKw` straight through, so every
-modelled qualifying lap deploys as if the Energy Store were bottomless.
+modelled qualifying lap deployed as if the Energy Store were bottomless.
 
 Integrating the permitted power over the segments where the finished lap gains
 speed gives what each lap actually spends. All eleven measured circuits exceed
@@ -455,9 +498,111 @@ It does bear on the mean. The same twenty-two circuits average 2.5 s fast, and
 an eleven-megajoule overspend is worth several seconds of lap time, so the
 level and this are plausibly the same finding.
 
-Enforcing the budget is deliberately not done here. It would slow every lap in
-the simulator by more than the 2.5 s mean error, which means it cannot be
-separated from the straight-line drag calibration those laps were fitted
-against, and it needs a rule for where in the lap the budget is spent - a real
-driver spends it on slow corner exits, not evenly. Measuring first is what
-makes that a decision rather than a guess.
+## The allowance, and where a lap spends it
+
+The budget is now enforced. `REFERENCE_DEPLOYMENT_POLICY` is
+`regulation-energy-budget-by-marginal-value`, and the eleven measured circuits
+went from 14-20 MJ to 10.2 MJ mean against an 11 MJ allowance.
+
+### How much a lap may spend
+
+Two published numbers, added, with nothing chosen in between:
+
+| | MJ | What it is |
+| --- | ---: | --- |
+| `qualifyingRechargeLimitMj` | 7 | Energy the lap may recover as it runs |
+| `usableStateOfChargeWindowMj` | 4 | The store it arrives with, filled on the out lap |
+| Allowance | 11 | What one clear lap can put on the road |
+
+The recharge limit alone is the bound on a lap repeated forever in a steady
+state. The reference lap is documented as the opposite of that - a single
+clear qualifying lap - and a driver on that lap empties the store and banks
+nothing for the next one. Both observations it is compared against are single
+clear laps too: official Q3 times and qualifying telemetry peaks. Comparing a
+steady-state lap with attack-lap evidence would be the same category error as
+comparing a race median with a reference lap, which this document already
+refuses to do elsewhere.
+
+`energySystem.ts` reaches the same total from the other side, and always did:
+`maxRechargePerLapMjFor` caps recovery per lap while deployment draws the
+store down. So the live path and the reference lap now agree about how much
+energy one lap has, having previously disagreed by a factor of two.
+
+`deployment-energy-budget` reports the spend against both bounds.
+`circuitsOverAllowance` is 0. `circuitsOverRepeatableLimit` is 11, and that is
+correct rather than a residual failure: every one of these laps is an attack
+lap that no car could repeat without recharging, which is exactly what an
+attack lap is.
+
+### Where it spends it
+
+The rule is the marginal one: the allowance goes where it buys the most lap
+time per joule. At constant power the extra force is `P/v`, so a segment's
+value works out proportional to its length over the cube of its speed, and the
+allowance drains into slow corner exits and runs out before the top end of a
+straight. That is where a real driver spends it, and it is why spending it
+evenly was the wrong comparison.
+
+Two things fall out of ranking by measured value rather than by speed alone. A
+traction-limited exit is skipped, because electrical power the tyres cannot
+put down buys nothing. So is anything above the regulation's speed ramp,
+because there is no power to spend there.
+
+The ranking is taken once, from the fully deployed profile, so it cannot chase
+its own output around in a circle. Only the point where the allowance runs out
+is re-costed against the slower profile the allocation produces, three times,
+and a trim pass then gives back the few hundred joules that re-costing leaves
+overspent. The segment the allowance runs out on takes the share it can pay
+for rather than being switched off, so the speed profile stays continuous.
+
+### The straight-line drag was not moved, and here is the measurement
+
+The obvious next step is wrong, and it was tested rather than reasoned about.
+
+After both fixes the reference lap is 6.64 km/h fast at the peak and its lap
+error is scatter around zero, which looks like an invitation to re-cut
+`straightAeroDragMultiplier`. Sweeping it on the calibration split gives a
+clean joint optimum near 0.56 - calibration lap error 1.27 s and peak error
+7.17 km/h, both minimised at the same value by two independent observables:
+
+| `straightAeroDragMultiplier` | Calibration lap MAE | Reference peak MAE | Peak bias |
+| ---: | ---: | ---: | ---: |
+| 0.639 (current) | 1.43 s | 11.14 km/h | -7.82 km/h |
+| 0.60 | 1.32 s | 8.16 km/h | -3.71 km/h |
+| 0.56 | 1.27 s | 7.17 km/h | +0.75 km/h |
+| 0.52 | 1.28 s | 8.85 km/h | +5.04 km/h |
+
+It was not taken. The constant is shared with the driven path, and at 0.56
+`validate:speed-trap` fails three of its four aggregate gates: median mean
+absolute error 9.73 km/h against a limit of 8, median bias +5.16 against
++/-5, and peak mean absolute error 8.99 against 8. Driven laps are the
+evidence that constant answers to, and they say it is already right.
+
+The reason the two disagree is not aero, it is energy, and the disagreement is
+real rather than an error to be split. A driven attack lap arrives with a
+charged store and empties it; the reference lap is one closed lap and gets the
+same allowance by construction, but it has no out lap to arrive from and no
+tow. Moving an aerodynamic constant until the two agree would be paying for an
+energy difference with drag, which is the double-counting failure this
+document classifies as E. The residual belongs to the straight-against-corner
+axis and stays open.
+
+### One profile is not a lap
+
+`trackDynamics.buildProfile` takes neither the allowance nor the aero zones,
+and passes `deploymentEnergyBudgetMj: null` and `activeAeroZones: false` to
+say so. It is a geometry classifier: the live model reads it for corner class,
+straightness, full-throttle sections and braking severity, and its own doc
+comment already says live speed must come from force integration.
+
+Both opt-outs have the same reason. An allowance inside it would put two
+energy plans in series when `energySystem.ts` already owns the live one. Aero
+zones inside it would make `cornerClass`, which is cut at fixed speeds, depend
+on whether a flap opens on the straight before the corner - and since the
+zones are declared per track, the classifier would be reading back its own
+input.
+
+This is not a detail. Letting the aero zones into that profile is worth
+0.70 km/h on the speed trap's median mean absolute error, which is enough to
+take it from 7.66 to 8.36 and fail the gate, without anything on the driven
+force path having changed at all.
