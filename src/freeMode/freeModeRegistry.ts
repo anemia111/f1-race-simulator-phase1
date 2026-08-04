@@ -545,7 +545,11 @@ export function buildFreeModeRaceConfig(
     const syntheticTeamId = teams[index].id
     const seated = seatedDriverFrom(poolDriver, {
       carNumber: entrant.carNumber,
-      startOffset: startingGridDistance(index) - 1,
+      startOffset:
+        startingGridDistance(
+          index,
+          trackOption.physicalTrack.lengthKm * 1000,
+        ) - 1,
       teamId: syntheticTeamId,
     })
     const override = context.driverOverridesById?.get(entrant.driverId)

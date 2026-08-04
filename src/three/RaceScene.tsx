@@ -258,9 +258,11 @@ function startingGridSlotOffset(track: TrackDefinition, position: number) {
 function shouldUseStartingGridSlot(
   car: CarSnapshot,
   showStartingGridSlots: boolean,
+  track: TrackDefinition,
 ) {
   const expectedGridDistance = startingGridDistance(
     Math.max(0, car.gridPosition - 1),
+    track.lengthKm * 1000,
   )
 
   return (
@@ -276,7 +278,7 @@ function displayLaneOffset(
   car: CarSnapshot,
   showStartingGridSlots: boolean,
 ) {
-  if (shouldUseStartingGridSlot(car, showStartingGridSlots)) {
+  if (shouldUseStartingGridSlot(car, showStartingGridSlots, track)) {
     return startingGridSlotOffset(track, car.gridPosition)
   }
 
@@ -589,7 +591,8 @@ function StartingGridSlots({
     () =>
       Array.from({ length: slotCount }, (_, index) => {
         const position = index + 1
-        const progress = (startingGridDistance(index) + 1) % 1
+        const progress =
+          (startingGridDistance(index, track.lengthKm * 1000) + 1) % 1
         const pose = poseOnTrack(
           curve,
           progress,
