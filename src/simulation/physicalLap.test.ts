@@ -352,19 +352,57 @@ describe('simulatePhysicalLap', () => {
     )
   })
 
-  it('reports the MGU-K energy the lap spends, which the rules do not allow', () => {
+  it('keeps the MGU-K energy a lap spends inside the qualifying allowance', () => {
+    const f1 = categoryPhysicsFor('f1-custom')
+    // A single clear lap recovers up to the qualifying recharge limit and also
+    // empties the store it arrived with. Both numbers are published; neither
+    // is chosen here.
+    const allowanceMj =
+      FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj +
+      FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
+
+    // This assertion used to run the other way: it recorded that a reference
+    // lap spent more than twice the allowance, so that a change closing the
+    // gap would show up here rather than silently. The allocation in
+    // REFERENCE_DEPLOYMENT_POLICY closed it, so the same test now holds the
+    // budget it enforces. Every circuit, because an allowance that only binds
+    // on the ones that were measured is not an allowance.
+    for (const track of tracks) {
+      const result = simulatePhysicalLap(track, { physics: f1 })
+
+      expect(result.deploymentEnergyMj).toBeLessThanOrEqual(allowanceMj + 0.001)
+    }
+  })
+
+  it('spends the allowance on slow corner exits rather than evenly', () => {
     const f1 = categoryPhysicsFor('f1-custom')
     const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
-    const result = simulatePhysicalLap(suzuka, { physics: f1 })
+    const budgeted = simulatePhysicalLap(suzuka, { physics: f1 })
+    const unbudgeted = simulatePhysicalLap(suzuka, {
+      deploymentEnergyBudgetMj: null,
+      physics: f1,
+    })
 
-    // REFERENCE_DEPLOYMENT_POLICY grants the category limit wherever full
-    // power is requested and keeps no account of the cost, so a reference lap
-    // spends far more than a qualifying lap is permitted. This test does not
-    // approve of that; it records it, so that a change which closes the gap
-    // shows up here rather than silently.
-    expect(result.deploymentEnergyMj).toBeGreaterThan(
-      2 * FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj,
+    // The allowance is well short of what the lap would draw unmetered, so it
+    // has to be spent somewhere in particular. Ranking by seconds bought per
+    // joule puts it at the bottom of the speed range: the budgeted lap must
+    // give up more at the top of a straight than out of the slowest corner.
+    expect(budgeted.deploymentEnergyMj).toBeLessThan(
+      unbudgeted.deploymentEnergyMj * 0.75,
     )
+    expect(budgeted.lapTimeSeconds).toBeGreaterThan(unbudgeted.lapTimeSeconds)
+
+    const minimumLossKph =
+      unbudgeted.minimumSpeedKph - budgeted.minimumSpeedKph
+    const maximumLossKph =
+      unbudgeted.maximumSpeedKph - budgeted.maximumSpeedKph
+
+    expect(maximumLossKph).toBeGreaterThan(minimumLossKph)
+  })
+
+  it('bills nothing when there is no deployment to bill', () => {
+    const f1 = categoryPhysicsFor('f1-custom')
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
 
     // Removing deployment must remove the bill with it, which is what makes
     // the figure an integral of deployment rather than of lap time.

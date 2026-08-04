@@ -176,15 +176,39 @@ try {
     })
     .sort((left, right) => Math.abs(right.errorKph) - Math.abs(left.errorKph))
 
-  // The reference lap grants the category deployment limit wherever full power
-  // is requested and keeps no account of what that costs. Measuring the bill
-  // is the only way the gap between it and the regulation becomes visible.
+  // The reference lap spends a regulation allowance, so measuring the bill is
+  // what shows whether the allocation actually respects it.
+  //
+  // Two different bounds apply and the report carries both, because which one
+  // binds depends on what kind of lap is being described. The recharge limit
+  // is what a lap may recover as it runs, so it bounds a lap repeated in a
+  // steady state. A single clear qualifying lap also arrives with the usable
+  // state-of-charge window already filled from the out lap and empties it, so
+  // its bound is the sum. The reference lap is that single clear lap, and the
+  // observations it is compared against - official Q3 times and qualifying
+  // telemetry peaks - are single clear laps too, so the sum is the bound that
+  // applies to it. The recharge limit stays in the report because a lap over
+  // it is a lap the car could not repeat.
   const qualifyingLimitMj =
     FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj
+  const attackLapAllowanceMj =
+    qualifyingLimitMj +
+    FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
+  // A lap that plans to spend the whole allowance lands on the limit, and the
+  // segment-wise integral that measures it carries a joule or so of rounding.
+  // Counting those as over the limit would report a rounding error as a
+  // regulation breach, so "over" means over by more than the integral can
+  // resolve. A lap that genuinely overspends does so by megajoules: before the
+  // allocation existed these same circuits read 14 to 20 MJ, which is over
+  // both bounds.
+  const ENERGY_BUDGET_RESOLUTION_MJ = 0.001
   const energyComparisons = observations
     .map((observation, index) => ({
       trackId: observation.trackId,
       modelMj: physicalAcrossObservedTracks[index].deploymentEnergyMj,
+      ratioOfAllowance:
+        physicalAcrossObservedTracks[index].deploymentEnergyMj /
+        attackLapAllowanceMj,
       ratioOfLimit:
         physicalAcrossObservedTracks[index].deploymentEnergyMj /
         qualifyingLimitMj,
@@ -208,23 +232,35 @@ try {
       },
       'deployment-energy-budget': {
         basis:
-          'MGU-K energy each reference lap spends, against the qualifying recharge limit in FIA_2026_REGULATION_PROFILE (article C5.2.7-C5.2.12)',
+          'MGU-K energy each reference lap spends, against the single-clear-lap allowance (qualifying recharge limit plus the usable state-of-charge window) in FIA_2026_REGULATION_PROFILE (article C5.2.7-C5.2.12). The recharge limit on its own is reported alongside, as the bound on a lap repeated in a steady state.',
         modelValue: {
           perCircuit: energyComparisons,
           meanMj: average(energyComparisons.map((entry) => entry.modelMj)),
           maximumMj: Math.max(
             ...energyComparisons.map((entry) => entry.modelMj),
           ),
+          meanRatioOfAllowance: average(
+            energyComparisons.map((entry) => entry.ratioOfAllowance),
+          ),
           meanRatioOfLimit: average(
             energyComparisons.map((entry) => entry.ratioOfLimit),
           ),
-          circuitsOverLimit: energyComparisons.filter(
-            (entry) => entry.ratioOfLimit > 1,
+          circuitsOverAllowance: energyComparisons.filter(
+            (entry) =>
+              entry.modelMj >
+              attackLapAllowanceMj + ENERGY_BUDGET_RESOLUTION_MJ,
+          ).length,
+          circuitsOverRepeatableLimit: energyComparisons.filter(
+            (entry) =>
+              entry.modelMj > qualifyingLimitMj + ENERGY_BUDGET_RESOLUTION_MJ,
           ).length,
         },
         observedValue: {
-          qualifyingLimitMj:
+          attackLapAllowanceMj,
+          qualifyingRechargeLimitMj:
             FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj,
+          usableStateOfChargeWindowMj:
+            FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj,
           raceLimitMj: FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
           article: FIA_2026_REGULATION_PROFILE.energy.article,
         },
