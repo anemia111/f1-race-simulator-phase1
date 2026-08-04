@@ -383,10 +383,18 @@ npm run benchmark
 
 ## Next Piece Of Work
 
-`docs/NEXT_SESSION_PACE_CALIBRATION.md` holds a prompt for the open pace
-calibration: simulated qualifying is 2.5 s a lap fast on average, and closing
-it means enforcing the MGU-K energy budget and re-fitting straight-line drag
-together. Start it in a fresh session. The calibration policy forbids moving a
-parameter after reading its holdout error, and the session that scoped this
-work read the holdout repeatedly, so that prompt withholds the per-circuit
-figures on purpose.
+`docs/NEXT_SESSION_PACE_CALIBRATION.md` holds a prompt for the open pace work:
+the straight-against-corner spread. Reference peaks discriminate circuits by
+26.3 km/h against an observed 55, and lap-time scatter sits on the same axis.
+
+Start it in a fresh session. The calibration policy forbids moving a parameter
+after reading its holdout error, so that prompt carries the published aggregate
+figures and withholds the per-circuit breakdown on purpose.
+
+It also carries six hypotheses already tested and rejected, two of which were
+premises of an earlier version of the prompt itself. There is no mean pace
+error to close - the calibration split runs 0.18 s slow, and the 2.5 s figure
+that was chased came from estimated references. And the energy budget is not
+coupled to straight-line drag: enforcing one left the speed trap bit-identical,
+because the budget lands on the reference lap and the trap measures driven
+laps.
