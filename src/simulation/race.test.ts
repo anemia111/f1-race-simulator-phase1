@@ -307,11 +307,19 @@ describe('steward decisions', () => {
 
 describe('starting grid', () => {
   it('starts every car on the home-straight grid before the race unfolds', () => {
-    const snapshot = createInitialRace(makeConfig('grid-start'))
+    const config = makeConfig('grid-start')
+    const lapLengthM = config.track.lengthKm * 1000
+    const snapshot = createInitialRace(config)
 
     snapshot.cars.forEach((car, index) => {
-      expect(car.totalDistance).toBeCloseTo(startingGridDistance(index), 10)
-      expect(car.progress).toBeCloseTo(startingGridDistance(index) % 1, 10)
+      expect(car.totalDistance).toBeCloseTo(
+        startingGridDistance(index, lapLengthM),
+        10,
+      )
+      expect(car.progress).toBeCloseTo(
+        startingGridDistance(index, lapLengthM) % 1,
+        10,
+      )
     })
     expect(snapshot.cars.every((car) => car.status === 'running')).toBe(true)
   })
@@ -350,7 +358,7 @@ describe('starting grid', () => {
     expect(skipped.raceStartedAtSeconds).toBeNull()
     expect(skipped.cars.every((car) => car.lapHistory.length === 0)).toBe(true)
     skipped.cars.forEach((car, index) => {
-      expect(car.totalDistance).toBeCloseTo(startingGridDistance(index), 10)
+      expect(car.totalDistance).toBeCloseTo(startingGridDistance(index, config.track.lengthKm * 1000), 10)
       expect(car.speedKph).toBe(0)
     })
 
@@ -1481,7 +1489,10 @@ describe('start procedure and persisted weekend', () => {
 
     const restartCars =
       snapshot.restartProcedure === 'standing'
-        ? reformFieldForStandingRestart(snapshot.cars)
+        ? reformFieldForStandingRestart(
+            snapshot.cars,
+            config.track.lengthKm * 1000,
+          )
         : reformFieldForRedRestart(snapshot.cars, 0.004)
     expect(restartCars[0].totalDistance).toBeGreaterThanOrEqual(
       restartCars[1].totalDistance,

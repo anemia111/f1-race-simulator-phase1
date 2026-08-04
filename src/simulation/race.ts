@@ -344,6 +344,7 @@ export function reformFieldForRedRestart(
 
 export function reformFieldForStandingRestart(
   cars: CarSnapshot[],
+  lapLengthM: number,
 ): CarSnapshot[] {
   const leader = cars.find((car) => car.status === 'running')
 
@@ -365,7 +366,10 @@ export function reformFieldForStandingRestart(
       Math.floor(leader.totalDistance - car.totalDistance),
     )
     const totalDistance =
-      leaderLap - lapsDown + startingGridDistance(index) - 0.0001
+      leaderLap -
+      lapsDown +
+      startingGridDistance(index, lapLengthM) -
+      0.0001
     gridIndex += 1
 
     return {
@@ -1856,7 +1860,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     const totalDistance = startsFromPitLane
       ? 1 + pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
       : isRaceDistance
-        ? startingGridDistance(gridIndex)
+        ? startingGridDistance(gridIndex, config.track.lengthKm * 1000)
       : (config.track.pitLane?.exitProgress ?? 0.13)
     const lap = Math.floor(totalDistance)
     const gridLateralOffsetM =
@@ -2647,13 +2651,15 @@ export function advanceRace(
         snapshot.formationLapsPlanned,
         elapsedSeconds / Math.max(1, snapshot.formationLapDurationSeconds),
       )
-      const formationDistance = startingGridDistance(index) + formationProgress
+      const formationDistance =
+        startingGridDistance(index, config.track.lengthKm * 1000) +
+        formationProgress
       const stagedDistance =
         nextProcedure === 'formation'
           ? formationDistance
           : snapshot.formationBehindSafetyCar && nextProcedure === 'racing'
             ? formationDistance
-          : startingGridDistance(index)
+          : startingGridDistance(index, config.track.lengthKm * 1000)
       const stagedLap = Math.floor(stagedDistance)
 
       return {
@@ -3588,7 +3594,10 @@ export function advanceRace(
     })
     frameCars =
       restartProcedure === 'standing'
-        ? reformFieldForStandingRestart(strategicallyPreparedCars)
+        ? reformFieldForStandingRestart(
+            strategicallyPreparedCars,
+            config.track.lengthKm * 1000,
+          )
         : reformFieldForRedRestart(
             strategicallyPreparedCars,
             SAFETY_CAR_QUEUE_MIN_GAP_SECONDS / baseLapTime,
