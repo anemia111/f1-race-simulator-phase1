@@ -377,3 +377,16 @@ npm run benchmark
 - Derive randomness from the seed helpers.
 - Add numeric realism tests for model changes.
 - Run all six verification commands before handoff.
+- Read exit codes directly. Piping a verification command into `tail` or `head`
+  reports the pipe's status, not the command's, and has already produced a
+  false "clean" for a failing lint.
+
+## Next Piece Of Work
+
+`docs/NEXT_SESSION_PACE_CALIBRATION.md` holds a prompt for the open pace
+calibration: simulated qualifying is 2.5 s a lap fast on average, and closing
+it means enforcing the MGU-K energy budget and re-fitting straight-line drag
+together. Start it in a fresh session. The calibration policy forbids moving a
+parameter after reading its holdout error, and the session that scoped this
+work read the holdout repeatedly, so that prompt withholds the per-circuit
+figures on purpose.
