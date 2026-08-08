@@ -100,7 +100,7 @@ try {
     }
   })
   const commonCategoryTrackIds = ['suzuka-approx']
-  const categoryIds = ['f1-custom', 'super-formula', 'f2', 'f3']
+  const categoryIds = ['f1-custom', 'super-formula']
   const categoryPredictions = categoryIds.flatMap((categoryId) =>
     commonCategoryTrackIds.map((trackId) => {
       const track = trackById.get(trackId)

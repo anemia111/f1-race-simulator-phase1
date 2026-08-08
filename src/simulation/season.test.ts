@@ -169,10 +169,10 @@ describe('local season standings', () => {
     expect(halfSprint.driverPoints[cars[0].driverId]).toBe(8)
   })
 
-  it('uses the F2/F3 reduced points tables at each distance threshold', () => {
+  it('uses supplied reduced points tables at each distance threshold', () => {
     const snapshot = createInitialRace({
       drivers: initialDrivers,
-      seed: 'support-series-reduced-points',
+      seed: 'reduced-points-policy',
       teams: initialTeams,
       track: tracks[0],
     })

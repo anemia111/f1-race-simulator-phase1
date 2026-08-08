@@ -181,14 +181,14 @@ export type PitWallCapabilities = {
 }
 
 /**
- * F1-only systems must not be printed with fabricated values for F2, F3, or
- * SUPER FORMULA. The overtake system already differs per category in the
+ * F1-only systems must not be printed with fabricated values for SUPER
+ * FORMULA. The overtake system already differs per category in the
  * series registry, so the capability set is derived from it rather than from a
  * second hand-maintained list.
  */
 export function pitWallCapabilitiesFor(options: {
   seriesId: SeriesId
-  overtakeSystem: 'active-aero' | 'drs' | 'ots'
+  overtakeSystem: 'active-aero' | 'ots'
 }): PitWallCapabilities {
   const { overtakeSystem, seriesId } = options
 
@@ -199,15 +199,11 @@ export function pitWallCapabilitiesFor(options: {
     overtakeLabel:
       overtakeSystem === 'active-aero'
         ? 'ACTIVE AERO'
-        : overtakeSystem === 'drs'
-          ? 'DRS'
-          : 'OTS',
+        : 'OTS',
     overtakeStatusLabel:
       overtakeSystem === 'active-aero'
         ? 'Overtake'
-        : overtakeSystem === 'drs'
-          ? 'DRS'
-          : 'OTS',
+        : 'OTS',
   }
 }
 

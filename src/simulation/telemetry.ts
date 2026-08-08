@@ -157,7 +157,7 @@ export function calculateCarTelemetry(options: {
   isFinalLap?: boolean
   maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
-  overtakeSystem?: 'active-aero' | 'drs' | 'ots'
+  overtakeSystem?: 'active-aero' | 'ots'
   regulatoryMassIncreaseKg?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number

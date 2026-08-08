@@ -143,7 +143,7 @@ type BroadcastDashboardProps = {
   seriesLabel: string
   seriesOptions: Array<{ id: SeriesId; label: string }>
   tireLabels: Record<CarSnapshot['tire'], string>
-  overtakeSystem: 'active-aero' | 'drs' | 'ots'
+  overtakeSystem: 'active-aero' | 'ots'
   timingRows: BroadcastTimingRow[]
   track: TrackDefinition
   trackScene: ReactNode
@@ -628,9 +628,7 @@ export function BroadcastDashboard({
   const overtakeLabel =
     overtakeSystem === 'active-aero'
       ? 'ACTIVE AERO'
-      : overtakeSystem === 'drs'
-        ? 'DRS'
-        : 'OTS'
+      : 'OTS'
   const activeSectorFlagIndex = snapshot.sectorFlags.findIndex(
     (flag) => flag !== 'clear',
   )

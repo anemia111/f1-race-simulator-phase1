@@ -1039,7 +1039,7 @@ function driversForResults(config: RaceConfig, results: QualifyingResult[]) {
 
 /**
  * Runs the category's configured 2026 qualifying format. F1 uses three-stage
- * knockout qualifying, F2/F3 use one timed session, and Super Formula splits
+ * knockout qualifying while Super Formula splits
  * the opening session into independent groups before its final segment.
  */
 export function runSeriesQualifying(

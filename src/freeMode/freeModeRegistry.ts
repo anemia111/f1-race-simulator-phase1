@@ -403,12 +403,7 @@ function trackForConfiguration(
         ...cloneTrack(trackOption.physicalTrack),
         baseLapTime: simulationBaseLapTimeForPaceReference(
           categoryReference,
-          Number(
-            (
-              trackOption.physicalTrack.baseLapTime *
-              series.rules.baseLapTimeMultiplier
-            ).toFixed(3),
-          ),
+          trackOption.physicalTrack.baseLapTime,
         ),
         baseLapTimeSource:
           baseLapTimeSourceForPaceReference(categoryReference),
@@ -433,8 +428,7 @@ function trackForConfiguration(
   }
 
   if (
-    (series.rules.overtakeSystem === 'active-aero' ||
-      series.rules.overtakeSystem === 'drs') &&
+    series.rules.overtakeSystem === 'active-aero' &&
     !track.overtakeControlLines?.length
   ) {
     track.overtakeControlLines = derivedControlLines(track)
@@ -545,6 +539,7 @@ export function buildFreeModeRaceConfig(
     const syntheticTeamId = teams[index].id
     const seated = seatedDriverFrom(poolDriver, {
       carNumber: entrant.carNumber,
+      seriesId: series.id,
       startOffset:
         startingGridDistance(
           index,
@@ -590,6 +585,7 @@ export function buildFreeModeRaceConfig(
     qualifyingDryCompound: rules.tires.qualifyingDryCompound,
     seed: weatherResolved.seed,
     seriesId: series.id,
+    vehicleEraId: series.vehicleEraId,
     sessionDurationSeconds:
       configuration.sessionKind === 'practice'
         ? configuration.practiceDurationMinutes * 60

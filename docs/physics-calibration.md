@@ -202,7 +202,9 @@ exactly that axis; a model that cannot yet tell a long straight from a short
 one gets a larger error when its straights start behaving differently from
 each other. That axis is still unexplained, and is recorded as such below.
 
-The Suzuka model ranking is F1, SUPER FORMULA, F2, F3; the shared official
+The executable Suzuka comparison is F1 versus SUPER FORMULA; former F2/F3
+records are driver-pool history and are not physical validation categories. The
+shared official
 F1/SUPER FORMULA observation has the same order.
 
 The alternative was measured rather than argued. The deployment allowance on

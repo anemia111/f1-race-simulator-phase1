@@ -30,6 +30,10 @@ import type {
   SeriesPackage,
   SeriesRules,
 } from '../series/types'
+import {
+  isExecutableSeriesId,
+  type DriverSourceSeriesId,
+} from '../series/seriesIds'
 import { seatedDriverFrom, validateSeriesPackage } from '../series/seriesRegistry'
 import type {
   Driver,
@@ -87,11 +91,18 @@ type DirectoryRow = DriverPoolRecord & {
   rank: number
 }
 
-const seriesLabels: Record<SeriesId, string> = {
+// oxlint-disable-next-line react/only-export-components
+export const seriesLabels: Record<SeriesId, string> = {
   'f1-custom': 'F1',
-  f2: 'F2',
-  f3: 'F3',
   'super-formula': 'SF',
+}
+
+const historySeriesLabels: Record<DriverSourceSeriesId, string> = {
+  'f1-custom': 'F1 history',
+  f2: 'F2 history',
+  f3: 'F3 history',
+  'super-formula': 'SF history',
+  external: 'External history',
 }
 
 const driverRoleLabels: Record<Exclude<DriverRoleFilter, 'all'>, string> = {
@@ -199,6 +210,114 @@ function fieldMean(team: Team) {
     (machineKeys.reduce((total, key) => total + team.machine[key], 0) /
       machineKeys.length) *
       100,
+  )
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function activeRuntimeAssignments(
+  assignments: readonly DriverAssignmentRecord[],
+) {
+  return assignments.filter(
+    (assignment) =>
+      assignment.active && isExecutableSeriesId(assignment.seriesId),
+  )
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function driverDirectorySearchText(driver: DriverPoolRecord) {
+  return [
+    driver.name,
+    driver.code,
+    driver.id,
+    driver.nationality,
+    String(driver.overall),
+    ...driver.careerHistory.flatMap((entry) => [
+      entry.seriesId,
+      historySeriesLabels[entry.seriesId],
+      String(entry.season),
+      entry.sourceTeamId ?? '',
+      entry.sourceTeamName ?? '',
+      entry.sourceCarNumber === undefined
+        ? ''
+        : String(entry.sourceCarNumber),
+      entry.role,
+      ...entry.sourceIds,
+    ]),
+    ...driver.provenance.flatMap((source) => [
+      source.sourceSeriesId,
+      historySeriesLabels[source.sourceSeriesId],
+      source.sourceTeam?.sourceId ?? '',
+      source.sourceTeam?.name ?? '',
+      source.sourceCarNumber === undefined
+        ? ''
+        : String(source.sourceCarNumber),
+      source.sourceRole ?? '',
+      source.sourceFile,
+      source.sourceDate,
+      ...source.sourceIds,
+    ]),
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
+function careerHistoryLabel(
+  entry: DriverPoolRecord['careerHistory'][number],
+) {
+  return [
+    String(entry.season),
+    historySeriesLabels[entry.seriesId],
+    entry.sourceTeamName ?? entry.sourceTeamId,
+    entry.sourceCarNumber === undefined ? null : `#${entry.sourceCarNumber}`,
+    entry.role,
+  ]
+    .filter((value): value is string => value !== undefined && value !== null)
+    .join(' / ')
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function runtimeSeatAssignmentFor(
+  driver: Driver,
+  seriesId: SeriesId,
+) {
+  return {
+    carNumber: driver.carNumber,
+    seatRole: driver.seatRole ?? 'regular',
+    seriesId,
+    startOffset: driver.startOffset,
+    teamId: driver.teamId,
+  }
+}
+
+function moveDriverIntoRuntimeSeat(driver: Driver, seat: Driver): Driver {
+  return {
+    ...driver,
+    carNumber: seat.carNumber,
+    seatRole: seat.seatRole,
+    startOffset: seat.startOffset,
+    teamId: seat.teamId,
+  }
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function swapDriversBetweenRuntimeSeats(
+  drivers: readonly Driver[],
+  firstDriverId: string,
+  secondDriverId: string,
+): Driver[] {
+  const first = drivers.find((driver) => driver.id === firstDriverId)
+  const second = drivers.find((driver) => driver.id === secondDriverId)
+
+  if (!first || !second || first.id === second.id) {
+    return [...drivers]
+  }
+
+  return drivers.map((driver) =>
+    driver.id === first.id
+      ? moveDriverIntoRuntimeSeat(first, second)
+      : driver.id === second.id
+        ? moveDriverIntoRuntimeSeat(second, first)
+        : driver,
   )
 }
 
@@ -323,7 +442,9 @@ export function SeriesDataManager({
   const directory = useMemo<DirectoryRow[]>(() => {
     const rows = driverPool.map((poolDriver) => {
       const currentDriver = currentById.get(poolDriver.id) ?? null
-      const baselineAffiliations = assignmentsByDriver.get(poolDriver.id) ?? []
+      const baselineAffiliations = activeRuntimeAssignments(
+        assignmentsByDriver.get(poolDriver.id) ?? [],
+      )
       const currentAssignmentIndex = baselineAffiliations.findIndex(
         (assignment) => assignment.seriesId === series.id,
       )
@@ -333,7 +454,10 @@ export function SeriesDataManager({
           active: true,
           carNumber: currentDriver.carNumber,
           driverId: currentDriver.id,
-          role: currentDriver.seatRole ?? 'regular',
+          role:
+            currentDriver.seatRole === 'third_car'
+              ? 'test'
+              : (currentDriver.seatRole ?? 'regular'),
           season: 2026,
           seriesId: series.id,
           teamId: currentDriver.teamId,
@@ -397,11 +521,12 @@ export function SeriesDataManager({
         (roleFilter === 'free_agent'
           ? activeAssignments.length === 0
           : activeAssignments.some((assignment) => assignment.role === roleFilter))
+      const directorySearchText = driverDirectorySearchText(driver)
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        `${driver.name} ${driver.code} ${driver.id}`
-          .toLowerCase()
-          .includes(normalizedSearch)
+        normalizedSearch
+          .split(/\s+/u)
+          .every((term) => directorySearchText.includes(term))
 
       return (
         hasSeries &&
@@ -501,8 +626,8 @@ export function SeriesDataManager({
     )
   }
 
-  // Exchanges two seats already inside this category. Car numbers belong to the
-  // driver, so only the team assignment moves, which keeps every team balanced.
+  // Exchanges two drivers already inside this category. Team, car number,
+  // role, and grid offset belong to the runtime seat and move as one unit.
   const swapDriverSeats = (partnerId: string) => {
     const partner = drivers.find((driver) => driver.id === partnerId)
 
@@ -512,17 +637,7 @@ export function SeriesDataManager({
 
     applyConfiguration(
       teams,
-      drivers.map((driver) => {
-        if (driver.id === moving.id) {
-          return { ...driver, teamId: partner.teamId }
-        }
-
-        if (driver.id === partner.id) {
-          return { ...driver, teamId: moving.teamId }
-        }
-
-        return driver
-      }),
+      swapDriversBetweenRuntimeSeats(drivers, moving.id, partner.id),
       `${moving.code} and ${partner.code} swap seats`,
       true,
     )
@@ -539,12 +654,10 @@ export function SeriesDataManager({
 
     if (!poolRecord || !outgoing || poolRecord.id === outgoing.id) return
 
-    const incoming = seatedDriverFrom(poolRecord, {
-      carNumber: outgoing.carNumber,
-      seatRole: outgoing.seatRole ?? 'regular',
-      startOffset: outgoing.startOffset,
-      teamId: outgoing.teamId,
-    })
+    const incoming = seatedDriverFrom(
+      poolRecord,
+      runtimeSeatAssignmentFor(outgoing, series.id),
+    )
 
     applyConfiguration(
       teams,
@@ -800,6 +913,16 @@ export function SeriesDataManager({
                         {driver.affiliations.length > 0
                           ? driver.affiliations.map((assignment) => `${seriesLabels[assignment.seriesId]}:${assignment.role}`).join(' / ')
                           : 'FREE AGENT'}
+                        <small>
+                          HISTORY:{' '}
+                          {[
+                            ...new Set(
+                              driver.careerHistory.map(
+                                (entry) => historySeriesLabels[entry.seriesId],
+                              ),
+                            ),
+                          ].join(' / ')}
+                        </small>
                       </span>
                     </button>
                   </li>
@@ -854,6 +977,21 @@ export function SeriesDataManager({
                         ))
                       : <span>FREE AGENT</span>}
                   </div>
+                  <div
+                    aria-label="Career history"
+                    className="assignment-strip career-history-strip"
+                  >
+                    <strong>HISTORY</strong>
+                    {selectedDirectoryDriver.careerHistory.map(
+                      (entry, index) => (
+                        <span
+                          key={`${entry.season}:${entry.seriesId}:${entry.sourceTeamId ?? 'independent'}:${index}`}
+                        >
+                          {careerHistoryLabel(entry)}
+                        </span>
+                      ),
+                    )}
+                  </div>
                   {selectedDriver ? (
                     <>
                       <div className="driver-metadata-grid">
@@ -884,7 +1022,7 @@ export function SeriesDataManager({
                           Swap
                         </button>
                         <small>
-                          {selectedDriver.code} and the chosen driver trade teams inside {series.shortLabel}. Both keep their own car number, and every team keeps its seat count.
+                          {selectedDriver.code} and the chosen driver trade complete runtime seats inside {series.shortLabel}. Team, car number, role, and grid offset remain with each seat; driver identity and ratings move.
                         </small>
                       </div>
                       <div className="ability-editor-grid">

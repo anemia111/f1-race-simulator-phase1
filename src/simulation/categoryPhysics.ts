@@ -1,4 +1,4 @@
-import type { SeriesId } from '../series/types'
+import type { ExecutableSeriesId } from '../series/seriesIds'
 
 export type CategoryPhysicsProfile = {
   combustionPowerKw: number
@@ -7,7 +7,7 @@ export type CategoryPhysicsProfile = {
   drivetrainEfficiency: number
   gearCount: number
   hybridDeploymentPowerLimitKw: number
-  id: SeriesId
+  id: ExecutableSeriesId
   maximumBrakeDecelerationMps2: number
   /**
    * Downforce coefficient times reference area, in m^2. Vertical aerodynamic
@@ -60,10 +60,8 @@ export type CategoryPhysicsProfile = {
  *
  * Published figures are kept as physical inputs rather than converted into
  * speed caps. F1 uses the FIA 2026 400 kW ICE / 350 kW MGU-K split and 768 kg
- * minimum mass. F2 uses the official 620 hp, 795 kg and 3.5 g figures. F3 uses
- * the official 380 hp, 300 km/h, 2.6 g lateral and 1.9 g braking figures. SF
- * uses JRP's 405 kW and 670 kg specification; its OTS is combustion boost, not
- * an F1-style Energy Store.
+ * minimum mass. SF uses JRP's 405 kW and 670 kg specification; its OTS is
+ * combustion boost, not an F1-style Energy Store.
  *
  * The aerodynamic and tyre figures below are derived, not published. Teams do
  * not release lift areas, friction coefficients or centre-of-gravity heights.
@@ -71,7 +69,7 @@ export type CategoryPhysicsProfile = {
  * loads each category is known to reach, and `tyreForces.test.ts` is what holds
  * them to that. Never present them as official values.
  */
-const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
+const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
     combustionPowerKw: 400,
     dragAreaScale: 1,
@@ -107,58 +105,6 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
     straightAeroDragMultiplier: 0.639,
     topGearDesignSpeedKph: 402,
   },
-  f2: {
-    combustionPowerKw: 456.3,
-    dragAreaScale: 1.08,
-    drivetrainEfficiency: 0.93,
-    gearCount: 6,
-    hybridDeploymentPowerLimitKw: 0,
-    id: 'f2',
-    maximumBrakeDecelerationMps2: 34.34,
-    liftAreaM2: 3.05,
-    peakTyreFrictionCoefficient: 1.62,
-    wheelRadiusM: 0.34,
-    gearSpread: 4.2,
-    peakTorqueRevFraction: 0.66,
-    tyreLoadSensitivity: 0.13,
-    wheelbaseM: 3.135,
-    trackWidthM: 1.9,
-    centreOfGravityHeightM: 0.31,
-    maximumEngineRpm: 8_750,
-    minimumEngineRpm: 3_600,
-    minimumMassKg: 795,
-    overtakeBoostPowerKw: 0,
-    partialAeroDragMultiplier: 0.91,
-    rollingResistanceCoefficient: 0.013,
-    straightAeroDragMultiplier: 0.8,
-    topGearDesignSpeedKph: 326,
-  },
-  f3: {
-    combustionPowerKw: 279.4,
-    dragAreaScale: 0.76,
-    drivetrainEfficiency: 0.92,
-    gearCount: 6,
-    hybridDeploymentPowerLimitKw: 0,
-    id: 'f3',
-    maximumBrakeDecelerationMps2: 18.64,
-    liftAreaM2: 2.25,
-    peakTyreFrictionCoefficient: 1.52,
-    wheelRadiusM: 0.33,
-    gearSpread: 4.3,
-    peakTorqueRevFraction: 0.64,
-    tyreLoadSensitivity: 0.14,
-    wheelbaseM: 3.09,
-    trackWidthM: 1.83,
-    centreOfGravityHeightM: 0.31,
-    maximumEngineRpm: 8_000,
-    minimumEngineRpm: 3_400,
-    minimumMassKg: 699,
-    overtakeBoostPowerKw: 0,
-    partialAeroDragMultiplier: 0.92,
-    rollingResistanceCoefficient: 0.0135,
-    straightAeroDragMultiplier: 0.83,
-    topGearDesignSpeedKph: 288,
-  },
   'super-formula': {
     combustionPowerKw: 405,
     dragAreaScale: 0.95,
@@ -188,7 +134,7 @@ const CATEGORY_PHYSICS: Record<SeriesId, CategoryPhysicsProfile> = {
 }
 
 export function categoryPhysicsFor(
-  seriesId: SeriesId | undefined,
+  seriesId: ExecutableSeriesId | undefined,
 ): CategoryPhysicsProfile {
   return CATEGORY_PHYSICS[seriesId ?? 'f1-custom']
 }

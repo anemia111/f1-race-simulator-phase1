@@ -9,8 +9,6 @@ import {
 } from './trackDynamics'
 
 const f1 = categoryPhysicsFor('f1-custom')
-const f2 = categoryPhysicsFor('f2')
-const f3 = categoryPhysicsFor('f3')
 const superFormula = categoryPhysicsFor('super-formula')
 const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
 
@@ -25,12 +23,12 @@ const sampledProfile = (
 describe('physical track-dynamics profile', () => {
   it('keeps category profiles separate when they share one track cache', () => {
     const firstF1 = sampledProfile(suzuka, f1)
-    const f3Profile = sampledProfile(suzuka, f3)
+    const superFormulaProfile = sampledProfile(suzuka, superFormula)
     const secondF1 = sampledProfile(suzuka, f1)
 
     expect(secondF1).toEqual(firstF1)
     expect(
-      f3Profile.some(
+      superFormulaProfile.some(
         (point, index) =>
           point.referenceSpeedKph !== firstF1[index].referenceSpeedKph,
       ),
@@ -42,8 +40,6 @@ describe('physical track-dynamics profile', () => {
       referenceProfileLapTimeSeconds(suzuka, physics)
 
     expect(lapFor(f1)).toBeLessThan(lapFor(superFormula))
-    expect(lapFor(superFormula)).toBeLessThan(lapFor(f2))
-    expect(lapFor(f2)).toBeLessThan(lapFor(f3))
   })
 
   it('does not read baseLapTime when building speeds or lap time', () => {

@@ -7,8 +7,13 @@ import type {
   TrackDefinition,
   WeekendStage,
 } from '../types'
+import type { DriverAssignment, DriverPoolRecord } from './driverPool'
+import type {
+  ExecutableSeriesId,
+  RuntimeVehicleEraId,
+} from './seriesIds'
 
-export type SeriesId = 'f1-custom' | 'f2' | 'f3' | 'super-formula'
+export type SeriesId = ExecutableSeriesId
 
 export type SeriesSource = {
   label: string
@@ -23,13 +28,12 @@ export type SeriesQualifyingSegmentRule = {
 }
 
 export type SeriesRules = {
-  baseLapTimeMultiplier: number
   championshipTeamScoring: 'all-cars' | 'best-two'
   featureRaceMandatoryPitStop: boolean
   featureRaceTwoDryCompounds: boolean
   freePracticeDurationSeconds: number
   overtakeActivation: 'first-detection' | 'after-one-lap' | 'immediate'
-  overtakeSystem: 'active-aero' | 'drs' | 'ots'
+  overtakeSystem: 'active-aero' | 'ots'
   points: {
     fastestLap: {
       maximumClassifiedPosition: number
@@ -95,23 +99,8 @@ export type SeriesPackage = {
   teamCount: number
   teams: Team[]
   tracks: TrackDefinition[]
+  vehicleEraId: RuntimeVehicleEraId
 }
 
-export type DriverPoolRecord = {
-  code: string
-  id: string
-  name: string
-  nationality: string
-  overall: number
-  potential: number
-}
-
-export type DriverAssignmentRecord = {
-  active: boolean
-  carNumber: number | null
-  driverId: string
-  role: 'regular' | 'third_car' | 'reserve' | 'development'
-  season: 2026
-  seriesId: SeriesId
-  teamId: string
-}
+export type { DriverPoolRecord }
+export type DriverAssignmentRecord = DriverAssignment

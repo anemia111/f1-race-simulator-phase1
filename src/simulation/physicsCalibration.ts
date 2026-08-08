@@ -246,8 +246,6 @@ const prohibitedCalibrationKeys = new Set([
 ])
 const allowedCategoryIds = new Set<SeriesId>([
   'f1-custom',
-  'f2',
-  'f3',
   'super-formula',
 ])
 

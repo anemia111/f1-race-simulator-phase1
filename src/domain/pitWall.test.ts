@@ -226,19 +226,6 @@ describe('pitWallCapabilitiesFor', () => {
     )
   })
 
-  it('never claims a hybrid Energy Store or active aero for F2 and F3', () => {
-    for (const seriesId of ['f2', 'f3'] as const) {
-      const capabilities = pitWallCapabilitiesFor({
-        overtakeSystem: 'drs',
-        seriesId,
-      })
-
-      expect(capabilities.hybridErs).toBe(false)
-      expect(capabilities.activeAero).toBe(false)
-      expect(capabilities.overtakeLabel).toBe('DRS')
-    }
-  })
-
   it('reports SUPER FORMULA push-to-pass without F1 systems', () => {
     const capabilities = pitWallCapabilitiesFor({
       overtakeSystem: 'ots',

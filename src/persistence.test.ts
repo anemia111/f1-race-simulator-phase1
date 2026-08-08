@@ -78,6 +78,24 @@ describe('V2 persistence migration', () => {
     ).toBe(track.tireNomination?.H)
   })
 
+  it('rejects an explicit removed series instead of silently loading F1', () => {
+    const track = tracks[0]
+    const restored = parsePersistedWeekend(
+      JSON.stringify({
+        gridSource: 'brief',
+        seed: 'removed-series-save',
+        seriesId: 'f2',
+        stage: 'race',
+        trackId: track.id,
+        weekendContext: {},
+      }),
+      tracks,
+      initialDrivers,
+    )
+
+    expect(restored).toBeNull()
+  })
+
   it('retains a safe calendar event identity for repeated-track rounds', () => {
     const track = tracks.find((candidate) => candidate.id === 'suzuka-approx')!
     const restored = parsePersistedWeekend(

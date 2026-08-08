@@ -28,10 +28,9 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   Cadillac, and a 22-car field, two per team. Its 0-100 values are retained
   verbatim, including Yuki Nakayama (`NAK`) at Ferrari car number 31. Drivers
   without a seat stay in the file as `reserve` rows, so they keep their
-  authored ability axes and remain available in the pool. F2/F3/SF fields live
-  in the versioned series registry.
-- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. Madrid F3 adds a
-  second qualifying and second Feature Race with independent grids. The 22-car
+  authored ability axes and remain available in the pool. SUPER FORMULA is the
+  second executable series; F2/F3 identities live only in the historical pool.
+- FP, Q1/Q2/Q3, SQ1/SQ2/SQ3, Sprint, and Race session flows. The 22-car
   F1 qualifying field runs 18/15/13-minute periods and cuts to 16, then 10.
   Each dry qualifying attempt uses a Soft-tyre out lap, full-attack lap, and
   in lap before returning to the garage, with attack-specific ERS deployment.
@@ -111,16 +110,14 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
 - Integrated acceleration now produces representative dry maxima above the old
   260 km/h plateau, while 420-class speed remains limited to favorable long
   straights with low drag, low fuel, tow, and ERS deployment.
-- Each category tops out near its real machine. Extra straight-line drag, which
-  rises with speed and so bites only at the top end, brings race top speeds to
-  roughly F1 360, F2 335, SUPER FORMULA 315, and F3 300 km/h without changing
-  the cornering pace the lap-time multipliers already set.
+- F1 and SUPER FORMULA use separate physical vehicle packages. Their lap pace
+  is a model result; the runtime contains no series-level lap-time multiplier.
 - Driver abilities use one 0-100 source scale across all categories without
   runtime category subtraction. Machine and driver performance stay separate.
-  The stored support-series ratings are already rebased against the F1 field, so
-  the ladder reads F1 78-100, SUPER FORMULA 66-79, F2 65-75, and F3 54-66. A
-  driver carries their own rating into whichever category they race in.
-- Any of the 110 pool drivers can be signed into any category from the data
+  F2/F3 ratings retained from the former registry are explicitly marked
+  synthetic, with source season/team/number history. A driver carries the same
+  ratings into either executable category without an origin-series modifier.
+- Any of the 110 pool drivers can be signed into either category from the data
   manager. Each field is fixed at its `carCount`, so signing replaces an
   existing seat and the incoming driver inherits that car number and team.
   Drivers who already hold a rated seat keep their authored ability axes rather
@@ -185,12 +182,13 @@ Free Mode is an independent application mode, not a fifth racing category.
 Open it with `FREE` in the top bar, build a session, and return to the saved
 championship with `CHAMP`.
 
-- Categories: F1, F2, F3, and SUPER FORMULA. Category rules continue to own
+- Categories: F1 and SUPER FORMULA. Category rules continue to own
   vehicle performance, tires, qualifying format, and overtake/active-aero
   behavior.
 - Tracks: the deduplicated union of the F1 and SUPER FORMULA physical circuit
   registries. A non-native category/track combination keeps the chosen
-  category's car systems while using a category-scaled estimated pace and
+  category's car systems while using a category-specific reference when one is
+  available, otherwise an unscaled SIM fallback, and
   explicitly `SIM`-labelled fallback control zones where native markers do not
   exist.
 - Field: 1-40 cars selected from all 110 registered people. A vehicle/team may

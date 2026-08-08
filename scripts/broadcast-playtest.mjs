@@ -819,11 +819,7 @@ async function inspectSeriesModes(browser) {
   )
   const results = {}
 
-  for (const [seriesId, expectedCars] of [
-    ['f2', 22],
-    ['f3', 30],
-    ['super-formula', 24],
-  ]) {
+  for (const [seriesId, expectedCars] of [['super-formula', 24]]) {
     await seriesSelector.selectOption(seriesId)
     await page.waitForFunction(
       (count) => document.querySelectorAll('.leaderboard-rows li').length === count,
@@ -846,29 +842,6 @@ async function inspectSeriesModes(browser) {
       await page.getByLabel('Close pit wall').click()
     } else {
       results[seriesId].pitWallOverview = null
-    }
-
-    if (seriesId === 'f3') {
-      await page.locator('.broadcast-sidebar .sidebar-settings').click()
-      await page.waitForSelector('.setup-panel')
-      const eventSelector = page.getByLabel('Championship round')
-      await eventSelector.selectOption('f3-09')
-      await page.waitForFunction(
-        () =>
-          Array.from(
-            document.querySelectorAll('select[aria-label="Weekend session"] option'),
-          ).some((option) => option.value === 'race2'),
-      )
-      results.f3.madridSessions = await page
-        .getByLabel('Weekend session')
-        .locator('option')
-        .evaluateAll((options) => options.map((option) => option.value))
-      results.f3.madridScreenshot = join(
-        artifactDirectory,
-        'broadcast-f3-madrid.png',
-      )
-      await page.screenshot({ path: results.f3.madridScreenshot, fullPage: true })
-      await page.getByLabel('close setup').click()
     }
   }
 
@@ -1309,9 +1282,9 @@ try {
     if (failures.length > 0) throw new Error(`${result.name} failed:\n- ${failures.join('\n- ')}`)
   }
 
-  const expectedCars = { f2: 22, f3: 30, 'super-formula': 24 }
+  const expectedCars = { 'super-formula': 24 }
   const seriesFailures = []
-  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,f2,f3,super-formula') {
+  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,super-formula') {
     seriesFailures.push(`series selector is incomplete: ${seriesModes.seriesOptions.join(', ')}`)
   }
   for (const [seriesId, carCount] of Object.entries(expectedCars)) {
@@ -1319,7 +1292,7 @@ try {
     if (result.cars !== carCount) seriesFailures.push(`${seriesId} rendered ${result.cars}/${carCount} cars`)
     if (!/Leaderboard/iu.test(result.timingTitle)) seriesFailures.push(`${seriesId} leaderboard title is stale: ${result.timingTitle}`)
 
-    // No category outside F1 has a hybrid Energy Store or 2026 active aero, so
+    // SUPER FORMULA has neither a hybrid Energy Store nor 2026 active aero, so
     // the pit wall must say so instead of printing an invented number.
     if (result.pitWallOverview === null) {
       seriesFailures.push(`${seriesId} pit wall could not be opened`)
@@ -1334,10 +1307,6 @@ try {
         }
       }
     }
-  }
-  const madridSessions = seriesModes.results.f3.madridSessions ?? []
-  if (madridSessions.join(',') !== 'fp1,qualifying,qualifying2,sprint,race,race2') {
-    seriesFailures.push(`Madrid session order is wrong: ${madridSessions.join(', ')}`)
   }
   const replacement = seriesModes.results['super-formula']
   if (replacement.replacementSessions?.join(',') !== 'race') {

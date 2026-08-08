@@ -48,7 +48,7 @@ type PitWallPanelProps = PitWallCommandProps & {
    */
   onSelectDriver: (driverId: string) => void
   openF1Mode: 'LIVE' | 'HIST' | 'SIM'
-  overtakeSystem: 'active-aero' | 'drs' | 'ots'
+  overtakeSystem: 'active-aero' | 'ots'
   raceControlLog: BroadcastRaceControlEntry[]
   seriesId: SeriesId
   snapshot: RaceSnapshot

@@ -44,6 +44,8 @@ import type {
   FreeModePreset,
   FreeModeQualifyingResult,
 } from '../freeMode/types'
+import type { DriverPoolRecord } from '../series/driverPool'
+import type { SeriesId } from '../series/types'
 import { createSeededRandom, normalizeSimulationSeed } from '../simulation/random'
 
 type FreeModeBuilderProps = {
@@ -55,11 +57,18 @@ type FreeModeBuilderProps = {
   qualifyingResult: FreeModeQualifyingResult | null
 }
 
-const categoryLabels = {
+// oxlint-disable-next-line react/only-export-components
+export const freeModeCategoryLabels: Record<SeriesId, string> = {
   'f1-custom': 'F1',
-  f2: 'F2',
-  f3: 'F3',
   'super-formula': 'SUPER FORMULA',
+}
+
+const historySeriesLabels = {
+  'f1-custom': 'F1 history',
+  f2: 'F2 history',
+  f3: 'F3 history',
+  'super-formula': 'SF history',
+  external: 'External history',
 } as const
 
 const sessionLabels = {
@@ -115,21 +124,75 @@ const nextCarNumber = (
   return 0
 }
 
-const matchesDriverSearch = (
+// oxlint-disable-next-line react/only-export-components
+export function driverHistorySearchTerms(driver: DriverPoolRecord) {
+  return [
+    ...driver.careerHistory.flatMap((entry) => [
+      entry.seriesId,
+      historySeriesLabels[entry.seriesId],
+      String(entry.season),
+      entry.sourceTeamId ?? '',
+      entry.sourceTeamName ?? '',
+      entry.sourceCarNumber === undefined
+        ? ''
+        : String(entry.sourceCarNumber),
+      entry.role,
+      ...entry.sourceIds,
+    ]),
+    ...driver.provenance.flatMap((source) => [
+      source.sourceSeriesId,
+      historySeriesLabels[source.sourceSeriesId],
+      source.sourceTeam?.sourceId ?? '',
+      source.sourceTeam?.name ?? '',
+      source.sourceCarNumber === undefined
+        ? ''
+        : String(source.sourceCarNumber),
+      source.sourceRole ?? '',
+      source.sourceFile,
+      source.sourceDate,
+      ...source.sourceIds,
+    ]),
+  ]
+}
+
+function driverHistorySeriesSummary(driver: DriverPoolRecord) {
+  return [
+    ...new Set(
+      driver.careerHistory.map((entry) =>
+        historySeriesLabels[entry.seriesId].replace(' history', ''),
+      ),
+    ),
+  ].join('/')
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function assignDriverToFreeModeSeat(
+  entrant: FreeModeEntrant,
+  driverId: string,
+): FreeModeEntrant {
+  return { ...entrant, driverId }
+}
+
+// oxlint-disable-next-line react/only-export-components
+export const matchesDriverSearch = (
   search: string,
-  driver: FreeModeBuildContext['driverPool'][number],
-  assignmentTerms: string[],
+  driver: DriverPoolRecord,
+  searchTerms: string[],
 ) => {
   const query = search.trim().toLocaleLowerCase()
   if (!query) return true
 
-  return [
+  const searchable = [
     driver.name,
     driver.code,
     driver.nationality,
     String(driver.overall),
-    ...assignmentTerms,
-  ].some((value) => value.toLocaleLowerCase().includes(query))
+    ...searchTerms,
+  ]
+    .join(' ')
+    .toLocaleLowerCase()
+
+  return query.split(/\s+/u).every((term) => searchable.includes(term))
 }
 
 function fieldMeanOverall(
@@ -205,7 +268,12 @@ export function FreeModeBuilder({
     [series, vehicleSearch],
   )
   const driverSearchTermsById = useMemo(() => {
-    const terms = new Map<string, string[]>()
+    const terms = new Map(
+      context.driverPool.map((driver) => [
+        driver.id,
+        driverHistorySearchTerms(driver),
+      ]),
+    )
 
     for (const packageValue of context.seriesById.values()) {
       const packageTeams = new Map(
@@ -221,7 +289,7 @@ export function FreeModeBuilder({
     }
 
     return terms
-  }, [context.seriesById])
+  }, [context.driverPool, context.seriesById])
   const filteredDrivers = useMemo(
     () =>
       context.driverPool.filter((driver) =>
@@ -241,22 +309,6 @@ export function FreeModeBuilder({
     () => new Map((series?.teams ?? []).map((team) => [team.id, team])),
     [series?.teams],
   )
-  const registeredCarNumberByDriverId = useMemo(() => {
-    const numbers = new Map<string, number>()
-
-    for (const packageValue of context.seriesById.values()) {
-      for (const driver of packageValue.drivers) {
-        if (!numbers.has(driver.id)) {
-          numbers.set(driver.id, driver.carNumber)
-        }
-      }
-    }
-    for (const [driverId, driver] of context.driverOverridesById ?? []) {
-      numbers.set(driverId, driver.carNumber)
-    }
-
-    return numbers
-  }, [context.driverOverridesById, context.seriesById])
   const issues = useMemo(
     () => validateFreeModeConfiguration(configuration, validationContext),
     [configuration, validationContext],
@@ -382,10 +434,7 @@ export function FreeModeBuilder({
         const driver = unusedDriver({ ...current, entrants })
         if (!driver) break
         entrants.push({
-          carNumber: nextCarNumber(
-            entrants,
-            registeredCarNumberByDriverId.get(driver.id) ?? 0,
-          ),
+          carNumber: nextCarNumber(entrants),
           driverId: driver.id,
           id: nextEntryId(entrants),
           sourceTeamId:
@@ -473,14 +522,9 @@ export function FreeModeBuilder({
 
     setConfiguration((current) => ({
       ...current,
-      entrants: current.entrants.map((entrant, index) => ({
-        ...entrant,
-        carNumber: nextCarNumber(
-          current.entrants.slice(0, index),
-          registeredCarNumberByDriverId.get(available[index].id) ?? 0,
-        ),
-        driverId: available[index].id,
-      })),
+      entrants: current.entrants.map((entrant, index) =>
+        assignDriverToFreeModeSeat(entrant, available[index].id),
+      ),
     }))
   }
 
@@ -521,7 +565,7 @@ export function FreeModeBuilder({
           ...entrant,
           carNumber: nextCarNumber(
             current.entrants,
-            registeredCarNumberByDriverId.get(driver.id) ?? 0,
+            entrant.carNumber + 1,
           ),
           driverId: driver.id,
           id: nextEntryId(current.entrants),
@@ -679,7 +723,7 @@ export function FreeModeBuilder({
               }
               value={configuration.categoryId}
             >
-              {Object.entries(categoryLabels).map(([id, label]) => (
+              {Object.entries(freeModeCategoryLabels).map(([id, label]) => (
                 <option key={id} value={id}>
                   {label}
                 </option>
@@ -931,7 +975,7 @@ export function FreeModeBuilder({
             <span>Find driver</span>
             <input
               onChange={(event) => setDriverSearch(event.target.value)}
-              placeholder="Name, code, nationality, rating"
+              placeholder="Name, code, nationality, rating, history"
               value={driverSearch}
             />
           </label>
@@ -992,20 +1036,13 @@ export function FreeModeBuilder({
                     <select
                       aria-invalid={rowIssues.length > 0}
                       onChange={(event) => {
-                        const nextDriver = driverById.get(event.target.value)
-                        updateEntrant(entrant.id, {
-                          carNumber: nextDriver
-                            ? nextCarNumber(
-                                configuration.entrants.filter(
-                                  (candidate) => candidate.id !== entrant.id,
-                                ),
-                                registeredCarNumberByDriverId.get(
-                                  nextDriver.id,
-                                ) ?? 0,
-                              )
-                            : entrant.carNumber,
-                          driverId: event.target.value,
-                        })
+                        updateEntrant(
+                          entrant.id,
+                          assignDriverToFreeModeSeat(
+                            entrant,
+                            event.target.value,
+                          ),
+                        )
                       }}
                       value={entrant.driverId}
                     >
@@ -1018,7 +1055,8 @@ export function FreeModeBuilder({
                           key={option.id}
                           value={option.id}
                         >
-                          {option.code} · {option.name} · {option.nationality}
+                          {option.code} · {option.name} · {option.nationality}{' '}
+                          · history {driverHistorySeriesSummary(option)}
                         </option>
                       ))}
                     </select>
@@ -1176,7 +1214,7 @@ export function FreeModeBuilder({
               </p>
             ) : (
               <p>
-                Ready: {categoryLabels[configuration.categoryId]} ·{' '}
+                Ready: {freeModeCategoryLabels[configuration.categoryId]} ·{' '}
                 {configuration.entrants.length} cars · SIM only
               </p>
             )}

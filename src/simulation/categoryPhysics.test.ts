@@ -48,11 +48,7 @@ function traceQualifyingLap(options: {
   const snapshot = createInitialRace({
     drivers: [driver],
     overtakeSystem:
-      seriesId === 'super-formula'
-        ? 'ots'
-        : seriesId === 'f1-custom'
-          ? 'active-aero'
-          : 'drs',
+      seriesId === 'super-formula' ? 'ots' : 'active-aero',
     seed: `category-lap:${seriesId}:${track.id}`,
     seriesId,
     teams: [team],
@@ -138,8 +134,6 @@ function traceQualifyingLap(options: {
 describe('category-specific physical models', () => {
   it('uses distinct published vehicle fundamentals', () => {
     const f1 = categoryPhysicsFor('f1-custom')
-    const f2 = categoryPhysicsFor('f2')
-    const f3 = categoryPhysicsFor('f3')
     const superFormula = categoryPhysicsFor('super-formula')
 
     expect(f1.minimumMassKg).toBe(768)
@@ -149,16 +143,6 @@ describe('category-specific physical models', () => {
     expect(f1.drivetrainEfficiency).toBeGreaterThan(0.9)
     expect(f1.drivetrainEfficiency).toBeLessThan(1)
     expect(categoryHasHybridEnergyStore(f1)).toBe(true)
-
-    expect(f2.minimumMassKg).toBe(795)
-    expect(f2.combustionPowerKw).toBeCloseTo(456.3, 1)
-    expect(f2.gearCount).toBe(6)
-    expect(categoryHasHybridEnergyStore(f2)).toBe(false)
-
-    expect(f3.minimumMassKg).toBe(699)
-    expect(f3.combustionPowerKw).toBeCloseTo(279.4, 1)
-    expect(f3.gearCount).toBe(6)
-    expect(categoryHasHybridEnergyStore(f3)).toBe(false)
 
     expect(superFormula.minimumMassKg).toBe(670)
     expect(superFormula.combustionPowerKw).toBe(405)
@@ -197,7 +181,10 @@ describe('category-specific physical models', () => {
         (left.performanceSource?.overall ?? 0) -
         (right.performanceSource?.overall ?? 0),
     )[0]
-    const traceFor = (seriesId: 'f1-custom' | 'f2', team: Team) =>
+    const traceFor = (
+      seriesId: 'f1-custom' | 'super-formula',
+      team: Team,
+    ) =>
       traceQualifyingLap({
         driver: {
           ...referenceDriver,
@@ -216,7 +203,10 @@ describe('category-specific physical models', () => {
         overall: 100,
       },
     })
-    const sameMachineWithF2Hardware = traceFor('f2', slowestF1Team)
+    const sameMachineWithSfHardware = traceFor(
+      'super-formula',
+      slowestF1Team,
+    )
 
     expect(relabelledF1.lapTimeSeconds).toBeCloseTo(
       slowestF1.lapTimeSeconds,
@@ -228,7 +218,7 @@ describe('category-specific physical models', () => {
     )
     expect(
       Math.abs(
-        sameMachineWithF2Hardware.lapTimeSeconds -
+        sameMachineWithSfHardware.lapTimeSeconds -
           slowestF1.lapTimeSeconds,
       ),
     ).toBeGreaterThan(0.5)
@@ -237,20 +227,12 @@ describe('category-specific physical models', () => {
   it('does not let baseLapTime force representative category laps', () => {
     const representativeTracks = {
       f1: tracks.find((track) => track.id === 'suzuka-approx')!,
-      f2: seriesPackageById
-        .get('f2')!
-        .tracks.find((track) => track.id === 'monza-approx')!,
-      f3: seriesPackageById
-        .get('f3')!
-        .tracks.find((track) => track.id === 'monza-approx')!,
       superFormula: seriesPackageById
         .get('super-formula')!
         .tracks.find((track) => track.id === 'fuji-sf')!,
     }
     const cases = [
       ['f1-custom', representativeTracks.f1],
-      ['f2', representativeTracks.f2],
-      ['f3', representativeTracks.f3],
       ['super-formula', representativeTracks.superFormula],
     ] as const
 
@@ -282,12 +264,7 @@ describe('category-specific physical models', () => {
   })
 
   it('finishes every native circuit with finite category-bounded motion', () => {
-    for (const seriesId of [
-      'f1-custom',
-      'f2',
-      'f3',
-      'super-formula',
-    ] as const) {
+    for (const seriesId of ['f1-custom', 'super-formula'] as const) {
       const series = seriesPackageById.get(seriesId)!
       const entrant = fastestEntrantFor(seriesId)
 
@@ -309,42 +286,11 @@ describe('category-specific physical models', () => {
     }
   }, 30_000)
 
-  it('keeps F2 ahead of F3 on their shared circuits', () => {
-    for (const trackId of ['albert-park-approx', 'barcelona-approx']) {
-      const f2Track = seriesPackageById
-        .get('f2')!
-        .tracks.find((candidate) => candidate.id === trackId)!
-      const f3Track = seriesPackageById
-        .get('f3')!
-        .tracks.find((candidate) => candidate.id === trackId)!
-      const f2 = traceQualifyingLap({
-        ...fastestEntrantFor('f2'),
-        seriesId: 'f2',
-        track: f2Track,
-      })
-      const f3 = traceQualifyingLap({
-        ...fastestEntrantFor('f3'),
-        seriesId: 'f3',
-        track: f3Track,
-      })
-
-      expect(f2.lapTimeSeconds).toBeLessThan(f3.lapTimeSeconds)
-    }
-  })
-
   it('reaches each category top-gear design region without overspeed', () => {
     const cases = [
       {
         seriesId: 'f1-custom',
         trackId: 'las-vegas-approx',
-      },
-      {
-        seriesId: 'f2',
-        trackId: 'monza-approx',
-      },
-      {
-        seriesId: 'f3',
-        trackId: 'monza-approx',
       },
       {
         seriesId: 'super-formula',

@@ -1,171 +1,82 @@
-# 2026 Multi-Series Data Contract
+# 2026 Series and Driver-Pool Architecture
 
-## Categories
+The simulator has two executable 2026 series. Formula 2 and Formula 3 are
+historical driver sources, not runnable categories.
 
-| Category | Teams | Cars | Qualifying | Race format | Overtake |
-| --- | ---: | ---: | --- | --- | --- |
-| F1 Custom | 10 | 20 | Q1 18m: 20 to 15; Q2 15m: 15 to 10; Q3 13m | Grand Prix; sprint weekends where configured | 2026 active aero and Overtake |
-| FIA Formula 2 | 11 | 22 | One 30-minute session; Monaco uses odd/even 16-minute groups | Reverse top 10 sprint; feature race with mandatory stop and both dry specs | DRS |
-| FIA Formula 3 | 10 | 30 | One 30-minute session; Monaco/Monza use odd/even groups; Madrid has two sessions | Reverse top 12 sprint; no routine mandatory stop; Madrid has two feature races | DRS |
-| SUPER FORMULA | 16 | 24 | Q1 groups A/B (10m each), top six from each to Q2 | JAF points; best two team cars score | 200-second OTS, available from the opening lap |
+| Executable series | Teams | Cars | Tyres | Overtake system |
+| --- | ---: | ---: | --- | --- |
+| Formula 1 | 11 | 22 | Pirelli | 2026 active aero plus electrical Overtake |
+| SUPER FORMULA | 16 | 24 | Yokohama control dry/wet | OTS |
 
-The source layer stores 110 unique people separately from season/series/team
-assignments. A person can hold a regular seat in one category and a reserve
-assignment in another without being duplicated.
+`SeriesId` is therefore limited to `f1-custom | super-formula`. Runtime
+calendar, qualifying, tyre, vehicle-physics, scoring, Free Mode, and weekend
+persistence paths accept only those IDs. A persisted explicit F2/F3 series ID
+is rejected; only old saves with no series ID receive the legacy F1 default.
 
-## Rating Rules
+## Driver Pool
 
-- Every stored driver axis, overall, and potential value is 0-100.
-- F2 and SUPER FORMULA values supplied as already adjusted stay as stored.
-- F3 values supplied as already adjusted stay as stored.
-- No category penalty or subtraction is applied at runtime.
-- The UI edits the compact 12-axis profile; the simulation expands it into its
-  detailed internal skill map.
-- Team machine performance and driver ability remain independent inputs.
+The canonical 2026 pool contains 110 identities and 111 provenance records.
+It includes all 22 former F2 and all 30 former F3 drivers from the pre-migration
+registry. Those 52 records are stored in
+`src/data/historicalDriverPool2026.json` with:
 
-## Tire Mapping
+- the exact migrated identity, overall, potential, and twelve compact ratings;
+- an explicit `synthetic` rating source and deterministic method version;
+- source season, series, team snapshot, role, and car number;
+- career history whose source team is never a live `Team` foreign key.
 
-- F1 uses Hard/Medium/Soft plus Intermediate/Wet and its standard/sprint set
-  allocations.
-- F2 maps the two nominated dry specifications to Prime (`H`) and Option (`S`),
-  with three Prime and two Option sets represented for the weekend.
-- F3 maps its single dry specification to `M` and provides four dry sets.
-- SUPER FORMULA maps the single Yokohama dry specification to `M`. Its
-  simulation inventory supports qualifying plus the mandatory race change.
-- Internal letters are stable physics identifiers. Category labels in the UI
-  state what the identifier means; absent dry specifications are not offered.
+The historical car number is searchable metadata only. When a pool driver is
+assigned to F1 or SUPER FORMULA, the target seat supplies the live team, car
+number, role, and start offset. Source-series provenance never changes vehicle
+physics or driver skills.
 
-Used F2 Prime/Option sets remain reusable for the Feature Race after qualifying;
-the inventory distinguishes a used set from a returned or unavailable set.
+The assignment validator enforces existing teams, executable series, season,
+unique active car numbers, team/grid capacity, and at most one active regular
+seat per driver and season. Reserve, development, substitute, and test records
+remain distinct from a regular race seat.
 
-## Race And Points Rules
+## Free Mode and Data Manager
 
-- F2 Sprint races exceed 120 km (Monaco 100 km) with a 45-minute limit. Feature
-  races exceed 170 km (Monaco 140 km, Budapest 160 km) with a 60-minute limit.
-- F3 uses event lap counts with 40-minute Sprint and 45-minute Feature limits.
-- F2/F3 shortened-race points use the official under-25%, under-50%, under-75%,
-  and full-distance tables. At least two green laps are required.
-- F2/F3 award one fastest-lap point only when the overall fastest classified
-  driver finishes in the top 10 and the winner completes at least 50%.
-- F2/F3 DRS becomes eligible after one completed lap plus the detection line.
-  SUPER FORMULA OTS is available from the opening racing lap.
+Free Mode offers F1 and SUPER FORMULA machinery on the deduplicated physical
+track union, with 1–40 entrants selected from all 110 pool identities. F2/F3
+source series, teams, and numbers remain searchable as visibly labelled
+history. They are never offered as a vehicle category and their old car number
+is never inherited by a new entry.
 
-## Event Overrides
+The data manager likewise separates active F1/SF affiliations from historical
+provenance. A swap exchanges occupants while each runtime seat retains its
+team, car number, role, and grid offset. Series configuration backups accept
+any canonical pool identity and round-trip the target seat.
 
-- Championship saves use the calendar event ID, not only the circuit ID. Repeat
-  races at Motegi, Fuji, and Suzuka therefore score as separate rounds.
-- Madrid F3 exposes `FP1 -> Qualifying 1 -> Qualifying 2 -> Sprint -> Feature 1
-  -> Feature 2`. The two qualifying classifications persist separate grids.
-- The replacement SUPER FORMULA Round 3 is a race-only Fuji event: 25 laps,
-  50-minute limit, no mandatory tyre change, and the under-150 km
-  `12-9-7-6-5-4-3-2-1` points table. Its deterministic grid reference is taken
-  from the Autopolis Round 3 qualifying package.
-- A calendar event can replace the category qualifying format, segment times,
-  advancement counts, and optional Q3. The runtime and registry validator use
-  that bulletin only for the matching event; no Q3 is invented where the
-  event package does not define one.
-- F2 Monaco runs two 16-minute odd/even car-number groups. F3 does the same at
-  Monaco and runs two 10-minute groups at Monza. Their final grids alternate
-  the two group classifications, beginning with the group containing the
-  overall fastest driver. SUPER FORMULA keeps balanced groups and is not
-  accidentally switched to car-number parity.
+## Vehicle Eras
 
-## Pace Keying Across Categories
+Vehicle eras are explicit and separate from source-series history:
 
-- A pace baseline is keyed by category and course, never by round. Repeat rounds
-  score separately (see Event Overrides) but read one course baseline: Motegi
-  rounds 1-2, Suzuka 4/5/11/12 and Fuji 3/6/7/9/10 each share a single record.
-- The same circuit run by two categories keeps two records. Suzuka is 89.076 s
-  for F1 and 97.605 s for SUPER FORMULA, and neither may be derived from the
-  other at runtime.
-- Free Mode may put a category on a circuit outside that category's calendar.
-  It loads the category x course baseline for that pairing and marks the track
-  `freeModeProvenance.pace = 'category-reference'`. A SUPER FORMULA base lap time
-  scaled by a category multiplier is not an F1 baseline and is not used as one.
-- Motegi, Fuji, SUGO and Autopolis therefore carry F1 records in
-  `src/data/calibration/f1PaceCalibration2026.json` alongside their SUPER FORMULA
-  records. Autopolis is cancelled on the 2026 calendar, so it is Free Mode
-  reference material only and never gates validation.
-- See `docs/PACE_CALIBRATION_2026.md` for the target windows, the per-family
-  validation and the seed counts.
+- `f1-2026-current` — executable F1 era;
+- `sf-2026` — executable SUPER FORMULA era;
+- `f1-2025-tpc` — validation-only TPC anchor, rejected by runtime resolution.
+
+The effective-rule resolver selects official sources by series/event/session
+scope, effective date, authority, and supersession. Equal-precedence conflicts
+stay unresolved. Official rules, official guidance, observed inference, and
+simulator policy remain separate evidence lanes.
+
+## Physical and Data Boundaries
+
+- `baseLapTimeMultiplier` is absent from `SeriesRules`, production data, and
+  the physical/Free Mode path.
+- SUPER FORMULA team operations can affect pit-crew execution, but every SF23
+  machine receives the same base PU, aero, grip, tyre-management, and
+  reliability profile.
+- OpenF1 enrichment remains F1-only. Its raw legacy `drs` telemetry channel is
+  retained as observation data and is not a runnable 2026 DRS rules package.
+- Missing official observations remain unavailable; provenance metadata is not
+  converted into a hidden pace correction.
 
 ## Source Boundary
 
-- F1 field: `src/data/f1Performance.csv`.
-- F2/F3/SF fields, calendars, rule packages, and source URLs:
-  `src/data/motorsportSeries2026.json`.
-- Runtime validation and relational assignments:
-  `src/series/seriesRegistry.ts`.
-- OpenF1 is enabled only for F1. It never supplies F2, F3, or SUPER FORMULA
-  values and never turns the deterministic core engine into observed data.
-- Support-category vehicle pace is a one-make baseline with a small, explicit
-  team-operations effect. It is a simulation estimate, not a claimed official
-  dyno value.
-
-Primary references are linked from each package in the JSON registry. They
-include FIA F2/F3 sporting regulations, Formula 2/3 official teams and
-calendars, the JAF SUPER FORMULA regulations, and official series team lists.
-
-## Persistence
-
-- Selected category is stored independently.
-- Weekend state includes `seriesId`; a save from another category is rejected.
-- Weekend state also includes `eventId`; legacy track-only saves migrate to the
-  first matching calendar event.
-- Driver tuning and championship state use category-scoped storage keys.
-- Legacy F1 150-scale tuning is migrated once to 0-100; current data is never
-  rescaled on load.
-- Complete team and driver configuration uses `saveVersion: 1`, a category ID,
-  exact relational IDs, and a bounded `migrationHistory`. Invalid JSON,
-  missing IDs, duplicate car numbers, out-of-range values, and cross-category
-  backups fail closed to the bundled category baseline.
-- Completed race and sprint records retain immutable driver identity, team,
-  machine profile, ability profile, classification, and awarded-point
-  snapshots. A later seat or performance edit cannot rewrite past results.
-
-## Data Manager
-
-Open **Data -> Manage series data** in the broadcast dashboard.
-
-- The driver directory contains all 110 unique people and supports series,
-  current-team, nationality, role, rank, and text filters. Multiple active
-  assignments are displayed without creating duplicate people.
-- Current-category drivers expose identity, car number, team, seat role,
-  potential, overall, and all 12 grouped ability controls. A filtered set can
-  be adjusted or set in one operation.
-- Team records expose names, colors, pit-crew performance, and every machine
-  axis. Machine equalisation keeps team identity while setting every field to
-  the current field mean.
-- Driver and machine CSV files use stable IDs and 0-100 editor values. Imports
-  require the exact category field and are rejected before state mutation when
-  schema, range, team reference, or uniqueness validation fails.
-- JSON backups include the complete editable category configuration,
-  qualifying/points/tire/race rules, exact calendar event overrides, and
-  migration history. The registry validator runs again before import. The last
-  successful import can be rolled back in memory; **Official baseline**
-  restores the checked-in registry package.
-- The Rules view directly edits practice duration, mandatory-stop and
-  two-compound requirements, championship team scoring, tyre-set allocation,
-  qualifying breaks, segment durations/advancement, and all points tables.
-  Selecting a calendar row exposes event race count, lap and time limits,
-  cancellation, mandatory-stop override, and event points. Remaining fields
-  can be changed in the same exported JSON schema without a source-code edit.
-
-## Statistical Acceptance
-
-`npm run validate:montecarlo` executes 10,000 matched-condition samples for
-each statistical contract. It verifies:
-
-- a 100-rated driver remains clearly faster than a 70-rated driver in the same
-  car and conditions;
-- F1 long-run machine order remains correlated with the source data while wet
-  specialties can change the order;
-- F2/F3 one-make fields remain compact without an artificial team cliff;
-- reliability, error control, wet skill, tyre management, overtaking, and
-  defending alter outcome distributions through the production simulation
-  functions rather than fixed result bonuses.
-
-Heavy- and light-rain machine pace now applies the wet/intermediate rating as a
-specialty relative to that machine's normal race pace. Dry running therefore
-does not accidentally include a wet-performance blend, while a genuinely good
-or poor wet car can move in the order without replacing its baseline car pace.
+The current F1 field comes from `src/data/f1Performance.csv`. Executable series
+metadata and the SUPER FORMULA field come from
+`src/data/motorsportSeries2026.json`. Frozen regulation metadata, checksums,
+licensing notes, and unavailable authorities are recorded in
+`artifacts/source-manifest.json` and `artifacts/regulation-authority-audit.json`.

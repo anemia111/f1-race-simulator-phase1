@@ -1,469 +1,214 @@
 import { describe, expect, it } from 'vitest'
-import { reversedSprintGrid, runSeriesQualifying } from '../simulation/qualifying'
-import { sessionDistanceLapsFor } from '../simulation/regulations'
 import {
-  DRIVER_ABILITY_INTERNAL_MAX,
-  DRIVER_ABILITY_LIMIT_BREAK_MAX,
-  driverOverallAbilityPoints,
-} from '../simulation/driverAbility'
-import { buildWeekendTirePlan } from '../simulation/weekendTires'
+  historicalDriverPool2026,
+  materializeAssignedDriver,
+  replaceSeriesSeat,
+  type DriverPoolRecord,
+} from './driverPool'
 import {
   driverAssignments2026,
   driverPool2026,
   seriesPackageById,
   seriesPackages,
   seriesRegistryAudit,
-  validateSeriesPackage,
 } from './seriesRegistry'
 
-describe('2026 multi-series registry', () => {
-  it('loads the four requested categories with their exact field sizes', () => {
-    expect(
-      seriesPackages.map(({ id, teamCount, carCount }) => ({
-        id,
-        teamCount,
-        carCount,
-      })),
-    ).toEqual([
-      { id: 'f1-custom', teamCount: 11, carCount: 22 },
-      { id: 'f2', teamCount: 11, carCount: 22 },
-      { id: 'f3', teamCount: 10, carCount: 30 },
-      { id: 'super-formula', teamCount: 16, carCount: 24 },
+function provenanceCount(pool: readonly DriverPoolRecord[]) {
+  return pool.reduce(
+    (count, driver) => count + driver.provenance.length,
+    0,
+  )
+}
+
+describe('Phase 1 series registry boundary', () => {
+  it('exposes exactly F1 and SUPER FORMULA as executable packages', () => {
+    expect(seriesPackages.map((series) => series.id)).toEqual([
+      'f1-custom',
+      'super-formula',
+    ])
+    expect([...seriesPackageById.keys()]).toEqual([
+      'f1-custom',
+      'super-formula',
     ])
 
+    const f1 = seriesPackageById.get('f1-custom')!
+    const superFormula = seriesPackageById.get('super-formula')!
+    expect([f1.teamCount, f1.carCount]).toEqual([11, 22])
+    expect([superFormula.teamCount, superFormula.carCount]).toEqual([16, 24])
+    expect(f1.rules.overtakeSystem).toBe('active-aero')
+    expect(superFormula.rules.overtakeSystem).toBe('ots')
+    expect(f1.vehicleEraId).toBe('f1-2026-current')
+    expect(superFormula.vehicleEraId).toBe('sf-2026')
+  })
+
+  it('has no baseLapTimeMultiplier runtime contract', () => {
     for (const series of seriesPackages) {
-      expect(series.teams).toHaveLength(series.teamCount)
-      expect(series.drivers).toHaveLength(series.carCount)
-      expect(new Set(series.drivers.map((driver) => driver.id)).size).toBe(
-        series.carCount,
-      )
-      expect(new Set(series.drivers.map((driver) => driver.carNumber)).size).toBe(
-        series.carCount,
-      )
+      expect(series.rules).not.toHaveProperty('baseLapTimeMultiplier')
     }
   })
 
-  it('keeps the unified pool at 110 unique people and assignments relational', () => {
-    expect(seriesRegistryAudit.driverPoolCount).toBe(110)
+  it('builds the canonical 110-identity, 111-provenance pool', () => {
     expect(driverPool2026).toHaveLength(110)
     expect(new Set(driverPool2026.map((driver) => driver.id)).size).toBe(110)
-
-    const poolIds = new Set(driverPool2026.map((driver) => driver.id))
+    expect(provenanceCount(driverPool2026)).toBe(111)
     expect(
-      driverAssignments2026.every((assignment) =>
-        poolIds.has(assignment.driverId),
+      driverPool2026.every(
+        (driver) =>
+          driver.provenance.length > 0 &&
+          driver.careerHistory.length > 0 &&
+          driver.provenance.some(
+            (source) => source.id === driver.ratingSourceProvenanceId,
+          ),
       ),
     ).toBe(true)
-    expect(
-      driverAssignments2026.some(
-        (assignment) =>
-          assignment.driverId === 'yuki_nakayama' &&
-          assignment.seriesId === 'f1-custom' &&
-          assignment.teamId === 'ferrari' &&
-          assignment.carNumber === 31,
-      ),
-    ).toBe(true)
-    expect(poolIds.has('yuki_tsunoda')).toBe(true)
-    expect(poolIds.has('yuki_nakayama')).toBe(true)
+    expect(seriesRegistryAudit).toMatchObject({
+      driverPoolCount: 110,
+      provenanceCount: 111,
+      f2HistoricalDriverCount: 22,
+      f3HistoricalDriverCount: 30,
+    })
   })
 
-  it('stores every category rating once on the common 0-100 scale', () => {
-    // The scale is 0-100 for the field. `yuki_nakayama` is authored past it on
-    // purpose; see DRIVER_ABILITY_LIMIT_BREAK_MAX. Everyone else is checked
-    // against the scale, and the exception is still bounded by the ceiling so
-    // corrupt data cannot ride in behind it.
-    const beyondScale: string[] = []
+  it('retains 22 F2 and 30 F3 drivers as history without live team keys', () => {
+    const f2Drivers = historicalDriverPool2026.filter(
+      (driver) => driver.provenance[0].sourceSeriesId === 'f2',
+    )
+    const f3Drivers = historicalDriverPool2026.filter(
+      (driver) => driver.provenance[0].sourceSeriesId === 'f3',
+    )
 
-    for (const series of seriesPackages) {
-      for (const driver of series.drivers) {
-        const onScale =
-          (driver.performanceSource?.overall ?? 0) <= 100 &&
-          (driver.potential ?? 0) <= 1 &&
-          Object.values(driver.skills).every((rating) => rating <= 1)
+    expect(f2Drivers).toHaveLength(22)
+    expect(f3Drivers).toHaveLength(30)
 
-        if (!onScale) {
-          beyondScale.push(driver.id)
-        }
+    for (const driver of historicalDriverPool2026) {
+      expect(driver).not.toHaveProperty('teamId')
+      expect(driver).not.toHaveProperty('carNumber')
+      expect(driver.provenance).toHaveLength(1)
+      expect(driver.careerHistory).toHaveLength(1)
 
-        expect(driver.performanceSource?.overall).toBeGreaterThanOrEqual(0)
-        expect(driver.performanceSource?.overall).toBeLessThanOrEqual(
-          DRIVER_ABILITY_LIMIT_BREAK_MAX,
-        )
-        expect(driver.potential).toBeGreaterThanOrEqual(0)
-        expect(driver.potential).toBeLessThanOrEqual(
-          DRIVER_ABILITY_INTERNAL_MAX,
-        )
-        expect(
-          Object.values(driver.skills).every(
-            (rating) => rating >= 0 && rating <= DRIVER_ABILITY_INTERNAL_MAX,
-          ),
-        ).toBe(true)
+      const source = driver.provenance[0]
+      const career = driver.careerHistory[0]
+      expect(source).not.toHaveProperty('teamId')
+      expect(career).not.toHaveProperty('teamId')
+      expect(source.sourceTeam).toEqual({
+        sourceId: career.sourceTeamId,
+        name: career.sourceTeamName,
+      })
+      expect(source.sourceCarNumber).toBe(career.sourceCarNumber)
+    }
+  })
+
+  it('has no assignment pointing to a missing pool identity, package, or team', () => {
+    const poolIds = new Set(driverPool2026.map((driver) => driver.id))
+
+    expect(seriesRegistryAudit.danglingAssignmentCount).toBe(0)
+    for (const assignment of driverAssignments2026) {
+      const series = seriesPackageById.get(assignment.seriesId)
+      expect(poolIds.has(assignment.driverId)).toBe(true)
+      expect(series).toBeDefined()
+      expect(
+        series?.teams.some((team) => team.id === assignment.teamId),
+      ).toBe(true)
+      if (
+        assignment.active &&
+        (assignment.role === 'regular' || assignment.role === 'substitute')
+      ) {
+        expect(assignment.carNumber).not.toBeNull()
       }
     }
-
-    expect([...new Set(beyondScale)]).toEqual(['yuki_nakayama'])
   })
+})
 
-  it('turns support-team operations into distinct but close machine packages', () => {
-    for (const seriesId of ['f2', 'f3', 'super-formula'] as const) {
-      const series = seriesPackageById.get(seriesId)!
-      const overallFor = (team: (typeof series.teams)[number]) =>
-        Math.round(
-          (Object.values(team.machine).reduce(
-            (total, rating) => total + rating,
-            0,
-          ) /
-            Object.values(team.machine).length) *
-            100,
-        )
-      const machineOveralls = series.teams.map(overallFor)
-      const byOperations = series.teams.toSorted(
-        (left, right) =>
-          (left.performanceSource?.overall ?? 0) -
-          (right.performanceSource?.overall ?? 0),
-      )
-
-      expect(new Set(machineOveralls).size).toBeGreaterThan(1)
-      expect(overallFor(byOperations.at(-1)!)).toBeGreaterThan(
-        overallFor(byOperations[0]),
-      )
-      expect(Math.max(...machineOveralls) - Math.min(...machineOveralls)).toBeLessThanOrEqual(
-        7,
-      )
-      expect(new Set(series.teams.map((team) => team.machine.puOutput)).size).toBe(
-        1,
-      )
-    }
-  })
-
-  it('calibrates the authored Super Formula field from Juju 64 to Ohta 83', () => {
-    const superFormula = seriesPackageById.get('super-formula')!
-    const expected = {
-      ayumu_iwasa: 82,
-      charlie_wurz: 74,
-      igor_fraga: 79,
-      juju_noda: 64,
-      kakunoshin_ohta: 83,
-      kamui_kobayashi: 78,
-      kenta_yamashita: 77,
-      luke_browning: 79,
-      nirei_fukuzumi: 80,
-      nobuharu_matsushita: 77,
-      ren_sato: 77,
-      rikuto_kobayashi: 73,
-      roman_stanek: 76,
-      sacha_fenestraz: 80,
-      seita_nonaka: 74,
-      sena_sakaguchi: 78,
-      sho_tsuboi: 82,
-      syun_koide: 75,
-      tadasuke_makino: 81,
-      tomoki_nojiri: 81,
-      toshiki_oyu: 79,
-      ukyo_sasahara: 76,
-      yuto_nomura: 75,
-      zak_osullivan: 78,
-    }
-    const overalls = superFormula.drivers.map(driverOverallAbilityPoints)
-    const juju = superFormula.drivers.find(
-      (driver) => driver.id === 'juju_noda',
-    )!
-    const ohta = superFormula.drivers.find(
-      (driver) => driver.id === 'kakunoshin_ohta',
-    )!
-    const nonaka = superFormula.drivers.find(
-      (driver) => driver.id === 'seita_nonaka',
-    )!
-
-    expect(Math.min(...overalls)).toBe(64)
-    expect(Math.max(...overalls)).toBe(83)
-    expect(driverOverallAbilityPoints(juju)).toBe(64)
-    expect(driverOverallAbilityPoints(ohta)).toBe(83)
-    for (const [id, overall] of Object.entries(expected)) {
-      const driver = superFormula.drivers.find(
-        (candidate) => candidate.id === id,
-      )
-      expect(driver, id).toBeDefined()
-      expect(driver?.performanceSource?.overall, id).toBe(overall)
-      expect(driverOverallAbilityPoints(driver!), id).toBe(overall)
-    }
-    expect(nonaka).toMatchObject({
-      carNumber: 9,
-      code: 'NON',
-      name: 'Seita Nonaka',
-      nationality: 'JPN',
-      teamId: 'sf-kcmg',
-    })
-    expect(driverOverallAbilityPoints(nonaka)).toBe(74)
-  })
-
-  it('encodes category-specific calendars and sporting rules', () => {
-    const f1 = seriesPackageById.get('f1-custom')!
-    const f2 = seriesPackageById.get('f2')!
-    const f3 = seriesPackageById.get('f3')!
-    const superFormula = seriesPackageById.get('super-formula')!
-
-    expect(f1.calendar).toHaveLength(24)
-    expect(f1.calendar.filter((event) => !event.cancelled)).toHaveLength(22)
-    expect(f1.rules.qualifying.segments.map((segment) => segment.advanceCount)).toEqual([
-      16,
-      10,
-      null,
-    ])
-    expect(f2.calendar).toHaveLength(14)
-    expect(f2.calendar.reduce((sum, event) => sum + event.raceCount, 0)).toBe(28)
-    expect(f2.rules.sprintGridReverseCount).toBe(10)
-    expect(f2.rules.featureRaceMandatoryPitStop).toBe(true)
-    expect(f2.rules.overtakeActivation).toBe('after-one-lap')
-    expect(f2.rules.race.featureDistanceKm).toBe(170)
-    expect(f2.rules.race.sprintDistanceKm).toBe(120)
-    expect(f2.rules.race.featureTimeLimitSeconds).toBe(60 * 60)
-    expect(f2.rules.race.sprintTimeLimitSeconds).toBe(45 * 60)
-    expect(f2.rules.tires.standardAllocation).toEqual({
-      H: 3,
-      I: 2,
-      M: 0,
-      S: 2,
-      W: 1,
-    })
-    expect(f3.rules.sprintGridReverseCount).toBe(12)
-    expect(f3.rules.race.featureTimeLimitSeconds).toBe(45 * 60)
-    expect(f3.rules.race.sprintTimeLimitSeconds).toBe(40 * 60)
-    expect(f3.rules.tires.qualifyingDryCompound).toBe('M')
-    expect(
-      f3.calendar.find((event) => event.trackId === 'madrid-approx')?.raceCount,
-    ).toBe(3)
-    expect(
-      f3.calendar.find((event) => event.trackId === 'madrid-approx')
-        ?.weekendStages,
-    ).toEqual([
-      'fp1',
-      'qualifying',
-      'qualifying2',
-      'sprint',
-      'race',
-      'race2',
-    ])
-    expect(f2.rules.points.fastestLap).toEqual({
-      maximumClassifiedPosition: 10,
-      minimumCompletionRatio: 0.5,
-      points: 1,
-    })
-    expect(f3.rules.points.reduced?.sprint[0]).toEqual([3, 2, 1])
-    expect(
-      superFormula.calendar
-        .filter((event) => !event.cancelled)
-        .reduce((sum, event) => sum + event.raceCount, 0),
-    ).toBe(12)
-    expect(superFormula.rules.overtakeSystem).toBe('ots')
-    expect(superFormula.rules.overtakeActivation).toBe('immediate')
-    expect(superFormula.rules.tireSupplier).toBe('Yokohama')
-    expect(superFormula.rules.tires.standardAllocation.H).toBe(0)
-    expect(superFormula.rules.tires.standardAllocation.S).toBe(0)
-    expect(
-      superFormula.calendar.find((event) => event.id === 'sf-03-replacement'),
-    ).toMatchObject({
-      featurePoints: [12, 9, 7, 6, 5, 4, 3, 2, 1],
-      featureRaceMandatoryPitStop: false,
-      gridSourceTrackId: 'autopolis-sf',
-      raceLaps: 25,
-      raceTimeLimitSeconds: 3000,
-      weekendStages: ['race'],
-    })
-  })
-
-  it('derives race laps from each category distance rule', () => {
-    const f1 = seriesPackageById.get('f1-custom')!
-    const f2 = seriesPackageById.get('f2')!
-    const f3 = seriesPackageById.get('f3')!
-    const f2AlbertPark = f2.tracks.find(
-      (track) => track.id === 'albert-park-approx',
-    )!
-    const f2Monaco = f2.tracks.find(
-      (track) => track.id === 'monaco-approx',
-    )!
-    const f3AlbertPark = f3.tracks.find(
-      (track) => track.id === 'albert-park-approx',
-    )!
-
-    expect(
-      sessionDistanceLapsFor(f2AlbertPark, 'sprint', f2.rules.race),
-    ).toBe(Math.floor(120 / f2AlbertPark.lengthKm) + 1)
-    expect(
-      sessionDistanceLapsFor(f2AlbertPark, 'race', f2.rules.race),
-    ).toBe(Math.floor(170 / f2AlbertPark.lengthKm) + 1)
-    expect(
-      sessionDistanceLapsFor(f2Monaco, 'sprint', f2.rules.race),
-    ).toBe(Math.floor(100 / f2Monaco.lengthKm) + 1)
-    expect(
-      sessionDistanceLapsFor(f2Monaco, 'race', f2.rules.race),
-    ).toBe(Math.floor(140 / f2Monaco.lengthKm) + 1)
-    expect(
-      sessionDistanceLapsFor(f3AlbertPark, 'sprint', f3.rules.race),
-    ).toBe(Math.round(f3AlbertPark.raceLaps! * (40 / 45)))
-    expect(
-      sessionDistanceLapsFor(f1.tracks[0], 'sprint', f1.rules.race),
-    ).toBe(Math.floor(100 / f1.tracks[0].lengthKm) + 1)
-  })
-
-  it('runs each configured qualifying structure and reverse sprint grid', () => {
-    const qualifyingBySeries = new Map(
-      seriesPackages.map((series) => {
-        const qualifying = runSeriesQualifying(
-          {
-            drivers: series.drivers,
-            seed: `registry-${series.id}`,
-            teams: series.teams,
-            track: { ...series.tracks[0], rainProbability: 0 },
-            weekendStage: 'qualifying',
-          },
-          series.rules,
-        )
-        return [series.id, qualifying] as const
-      }),
-    )
-
-    expect(
-      qualifyingBySeries
-        .get('f1-custom')!
-        .segments.map((segment) => segment.results.length),
-    ).toEqual([22, 16, 10])
-    expect(qualifyingBySeries.get('f2')!.segments).toHaveLength(1)
-    expect(qualifyingBySeries.get('f2')!.classification).toHaveLength(22)
-    expect(
-      qualifyingBySeries
-        .get('f2')!
-        .segments[0].results.every((result) => result.compound === 'S'),
-    ).toBe(true)
-    expect(qualifyingBySeries.get('f3')!.segments).toHaveLength(1)
-    expect(qualifyingBySeries.get('f3')!.classification).toHaveLength(30)
-    expect(
-      qualifyingBySeries
-        .get('f3')!
-        .segments[0].results.every((result) => result.compound === 'M'),
-    ).toBe(true)
-    expect(
-      qualifyingBySeries
-        .get('super-formula')!
-        .segments.map((segment) => segment.results.length),
-    ).toEqual([24, 12])
-    expect(
-      qualifyingBySeries
-        .get('super-formula')!
-        .segments.every((segment) =>
-          segment.results.every((result) => result.compound === 'M'),
-        ),
-    ).toBe(true)
-
-    const f2Classification = qualifyingBySeries.get('f2')!.classification
-    const sprintGrid = reversedSprintGrid(f2Classification, 10)
-    expect(sprintGrid[0].driverId).toBe(f2Classification[9].driverId)
-    expect(sprintGrid[9].driverId).toBe(f2Classification[0].driverId)
-    expect(sprintGrid.slice(10).map((result) => result.driverId)).toEqual(
-      f2Classification.slice(10).map((result) => result.driverId),
-    )
-  })
-
-  it('keeps a qualifying-used F2 option set reusable for the feature race', () => {
-    const f2 = seriesPackageById.get('f2')!
-    const config = {
-      drivers: f2.drivers,
-      featureRaceMandatoryPitStop: f2.rules.featureRaceMandatoryPitStop,
-      featureRaceTwoDryCompounds: f2.rules.featureRaceTwoDryCompounds,
-      qualifyingDryCompound: f2.rules.tires.qualifyingDryCompound,
-      seed: 'f2-reusable-option-set',
-      teams: f2.teams,
-      tireAllocation: f2.rules.tires.standardAllocation,
-      track: f2.tracks[0],
-      weekendStage: 'qualifying' as const,
-    }
-    const qualifying = runSeriesQualifying(config, f2.rules)
-    const plan = buildWeekendTirePlan(config, qualifying)
-
-    expect(
-      plan.driverPlans.every(
-        ({ qualifyingUsed, remaining }) =>
-          qualifyingUsed.S > 0 && remaining.H > 0 && remaining.S > 0,
+describe('driver pool assignment into executable series', () => {
+  it('can place Kush Maini into a legal F1 or SUPER FORMULA target seat', () => {
+    const kush = driverPool2026.find((driver) => driver.id === 'kush_maini')!
+    const sourceNumbers = new Set(
+      kush.provenance.flatMap((source) =>
+        source.sourceCarNumber === undefined ? [] : [source.sourceCarNumber],
       ),
-    ).toBe(true)
+    )
+
+    for (const seriesId of ['f1-custom', 'super-formula'] as const) {
+      const series = seriesPackageById.get(seriesId)!
+      const target = series.drivers.find(
+        (driver) => !sourceNumbers.has(driver.carNumber),
+      )!
+      const nextField = replaceSeriesSeat(
+        series.drivers,
+        target.id,
+        kush,
+        { seriesId, season: 2026 },
+      )
+      const replacement = nextField.find((driver) => driver.id === kush.id)!
+
+      expect(nextField).toHaveLength(series.carCount)
+      expect(replacement.teamId).toBe(target.teamId)
+      expect(replacement.carNumber).toBe(target.carNumber)
+      expect(replacement.carNumber).not.toBe(
+        kush.provenance[0].sourceCarNumber,
+      )
+      expect(replacement.skills).toEqual(
+        materializeAssignedDriver(kush, {
+          seriesId,
+          season: 2026,
+          teamId: target.teamId,
+          carNumber: target.carNumber,
+          seatRole: target.seatRole,
+          startOffset: target.startOffset,
+          tire: target.tire,
+        }).skills,
+      )
+    }
   })
 
-  it('accepts a validated event-specific SF qualifying bulletin including Q3', () => {
-    const sf = seriesPackageById.get('super-formula')!
-    const qualifying = {
-      breakSeconds: 300,
-      format: 'grouped' as const,
-      segments: [
-        { advanceCount: 12, durationSeconds: 1_200, name: 'Q1' as const },
-        { advanceCount: 8, durationSeconds: 420, name: 'Q2' as const },
-        { advanceCount: null, durationSeconds: 420, name: 'Q3' as const },
-      ],
+  it('does not let source provenance alter physics-facing driver skills', () => {
+    const kush = driverPool2026.find((driver) => driver.id === 'kush_maini')!
+    const changedHistory = structuredClone(kush)
+
+    for (const source of changedHistory.provenance) {
+      source.sourceSeriesId = 'external'
+      source.sourceTeam = {
+        sourceId: 'historical-only-team',
+        name: 'Historical Only Team',
+      }
+      source.sourceCarNumber = 999
+    }
+    for (const career of changedHistory.careerHistory) {
+      career.seriesId = 'external'
+      career.sourceTeamId = 'historical-only-team'
+      career.sourceTeamName = 'Historical Only Team'
+      career.sourceCarNumber = 999
     }
 
-    expect(() =>
-      validateSeriesPackage({
-        ...sf,
-        calendar: sf.calendar.map((event, index) =>
-          index === 0 ? { ...event, qualifying } : event,
-        ),
-      }),
-    ).not.toThrow()
+    const seat = {
+      seriesId: 'f1-custom' as const,
+      season: 2026,
+      teamId: 'ferrari',
+      carNumber: 44,
+    }
+    const originalMaterialized = materializeAssignedDriver(kush, seat)
+    const changedMaterialized = materializeAssignedDriver(changedHistory, seat)
+
+    expect(changedMaterialized.skills).toEqual(originalMaterialized.skills)
+    expect(changedMaterialized.performanceSource?.rawRatings).toEqual(
+      originalMaterialized.performanceSource?.rawRatings,
+    )
+    expect(changedMaterialized.teamId).toBe(seat.teamId)
+    expect(changedMaterialized.carNumber).toBe(seat.carNumber)
   })
+})
 
-  it('stores official F2/F3 Monaco and Monza group durations as event overrides', () => {
-    const f2 = seriesPackageById.get('f2')!
-    const f3 = seriesPackageById.get('f3')!
+describe('SUPER FORMULA one-make boundary', () => {
+  it('keeps every physical machine axis identical while operations may affect pit crew', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const referenceMachine = superFormula.teams[0].machine
 
-    expect(f2.calendar.find((event) => event.id === 'f2-04')?.qualifying).toMatchObject({
-      format: 'grouped',
-      segments: [{ durationSeconds: 32 * 60 }],
-    })
-    expect(f3.calendar.find((event) => event.id === 'f3-02')?.qualifying).toMatchObject({
-      format: 'grouped',
-      segments: [{ durationSeconds: 32 * 60 }],
-    })
-    expect(f3.calendar.find((event) => event.id === 'f3-08')?.qualifying).toMatchObject({
-      format: 'grouped',
-      segments: [{ durationSeconds: 20 * 60 }],
-    })
-  })
-
-  it('rejects invalid category tire and qualifying data before simulation', () => {
-    const f2 = seriesPackageById.get('f2')!
-
-    expect(() =>
-      validateSeriesPackage({
-        ...f2,
-        rules: {
-          ...f2.rules,
-          tires: {
-            ...f2.rules.tires,
-            standardAllocation: {
-              ...f2.rules.tires.standardAllocation,
-              S: -1,
-            },
-          },
-        },
-      }),
-    ).toThrow(/invalid S count/)
-
-    expect(() =>
-      validateSeriesPackage({
-        ...f2,
-        rules: {
-          ...f2.rules,
-          qualifying: {
-            ...f2.rules.qualifying,
-            segments: [
-              {
-                advanceCount: f2.carCount,
-                durationSeconds: 0,
-                name: 'Q1',
-              },
-            ],
-          },
-        },
-      }),
-    ).toThrow(/invalid qualifying structure/)
+    expect(superFormula.teams).toHaveLength(16)
+    for (const team of superFormula.teams) {
+      expect(team.machine).toEqual(referenceMachine)
+    }
+    expect(
+      new Set(superFormula.teams.map((team) => team.pitCrewSpeed)).size,
+    ).toBeGreaterThan(1)
   })
 })

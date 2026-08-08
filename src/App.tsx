@@ -1512,6 +1512,7 @@ export default function App() {
         categoryRaceFormat: seriesPackage.rules.race,
         seed: normalizeSimulationSeed(seed),
         seriesId: selectedSeriesId,
+        vehicleEraId: seriesPackage.vehicleEraId,
         teams: fieldCalibration.teams,
         tireSupplier: seriesPackage.rules.tireSupplier,
         tireAllocation: tireAllocationFor(

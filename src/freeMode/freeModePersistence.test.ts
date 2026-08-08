@@ -117,6 +117,16 @@ describe('Free Mode persistence', () => {
       JSON.stringify({ configuration, qualifyingResult: null, version: 1 }),
     )
     expect(loadFreeModeStoredState(storage, context)).toBeNull()
+
+    storage.setItem(
+      FREE_MODE_STORAGE_KEY,
+      JSON.stringify({
+        configuration: { ...configuration, categoryId: 'f3' },
+        qualifyingResult: null,
+        version: 1,
+      }),
+    )
+    expect(loadFreeModeStoredState(storage, context)).toBeNull()
   })
 
   it('saves, loads and deletes validated presets', () => {

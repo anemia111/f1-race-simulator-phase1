@@ -166,50 +166,6 @@ describe('timed session plan', () => {
     expect(plan.segments[2].participantDriverIds).toHaveLength(12)
   })
 
-  it('uses official odd/even groups and alternating grids at Monaco', () => {
-    const series = seriesPackageById.get('f2')!
-    const event = series.calendar.find((candidate) => candidate.id === 'f2-04')!
-    const rules = { ...series.rules, qualifying: event.qualifying! }
-    const qualifying = runSeriesQualifying(
-      {
-        drivers: series.drivers,
-        qualifyingDryCompound: rules.tires.qualifyingDryCompound,
-        seed: 'f2-monaco-groups',
-        teams: series.teams,
-        tireAllocation: rules.tires.standardAllocation,
-        track: series.tracks.find((track) => track.id === event.trackId)!,
-        weekendStage: 'qualifying',
-      },
-      rules,
-    )
-    const driversById = new Map(
-      series.drivers.map((driver) => [driver.id, driver]),
-    )
-    const plan = buildTimedSessionPlan(
-      qualifying,
-      rules.qualifying.breakSeconds,
-      rules.qualifying.format,
-    )
-
-    expect(plan.segments.map((segment) => segment.id)).toEqual(['Q1-A', 'Q1-B'])
-    expect(
-      plan.segments.map(
-        (segment) => segment.endsAtSeconds - segment.startsAtSeconds,
-      ),
-    ).toEqual([960, 960])
-    expect(
-      qualifying.segments[0].results.every((result) => {
-        const number = driversById.get(result.driverId)!.carNumber
-        return result.qualifyingGroup === (number % 2 === 0 ? 'A' : 'B')
-      }),
-    ).toBe(true)
-    expect(
-      driversById.get(qualifying.classification[0].driverId)!.carNumber % 2,
-    ).not.toBe(
-      driversById.get(qualifying.classification[1].driverId)!.carNumber % 2,
-    )
-  })
-
   it('opens the second qualifying group for its assigned cars, not group A leaders', () => {
     const drivers = initialDrivers.slice(0, 4)
     const groupBIds = drivers.slice(2).map((driver) => driver.id)

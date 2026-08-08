@@ -19,8 +19,7 @@ import {
 import { remainingEllipseForceN, tyreGripAt } from './tyreForces'
 
 const f1 = categoryPhysicsFor('f1-custom')
-const f2 = categoryPhysicsFor('f2')
-const f3 = categoryPhysicsFor('f3')
+const superFormula = categoryPhysicsFor('super-formula')
 
 const mps = (speedKph: number) => speedKph / 3.6
 
@@ -80,7 +79,7 @@ describe('the torque curve', () => {
   })
 
   it('reaches exactly the published rated output at its best point', () => {
-    for (const physics of [f1, f2, f3]) {
+    for (const physics of [f1, superFormula]) {
       let bestPowerKw = 0
 
       for (let step = 1; step <= 200; step += 1) {
@@ -103,10 +102,10 @@ describe('the torque curve', () => {
     ).toBe(0)
   })
 
-  it('gives a heavier engine more torque for the same power at lower revs', () => {
-    // F2 makes more kW than F1's combustion side but revs to 8 750 rather than
-    // 15 000, so its peak torque has to be far higher.
-    expect(peakTorqueNm(f2)).toBeGreaterThan(peakTorqueNm(f1))
+  it('gives a lower-revving engine more torque for similar power', () => {
+    // The SF NRE makes similar combustion power to F1 but revs to 10 500
+    // rather than 15 000, so its peak torque has to be higher.
+    expect(peakTorqueNm(superFormula)).toBeGreaterThan(peakTorqueNm(f1))
   })
 })
 

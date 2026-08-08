@@ -22,6 +22,7 @@ import type {
   SeasonState,
 } from './simulation/season'
 import type { SeriesId } from './series/types'
+import { isExecutableSeriesId } from './series/seriesIds'
 import {
   canonicalSeasonSessionId,
   createSeasonState,
@@ -484,9 +485,8 @@ export function serializeDriverRatings(
 const isWeekendStage = (value: unknown): value is WeekendStage =>
   typeof value === 'string' && weekendStages.includes(value as WeekendStage)
 
-const seriesIds: SeriesId[] = ['f1-custom', 'f2', 'f3', 'super-formula']
 const isSeriesId = (value: unknown): value is SeriesId =>
-  typeof value === 'string' && seriesIds.includes(value as SeriesId)
+  isExecutableSeriesId(value)
 
 function normalizeTireSet(value: unknown): TireSet | null {
   if (!isRecord(value)) {
@@ -695,12 +695,19 @@ export function parsePersistedWeekend(
       return null
     }
 
-    const seriesId = isSeriesId(parsed.seriesId)
-      ? parsed.seriesId
-      : 'f1-custom'
+    // Version-1 F1 saves predate the series field, so an absent value has one
+    // safe migration. An explicit removed/unknown series is incompatible and
+    // must not silently acquire F1 machinery, rules or championship state.
+    const seriesId =
+      parsed.seriesId === undefined
+        ? 'f1-custom'
+        : isSeriesId(parsed.seriesId)
+          ? parsed.seriesId
+          : null
     const track = tracks.find((candidate) => candidate.id === parsed.trackId)
 
     if (
+      seriesId === null ||
       !track ||
       (expectedSeriesId !== undefined && seriesId !== expectedSeriesId) ||
       typeof parsed.seed !== 'string' ||

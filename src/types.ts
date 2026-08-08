@@ -1,4 +1,8 @@
 import type { Vector3Tuple } from 'three'
+import type {
+  ExecutableSeriesId,
+  RuntimeVehicleEraId,
+} from './series/seriesIds'
 
 export type CameraMode = 'overview' | 'chase' | 'orbit'
 export type SpeedMultiplier = 1 | 5 | 20 | 60
@@ -800,8 +804,9 @@ export type RaceConfig = {
   drivers: Driver[]
   seed: string
   /** Category identity keeps checkpoints and category-specific assists isolated. */
-  seriesId?: 'f1-custom' | 'f2' | 'f3' | 'super-formula'
-  overtakeSystem?: 'active-aero' | 'drs' | 'ots'
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+  overtakeSystem?: 'active-aero' | 'ots'
   overtakeActivation?: 'first-detection' | 'after-one-lap' | 'immediate'
   tireSupplier?: 'Pirelli' | 'Yokohama'
   tireAllocation?: TireSetAllocation
@@ -1050,7 +1055,7 @@ export type CarSnapshot = {
   overtakeEligibility: OvertakeEligibility | null
   /** Additional electrical energy available to 2026 Overtake this lap. */
   overtakeEnergyRemainingMj: number
-  /** Super Formula OTS allocation; absent for categories using DRS/aero overtake. */
+  /** Super Formula OTS allocation; absent for F1 active-aero weekends. */
   otsRemainingSeconds?: number
   /**
    * Race time until which OTS may not be reactivated after a use. Super Formula

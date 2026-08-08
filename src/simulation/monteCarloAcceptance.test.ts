@@ -14,8 +14,7 @@ import { tireDeltaSeconds } from './tires'
 
 const MONTE_CARLO_SAMPLES = 10_000
 const f1 = seriesPackageById.get('f1-custom')!
-const f2 = seriesPackageById.get('f2')!
-const f3 = seriesPackageById.get('f3')!
+const superFormula = seriesPackageById.get('super-formula')!
 
 function uniformDriver(base: Driver, rating: number): Driver {
   return {
@@ -155,45 +154,43 @@ describe('10,000-run statistical acceptance', () => {
     )
   })
 
-  it('keeps one-make fields physical and reacts monotonically to PU output', () => {
-    for (const series of [f2, f3]) {
-      const track = series.tracks[0]
-      const baseTeam = series.teams[0]
-      const weaker = {
-        ...baseTeam,
-        machine: { ...baseTeam.machine, puOutput: 0.6 },
-      }
-      const stronger = {
-        ...baseTeam,
-        machine: { ...baseTeam.machine, puOutput: 1 },
-      }
-      const config = {
-        drivers: series.drivers,
-        seed: `monte-carlo-one-make:${series.id}`,
-        seriesId: series.id,
-        teams: [weaker, stronger],
-        track,
-      }
-      const common = {
-        compound: 'S' as const,
-        config,
-        fuelLoadKg: 8,
-        setup: baselineSetupForTrack(track),
-        trackGrip: 1,
-        weather: 'clear' as const,
-      }
-      const weakerLap = timedSessionPhysicalLapSeconds({
-        ...common,
-        team: weaker,
-      })
-      const strongerLap = timedSessionPhysicalLapSeconds({
-        ...common,
-        team: stronger,
-      })
-
-      expect(Number.isFinite(weakerLap)).toBe(true)
-      expect(strongerLap).toBeLessThan(weakerLap)
+  it('keeps the SF one-make field physical and reacts monotonically to PU output', () => {
+    const track = superFormula.tracks[0]
+    const baseTeam = superFormula.teams[0]
+    const weaker = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, puOutput: 0.6 },
     }
+    const stronger = {
+      ...baseTeam,
+      machine: { ...baseTeam.machine, puOutput: 1 },
+    }
+    const config = {
+      drivers: superFormula.drivers,
+      seed: `monte-carlo-one-make:${superFormula.id}`,
+      seriesId: superFormula.id,
+      teams: [weaker, stronger],
+      track,
+    }
+    const common = {
+      compound: superFormula.rules.tires.qualifyingDryCompound,
+      config,
+      fuelLoadKg: 8,
+      setup: baselineSetupForTrack(track),
+      trackGrip: 1,
+      weather: 'clear' as const,
+    }
+    const weakerLap = timedSessionPhysicalLapSeconds({
+      ...common,
+      team: weaker,
+    })
+    const strongerLap = timedSessionPhysicalLapSeconds({
+      ...common,
+      team: stronger,
+    })
+
+    expect(Number.isFinite(weakerLap)).toBe(true)
+    expect(strongerLap).toBeLessThan(weakerLap)
   })
 
   it('reflects reliability, control and wet skill in 10,000 incident opportunities', () => {

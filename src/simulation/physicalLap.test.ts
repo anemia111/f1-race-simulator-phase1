@@ -16,8 +16,6 @@ import { corneringSpeedLimitMps } from './tyreForces'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
 
 const f1 = categoryPhysicsFor('f1-custom')
-const f2 = categoryPhysicsFor('f2')
-const f3 = categoryPhysicsFor('f3')
 const superFormula = categoryPhysicsFor('super-formula')
 
 const trackById = (id: string) => tracks.find((track) => track.id === id)!
@@ -189,8 +187,7 @@ describe('resistance and terminal speed', () => {
   it('orders terminal speed by category', () => {
     const speedFor = (physics: typeof f1) => terminalSpeedMps({ physics })
 
-    expect(speedFor(f1)).toBeGreaterThan(speedFor(f2))
-    expect(speedFor(f2)).toBeGreaterThan(speedFor(f3))
+    expect(speedFor(f1)).toBeGreaterThan(speedFor(superFormula))
   })
 })
 
@@ -252,8 +249,6 @@ describe('simulatePhysicalLap', () => {
       simulatePhysicalLap(suzuka, { physics }).lapTimeSeconds
 
     expect(lapFor(f1)).toBeLessThan(lapFor(superFormula))
-    expect(lapFor(superFormula)).toBeLessThan(lapFor(f2))
-    expect(lapFor(f2)).toBeLessThan(lapFor(f3))
   })
 
   it('loses lap time on a wet surface', () => {

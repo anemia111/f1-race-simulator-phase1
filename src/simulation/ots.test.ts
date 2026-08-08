@@ -98,29 +98,6 @@ describe('Super Formula OTS', () => {
     expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
   })
 
-  it('holds support-series DRS until one lap and the next detection line', () => {
-    const series = seriesPackageById.get('f2')!
-    const track = series.tracks[0]
-    const snapshot = createInitialRace({
-      drivers: series.drivers,
-      overtakeActivation: series.rules.overtakeActivation,
-      overtakeSystem: series.rules.overtakeSystem,
-      seed: 'f2-drs-after-one-lap',
-      seriesId: series.id,
-      teams: series.teams,
-      track,
-      weekendStage: 'sprint',
-    })
-    const detectionProgress =
-      track.overtakeControlLines?.[0]?.detectionProgress ?? 0.2
-
-    expect(snapshot.overtakeEnabled).toBe(false)
-    expect(snapshot.overtakeEnableAtLeaderDistance).toBeCloseTo(
-      2 + detectionProgress,
-      6,
-    )
-  })
-
   it('disables OTS without consuming time under low-grip control', () => {
     const series = seriesPackageById.get('super-formula')!
     const track = series.tracks[0]
