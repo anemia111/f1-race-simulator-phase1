@@ -3,21 +3,53 @@ import type {
   ActiveFlagPhase,
   AeroActivationZone,
   CarSnapshot,
-  ErsMode,
   OvertakeEligibility,
   OvertakeStatus,
   TrackDefinition,
 } from '../types'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
 const OVERTAKE_ACTIVATION_LENGTH = 0.12
-const MAX_MGU_K_POWER_KW =
-  FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
 
-export type ErsDeploymentCurve =
-  | 'standard'
-  | 'specified-sector'
-  | 'low-grip-estimate'
+/** C3.10.10/C3.11.6 require both wing systems to settle within 400 ms. */
+export const ACTIVE_AERO_TRANSITION_LIMIT_SECONDS = 0.4
+
+export type DriverAdjustableBodyworkState =
+  | 'corner'
+  | 'transition-to-straight'
+  | 'straight'
+  | 'transition-to-corner'
+  | 'failed-corner-safe'
+
+export type ActiveAeroFailureState =
+  | 'operational'
+  | 'failed-corner-safe'
+
+export type ActiveAeroTransitionState = {
+  durationSeconds: number
+  elapsedSeconds: number
+  fromCommand: ActiveAeroMode
+  frontStartStraightFraction: number
+  rearStartStraightFraction: number
+  toCommand: ActiveAeroMode
+}
+
+/**
+ * Regulatory State of Deployment plus the continuous physical wing position.
+ * `command` is never Straight Mode for a moving car outside an Activation Zone.
+ * The fractions let the force model interpolate instead of switching instantly.
+ */
+export type ActiveAeroState = {
+  activationZoneId: string | null
+  command: ActiveAeroMode
+  commandAtSeconds: number | null
+  failureState: ActiveAeroFailureState
+  front: DriverAdjustableBodyworkState
+  frontStraightFraction: number
+  rear: DriverAdjustableBodyworkState
+  rearStraightFraction: number
+  transition: ActiveAeroTransitionState | null
+  transitionProgress: number
+}
 
 function progressIsInZone(progress: number, start: number, end: number) {
   return start <= end
@@ -142,7 +174,7 @@ export function activeAeroZoneAt(
 }
 
 export function activeAeroModeFor(options: {
-  car: CarSnapshot
+  car: Pick<CarSnapshot, 'progress' | 'status'>
   lowGripConditions: boolean
   phase: ActiveFlagPhase | null
   track: TrackDefinition
@@ -150,7 +182,7 @@ export function activeAeroModeFor(options: {
   const { car, lowGripConditions, phase, track } = options
   const zone = activeAeroZoneAt(track, car.progress, lowGripConditions)
 
-  if (!zone || car.status !== 'running' || phase?.flag === 'red') {
+  if (!zone || car.status !== 'running' || phase) {
     return 'corner'
   }
 
@@ -158,7 +190,299 @@ export function activeAeroModeFor(options: {
     return zone.lowGripMode === 'partial' ? 'partial-straight' : 'corner'
   }
 
-  return phase ? 'corner' : 'straight'
+  return 'straight'
+}
+
+export function createInitialActiveAeroState(): ActiveAeroState {
+  return {
+    activationZoneId: null,
+    command: 'corner',
+    commandAtSeconds: null,
+    failureState: 'operational',
+    front: 'corner',
+    frontStraightFraction: 0,
+    rear: 'corner',
+    rearStraightFraction: 0,
+    transition: null,
+    transitionProgress: 1,
+  }
+}
+
+/**
+ * The technical regulations permit a State of Deployment change only while
+ * stationary or while the car is inside the applicable Activation Zone.
+ */
+export function activeAeroStateOfDeploymentCanChange(options: {
+  car: Pick<CarSnapshot, 'progress' | 'speedKph'>
+  lowGripConditions: boolean
+  track: TrackDefinition
+}) {
+  const { car, lowGripConditions, track } = options
+
+  return (
+    (Number.isFinite(car.speedKph) && car.speedKph <= 0) ||
+    activeAeroZoneAt(track, car.progress, lowGripConditions) !== null
+  )
+}
+
+function activeAeroTargetsFor(command: ActiveAeroMode) {
+  switch (command) {
+    case 'straight':
+      return { front: 1, rear: 1 }
+    case 'partial-straight':
+      return { front: 1, rear: 0 }
+    case 'corner':
+      return { front: 0, rear: 0 }
+  }
+}
+
+function bodyworkStateFor(options: {
+  current: number
+  failed: boolean
+  target: number
+}): DriverAdjustableBodyworkState {
+  const { current, failed, target } = options
+
+  if (failed) {
+    return 'failed-corner-safe'
+  }
+
+  if (Math.abs(current - target) <= 1e-9) {
+    return target === 1 ? 'straight' : 'corner'
+  }
+
+  return current < target
+    ? 'transition-to-straight'
+    : 'transition-to-corner'
+}
+
+function commandAllowedByConditions(options: {
+  car: Pick<CarSnapshot, 'progress' | 'speedKph' | 'status'>
+  lowGripConditions: boolean
+  phase: ActiveFlagPhase | null
+  requestedMode: ActiveAeroMode
+  track: TrackDefinition
+}) {
+  const {
+    car,
+    lowGripConditions,
+    phase,
+    requestedMode,
+    track,
+  } = options
+  const zone = activeAeroZoneAt(track, car.progress, lowGripConditions)
+
+  if (
+    requestedMode === 'corner' ||
+    car.status !== 'running' ||
+    phase ||
+    !zone
+  ) {
+    return 'corner' satisfies ActiveAeroMode
+  }
+
+  if (lowGripConditions) {
+    return zone.lowGripMode === 'partial'
+      ? ('partial-straight' satisfies ActiveAeroMode)
+      : ('corner' satisfies ActiveAeroMode)
+  }
+
+  return requestedMode === 'straight'
+    ? ('straight' satisfies ActiveAeroMode)
+    : ('corner' satisfies ActiveAeroMode)
+}
+
+function transitionForCommand(options: {
+  command: ActiveAeroMode
+  previous: ActiveAeroState
+}) {
+  const { command, previous } = options
+  const target = activeAeroTargetsFor(command)
+  const maximumTravel = Math.max(
+    Math.abs(target.front - previous.frontStraightFraction),
+    Math.abs(target.rear - previous.rearStraightFraction),
+  )
+
+  if (maximumTravel <= 1e-9) {
+    return null
+  }
+
+  return {
+    durationSeconds:
+      maximumTravel * ACTIVE_AERO_TRANSITION_LIMIT_SECONDS,
+    elapsedSeconds: 0,
+    fromCommand: previous.command,
+    frontStartStraightFraction: previous.frontStraightFraction,
+    rearStartStraightFraction: previous.rearStraightFraction,
+    toCommand: command,
+  } satisfies ActiveAeroTransitionState
+}
+
+function advanceActiveAeroTransition(options: {
+  command: ActiveAeroMode
+  deltaSeconds: number
+  transition: ActiveAeroTransitionState | null
+}) {
+  const { command, deltaSeconds, transition } = options
+  const target = activeAeroTargetsFor(command)
+
+  if (!transition) {
+    return {
+      frontStraightFraction: target.front,
+      rearStraightFraction: target.rear,
+      transition: null,
+      transitionProgress: 1,
+    }
+  }
+
+  const elapsedSeconds = Math.min(
+    transition.durationSeconds,
+    transition.elapsedSeconds + deltaSeconds,
+  )
+  const transitionProgress =
+    transition.durationSeconds <= 1e-9
+      ? 1
+      : elapsedSeconds / transition.durationSeconds
+
+  if (transitionProgress >= 1 - 1e-9) {
+    return {
+      frontStraightFraction: target.front,
+      rearStraightFraction: target.rear,
+      transition: null,
+      transitionProgress: 1,
+    }
+  }
+
+  return {
+    frontStraightFraction:
+      transition.frontStartStraightFraction +
+      (target.front - transition.frontStartStraightFraction) *
+        transitionProgress,
+    rearStraightFraction:
+      transition.rearStartStraightFraction +
+      (target.rear - transition.rearStartStraightFraction) *
+        transitionProgress,
+    transition: { ...transition, elapsedSeconds },
+    transitionProgress,
+  }
+}
+
+/**
+ * Advances the regulatory command and continuous front/rear wing state. A
+ * detected failure latches the Corner-safe state; it may only be cleared while
+ * stationary. Overtake state is intentionally absent from this API.
+ */
+export function advanceActiveAeroState(options: {
+  car: Pick<CarSnapshot, 'progress' | 'speedKph' | 'status'>
+  deltaSeconds: number
+  elapsedSeconds: number
+  failureDetected?: boolean
+  lowGripConditions: boolean
+  phase: ActiveFlagPhase | null
+  previous?: ActiveAeroState
+  requestedMode?: ActiveAeroMode
+  resetFailure?: boolean
+  track: TrackDefinition
+}): ActiveAeroState {
+  const {
+    car,
+    deltaSeconds,
+    elapsedSeconds,
+    failureDetected = false,
+    lowGripConditions,
+    phase,
+    previous = createInitialActiveAeroState(),
+    resetFailure = false,
+    track,
+  } = options
+
+  if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
+    throw new RangeError('Active-aero deltaSeconds must be finite and non-negative')
+  }
+
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) {
+    throw new RangeError('Active-aero elapsedSeconds must be finite and non-negative')
+  }
+
+  const stationary = Number.isFinite(car.speedKph) && car.speedKph <= 0
+
+  if (
+    failureDetected ||
+    (previous.failureState === 'failed-corner-safe' &&
+      !(resetFailure && stationary))
+  ) {
+    return {
+      activationZoneId: null,
+      command: 'corner',
+      commandAtSeconds: failureDetected
+        ? elapsedSeconds
+        : previous.commandAtSeconds,
+      failureState: 'failed-corner-safe',
+      front: 'failed-corner-safe',
+      frontStraightFraction: 0,
+      rear: 'failed-corner-safe',
+      rearStraightFraction: 0,
+      transition: null,
+      transitionProgress: 1,
+    }
+  }
+
+  const zone = activeAeroZoneAt(track, car.progress, lowGripConditions)
+  const requestedMode =
+    options.requestedMode ??
+    activeAeroModeFor({ car, lowGripConditions, phase, track })
+  const allowedCommand = commandAllowedByConditions({
+    car,
+    lowGripConditions,
+    phase,
+    requestedMode,
+    track,
+  })
+  const stateOfDeploymentCanChange =
+    activeAeroStateOfDeploymentCanChange({
+      car,
+      lowGripConditions,
+      track,
+    })
+  const safetyReturnRequired =
+    allowedCommand === 'corner' && previous.command !== 'corner'
+  const command =
+    stateOfDeploymentCanChange || safetyReturnRequired
+      ? allowedCommand
+      : previous.command
+  const commandChanged = command !== previous.command
+  const transition = commandChanged
+    ? transitionForCommand({ command, previous })
+    : previous.transition
+  const advanced = advanceActiveAeroTransition({
+    command,
+    deltaSeconds,
+    transition,
+  })
+  const target = activeAeroTargetsFor(command)
+
+  return {
+    activationZoneId: zone?.label ?? null,
+    command,
+    commandAtSeconds: commandChanged
+      ? elapsedSeconds
+      : previous.commandAtSeconds,
+    failureState: 'operational',
+    front: bodyworkStateFor({
+      current: advanced.frontStraightFraction,
+      failed: false,
+      target: target.front,
+    }),
+    frontStraightFraction: advanced.frontStraightFraction,
+    rear: bodyworkStateFor({
+      current: advanced.rearStraightFraction,
+      failed: false,
+      target: target.rear,
+    }),
+    rearStraightFraction: advanced.rearStraightFraction,
+    transition: advanced.transition,
+    transitionProgress: advanced.transitionProgress,
+  }
 }
 
 export function overtakeStatusFor(options: {
@@ -234,67 +558,4 @@ export function overtakeStatusFor(options: {
     : Number.NEGATIVE_INFINITY
 
   return car.totalDistance < activationDistance ? 'available' : 'disabled'
-}
-
-function standardDeploymentLimitKw() {
-  return Math.min(
-    FIA_2026_REGULATION_PROFILE.energy.otherLapPowerKw,
-    MAX_MGU_K_POWER_KW,
-  )
-}
-
-function overtakeDeploymentLimitKw(basePowerKw: number) {
-  return Math.min(
-    MAX_MGU_K_POWER_KW,
-    basePowerKw + FIA_2026_REGULATION_PROFILE.energy.maximumBoostIncreaseKw,
-  )
-}
-
-function specifiedSectorDeploymentLimitKw() {
-  return Math.min(
-    FIA_2026_REGULATION_PROFILE.energy.keyAccelerationPowerKw,
-    MAX_MGU_K_POWER_KW,
-  )
-}
-
-/**
- * FIA's April 2026 refinement keeps 350 kW from corner exit to the braking
- * point and limits other parts of the lap to 250 kW. Low-grip values remain
- * non-public, so that curve stays a clearly identified conservative estimate.
- */
-export function ersDeploymentPowerKw(options: {
-  curve?: ErsDeploymentCurve
-  ersMode: ErsMode
-  overtakeStatus: OvertakeStatus
-  /**
-   * @deprecated Deployment is selected by the declared regulatory zone and
-   * operating state, not by an inferred road-speed curve. Retained so older
-   * callers remain source-compatible.
-   */
-  speedKph?: number
-}) {
-  const {
-    curve = 'standard',
-    ersMode,
-    overtakeStatus,
-  } = options
-
-  if (ersMode !== 'deploy') {
-    return 0
-  }
-
-  const basePowerKw =
-    curve === 'specified-sector'
-      ? specifiedSectorDeploymentLimitKw()
-      : standardDeploymentLimitKw()
-
-  if (curve === 'low-grip-estimate') {
-    return Math.round(Math.min(250, basePowerKw))
-  }
-
-  return Math.round(
-    overtakeStatus === 'active'
-      ? overtakeDeploymentLimitKw(basePowerKw)
-      : basePowerKw,
-  )
 }

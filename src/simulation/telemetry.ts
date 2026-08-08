@@ -9,16 +9,18 @@ import type {
   Team,
   TrackDefinition,
   WeatherState,
+  WeekendStage,
 } from '../types'
 import {
   activeAeroModeFor,
-  ersDeploymentPowerKw,
   overtakeStatusFor,
 } from './activeAero'
 import {
   categoryHasHybridEnergyStore,
   categoryPhysicsFor,
+  resolveOperationalVehicleMass,
   type CategoryPhysicsProfile,
+  type OperationalVehicleMassResolution,
 } from './categoryPhysics'
 import { driverSkillBlend } from './driverAbility'
 import {
@@ -30,7 +32,11 @@ import {
   energyDeploymentRequestFor,
   normalizeEnergyStoreState,
 } from './energySystem'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
+import {
+  FIA_2026_REGULATION_PROFILE,
+  permittedMguKDcPowerKwForSpeed,
+  type MguKPowerCurve,
+} from './regulations'
 import {
   advanceSuperClipping,
   type SuperClippingResult,
@@ -155,9 +161,13 @@ export function calculateCarTelemetry(options: {
   localFlagPaceScale?: number
   lowGripConditions: boolean
   isFinalLap?: boolean
+  /** Authoritative FIA event input; null/omission keeps it unavailable. */
+  fiaNominalTyreMassKg?: number | null
   maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
   overtakeSystem?: 'active-aero' | 'ots'
+  /** Pre-resolved by the weekend runtime when available. */
+  operationalVehicleMass?: OperationalVehicleMassResolution
   regulatoryMassIncreaseKg?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number
@@ -178,6 +188,7 @@ export function calculateCarTelemetry(options: {
   airTemperatureC?: number
   trackTemperatureC?: number
   weather: WeatherState
+  weekendStage?: WeekendStage
 }): CalculatedTelemetry {
   const {
     car,
@@ -215,6 +226,16 @@ export function calculateCarTelemetry(options: {
   } = options
   const hasHybridEnergyStore =
     categoryHasHybridEnergyStore(categoryPhysics)
+  const operationalVehicleMass =
+    options.operationalVehicleMass ??
+    resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: options.fiaNominalTyreMassKg ?? null,
+      heatHazardAddedMassKg: regulatoryMassIncreaseKg,
+      physics: categoryPhysics,
+      weekendStage:
+        options.weekendStage ??
+        (options.performanceSession === 'qualifying' ? 'qualifying' : 'race'),
+    })
   const behaviorTraits = driverDecision?.traits ?? driverBehaviorTraits(driver)
   const lateralSeparationM =
     aheadLateralOffsetM === undefined
@@ -302,9 +323,9 @@ export function calculateCarTelemetry(options: {
     evaluationSpeedKph: number,
   ) =>
     liveCorneringSpeedLimitKph({
-      additionalMassKg: Math.max(0, regulatoryMassIncreaseKg),
       airDensityKgM3: ambientAirDensityKgM3,
       bankingDegrees,
+      baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
       categoryPhysics,
       dirtyAirDownforceMultiplier: dirtyAirDownforce,
       evaluationSpeedKph,
@@ -554,34 +575,34 @@ export function calculateCarTelemetry(options: {
       : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
         ? ('deploy' as const)
       : requestedErsMode
-  const keyAccelerationZone =
-    specifiedErsPowerSector ||
-    dynamics.fullThrottle ||
-    (dynamics.straightness >= 0.7 &&
-      dynamics.brakingSeverity < 0.22 &&
-      dynamics.straightLengthAheadMeters >= 110)
-  const ersCurve = lowGripConditions
-    ? ('low-grip-estimate' as const)
-    : keyAccelerationZone
-      ? ('specified-sector' as const)
-      : ('standard' as const)
+  const ersCurve: MguKPowerCurve | null = lowGripConditions
+    ? null
+    : specifiedErsPowerSector
+      ? 'race-sprint-power-limited'
+      : overtakeStatus === 'active'
+        ? 'overtake'
+        : 'normal'
+  const declaredDeploymentPowerKw = ersCurve
+    ? permittedMguKDcPowerKwForSpeed({
+        curve: ersCurve,
+        speedKph: car.speedKph,
+      })
+    : 0
   const regulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
     ? 0
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
-        ersDeploymentPowerKw({
-          curve: ersCurve,
-          ersMode: 'deploy',
-          overtakeStatus,
-          speedKph: car.speedKph,
-        }),
+        declaredDeploymentPowerKw,
       )
-  const standardErsPowerKw = ersDeploymentPowerKw({
-    curve: ersCurve,
-    ersMode,
-    overtakeStatus: 'available',
-    speedKph: car.speedKph,
-  })
+  const standardErsPowerKw =
+    ersMode === 'deploy' && !lowGripConditions
+      ? permittedMguKDcPowerKwForSpeed({
+          curve: specifiedErsPowerSector
+            ? 'race-sprint-power-limited'
+            : 'normal',
+          speedKph: car.speedKph,
+        })
+      : 0
   const driverErsManagement = driverSkillBlend(driver, {
     ersManagement: 0.64,
     raceAwareness: 0.22,
@@ -645,7 +666,7 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
     tire: car.tire,
     vehicleMassKg:
-      categoryPhysics.minimumMassKg + massEquivalentFuelLoadKg,
+      operationalVehicleMass.operationalMassKg + car.fuelLoadKg,
   })
   const energyStore = energyStep.state
   const ersPowerKw = energyStore.actualDeploymentPowerKw
@@ -700,8 +721,8 @@ export function calculateCarTelemetry(options: {
       })
   const longitudinalStep = integrateVehicleLongitudinalStep({
     activeAeroMode,
-    additionalMassKg: Math.max(0, regulatoryMassIncreaseKg),
     airDensityKgM3: ambientAirDensityKgM3,
+    baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
     brakePercent,
     brakeReleaseSpeedKph:
       pitLaneSpeedLimitKph ??

@@ -24,10 +24,12 @@
         "FIA-F1-DOC-058",
         "FIA-F1-DOC-111"
       ],
-      "requiredRuntimeCorrections": [
-        "Qualifying recharge floor authority must be 4 MJ under C20, subject to B08 event-count limits.",
-        "Low-grip Boost must only prevent a power reduction; Overtake must be disabled.",
-        "DRS must not be a 2026 F1 runtime state; raw historical OpenF1 DRS remains observational data."
+      "implementedRuntimeCorrections": [
+        "Qualifying recharge floor authority is 4 MJ under C20, with the B08 event-count constraint retained as authority metadata.",
+        "The non-public low-grip power curve is unavailable and fails closed; Overtake is disabled under Low Grip.",
+        "DRS is not a 2026 F1 runtime state; raw historical OpenF1 DRS remains observational data.",
+        "C5.2.8 Normal, Overtake and Race/Sprint power-limited curves share one pure authority.",
+        "C4.1 minimum mass resolves by session, Nominal Tyre Mass and Heat Hazard addition without inferring a public tyre mass."
       ]
     },
     "super-formula": {
@@ -59,5 +61,6 @@
     "simulatorPolicyMayMasqueradeAsOfficial": false,
     "eventScopeRequiredForEventDocuments": true
   },
-  "status": "phase-0-inventory-complete-runtime-resolver-not-yet-implemented"
+  "runtimeGateArtifact": "artifacts/f1-current-generation-gate.json",
+  "status": "phase-2-f1-current-runtime-gate-implemented"
 }

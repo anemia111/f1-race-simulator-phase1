@@ -35,8 +35,9 @@ targets.
 
 | Parameters | Class / scope | Unit and allowed range | Current F1 examples | Physical meaning and use | Evidence and sensitivity |
 | --- | --- | --- | --- | --- | --- |
-| `combustionPowerKw`, `hybridDeploymentPowerLimitKw`, `minimumMassKg`, `gearCount`, `maximumEngineRpm` | regulatory limit / category, fixed | 100-1000 kW; 0-500 kW; 500-1000 kg; 4-10; 6000-20000 rpm | 400 kW; 350 kW; 768 kg; 8; 15000 rpm | Legal PU, mass and transmission boundaries used directly by the drivetrain and force integration | Regulation-derived. Power and mass have high longitudinal/lap sensitivity; gear count and the rev ceiling mainly constrain available ratios. They must be updated from a rule/source, not fitted. |
-| `wheelRadiusM`, `wheelbaseM`, `trackWidthM` | published geometry / category, fixed | 0.25-0.45 m; 2.5-4 m; 1.5-2.2 m | 0.36 m; 3.6 m; 2.0 m | Convert road speed to crank RPM and determine longitudinal/lateral load transfer | Published/measured geometry. Wheel radius has high RPM/gearing sensitivity; wheelbase and track width have medium load-transfer sensitivity. |
+| `combustionPowerKw`, `hybridDeploymentPowerLimitKw`, `gearCount`, `maximumEngineRpm` | regulatory limit / category, fixed | 100-1000 kW; 0-500 kW; 4-10; 6000-20000 rpm | 400 kW; 350 kW; 8; 15000 rpm | Legal PU and transmission boundaries used directly by the drivetrain | Regulation-derived. Power has high longitudinal/lap sensitivity; gear count and the rev ceiling mainly constrain available ratios. They must be updated from a rule/source, not fitted. |
+| `otherSessionBaseKg`, `qualifyingBaseKg` | regulatory limit / category, fixed | 724 kg; 726 kg | C4.1: 724 kg + Nominal Tyre Mass for other sessions; 726 kg + Nominal Tyre Mass for Sprint Qualifying/Qualifying | Session-aware base for the vehicle minimum-mass resolver | FIA Technical C4.1. Nominal Tyre Mass is a separately named FIA event input determined under C4.7; it is unavailable until observed and is never a calibration candidate or inferred from an old all-in mass. Heat-hazard added mass is passed separately. |
+| `wheelRadiusM`, `wheelbaseM`, `trackWidthM` | published geometry / category, fixed | 0.25-0.45 m; 2.5-4 m; 1.5-2.2 m | 0.36 m; 3.4 m maximum; 2.0 m | Convert road speed to crank RPM and determine longitudinal/lateral load transfer | C2.3.3 caps wheelbase at 3.400 m. The model uses that public maximum without claiming a team's shorter homologated dimension. Wheel radius has high RPM/gearing sensitivity; wheelbase and track width have medium load-transfer sensitivity. |
 | `dragAreaScale`, `liftAreaM2` | inferred physical property / category | 0.4-1.5 ratio; 1-8 m2 | 1.0; 5.0 m2 | Aerodynamic drag and vertical load, both proportional to dynamic pressure | Derived because teams do not publish full coefficients. High sensitivity to maximum speed and fast-corner/lap time respectively. Validate against speed traps and corner traces when those observations exist. |
 | `drivetrainEfficiency`, `rollingResistanceCoefficient` | inferred physical property / category | 0.75-0.99; 0.005-0.03 | 0.94; 0.012 | Mechanical and rolling losses in the longitudinal force balance | Engineering estimates. Efficiency has medium/high acceleration sensitivity; rolling resistance is low at high speed and more visible at low speed. |
 | `peakTyreFrictionCoefficient`, `tyreLoadSensitivity` | inferred physical property / category | 0.8-2.5; 0-0.3 exponent | 1.75; 0.12 | Size and load dependence of the shared friction ellipse | Derived from plausible category lateral/braking capability. Both have high corner, braking and lap sensitivity. Must be checked across loads rather than against one lap time. |
@@ -59,6 +60,7 @@ they cannot become an undocumented second calibration layer.
 
 | Owner | Current values and units | Scope / role | Evidence, sensitivity and change rule |
 | --- | --- | --- | --- |
+| `categoryPhysics.ts` unresolved-mass policy | 768 kg historical simulation reference | F1 force-model continuity only; explicitly `non-regulatory-simulation-reference` | Used only while FIA C4.7 Nominal Tyre Mass is unavailable. It is not serialized or displayed as the C4.1 minimum. Supplying a named event observation switches the operational resolver to 724/726 kg + Nominal Tyre Mass; heat-hazard mass is added once on either path. |
 | `drivetrain.ts` launch | launch RPM 0.38 of rev limit; clutch bite 0.35 engagement; MGU-K base speed 0.35 of rev limit | Current global defaults with category RPM/gear inputs | Engineering shape assumptions. High standing-start and low-speed force sensitivity, little steady-lap sensitivity. A category-specific override needs published motor/clutch evidence. |
 | `drivetrain.ts` turbo | spool time constant 0.55 s at zero rev, falling linearly to 0.13 s at the limiter; lift decay 0.30 s | Stateful combustion response, category physical behaviour | Commented engineering estimate. High throttle-transient sensitivity; zero effect on electrical torque. Validate against time-resolved acceleration, never lap time alone. |
 | `drivetrain.ts` clutch | engagement time constant 0.48 s; release 0.16 s; numerical floor 0.02 s | Stateful standing launch, category physical behaviour | Engineering estimate. High launch sensitivity. Must remain continuous and traction-limited in the launch tests. |
@@ -102,12 +104,14 @@ The validator reads the existing files; it does not fetch or manufacture data:
   Suzuka supplies the one common official F1/SUPER FORMULA category-order
   check.
 
-The physical reference lap is closest to a clear qualifying lap: minimum mass
-plus the planner's explicit fuel allowance, dry reference grip and the
-documented offline deployment policy. Observed race medians contain fuel,
-traffic, tyre, neutralisation and strategy effects, so they are retained as
-future live-race validation data and are not substituted for a force-model
-qualifying target.
+The physical reference lap is closest to a clear qualifying lap: the explicit
+operational vehicle-mass resolution plus the planner's fuel allowance, dry
+reference grip and the documented offline deployment policy. Until an FIA
+C4.7 Nominal Tyre Mass observation is supplied, that resolution is visibly a
+non-regulatory simulation reference rather than a claimed C4.1 minimum.
+Observed race medians contain fuel, traffic, tyre, neutralisation and strategy
+effects, so they are retained as future live-race validation data and are not
+substituted for a force-model qualifying target.
 
 The JSON schema still carries legacy compatibility fields named
 `liveTimingPaceScale`, `racePaceScale`, `qualifyingPaceScale` and

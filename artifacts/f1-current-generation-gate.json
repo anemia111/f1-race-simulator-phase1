@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T13:08:07.535Z",
+  "sourceCommit": "3c1f971876b2becda7057644cad2ea2f4e83e49a",
+  "command": "npm run validate:f1-current-generation",
+  "sourceCutoffDate": "2026-08-08",
+  "relatedArtifacts": [
+    "artifacts/f1-current-generation-physics-summary.json",
+    "artifacts/regulation-authority-audit.json",
+    "artifacts/source-manifest.json"
+  ],
+  "verdict": "PASS",
+  "calibrationPolicy": {
+    "fitPerformed": false,
+    "trackSpecificMultiplierCount": 0
+  },
+  "authority": {
+    "operational": {
+      "approvedAt": "2026-08-03",
+      "issue": "10",
+      "label": "FIA 2026 F1 Operational Regulations Issue 10",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf"
+    },
+    "sporting": {
+      "approvedAt": "2026-08-03",
+      "issue": "08",
+      "label": "FIA 2026 F1 Sporting Regulations Issue 08",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf"
+    },
+    "technical": {
+      "approvedAt": "2026-08-03",
+      "issue": "20",
+      "label": "FIA 2026 F1 Technical Regulations Issue 20",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf"
+    }
+  },
+  "vehicleEra": {
+    "aeroSystemId": "f1-2026-active-aero",
+    "availability": "runtime",
+    "effectiveFrom": "2026-01-01",
+    "eraId": "f1-2026-current",
+    "powerUnitSystemId": "f1-2026-hybrid",
+    "regulationSetId": "fia-f1-2026-b08-c20-f10",
+    "regulationSourceIds": [
+      "fia-f1-2026-sporting-b08",
+      "fia-f1-2026-technical-c20",
+      "fia-f1-2026-operational-f10"
+    ],
+    "seriesId": "f1-custom",
+    "tyreFamilyId": "pirelli-f1-2026",
+    "vehiclePhysicsId": "f1-2026-current-vehicle"
+  },
+  "chassis": {
+    "wheelbaseM": 3.4,
+    "maximumWheelbaseM": 3.4,
+    "massCompositionProbeInput": {
+      "heatHazardAddedMassKg": 5,
+      "nominalTyreMassKg": 1,
+      "purpose": "unit-arithmetic-probe-not-a-physical-observation",
+      "weekendStage": "qualifying"
+    },
+    "massCompositionProbe": {
+      "heatHazardAddedMassKg": 5,
+      "minimumMassKg": 732,
+      "nominalTyreMassKg": 1,
+      "regulationBaseMassKg": 726,
+      "seriesId": "f1-custom",
+      "sourceId": "fia-f1-2026-technical-c20",
+      "status": "resolved",
+      "weekendStage": "qualifying"
+    },
+    "missingNominalTyreMass": {
+      "heatHazardAddedMassKg": 5,
+      "minimumMassKg": null,
+      "nominalTyreMassKg": null,
+      "reason": "nominal-tyre-mass-unavailable",
+      "regulationBaseMassKg": 726,
+      "seriesId": "f1-custom",
+      "sourceId": "fia-f1-2026-technical-c20",
+      "status": "unavailable",
+      "weekendStage": "qualifying"
+    }
+  },
+  "energy": {
+    "absolutePowerLimitKw": 350,
+    "powerBoundaries": [
+      {
+        "normal": 255,
+        "overtake": 350,
+        "powerLimited": 250,
+        "speedKph": 309,
+        "observed": {
+          "normal": 255,
+          "overtake": 350,
+          "powerLimited": 250
+        }
+      },
+      {
+        "normal": 250,
+        "overtake": 350,
+        "powerLimited": 250,
+        "speedKph": 310,
+        "observed": {
+          "normal": 250,
+          "overtake": 350,
+          "powerLimited": 250
+        }
+      },
+      {
+        "normal": 105,
+        "overtake": 320,
+        "powerLimited": 105,
+        "speedKph": 339,
+        "observed": {
+          "normal": 105,
+          "overtake": 320,
+          "powerLimited": 105
+        }
+      },
+      {
+        "normal": 100,
+        "overtake": 300,
+        "powerLimited": 100,
+        "speedKph": 340,
+        "observed": {
+          "normal": 100,
+          "overtake": 300,
+          "powerLimited": 100
+        }
+      },
+      {
+        "normal": 0.02,
+        "overtake": 200.02,
+        "powerLimited": 0.02,
+        "speedKph": 344.999,
+        "observed": {
+          "normal": 0.019999999999527063,
+          "overtake": 200.01999999999953,
+          "powerLimited": 0.019999999999527063
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 200,
+        "powerLimited": 0,
+        "speedKph": 345,
+        "observed": {
+          "normal": 0,
+          "overtake": 200,
+          "powerLimited": 0
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 0.02,
+        "powerLimited": 0,
+        "speedKph": 354.999,
+        "observed": {
+          "normal": 0,
+          "overtake": 0.019999999999527063,
+          "powerLimited": 0
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 0,
+        "powerLimited": 0,
+        "speedKph": 355,
+        "observed": {
+          "normal": 0,
+          "overtake": 0,
+          "powerLimited": 0
+        }
+      }
+    ],
+    "qualifyingRechargeFloorMj": 4,
+    "rechargeLimitMj": 8.5,
+    "socWindowMj": 4,
+    "lowGripCurve": {
+      "availability": "unavailable",
+      "public": false,
+      "document": "FIA-F1-DOC-111",
+      "permittedPowerCurve": null,
+      "note": "Competition-specific low-grip ERS curves are not included in the public regulation PDF."
+    }
+  },
+  "activeAero": {
+    "runtimeIntegration": {
+      "continuousStatePersistedInRaceSnapshot": false,
+      "decomposedFrontRearForceMapActive": false,
+      "status": "phase-3-required"
+    },
+    "maximumTransitionSeconds": 0.4,
+    "transitionStarted": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "straight",
+      "commandAtSeconds": 10,
+      "failureState": "operational",
+      "front": "transition-to-straight",
+      "frontStraightFraction": 0,
+      "rear": "transition-to-straight",
+      "rearStraightFraction": 0,
+      "transition": {
+        "durationSeconds": 0.4,
+        "elapsedSeconds": 0,
+        "fromCommand": "corner",
+        "frontStartStraightFraction": 0,
+        "rearStartStraightFraction": 0,
+        "toCommand": "straight"
+      },
+      "transitionProgress": 0
+    },
+    "transitionCompleted": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "straight",
+      "commandAtSeconds": 10,
+      "failureState": "operational",
+      "front": "straight",
+      "frontStraightFraction": 1,
+      "rear": "straight",
+      "rearStraightFraction": 1,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "outsideZone": {
+      "activationZoneId": null,
+      "command": "corner",
+      "commandAtSeconds": 11,
+      "failureState": "operational",
+      "front": "corner",
+      "frontStraightFraction": 0,
+      "rear": "corner",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "failure": {
+      "activationZoneId": null,
+      "command": "corner",
+      "commandAtSeconds": 12,
+      "failureState": "failed-corner-safe",
+      "front": "failed-corner-safe",
+      "frontStraightFraction": 0,
+      "rear": "failed-corner-safe",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "lowGripPartial": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "partial-straight",
+      "commandAtSeconds": 13,
+      "failureState": "operational",
+      "front": "straight",
+      "frontStraightFraction": 1,
+      "rear": "corner",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "overtakeStateIsSeparateInput": true
+  },
+  "standingStart": {
+    "belowThreshold": {
+      "positiveTorqueAllowed": false,
+      "reason": "below-release-speed",
+      "releaseLatched": false
+    },
+    "atThreshold": {
+      "positiveTorqueAllowed": true,
+      "reason": "release-speed-reached",
+      "releaseLatched": true
+    },
+    "secuSafetyException": {
+      "positiveTorqueAllowed": true,
+      "reason": "secu-safety-exception",
+      "releaseLatched": false
+    }
+  },
+  "invariantFailures": []
+}

@@ -69,10 +69,11 @@ try {
   const {
     buildPhysicsValidationReport,
     f1QualifyingLapObservations,
-  f1QualifyingSpeedObservations,
+    f1QualifyingSpeedObservations,
     summarizePaceCalibrationEvidence,
   } = runtime.calibration
-  const { categoryPhysicsFor } = runtime.categories
+  const { categoryPhysicsFor, resolveOperationalVehicleMass } =
+    runtime.categories
   const { simulatePhysicalLap } = runtime.physicsLap
   const { tracks } = runtime.trackData
   const {
@@ -85,6 +86,11 @@ try {
     f1PaceCalibration2026,
   )
   const f1Physics = categoryPhysicsFor('f1-custom')
+  const f1ReferenceMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: null,
+    physics: f1Physics,
+    weekendStage: 'qualifying',
+  })
   const predictions = observations.map((observation) => {
     const track = trackById.get(observation.trackId)
 
@@ -127,7 +133,7 @@ try {
 
   const baseline = simulatePhysicalLap(suzuka, { physics: f1Physics })
   const fuelHeavy = simulatePhysicalLap(suzuka, {
-    massKg: f1Physics.minimumMassKg + 80,
+    massKg: f1ReferenceMass.operationalMassKg + 80,
     physics: f1Physics,
   })
   const wet = simulatePhysicalLap(suzuka, {

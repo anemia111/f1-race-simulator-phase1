@@ -76,6 +76,7 @@ function rankingForTrack(
         setup,
         team,
         weather,
+        weekendStage: 'qualifying',
       }),
     }))
     .sort((left, right) => left.lapTimeSeconds - right.lapTimeSeconds)
@@ -104,6 +105,7 @@ describe('10,000-run statistical acceptance', () => {
         setup,
         team,
         weather,
+        weekendStage: 'qualifying' as const,
       }))
     })
     let highTotal = 0
@@ -179,6 +181,7 @@ describe('10,000-run statistical acceptance', () => {
       setup: baselineSetupForTrack(track),
       trackGrip: 1,
       weather: 'clear' as const,
+      weekendStage: 'qualifying' as const,
     }
     const weakerLap = timedSessionPhysicalLapSeconds({
       ...common,

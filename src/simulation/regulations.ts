@@ -9,16 +9,27 @@ import { raceLapsFor } from './raceEvents'
 import { isDryCompound } from './tires'
 
 export const FIA_2026_REGULATION_PROFILE = {
-  asOf: '2026-07-15',
+  asOf: '2026-08-05',
   sporting: {
-    issue: '07',
-    label: 'FIA 2026 F1 Sporting Regulations Issue 07',
-    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_07_-_2026-06-25.pdf',
+    approvedAt: '2026-08-03',
+    issue: '08',
+    label: 'FIA 2026 F1 Sporting Regulations Issue 08',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf',
   },
   technical: {
-    issue: '19',
-    label: 'FIA 2026 F1 Technical Regulations Issue 19',
-    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_19_-_2026-06-25.pdf',
+    approvedAt: '2026-08-03',
+    issue: '20',
+    label: 'FIA 2026 F1 Technical Regulations Issue 20',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf',
+  },
+  operational: {
+    approvedAt: '2026-08-03',
+    issue: '10',
+    label: 'FIA 2026 F1 Operational Regulations Issue 10',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf',
   },
   drivingStandards: {
     issue: '01',
@@ -52,28 +63,23 @@ export const FIA_2026_REGULATION_PROFILE = {
   },
   energy: {
     maxErsPowerKw: 350,
-    keyAccelerationPowerKw: 350,
-    otherLapPowerKw: 250,
-    maximumBoostIncreaseKw: 150,
     usableStateOfChargeWindowMj: 4,
     publicRechargeLimitMj: 8.5,
     qualifyingRechargeLimitMj: 7,
     normalCompetitionReducedLimitMj: 7,
-    qualifyingMinimumLimitMj: 5,
+    qualifyingMinimumLimitMj: 4,
     standingStartDeploymentMinKph: 50,
-    /**
-     * Road speed where the MGU-K power ramp begins. Above it the permitted
-     * deployment falls linearly to zero at the cutoff, which is the mechanism
-     * that bounds a 2026 car's terminal velocity.
-     */
-    deploymentTaperStartKph: 290,
+    normalCurveTransitionKph: 340,
+    raceSprintPowerLimitedTransitionKph: 310,
     standardDeploymentCutoffKph: 345,
     overtakeDeploymentCutoffKph: 355,
     article: 'C5.2.7-C5.2.12',
   },
   lowGripPowerCurve: {
+    availability: 'unavailable',
     public: false,
     document: 'FIA-F1-DOC-111',
+    permittedPowerCurve: null,
     note: 'Competition-specific low-grip ERS curves are not included in the public regulation PDF.',
   },
   tires: {
@@ -214,49 +220,90 @@ export function compliesWithGrandPrixTireRule(
   return new Set(car.compoundsUsed.filter(isDryCompound)).size >= 2
 }
 
+export type MguKPowerCurve =
+  | 'normal'
+  | 'overtake'
+  | 'race-sprint-power-limited'
+
+/** Exact permitted MGU-K DC power from FIA C5.2.7-C5.2.8 Issue 20. */
+export function permittedMguKDcPowerKwForSpeed(options: {
+  curve?: MguKPowerCurve
+  speedKph: number
+}) {
+  const { curve = 'normal', speedKph } = options
+
+  if (!Number.isFinite(speedKph)) {
+    return 0
+  }
+
+  const speed = Math.max(0, speedKph)
+  const {
+    maxErsPowerKw,
+    normalCurveTransitionKph,
+    overtakeDeploymentCutoffKph,
+    raceSprintPowerLimitedTransitionKph,
+    standardDeploymentCutoffKph,
+  } = FIA_2026_REGULATION_PROFILE.energy
+  let permittedPowerKw: number
+
+  if (curve === 'overtake') {
+    permittedPowerKw =
+      speed < overtakeDeploymentCutoffKph ? 7100 - 20 * speed : 0
+  } else if (curve === 'race-sprint-power-limited') {
+    if (speed < raceSprintPowerLimitedTransitionKph) {
+      permittedPowerKw = 250
+    } else if (speed < normalCurveTransitionKph) {
+      permittedPowerKw = 1800 - 5 * speed
+    } else {
+      permittedPowerKw =
+        speed < standardDeploymentCutoffKph ? 6900 - 20 * speed : 0
+    }
+  } else if (curve === 'normal') {
+    if (speed < normalCurveTransitionKph) {
+      permittedPowerKw = 1800 - 5 * speed
+    } else {
+      permittedPowerKw =
+        speed < standardDeploymentCutoffKph ? 6900 - 20 * speed : 0
+    }
+  } else {
+    return 0
+  }
+
+  return Math.min(
+    maxErsPowerKw,
+    Math.max(0, permittedPowerKw),
+  )
+}
+
 /**
- * Permitted MGU-K deployment at a given road speed.
+ * Clamps a requested deployment to the Issue 20 DC power curve.
  *
- * The 2026 power unit does not carry full electrical power to any speed: the
- * permitted deployment ramps down above `deploymentTaperStartKph` and reaches
- * zero at the cutoff, higher when the driver has Manual Override active. This
- * is what gives the car a terminal velocity. Without it the combustion power
- * alone must balance drag, and on a long enough straight a model with an
- * under-stated drag area simply keeps accelerating.
- *
- * Returns the requested power unchanged for categories with no hybrid system,
- * so a non-hybrid category is not silently given an electrical limit.
+ * `curve` is the explicit regulatory state; callers cannot select Overtake
+ * through a second compatibility switch.
  */
 export function deploymentPowerLimitKwForSpeed(options: {
-  overtakeActive?: boolean
+  curve?: MguKPowerCurve
   requestedPowerKw: number
   speedKph: number
 }) {
-  const { overtakeActive = false, requestedPowerKw, speedKph } = options
+  const {
+    curve = 'normal',
+    requestedPowerKw,
+    speedKph,
+  } = options
 
   if (!Number.isFinite(requestedPowerKw) || requestedPowerKw <= 0) {
     return 0
   }
 
-  if (!Number.isFinite(speedKph)) {
-    return requestedPowerKw
-  }
+  const regulatoryLimitKw = permittedMguKDcPowerKwForSpeed({
+    curve,
+    speedKph,
+  })
 
-  const { deploymentTaperStartKph } = FIA_2026_REGULATION_PROFILE.energy
-  const cutoffKph = overtakeActive
-    ? FIA_2026_REGULATION_PROFILE.energy.overtakeDeploymentCutoffKph
-    : FIA_2026_REGULATION_PROFILE.energy.standardDeploymentCutoffKph
-
-  if (speedKph <= deploymentTaperStartKph) {
-    return requestedPowerKw
-  }
-
-  if (speedKph >= cutoffKph) {
-    return 0
-  }
-
-  const remainingFraction =
-    (cutoffKph - speedKph) / (cutoffKph - deploymentTaperStartKph)
-
-  return requestedPowerKw * Math.min(1, Math.max(0, remainingFraction))
+  return Math.min(
+    requestedPowerKw,
+    FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
+    regulatoryLimitKw,
+  )
 }

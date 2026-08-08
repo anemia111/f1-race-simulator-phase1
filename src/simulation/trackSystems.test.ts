@@ -3,7 +3,6 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import {
   activeAeroModeFor,
-  ersDeploymentPowerKw,
   overtakeStatusFor,
   updateOvertakeEligibilityAfterTravel,
 } from './activeAero'
@@ -536,77 +535,6 @@ describe('track-dependent systems', () => {
         track,
       }),
     ).toBe('disabled')
-  })
-
-  it('uses the post-Miami FIA 2026 ERS-K zone limits', () => {
-    const standardAt289 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 289,
-    })
-    const standardAt290 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 290,
-    })
-    const standardAt291 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 291,
-    })
-    const standardAt340 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 340,
-    })
-    const overtakeAt340 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'active',
-      speedKph: 340,
-    })
-
-    expect(standardAt289).toBe(250)
-    expect(standardAt290).toBe(250)
-    expect(standardAt291).toBe(250)
-    expect(standardAt340).toBe(250)
-    expect(overtakeAt340).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'deploy',
-        overtakeStatus: 'available',
-        speedKph: 345,
-      }),
-    ).toBe(250)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'deploy',
-        overtakeStatus: 'active',
-        speedKph: 355,
-      }),
-    ).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        curve: 'specified-sector',
-        ersMode: 'deploy',
-        overtakeStatus: 'available',
-        speedKph: 280,
-      }),
-    ).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        curve: 'low-grip-estimate',
-        ersMode: 'deploy',
-        overtakeStatus: 'disabled',
-        speedKph: 290,
-      }),
-    ).toBe(250)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'harvest',
-        overtakeStatus: 'active',
-        speedKph: 320,
-      }),
-    ).toBe(0)
   })
 
   it('uses the physical racing-line reference in the sharpest corner', () => {

@@ -84,7 +84,7 @@
       },
       "sources": [
         { "label": "Formula 1 2026 teams standings", "sourceDate": "2026-07-19", "url": "https://www.formula1.com/en/results/2026/team" },
-        { "label": "FIA Formula 1 2026 regulations", "sourceDate": "2026-05-07", "url": "https://www.fia.com/regulation/category/110" }
+        { "label": "FIA Formula 1 2026 regulations", "sourceDate": "2026-08-05", "url": "https://www.fia.com/regulation/category/2182" }
       ]
     },
     {

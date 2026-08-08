@@ -4,12 +4,22 @@ export const sourceRegistry = {
     url: 'https://www.fia.com/news/2026-fia-sporting-calendars-approved-world-motor-sport-council',
   },
   fiaSporting2026: {
-    label: 'FIA 2026 F1 Sporting Regulations Issue 07',
-    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_07_-_2026-06-25.pdf',
+    approvedAt: '2026-08-03',
+    label: 'FIA 2026 F1 Sporting Regulations Issue 08',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf',
   },
   fiaTechnical2026: {
-    label: 'FIA 2026 F1 Technical Regulations Issue 19',
-    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_19_-_2026-06-25.pdf',
+    approvedAt: '2026-08-03',
+    label: 'FIA 2026 F1 Technical Regulations Issue 20',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf',
+  },
+  fiaOperational2026: {
+    approvedAt: '2026-08-03',
+    label: 'FIA 2026 F1 Operational Regulations Issue 10',
+    publishedAt: '2026-08-05',
+    url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf',
   },
   fiaDrivingStandards2026: {
     label: '2026 Formula 1 Driving Standards Guidelines v01',

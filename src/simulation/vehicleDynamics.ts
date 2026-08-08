@@ -16,6 +16,7 @@ import {
 } from './machinePerformance'
 import {
   categoryPhysicsFor,
+  resolveOperationalVehicleMass,
   type CategoryPhysicsProfile,
 } from './categoryPhysics'
 import {
@@ -63,9 +64,14 @@ export type LongitudinalDynamicsInput = {
 
 export type LongitudinalStepInput = {
   activeAeroMode: ActiveAeroMode
-  /** Ballast or carried mass beyond the category minimum and fuel. */
+  /** Ballast or carried mass beyond the resolved operational mass and fuel. */
   additionalMassKg?: number
   airDensityKgM3: number
+  /**
+   * Session-aware base vehicle mass, already including any heat-hazard mass.
+   * Live production callers should pass the operational resolver output.
+   */
+  baseVehicleMassKg?: number
   brakeReleaseSpeedKph?: number
   brakePercent: number
   categoryPhysics?: CategoryPhysicsProfile
@@ -403,6 +409,8 @@ export function vehicleTyreGripMultiplierForTeam(
 export function liveCorneringSpeedLimitKph(options: {
   additionalMassKg?: number
   airDensityKgM3: number
+  /** Session-aware base mass, already including heat-hazard mass. */
+  baseVehicleMassKg?: number
   bankingDegrees: number
   categoryPhysics: CategoryPhysicsProfile
   dirtyAirDownforceMultiplier?: number
@@ -418,8 +426,15 @@ export function liveCorneringSpeedLimitKph(options: {
     return Number.POSITIVE_INFINITY
   }
 
+  const baseVehicleMassKg =
+    options.baseVehicleMassKg ??
+    resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: null,
+      physics: options.categoryPhysics,
+      weekendStage: 'race',
+    }).operationalMassKg
   const exactMassKg =
-    options.categoryPhysics.minimumMassKg +
+    baseVehicleMassKg +
     clamp(finiteOr(options.fuelLoadKg, 0), 0, 120) +
     clamp(finiteOr(options.additionalMassKg ?? 0, 0), 0, 250)
   const exactDownforceMultiplier = vehicleDownforceMultiplier({
@@ -567,9 +582,16 @@ export function integrateVehicleLongitudinalStep(
 ): LongitudinalStepResult {
   const categoryPhysics =
     input.categoryPhysics ?? categoryPhysicsFor(undefined)
+  const baseVehicleMassKg =
+    input.baseVehicleMassKg ??
+    resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: null,
+      physics: categoryPhysics,
+      weekendStage: 'race',
+    }).operationalMassKg
   const massKg = Math.max(
     1,
-    categoryPhysics.minimumMassKg +
+    baseVehicleMassKg +
       clamp(finiteOr(input.fuelLoadKg, 0), 0, 120) +
       clamp(finiteOr(input.additionalMassKg ?? 0, 0), 0, 250),
   )

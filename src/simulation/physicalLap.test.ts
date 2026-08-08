@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { tracks } from '../data/tracks'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import {
   bankingDegreesAt,
@@ -14,6 +17,14 @@ import {
 } from './physicalLap'
 import { corneringSpeedLimitMps } from './tyreForces'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
+
+/** Algebra fixture only; not an FIA C4.7 observation. */
+const TEST_FIXTURE_NOMINAL_TYRE_MASS_KG = 40
+const f1TestMinimumMassKg = resolveOperationalVehicleMass({
+  f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+  physics: categoryPhysicsFor('f1-custom'),
+  weekendStage: 'qualifying',
+}).operationalMassKg
 
 const f1 = categoryPhysicsFor('f1-custom')
 const superFormula = categoryPhysicsFor('super-formula')
@@ -127,13 +138,13 @@ describe('banking', () => {
 
   it('lets a banked corner be taken faster than the same corner flat', () => {
     const flat = corneringSpeedLimitMps({
-      massKg: f1.minimumMassKg + 30,
+      massKg: f1TestMinimumMassKg + 30,
       physics: f1,
       radiusMeters: 60,
     })
     const banked = corneringSpeedLimitMps({
       bankingDegrees: 19,
-      massKg: f1.minimumMassKg + 30,
+      massKg: f1TestMinimumMassKg + 30,
       physics: f1,
       radiusMeters: 60,
     })
@@ -265,11 +276,11 @@ describe('simulatePhysicalLap', () => {
   it('loses lap time carrying fuel', () => {
     const suzuka = trackById('suzuka-approx')
     const light = simulatePhysicalLap(suzuka, {
-      massKg: f1.minimumMassKg + 5,
+      massKg: f1TestMinimumMassKg + 5,
       physics: f1,
     }).lapTimeSeconds
     const heavy = simulatePhysicalLap(suzuka, {
-      massKg: f1.minimumMassKg + 100,
+      massKg: f1TestMinimumMassKg + 100,
       physics: f1,
     }).lapTimeSeconds
 

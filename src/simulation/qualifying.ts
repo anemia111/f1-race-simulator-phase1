@@ -9,6 +9,7 @@ import type {
   TimedSessionSegmentPlan,
   TireCompound,
   WeatherState,
+  WeekendStage,
 } from '../types'
 import type { SeriesRules } from '../series/types'
 import {
@@ -20,7 +21,10 @@ import {
   baselineSetupForTrack,
   practiceSetupRecommendation,
 } from './engineering'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
 import {
   decideDriverBehavior,
@@ -179,6 +183,7 @@ type TimedPhysicalLapOptions = {
   team: Team
   trackGrip: number
   weather: WeatherState
+  weekendStage: WeekendStage
 }
 
 const finiteKey = (value: number) =>
@@ -192,6 +197,8 @@ function physicalLapCacheKey(options: TimedPhysicalLapOptions) {
   return [
     config.seriesId ?? 'f1-custom',
     config.track.id,
+    options.weekendStage,
+    finiteKey(config.fiaNominalTyreMassKg ?? Number.NaN),
     weather,
     compound,
     finiteKey(fuelLoadKg),
@@ -246,6 +253,11 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     weather,
   } = options
   const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const operationalMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
+    physics: categoryPhysics,
+    weekendStage: options.weekendStage,
+  })
   const waterMm = surfaceWaterForWeather(weather)
   const trackCondition = {
     dryingLine: weather === 'clear' ? 1 : 0,
@@ -286,7 +298,7 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
       team,
       surfaceGrip * compoundGrip,
     ),
-    massKg: categoryPhysics.minimumMassKg + Math.max(0, fuelLoadKg),
+    massKg: operationalMass.operationalMassKg + Math.max(0, fuelLoadKg),
     physics,
   })
 
@@ -518,6 +530,9 @@ function qualifyingRunLapTime(
     team,
     trackGrip,
     weather,
+    weekendStage: segment.startsWith('SQ')
+      ? ('sprintQualifying' as const)
+      : ('qualifying' as const),
   }
   const physicalLapTimeSeconds = timedSessionPhysicalLapSeconds(
     physicalOptions,
@@ -1345,6 +1360,7 @@ export function runPracticeSession(
       team,
       trackGrip,
       weather,
+      weekendStage: stage,
     }
     const bestLapTimeSeconds =
       timedSessionPhysicalLapSeconds(bestPhysicalOptions) +
@@ -1362,6 +1378,7 @@ export function runPracticeSession(
       team,
       trackGrip,
       weather,
+      weekendStage: stage,
     }
     const longRunPaceSeconds =
       timedSessionPhysicalLapSeconds(longRunPhysicalOptions) +

@@ -18,7 +18,11 @@
  * comes from `tyreForces`.
  */
 import { activeAeroZoneAt } from './activeAero'
-import { categoryPhysicsFor, type CategoryPhysicsProfile } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+  type CategoryPhysicsProfile,
+} from './categoryPhysics'
 import { powerUnitDriveForceN } from './drivetrain'
 import {
   deploymentPowerLimitKwForSpeed,
@@ -32,7 +36,7 @@ import {
   remainingEllipseForceN,
   tyreGripAt,
 } from './tyreForces'
-import type { TrackDefinition } from '../types'
+import type { TrackDefinition, WeekendStage } from '../types'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -43,6 +47,10 @@ export type PhysicalLapOptions = {
   dragAreaM2?: number
   /** Surface and compound state, as in `tyreForces`. */
   gripMultiplier?: number
+  /** Authoritative FIA event input; null/omission keeps it unavailable. */
+  fiaNominalTyreMassKg?: number | null
+  /** C4.1/C4.6 mass added by a declared heat hazard. */
+  heatHazardAddedMassKg?: number
   massKg?: number
   /**
    * MGU-K deployment assumed available under acceleration while constructing
@@ -71,6 +79,8 @@ export type PhysicalLapOptions = {
    */
   activeAeroZones?: boolean
   physics?: CategoryPhysicsProfile
+  /** Defaults to qualifying because this is an offline reference lap. */
+  weekendStage?: WeekendStage
 }
 
 /**
@@ -103,11 +113,12 @@ const DEPLOYMENT_ALLOCATION_PASSES = 3
 /**
  * How many times the finished profile is given back the energy it overspent.
  *
- * Two is enough because the first trim removes the whole overshoot and the
- * second only confirms that re-sweeping the trimmed profile did not create a
- * new one.
+ * The exact Issue 20 speed curve can move a segment across a piecewise power
+ * boundary after a sweep. Five bounded passes let the final profile settle to
+ * sub-kJ agreement after that boundary movement; this is numerical
+ * convergence, not an additional energy allowance.
  */
-const DEPLOYMENT_TRIM_PASSES = 2
+const DEPLOYMENT_TRIM_PASSES = 5
 
 export type BankedSection = {
   /** Lap progress the banking runs between, 0 to 1. */
@@ -410,6 +421,7 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
  */
 const permittedDeploymentKw = (requestedPowerKw: number, speedMps: number) =>
   deploymentPowerLimitKwForSpeed({
+    curve: 'normal',
     requestedPowerKw,
     speedKph: Math.max(0, speedMps) * 3.6,
   })
@@ -456,6 +468,12 @@ function resolveEnergyBudgetMj(
 
 function resolveOptions(options: PhysicalLapOptions) {
   const physics = options.physics ?? categoryPhysicsFor(undefined)
+  const operationalMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: options.fiaNominalTyreMassKg ?? null,
+    heatHazardAddedMassKg: options.heatHazardAddedMassKg,
+    physics,
+    weekendStage: options.weekendStage ?? 'qualifying',
+  })
 
   return {
     airDensityKgM3: options.airDensityKgM3 ?? 1.225,
@@ -464,7 +482,7 @@ function resolveOptions(options: PhysicalLapOptions) {
       options.deploymentPowerKw ?? physics.hybridDeploymentPowerLimitKw,
     dragAreaM2: options.dragAreaM2 ?? 1.05 * physics.dragAreaScale,
     gripMultiplier: options.gripMultiplier ?? 1,
-    massKg: options.massKg ?? physics.minimumMassKg + 30,
+    massKg: options.massKg ?? operationalMass.operationalMassKg + 30,
     physics,
   }
 }
@@ -855,7 +873,11 @@ export function simulatePhysicalLap(
    * is charged nothing; costing it as if it were spent would make the
    * allocation buy far less than the allowance actually pays for.
    */
-  const energyDrawMj = (index: number, profile: number[]) => {
+  const energyDrawMj = (
+    index: number,
+    profile: number[],
+    share = 1,
+  ) => {
     const entryMps = profile[index]
     const exitMps = profile[(index + 1) % count]
 
@@ -866,10 +888,40 @@ export function simulatePhysicalLap(
     const averageMps = Math.max(1, (entryMps + exitMps) / 2)
 
     return (
-      (permittedDeploymentKw(resolved.deploymentPowerKw, averageMps) *
+      (permittedDeploymentKw(
+        resolved.deploymentPowerKw * clamp(share, 0, 1),
+        averageMps,
+      ) *
         (geometry[index].segmentLengthMeters / averageMps)) /
       1000
     )
+  }
+
+  /**
+   * Finds the greatest request share whose exact, speed-limited energy draw is
+   * affordable. A proportional share is wrong near a C5.2.8 boundary because
+   * the regulatory cap can hold output flat while requested power is reduced.
+   */
+  const affordableDeploymentShare = (
+    index: number,
+    profile: number[],
+    affordableMj: number,
+    maximumShare = 1,
+  ) => {
+    let lower = 0
+    let upper = clamp(maximumShare, 0, 1)
+
+    for (let iteration = 0; iteration < 32; iteration += 1) {
+      const candidate = (lower + upper) / 2
+
+      if (energyDrawMj(index, profile, candidate) <= affordableMj) {
+        lower = candidate
+      } else {
+        upper = candidate
+      }
+    }
+
+    return lower
   }
 
   /**
@@ -941,8 +993,11 @@ export function simulatePhysicalLap(
 
         // The segment the allowance runs out on takes the share it can pay
         // for, rather than being switched off, so the profile stays continuous.
-        next[index] = Math.min(1, remainingMj / drawMj)
-        remainingMj -= drawMj
+        next[index] =
+          remainingMj >= drawMj
+            ? 1
+            : affordableDeploymentShare(index, speeds, remainingMj)
+        remainingMj -= energyDrawMj(index, speeds, next[index])
       }
 
       deploymentShare = next
@@ -956,7 +1011,8 @@ export function simulatePhysicalLap(
     // removes energy, so this cannot run away.
     for (let trim = 0; trim < DEPLOYMENT_TRIM_PASSES; trim += 1) {
       const spentMj = order.reduce(
-        (total, index) => total + energyDrawMj(index, speeds) * deploymentShare[index],
+        (total, index) =>
+          total + energyDrawMj(index, speeds, deploymentShare[index]),
         0,
       )
       let excessMj = spentMj - resolved.deploymentEnergyBudgetMj
@@ -967,15 +1023,26 @@ export function simulatePhysicalLap(
 
       for (let rank = order.length - 1; rank >= 0 && excessMj > 0; rank -= 1) {
         const index = order[rank]
-        const spentHereMj =
-          energyDrawMj(index, speeds) * deploymentShare[index]
+        const spentHereMj = energyDrawMj(
+          index,
+          speeds,
+          deploymentShare[index],
+        )
 
         if (spentHereMj <= 0) {
           continue
         }
 
-        const releasedMj = Math.min(spentHereMj, excessMj)
-        deploymentShare[index] *= 1 - releasedMj / spentHereMj
+        const targetMj = Math.max(0, spentHereMj - excessMj)
+        const nextShare = affordableDeploymentShare(
+          index,
+          speeds,
+          targetMj,
+          deploymentShare[index],
+        )
+        const releasedMj =
+          spentHereMj - energyDrawMj(index, speeds, nextShare)
+        deploymentShare[index] = nextShare
         excessMj -= releasedMj
       }
 
@@ -1081,27 +1148,11 @@ export function simulatePhysicalLap(
   // allocation granted that segment. Integrating the permitted power over
   // exactly those segments gives what the finished lap spends, which is the
   // number `deployment-energy-budget` compares with the regulation.
-  const deploymentEnergyMj = geometry.reduce((total, point, index) => {
-    const entryMps = speeds[index]
-    const exitMps = speeds[(index + 1) % count]
-
-    if (exitMps <= entryMps) {
-      return total
-    }
-
-    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
-    const secondsOnSegment = point.segmentLengthMeters / averageMps
-
-    return (
-      total +
-      (permittedDeploymentKw(
-        resolved.deploymentPowerKw * deploymentShare[index],
-        averageMps,
-      ) *
-        secondsOnSegment) /
-        1000
-    )
-  }, 0)
+  const deploymentEnergyMj = geometry.reduce(
+    (total, _point, index) =>
+      total + energyDrawMj(index, speeds, deploymentShare[index]),
+    0,
+  )
 
   return {
     deploymentEnergyMj,

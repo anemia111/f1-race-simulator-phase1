@@ -90,8 +90,12 @@ import {
   pitStopLossSeconds,
 } from './strategy'
 import { startingGridDistance } from './startingGrid'
+import { f1StandingStartMguKDecision } from './f1StandingStart'
 import { calculateCarTelemetry } from './telemetry'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import {
   advanceTurboState,
   powerUnitRpmFor,
@@ -345,6 +349,7 @@ export function reformFieldForRedRestart(
 export function reformFieldForStandingRestart(
   cars: CarSnapshot[],
   lapLengthM: number,
+  standingStartMguKGateApplies = true,
 ): CarSnapshot[] {
   const leader = cars.find((car) => car.status === 'running')
 
@@ -386,6 +391,7 @@ export function reformFieldForStandingRestart(
       overtakeStatus: 'disabled',
       overtakeEligibility: null,
       ersPowerKw: 0,
+      standingStartMguKReleaseLatched: !standingStartMguKGateApplies,
     }
   })
 }
@@ -1682,6 +1688,7 @@ const weekendOrderFor = (config: RaceConfig): WeekendStage[] =>
 
 export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnapshot {
   const teams = byId(config.teams)
+  const categoryPhysics = categoryPhysicsFor(config.seriesId)
   const weekendStage = config.weekendStage ?? 'race'
   const isRaceDistance = isRaceDistanceSession(weekendStage)
   const scheduledRaceLaps =
@@ -1892,7 +1899,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       gridPosition: gridIndex + 1,
       projectedLapTime: referenceProfileLapTimeSeconds(
         config.track,
-        categoryPhysicsFor(config.seriesId),
+        categoryPhysics,
       ),
       lastLapTimeSeconds: null,
       bestLapTimeSeconds: null,
@@ -2033,6 +2040,11 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       timedTrafficYield: false,
       startsFromPitLane,
       lowPowerStartDetected: false,
+      standingStartMguKReleaseLatched:
+        categoryPhysics.hybridDeploymentPowerLimitKw <= 0 ||
+        !isRaceDistance ||
+        startsFromPitLane ||
+        formationBehindSafetyCar,
       warningLightsUntilSeconds: null,
       components: normalizeCarComponents(
         config.weekendContext?.componentConditionByDriver?.[driver.id] ??
@@ -2327,6 +2339,12 @@ export function advanceRace(
     competitionDeclared: heatHazardCompetitionDeclared,
     sessionDeclared: heatHazardDeclared,
   })
+  const operationalVehicleMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
+    heatHazardAddedMassKg: heatHazardMassIncreaseKg,
+    physics: categoryPhysics,
+    weekendStage,
+  })
   const isTimedSession = isTimedLapSession(weekendStage)
   const timedSessionDurationSeconds =
     config.timedSessionPlan?.totalDurationSeconds ??
@@ -2564,6 +2582,14 @@ export function advanceRace(
         driver !== undefined &&
         hashChance(`${config.seed}:low-power-start:${driver.id}`) <
           0.004 + Math.max(0, 70 - weakestCondition) * 0.0005
+      const standingStartMguKReleaseLatched =
+        categoryPhysics.hybridDeploymentPowerLimitKw <= 0 ||
+        car.startsFromPitLane ||
+        snapshot.formationBehindSafetyCar
+          ? true
+          : raceStartTriggered
+            ? false
+            : (car.standingStartMguKReleaseLatched ?? false)
       const lightsRpm = powerUnitRpmFor({
         clutchEngagementFraction: 0,
         gear: 1,
@@ -2783,6 +2809,7 @@ export function advanceRace(
           ? emptyCurrentLapMiniSectorTimes()
           : car.currentLapMiniSectorTimes,
         lowPowerStartDetected: lowPowerStart,
+        standingStartMguKReleaseLatched,
         warningLightsUntilSeconds: lowPowerStart
           ? elapsedSeconds + 4
           : car.warningLightsUntilSeconds,
@@ -3597,6 +3624,7 @@ export function advanceRace(
         ? reformFieldForStandingRestart(
             strategicallyPreparedCars,
             config.track.lengthKm * 1000,
+            categoryPhysics.hybridDeploymentPowerLimitKw > 0,
           )
         : reformFieldForRedRestart(
             strategicallyPreparedCars,
@@ -4110,7 +4138,7 @@ export function advanceRace(
           throttlePercent,
           tire: car.tire,
           vehicleMassKg:
-            categoryPhysics.minimumMassKg + car.fuelLoadKg,
+            operationalVehicleMass.operationalMassKg + car.fuelLoadKg,
         }).state
 
         return {
@@ -4583,13 +4611,25 @@ export function advanceRace(
       (!isRaceDistance ||
         (overtakeEnabled && restartProcedure === 'none')) &&
       hasCrossedRestartLine
-    const standingStartMguKRestricted =
+    const legacyStandingStartWindow =
       !snapshot.formationBehindSafetyCar &&
-      car.speedKph < 50 &&
-      !car.lowPowerStartDetected &&
       ((snapshot.raceStartedAtSeconds !== null &&
         elapsedSeconds - snapshot.raceStartedAtSeconds < 12) ||
         restartUntilSeconds !== null)
+    const standingStartMguKReleaseLatched =
+      car.standingStartMguKReleaseLatched ??
+      (!legacyStandingStartWindow || car.speedKph >= 50)
+    const standingStartMguKDecision = f1StandingStartMguKDecision({
+      releaseLatched: standingStartMguKReleaseLatched,
+      secuSafetyExceptionActive: car.lowPowerStartDetected,
+      speedKph: car.speedKph,
+      standingStartActive:
+        categoryPhysics.hybridDeploymentPowerLimitKw > 0 &&
+        !snapshot.formationBehindSafetyCar &&
+        !standingStartMguKReleaseLatched,
+    })
+    const standingStartMguKRestricted =
+      !standingStartMguKDecision.positiveTorqueAllowed
     const standingStartLaunchActive =
       !snapshot.formationBehindSafetyCar &&
       snapshot.raceStartedAtSeconds !== null &&
@@ -4649,6 +4689,7 @@ export function advanceRace(
       maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       overtakeSystem: config.overtakeSystem,
+      operationalVehicleMass,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.physicsPhase,
@@ -4669,6 +4710,7 @@ export function advanceRace(
       airTemperatureC,
       trackTemperatureC,
       weather: localWeather,
+      weekendStage,
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
     let displayTelemetry = telemetry
@@ -5200,6 +5242,8 @@ export function advanceRace(
       battlePhaseUntilSeconds,
       battleDeltaSecondsRemaining,
       ...displayTelemetry,
+      standingStartMguKReleaseLatched:
+        standingStartMguKDecision.releaseLatched,
       speedKph: Number(actualTravelSpeedKph.toFixed(2)),
       gear: actualTravelGear,
       rpm: actualTravelRpm,

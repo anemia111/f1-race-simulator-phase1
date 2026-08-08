@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T12:56:00Z",
+  "sourceCommit": "3c1f971",
+  "command": "npm run validate:physics-calibration -- --output=<temporary-file>",
+  "policy": "read-only-observation-comparison",
+  "detailedPerCircuitOutputCommitted": false,
+  "holdoutPolicy": "Only aggregate holdout results were read or retained; individual holdout errors were not inspected or used for selection.",
+  "fitPerformed": false,
+  "trackSpecificMultiplierCount": 0,
+  "lap": {
+    "calibration": {
+      "sampleCount": 5,
+      "meanLapRatio": 0.995775,
+      "meanAbsoluteErrorSeconds": 1.402383,
+      "mapePercent": 1.783997
+    },
+    "holdout": {
+      "sampleCount": 6,
+      "meanLapRatio": 0.990884,
+      "meanAbsoluteErrorSeconds": 3.097971,
+      "mapePercent": 3.582131
+    },
+    "overall": {
+      "sampleCount": 11,
+      "meanLapRatio": 0.993107,
+      "meanAbsoluteErrorSeconds": 2.327249,
+      "mapePercent": 2.764797
+    }
+  },
+  "referencePeakSpeed": {
+    "meanKph": 342.854203,
+    "maximumKph": 345.82233,
+    "meanAbsoluteErrorKph": 8.829042,
+    "biasKph": 8.672385
+  },
+  "drivenSpeedTrap": {
+    "command": "npm run validate:speed-trap",
+    "exitCode": 1,
+    "circuitsMeasured": 24,
+    "observedReferenceCircuits": 11,
+    "median": {
+      "sampleCount": 22,
+      "meanAbsoluteErrorKph": 7.83,
+      "biasKph": -2.09,
+      "gatePassed": true
+    },
+    "peak": {
+      "sampleCount": 22,
+      "meanAbsoluteErrorKph": 8.22,
+      "biasKph": -3.92,
+      "gatePassed": false
+    },
+    "perCircuitBoundFailureIds": [
+      "silverstone-approx",
+      "hungaroring-approx",
+      "red-bull-ring-approx"
+    ],
+    "newFailureIdsVersusPhase0": [
+      "red-bull-ring-approx"
+    ],
+    "detailedPerCircuitOutputCommitted": false
+  },
+  "deploymentEnergy": {
+    "meanMj": 10.43925,
+    "maximumMj": 11.000529,
+    "circuitsOverAttackAllowance": 0,
+    "circuitsOverRepeatableLimit": 11
+  },
+  "interpretation": "The exact Issue 20 ERS curves and regulatory mass boundary were structural authority corrections, not a fit. Aggregate pace and peak-speed errors are modestly worse than the Phase 0 baseline, the driven peak-speed aggregate now misses its 8 km/h gate, and Red Bull Ring is one new per-circuit bound failure. No parameter or circuit-specific correction was changed in response."
+}

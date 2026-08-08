@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import {
   advanceClutchState,
   advanceTurboState,
@@ -20,6 +23,13 @@ import { remainingEllipseForceN, tyreGripAt } from './tyreForces'
 
 const f1 = categoryPhysicsFor('f1-custom')
 const superFormula = categoryPhysicsFor('super-formula')
+/** Algebra fixture only; not an FIA C4.7 observation. */
+const TEST_FIXTURE_NOMINAL_TYRE_MASS_KG = 40
+const testRaceMassKg = resolveOperationalVehicleMass({
+  f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+  physics: f1,
+  weekendStage: 'race',
+}).operationalMassKg
 
 const mps = (speedKph: number) => speedKph / 3.6
 
@@ -502,7 +512,7 @@ describe('the power unit as a whole', () => {
       throttleFraction: 1,
     })
     const tyreGrip = tyreGripAt({
-      massKg: f1.minimumMassKg,
+      massKg: testRaceMassKg,
       physics: f1,
       speedMps,
     })

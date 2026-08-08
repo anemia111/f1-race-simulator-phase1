@@ -56,8 +56,14 @@
       "status": "current-at-cutoff",
       "sha256": "cf0b919eef5eecc27497fb6de012f8d27e200f6dbd34d62b7e5385f7274ff652",
       "facts": [
+        "C2.3.3 limits wheelbase to 3400 mm.",
+        "C4.1 defines 726 kg plus Nominal Tyre Mass for Sprint Qualifying and Qualifying, and 724 kg plus Nominal Tyre Mass for other sessions.",
+        "C4.7 assigns Nominal Tyre Mass measurement and later publication to the tyre provider; Issue 20 contains no public numeric Nominal Tyre Mass.",
+        "C5.2.7-C5.2.8 define the 350 kW absolute MGU-K DC cap and the Normal, Overtake and Race/Sprint power-limited speed curves.",
+        "C5.2.9 limits the Energy Store maximum-to-minimum state-of-charge window to 4 MJ.",
         "C5.2.10(ii) changes the qualifying recharge floor from 5 MJ to 4 MJ.",
-        "C5.2.8(iii) and (iv) apply during any power-limited period."
+        "C5.2.8(iii) and (iv) apply during any power-limited period.",
+        "C5.2.12 normally withholds standing-start positive MGU-K torque until 50 km/h and permits the stated SECU minimum-acceleration safety exception."
       ]
     },
     {

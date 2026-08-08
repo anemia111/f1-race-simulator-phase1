@@ -59,7 +59,16 @@ export const PHYSICS_CALIBRATION_PARAMETERS = [
   {
     calibratable: false,
     classification: 'regulatory-limit',
-    key: 'minimumMassKg',
+    key: 'otherSessionBaseKg',
+    maximum: 1_000,
+    minimum: 500,
+    scope: 'category',
+    unit: 'kg',
+  },
+  {
+    calibratable: false,
+    classification: 'regulatory-limit',
+    key: 'qualifyingBaseKg',
     maximum: 1_000,
     minimum: 500,
     scope: 'category',

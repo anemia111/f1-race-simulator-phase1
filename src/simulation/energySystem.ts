@@ -616,7 +616,7 @@ function advanceEnergyStoreSubstep(
   // terminal velocity: without it the unit carries full electrical power to any
   // speed and a long straight has no end.
   const regulationSpeedLimitedPowerKw = deploymentPowerLimitKwForSpeed({
-    overtakeActive: options.overtakeActive,
+    curve: options.overtakeActive ? 'overtake' : 'normal',
     requestedPowerKw: maximumDeploymentPowerKw,
     speedKph,
   })

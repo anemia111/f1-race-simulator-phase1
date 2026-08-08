@@ -396,6 +396,9 @@ describe('starting grid', () => {
     expect(onGrid.every((car) => car.speedKph === 0)).toBe(true)
     expect(onGrid.every((car) => car.gear === 1 && car.rpm > 0)).toBe(true)
     expect(
+      onGrid.every((car) => car.standingStartMguKReleaseLatched === false),
+    ).toBe(true)
+    expect(
       onGrid.every(
         (car) =>
           Number.isFinite(car.turboSpoolFraction ?? Number.NaN) &&
@@ -422,7 +425,31 @@ describe('starting grid', () => {
         expect(car.totalDistance).toBeGreaterThan(
           distanceAtLightsOut.get(car.driverId)!,
         )
+        if (car.speedKph < 50 && !car.lowPowerStartDetected) {
+          expect(car.ersPowerKw).toBe(0)
+          expect(car.standingStartMguKReleaseLatched).toBe(false)
+        }
       })
+
+    let releaseCheck = launched
+    for (
+      let step = 0;
+      step < 30 &&
+      !releaseCheck.cars.some(
+        (car) => car.standingStartMguKReleaseLatched === true,
+      );
+      step += 1
+    ) {
+      releaseCheck = advanceRace(releaseCheck, 0.25, config)
+    }
+    expect(
+      releaseCheck.cars.some(
+        (car) =>
+          !car.startsFromPitLane &&
+          car.speedKph >= 50 &&
+          car.standingStartMguKReleaseLatched === true,
+      ),
+    ).toBe(true)
   })
 
   it('does not send cars straight into the pits on the opening tour', () => {

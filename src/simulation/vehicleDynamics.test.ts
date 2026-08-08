@@ -666,6 +666,7 @@ describe('multi-axis vehicle dynamics', () => {
       team: referenceTeam,
       trackGrip: 1,
       weather: 'clear' as const,
+      weekendStage: 'qualifying' as const,
     }
     const high = driverAt(1)
     const low = driverAt(0.65)

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import {
   aerodynamicDownforceN,
   axleLoadsN,
@@ -18,9 +21,15 @@ const superFormula = categoryPhysicsFor('super-formula')
 
 const kph = (mps: number) => mps * 3.6
 const mps = (speedKph: number) => speedKph / 3.6
-/** Race trim: minimum mass plus a representative fuel load. */
+/** Algebra fixture only; not an FIA C4.7 observation. */
+const TEST_FIXTURE_NOMINAL_TYRE_MASS_KG = 40
+/** Race trim: resolved test minimum plus a representative fuel load. */
 const massFor = (physics: typeof f1, fuelKg = 30) =>
-  physics.minimumMassKg + fuelKg
+  resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+    physics,
+    weekendStage: 'race',
+  }).operationalMassKg + fuelKg
 
 describe('aerodynamicDownforceN', () => {
   it('rises with the square of speed', () => {

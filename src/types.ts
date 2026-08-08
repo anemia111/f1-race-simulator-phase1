@@ -821,6 +821,12 @@ export type RaceConfig = {
   featureRaceTwoDryCompounds?: boolean
   categoryRaceFormat?: CategoryRaceFormat
   weekendStage?: WeekendStage
+  /**
+   * FIA event-supplied Nominal Tyre Mass used by the 2026 C4.1 resolver.
+   * `null` or omission means no authoritative observation is available; it
+   * must never be inferred from the simulator's historical vehicle mass.
+   */
+  fiaNominalTyreMassKg?: number | null
   /** FIA event directive override; public regulations otherwise expose 8.5 MJ. */
   fiaEventRechargeLimitMj?: number | null
   /** Persisted weekend effects passed from previously completed sessions. */
@@ -1196,6 +1202,11 @@ export type CarSnapshot = {
   timedTrafficYield: boolean
   startsFromPitLane: boolean
   lowPowerStartDetected: boolean
+  /**
+   * Latched once an F1 car reaches the C5.2.12 standing-start MGU-K release
+   * speed. Optional only for checkpoints written before the 2026-era gate.
+   */
+  standingStartMguKReleaseLatched?: boolean
   warningLightsUntilSeconds: number | null
   components: CarComponents
 }

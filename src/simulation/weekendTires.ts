@@ -41,7 +41,7 @@ export type WeekendTirePlan = {
 
 export type WeekendTireAllocation = Record<TireCompound, number>
 
-// FIA 2026 F1 Sporting Regulations Issue 07, Article B6.2.4.
+// FIA 2026 F1 Sporting Regulations Issue 08, Article B6.2.4.
 const standardWeekendAllocation: WeekendTireAllocation = {
   H: 2,
   I: 5,
