@@ -1,0 +1,37 @@
+
+> f1-race-simulator-phase1@0.0.0 benchmark
+> node scripts/run-built-benchmark.mjs
+
+{
+  "recordedAt": "2026-08-08T11:20:25.332Z",
+  "appUrl": "http://127.0.0.1:61951/",
+  "viewport": "1440x900@1x",
+  "simulationSpeed": "60x",
+  "strict": false,
+  "pageErrors": [],
+  "frames": 438,
+  "measuredSeconds": 8.033,
+  "averageFps": 54.52508402838292,
+  "longTaskCount": 6,
+  "longestTaskMs": 81,
+  "totalLongTaskMs": 410,
+  "domNodes": 1305,
+  "canvasPixels": 635962,
+  "heapUsedMb": 31.566619873046875,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "softwareRenderer": true,
+  "freeMode40": {
+    "entrants": 40,
+    "frames": 391,
+    "measuredSeconds": 7.999633999999999,
+    "averageFps": 48.87723613355312,
+    "longTaskCount": 18,
+    "longestTaskMs": 142,
+    "totalLongTaskMs": 1396,
+    "domNodes": 2183,
+    "canvasPixels": 635962,
+    "heapUsedMb": 31.566619873046875,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "softwareRenderer": true
+  }
+}

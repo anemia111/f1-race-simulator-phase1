@@ -1,0 +1,7 @@
+﻿{
+    "command":  "git remote -v",
+    "startedAtUtc":  "2026-08-08T09:37:13.9726002Z",
+    "endedAtUtc":  "2026-08-08T09:37:14.1040496Z",
+    "exitCode":  0,
+    "logFile":  "git-remote-v.log"
+}

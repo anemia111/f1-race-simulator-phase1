@@ -1,0 +1,31 @@
+
+> f1-race-simulator-phase1@0.0.0 validate:montecarlo
+> vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts
+
+
+ RUN  v4.1.10 C:/Users/yuuki/OneDrive/ドキュメント/ChatGPT/f1/f1-race-simulator-phase1
+
+ ❯ src/simulation/monteCarloAcceptance.test.ts (6 tests | 1 failed) 7386ms
+     × gives a precise driver lower 10,000-run behavioral loss in matched physics 5567ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/simulation/monteCarloAcceptance.test.ts > 10,000-run statistical acceptance > gives a precise driver lower 10,000-run behavioral loss in matched physics
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/simulation/monteCarloAcceptance.test.ts:86:3
+     84|
+     85| describe('10,000-run statistical acceptance', () => {
+     86|   it('gives a precise driver lower 10,000-run behavioral loss in match…
+       |   ^
+     87|     const base = f1.drivers[0]
+     88|     const high = uniformDriver(base, 1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  20:12:29
+   Duration  12.73s (transform 3.48s, setup 0ms, import 4.07s, tests 7.39s, environment 0ms)
+

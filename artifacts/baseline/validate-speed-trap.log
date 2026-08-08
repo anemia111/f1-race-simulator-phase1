@@ -1,0 +1,36 @@
+
+> f1-race-simulator-phase1@0.0.0 validate:speed-trap
+> node scripts/validate-speed-trap.mjs --enforce
+
+albert-park-approx       Q 323.68/327.57 vs  325/ 333 (-1.32/-5.43) | R 331.62/343.07 vs  333/ 343 (-1.38/+0.07)
+shanghai-approx          Q 337.74/340.02 vs  337/ 343 (+0.74/-2.98) | R 341.43/348.12 vs  345/ 352 (-3.57/-3.88)
+suzuka-approx            Q 328.18/332.19 vs  332/ 339 (-3.82/-6.81) | R 330.22/343.92 vs  339/ 349 (-8.78/-5.08)
+bahrain-approx           Q 332.66/336.38 vs  n/a/ n/a (  n/a/  n/a) | R 340.36/347.67 vs  n/a/ n/a (  n/a/  n/a)
+jeddah-approx            Q 317.46/319.53 vs  n/a/ n/a (  n/a/  n/a) | R 314.93/326.05 vs  n/a/ n/a (  n/a/  n/a)
+miami-approx             Q 342.41/345.48 vs  344/ 346 (-1.59/-0.52) | R 347.54/ 358.8 vs  346/ 350 (+1.54/+8.8)
+montreal-approx          Q 342.86/345.26 vs  332/ 337 (+10.86/+8.26) | R  348.9/355.52 vs  339/ 350 (+9.9/+5.52)
+monaco-approx            Q 295.75/ 297.2 vs  288/ 291 (+7.75/+6.2) | R 290.73/297.68 vs  284/ 292 (+6.73/+5.68)
+barcelona-approx         Q 336.51/339.87 vs  341/ 344 (-4.49/-4.13) | R 341.66/350.83 vs  352/ 360 (-10.34/-9.17)
+red-bull-ring-approx     Q 325.62/329.53 vs  326/ 331 (-0.38/-1.47) | R 321.35/329.34 vs  333/ 347 (-11.65/-17.66)
+silverstone-approx       Q 335.36/338.16 vs  316/ 323 (+19.36/+15.16) | R 342.28/350.13 vs  333/ 350 (+9.28/+0.13)
+spa-approx               Q 333.64/337.01 vs  331/ 344 (+2.64/-6.99) | R 335.25/351.14 vs  342/ 349 (-6.75/+2.14)
+hungaroring-approx       Q 324.81/326.84 vs  336/ 345 (-11.19/-18.16) | R 317.54/322.17 vs  349/ 357 (-31.46/-34.83)
+zandvoort-approx         Q 337.19/339.75 vs  n/a/ n/a (  n/a/  n/a) | R 332.36/342.11 vs  n/a/ n/a (  n/a/  n/a)
+monza-approx             Q 353.25/356.42 vs  n/a/ n/a (  n/a/  n/a) | R 354.23/362.45 vs  n/a/ n/a (  n/a/  n/a)
+madrid-approx            Q 334.49/337.33 vs  n/a/ n/a (  n/a/  n/a) | R 328.99/337.58 vs  n/a/ n/a (  n/a/  n/a)
+baku-approx              Q 339.36/ 342.3 vs  n/a/ n/a (  n/a/  n/a) | R 347.54/357.44 vs  n/a/ n/a (  n/a/  n/a)
+singapore-approx         Q 303.37/305.22 vs  n/a/ n/a (  n/a/  n/a) | R 297.32/305.13 vs  n/a/ n/a (  n/a/  n/a)
+cota-approx              Q 327.33/ 330.5 vs  n/a/ n/a (  n/a/  n/a) | R 331.69/346.61 vs  n/a/ n/a (  n/a/  n/a)
+mexico-city-approx       Q 332.06/335.77 vs  n/a/ n/a (  n/a/  n/a) | R 344.28/350.66 vs  n/a/ n/a (  n/a/  n/a)
+interlagos-approx        Q 342.96/344.36 vs  n/a/ n/a (  n/a/  n/a) | R  345.6/352.77 vs  n/a/ n/a (  n/a/  n/a)
+las-vegas-approx         Q 357.98/360.94 vs  n/a/ n/a (  n/a/  n/a) | R 370.23/381.37 vs  n/a/ n/a (  n/a/  n/a)
+lusail-approx            Q 333.16/336.72 vs  n/a/ n/a (  n/a/  n/a) | R 334.82/346.86 vs  n/a/ n/a (  n/a/  n/a)
+yas-marina-approx        Q 329.37/332.69 vs  n/a/ n/a (  n/a/  n/a) | R 342.26/355.33 vs  n/a/ n/a (  n/a/  n/a)
+
+24 circuits measured, 11 with an observed reference
+  median  n=22 mean absolute 7.52 km/h, bias -1.27 km/h, worst -31.46 km/h
+  peak    n=22 mean absolute 7.68 km/h, bias -2.96 km/h, worst -34.83 km/h
+  FAIL silverstone-approx: qualifying median off by +19.36 km/h, past the 18 km/h outer bound
+  FAIL hungaroring-approx: qualifying peak off by -18.16 km/h, past the 18 km/h outer bound
+  FAIL hungaroring-approx: race median off by -31.46 km/h, past the 18 km/h outer bound
+  FAIL hungaroring-approx: race peak off by -34.83 km/h, past the 18 km/h outer bound

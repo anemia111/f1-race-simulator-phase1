@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T11:40:44.210Z",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "scope": [
+    "src",
+    "scripts"
+  ],
+  "note": "Inventory only. Each match requires classification as runtime authority, compatibility/UI usage, validator, test, or inert data before removal.",
+  "summary": {
+    "matchCount": 65,
+    "productionMatchCount": 42,
+    "countsByCategory": {
+      "series-pace-multiplier": 8,
+      "legacy-direct-seconds": 42,
+      "track-evolution-direct-seconds": 9,
+      "forbidden-pace-key": 5,
+      "forbidden-ai-result-bonus": 1
+    }
+  },
+  "matches": [
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 137,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 292,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 440,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 607,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 780,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 935,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1122,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1301,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1468,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1641,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1759,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 1879,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2001,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2123,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2220,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2334,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2456,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2578,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2700,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2814,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 2928,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 3050,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 3173,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 3271,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 3369,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/f1PaceCalibration2026.json",
+      "line": 3467,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/superFormulaPaceCalibration2026.json",
+      "line": 53,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/superFormulaPaceCalibration2026.json",
+      "line": 138,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/superFormulaPaceCalibration2026.json",
+      "line": 229,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/superFormulaPaceCalibration2026.json",
+      "line": 314,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "\"raceModelCorrectionSeconds\": 0,",
+      "file": "src/data/calibration/superFormulaPaceCalibration2026.json",
+      "line": 399,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "\"baseLapTimeMultiplier\": 1,",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 38,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "\"baseLapTimeMultiplier\": 1.12,",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 126,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "\"baseLapTimeMultiplier\": 1.16,",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 275,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "\"baseLapTimeMultiplier\": 1.04,",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 414,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "expect(record.simulation.raceModelCorrectionSeconds).toBe(0)",
+      "file": "src/data/paceCalibration.test.ts",
+      "line": 189,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "series.rules.baseLapTimeMultiplier",
+      "file": "src/freeMode/freeModeRegistry.ts",
+      "line": 409,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "(track.baseLapTime * definition.rules.baseLapTimeMultiplier).toFixed(3),",
+      "file": "src/series/seriesRegistry.ts",
+      "line": 457,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "baseLapTimeMultiplier: number",
+      "file": "src/series/types.ts",
+      "line": 26,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "expect(record.simulation.raceModelCorrectionSeconds).toBe(0)",
+      "file": "src/simulation/paceReference2026.test.ts",
+      "line": 185,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "forbidden-pace-key",
+      "excerpt": "/trackId|paceScale|baseLapTime|lapTimeMultiplier/,",
+      "file": "src/simulation/physicsCalibration.test.ts",
+      "line": 40,
+      "symbol": "paceScale-or-lapTimeMultiplier"
+    },
+    {
+      "category": "forbidden-pace-key",
+      "excerpt": "'lapTimeMultiplier',",
+      "file": "src/simulation/physicsCalibration.ts",
+      "line": 243,
+      "symbol": "paceScale-or-lapTimeMultiplier"
+    },
+    {
+      "category": "forbidden-pace-key",
+      "excerpt": "'paceScale',",
+      "file": "src/simulation/physicsCalibration.ts",
+      "line": 244,
+      "symbol": "paceScale-or-lapTimeMultiplier"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "export function trackEvolutionGainSecondsFor(",
+      "file": "src/simulation/trackEvolution.ts",
+      "line": 77,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "raceModelCorrectionSeconds: number",
+      "file": "src/types.ts",
+      "line": 487,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "* Qualifying pace used to ride on `simulation.raceModelCorrectionSeconds`, an",
+      "file": "scripts/calibrate-qualifying-pace.mjs",
+      "line": 5,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "record.simulation.raceModelCorrectionSeconds ??= 0",
+      "file": "scripts/calibrate-race-pace.mjs",
+      "line": 481,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "record.simulation.raceModelCorrectionSeconds = 0",
+      "file": "scripts/calibrate-race-pace.mjs",
+      "line": 688,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "series-pace-multiplier",
+      "excerpt": "symbol: 'baseLapTimeMultiplier',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 66,
+      "symbol": "baseLapTimeMultiplier"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "symbol: 'raceModelCorrectionSeconds',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 71,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "symbol: 'trackEvolutionGainSecondsFor',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 76,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "forbidden-pace-key",
+      "excerpt": "symbol: 'paceScale-or-lapTimeMultiplier',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 81,
+      "symbol": "paceScale-or-lapTimeMultiplier"
+    },
+    {
+      "category": "forbidden-pace-key",
+      "excerpt": "regex: /\\b(?:paceScale|lapTimeMultiplier)\\b/gu,",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 82,
+      "symbol": "paceScale-or-lapTimeMultiplier"
+    },
+    {
+      "category": "forbidden-ai-result-bonus",
+      "excerpt": "regex: /\\b(?:attackBonusSeconds|strategyTimeGain|driverMagicGrip)\\b/gu,",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 87,
+      "symbol": "ai-direct-result-bonus"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "raceModelCorrectionSeconds: 0,",
+      "file": "scripts/update-pace-calibration.mjs",
+      "line": 1202,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "raceModelCorrectionSeconds: 0,",
+      "file": "scripts/update-pace-calibration.mjs",
+      "line": 1441,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "raceModelCorrectionSeconds: 0,",
+      "file": "scripts/update-pace-calibration.mjs",
+      "line": 1682,
+      "symbol": "raceModelCorrectionSeconds"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "trackEvolutionGainSecondsFor: trackEvolution.trackEvolutionGainSecondsFor,",
+      "file": "scripts/validate-f1-support-circuits.mjs",
+      "line": 246,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "runtime.trackEvolutionGainSecondsFor(run.endRubberLevel, track) -",
+      "file": "scripts/validate-f1-support-circuits.mjs",
+      "line": 704,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "runtime.trackEvolutionGainSecondsFor(run.startRubberLevel, track),",
+      "file": "scripts/validate-f1-support-circuits.mjs",
+      "line": 705,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "trackEvolutionGainSecondsFor:",
+      "file": "scripts/validate-long-run-pace.mjs",
+      "line": 110,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "trackEvolution.trackEvolutionGainSecondsFor,",
+      "file": "scripts/validate-long-run-pace.mjs",
+      "line": 111,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "conditionModel.trackEvolutionGainSecondsFor(high, track) -",
+      "file": "scripts/validate-long-run-pace.mjs",
+      "line": 705,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "track-evolution-direct-seconds",
+      "excerpt": "conditionModel.trackEvolutionGainSecondsFor(low, track),",
+      "file": "scripts/validate-long-run-pace.mjs",
+      "line": 706,
+      "symbol": "trackEvolutionGainSecondsFor"
+    },
+    {
+      "category": "legacy-direct-seconds",
+      "excerpt": "!Number.isFinite(record.simulation.raceModelCorrectionSeconds) ||",
+      "file": "scripts/validate-pace-calibration.mjs",
+      "line": 90,
+      "symbol": "raceModelCorrectionSeconds"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+﻿{
+    "command":  "npm run validate:speed-trap",
+    "startedAtUtc":  "2026-08-08T10:33:15.5167338Z",
+    "endedAtUtc":  "2026-08-08T11:06:05.7508921Z",
+    "exitCode":  1,
+    "status":  "completed",
+    "timeoutSeconds":  3600,
+    "logFile":  "validate-speed-trap.log"
+}

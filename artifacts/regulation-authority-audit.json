@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "cutoffDate": "2026-08-08",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "series": {
+    "f1-custom": {
+      "runtimeEra": "f1-2026-current",
+      "bindingBase": [
+        "fia-f1-2026-sporting-b08",
+        "fia-f1-2026-technical-c20",
+        "fia-f1-2026-operational-f10"
+      ],
+      "nonbindingGuidelines": [
+        "fia-f1-2026-driving-standards-v01",
+        "fia-f1-2026-penalty-guidelines-v01"
+      ],
+      "supersededAuthorities": [
+        "2026 Sporting Issue 07",
+        "2026 Technical Issue 19",
+        "2026 Operational Issue 09"
+      ],
+      "unresolvedPublicInputs": [
+        "FIA-F1-DOC-034",
+        "FIA-F1-DOC-058",
+        "FIA-F1-DOC-111"
+      ],
+      "requiredRuntimeCorrections": [
+        "Qualifying recharge floor authority must be 4 MJ under C20, subject to B08 event-count limits.",
+        "Low-grip Boost must only prevent a power reduction; Overtake must be disabled.",
+        "DRS must not be a 2026 F1 runtime state; raw historical OpenF1 DRS remains observational data."
+      ]
+    },
+    "super-formula": {
+      "runtimeEra": "sf-2026",
+      "bindingBase": [
+        "jaf-sf-2026-unified-regulations"
+      ],
+      "bindingCorrectionsAndBulletins": [
+        "jaf-sf-2026-correction-web011",
+        "jaf-race-bulletin-003-2026",
+        "jaf-sf-2026-substitute-round-3-web056"
+      ],
+      "officialExplanatoryInputs": [
+        "jrp-sf23-machine",
+        "yokohama-sf-2026-overview",
+        "yokohama-sf-supply-2030-release"
+      ],
+      "requiredRuntimeCorrections": [
+        "Article 21 tyre-change worker count must be six.",
+        "Race-finish timing must include Bulletin 003-2026 interpretation.",
+        "Machine and tyre supplier pages are explanatory inputs, not regulations."
+      ]
+    }
+  },
+  "resolutionPolicy": {
+    "equalPrecedenceConflict": "unresolved",
+    "missingOfficialValue": "unavailable",
+    "lastWriteWinsAllowed": false,
+    "simulatorPolicyMayMasqueradeAsOfficial": false,
+    "eventScopeRequiredForEventDocuments": true
+  },
+  "status": "phase-0-inventory-complete-runtime-resolver-not-yet-implemented"
+}

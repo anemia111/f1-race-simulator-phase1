@@ -1,0 +1,2094 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T11:40:44.210Z",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "requestedSearch": "rg -n \"'f2'|'f3'|\\bf2\\b|\\bf3\\b|FIA Formula 2|FIA Formula 3\" src scripts docs package.json",
+  "summary": {
+    "executableSeriesIds": [
+      "f1-custom",
+      "f2",
+      "f3",
+      "super-formula"
+    ],
+    "f1CsvIdentityCount": 43,
+    "legacyReferenceMatchCount": 291,
+    "legacyReferenceFileCount": 33,
+    "registeredPoolIdentityCount": 110,
+    "f2PoolIdentityCount": 22,
+    "f3PoolIdentityCount": 30,
+    "poolOnlyTargetIdentityCount": 52
+  },
+  "series": [
+    {
+      "id": "f1-custom",
+      "calendarEventCount": 24,
+      "carCount": 22,
+      "driverCount": 0,
+      "teamCount": 11
+    },
+    {
+      "id": "f2",
+      "calendarEventCount": 14,
+      "carCount": 22,
+      "driverCount": 22,
+      "teamCount": 11
+    },
+    {
+      "id": "f3",
+      "calendarEventCount": 9,
+      "carCount": 30,
+      "driverCount": 30,
+      "teamCount": 10
+    },
+    {
+      "id": "super-formula",
+      "calendarEventCount": 13,
+      "carCount": 24,
+      "driverCount": 24,
+      "teamCount": 16
+    }
+  ],
+  "sourceHashes": {
+    "f1PerformanceCsvSha256": "f3beb93286cab12ef6735bb82ad7234df389798d95f2fb8d4dba616569f0061a",
+    "motorsportSeriesJsonSha256": "be8073110449d98ad3d632899251d60a2e3d4fe7e6494b07c429d3ab5da366e6"
+  },
+  "matches": [
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2: 'F2',",
+      "file": "src/components/FreeModeBuilder.tsx",
+      "line": 60,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3: 'F3',",
+      "file": "src/components/FreeModeBuilder.tsx",
+      "line": 61,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2: 'F2',",
+      "file": "src/components/SeriesDataManager.tsx",
+      "line": 92,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3: 'F3',",
+      "file": "src/components/SeriesDataManager.tsx",
+      "line": 93,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "* Teams with no observation keep the neutral baseline. F2, F3 and Super",
+      "file": "src/data/f1PitCrewCalibration.ts",
+      "line": 49,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f2\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 92,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"label\": \"FIA Formula 2\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 93,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"shortLabel\": \"F2\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 94,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-01\", \"round\": 1, \"trackId\": \"albert-park-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 98,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-02\", \"round\": 2, \"trackId\": \"miami-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 99,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-03\", \"round\": 3, \"trackId\": \"montreal-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 100,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f2-04\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 102,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-05\", \"round\": 5, \"trackId\": \"barcelona-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 114,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-06\", \"round\": 6, \"trackId\": \"red-bull-ring-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 115,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-07\", \"round\": 7, \"trackId\": \"silverstone-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 116,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-08\", \"round\": 8, \"trackId\": \"spa-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 117,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-09\", \"round\": 9, \"trackId\": \"hungaroring-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 118,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-10\", \"round\": 10, \"trackId\": \"monza-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 119,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-11\", \"round\": 11, \"trackId\": \"madrid-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 120,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-12\", \"round\": 12, \"trackId\": \"baku-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 121,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-13\", \"round\": 13, \"trackId\": \"lusail-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 122,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-14\", \"round\": 14, \"trackId\": \"yas-marina-approx\", \"raceCount\": 2, \"sprint\": true }",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 123,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"label\": \"FIA Formula 2 2026 teams\", \"sourceDate\": \"2026-07-19\", \"url\": \"https://www.fiaformula2.com/en/teams\" },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 176,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"label\": \"FIA Formula 2 2026 sporting regulations V2\", \"sourceDate\": \"2026-06-25\", \"url\": \"https://www.fia.com/regulation/category/829/1000\" }",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 177,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-invicta\", \"name\": \"Invicta Racing\", \"color\": \"#f2cf18\", \"operations\": 91, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 180,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-hitech\", \"name\": \"Hitech\", \"color\": \"#8a9199\", \"operations\": 88, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 184,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-campos\", \"name\": \"Campos Racing\", \"color\": \"#f4cc16\", \"operations\": 90, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 188,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-dams\", \"name\": \"DAMS Lucas Oil\", \"color\": \"#2f63bd\", \"operations\": 86, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 192,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-mp\", \"name\": \"MP Motorsport\", \"color\": \"#f06a21\", \"operations\": 87, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 196,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-prema\", \"name\": \"PREMA Racing\", \"color\": \"#e31b23\", \"operations\": 89, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 200,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-rodin\", \"name\": \"Rodin Motorsport\", \"color\": \"#69b7e6\", \"operations\": 84, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 204,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-art\", \"name\": \"ART Grand Prix\", \"color\": \"#202b36\", \"operations\": 88, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 208,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-aix\", \"name\": \"AIX Racing\", \"color\": \"#2a86c7\", \"operations\": 80, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 212,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-var\", \"name\": \"Van Amersfoort Racing\", \"color\": \"#e85a24\", \"operations\": 82, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 216,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f2-trident\", \"name\": \"TRIDENT\", \"color\": \"#245bb5\", \"operations\": 83, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 220,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f3\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 227,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"label\": \"FIA Formula 3\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 228,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"shortLabel\": \"F3\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 229,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-01\", \"round\": 1, \"trackId\": \"albert-park-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 233,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f3-02\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 235,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-03\", \"round\": 3, \"trackId\": \"barcelona-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 247,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-04\", \"round\": 4, \"trackId\": \"red-bull-ring-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 248,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-05\", \"round\": 5, \"trackId\": \"silverstone-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 249,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-06\", \"round\": 6, \"trackId\": \"spa-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 250,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-07\", \"round\": 7, \"trackId\": \"hungaroring-approx\", \"raceCount\": 2, \"sprint\": true },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 251,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f3-08\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 253,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "\"id\": \"f3-09\",",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 266,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"label\": \"FIA Formula 3 2026 teams\", \"sourceDate\": \"2026-07-19\", \"url\": \"https://www.fiaformula3.com/en/teams\" },",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 325,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"label\": \"FIA Formula 3 2026 calendar\", \"sourceDate\": \"2026-07-19\", \"url\": \"https://www.fiaformula3.com/en/racing/2026\" }",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 326,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-campos\", \"name\": \"Campos Racing\", \"color\": \"#f4cc16\", \"operations\": 91, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 329,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-trident\", \"name\": \"TRIDENT\", \"color\": \"#245bb5\", \"operations\": 87, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 334,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-mp\", \"name\": \"MP Motorsport\", \"color\": \"#f06a21\", \"operations\": 84, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 339,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-art\", \"name\": \"ART Grand Prix\", \"color\": \"#202b36\", \"operations\": 86, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 344,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-var\", \"name\": \"Van Amersfoort Racing\", \"color\": \"#e85a24\", \"operations\": 89, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 349,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-rodin\", \"name\": \"Rodin Motorsport\", \"color\": \"#69b7e6\", \"operations\": 88, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 354,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-prema\", \"name\": \"PREMA Racing\", \"color\": \"#e31b23\", \"operations\": 83, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 359,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-hitech\", \"name\": \"Hitech\", \"color\": \"#8a9199\", \"operations\": 82, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 364,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-aix\", \"name\": \"AIX Racing\", \"color\": \"#2a86c7\", \"operations\": 78, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 369,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ \"id\": \"f3-dams\", \"name\": \"DAMS Lucas Oil\", \"color\": \"#2f63bd\", \"operations\": 80, \"drivers\": [",
+      "file": "src/data/motorsportSeries2026.json",
+      "line": 374,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 25,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const teams = f2.teams.map((team, index) => ({",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 201,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const drivers = f2.drivers.map((driver, index) => ({",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 206,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 213,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const restored = importSeriesConfigurationBackup(source, f2)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 219,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(restored.rules).toEqual(f2.rules)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 224,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(restored.calendar).toEqual(f2.calendar)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 225,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = seriesPackageById.get('f3')!",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 229,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 231,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3.teams,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 232,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3.drivers,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 233,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(() => importSeriesConfigurationBackup(source, f2)).toThrow(",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 237,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 245,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2.teams,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 246,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2.drivers,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 247,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 254,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "importSeriesConfigurationBackup(JSON.stringify(backup), f2),",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 260,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(parsePersistedSeriesConfiguration('{bad json', f2)).toBeNull()",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 265,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "JSON.stringify({ saveVersion: 99, seriesId: 'f2' }),",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 268,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 269,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const edited = f2.drivers.map((driver, index) => ({",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 275,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const imported = importDriverCsv(csv, f2, f2.drivers, f2.teams)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 282,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(imported).toHaveLength(f2.carCount)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 294,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const rows = exportDriverCsv(f2.drivers).trim().split(/\\r?\\n/)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 298,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "importDriverCsv(rows.join('\\n'), f2, f2.drivers, f2.teams),",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 307,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const csv = exportTeamCsv(f2.teams)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 312,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const imported = importTeamCsv(csv, f2, f2.teams)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 313,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2.teams.map((team) => team.id),",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 316,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2.teams[0].machine.puOutput,",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 319,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const equalised = equalizeMachinePerformance(f2.teams)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 325,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2.teams.map((team) => team.id),",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 328,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const stored = serializeSeriesConfiguration('f2', f2.teams, f2.drivers)",
+      "file": "src/data/seriesConfiguration.test.ts",
+      "line": 335,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('never claims a hybrid Energy Store or active aero for F2 and F3', () => {",
+      "file": "src/domain/pitWall.test.ts",
+      "line": 229,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "for (const seriesId of ['f2', 'f3'] as const) {",
+      "file": "src/domain/pitWall.test.ts",
+      "line": 230,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "* F1-only systems must not be printed with fabricated values for F2, F3, or",
+      "file": "src/domain/pitWall.ts",
+      "line": 184,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f2',",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 178,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f3',",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 179,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', 'albert-park-approx', 'drs'],",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 309,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', 'fuji-sf', 'drs'],",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 310,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', 'albert-park-approx', 'drs'],",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 311,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', 'fuji-sf', 'drs'],",
+      "file": "src/freeMode/freeModeRegistry.test.ts",
+      "line": 312,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('finishes a 30-car F3 session on an F1 circuit', () => {",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 121,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "categoryId: 'f3',",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 125,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', 30, 'albert-park-approx'],",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 157,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', 30, 'fuji-sf'],",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 158,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', 30, 'albert-park-approx'],",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 159,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', 30, 'fuji-sf'],",
+      "file": "src/freeMode/freeModeRuntime.integration.test.ts",
+      "line": 160,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f2',",
+      "file": "src/freeMode/freeModeValidation.ts",
+      "line": 16,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f3',",
+      "file": "src/freeMode/freeModeValidation.ts",
+      "line": 17,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const seriesIds: SeriesId[] = ['f1-custom', 'f2', 'f3', 'super-formula']",
+      "file": "src/persistence.ts",
+      "line": 487,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ id: 'f2', teamCount: 11, carCount: 22 },",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 29,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "{ id: 'f3', teamCount: 10, carCount: 30 },",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 30,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "for (const seriesId of ['f2', 'f3', 'super-formula'] as const) {",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 108,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 202,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = seriesPackageById.get('f3')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 203,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.calendar).toHaveLength(14)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 213,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.calendar.reduce((sum, event) => sum + event.raceCount, 0)).toBe(28)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 214,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.sprintGridReverseCount).toBe(10)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 215,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.featureRaceMandatoryPitStop).toBe(true)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 216,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.overtakeActivation).toBe('after-one-lap')",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 217,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.race.featureDistanceKm).toBe(170)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 218,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.race.sprintDistanceKm).toBe(120)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 219,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.race.featureTimeLimitSeconds).toBe(60 * 60)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 220,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.race.sprintTimeLimitSeconds).toBe(45 * 60)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 221,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.tires.standardAllocation).toEqual({",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 222,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.rules.sprintGridReverseCount).toBe(12)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 229,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.rules.race.featureTimeLimitSeconds).toBe(45 * 60)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 230,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.rules.race.sprintTimeLimitSeconds).toBe(40 * 60)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 231,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.rules.tires.qualifyingDryCompound).toBe('M')",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 232,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3.calendar.find((event) => event.trackId === 'madrid-approx')?.raceCount,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 234,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3.calendar.find((event) => event.trackId === 'madrid-approx')",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 237,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.rules.points.fastestLap).toEqual({",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 247,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.rules.points.reduced?.sprint[0]).toEqual([3, 2, 1])",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 252,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 277,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = seriesPackageById.get('f3')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 278,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2AlbertPark = f2.tracks.find(",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 279,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2Monaco = f2.tracks.find(",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 282,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3AlbertPark = f3.tracks.find(",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 285,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "sessionDistanceLapsFor(f2AlbertPark, 'sprint', f2.rules.race),",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 290,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "sessionDistanceLapsFor(f2AlbertPark, 'race', f2.rules.race),",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 293,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "sessionDistanceLapsFor(f2Monaco, 'sprint', f2.rules.race),",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 296,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "sessionDistanceLapsFor(f2Monaco, 'race', f2.rules.race),",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 299,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "sessionDistanceLapsFor(f3AlbertPark, 'sprint', f3.rules.race),",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 302,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(qualifyingBySeries.get('f2')!.segments).toHaveLength(1)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 331,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(qualifyingBySeries.get('f2')!.classification).toHaveLength(22)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 332,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 335,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(qualifyingBySeries.get('f3')!.segments).toHaveLength(1)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 338,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(qualifyingBySeries.get('f3')!.classification).toHaveLength(30)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 339,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f3')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 342,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2Classification = qualifyingBySeries.get('f2')!.classification",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 358,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('keeps a qualifying-used F2 option set reusable for the feature race', () => {",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 367,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 368,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "drivers: f2.drivers,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 370,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "featureRaceMandatoryPitStop: f2.rules.featureRaceMandatoryPitStop,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 371,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "featureRaceTwoDryCompounds: f2.rules.featureRaceTwoDryCompounds,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 372,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "qualifyingDryCompound: f2.rules.tires.qualifyingDryCompound,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 373,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seed: 'f2-reusable-option-set',",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 374,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "teams: f2.teams,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 375,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "tireAllocation: f2.rules.tires.standardAllocation,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 376,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "track: f2.tracks[0],",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 377,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const qualifying = runSeriesQualifying(config, f2.rules)",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 380,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('stores official F2/F3 Monaco and Monza group durations as event overrides', () => {",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 413,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 414,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = seriesPackageById.get('f3')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 415,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.calendar.find((event) => event.id === 'f2-04')?.qualifying).toMatchObject({",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 417,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.calendar.find((event) => event.id === 'f3-02')?.qualifying).toMatchObject({",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 421,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.calendar.find((event) => event.id === 'f3-08')?.qualifying).toMatchObject({",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 425,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 432,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 436,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2.rules,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 438,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2.rules.tires,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 440,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2.rules.tires.standardAllocation,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 442,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 452,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2.rules,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 454,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...f2.rules.qualifying,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 456,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "advanceCount: f2.carCount,",
+      "file": "src/series/seriesRegistry.test.ts",
+      "line": 459,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "export type SeriesId = 'f1-custom' | 'f2' | 'f3' | 'super-formula'",
+      "file": "src/series/types.ts",
+      "line": 11,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = categoryPhysicsFor('f2')",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 141,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = categoryPhysicsFor('f3')",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 142,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.minimumMassKg).toBe(795)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 153,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.combustionPowerKw).toBeCloseTo(456.3, 1)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 154,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.gearCount).toBe(6)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 155,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(categoryHasHybridEnergyStore(f2)).toBe(false)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 156,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.minimumMassKg).toBe(699)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 158,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.combustionPowerKw).toBeCloseTo(279.4, 1)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 159,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f3.gearCount).toBe(6)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 160,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(categoryHasHybridEnergyStore(f3)).toBe(false)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 161,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const traceFor = (seriesId: 'f1-custom' | 'f2', team: Team) =>",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 200,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const sameMachineWithF2Hardware = traceFor('f2', slowestF1Team)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 219,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2: seriesPackageById",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 240,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f2')!",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 241,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3: seriesPackageById",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 243,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f3')!",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 244,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', representativeTracks.f2],",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 252,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', representativeTracks.f3],",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 253,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f2',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 287,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f3',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 288,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('keeps F2 ahead of F3 on their shared circuits', () => {",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 312,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f2')!",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 315,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": ".get('f3')!",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 318,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = traceQualifyingLap({",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 320,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...fastestEntrantFor('f2'),",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 321,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seriesId: 'f2',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 322,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = traceQualifyingLap({",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 325,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "...fastestEntrantFor('f3'),",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 326,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seriesId: 'f3',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 327,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(f2.lapTimeSeconds).toBeLessThan(f3.lapTimeSeconds)",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 331,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seriesId: 'f2',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 342,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seriesId: 'f3',",
+      "file": "src/simulation/categoryPhysics.test.ts",
+      "line": 346,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "* minimum mass. F2 uses the official 620 hp, 795 kg and 3.5 g figures. F3 uses",
+      "file": "src/simulation/categoryPhysics.ts",
+      "line": 63,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f2: {",
+      "file": "src/simulation/categoryPhysics.ts",
+      "line": 110,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "id: 'f2',",
+      "file": "src/simulation/categoryPhysics.ts",
+      "line": 116,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "f3: {",
+      "file": "src/simulation/categoryPhysics.ts",
+      "line": 136,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "id: 'f3',",
+      "file": "src/simulation/categoryPhysics.ts",
+      "line": 142,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = categoryPhysicsFor('f2')",
+      "file": "src/simulation/drivetrain.test.ts",
+      "line": 22,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = categoryPhysicsFor('f3')",
+      "file": "src/simulation/drivetrain.test.ts",
+      "line": 23,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "for (const physics of [f1, f2, f3]) {",
+      "file": "src/simulation/drivetrain.test.ts",
+      "line": 83,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "// F2 makes more kW than F1's combustion side but revs to 8 750 rather than",
+      "file": "src/simulation/drivetrain.test.ts",
+      "line": 107,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(peakTorqueNm(f2)).toBeGreaterThan(peakTorqueNm(f1))",
+      "file": "src/simulation/drivetrain.test.ts",
+      "line": 109,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = seriesPackageById.get('f2')!",
+      "file": "src/simulation/monteCarloAcceptance.test.ts",
+      "line": 17,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = seriesPackageById.get('f3')!",
+      "file": "src/simulation/monteCarloAcceptance.test.ts",
+      "line": 18,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "for (const series of [f2, f3]) {",
+      "file": "src/simulation/monteCarloAcceptance.test.ts",
+      "line": 159,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const series = seriesPackageById.get('f2')!",
+      "file": "src/simulation/ots.test.ts",
+      "line": 102,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seed: 'f2-drs-after-one-lap',",
+      "file": "src/simulation/ots.test.ts",
+      "line": 108,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = categoryPhysicsFor('f2')",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 19,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = categoryPhysicsFor('f3')",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 20,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(speedFor(f1)).toBeGreaterThan(speedFor(f2))",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 192,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(speedFor(f2)).toBeGreaterThan(speedFor(f3))",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 193,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(lapFor(superFormula)).toBeLessThan(lapFor(f2))",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 255,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(lapFor(f2)).toBeLessThan(lapFor(f3))",
+      "file": "src/simulation/physicalLap.test.ts",
+      "line": 256,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f2',",
+      "file": "src/simulation/physicsCalibration.ts",
+      "line": 249,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'f3',",
+      "file": "src/simulation/physicsCalibration.ts",
+      "line": 250,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "* knockout qualifying, F2/F3 use one timed session, and Super Formula splits",
+      "file": "src/simulation/qualifying.ts",
+      "line": 1042,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "it('uses the F2/F3 reduced points tables at each distance threshold', () => {",
+      "file": "src/simulation/season.test.ts",
+      "line": 172,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const series = seriesPackageById.get('f2')!",
+      "file": "src/simulation/timedSessionPlan.test.ts",
+      "line": 170,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const event = series.calendar.find((candidate) => candidate.id === 'f2-04')!",
+      "file": "src/simulation/timedSessionPlan.test.ts",
+      "line": 171,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seed: 'f2-monaco-groups',",
+      "file": "src/simulation/timedSessionPlan.test.ts",
+      "line": 177,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = categoryPhysicsFor('f2')",
+      "file": "src/simulation/trackDynamicsPhysical.test.ts",
+      "line": 12,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = categoryPhysicsFor('f3')",
+      "file": "src/simulation/trackDynamicsPhysical.test.ts",
+      "line": 13,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3Profile = sampledProfile(suzuka, f3)",
+      "file": "src/simulation/trackDynamicsPhysical.test.ts",
+      "line": 28,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(lapFor(superFormula)).toBeLessThan(lapFor(f2))",
+      "file": "src/simulation/trackDynamicsPhysical.test.ts",
+      "line": 45,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(lapFor(f2)).toBeLessThan(lapFor(f3))",
+      "file": "src/simulation/trackDynamicsPhysical.test.ts",
+      "line": 46,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f2 = categoryPhysicsFor('f2')",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 17,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const f3 = categoryPhysicsFor('f3')",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 18,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "// F2 publishes 3.5 g and F3 publishes 2.6 g. Neither number is an input to",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 283,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "massKg: massFor(f3),",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 288,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "physics: f3,",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 289,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "massKg: massFor(f2),",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 294,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "physics: f2,",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 295,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(at250(superFormula)).toBeGreaterThan(at250(f2))",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 314,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(at250(f2)).toBeGreaterThan(at250(f3))",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 315,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(flatRadiusFor(superFormula)).toBeLessThan(flatRadiusFor(f2))",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 378,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "expect(flatRadiusFor(f2)).toBeLessThan(flatRadiusFor(f3))",
+      "file": "src/simulation/tyreForces.test.ts",
+      "line": 379,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "seriesId?: 'f1-custom' | 'f2' | 'f3' | 'super-formula'",
+      "file": "src/types.ts",
+      "line": 803,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f2', 22],",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 823,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "['f3', 30],",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 824,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "if (seriesId === 'f3') {",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 851,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "await eventSelector.selectOption('f3-09')",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 855,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "results.f3.madridSessions = await page",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 862,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "results.f3.madridScreenshot = join(",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 866,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'broadcast-f3-madrid.png',",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 868,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "await page.screenshot({ path: results.f3.madridScreenshot, fullPage: true })",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 870,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const expectedCars = { f2: 22, f3: 30, 'super-formula': 24 }",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 1312,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "if (seriesModes.seriesOptions.join(',') !== 'f1-custom,f2,f3,super-formula') {",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 1314,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const madridSessions = seriesModes.results.f3.madridSessions ?? []",
+      "file": "scripts/broadcast-playtest.mjs",
+      "line": 1338,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "symbol: 'f2-or-f3',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 208,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "regex: /(?:'f2'|'f3'|\\bf2\\b|\\bf3\\b|FIA Formula 2|FIA Formula 3)/giu,",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 209,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "'rg -n \"\\'f2\\'|\\'f3\\'|\\\\bf2\\\\b|\\\\bf3\\\\b|FIA Formula 2|FIA Formula 3\" src scripts docs package.json',",
+      "file": "scripts/generate-phase0-audits.mjs",
+      "line": 243,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "const categoryIds = ['f1-custom', 'super-formula', 'f2', 'f3']",
+      "file": "scripts/validate-physics-calibration.mjs",
+      "line": 103,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "| FIA Formula 2 | 11 | 22 | One 30-minute session; Monaco uses odd/even 16-minute groups | Reverse top 10 sprint; feature race with mandatory stop and both dry specs | DRS |",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 8,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "| FIA Formula 3 | 10 | 30 | One 30-minute session; Monaco/Monza use odd/even groups; Madrid has two sessions | Reverse top 12 sprint; no routine mandatory stop; Madrid has two feature races | DRS |",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 9,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2 and SUPER FORMULA values supplied as already adjusted stay as stored.",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 19,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F3 values supplied as already adjusted stay as stored.",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 20,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2 maps the two nominated dry specifications to Prime (`H`) and Option (`S`),",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 30,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F3 maps its single dry specification to `M` and provides four dry sets.",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 32,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "Used F2 Prime/Option sets remain reusable for the Feature Race after qualifying;",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 38,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2 Sprint races exceed 120 km (Monaco 100 km) with a 45-minute limit. Feature",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 43,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F3 uses event lap counts with 40-minute Sprint and 45-minute Feature limits.",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 45,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2/F3 shortened-race points use the official under-25%, under-50%, under-75%,",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 46,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2/F3 award one fastest-lap point only when the overall fastest classified",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 48,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2/F3 DRS becomes eligible after one completed lap plus the detection line.",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 50,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- Madrid F3 exposes `FP1 -> Qualifying 1 -> Qualifying 2 -> Sprint -> Feature 1",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 57,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2 Monaco runs two 16-minute odd/even car-number groups. F3 does the same at",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 67,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2/F3/SF fields, calendars, rule packages, and source URLs:",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 95,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- OpenF1 is enabled only for F1. It never supplies F2, F3, or SUPER FORMULA",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 99,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "include FIA F2/F3 sporting regulations, Formula 2/3 official teams and",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 106,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F2/F3 one-make fields remain compact without an artificial team cliff;",
+      "file": "docs/MULTI_SERIES_2026.md",
+      "line": 163,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "The Suzuka model ranking is F1, SUPER FORMULA, F2, F3; the shared official",
+      "file": "docs/physics-calibration.md",
+      "line": 205,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- F1/F2/F3/SF have separate mass, tyre, aero, PU, gearbox and deployment",
+      "file": "docs/physics-migration-progress.md",
+      "line": 81,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- Product: PC-first F1/F2/F3/SUPER FORMULA observer and race-control simulator.",
+      "file": "docs/PROJECT_HANDOFF.md",
+      "line": 8,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "- Fields: F1 10 teams/20 cars (from a 30-driver CSV with reserves), F2 11/22,",
+      "file": "docs/PROJECT_HANDOFF.md",
+      "line": 11,
+      "symbol": "f2-or-f3"
+    },
+    {
+      "category": "legacy-series-reference",
+      "excerpt": "F3 10/30, and SUPER FORMULA 16/24, backed by a 110-person relational pool.",
+      "file": "docs/PROJECT_HANDOFF.md",
+      "line": 12,
+      "symbol": "f2-or-f3"
+    }
+  ]
+}

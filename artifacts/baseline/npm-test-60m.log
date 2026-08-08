@@ -1,0 +1,13 @@
+
+> f1-race-simulator-phase1@0.0.0 test
+> vitest run --no-file-parallelism
+
+
+ RUN  v4.1.10 C:/Users/yuuki/OneDrive/ドキュメント/ChatGPT/f1/f1-race-simulator-phase1
+
+
+ Test Files  70 passed (70)
+      Tests  807 passed (807)
+   Start at  20:20:40
+   Duration  845.23s (transform 2.90s, setup 0ms, import 11.02s, tests 810.82s, environment 8ms)
+

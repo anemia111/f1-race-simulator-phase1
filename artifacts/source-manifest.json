@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "cutoffDate": "2026-08-08",
+  "retrievedAt": "2026-08-08T20:36:00+09:00",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "policy": {
+    "cacheFullDocuments": false,
+    "reason": "FIA, JAF, JRP, Yokohama and Haas terms restrict republication; the repository stores attributed facts, retrieval metadata and hashes rather than mirrored documents.",
+    "precedence": [
+      "binding base regulation",
+      "binding official correction",
+      "binding event special regulation or bulletin",
+      "race-director instruction within delegated scope",
+      "official guideline",
+      "official explanatory material",
+      "simulator policy"
+    ]
+  },
+  "sources": [
+    {
+      "id": "fia-f1-2026-category",
+      "issuer": "FIA",
+      "title": "2026 Formula One World Championship regulations",
+      "kind": "official-index",
+      "url": "https://www.fia.com/regulation/category/2182",
+      "publishedAt": null,
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "notes": "The brief's category 110 page remains an umbrella archive; category 2182 is the canonical 2026 listing."
+    },
+    {
+      "id": "fia-f1-2026-sporting-b08",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Sporting Regulations, Section B, Issue 08",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "cbe329807d7803a4db511f80d829de1212d0c6a1c3b327cddb1b841823baa9fd",
+      "facts": [
+        "B7.2.1(c) limits use of a qualifying recharge floor below 5 MJ to no more than four of at most twelve affected competitions."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-technical-c20",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Technical Regulations, Section C, Issue 20",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "cf0b919eef5eecc27497fb6de012f8d27e200f6dbd34d62b7e5385f7274ff652",
+      "facts": [
+        "C5.2.10(ii) changes the qualifying recharge floor from 5 MJ to 4 MJ.",
+        "C5.2.8(iii) and (iv) apply during any power-limited period."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-operational-f10",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Operational Regulations, Section F, Issue 10",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "c53c9f07e6313d0c0a0263204d745ba1f99e8c496286924a2166bc66dac38845"
+    },
+    {
+      "id": "fia-f1-2026-driving-standards-v01",
+      "issuer": "FIA",
+      "title": "2026 F1 Driving Standards Guidelines",
+      "kind": "official-nonbinding-guideline",
+      "url": "https://www.fia.com/sites/default/files/2026_f1_driving_standards_guidelines.pdf",
+      "publishedAt": "2026-03-06",
+      "documentDate": "2026-02-26",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": "a21a1c3cc1789a225956e0ca70b1223583d8883c3b970a2aab88214c0f7d2e0c",
+      "notes": "FIA explicitly states that the guidelines have no regulatory value."
+    },
+    {
+      "id": "fia-f1-2026-penalty-guidelines-v01",
+      "issuer": "FIA",
+      "title": "2026 F1 Penalty Guidelines",
+      "kind": "official-nonbinding-guideline",
+      "url": "https://www.fia.com/sites/default/files/2026_f1_penalty_guidelines.pdf",
+      "publishedAt": "2026-03-06",
+      "documentDate": "2026-03-02",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": "ebc9b9f955b6728e45240f39ac0274d01c76cbff81c7ffa13413165be309d731",
+      "notes": "FIA explicitly states that the guidelines have no regulatory value."
+    },
+    {
+      "id": "fia-f1-2026-energy-wmsc-2026-06-23",
+      "issuer": "FIA",
+      "title": "Building a stronger future: updated regulations approved by World Motor Sport Council",
+      "kind": "official-decision-summary",
+      "url": "https://www.fia.com/news/building-stronger-future-fia-championships-updated-regulations-approved-world-motor-sport",
+      "publishedAt": "2026-06-23",
+      "effectiveFrom": "2026-06-23",
+      "status": "superseded-where-binding-regulations-differ",
+      "sha256": null,
+      "facts": [
+        "In low-grip conditions Boost may only prevent a power reduction and may not increase output.",
+        "Overtake is disabled in the affected low-grip condition."
+      ]
+    },
+    {
+      "id": "jaf-sf-2026-unified-regulations",
+      "issuer": "JAF",
+      "title": "2026 SUPER FORMULA Unified Regulations",
+      "kind": "binding-regulation",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf",
+      "publishedAt": "2026-01-23",
+      "enactedAt": "2025-12-11",
+      "effectiveFrom": "2026-01-01",
+      "status": "current-consolidated-at-cutoff",
+      "sha256": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+      "notes": "The currently retrieved PDF contains the corrected Article 21 value despite older portal metadata; retain retrieval date and hash."
+    },
+    {
+      "id": "jaf-sf-2026-correction-web011",
+      "issuer": "JAF",
+      "title": "Correction notice No.2026-WEB011",
+      "kind": "binding-official-correction",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3402/3404/4458/20260203.pdf",
+      "publishedAt": "2026-02-03",
+      "effectiveFrom": "2026-02-03",
+      "status": "incorporated-into-current-consolidated-pdf",
+      "sha256": "0a46c56d502e5f60cfc258658cd108393b59f77c4214846e5dcc0da24d679623",
+      "facts": [
+        "Article 21 tyre-change worker count is corrected from five to six."
+      ]
+    },
+    {
+      "id": "jaf-race-bulletin-003-2026",
+      "issuer": "JAF",
+      "title": "Race Championship Bulletin No.003-2026",
+      "kind": "binding-official-bulletin",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3493/race_bulletin_003-2026_20260610.pdf",
+      "publishedAt": "2026-06-10",
+      "effectiveFrom": "2026-06-10",
+      "status": "current-at-cutoff",
+      "sha256": "a93903db08d3f0c90aa3785a6b7159a2ada3042c097a928488ead3165a87c9d3",
+      "facts": [
+        "Immediately effective interpretation of race-finish timing for SUPER FORMULA and SUPER FORMULA LIGHTS."
+      ]
+    },
+    {
+      "id": "jaf-sf-2026-substitute-round-3-web056",
+      "issuer": "JAF",
+      "title": "Substitute Round 3 notice No.2026-WEB056",
+      "kind": "binding-calendar-notice",
+      "url": "https://motorsports.jaf.or.jp/regulations/announcement/notice/2026/20260715_01",
+      "publishedAt": "2026-07-15",
+      "effectiveFrom": "2026-07-15",
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Fuji Rounds 3, 6 and 7 form a three-race meeting."
+      ]
+    },
+    {
+      "id": "jrp-sf23-machine",
+      "issuer": "JRP / SUPER FORMULA",
+      "title": "SUPER FORMULA machine",
+      "kind": "official-explanatory-material",
+      "url": "https://superformula.net/sf3/about_sf/about_machine/",
+      "publishedAt": null,
+      "effectiveFrom": null,
+      "status": "live-undated",
+      "sha256": null,
+      "facts": [
+        "Dallara SF23 chassis.",
+        "Yokohama control tyres.",
+        "Honda and Toyota engine performance equalisation."
+      ]
+    },
+    {
+      "id": "yokohama-sf-2026-overview",
+      "issuer": "Yokohama Rubber",
+      "title": "2026 SUPER FORMULA tyre overview",
+      "kind": "official-supplier-explanatory-material",
+      "url": "https://www.y-yokohama.com/motorsports/special-contents/specialpage002/",
+      "publishedAt": null,
+      "effectiveFrom": "2026-01-01",
+      "status": "live-undated",
+      "sha256": null,
+      "facts": [
+        "270/620R13 front and 360/620R13 rear.",
+        "One dry and one wet specification.",
+        "Approximately 46 percent recycled or renewable raw materials averaged across dry and wet tyres."
+      ]
+    },
+    {
+      "id": "yokohama-sf-supply-2030-release",
+      "issuer": "Yokohama Rubber",
+      "title": "Exclusive SUPER FORMULA control-tyre supply through 2030",
+      "kind": "official-supplier-release",
+      "url": "https://www.y-yokohama.com/release/?id=4730",
+      "publishedAt": "2026-02-27",
+      "effectiveFrom": "2026-02-27",
+      "status": "current-at-cutoff",
+      "sha256": null
+    },
+    {
+      "id": "haas-fuji-tpc-2026-06-25",
+      "issuer": "TGR Haas F1 Team",
+      "title": "Sho Tsuboi and Nirei Fukuzumi drive Fuji Speedway TPC event",
+      "kind": "official-team-announcement",
+      "url": "https://haasf1team.com/news/sho-tsuboi-and-nirei-fukuzumi-drive-fuji-speedway-tpc-event",
+      "publishedAt": "2026-06-25",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Drivers: Sho Tsuboi and Nirei Fukuzumi.",
+        "Venue and dates: Fuji Speedway, 2026-07-28 to 2026-07-29."
+      ],
+      "limitations": [
+        "The announcement does not identify the chassis as VF-25.",
+        "No official lap timing is supplied."
+      ]
+    }
+  ],
+  "unavailableAuthorities": [
+    {
+      "ids": [
+        "FIA-F1-DOC-034",
+        "FIA-F1-DOC-058",
+        "FIA-F1-DOC-111"
+      ],
+      "reason": "Referenced by Technical Issue 20 for event parameters or low-grip curves but not published in the public regulation category at the cutoff.",
+      "runtimePolicy": "Do not invent values. Resolve the affected event inputs as unavailable until an authoritative public document is supplied."
+    }
+  ]
+}

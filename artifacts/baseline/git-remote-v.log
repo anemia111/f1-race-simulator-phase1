@@ -1,0 +1,7 @@
+﻿command: git remote -v
+startedAtUtc: 2026-08-08T09:37:13.9726002Z
+endedAtUtc: 2026-08-08T09:37:14.1040496Z
+exitCode: 0
+--- output ---
+origin	https://github.com/anemia111/f1-race-simulator-phase1.git (fetch)
+origin	https://github.com/anemia111/f1-race-simulator-phase1.git (push)

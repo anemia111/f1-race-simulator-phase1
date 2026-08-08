@@ -1,0 +1,15 @@
+﻿command: git log -10 --oneline --decorate
+startedAtUtc: 2026-08-08T09:37:13.5424155Z
+endedAtUtc: 2026-08-08T09:37:13.6869432Z
+exitCode: 0
+--- output ---
+09b1d61 (HEAD -> master, origin/master, origin/HEAD) Merge pull request #20 from anemia111/fix/starting-grid-spacing
+bc18470 (origin/fix/starting-grid-spacing) Space the starting grid in metres, so the field leaves the line together
+91ac5c5 Merge pull request #19 from anemia111/docs/update-next-session
+b5ce994 (origin/docs/update-next-session) Rewrite the next-session prompt around what measurement showed
+fb8b113 Merge pull request #18 from anemia111/docs/next-session-prompt
+1cacc84 (origin/docs/next-session-prompt) Write down the next calibration session, and why it starts cold
+22afd7d Merge pull request #17 from anemia111/fix/deployment-energy-allowance
+6c9be06 (origin/fix/deployment-energy-allowance) Give the reference lap the energy a qualifying lap actually has
+d1d81a0 Merge pull request #16 from anemia111/measure/deployment-energy-budget
+5938459 (origin/measure/deployment-energy-budget) Measure the MGU-K energy a reference lap spends
