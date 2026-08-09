@@ -3,9 +3,11 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import {
   ACTIVE_AERO_TRANSITION_LIMIT_SECONDS,
+  activeAeroDisplayModeForState,
   activeAeroStateOfDeploymentCanChange,
   activeAeroZoneAt,
   advanceActiveAeroState,
+  isActiveAeroState,
   overtakeStatusFor,
 } from './activeAero'
 import { createInitialRace } from './race'
@@ -111,6 +113,8 @@ describe('2026 F1 active-aero State of Deployment', () => {
     expect(started.transition?.durationSeconds).toBe(
       ACTIVE_AERO_TRANSITION_LIMIT_SECONDS,
     )
+    expect(activeAeroDisplayModeForState(started)).toBe('corner')
+    expect(isActiveAeroState(started)).toBe(true)
 
     const justBeforeLimit = advanceActiveAeroState({
       car: movingCarAt(zone.start),
@@ -147,6 +151,11 @@ describe('2026 F1 active-aero State of Deployment', () => {
       transition: null,
       transitionProgress: 1,
     })
+    expect(activeAeroDisplayModeForState(settled)).toBe('straight')
+    expect(isActiveAeroState(settled)).toBe(true)
+    expect(
+      isActiveAeroState({ ...settled, frontStraightFraction: 0.5 }),
+    ).toBe(false)
   })
 
   it('commands Corner Mode at zone exit and never commands Straight outside', () => {

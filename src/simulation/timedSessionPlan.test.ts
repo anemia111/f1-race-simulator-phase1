@@ -245,7 +245,7 @@ describe('timed session plan', () => {
       seed: 'qualifying-three-lap-run',
       teams: initialTeams,
       timedSessionPlan: plan,
-      track: tracks[0],
+      track: { ...tracks[0], rainProbability: 0 },
       weekendStage: 'qualifying',
     }
     let snapshot = createInitialRace(config)
@@ -257,6 +257,7 @@ describe('timed session plan', () => {
     let sawPreparationHarvest = false
 
     expect(snapshot.cars[0].tire).toBe('S')
+    expect(snapshot.lowGripConditions).toBe(false)
 
     for (let elapsed = 0; elapsed < 650; elapsed += 1) {
       snapshot = advanceRace(snapshot, 1, config)

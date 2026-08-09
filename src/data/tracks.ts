@@ -4,6 +4,7 @@ import type {
   TrackDefinition,
 } from '../types'
 import {
+  aeroActivationZonesWithOfficialOverride,
   deriveAeroActivationZones,
   pointDistance,
 } from './aeroZoneGeometry'
@@ -752,7 +753,9 @@ const anchorProgress = (
   lengthKm: number,
   anchor: OfficialTrackAnchor,
 ) => {
-  const corner = corners.find(({ number }) => number === anchor.turn)
+  const corner = corners.filter(({ number }) => number === anchor.turn)[
+    anchor.occurrence ?? 0
+  ]
 
   if (!corner) {
     return null
@@ -939,11 +942,21 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
   const centerline = realLayout?.centerline ?? track.centerline
 
   const pitLane = derivePitLane(track)
+  const officialOperations = officialTrackOperations2026[id]
+  const lengthKm = officialOperations?.centerlineLengthKm ?? circuitLengthKm[id]
+  const trackWidth = realLayout?.width ?? fallbackTrackWidth(track)
   const derivedAeroActivationZones = deriveAeroActivationZones(
     centerline,
     track.kind,
+    {
+      expectedTransitionSpeedKph: 300,
+      lapMeters: lengthKm * 1_000,
+      pitEntryProgress: pitLane.entryProgress,
+      pitExitProgress: pitLane.exitProgress,
+      runtimeScope: 'f1-current',
+      trackWidthModelUnits: trackWidth,
+    },
   )
-  const officialOperations = officialTrackOperations2026[id]
   const officialAeroZones = officialOperations
     ? officialAeroActivationZones(
         centerline,
@@ -952,7 +965,10 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
         derivedAeroActivationZones,
       )
     : null
-  const aeroActivationZones = officialAeroZones ?? derivedAeroActivationZones
+  const aeroActivationZones = aeroActivationZonesWithOfficialOverride(
+    officialAeroZones,
+    derivedAeroActivationZones,
+  )
   const officialOvertakeLines = officialOperations
     ? officialOvertakeControlLines(
         centerline,
@@ -985,7 +1001,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
           year: null,
         },
     locationProjection: realLayout?.projection,
-    lengthKm: officialOperations?.centerlineLengthKm ?? circuitLengthKm[id],
+    lengthKm,
     lengthSource: 'official',
     baseLapTime: simulationBaseLapTimeForPaceReference(
       paceReference2026,
@@ -1008,7 +1024,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
       ? 'official'
       : realLayout?.sectorMarksSource ?? 'fallback',
     tireNomination: tireNominationForTrack(track),
-    width: realLayout?.width ?? fallbackTrackWidth(track),
+    width: trackWidth,
   }
 })
 

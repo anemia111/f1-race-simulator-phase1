@@ -29,6 +29,7 @@ import {
   FIA_2026_REGULATION_PROFILE,
 } from './regulations'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
+import { activeAeroReferenceAreaMultipliers } from './vehicleDynamics'
 import {
   aerodynamicDownforceN,
   corneringSpeedLimitMps,
@@ -74,8 +75,8 @@ export type PhysicalLapOptions = {
    *
    * A caller that wants the car's capability envelope rather than a particular
    * lap should pass false, and generally wants `deploymentEnergyBudgetMj:
-   * null` for the same reason. Corner speeds and braking are unaffected either
-   * way: the flap is shut on the brakes and in the corners.
+   * null` for the same reason. Braking uses Corner Mode; inside an activation
+   * zone, drag and load come from the same decomposed front/rear reference map.
    */
   activeAeroZones?: boolean
   physics?: CategoryPhysicsProfile
@@ -490,10 +491,8 @@ function resolveOptions(options: PhysicalLapOptions) {
 /**
  * Aerodynamic drag plus rolling resistance, in newtons.
  *
- * `dragAreaScale` is the active-aero state: 1 is the closed-wing corner
- * configuration, and a value below 1 is the shed drag of an open flap. The
- * reference lap passes the same multiplier the race path applies in
- * `vehicleDragAreaM2`, so both read one number for the same effect.
+ * `dragAreaScale` is a pure area ratio supplied by the decomposed front/rear
+ * active-aero reference adapter. It is not a target-speed correction.
  */
 export function resistanceForceN(
   speedMps: number,
@@ -664,20 +663,39 @@ export function simulatePhysicalLap(
   const resolved = resolveOptions(options)
   const geometry = trackGeometry(track)
   const count = geometry.length
-  // Active aero is a property of where the car is on the road, not of the car,
-  // so the reference lap reads the same declared zones the race path reads
-  // through `activeAeroModeFor`. Without this the lap runs the closed-wing
-  // drag area everywhere, one terminal speed serves the whole calendar, and
-  // every circuit long enough to reach it peaks at the same number.
-  const straightDragScale =
-    options.activeAeroZones === false
-      ? 1
-      : clamp(resolved.physics.straightAeroDragMultiplier, 0.45, 1)
-  const dragScaleAt = geometry.map((_, index) =>
-    activeAeroZoneAt(track, index / count) ? straightDragScale : 1,
+  // The offline lap reads the same declared zones as live runtime, but at the
+  // category prior's neutral point because pitch, yaw, setup and wake are not
+  // observations available to this planner.
+  const cornerAeroAreas = activeAeroReferenceAreaMultipliers({
+    activeAeroState: {
+      frontStraightFraction: 0,
+      rearStraightFraction: 0,
+      transitionProgress: 1,
+    },
+    categoryPhysics: resolved.physics,
+  })
+  const straightAeroAreas = activeAeroReferenceAreaMultipliers({
+    activeAeroState: {
+      frontStraightFraction: 1,
+      rearStraightFraction: 1,
+      transitionProgress: 1,
+    },
+    categoryPhysics: resolved.physics,
+  })
+  const aeroAreasAt = geometry.map((_, index) =>
+    options.activeAeroZones !== false &&
+    activeAeroZoneAt(track, index / count)
+      ? straightAeroAreas
+      : cornerAeroAreas,
+  )
+  const dragScaleAt = aeroAreasAt.map(({ dragAreaMultiplier }) =>
+    dragAreaMultiplier,
   )
   const cornerCeilingMps = terminalSpeedMps(options)
-  const straightCeilingMps = terminalSpeedMps(options, straightDragScale)
+  const straightCeilingMps = terminalSpeedMps(
+    options,
+    straightAeroAreas.dragAreaMultiplier,
+  )
   const ceilingAt = dragScaleAt.map((scale) =>
     scale < 1 ? straightCeilingMps : cornerCeilingMps,
   )
@@ -689,8 +707,13 @@ export function simulatePhysicalLap(
     // together rather than only one of them.
     gripMultiplier: resolved.gripMultiplier * DRIVER_TRANSIENT_EFFICIENCY,
     massKg: resolved.massKg,
-    physics: resolved.physics,
   }
+  const physicsAt = (index: number) => ({
+    ...resolved.physics,
+    liftAreaM2:
+      resolved.physics.liftAreaM2 *
+      aeroAreasAt[index].downforceAreaMultiplier,
+  })
   // Keep the lateral limit separate from the offline reference envelope. The
   // latter is capped by the reference PU/drag policy so a quasi-steady lap can
   // be integrated, but live control must never mistake that terminal-speed
@@ -704,6 +727,7 @@ export function simulatePhysicalLap(
         ? bankingDegreesAt(track, index / count)
         : 0,
       ceilingMps: lateralSearchCeilingMps,
+      physics: physicsAt(index),
       radiusMeters: point.radiusMeters,
     })
 
@@ -727,7 +751,11 @@ export function simulatePhysicalLap(
       return 0
     }
 
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      physics: physicsAt(index),
+      speedMps,
+    })
     const demandN = (resolved.massKg * speedMps * speedMps) / radius
 
     return clamp(demandN / Math.max(1, grip.availableForceN), 0, 1)
@@ -741,7 +769,11 @@ export function simulatePhysicalLap(
     speedMps: number,
     share: number,
   ) => {
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      physics: physicsAt(index),
+      speedMps,
+    })
     const longitudinalBudgetN = remainingEllipseForceN({
       availableForceN: grip.availableForceN,
       usedForceN:
@@ -769,7 +801,12 @@ export function simulatePhysicalLap(
   const tractionLimitedAccelerationMps2 = (index: number, speedMps: number) =>
     accelerationWithShareMps2(index, speedMps, deploymentShare[index])
   const brakingDecelerationMps2 = (index: number, speedMps: number) => {
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      // The driver-adjustable bodywork returns to Corner Mode on the brakes.
+      physics: resolved.physics,
+      speedMps,
+    })
     const longitudinalBudgetN = remainingEllipseForceN({
       availableForceN: grip.availableForceN,
       usedForceN:

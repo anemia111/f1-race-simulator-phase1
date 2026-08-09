@@ -3,7 +3,8 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import { FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY } from '../freeMode/freeModePersistence'
 import { advanceRace, createInitialRace } from '../simulation/race'
-import type { RaceConfig } from '../types'
+import { createInitialActiveAeroState } from '../simulation/activeAero'
+import type { RaceConfig, RaceSnapshot } from '../types'
 import {
   RACE_CHECKPOINT_MAX_AGE_MS,
   RACE_CHECKPOINT_STORAGE_KEY,
@@ -60,10 +61,13 @@ describe('race session continuity', () => {
 
     expect(restored?.elapsedSeconds).toBe(123)
     expect(restored?.cars).toHaveLength(initialDrivers.length)
+    expect(restored?.cars[0].activeAeroState).toEqual(
+      snapshot.cars[0].activeAeroState,
+    )
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
   })
 
-  it('migrates legacy checkpoints without drivetrain or lateral state', () => {
+  it('migrates legacy checkpoints without drivetrain, lateral, or active-aero state', () => {
     const now = 1_800_000_000_000
     const checkpoint = JSON.parse(
       serializeRaceCheckpoint(
@@ -79,9 +83,11 @@ describe('race session continuity', () => {
       delete car.lateralOffsetM
       delete car.lateralVelocityMps
       delete car.desiredLateralOffsetM
+      delete car.activeAeroState
 
       if (index === 0) {
         car.trackLateralOffset = 2.25
+        car.activeAeroMode = 'straight'
       } else {
         delete car.trackLateralOffset
       }
@@ -100,6 +106,8 @@ describe('race session continuity', () => {
       lateralOffsetM: 2.25,
       lateralVelocityMps: 0,
       trackLateralOffset: 2.25,
+      activeAeroMode: 'corner',
+      activeAeroState: createInitialActiveAeroState(),
     })
     expect(restored?.cars[1]).toMatchObject({
       desiredLateralOffsetM: 0,
@@ -172,6 +180,30 @@ describe('race session continuity', () => {
     }
   })
 
+  it('rejects a corrupt persisted active-aero transition', () => {
+    const now = 1_800_000_000_000
+    const checkpoint = JSON.parse(
+      serializeRaceCheckpoint(
+        'session-a',
+        createInitialRace(config),
+        now,
+      )!,
+    ) as { snapshot: { cars: Array<Record<string, unknown>> } }
+    checkpoint.snapshot.cars[0].activeAeroState = {
+      ...createInitialActiveAeroState(),
+      frontStraightFraction: 0.5,
+    }
+
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(checkpoint),
+        'session-a',
+        config,
+        now,
+      ),
+    ).toBeNull()
+  })
+
   it('rejects invalid persisted lateral state', () => {
     const now = 1_800_000_000_000
     const valid = serializeRaceCheckpoint(
@@ -230,6 +262,79 @@ describe('race session continuity', () => {
       parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
         ?.elapsedSeconds,
     ).toBe(snapshot.elapsedSeconds)
+  })
+
+  it('continues a live active-aero transition identically after restore', () => {
+    const now = 1_800_000_000_000
+    const activeConfig: RaceConfig = {
+      ...config,
+      seriesId: 'f1-custom',
+      track: {
+        ...config.track,
+        aeroActivationZones: [
+          {
+            end: 0.8,
+            label: 'CHECKPOINT SM A1',
+            lowGripMode: 'partial',
+            source: 'official',
+            start: 0.2,
+          },
+        ],
+        rainProbability: 0,
+      },
+    }
+    const initial = createInitialRace(activeConfig)
+    let snapshot: RaceSnapshot = {
+      ...initial,
+      elapsedLabel: '00:00:10',
+      elapsedSeconds: 10,
+      raceStartedAtSeconds: 0,
+      startProcedure: 'racing' as const,
+      startProcedureRemainingSeconds: 0,
+      cars: initial.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              lap: 2,
+              pitPhase: 'none' as const,
+              pitLaneProgress: null,
+              position: 1,
+              progress: 0.3,
+              speedKph: 240,
+              status: 'running' as const,
+              totalDistance: 2.3,
+            }
+          : {
+              ...car,
+              position: index + 1,
+              status: 'dns' as const,
+            },
+      ),
+    }
+
+    snapshot = advanceRace(snapshot, 0.1, activeConfig)
+    expect(snapshot.cars[0].activeAeroState?.transition).not.toBeNull()
+
+    const restored = parseRaceCheckpoint(
+      serializeRaceCheckpoint('session-a', snapshot, now),
+      'session-a',
+      activeConfig,
+      now,
+    )
+    expect(restored?.cars[0].activeAeroState).toEqual(
+      snapshot.cars[0].activeAeroState,
+    )
+
+    const uninterrupted = advanceRace(snapshot, 0.1, activeConfig)
+    const replayed = advanceRace(restored!, 0.1, activeConfig)
+    const aeroProjection = (race: typeof uninterrupted) =>
+      race.cars.map(({ activeAeroMode, activeAeroState, driverId }) => ({
+        activeAeroMode,
+        activeAeroState,
+        driverId,
+      }))
+
+    expect(aeroProjection(replayed)).toEqual(aeroProjection(uninterrupted))
   })
 
   it('keeps a full-distance timing history below the checkpoint size cap', () => {

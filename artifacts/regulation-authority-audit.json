@@ -29,7 +29,9 @@
         "The non-public low-grip power curve is unavailable and fails closed; Overtake is disabled under Low Grip.",
         "DRS is not a 2026 F1 runtime state; raw historical OpenF1 DRS remains observational data.",
         "C5.2.8 Normal, Overtake and Race/Sprint power-limited curves share one pure authority.",
-        "C4.1 minimum mass resolves by session, Nominal Tyre Mass and Heat Hazard addition without inferring a public tyre mass."
+        "C4.1 minimum mass resolves by session, Nominal Tyre Mass and Heat Hazard addition without inferring a public tyre mass.",
+        "Continuous front/rear Corner and Straight Mode positions persist in live snapshots and feed the decomposed force model in the same tick.",
+        "Official event-map activation zones override explicitly labelled geometry-derived estimates; an official empty list remains authoritative."
       ]
     },
     "super-formula": {
@@ -62,5 +64,5 @@
     "eventScopeRequiredForEventDocuments": true
   },
   "runtimeGateArtifact": "artifacts/f1-current-generation-gate.json",
-  "status": "phase-2-f1-current-runtime-gate-implemented"
+  "status": "phase-3-active-aero-runtime-and-geometry-gates-implemented"
 }

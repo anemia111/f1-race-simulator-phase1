@@ -18,11 +18,14 @@ import {
   timedSessionDriverExecutionLossSeconds,
 } from './qualifying'
 import {
+  activeAeroForceComponents,
+  activeAeroReferenceAreaMultipliers,
   airDensityKgM3,
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
   integrateVehicleLongitudinalStep,
   integrateVehicleSpeedKph,
+  liveCorneringSpeedLimitKph,
   machinePaceRating,
   vehicleDownforceMultiplier,
   vehicleDragAreaM2,
@@ -50,7 +53,7 @@ function physicalLapForTeam(team: Team, track: TrackDefinition) {
   return simulatePhysicalLap(track, {
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
     dragAreaM2: vehicleDragAreaM2({
-      activeAeroMode: 'partial-straight',
+      activeAeroMode: 'corner',
       categoryPhysics,
       team,
     }),
@@ -60,6 +63,133 @@ function physicalLapForTeam(team: Team, track: TrackDefinition) {
 }
 
 describe('multi-axis vehicle dynamics', () => {
+  it('decomposes F1 Straight Mode into front/rear drag, load, and balance', () => {
+    const categoryPhysics = categoryPhysicsFor('f1-custom')
+    const common = {
+      airDensityKgM3: 1.225,
+      airSpeedMps: 80,
+      categoryPhysics,
+      team: initialTeams[0],
+    }
+    const corner = activeAeroForceComponents({
+      ...common,
+      activeAeroState: {
+        frontStraightFraction: 0,
+        rearStraightFraction: 0,
+        transitionProgress: 1,
+      },
+    })
+    const transition = activeAeroForceComponents({
+      ...common,
+      activeAeroState: {
+        frontStraightFraction: 0.5,
+        rearStraightFraction: 0.5,
+        transitionProgress: 0.5,
+      },
+    })
+    const straight = activeAeroForceComponents({
+      ...common,
+      activeAeroState: {
+        frontStraightFraction: 1,
+        rearStraightFraction: 1,
+        transitionProgress: 1,
+      },
+    })
+
+    expect(straight.frontDragN).toBeLessThan(corner.frontDragN)
+    expect(straight.rearDragN).toBeLessThan(corner.rearDragN)
+    expect(straight.frontDownforceN).toBeLessThan(corner.frontDownforceN)
+    expect(straight.rearDownforceN).toBeLessThan(corner.rearDownforceN)
+    expect(transition.totalDragN).toBeLessThan(corner.totalDragN)
+    expect(transition.totalDragN).toBeGreaterThan(straight.totalDragN)
+    expect(transition.transitionTransientDragN).toBeGreaterThan(0)
+    expect(transition.transitionTransientDownforceLossN).toBeGreaterThan(0)
+    expect(straight.aeroBalanceFrontFraction).toBeLessThan(
+      corner.aeroBalanceFrontFraction,
+    )
+    expect(straight.provenance.classification).toBe(
+      'category-level-prior-only',
+    )
+    expect(straight.provenance).toMatchObject({
+      confidence: 'low',
+      publicCoefficientRange: null,
+      validationStatus: 'prior-only',
+    })
+    expect(straight.provenance.sourceIds).toContain(
+      'fia-f1-2026-technical-c20',
+    )
+  })
+
+  it('keeps the offline reference adapter decomposed and Super Formula fixed', () => {
+    const f1 = categoryPhysicsFor('f1-custom')
+    const sf = categoryPhysicsFor('super-formula')
+    const state = (fraction: number) => ({
+      frontStraightFraction: fraction,
+      rearStraightFraction: fraction,
+      transitionProgress: 1,
+    })
+    const f1Corner = activeAeroReferenceAreaMultipliers({
+      activeAeroState: state(0),
+      categoryPhysics: f1,
+    })
+    const f1Straight = activeAeroReferenceAreaMultipliers({
+      activeAeroState: state(1),
+      categoryPhysics: f1,
+    })
+    const sfCorner = activeAeroReferenceAreaMultipliers({
+      activeAeroState: state(0),
+      categoryPhysics: sf,
+    })
+    const sfInjectedStraight = activeAeroReferenceAreaMultipliers({
+      activeAeroState: state(1),
+      categoryPhysics: sf,
+    })
+
+    expect(f1Corner.dragAreaMultiplier).toBe(1)
+    expect(f1Corner.downforceAreaMultiplier).toBe(1)
+    expect(f1Straight.frontDragAreaMultiplier).toBeLessThan(
+      f1Corner.frontDragAreaMultiplier,
+    )
+    expect(f1Straight.rearDragAreaMultiplier).toBeLessThan(
+      f1Corner.rearDragAreaMultiplier,
+    )
+    expect(f1Straight.dragAreaMultiplier).toBeLessThan(1)
+    expect(f1Straight.downforceAreaMultiplier).toBeLessThan(1)
+    expect(sfInjectedStraight).toEqual(sfCorner)
+  })
+
+  it('uses the continuous aero state in the live cornering envelope', () => {
+    const categoryPhysics = categoryPhysicsFor('f1-custom')
+    const common = {
+      airDensityKgM3: 1.225,
+      bankingDegrees: 0,
+      categoryPhysics,
+      evaluationSpeedKph: 180,
+      fuelLoadKg: 40,
+      gripMultiplier: 1,
+      radiusMeters: 110,
+      team: initialTeams[0],
+    }
+    const corner = liveCorneringSpeedLimitKph({
+      ...common,
+      activeAeroState: {
+        frontStraightFraction: 0,
+        rearStraightFraction: 0,
+        transitionProgress: 1,
+      },
+    })
+    const straight = liveCorneringSpeedLimitKph({
+      ...common,
+      activeAeroState: {
+        frontStraightFraction: 1,
+        rearStraightFraction: 1,
+        transitionProgress: 1,
+      },
+    })
+
+    expect(straight).toBeLessThan(corner)
+  })
+
   it('keeps fuel planning independent of the compatibility lap-time target', () => {
     const track = tracks[0]
     const changedObservation = {

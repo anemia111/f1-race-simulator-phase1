@@ -99,17 +99,30 @@ accepted only while stationary or in an Activation Zone, and a failure returns
 both elements to the Corner-safe state. Straight Mode eligibility is independent
 from Overtake eligibility.
 
-This Phase 2 gate establishes the authoritative state-machine API and its
-invariants. Persisting its continuous front/rear fractions in live race
-snapshots and replacing the legacy discrete drag scalar with the decomposed
-front/rear force map are Phase 3 requirements; until then, the driven force path
-still uses the legacy discrete-mode approximation. The gate must not be read as
-evidence that those Phase 3 runtime consumers are already complete.
+Phase 3 persists the continuous front/rear fractions in every live race
+snapshot and checkpoint. The telemetry tick advances that state before the
+longitudinal force integration, so transition fractions—not a display enum—own
+the front/rear drag and downforce forces. The old aggregate Straight-Mode drag
+scalar has been removed from the category profile and from the offline lap.
+Failure, pit, retirement and rejoin paths reset both elements to Corner-safe.
+
+The force model and its category-prior limitations are specified in
+`docs/F1_ACTIVE_AERO_STRAIGHT_CORNER_MODE.md`. Its live path includes separate
+front/rear drag and load, balance shift, bounded ride-height, pitch, yaw, wake
+and transition effects. The offline reference lap uses the same decomposition
+at a neutral category point and returns to Corner Mode for braking; it does not
+infer a coefficient from a lap time or top speed.
 
 Normal Grip may use full Straight Mode in a mapped activation zone. Low Grip
 disables full Straight Mode and Overtake; only the explicitly mapped partial
 front-bodywork operation can remain available. Missing official event inputs
 stay unavailable or are separately labelled geometry-derived estimates.
+Official event maps always replace estimates, including an authoritative empty
+list such as Monaco. The geometry audit covers physical curvature, continuous
+straight distance, transition margin, braking boundary, width, pit conflicts
+and start/finish operation. Japanese non-F1 circuits expose those estimates
+only to an F1 car in Free Mode; Super Formula continues to use fixed bodywork
+and OTS.
 
 ## Calibration boundary
 
@@ -118,16 +131,20 @@ must retain `fitPerformed: false` and `trackSpecificMultiplierCount: 0`.
 Neither `baseLapTime`, a circuit-specific pace factor nor an observed target
 speed may rewrite them.
 
-The Phase 2 driven speed-trap validation is not green: peak MAE is 8.22 km/h
-against the 8 km/h aggregate gate, and Red Bull Ring is one new per-circuit
-bound failure alongside the two Phase 0 failures. This is retained as evidence
-for the structural aero/energy work; it did not trigger a circuit correction or
-parameter change.
+The Phase 3 driven speed-trap validation is not green: median MAE/bias are
+14.44/-12.77 km/h and peak MAE/bias are 15.79/-14.77 km/h, so all four
+aggregate gates fail. Seven circuits exceed the outer bound. The structural
+runtime and zone gates nevertheless pass. Public authority does not supply a
+2026 constructor force map, so this failure did not trigger a circuit
+correction, target-speed inversion or coefficient change. The decomposed
+coefficients remain explicitly prior-only pending independent force evidence.
 
 Run the focused gate with:
 
 ```bash
 npm run validate:f1-current-generation
+npm run validate:active-aero-zones
 ```
 
-The generated report is `artifacts/f1-current-generation-gate.json`.
+The generated reports are `artifacts/f1-current-generation-gate.json` and
+`artifacts/active-aero-zone-audit.json`.

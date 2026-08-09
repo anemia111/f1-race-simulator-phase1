@@ -170,9 +170,7 @@ export type CategoryPhysicsProfile = {
   minimumEngineRpm: number
   minimumMassRule: CategoryMinimumMassRule
   overtakeBoostPowerKw: number
-  partialAeroDragMultiplier: number
   rollingResistanceCoefficient: number
-  straightAeroDragMultiplier: number
   /** Road speed at which top gear reaches the engine speed limit. */
   topGearDesignSpeedKph: number
   /**
@@ -232,18 +230,7 @@ const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
       sourceId: 'fia-f1-2026-technical-c20',
     },
     overtakeBoostPowerKw: 0,
-    partialAeroDragMultiplier: 0.78,
     rollingResistanceCoefficient: 0.012,
-    /**
-     * Straight-mode bodywork leaves roughly a third of the drag area behind,
-     * not two thirds. At 0.47 the reference car's straight-mode CdA came out
-     * near 0.38 m2, less than half of any Formula car ever measured, and gave
-     * it a terminal velocity around 500 km/h. Solving the power balance the
-     * other way — an ICE-only 376 kW at the wheels against a 340 km/h peak,
-     * which is what the regulation's deployment ramp leaves at that speed —
-     * asks for about 0.73 m2, which this multiplier produces.
-     */
-    straightAeroDragMultiplier: 0.639,
     topGearDesignSpeedKph: 402,
     unresolvedMinimumSimulationReference: {
       kind: 'non-regulatory-simulation-reference',
@@ -276,9 +263,7 @@ const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
       sourceId: 'jaf-sf-2026-unified-regulations',
     },
     overtakeBoostPowerKw: 37,
-    partialAeroDragMultiplier: 1,
     rollingResistanceCoefficient: 0.0125,
-    straightAeroDragMultiplier: 1,
     topGearDesignSpeedKph: 305,
     unresolvedMinimumSimulationReference: null,
   },

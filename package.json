@@ -11,6 +11,7 @@
     "update:pace-calibration": "node scripts/update-pace-calibration.mjs",
     "validate:series-scope": "node scripts/generate-phase1-series-audit.mjs --enforce",
     "validate:f1-current-generation": "node scripts/generate-f1-current-generation-gate.mjs --enforce",
+    "validate:active-aero-zones": "node scripts/generate-active-aero-zone-audit.mjs --enforce",
     "validate:physics-calibration": "node scripts/validate-physics-calibration.mjs",
     "validate:speed-trap": "node scripts/validate-speed-trap.mjs --enforce",
     "validate:f1-support-circuits": "node scripts/validate-f1-support-circuits.mjs --enforce",

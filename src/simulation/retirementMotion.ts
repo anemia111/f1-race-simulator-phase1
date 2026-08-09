@@ -1,4 +1,5 @@
 import type { CarSnapshot } from '../types'
+import { createInitialActiveAeroState } from './activeAero'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -49,6 +50,7 @@ export function advanceRetiredCarMotion(
   return {
     ...car,
     activeAeroMode: 'corner',
+    activeAeroState: createInitialActiveAeroState(),
     battleDeltaSecondsRemaining: 0,
     battlePhase: 'resolved',
     brakePercent,

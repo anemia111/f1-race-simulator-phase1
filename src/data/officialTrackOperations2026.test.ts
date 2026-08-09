@@ -84,4 +84,21 @@ describe('official FIA 2026 circuit operations', () => {
     expect(monaco.overtakeControlLines).toHaveLength(1)
     expect(monaco.overtakeControlLines![0].source).toBe('official')
   })
+
+  it('keeps the Hungaroring Turn 1A anchor distinct from Turn 1', () => {
+    const hungary = officialTrackOperations2026['hungaroring-approx']
+
+    expect(hungary.straightMode[1].normal).toMatchObject({
+      occurrence: 1,
+      offsetMeters: 30,
+      reference: 'entry',
+      turn: 1,
+    })
+    expect(hungary.straightMode[1].lowGrip).toMatchObject({
+      occurrence: 1,
+      offsetMeters: 100,
+      reference: 'entry',
+      turn: 1,
+    })
+  })
 })

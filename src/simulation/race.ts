@@ -114,7 +114,12 @@ import {
   yellowFlagDecision,
   type StewardPenaltyDecision,
 } from './stewarding'
-import { updateOvertakeEligibilityAfterTravel } from './activeAero'
+import {
+  activeAeroDisplayModeForState,
+  advanceActiveAeroState,
+  createInitialActiveAeroState,
+  updateOvertakeEligibilityAfterTravel,
+} from './activeAero'
 import {
   advanceTireDynamicState,
   preferredTireCategoryFor,
@@ -388,6 +393,7 @@ export function reformFieldForStandingRestart(
       rpm: 10_800,
       gear: 1,
       activeAeroMode: 'corner',
+      activeAeroState: createInitialActiveAeroState(),
       overtakeStatus: 'disabled',
       overtakeEligibility: null,
       ersPowerKw: 0,
@@ -399,6 +405,46 @@ export function reformFieldForStandingRestart(
 const PIT_EXIT_VISUAL_SECONDS = 4
 const GRID_SETTLE_SECONDS = 8
 const OVERTAKE_EXTRA_ENERGY_MJ = 0.5
+
+function advanceLiveActiveAeroState(options: {
+  car: CarSnapshot
+  config: RaceConfig
+  deltaSeconds: number
+  elapsedSeconds: number
+  lowGripConditions: boolean
+  phase: ActiveFlagPhase | null
+  requestedMode?: CarSnapshot['activeAeroMode']
+}): CarSnapshot {
+  const {
+    car,
+    config,
+    deltaSeconds,
+    elapsedSeconds,
+    lowGripConditions,
+    phase,
+    requestedMode = car.activeAeroMode,
+  } = options
+
+  const activeAeroState =
+    (config.seriesId ?? 'f1-custom') === 'f1-custom'
+      ? advanceActiveAeroState({
+          car,
+          deltaSeconds,
+          elapsedSeconds,
+          lowGripConditions,
+          phase,
+          previous: car.activeAeroState ?? createInitialActiveAeroState(),
+          requestedMode,
+          track: config.track,
+        })
+      : createInitialActiveAeroState()
+
+  return {
+    ...car,
+    activeAeroMode: activeAeroDisplayModeForState(activeAeroState),
+    activeAeroState,
+  }
+}
 
 export function formationLapDurationSecondsFor(config: RaceConfig) {
   const wetFactor =
@@ -1930,6 +1976,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       turboSpoolFraction: 0,
       clutchEngagementFraction: 0,
       activeAeroMode: 'corner',
+      activeAeroState: createInitialActiveAeroState(),
       overtakeStatus: 'disabled',
       overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
@@ -2626,7 +2673,7 @@ export function advanceRace(
             `low-power-start-${car.driverId}`,
             'info',
             elapsedSeconds,
-            `${car.code}: low-power start detected. Automatic MGU-K deployment active; warning lights flashing.`,
+            `${car.code}: low-power start detected; warning lights flashing.`,
           ),
         )
       }
@@ -2652,6 +2699,7 @@ export function advanceRace(
           turboSpoolFraction: stagedTurboSpoolFraction,
           clutchEngagementFraction: 0,
           activeAeroMode: 'corner' as const,
+          activeAeroState: createInitialActiveAeroState(),
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
           ersMode: 'harvest' as const,
@@ -2816,9 +2864,20 @@ export function advanceRace(
       }
     })
 
+    const carsWithActiveAeroState = cars.map((car) =>
+      advanceLiveActiveAeroState({
+        car,
+        config,
+        deltaSeconds,
+        elapsedSeconds,
+        lowGripConditions,
+        phase: null,
+        requestedMode: 'corner',
+      }),
+    )
     const nextSnapshot: RaceSnapshot = {
       ...snapshot,
-      cars: rankCars(cars, config),
+      cars: rankCars(carsWithActiveAeroState, config),
       elapsedSeconds,
       elapsedLabel: formatElapsed(elapsedSeconds),
       eventMessage: phaseMessage,
@@ -3395,6 +3454,7 @@ export function advanceRace(
           rpm: 0,
           gear: 1,
           activeAeroMode: 'corner' as const,
+          activeAeroState: createInitialActiveAeroState(),
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
           ersMode: 'harvest' as const,
@@ -3499,6 +3559,7 @@ export function advanceRace(
           ? car.compoundsUsed
           : [...car.compoundsUsed, compound],
         activeAeroMode: 'corner' as const,
+        activeAeroState: createInitialActiveAeroState(),
         overtakeStatus: 'disabled' as const,
         overtakeEligibility: null,
         ersMode: 'harvest' as const,
@@ -4311,6 +4372,7 @@ export function advanceRace(
             car.fuelLoadKg,
           damage: repairsDamage ? 0 : car.damage,
           activeAeroMode: 'corner' as const,
+          activeAeroState: createInitialActiveAeroState(),
           overtakeStatus: 'disabled' as const,
           overtakeEligibility: null,
           ersMode: 'harvest' as const,
@@ -4379,6 +4441,7 @@ export function advanceRace(
         rpm: 4600,
         gear: 1,
         activeAeroMode: 'corner' as const,
+        activeAeroState: createInitialActiveAeroState(),
         overtakeStatus: 'disabled' as const,
         overtakeEligibility: null,
         ersMode: 'harvest' as const,
@@ -4621,7 +4684,10 @@ export function advanceRace(
       (!legacyStandingStartWindow || car.speedKph >= 50)
     const standingStartMguKDecision = f1StandingStartMguKDecision({
       releaseLatched: standingStartMguKReleaseLatched,
-      secuSafetyExceptionActive: car.lowPowerStartDetected,
+      // The public rule permits an SECU safety intervention, but the measured
+      // trigger is unavailable. A seeded low-power start is only simulator
+      // mechanical behavior and cannot invent that official intervention.
+      secuSafetyExceptionActive: false,
       speedKph: car.speedKph,
       standingStartActive:
         categoryPhysics.hybridDeploymentPowerLimitKw > 0 &&
@@ -4717,10 +4783,12 @@ export function advanceRace(
 
     if (waitingForSafeRejoin) {
       const stationaryEnergyStore = paceManagedCar.energyStore
+      const cornerSafeAeroState = createInitialActiveAeroState()
 
       displayTelemetry = {
         ...displayTelemetry,
         activeAeroMode: 'corner',
+        activeAeroState: cornerSafeAeroState,
         brakePercent: 0,
         energyStore: {
           ...displayTelemetry.energyStore,
@@ -4772,9 +4840,11 @@ export function advanceRace(
         throttlePercent: 0,
       }
     } else if (rejoiningThisFrame) {
+      const cornerSafeAeroState = createInitialActiveAeroState()
       displayTelemetry = {
         ...displayTelemetry,
         activeAeroMode: 'corner',
+        activeAeroState: cornerSafeAeroState,
         overtakeStatus: 'disabled',
         speedKph: Math.min(displayTelemetry.speedKph, 140),
         throttlePercent: Math.min(displayTelemetry.throttlePercent, 45),
@@ -5566,6 +5636,7 @@ export function advanceRace(
                 ...next,
                 status: 'retired',
                 activeAeroMode: 'corner',
+                activeAeroState: createInitialActiveAeroState(),
                 overtakeStatus: 'disabled',
                 overtakeEligibility: null,
                 ersPowerKw: 0,
@@ -5959,6 +6030,7 @@ export function advanceRace(
             rpm: 0,
             gear: 1,
             activeAeroMode: 'corner',
+            activeAeroState: createInitialActiveAeroState(),
             overtakeStatus: 'disabled',
             overtakeEligibility: null,
             ersMode: 'harvest',
@@ -6188,6 +6260,7 @@ export function advanceRace(
               ...next,
               status: 'retired',
               activeAeroMode: 'corner',
+              activeAeroState: createInitialActiveAeroState(),
               overtakeStatus: 'disabled',
               overtakeEligibility: null,
               ersPowerKw: 0,
@@ -6280,6 +6353,7 @@ export function advanceRace(
           ...next,
           status: 'retired',
           activeAeroMode: 'corner',
+          activeAeroState: createInitialActiveAeroState(),
           overtakeStatus: 'disabled',
           overtakeEligibility: null,
           ersPowerKw: 0,
@@ -6997,6 +7071,7 @@ export function advanceRace(
         pitLaneProgress: null,
         pendingTire: null,
         activeAeroMode: 'corner' as const,
+        activeAeroState: createInitialActiveAeroState(),
         overtakeStatus: 'disabled' as const,
         overtakeEligibility: null,
         ersPowerKw: 0,

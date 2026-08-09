@@ -289,7 +289,9 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     }),
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
     dragAreaM2: vehicleDragAreaM2({
-      activeAeroMode: 'partial-straight',
+      // This is the Corner-Mode base area. `simulatePhysicalLap` applies the
+      // decomposed front/rear map only inside declared activation zones.
+      activeAeroMode: 'corner',
       categoryPhysics,
       setup,
       team,

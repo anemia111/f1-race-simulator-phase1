@@ -20,6 +20,11 @@ try {
   const activeAero = await server.ssrLoadModule(
     '/src/simulation/activeAero.ts',
   )
+  const vehicleDynamics = await server.ssrLoadModule(
+    '/src/simulation/vehicleDynamics.ts',
+  )
+  const race = await server.ssrLoadModule('/src/simulation/race.ts')
+  const phaseOne = await server.ssrLoadModule('/src/data/phaseOne.ts')
   const standingStart = await server.ssrLoadModule(
     '/src/simulation/f1StandingStart.ts',
   )
@@ -71,6 +76,7 @@ try {
     ),
   )
   const f1Physics = categoryPhysics.categoryPhysicsFor('f1-custom')
+  const initialRaceSnapshot = race.createInitialRace(phaseOne.phaseOneConfig)
   const massUnavailable = categoryPhysics.resolveMinimumVehicleMass({
     heatHazardAddedMassKg: 5,
     nominalTyreMassKg: null,
@@ -154,6 +160,103 @@ try {
     requestedMode: 'partial-straight',
     track,
   })
+  const forceInput = {
+    airDensityKgM3: 1.225,
+    airSpeedMps: 80,
+    categoryPhysics: f1Physics,
+    team: phaseOne.phaseOneConfig.teams[0],
+  }
+  const cornerForce = vehicleDynamics.activeAeroForceComponents({
+    ...forceInput,
+    activeAeroState: {
+      frontStraightFraction: 0,
+      rearStraightFraction: 0,
+      transitionProgress: 1,
+    },
+  })
+  const transitionForce = vehicleDynamics.activeAeroForceComponents({
+    ...forceInput,
+    activeAeroState: {
+      frontStraightFraction: 0.5,
+      rearStraightFraction: 0.5,
+      transitionProgress: 0.5,
+    },
+  })
+  const straightForce = vehicleDynamics.activeAeroForceComponents({
+    ...forceInput,
+    activeAeroState: {
+      frontStraightFraction: 1,
+      rearStraightFraction: 1,
+      transitionProgress: 1,
+    },
+  })
+  const runtimeConfig = {
+    ...phaseOne.phaseOneConfig,
+    overtakeSystem: 'active-aero',
+    seed: 'phase-3-active-aero-runtime-gate',
+    seriesId: 'f1-custom',
+    track: {
+      ...phaseOne.phaseOneConfig.track,
+      aeroActivationZones: [
+        {
+          end: 0.8,
+          label: 'runtime-gate-zone',
+          lowGripMode: 'partial',
+          source: 'official',
+          start: 0.2,
+        },
+      ],
+      rainProbability: 0,
+    },
+  }
+  const runtimeInitial = race.createInitialRace(runtimeConfig)
+  const runtimeSnapshot = {
+    ...runtimeInitial,
+    elapsedLabel: '00:00:10',
+    elapsedSeconds: 10,
+    raceStartedAtSeconds: 0,
+    startProcedure: 'racing',
+    startProcedureRemainingSeconds: 0,
+    cars: runtimeInitial.cars.map((car, index) =>
+      index === 0
+        ? {
+            ...car,
+            lap: 2,
+            pitLaneProgress: null,
+            pitPhase: 'none',
+            position: 1,
+            progress: 0.3,
+            speedKph: 240,
+            status: 'running',
+            totalDistance: 2.3,
+          }
+        : {
+            ...car,
+            position: index + 1,
+            status: 'dns',
+          },
+    ),
+  }
+  const runtimeAdvanced = race.advanceRace(runtimeSnapshot, 0.1, runtimeConfig)
+  const runtimeProbeCar = runtimeAdvanced.cars.find(
+    (car) => car.driverId === runtimeInitial.cars[0].driverId,
+  )
+  const runtimeProbeForce = runtimeProbeCar?.activeAeroState
+    ? vehicleDynamics.activeAeroForceComponents({
+        ...forceInput,
+        activeAeroState: runtimeProbeCar.activeAeroState,
+      })
+    : null
+  const runtimeTransitionPass =
+    runtimeProbeCar?.activeAeroState?.command === 'straight' &&
+    runtimeProbeCar.activeAeroState.transition !== null &&
+    runtimeProbeCar.activeAeroState.frontStraightFraction > 0 &&
+    runtimeProbeCar.activeAeroState.frontStraightFraction < 1 &&
+    runtimeProbeCar.activeAeroState.rearStraightFraction > 0 &&
+    runtimeProbeCar.activeAeroState.rearStraightFraction < 1 &&
+    runtimeProbeForce !== null &&
+    runtimeProbeForce.totalDragN < cornerForce.totalDragN &&
+    runtimeProbeForce.totalDragN > straightForce.totalDragN
 
   const belowStartThreshold =
     standingStart.f1StandingStartMguKDecision({
@@ -192,6 +295,10 @@ try {
       ? null
       : 'current-era-aero-boundary',
     f1Physics.wheelbaseM <= 3.4 ? null : 'wheelbase',
+    !('straightAeroDragMultiplier' in f1Physics) &&
+    !('partialAeroDragMultiplier' in f1Physics)
+      ? null
+      : 'legacy-active-aero-scalar',
     massUnavailable.status === 'unavailable' &&
     massUnavailable.regulationBaseMassKg === 726 &&
     massUnavailable.heatHazardAddedMassKg === 5
@@ -236,6 +343,20 @@ try {
     lowGripCompleted.rearStraightFraction === 0
       ? null
       : 'low-grip-partial-aero',
+    initialRaceSnapshot.cars.every(
+      (car) => car.activeAeroState !== undefined,
+    )
+      ? null
+      : 'active-aero-snapshot-persistence',
+    straightForce.frontDragN < cornerForce.frontDragN &&
+    straightForce.rearDragN < cornerForce.rearDragN &&
+    straightForce.frontDownforceN < cornerForce.frontDownforceN &&
+    straightForce.rearDownforceN < cornerForce.rearDownforceN &&
+    transitionForce.transitionTransientDragN > 0 &&
+    transitionForce.transitionTransientDownforceLossN > 0
+      ? null
+      : 'active-aero-decomposed-force-map',
+    runtimeTransitionPass ? null : 'active-aero-live-runtime-transition',
     !belowStartThreshold.positiveTorqueAllowed &&
     atStartThreshold.positiveTorqueAllowed &&
     atStartThreshold.releaseLatched &&
@@ -256,6 +377,7 @@ try {
     sourceCutoffDate: '2026-08-08',
     relatedArtifacts: [
       'artifacts/f1-current-generation-physics-summary.json',
+      'artifacts/active-aero-zone-audit.json',
       'artifacts/regulation-authority-audit.json',
       'artifacts/source-manifest.json',
     ],
@@ -299,9 +421,20 @@ try {
     },
     activeAero: {
       runtimeIntegration: {
-        continuousStatePersistedInRaceSnapshot: false,
-        decomposedFrontRearForceMapActive: false,
-        status: 'phase-3-required',
+        continuousStatePersistedInRaceSnapshot:
+          initialRaceSnapshot.cars.every(
+            (car) => car.activeAeroState !== undefined,
+          ),
+        decomposedFrontRearForceMapActive:
+          straightForce.frontDragN < cornerForce.frontDragN &&
+          straightForce.rearDragN < cornerForce.rearDragN &&
+          straightForce.frontDownforceN < cornerForce.frontDownforceN &&
+          straightForce.rearDownforceN < cornerForce.rearDownforceN,
+        legacyAggregateDragScalarPresent:
+          'straightAeroDragMultiplier' in f1Physics ||
+          'partialAeroDragMultiplier' in f1Physics,
+        liveTransitionProbePassed: runtimeTransitionPass,
+        status: 'phase-3-integrated',
       },
       maximumTransitionSeconds:
         activeAero.ACTIVE_AERO_TRANSITION_LIMIT_SECONDS,
@@ -310,6 +443,27 @@ try {
       outsideZone,
       failure: failed,
       lowGripPartial: lowGripCompleted,
+      forceMap: {
+        evaluation: {
+          airDensityKgM3: forceInput.airDensityKgM3,
+          airSpeedMps: forceInput.airSpeedMps,
+          purpose: 'structural-decomposition-probe-not-calibration',
+        },
+        corner: cornerForce,
+        transition: transitionForce,
+        straight: straightForce,
+      },
+      liveRuntimeProbe: {
+        car: runtimeProbeCar
+          ? {
+              activeAeroMode: runtimeProbeCar.activeAeroMode,
+              activeAeroState: runtimeProbeCar.activeAeroState,
+              driverId: runtimeProbeCar.driverId,
+            }
+          : null,
+        force: runtimeProbeForce,
+        passed: runtimeTransitionPass,
+      },
       overtakeStateIsSeparateInput: true,
     },
     standingStart: {

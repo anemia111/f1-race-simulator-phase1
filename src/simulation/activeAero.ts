@@ -1,55 +1,27 @@
 import type {
   ActiveAeroMode,
+  ActiveAeroState,
+  ActiveAeroTransitionState,
   ActiveFlagPhase,
   AeroActivationZone,
   CarSnapshot,
+  DriverAdjustableBodyworkState,
   OvertakeEligibility,
   OvertakeStatus,
   TrackDefinition,
+} from '../types'
+
+export type {
+  ActiveAeroFailureState,
+  ActiveAeroState,
+  ActiveAeroTransitionState,
+  DriverAdjustableBodyworkState,
 } from '../types'
 
 const OVERTAKE_ACTIVATION_LENGTH = 0.12
 
 /** C3.10.10/C3.11.6 require both wing systems to settle within 400 ms. */
 export const ACTIVE_AERO_TRANSITION_LIMIT_SECONDS = 0.4
-
-export type DriverAdjustableBodyworkState =
-  | 'corner'
-  | 'transition-to-straight'
-  | 'straight'
-  | 'transition-to-corner'
-  | 'failed-corner-safe'
-
-export type ActiveAeroFailureState =
-  | 'operational'
-  | 'failed-corner-safe'
-
-export type ActiveAeroTransitionState = {
-  durationSeconds: number
-  elapsedSeconds: number
-  fromCommand: ActiveAeroMode
-  frontStartStraightFraction: number
-  rearStartStraightFraction: number
-  toCommand: ActiveAeroMode
-}
-
-/**
- * Regulatory State of Deployment plus the continuous physical wing position.
- * `command` is never Straight Mode for a moving car outside an Activation Zone.
- * The fractions let the force model interpolate instead of switching instantly.
- */
-export type ActiveAeroState = {
-  activationZoneId: string | null
-  command: ActiveAeroMode
-  commandAtSeconds: number | null
-  failureState: ActiveAeroFailureState
-  front: DriverAdjustableBodyworkState
-  frontStraightFraction: number
-  rear: DriverAdjustableBodyworkState
-  rearStraightFraction: number
-  transition: ActiveAeroTransitionState | null
-  transitionProgress: number
-}
 
 function progressIsInZone(progress: number, start: number, end: number) {
   return start <= end
@@ -234,6 +206,144 @@ function activeAeroTargetsFor(command: ActiveAeroMode) {
     case 'corner':
       return { front: 0, rear: 0 }
   }
+}
+
+const ACTIVE_AERO_MODES = new Set<ActiveAeroMode>([
+  'corner',
+  'partial-straight',
+  'straight',
+])
+const BODYWORK_STATES = new Set<DriverAdjustableBodyworkState>([
+  'corner',
+  'transition-to-straight',
+  'straight',
+  'transition-to-corner',
+  'failed-corner-safe',
+])
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isUnitInterval = (value: unknown): value is number =>
+  typeof value === 'number' &&
+  Number.isFinite(value) &&
+  value >= 0 &&
+  value <= 1
+
+const isActiveAeroMode = (value: unknown): value is ActiveAeroMode =>
+  typeof value === 'string' &&
+  ACTIVE_AERO_MODES.has(value as ActiveAeroMode)
+
+/** Validates the complete durable shape before checkpoint restoration. */
+export function isActiveAeroState(value: unknown): value is ActiveAeroState {
+  if (
+    !isRecord(value) ||
+    !(value.activationZoneId === null ||
+      typeof value.activationZoneId === 'string') ||
+    !isActiveAeroMode(value.command) ||
+    !(value.commandAtSeconds === null ||
+      (typeof value.commandAtSeconds === 'number' &&
+        Number.isFinite(value.commandAtSeconds) &&
+        value.commandAtSeconds >= 0)) ||
+    (value.failureState !== 'operational' &&
+      value.failureState !== 'failed-corner-safe') ||
+    typeof value.front !== 'string' ||
+    !BODYWORK_STATES.has(value.front as DriverAdjustableBodyworkState) ||
+    !isUnitInterval(value.frontStraightFraction) ||
+    typeof value.rear !== 'string' ||
+    !BODYWORK_STATES.has(value.rear as DriverAdjustableBodyworkState) ||
+    !isUnitInterval(value.rearStraightFraction) ||
+    !isUnitInterval(value.transitionProgress)
+  ) {
+    return false
+  }
+
+  if (value.failureState === 'failed-corner-safe') {
+    return (
+      value.command === 'corner' &&
+      value.front === 'failed-corner-safe' &&
+      value.frontStraightFraction === 0 &&
+      value.rear === 'failed-corner-safe' &&
+      value.rearStraightFraction === 0 &&
+      value.transition === null &&
+      value.transitionProgress === 1
+    )
+  }
+
+  if (value.transition === null) {
+    const target = activeAeroTargetsFor(value.command)
+
+    return (
+      value.frontStraightFraction === target.front &&
+      value.rearStraightFraction === target.rear &&
+      value.front === (target.front === 1 ? 'straight' : 'corner') &&
+      value.rear === (target.rear === 1 ? 'straight' : 'corner') &&
+      value.transitionProgress === 1
+    )
+  }
+
+  const transition = value.transition
+  const target = activeAeroTargetsFor(value.command)
+
+  if (
+    value.commandAtSeconds === null ||
+    !isRecord(transition) ||
+    !(
+      typeof transition.durationSeconds === 'number' &&
+      Number.isFinite(transition.durationSeconds) &&
+      transition.durationSeconds > 0 &&
+      transition.durationSeconds <= ACTIVE_AERO_TRANSITION_LIMIT_SECONDS &&
+      typeof transition.elapsedSeconds === 'number' &&
+      Number.isFinite(transition.elapsedSeconds) &&
+      transition.elapsedSeconds >= 0 &&
+      transition.elapsedSeconds < transition.durationSeconds &&
+      isActiveAeroMode(transition.fromCommand) &&
+      isActiveAeroMode(transition.toCommand) &&
+      transition.toCommand === value.command &&
+      isUnitInterval(transition.frontStartStraightFraction) &&
+      isUnitInterval(transition.rearStartStraightFraction)
+    )
+  ) {
+    return false
+  }
+
+  const progress = transition.elapsedSeconds / transition.durationSeconds
+  const expectedFront =
+    transition.frontStartStraightFraction +
+    (target.front - transition.frontStartStraightFraction) * progress
+  const expectedRear =
+    transition.rearStartStraightFraction +
+    (target.rear - transition.rearStartStraightFraction) * progress
+
+  return (
+    Math.abs(value.transitionProgress - progress) <= 1e-8 &&
+    Math.abs(value.frontStraightFraction - expectedFront) <= 1e-8 &&
+    Math.abs(value.rearStraightFraction - expectedRear) <= 1e-8 &&
+    value.front ===
+      bodyworkStateFor({
+        current: expectedFront,
+        failed: false,
+        target: target.front,
+      }) &&
+    value.rear ===
+      bodyworkStateFor({
+        current: expectedRear,
+        failed: false,
+        target: target.rear,
+      })
+  )
+}
+
+/**
+ * Legacy display adapter. A transition is shown as Corner Mode until both
+ * commanded wing positions settle; force integration must use the fractions.
+ */
+export function activeAeroDisplayModeForState(
+  state: ActiveAeroState,
+): ActiveAeroMode {
+  return state.failureState === 'failed-corner-safe' || state.transition
+    ? 'corner'
+    : state.command
 }
 
 function bodyworkStateFor(options: {
@@ -465,7 +575,7 @@ export function advanceActiveAeroState(options: {
     activationZoneId: zone?.label ?? null,
     command,
     commandAtSeconds: commandChanged
-      ? elapsedSeconds
+      ? Math.max(0, elapsedSeconds - deltaSeconds)
       : previous.commandAtSeconds,
     failureState: 'operational',
     front: bodyworkStateFor({

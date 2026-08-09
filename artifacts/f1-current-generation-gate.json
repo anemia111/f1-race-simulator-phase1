@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T13:08:07.535Z",
-  "sourceCommit": "3c1f971876b2becda7057644cad2ea2f4e83e49a",
+  "generatedAt": "2026-08-08T23:54:23.298Z",
+  "sourceCommit": "ebbcc97f7829529384f68268feb6b7b1f1f04e17",
   "command": "npm run validate:f1-current-generation",
   "sourceCutoffDate": "2026-08-08",
   "relatedArtifacts": [
     "artifacts/f1-current-generation-physics-summary.json",
+    "artifacts/active-aero-zone-audit.json",
     "artifacts/regulation-authority-audit.json",
     "artifacts/source-manifest.json"
   ],
@@ -189,9 +190,11 @@
   },
   "activeAero": {
     "runtimeIntegration": {
-      "continuousStatePersistedInRaceSnapshot": false,
-      "decomposedFrontRearForceMapActive": false,
-      "status": "phase-3-required"
+      "continuousStatePersistedInRaceSnapshot": true,
+      "decomposedFrontRearForceMapActive": true,
+      "legacyAggregateDragScalarPresent": false,
+      "liveTransitionProbePassed": true,
+      "status": "phase-3-integrated"
     },
     "maximumTransitionSeconds": 0.4,
     "transitionStarted": {
@@ -228,7 +231,7 @@
     "outsideZone": {
       "activationZoneId": null,
       "command": "corner",
-      "commandAtSeconds": 11,
+      "commandAtSeconds": 10.6,
       "failureState": "operational",
       "front": "corner",
       "frontStraightFraction": 0,
@@ -260,6 +263,319 @@
       "rearStraightFraction": 0,
       "transition": null,
       "transitionProgress": 1
+    },
+    "forceMap": {
+      "evaluation": {
+        "airDensityKgM3": 1.225,
+        "airSpeedMps": 80,
+        "purpose": "structural-decomposition-probe-not-calibration"
+      },
+      "corner": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.43999999999999995,
+        "aeroBalanceShift": -5.551115123125783e-17,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 1.0412533333333336,
+        "effectiveDragAreaM2": 1.03452,
+        "frontDownforceN": 8979.768746666668,
+        "frontDragN": 1703.233728,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1.2246467991473532e-16,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 11428.796586666671,
+        "rearDragN": 2352.0846720000004,
+        "structuralInput": {
+          "frontStraightFraction": 0,
+          "rearStraightFraction": 0,
+          "transitionProgress": 1
+        },
+        "totalDownforceN": 20408.56533333334,
+        "totalDragN": 4055.3184,
+        "transitionTransientDownforceLossN": 0,
+        "transitionTransientDragN": 7.44949904712505e-15
+      },
+      "transition": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.4183066337893274,
+        "aeroBalanceShift": -0.021693366210672582,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.9236575030482989,
+        "effectiveDragAreaM2": 0.91409722079808,
+        "frontDownforceN": 7572.892393138031,
+        "frontDragN": 1574.5469256211968,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10530.794666608626,
+        "rearDragN": 2008.714179907277,
+        "structuralInput": {
+          "frontStraightFraction": 0.5,
+          "rearStraightFraction": 0.5,
+          "transitionProgress": 0.5
+        },
+        "totalDownforceN": 18103.68705974666,
+        "totalDragN": 3583.2611055284738,
+        "transitionTransientDownforceLossN": 369.4630012193199,
+        "transitionTransientDragN": 60.829776
+      },
+      "straight": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.3915357073432424,
+        "aeroBalanceShift": -0.04846429265675761,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.8437619790101335,
+        "effectiveDragAreaM2": 0.76263884159616,
+        "frontDownforceN": 6475.1136883089075,
+        "frontDragN": 1394.7631114023936,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1.2246467991473532e-16,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10062.62110028971,
+        "rearDragN": 1594.7811476545542,
+        "structuralInput": {
+          "frontStraightFraction": 1,
+          "rearStraightFraction": 1,
+          "transitionProgress": 1
+        },
+        "totalDownforceN": 16537.734788598616,
+        "totalDragN": 2989.544259056948,
+        "transitionTransientDownforceLossN": 0,
+        "transitionTransientDragN": 7.44949904712505e-15
+      }
+    },
+    "liveRuntimeProbe": {
+      "car": {
+        "activeAeroMode": "corner",
+        "activeAeroState": {
+          "activationZoneId": "runtime-gate-zone",
+          "command": "straight",
+          "commandAtSeconds": 10,
+          "failureState": "operational",
+          "front": "transition-to-straight",
+          "frontStraightFraction": 0.25,
+          "rear": "transition-to-straight",
+          "rearStraightFraction": 0.25,
+          "transition": {
+            "durationSeconds": 0.4,
+            "elapsedSeconds": 0.1,
+            "fromCommand": "corner",
+            "frontStartStraightFraction": 0,
+            "rearStartStraightFraction": 0,
+            "toCommand": "straight"
+          },
+          "transitionProgress": 0.25
+        },
+        "driverId": "lando_norris"
+      },
+      "force": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.4296932322745205,
+        "aeroBalanceShift": -0.010306767725479504,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.9778531862732098,
+        "effectiveDragAreaM2": 0.9775224520081366,
+        "frontDownforceN": 8235.467167473618,
+        "frontDragN": 1644.181595635815,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 0.7071067811865475,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10930.455283481298,
+        "rearDragN": 2187.7064162360807,
+        "structuralInput": {
+          "frontStraightFraction": 0.25,
+          "rearStraightFraction": 0.25,
+          "transitionProgress": 0.25
+        },
+        "totalDownforceN": 19165.922450954917,
+        "totalDragN": 3831.8880118718957,
+        "transitionTransientDownforceLossN": 274.9352461947433,
+        "transitionTransientDragN": 43.013147107658696
+      },
+      "passed": true
     },
     "overtakeStateIsSeparateInput": true
   },

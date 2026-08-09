@@ -1,4 +1,9 @@
 import type { RaceConfig, RaceSnapshot } from '../types'
+import {
+  activeAeroDisplayModeForState,
+  createInitialActiveAeroState,
+  isActiveAeroState,
+} from '../simulation/activeAero'
 
 export const RACE_CHECKPOINT_STORAGE_KEY = 'f1-sim-race-checkpoint-v1'
 export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
@@ -106,6 +111,8 @@ function isCompatibleCarSnapshot(
     ) &&
     isOptionalUnitInterval(value.turboSpoolFraction) &&
     isOptionalUnitInterval(value.clutchEngagementFraction) &&
+    (value.activeAeroState === undefined ||
+      isActiveAeroState(value.activeAeroState)) &&
     isFiniteNumber(value.ersBatteryPercent) &&
     isFiniteNumber(value.fuelLoadKg) &&
     isFiniteNumber(value.tireWearPercent) &&
@@ -120,7 +127,10 @@ function isCompatibleCarSnapshot(
   )
 }
 
-function migrateRaceSnapshot(value: unknown): RaceSnapshot {
+function migrateRaceSnapshot(
+  value: unknown,
+  config: RaceConfig,
+): RaceSnapshot {
   const snapshot = value as unknown as RaceSnapshot
 
   return {
@@ -132,9 +142,15 @@ function migrateRaceSnapshot(value: unknown): RaceSnapshot {
       const lateralVelocityMps = persisted.lateralVelocityMps ?? 0
       const desiredLateralOffsetM =
         persisted.desiredLateralOffsetM ?? lateralOffsetM
+      const activeAeroState =
+        (config.seriesId ?? 'f1-custom') === 'f1-custom'
+          ? (persisted.activeAeroState ?? createInitialActiveAeroState())
+          : createInitialActiveAeroState()
 
       return {
         ...car,
+        activeAeroMode: activeAeroDisplayModeForState(activeAeroState),
+        activeAeroState,
         desiredLateralOffsetM,
         lateralOffsetM,
         lateralVelocityMps,
@@ -261,7 +277,7 @@ export function parseRaceCheckpoint(
       return null
     }
 
-    return migrateRaceSnapshot(parsed.snapshot)
+    return migrateRaceSnapshot(parsed.snapshot, config)
   } catch {
     return null
   }

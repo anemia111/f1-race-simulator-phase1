@@ -1,38 +1,38 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T12:56:00Z",
-  "sourceCommit": "3c1f971",
+  "generatedAt": "2026-08-09T08:33:37.4510771+09:00",
+  "sourceCommit": "ebbcc97f7829529384f68268feb6b7b1f1f04e17",
   "command": "npm run validate:physics-calibration -- --output=<temporary-file>",
   "policy": "read-only-observation-comparison",
   "detailedPerCircuitOutputCommitted": false,
-  "holdoutPolicy": "Only aggregate holdout results were read or retained; individual holdout errors were not inspected or used for selection.",
+  "holdoutPolicy": "Only aggregate values are retained here. A Phase 3 wrapper accidentally displayed individual holdout rows; the private report was deleted immediately, no disclosed value was used, and the incident is recorded in artifacts/holdout-access-log.jsonl.",
   "fitPerformed": false,
   "trackSpecificMultiplierCount": 0,
   "lap": {
     "calibration": {
       "sampleCount": 5,
-      "meanLapRatio": 0.995775,
-      "meanAbsoluteErrorSeconds": 1.402383,
-      "mapePercent": 1.783997
+      "meanLapRatio": 1.002625,
+      "meanAbsoluteErrorSeconds": 1.374596,
+      "mapePercent": 1.748769
     },
     "holdout": {
       "sampleCount": 6,
-      "meanLapRatio": 0.990884,
-      "meanAbsoluteErrorSeconds": 3.097971,
-      "mapePercent": 3.582131
+      "meanLapRatio": 0.996284,
+      "meanAbsoluteErrorSeconds": 2.828223,
+      "mapePercent": 3.277303
     },
     "overall": {
       "sampleCount": 11,
-      "meanLapRatio": 0.993107,
-      "meanAbsoluteErrorSeconds": 2.327249,
-      "mapePercent": 2.764797
+      "meanLapRatio": 0.999166,
+      "meanAbsoluteErrorSeconds": 2.167483,
+      "mapePercent": 2.582515
     }
   },
   "referencePeakSpeed": {
-    "meanKph": 342.854203,
-    "maximumKph": 345.82233,
-    "meanAbsoluteErrorKph": 8.829042,
-    "biasKph": 8.672385
+    "meanKph": 336.960588,
+    "maximumKph": 342.663574,
+    "meanAbsoluteErrorKph": 10.16628,
+    "biasKph": 2.77877
   },
   "drivenSpeedTrap": {
     "command": "npm run validate:speed-trap",
@@ -41,31 +41,50 @@
     "observedReferenceCircuits": 11,
     "median": {
       "sampleCount": 22,
-      "meanAbsoluteErrorKph": 7.83,
-      "biasKph": -2.09,
-      "gatePassed": true
+      "meanAbsoluteErrorKph": 14.44,
+      "biasKph": -12.77,
+      "gatePassed": false
     },
     "peak": {
       "sampleCount": 22,
-      "meanAbsoluteErrorKph": 8.22,
-      "biasKph": -3.92,
+      "meanAbsoluteErrorKph": 15.79,
+      "biasKph": -14.77,
       "gatePassed": false
     },
     "perCircuitBoundFailureIds": [
-      "silverstone-approx",
+      "albert-park-approx",
+      "barcelona-approx",
       "hungaroring-approx",
-      "red-bull-ring-approx"
+      "red-bull-ring-approx",
+      "silverstone-approx",
+      "spa-approx",
+      "suzuka-approx"
     ],
     "newFailureIdsVersusPhase0": [
-      "red-bull-ring-approx"
+      "albert-park-approx",
+      "barcelona-approx",
+      "red-bull-ring-approx",
+      "spa-approx",
+      "suzuka-approx"
     ],
     "detailedPerCircuitOutputCommitted": false
   },
   "deploymentEnergy": {
-    "meanMj": 10.43925,
-    "maximumMj": 11.000529,
+    "meanMj": 10.669948,
+    "maximumMj": 11,
     "circuitsOverAttackAllowance": 0,
     "circuitsOverRepeatableLimit": 11
   },
-  "interpretation": "The exact Issue 20 ERS curves and regulatory mass boundary were structural authority corrections, not a fit. Aggregate pace and peak-speed errors are modestly worse than the Phase 0 baseline, the driven peak-speed aggregate now misses its 8 km/h gate, and Red Bull Ring is one new per-circuit bound failure. No parameter or circuit-specific correction was changed in response."
+  "activeAero": {
+    "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+    "classification": "category-level-prior-only",
+    "runtimeGate": "PASS",
+    "zoneAudit": "PASS",
+    "officialF1TrackCount": 11,
+    "geometryEstimatedF1TrackCount": 13,
+    "japaneseFreeModeZoneCount": 7,
+    "legacyAggregateDragScalarPresent": false,
+    "observationalStatus": "driven-speed-gates-fail"
+  },
+  "interpretation": "Phase 3 replaced the forbidden target-derived aggregate drag scalar with a durable continuous front/rear force decomposition and official-or-estimated zone provenance. Structural runtime and geometry gates pass, while all four driven speed-trap aggregate gates fail and seven circuits exceed the outer bound. The public regulations and cited primary research do not publish a 2026 team force map, so no coefficient or circuit correction was changed in response; the force coefficients remain explicit category-level priors for later independent evidence."
 }

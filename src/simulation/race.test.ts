@@ -61,6 +61,7 @@ import {
   MAX_LATERAL_SPEED_MPS,
 } from './lateralDynamics'
 import { categoryPhysicsFor } from './categoryPhysics'
+import { createInitialActiveAeroState } from './activeAero'
 import { selectGear } from './drivetrain'
 import { combustionPowerKwFor } from './vehicleDynamics'
 import { startingGridDistance } from './startingGrid'
@@ -425,7 +426,7 @@ describe('starting grid', () => {
         expect(car.totalDistance).toBeGreaterThan(
           distanceAtLightsOut.get(car.driverId)!,
         )
-        if (car.speedKph < 50 && !car.lowPowerStartDetected) {
+        if (car.speedKph < 50) {
           expect(car.ersPowerKw).toBe(0)
           expect(car.standingStartMguKReleaseLatched).toBe(false)
         }
@@ -450,6 +451,38 @@ describe('starting grid', () => {
           car.standingStartMguKReleaseLatched === true,
       ),
     ).toBe(true)
+  })
+
+  it('does not treat a seeded low-power start as an SECU safety exception', () => {
+    const base = makeConfig('low-power-is-not-secu')
+    const config = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const lightsOut = runThroughStart(config)
+    const target = lightsOut.cars.find((car) => !car.startsFromPitLane)!
+    const flagged = {
+      ...lightsOut,
+      cars: lightsOut.cars.map((car) =>
+        car.driverId === target.driverId
+          ? {
+              ...car,
+              lowPowerStartDetected: true,
+              speedKph: 0,
+              standingStartMguKReleaseLatched: false,
+            }
+          : car,
+      ),
+    }
+    const advanced = advanceRace(flagged, 0.1, config)
+    const gated = advanced.cars.find(
+      (car) => car.driverId === target.driverId,
+    )!
+
+    expect(gated.lowPowerStartDetected).toBe(true)
+    expect(gated.speedKph).toBeLessThan(50)
+    expect(gated.ersPowerKw).toBe(0)
+    expect(gated.standingStartMguKReleaseLatched).toBe(false)
   })
 
   it('does not send cars straight into the pits on the opening tour', () => {
@@ -3800,6 +3833,173 @@ describe('race session completion', () => {
     expect(
       completeRaceSession(base, 'sprint').completed,
     ).toContain('sprint')
+  })
+})
+
+describe('live active-aero persistence', () => {
+  const aeroTrack = {
+    ...tracks[0],
+    aeroActivationZones: [
+      {
+        end: 0.8,
+        label: 'TEST SM A1',
+        lowGripMode: 'partial' as const,
+        source: 'official' as const,
+        start: 0.2,
+      },
+    ],
+    rainProbability: 0,
+  }
+  const f1Config: RaceConfig = {
+    ...makeConfig('live-active-aero'),
+    overtakeSystem: 'active-aero',
+    seriesId: 'f1-custom',
+    track: aeroTrack,
+  }
+
+  const singleRunningCarAt = (
+    config: RaceConfig,
+    progress: number,
+  ): RaceSnapshot => {
+    const initial = createInitialRace(config)
+    const totalDistance = 2 + progress
+
+    return {
+      ...initial,
+      elapsedLabel: '00:00:10',
+      elapsedSeconds: 10,
+      raceStartedAtSeconds: 0,
+      startProcedure: 'racing',
+      startProcedureRemainingSeconds: 0,
+      cars: initial.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              activeAeroMode: 'corner' as const,
+              activeAeroState: createInitialActiveAeroState(),
+              lap: 2,
+              pitPhase: 'none' as const,
+              pitLaneProgress: null,
+              position: 1,
+              progress,
+              speedKph: 240,
+              status: 'running' as const,
+              totalDistance,
+            }
+          : {
+              ...car,
+              position: index + 1,
+              status: 'dns' as const,
+            },
+      ),
+    }
+  }
+
+  it('initializes every category and keeps Super Formula Corner-safe', () => {
+    const expected = createInitialActiveAeroState()
+    const f1 = createInitialRace(f1Config)
+    const sfConfig: RaceConfig = {
+      ...f1Config,
+      overtakeSystem: 'ots',
+      seed: 'sf-no-active-aero',
+      seriesId: 'super-formula',
+    }
+    const sf = singleRunningCarAt(sfConfig, 0.3)
+    const injectedStraight = {
+      ...sf,
+      cars: sf.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              activeAeroMode: 'straight' as const,
+              activeAeroState: {
+                ...expected,
+                command: 'straight' as const,
+                front: 'straight' as const,
+                frontStraightFraction: 1,
+                rear: 'straight' as const,
+                rearStraightFraction: 1,
+              },
+            }
+          : car,
+      ),
+    }
+    const advancedSf = advanceRace(injectedStraight, 0.1, sfConfig)
+
+    expect(f1.cars.every((car) => car.activeAeroState !== undefined)).toBe(true)
+    expect(
+      createInitialRace(sfConfig).cars.every(
+        (car) => car.activeAeroState !== undefined,
+      ),
+    ).toBe(true)
+    expect(advancedSf.cars[0].activeAeroState).toEqual(expected)
+    expect(advancedSf.cars[0].activeAeroMode).toBe('corner')
+  })
+
+  it('persists a continuous transition and returns safely at zone exit', () => {
+    let snapshot = singleRunningCarAt(f1Config, 0.3)
+
+    snapshot = advanceRace(snapshot, 0.1, f1Config)
+    const started = snapshot.cars[0].activeAeroState!
+    expect(started).toMatchObject({
+      command: 'straight',
+      front: 'transition-to-straight',
+      rear: 'transition-to-straight',
+    })
+    expect(started.frontStraightFraction).toBeGreaterThan(0)
+    expect(started.frontStraightFraction).toBeLessThan(1)
+    expect(snapshot.cars[0].activeAeroMode).toBe('corner')
+
+    for (let step = 0; step < 3; step += 1) {
+      snapshot = advanceRace(snapshot, 0.1, f1Config)
+    }
+
+    const settled = snapshot.cars[0].activeAeroState!
+    expect(settled.transition).toBeNull()
+    expect(settled.frontStraightFraction).toBe(1)
+    expect(settled.rearStraightFraction).toBe(1)
+    expect(snapshot.cars[0].activeAeroMode).toBe('straight')
+    expect(snapshot.elapsedSeconds - settled.commandAtSeconds!).toBeLessThanOrEqual(
+      0.400_000_001,
+    )
+
+    snapshot = {
+      ...snapshot,
+      cars: snapshot.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              lap: 2,
+              progress: 0.9,
+              speedKph: 240,
+              totalDistance: 2.9,
+            }
+          : car,
+      ),
+    }
+    snapshot = advanceRace(snapshot, 0.1, f1Config)
+    const returning = snapshot.cars[0].activeAeroState!
+
+    expect(returning).toMatchObject({
+      activationZoneId: null,
+      command: 'corner',
+      front: 'transition-to-corner',
+      rear: 'transition-to-corner',
+    })
+    expect(snapshot.cars[0].activeAeroMode).toBe('corner')
+
+    for (let step = 0; step < 3; step += 1) {
+      snapshot = advanceRace(snapshot, 0.1, f1Config)
+    }
+
+    expect(snapshot.cars[0].activeAeroState).toMatchObject({
+      command: 'corner',
+      front: 'corner',
+      frontStraightFraction: 0,
+      rear: 'corner',
+      rearStraightFraction: 0,
+      transition: null,
+    })
   })
 })
 

@@ -19,7 +19,7 @@ export function createCarComponents(): CarComponents {
 }
 
 export const componentAllocationSource = {
-  asOf: '2026-06-25',
+  asOf: '2026-08-05',
   label: 'FIA 2026 Sporting Regulations B8.2 (Issue 08)',
   url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf',
 } as const

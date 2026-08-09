@@ -65,13 +65,14 @@ they cannot become an undocumented second calibration layer.
 | `drivetrain.ts` turbo | spool time constant 0.55 s at zero rev, falling linearly to 0.13 s at the limiter; lift decay 0.30 s | Stateful combustion response, category physical behaviour | Commented engineering estimate. High throttle-transient sensitivity; zero effect on electrical torque. Validate against time-resolved acceleration, never lap time alone. |
 | `drivetrain.ts` clutch | engagement time constant 0.48 s; release 0.16 s; numerical floor 0.02 s | Stateful standing launch, category physical behaviour | Engineering estimate. High launch sensitivity. Must remain continuous and traction-limited in the launch tests. |
 | `physicalLap.ts` reference deployment | category MGU-K limit, bounded by the regulation speed ramp and by an 11 MJ lap allowance (7 MJ recharge limit + 4 MJ usable store window); 3 allocation passes and 2 trim passes | Explicit offline policy, category | Not a live SOC assumption or calibration. The allowance is two published regulation numbers added; the pass counts are numerical convergence, not tuning. Where the allowance is spent is ranked by seconds bought per joule. Live deployment still comes from `energySystem.ts`. |
-| `physicalLap.ts` reference active aero | flap open in the circuit's declared `aeroActivationZones`, drag scaled by `straightAeroDragMultiplier`; shut under braking and in corners | Explicit offline policy, category | Reads the same declared zones and the same multiplier as the driven path in `vehicleDragAreaM2`, so one number owns the effect. `trackDynamics.buildProfile` opts out with `activeAeroZones: false` because it is a geometry classifier, not a lap. |
+| `physicalLap.ts` reference active aero | declared `aeroActivationZones`; neutral front/rear Corner/Straight area decomposition for both drag and load; Corner Mode under braking | Explicit offline policy, category | Uses `activeAeroReferenceAreaMultipliers`, the neutral adapter for the same front/rear category prior as the driven force path. No target speed, circuit factor or aggregate Straight-Mode scalar is present. `trackDynamics.buildProfile` opts out with `activeAeroZones: false` because it is a geometry classifier, not a lap. |
 | `vehicleGeometry.ts` footprint | width 1.90 m; length 5.20 m; track-edge margin 0.25 m; lateral margin 0.35 m; longitudinal margin 1.25 m | Published/inferred geometry and global collision envelope | Width is regulation-derived; length and margins are conservative simulation envelopes. High occupancy/contact sensitivity, no clear-air lap sensitivity. Category-specific geometry should replace these when sourced. |
 | `lateralDynamics.ts` response | maximum lateral speed 2.8 m/s; acceleration 4.0 m/s2; target response 0.25 s | Global lateral-control dynamics | Behavioural/engineering assumptions. High pass, defence and avoidance sensitivity. Validate with lane-change traces; do not fit finishing order. |
 | `driverDecision.ts` sampling | 12 decision windows per lap | Global algorithmic/behavioural resolution | Low-frequency deterministic choice boundary. High reaction opportunity sensitivity on very short/long circuits; the same seed/window remains reproducible. A time- or distance-based replacement needs a separate design change. |
 | `driverDecision.ts` base error | `0.002 + 0.055(1-consistency) + 0.040(1-awareness) + 0.035(1-control precision) + 0.026(aggression x risk)` | Global formula producing per-driver behaviour | Behavioural prior, not observed calibration. High mistake dispersion/contact sensitivity. Requires driver/incident samples before numeric calibration. |
 | `vehicleDynamics.ts` dirty air | active below 2.5 s in corners; loss coefficient 0.115; minimum multiplier 0.88; lateral wake width 3.2 m | Team-informed aerodynamic interaction | Engineering assumption. High following-corner sensitivity. Requires paired-car aero/telemetry; never use a circuit lap residual. |
 | `vehicleDynamics.ts` tow | active through 1.8 s on sufficiently straight road; coefficient `0.105 + 0.075 x team rating`; cap 0.19; lateral wake width 2.8 m | Team-informed aerodynamic interaction | Engineering assumption. High closing-speed/overtake sensitivity. Requires speed-trap pairs at measured gaps. |
+| `vehicleDynamics.ts` F1 active-aero force prior v1 | front/rear load and drag shares/retentions; bounded ride-height, pitch, yaw, wake and 400 ms transition sensitivities, returned with `category-level-prior-only` provenance | Category-level structural prior | FIA sources establish the mechanism and regulatory geometry, while public research supports decomposition and sensitivity axes. None publishes a 2026 team aero map, so every coefficient is an explicit uncalibrated bounded prior. Validate with independent force/balance/transition observations if they become available; never solve it from a top speed or circuit residual. |
 | `overtaking.ts` incident tuning | driver-error scale 0.40; base contact 0.022; opening/restart/corner additions 0.040/0.030/0.022; straight reduction 0.010; base crash 0.055; opening/restart additions 0.035/0.025; crash-detail weight 0.040; attacker/defender retirement 0.55/0.20 | Global behavioural/operational risk model | Existing stochastic prior. Very high contact, finish-rate and neutralisation sensitivity. No checked observed target currently supports tuning it, so it remains unvalidated rather than being adjusted to one race. |
 | integration resolution | longitudinal internal step 0.10 s; lateral substep 0.05 s with a 3 s catch-up cap; energy step 0.50 s | Global numerical method, not calibration | Must be tested by convergence and finite-state checks. It must not be changed to improve an observational score without demonstrating numerical error. |
 
@@ -561,37 +562,36 @@ and a trim pass then gives back the few hundred joules that re-costing leaves
 overspent. The segment the allowance runs out on takes the share it can pay
 for rather than being switched off, so the speed profile stays continuous.
 
-### The straight-line drag was not moved, and here is the measurement
+### The legacy straight-line scalar was rejected and then removed
 
-The obvious next step is wrong, and it was tested rather than reasoned about.
+The following is retained only as a historical rejected-experiment record. The
+field no longer exists in a production category profile and these values must
+not be rerun as candidates for the decomposed active-aero model.
 
 After both fixes the reference lap is 6.64 km/h fast at the peak and its lap
 error is scatter around zero, which looks like an invitation to re-cut
-`straightAeroDragMultiplier`. Sweeping it on the calibration split gives a
-clean joint optimum near 0.56 - calibration lap error 1.27 s and peak error
-7.17 km/h, both minimised at the same value by two independent observables:
+the legacy `straightAeroDragMultiplier`. A past calibration-split sweep gave a
+numerical joint optimum near 0.56:
 
-| `straightAeroDragMultiplier` | Calibration lap MAE | Reference peak MAE | Peak bias |
+| legacy scalar | Calibration lap MAE | Reference peak MAE | Peak bias |
 | ---: | ---: | ---: | ---: |
-| 0.639 (current) | 1.43 s | 11.14 km/h | -7.82 km/h |
+| 0.639 (then-current) | 1.43 s | 11.14 km/h | -7.82 km/h |
 | 0.60 | 1.32 s | 8.16 km/h | -3.71 km/h |
 | 0.56 | 1.27 s | 7.17 km/h | +0.75 km/h |
 | 0.52 | 1.28 s | 8.85 km/h | +5.04 km/h |
 
-It was not taken. The constant is shared with the driven path, and at 0.56
+It was not taken. The scalar was shared with the driven path, and at 0.56
 `validate:speed-trap` fails three of its four aggregate gates: median mean
 absolute error 9.73 km/h against a limit of 8, median bias +5.16 against
 +/-5, and peak mean absolute error 8.99 against 8. Driven laps are the
-evidence that constant answers to, and they say it is already right.
+independent evidence that invalidated that apparent optimum.
 
-The reason the two disagree is not aero, it is energy, and the disagreement is
-real rather than an error to be split. A driven attack lap arrives with a
-charged store and empties it; the reference lap is one closed lap and gets the
-same allowance by construction, but it has no out lap to arrive from and no
-tow. Moving an aerodynamic constant until the two agree would be paying for an
-energy difference with drag, which is the double-counting failure this
-document classifies as E. The residual belongs to the straight-against-corner
-axis and stays open.
+Phase 3 therefore removed the scalar rather than declaring either historical
+value correct. Live forces now resolve front and rear drag/load separately and
+the offline reference uses the same decomposition at a neutral point. The
+coefficients remain category priors, not fitted values. Any residual remains an
+open validation problem and cannot be paid for with drag, energy, or a circuit
+correction from a non-matching observation.
 
 ### One profile is not a lap
 

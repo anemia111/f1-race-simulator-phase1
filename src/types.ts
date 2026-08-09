@@ -52,6 +52,38 @@ export type StartProcedurePhase =
   | 'racing'
 export type WeatherState = 'clear' | 'light-rain' | 'heavy-rain'
 export type ActiveAeroMode = 'corner' | 'partial-straight' | 'straight'
+export type DriverAdjustableBodyworkState =
+  | 'corner'
+  | 'transition-to-straight'
+  | 'straight'
+  | 'transition-to-corner'
+  | 'failed-corner-safe'
+export type ActiveAeroFailureState =
+  | 'operational'
+  | 'failed-corner-safe'
+export type ActiveAeroTransitionState = {
+  durationSeconds: number
+  elapsedSeconds: number
+  fromCommand: ActiveAeroMode
+  frontStartStraightFraction: number
+  rearStartStraightFraction: number
+  toCommand: ActiveAeroMode
+}
+/** Durable front/rear bodywork state carried by live ticks and checkpoints. */
+export type ActiveAeroState = {
+  activationZoneId: string | null
+  command: ActiveAeroMode
+  commandAtSeconds: number | null
+  failureState: ActiveAeroFailureState
+  front: DriverAdjustableBodyworkState
+  /** Continuous Corner=0 to Straight=1 front-wing position. */
+  frontStraightFraction: number
+  rear: DriverAdjustableBodyworkState
+  /** Continuous Corner=0 to Straight=1 rear-wing position. */
+  rearStraightFraction: number
+  transition: ActiveAeroTransitionState | null
+  transitionProgress: number
+}
 export type OvertakeStatus = 'disabled' | 'available' | 'active'
 export type RestartProcedure = 'none' | 'standing' | 'rolling'
 export type ErsMode = 'harvest' | 'balanced' | 'deploy'
@@ -287,7 +319,12 @@ export type TrackProgressZone = {
   label: string
 }
 
-export type OperationalDataSource = 'official' | 'openf1' | 'derived' | 'fallback'
+export type OperationalDataSource =
+  | 'official'
+  | 'openf1'
+  | 'derived'
+  | 'geometry-derived-estimate'
+  | 'fallback'
 
 export type DataProvenanceKind =
   | 'official'
@@ -1055,6 +1092,11 @@ export type CarSnapshot = {
   clutchEngagementFraction?: number
   /** 2026 front/rear driver-adjustable bodywork state. */
   activeAeroMode: ActiveAeroMode
+  /**
+   * Continuous 2026 active-aero truth. Optional only for checkpoint migration;
+   * new snapshots initialize it for every category.
+   */
+  activeAeroState?: ActiveAeroState
   /** 2026 electrical Overtake availability, separate from active aero. */
   overtakeStatus: OvertakeStatus
   /** Detection-line result held until the corresponding activation zone. */

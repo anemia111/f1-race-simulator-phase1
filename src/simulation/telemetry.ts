@@ -1,4 +1,5 @@
 import type {
+  ActiveAeroState,
   ActiveAeroMode,
   ActiveFlagPhase,
   CarSetup,
@@ -12,7 +13,10 @@ import type {
   WeekendStage,
 } from '../types'
 import {
+  activeAeroDisplayModeForState,
   activeAeroModeFor,
+  advanceActiveAeroState,
+  createInitialActiveAeroState,
   overtakeStatusFor,
 } from './activeAero'
 import {
@@ -122,6 +126,7 @@ function ersModeFor(options: {
 
 type CalculatedTelemetry = {
   activeAeroMode: ActiveAeroMode
+  activeAeroState: ActiveAeroState
   brakePercent: number
   ersBatteryPercent: number
   energyStore: CarSnapshot['energyStore']
@@ -285,7 +290,7 @@ export function calculateCarTelemetry(options: {
     localDynamics: dynamics,
     track,
   })
-  const activeAeroMode =
+  const requestedActiveAeroMode =
     isPreparationLap || overtakeSystem === 'ots'
       ? ('corner' as const)
       : activeAeroModeFor({
@@ -294,6 +299,20 @@ export function calculateCarTelemetry(options: {
           phase,
           track,
         })
+  const activeAeroState =
+    categoryPhysics.id === 'f1-custom' && overtakeSystem !== 'ots'
+      ? advanceActiveAeroState({
+          car,
+          deltaSeconds,
+          elapsedSeconds,
+          lowGripConditions,
+          phase,
+          previous: car.activeAeroState ?? createInitialActiveAeroState(),
+          requestedMode: requestedActiveAeroMode,
+          track,
+        })
+      : createInitialActiveAeroState()
+  const activeAeroMode = activeAeroDisplayModeForState(activeAeroState)
   const dirtyAirDownforce = phase
     ? 1
     : dirtyAirDownforceMultiplier({
@@ -321,8 +340,10 @@ export function calculateCarTelemetry(options: {
     radiusMeters: number,
     bankingDegrees: number,
     evaluationSpeedKph: number,
+    aeroState: ActiveAeroState,
   ) =>
     liveCorneringSpeedLimitKph({
+      activeAeroState: aeroState,
       airDensityKgM3: ambientAirDensityKgM3,
       bankingDegrees,
       baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
@@ -339,6 +360,7 @@ export function calculateCarTelemetry(options: {
     dynamics.effectiveCornerRadiusM,
     dynamics.bankingDegrees,
     car.speedKph,
+    activeAeroState,
   )
   const liveBrakingTargetSpeedKph =
     dynamics.brakingDistanceAheadMeters > 0
@@ -346,6 +368,9 @@ export function calculateCarTelemetry(options: {
           dynamics.brakingTargetCornerRadiusM,
           dynamics.brakingTargetBankingDegrees,
           dynamics.brakingTargetSpeedKph,
+          // The command returns to Corner Mode before braking. The future
+          // target must not carry Straight-Mode load loss into that corner.
+          createInitialActiveAeroState(),
         )
       : Number.POSITIVE_INFINITY
   const brakingTargetSpeedKph = Number.isFinite(
@@ -721,6 +746,7 @@ export function calculateCarTelemetry(options: {
       })
   const longitudinalStep = integrateVehicleLongitudinalStep({
     activeAeroMode,
+    activeAeroState,
     airDensityKgM3: ambientAirDensityKgM3,
     baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
     brakePercent,
@@ -830,6 +856,7 @@ export function calculateCarTelemetry(options: {
 
   return {
     activeAeroMode,
+    activeAeroState,
     brakePercent,
     energyStore,
     ersBatteryPercent,

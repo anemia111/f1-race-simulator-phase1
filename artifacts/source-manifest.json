@@ -57,6 +57,7 @@
       "sha256": "cf0b919eef5eecc27497fb6de012f8d27e200f6dbd34d62b7e5385f7274ff652",
       "facts": [
         "C2.3.3 limits wheelbase to 3400 mm.",
+        "C3.10.10 and C3.11.6 require front and rear Straight Mode to decrease flap incidence, settle within 400 ms and return to Corner Mode on failure; they do not publish a decrease angle or aerodynamic force coefficient.",
         "C4.1 defines 726 kg plus Nominal Tyre Mass for Sprint Qualifying and Qualifying, and 724 kg plus Nominal Tyre Mass for other sessions.",
         "C4.7 assigns Nominal Tyre Mass measurement and later publication to the tyre provider; Issue 20 contains no public numeric Nominal Tyre Mass.",
         "C5.2.7-C5.2.8 define the 350 kW absolute MGU-K DC cap and the Normal, Overtake and Race/Sprint power-limited speed curves.",
@@ -117,6 +118,120 @@
       "facts": [
         "In low-grip conditions Boost may only prevent a power reduction and may not increase output.",
         "Overtake is disabled in the affected low-grip condition."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-active-aero-overview",
+      "issuer": "FIA",
+      "title": "F1's New Era: Everything you need to know about how the FIA is making Formula 1 more competitive, more sustainable and safer in 2026",
+      "kind": "official-explanatory-material",
+      "url": "https://www.fia.com/news/f1s-new-era-everything-you-need-know-about-how-fia-making-formula-1-more-competitive-more",
+      "publishedAt": "2025-12-17",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Straight Mode moves both front and rear flaps and reduces overall drag.",
+        "Corner Mode is the high-downforce position.",
+        "Straight Mode is available at predetermined points on straights of a minimum length and is independent of the following-car gap used for Overtake."
+      ],
+      "limitations": [
+        "The published 30 percent downforce and 55 percent drag changes compare vehicle generations; they are not Corner-to-Straight mode deltas and are not model coefficients."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-australia-post-race-transcript",
+      "issuer": "FIA",
+      "title": "F1 - 2026 Australian Grand Prix Post-Race Press Conference Transcript",
+      "kind": "official-observation-transcript",
+      "url": "https://www.fia.com/news/f1-2026-australian-grand-prix-post-race-press-conference-transcript",
+      "publishedAt": "2026-03-08",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "A driver described loss of front-end response and understeer while using Straight Mode, including when moving out of a slipstream."
+      ],
+      "limitations": [
+        "Qualitative validation evidence only; it supplies no coefficient, target speed or calibration value."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-belgium-circuit-map-v4",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Belgian Grand Prix Circuit Map, Pit Lane Drawing, Emergency Exits Map and Red Zone",
+      "kind": "binding-event-operation-map",
+      "url": "https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "publishedAt": "2026-07-16",
+      "documentDate": "2026-07-16",
+      "effectiveFrom": "2026-07-16",
+      "status": "current-at-cutoff",
+      "sha256": "584d96cf7d651b1eef1554a0032382eb79ba515028035c79b1e0273ea44a38f1",
+      "facts": [
+        "Version 4, issued 2026-07-16, publishes five Straight Mode zones, one Overtake detection/activation pair, sector lengths and the 7.004 km centreline length."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only"
+    },
+    {
+      "id": "fia-f1-2026-hungary-circuit-map-v2",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Hungarian Grand Prix Circuit Map, Pit Lane Drawing, Emergency Exits Map and Red Zone",
+      "kind": "binding-event-operation-map",
+      "url": "https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "publishedAt": "2026-07-23",
+      "documentDate": "2026-07-23",
+      "mapIssuedAt": "2026-07-21",
+      "effectiveFrom": "2026-07-23",
+      "status": "current-at-cutoff",
+      "sha256": "9e0d7e4c730b3572d36f2b7f5552fa9607ba808cfc4b9dca2f4a2523405b8a63",
+      "facts": [
+        "Version 2 publishes four Straight Mode zones, including a Turn 1A-entry anchor distinct from Turn 1, one Overtake detection/activation pair, sector lengths and the 4.381 km centreline length."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only"
+    },
+    {
+      "id": "dimastrogiovanni-reina-burzoni-2019-active-drag",
+      "issuer": "SAGE Publications",
+      "title": "An improved active drag reduction system for formula race cars",
+      "kind": "peer-reviewed-research",
+      "url": "https://doi.org/10.1177/0954407019862913",
+      "publishedAt": "2019-07-18",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "publisher-text-and-data-mining-terms; redistribution not assumed",
+      "limitations": [
+        "Used only to justify decomposed whole-vehicle active-aerodynamic modelling and validation methodology; no paper result is copied into a 2026 F1 coefficient."
+      ]
+    },
+    {
+      "id": "diba-barari-esmailzadeh-2014-active-aero-handling",
+      "issuer": "Taylor & Francis",
+      "title": "Handling and safety enhancement of race cars using active aerodynamic systems",
+      "kind": "peer-reviewed-research",
+      "url": "https://doi.org/10.1080/00423114.2014.930158",
+      "publishedAt": "2014-07-10",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "redistribution not established; link and bibliographic metadata only",
+      "limitations": [
+        "Used qualitatively for load-distribution and handling sensitivity; no paper result is treated as team-specific 2026 F1 data."
+      ]
+    },
+    {
+      "id": "buscariolo-et-al-2019-imperial-front-wing",
+      "issuer": "arXiv / authors",
+      "title": "Spectral/hp element simulation of flow past a Formula One front wing: validation against experiments",
+      "kind": "primary-research-preprint",
+      "url": "https://arxiv.org/abs/1909.06701",
+      "publishedAt": "2019-09-15",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "linked from arXiv; repository does not redistribute the paper",
+      "limitations": [
+        "Used to support sensitivity to ride height and wake/flow structures and the need for validation; no geometry or coefficient is copied into the simulator."
       ]
     },
     {

@@ -49,6 +49,41 @@ export const sourceRegistry = {
     label: 'FIA 2026 Formula One event documents',
     url: 'https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072',
   },
+  fiaActiveAeroOverview2026: {
+    label: 'FIA 2026 F1 Straight Mode / Corner Mode overview',
+    publishedAt: '2025-12-17',
+    url: 'https://www.fia.com/news/f1s-new-era-everything-you-need-know-about-how-fia-making-formula-1-more-competitive-more',
+  },
+  fiaAustraliaPostRaceTranscript2026: {
+    label: 'FIA 2026 Australian Grand Prix post-race transcript',
+    publishedAt: '2026-03-08',
+    url: 'https://www.fia.com/news/f1-2026-australian-grand-prix-post-race-press-conference-transcript',
+  },
+  fiaBelgiumCircuitMap2026: {
+    label: 'FIA 2026 Belgian Grand Prix circuit map v4',
+    publishedAt: '2026-07-16',
+    url: 'https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+  },
+  fiaHungaryCircuitMap2026: {
+    label: 'FIA 2026 Hungarian Grand Prix circuit map v2',
+    publishedAt: '2026-07-23',
+    url: 'https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+  },
+  activeAeroResearch2019: {
+    label: 'Dimastrogiovanni, Reina and Burzoni (2019), active drag reduction for formula race cars',
+    publishedAt: '2019-07-18',
+    url: 'https://doi.org/10.1177/0954407019862913',
+  },
+  activeAeroHandlingResearch2014: {
+    label: 'Diba, Barari and Esmailzadeh (2014), active-aero handling and safety',
+    publishedAt: '2014-07-10',
+    url: 'https://doi.org/10.1080/00423114.2014.930158',
+  },
+  imperialFrontWingResearch2019: {
+    label: 'Buscariolo et al. (2019), Imperial front-wing CFD validation',
+    publishedAt: '2019-09-15',
+    url: 'https://arxiv.org/abs/1909.06701',
+  },
   superFormulaJafResults2026: {
     label: 'JAF 2026 SUPER FORMULA official results',
     url: 'https://motorsports.jaf.or.jp/results/standings/race/2026/superformula',

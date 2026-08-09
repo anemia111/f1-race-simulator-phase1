@@ -1,0 +1,1632 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T23:54:22.344Z",
+  "sourceCommit": "ebbcc97f7829529384f68268feb6b7b1f1f04e17",
+  "sourceCutoffDate": "2026-08-08",
+  "command": "npm run validate:active-aero-zones",
+  "verdict": "PASS",
+  "calibrationPolicy": {
+    "fitPerformed": false,
+    "trackSpecificMultiplierCount": 0
+  },
+  "policy": {
+    "estimatedZonesAreNotOfficial": true,
+    "maximumEstimatedLateralLoadG": 0.85,
+    "minimumUsableZoneMeters": 300,
+    "requiredTransitionSeconds": 0.4,
+    "transitionSpeedKphIsScreeningOnly": true
+  },
+  "officialF1Tracks": [
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_australian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_quarantine_zone.pdf",
+      "trackId": "albert-park-approx",
+      "zoneCount": 5,
+      "zones": [
+        {
+          "end": 1,
+          "label": "SM A1",
+          "lowGripStart": 0.9292029809271187,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.91973
+        },
+        {
+          "end": 0.186,
+          "label": "SM A2",
+          "lowGripStart": 0.09185929013515226,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.087123
+        },
+        {
+          "end": 0.372,
+          "label": "SM A3",
+          "lowGripStart": 0.2993242389794113,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.291746
+        },
+        {
+          "end": 0.503,
+          "label": "SM A4",
+          "lowGripMode": "disabled",
+          "source": "official",
+          "start": 0.423298
+        },
+        {
+          "end": 0.739,
+          "label": "SM A5",
+          "lowGripMode": "disabled",
+          "source": "official",
+          "start": 0.658804
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_chinese_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_battery_containment_area_and_red_zone.pdf",
+      "trackId": "shanghai-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0.084,
+          "label": "SM A1",
+          "lowGripStart": 0.9762358353442557,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.967063
+        },
+        {
+          "end": 0.283,
+          "label": "SM A2",
+          "lowGripStart": 0.21065295005856366,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.203315
+        },
+        {
+          "end": 0.564,
+          "label": "SM A3",
+          "lowGripStart": 0.5128628480307071,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.505525
+        },
+        {
+          "end": 0.866,
+          "label": "SM A4",
+          "lowGripStart": 0.652053963281261,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.639212
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_battery_containment_area_and_red_zone.pdf",
+      "trackId": "suzuka-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "end": 0.097,
+          "label": "SM A1",
+          "lowGripStart": 0.9851693137813338,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.970532
+        },
+        {
+          "end": 0.84,
+          "label": "SM A2",
+          "lowGripStart": 0.6915415965700107,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.68207
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "bahrain-approx",
+      "zoneCount": 3,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 383.4,
+            "humanReadable": [
+              "Continuous low-curvature run 383.4 m; usable zone 316.8 m.",
+              "Peak curvature 0.000468 rad/m implies 0.33 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.1923; next braking point 0.2628; 350.1 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.331,
+            "nextBrakingPointProgress": 0.262821,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.192308,
+            "remainingStraightMeters": 350.1,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0004676,
+            "usableZoneMeters": 316.8
+          },
+          "confidence": 0.67,
+          "end": 0.257,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.198,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 522.6,
+            "humanReadable": [
+              "Continuous low-curvature run 522.6 m; usable zone 456 m.",
+              "Peak curvature 0.000621 rad/m implies 0.44 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.5192; next braking point 0.6154; 489.3 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.44,
+            "nextBrakingPointProgress": 0.615385,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.519231,
+            "remainingStraightMeters": 489.3,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0006209,
+            "usableZoneMeters": 456
+          },
+          "confidence": 0.68,
+          "end": 0.609,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.525,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 592.3,
+            "humanReadable": [
+              "Continuous low-curvature run 592.3 m; usable zone 525.7 m.",
+              "Peak curvature 0.000605 rad/m implies 0.43 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.7821; next braking point 0.891; 559 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.428,
+            "nextBrakingPointProgress": 0.891026,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.782051,
+            "remainingStraightMeters": 559,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0006047,
+            "usableZoneMeters": 525.7
+          },
+          "confidence": 0.7,
+          "end": 0.885,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.788,
+          "label": "SM A3",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "jeddah-approx",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 358,
+            "humanReadable": [
+              "Continuous low-curvature run 358 m; usable zone 291.3 m.",
+              "Peak curvature 0.0012 rad/m implies 0.85 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.3141; next braking point 0.3718; 324.7 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.85,
+            "nextBrakingPointProgress": 0.371795,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.314103,
+            "remainingStraightMeters": 324.7,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0012003,
+            "usableZoneMeters": 291.3
+          },
+          "confidence": 0.51,
+          "end": 0.366,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.32,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_miami_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "miami-approx",
+      "zoneCount": 3,
+      "zones": [
+        {
+          "end": 0.057,
+          "label": "SM A1",
+          "lowGripStart": 0.9872931946102677,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.977131
+        },
+        {
+          "end": 0.418,
+          "label": "SM A2",
+          "lowGripMode": "disabled",
+          "source": "official",
+          "start": 0.33818
+        },
+        {
+          "end": 0.885,
+          "label": "SM A3",
+          "lowGripStart": 0.6879725965091819,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.676886
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_canadian_grand_prix_-_competition_notes_-_circuit_map_v2.pdf",
+      "trackId": "montreal-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0,
+          "label": "SM A1",
+          "lowGripStart": 0.9341247302724027,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.920366
+        },
+        {
+          "end": 0.393,
+          "label": "SM A2",
+          "lowGripStart": 0.32650562385714865,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.312747
+        },
+        {
+          "end": 0.568,
+          "label": "SM A3",
+          "lowGripMode": "disabled",
+          "source": "official",
+          "start": 0.488117
+        },
+        {
+          "end": 0.864,
+          "label": "SM A4",
+          "lowGripStart": 0.6621320092427636,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.641495
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": true,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_monaco_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "monaco-approx",
+      "zoneCount": 0,
+      "zones": []
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_barcelona-catalunya_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_and_emergency_exits_map.pdf",
+      "trackId": "barcelona-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0.147,
+          "label": "SM A1",
+          "lowGripStart": 0.9477392731096832,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.93915
+        },
+        {
+          "end": 0.325,
+          "label": "SM A2",
+          "lowGripStart": 0.25322095769808883,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.244632
+        },
+        {
+          "end": 0.567,
+          "label": "SM A3",
+          "lowGripStart": 0.4872744641372513,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.487274
+        },
+        {
+          "end": 0.711,
+          "label": "SM A4",
+          "lowGripStart": 0.6411206179834052,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.630384
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_austrian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "red-bull-ring-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0.076,
+          "label": "SM A1",
+          "lowGripStart": 0.9536523347202959,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.942094
+        },
+        {
+          "end": 0.23,
+          "label": "SM A2",
+          "lowGripStart": 0.14186137487108352,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.127992
+        },
+        {
+          "end": 0.486,
+          "label": "SM A3",
+          "lowGripStart": 0.35749848856644983,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.341317
+        },
+        {
+          "end": 0.832,
+          "label": "SM A4",
+          "lowGripStart": 0.763869625520111,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.752312
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_british_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "silverstone-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0.065,
+          "label": "SM A1",
+          "lowGripStart": 0.9938802780425595,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.985393
+        },
+        {
+          "end": 0.308,
+          "label": "SM A2",
+          "lowGripStart": 0.23105976522204674,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.220875
+        },
+        {
+          "end": 0.478,
+          "label": "SM A3",
+          "lowGripMode": "disabled",
+          "source": "official",
+          "start": 0.398106
+        },
+        {
+          "end": 0.821,
+          "label": "SM A4",
+          "lowGripStart": 0.7263470134799281,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.716162
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "spa-approx",
+      "zoneCount": 5,
+      "zones": [
+        {
+          "end": 0.081,
+          "label": "SM A1",
+          "lowGripStart": 0.008625107996895531,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.001486
+        },
+        {
+          "end": 0.158,
+          "label": "SM A2",
+          "lowGripStart": 0.08553354127311863,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.077681
+        },
+        {
+          "end": 0.329,
+          "label": "SM A3",
+          "lowGripStart": 0.23729663635431764,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.194464
+        },
+        {
+          "end": 0.844,
+          "label": "SM A4",
+          "lowGripStart": 0.7707170993864312,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.763578
+        },
+        {
+          "end": 0.976,
+          "label": "SM A5",
+          "lowGripStart": 0.9003206958660983,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.896037
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "official-map",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "trackId": "hungaroring-approx",
+      "zoneCount": 4,
+      "zones": [
+        {
+          "end": 0.114,
+          "label": "SM A1",
+          "lowGripStart": 0.9587232747470136,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.945028
+        },
+        {
+          "end": 0.276,
+          "label": "SM A2",
+          "lowGripStart": 0.21170965532983343,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.195732
+        },
+        {
+          "end": 0.399,
+          "label": "SM A3",
+          "lowGripStart": 0.32595297877196994,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.319105
+        },
+        {
+          "end": 0.812,
+          "label": "SM A4",
+          "lowGripStart": 0.7384919729133379,
+          "lowGripMode": "partial",
+          "source": "official",
+          "start": 0.731644
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "zandvoort-approx",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 354.7,
+            "humanReadable": [
+              "Continuous low-curvature run 354.7 m; usable zone 288 m.",
+              "Peak curvature 0.000518 rad/m implies 0.37 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.9167; next braking point 0; 321.4 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=yes, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.367,
+            "nextBrakingPointProgress": 0,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": true,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.916667,
+            "remainingStraightMeters": 321.4,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.000518,
+            "usableZoneMeters": 288
+          },
+          "confidence": 0.6,
+          "end": 0.992,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.924,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "monza-approx",
+      "zoneCount": 3,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 855.8,
+            "humanReadable": [
+              "Continuous low-curvature run 855.8 m; usable zone 789.2 m.",
+              "Peak curvature 0.00017 rad/m implies 0.12 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0; next braking point 0.1474; 822.5 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=yes; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.121,
+            "nextBrakingPointProgress": 0.147436,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0,
+            "remainingStraightMeters": 822.5,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0001704,
+            "usableZoneMeters": 789.2
+          },
+          "confidence": 0.81,
+          "end": 0.142,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.006,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 558.2,
+            "humanReadable": [
+              "Continuous low-curvature run 558.2 m; usable zone 491.6 m.",
+              "Peak curvature 0.001148 rad/m implies 0.81 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.5705; next braking point 0.6667; 524.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.813,
+            "nextBrakingPointProgress": 0.666667,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.570513,
+            "remainingStraightMeters": 524.9,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011483,
+            "usableZoneMeters": 491.6
+          },
+          "confidence": 0.6,
+          "end": 0.661,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.576,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 818.6,
+            "humanReadable": [
+              "Continuous low-curvature run 818.6 m; usable zone 751.9 m.",
+              "Peak curvature 0.00077 rad/m implies 0.55 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.7308; next braking point 0.8718; 785.3 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.545,
+            "nextBrakingPointProgress": 0.871795,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.730769,
+            "remainingStraightMeters": 785.3,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0007705,
+            "usableZoneMeters": 751.9
+          },
+          "confidence": 0.74,
+          "end": 0.866,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.737,
+          "label": "SM A3",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "madrid-approx",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 350,
+            "humanReadable": [
+              "Continuous low-curvature run 350 m; usable zone 283.4 m.",
+              "Peak curvature 0.001017 rad/m implies 0.72 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.0897; next braking point 0.1538; 316.7 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.72,
+            "nextBrakingPointProgress": 0.153846,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.089744,
+            "remainingStraightMeters": 316.7,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0010169,
+            "usableZoneMeters": 283.4
+          },
+          "confidence": 0.54,
+          "end": 0.148,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.096,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "baku-approx",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 740,
+            "humanReadable": [
+              "Continuous low-curvature run 740 m; usable zone 673.3 m.",
+              "Peak curvature 0.00109 rad/m implies 0.77 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.1218; next braking point 0.2436; 706.6 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.772,
+            "nextBrakingPointProgress": 0.24359,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.121795,
+            "remainingStraightMeters": 706.6,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0010902,
+            "usableZoneMeters": 673.3
+          },
+          "confidence": 0.64,
+          "end": 0.238,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.127,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "singapore-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 381.9,
+            "humanReadable": [
+              "Continuous low-curvature run 381.9 m; usable zone 315.2 m.",
+              "Peak curvature 0.001037 rad/m implies 0.73 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.6346; next braking point 0.7115; 348.5 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.734,
+            "nextBrakingPointProgress": 0.711538,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.634615,
+            "remainingStraightMeters": 348.5,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.001037,
+            "usableZoneMeters": 315.2
+          },
+          "confidence": 0.55,
+          "end": 0.705,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.641,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 349.8,
+            "humanReadable": [
+              "Continuous low-curvature run 349.8 m; usable zone 283.1 m.",
+              "Peak curvature 0.000903 rad/m implies 0.64 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.7949; next braking point 0.8654; 316.4 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.639,
+            "nextBrakingPointProgress": 0.865385,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.794872,
+            "remainingStraightMeters": 316.4,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0009031,
+            "usableZoneMeters": 283.1
+          },
+          "confidence": 0.56,
+          "end": 0.859,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.802,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "cota-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 568.7,
+            "humanReadable": [
+              "Continuous low-curvature run 568.7 m; usable zone 502 m.",
+              "Peak curvature 0.001121 rad/m implies 0.79 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0; next braking point 0.1026; 535.4 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=yes; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.793,
+            "nextBrakingPointProgress": 0.102564,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0,
+            "remainingStraightMeters": 535.4,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011207,
+            "usableZoneMeters": 502
+          },
+          "confidence": 0.57,
+          "end": 0.097,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.006,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 1030.3,
+            "humanReadable": [
+              "Continuous low-curvature run 1030.3 m; usable zone 963.7 m.",
+              "Peak curvature 0.000721 rad/m implies 0.51 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.4872; next braking point 0.6731; 997 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.51,
+            "nextBrakingPointProgress": 0.673077,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.487179,
+            "remainingStraightMeters": 997,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0007211,
+            "usableZoneMeters": 963.7
+          },
+          "confidence": 0.8,
+          "end": 0.667,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.493,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "mexico-city-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 1135.4,
+            "humanReadable": [
+              "Continuous low-curvature run 1135.4 m; usable zone 1068.7 m.",
+              "Peak curvature 0.000692 rad/m implies 0.49 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0; next braking point 0.2628; 1102.1 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=yes; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.49,
+            "nextBrakingPointProgress": 0.262821,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0,
+            "remainingStraightMeters": 1102.1,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0006918,
+            "usableZoneMeters": 1068.7
+          },
+          "confidence": 0.76,
+          "end": 0.255,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.008,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 443.3,
+            "humanReadable": [
+              "Continuous low-curvature run 443.3 m; usable zone 376.6 m.",
+              "Peak curvature 0.00103 rad/m implies 0.73 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.359; next braking point 0.4615; 409.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.729,
+            "nextBrakingPointProgress": 0.461538,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.358974,
+            "remainingStraightMeters": 409.9,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0010299,
+            "usableZoneMeters": 376.6
+          },
+          "confidence": 0.59,
+          "end": 0.454,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.367,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "interlagos-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 526.6,
+            "humanReadable": [
+              "Continuous low-curvature run 526.6 m; usable zone 459.9 m.",
+              "Peak curvature 0.001141 rad/m implies 0.81 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.1859; next braking point 0.3077; 493.3 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.808,
+            "nextBrakingPointProgress": 0.307692,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.185897,
+            "remainingStraightMeters": 493.3,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011411,
+            "usableZoneMeters": 459.9
+          },
+          "confidence": 0.59,
+          "end": 0.3,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.194,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 471.1,
+            "humanReadable": [
+              "Continuous low-curvature run 471.1 m; usable zone 404.5 m.",
+              "Peak curvature 0.0012 rad/m implies 0.85 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.9487; next braking point 0.0577; 437.8 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=yes; start/finish=crosses-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.85,
+            "nextBrakingPointProgress": 0.057692,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0.948718,
+            "remainingStraightMeters": 437.8,
+            "startFinishOperation": "crosses-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0012004,
+            "usableZoneMeters": 404.5
+          },
+          "confidence": 0.49,
+          "end": 0.05,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.956,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "las-vegas-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 718.1,
+            "humanReadable": [
+              "Continuous low-curvature run 718.1 m; usable zone 651.4 m.",
+              "Peak curvature 0.001053 rad/m implies 0.75 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.1218; next braking point 0.2372; 684.8 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.745,
+            "nextBrakingPointProgress": 0.237179,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.121795,
+            "remainingStraightMeters": 684.8,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0010531,
+            "usableZoneMeters": 651.4
+          },
+          "confidence": 0.64,
+          "end": 0.232,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.127,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 1794.7,
+            "humanReadable": [
+              "Continuous low-curvature run 1794.7 m; usable zone 1728.1 m.",
+              "Peak curvature 0.001163 rad/m implies 0.82 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.5321; next braking point 0.8205; 1761.4 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.45 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.823,
+            "nextBrakingPointProgress": 0.820513,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.532051,
+            "remainingStraightMeters": 1761.4,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.45,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011626,
+            "usableZoneMeters": 1728.1
+          },
+          "confidence": 0.71,
+          "end": 0.815,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.537,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "lusail-approx",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 941.2,
+            "humanReadable": [
+              "Continuous low-curvature run 941.2 m; usable zone 874.5 m.",
+              "Peak curvature 0.000837 rad/m implies 0.59 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.9423; next braking point 0.1154; 907.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=yes; start/finish=crosses-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.592,
+            "nextBrakingPointProgress": 0.115385,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0.942308,
+            "remainingStraightMeters": 907.9,
+            "startFinishOperation": "crosses-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.000837,
+            "usableZoneMeters": 874.5
+          },
+          "confidence": 0.68,
+          "end": 0.109,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.948,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "activeAeroUnavailable": false,
+      "sourceClassification": "geometry-derived-estimate",
+      "sourceUrl": null,
+      "trackId": "yas-marina-approx",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 883.7,
+            "humanReadable": [
+              "Continuous low-curvature run 883.7 m; usable zone 817.1 m.",
+              "Peak curvature 0.000612 rad/m implies 0.43 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.3141; next braking point 0.4808; 850.4 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.434,
+            "nextBrakingPointProgress": 0.480769,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.314103,
+            "remainingStraightMeters": 850.4,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0006124,
+            "usableZoneMeters": 817.1
+          },
+          "confidence": 0.79,
+          "end": 0.474,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.32,
+          "label": "SM A1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 340.1,
+            "humanReadable": [
+              "Continuous low-curvature run 340.1 m; usable zone 273.4 m.",
+              "Peak curvature 0.001165 rad/m implies 0.82 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.5769; next braking point 0.641; 306.7 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 2.85 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.825,
+            "nextBrakingPointProgress": 0.641026,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.576923,
+            "remainingStraightMeters": 306.7,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 2.85,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.001165,
+            "usableZoneMeters": 273.4
+          },
+          "confidence": 0.54,
+          "end": 0.635,
+          "lowGripMode": "partial",
+          "runtimeScope": "f1-current",
+          "start": 0.583,
+          "label": "SM A2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    }
+  ],
+  "japanesePhysicalTracksForF1FreeMode": [
+    {
+      "lengthKm": 4.801,
+      "trackId": "motegi-sf",
+      "zoneCount": 3,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 526.2,
+            "humanReadable": [
+              "Continuous low-curvature run 526.2 m; usable zone 459.6 m.",
+              "Peak curvature 0.001008 rad/m implies 0.71 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.1538; next braking point 0.2628; 492.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.713,
+            "nextBrakingPointProgress": 0.262821,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.153846,
+            "remainingStraightMeters": 492.9,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0010078,
+            "usableZoneMeters": 459.6
+          },
+          "confidence": 0.68,
+          "end": 0.256,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.161,
+          "label": "ZONE 1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 464.2,
+            "humanReadable": [
+              "Continuous low-curvature run 464.2 m; usable zone 397.5 m.",
+              "Peak curvature 0.000866 rad/m implies 0.61 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.3077; next braking point 0.4038; 430.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.613,
+            "nextBrakingPointProgress": 0.403846,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.307692,
+            "remainingStraightMeters": 430.9,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0008657,
+            "usableZoneMeters": 397.5
+          },
+          "confidence": 0.68,
+          "end": 0.397,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.315,
+          "label": "ZONE 2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 464.2,
+            "humanReadable": [
+              "Continuous low-curvature run 464.2 m; usable zone 397.6 m.",
+              "Peak curvature 0.000586 rad/m implies 0.41 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.9038; next braking point 0; 430.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=yes, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.415,
+            "nextBrakingPointProgress": 0,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": true,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.903846,
+            "remainingStraightMeters": 430.9,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0005858,
+            "usableZoneMeters": 397.6
+          },
+          "confidence": 0.69,
+          "end": 0.993,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.911,
+          "label": "ZONE 3",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "lengthKm": 4.674,
+      "trackId": "autopolis-sf",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 813.1,
+            "humanReadable": [
+              "Continuous low-curvature run 813.1 m; usable zone 746.4 m.",
+              "Peak curvature 0.001167 rad/m implies 0.83 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.891; next braking point 0.0641; 779.8 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=yes, exit=no; start/finish=crosses-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.826,
+            "nextBrakingPointProgress": 0.064103,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": true,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.891026,
+            "remainingStraightMeters": 779.8,
+            "startFinishOperation": "crosses-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011671,
+            "usableZoneMeters": 746.4
+          },
+          "confidence": 0.65,
+          "end": 0.057,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.898,
+          "label": "ZONE 1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "lengthKm": 4.563,
+      "trackId": "fuji-sf",
+      "zoneCount": 1,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 1469.2,
+            "humanReadable": [
+              "Continuous low-curvature run 1469.2 m; usable zone 1402.5 m.",
+              "Peak curvature 0.000612 rad/m implies 0.43 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.7885; next braking point 0.109; 1435.9 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=yes, exit=yes; start/finish=crosses-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.433,
+            "nextBrakingPointProgress": 0.108974,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": true,
+            "pitExitConflict": true,
+            "precedingCornerExitProgress": 0.788462,
+            "remainingStraightMeters": 1435.9,
+            "startFinishOperation": "crosses-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0006124,
+            "usableZoneMeters": 1402.5
+          },
+          "confidence": 0.77,
+          "end": 0.102,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.796,
+          "label": "ZONE 1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    },
+    {
+      "lengthKm": 3.586,
+      "trackId": "sugo-sf",
+      "zoneCount": 2,
+      "zones": [
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 461.1,
+            "humanReadable": [
+              "Continuous low-curvature run 461.1 m; usable zone 394.4 m.",
+              "Peak curvature 0.000303 rad/m implies 0.21 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.3974; next braking point 0.5256; 427.8 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=no, exit=no; start/finish=clear-of-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.214,
+            "nextBrakingPointProgress": 0.525641,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": false,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.397436,
+            "remainingStraightMeters": 427.8,
+            "startFinishOperation": "clear-of-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0003029,
+            "usableZoneMeters": 394.4
+          },
+          "confidence": 0.78,
+          "end": 0.516,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.407,
+          "label": "ZONE 1",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        },
+        {
+          "basis": {
+            "continuousLowCurvatureMeters": 668.7,
+            "humanReadable": [
+              "Continuous low-curvature run 668.7 m; usable zone 602 m.",
+              "Peak curvature 0.001106 rad/m implies 0.78 g at the 300 km/h screening assumption.",
+              "Preceding corner exit 0.8846; next braking point 0.0705; 635.3 m remains from activation to braking.",
+              "0.4 s transition margin reserves 33.3 m at each end.",
+              "Track-width input 4.2 model units passes the 2.1 safety floor.",
+              "Pit conflict: entry=yes, exit=no; start/finish=crosses-start-finish."
+            ],
+            "maximumEstimatedLateralLoadG": 0.783,
+            "nextBrakingPointProgress": 0.070513,
+            "physicalScaleAvailable": true,
+            "pitEntryConflict": true,
+            "pitExitConflict": false,
+            "precedingCornerExitProgress": 0.884615,
+            "remainingStraightMeters": 635.3,
+            "startFinishOperation": "crosses-start-finish",
+            "trackWidthModelUnits": 4.2,
+            "transitionMarginMeters": 33.3,
+            "transitionSeconds": 0.4,
+            "transitionSpeedAssumptionKph": 300,
+            "peakCurvatureRadPerMeter": 0.0011065,
+            "usableZoneMeters": 602
+          },
+          "confidence": 0.62,
+          "end": 0.061,
+          "lowGripMode": "disabled",
+          "runtimeScope": "f1-free-mode",
+          "start": 0.894,
+          "label": "ZONE 2",
+          "provenance": "geometry-derived-estimate",
+          "source": "geometry-derived-estimate"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "f1TrackCount": 24,
+    "geometryEstimatedF1TrackCount": 13,
+    "officialF1TrackCount": 11,
+    "officialUnavailableF1TrackCount": 1,
+    "japaneseTrackCount": 4,
+    "japaneseZoneCount": 7
+  },
+  "invariantFailures": []
+}
