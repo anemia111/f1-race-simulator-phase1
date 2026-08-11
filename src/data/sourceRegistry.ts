@@ -55,6 +55,13 @@ export const sourceRegistry = {
     label: 'SUPER FORMULA official 2026 calendar and results',
     url: 'https://superformula.net/sf3/race_taxonomy/2026/',
   },
+  jafSuperFormulaUnified2026: {
+    checksum:
+      '9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a',
+    label: 'JAF 2026 SUPER FORMULA Unified Regulations',
+    publishedAt: '2026-01-23',
+    url: 'https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf',
+  },
   fiaEventDocuments2026: {
     label: 'FIA 2026 Formula One event documents',
     url: 'https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072',
