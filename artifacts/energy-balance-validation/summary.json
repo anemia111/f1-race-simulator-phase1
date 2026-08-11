@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T02:12:09.684Z",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
+  "sourceCutoffDate": "2026-08-08",
+  "command": "npm run validate:energy-balance",
+  "verdict": "PASS",
+  "calibrationPolicy": {
+    "fitPerformed": false,
+    "trackSpecificMultiplierCount": 0
+  },
+  "measurementBoundary": "CU-K-HV-DC-bus",
+  "summary": {
+    "maximumTickStoreBalanceErrorMJ": 4.440892098500626e-16,
+    "maximumTickConversionChainErrorMJ": 1.1449174941446927e-16,
+    "lapStoreBalanceErrorMJ": 3.9968028886505635e-15,
+    "maximumDeploymentDcPowerKw": 246.00000000000065,
+    "rechargeAtCuKBusThisLapMJ": 1.6893908474077168,
+    "storedEnergyThisLapMJ": 1.6417753663735244,
+    "conversionLossThisLapMJ": 0.20184764718338602,
+    "finiteLedgerUsedMJ": 0.1,
+    "finiteLedgerStoredMJ": 0.09718150000000003,
+    "lapCrossing": {
+      "postLineFraction": 0.75,
+      "oldLedgerBalanceErrorMJ": 2.220446049250313e-16,
+      "newLedgerLimitMJ": 0.001,
+      "newLedgerUsedMJ": 0.001,
+      "rechargeAcceptanceScale": 0.002461712539612417,
+      "interpolatedLapStartEnergyMJ": 1.2915906419294334,
+      "expectedLapStartEnergyMJ": 1.2915906419294334,
+      "newLedgerBalanceErrorMJ": 0
+    },
+    "deterministicWithLogging": true,
+    "deterministicWithReversedCarOrder": true
+  },
+  "invariantFailures": []
+}

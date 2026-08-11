@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "cutoffDate": "2026-08-08",
-  "retrievedAt": "2026-08-08T20:36:00+09:00",
-  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "retrievedAt": "2026-08-09T11:02:12.0889603+09:00",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
   "policy": {
     "cacheFullDocuments": false,
     "reason": "FIA, JAF, JRP, Yokohama and Haas terms restrict republication; the repository stores attributed facts, retrieval metadata and hashes rather than mirrored documents.",
@@ -78,6 +78,56 @@
       "effectiveFrom": "2026-08-05",
       "status": "current-at-cutoff",
       "sha256": "c53c9f07e6313d0c0a0263204d745ba1f99e8c496286924a2166bc66dac38845"
+    },
+    {
+      "id": "fia-f1-2026-energy-refinement-2026-04-20",
+      "issuer": "FIA",
+      "title": "Refinements to the 2026 FIA Formula 1 Regulations agreed by all stakeholders",
+      "kind": "official-explanatory-material",
+      "url": "https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders",
+      "publishedAt": "2026-04-20",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "The communicated refinement reduced the qualifying maximum recharge from 8 MJ to 7 MJ from Miami, while event Competition Information remains the binding context-specific input.",
+        "The communicated objective is to reduce superclip duration to approximately two to four seconds per lap; this is observational validation evidence, not a runtime hard cap.",
+        "The communicated peak superclip recovery-power ceiling was increased from 250 kW to 350 kW."
+      ],
+      "limitations": [
+        "The release does not replace an event's published Power Unit Information table and does not justify a universal qualifying value for earlier events."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-japan-power-unit-information-r03",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Japanese Grand Prix Power Unit Information",
+      "kind": "race-director-instruction",
+      "url": "https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_power_unit_information.pdf",
+      "publishedAt": "2026-03-26T01:49:00+01:00",
+      "documentDate": "2026-03-26",
+      "documentNumber": 4,
+      "enclosure": "R03_Japan_Power_Unit_Information.pdf",
+      "effectiveFrom": "2026-03-27",
+      "status": "verified-event-input",
+      "sha256": "8d29d55f1632af79e72e836e74a658ec0ec0d68fa278fe374e6d00c3e7aeed20",
+      "byteLength": 469648,
+      "retrievedAt": "2026-08-09T11:02:12.0889603+09:00",
+      "retrievalVerification": {
+        "httpStatus": 200,
+        "contentType": "application/pdf",
+        "attemptCount": 2,
+        "identicalBytesAcrossAttempts": true
+      },
+      "facts": [
+        "C5.2.10 maximum Recharge at the CU-K HV DC Bus is 8.5 MJ for a Race lap with Overtake inactive and 9.0 MJ total when Overtake is active at the Line.",
+        "Maximum Recharge is 8.0 MJ for Qualifying, 9.0 MJ for Free Practice, and 9.0 MJ for out laps other than in Race.",
+        "The 9.0 MJ Race Overtake-active total decomposes as 8.5 MJ base plus the event table's 0.5 MJ allowance and must not receive a second addition."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only",
+      "limitations": [
+        "An earlier Phase 4 draft recorded a different hash without archived bytes. That value was replaced after two identical live retrievals; its origin cannot be reproduced from this workspace."
+      ]
     },
     {
       "id": "fia-f1-2026-driving-standards-v01",
@@ -359,8 +409,8 @@
         "FIA-F1-DOC-058",
         "FIA-F1-DOC-111"
       ],
-      "reason": "Referenced by Technical Issue 20 for event parameters or low-grip curves but not published in the public regulation category at the cutoff.",
-      "runtimePolicy": "Do not invent values. Resolve the affected event inputs as unavailable until an authoritative public document is supplied."
+      "reason": "Referenced by Technical Issue 20 for event parameters or low-grip curves but not published in the public regulation category at the cutoff. Official event Power Unit Information may publish derived competition values without publishing these underlying documents.",
+      "runtimePolicy": "Do not invent values. Use only a separately verified official event table where one is public; otherwise resolve the affected event input as unavailable."
     }
   ]
 }

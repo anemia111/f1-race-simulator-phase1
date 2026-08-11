@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "cutoffDate": "2026-08-08",
-  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
   "series": {
     "f1-custom": {
       "runtimeEra": "f1-2026-current",
@@ -13,6 +13,12 @@
       "nonbindingGuidelines": [
         "fia-f1-2026-driving-standards-v01",
         "fia-f1-2026-penalty-guidelines-v01"
+      ],
+      "verifiedEventInputs": [
+        "fia-f1-2026-japan-power-unit-information-r03"
+      ],
+      "officialExplanatoryInputs": [
+        "fia-f1-2026-energy-refinement-2026-04-20"
       ],
       "supersededAuthorities": [
         "2026 Sporting Issue 07",
@@ -31,7 +37,12 @@
         "C5.2.8 Normal, Overtake and Race/Sprint power-limited curves share one pure authority.",
         "C4.1 minimum mass resolves by session, Nominal Tyre Mass and Heat Hazard addition without inferring a public tyre mass.",
         "Continuous front/rear Corner and Straight Mode positions persist in live snapshots and feed the decomposed force model in the same tick.",
-        "Official event-map activation zones override explicitly labelled geometry-derived estimates; an official empty list remains authoritative."
+        "Official event-map activation zones override explicitly labelled geometry-derived estimates; an official empty list remains authoritative.",
+        "C5.2.8 limits actual CU-K DC deployment before inverter and motor losses; mechanical deployment is derived downstream.",
+        "C5.2.10 Recharge is ledged at the CU-K HV DC Bus before battery loss, separately from stored Energy Store energy.",
+        "Suzuka Power Unit Information document 4 supplies verified context totals of 8.5/9.0 MJ in Race, 8.0 MJ in Qualifying, and 9.0 MJ in Free Practice/non-Race out laps.",
+        "Overtake recharge allowance is latched at the lap-start Line and Low Grip behind the Safety Car resolves as unlimited rather than an additive allowance.",
+        "Full-throttle superclip is classified from actual high-throttle positive-ICE generator flow and reduces wheel power through generator mechanical resistance without a second ICE scale."
       ]
     },
     "super-formula": {
@@ -64,5 +75,5 @@
     "eventScopeRequiredForEventDocuments": true
   },
   "runtimeGateArtifact": "artifacts/f1-current-generation-gate.json",
-  "status": "phase-3-active-aero-runtime-and-geometry-gates-implemented"
+  "status": "phase-4-f1-energy-runtime-and-event-recharge-gates-implemented"
 }

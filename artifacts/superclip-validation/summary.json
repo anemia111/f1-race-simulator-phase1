@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T02:12:19.880Z",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
+  "sourceCutoffDate": "2026-08-08",
+  "command": "npm run validate:superclip",
+  "verdict": "PASS",
+  "fitPerformed": false,
+  "trackSpecificMultiplierCount": 0,
+  "authority": {
+    "technicalRegulation": {
+      "article": "C5.2.8-C5.2.10",
+      "sourceId": "fia-f1-2026-technical-c20",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf"
+    },
+    "observationalContext": {
+      "sourceId": "fia-f1-2026-energy-refinement-2026-04-20",
+      "url": "https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders",
+      "publishedAt": "2026-04-20",
+      "communicatedApproximateDurationSecondsPerLap": {
+        "minimum": 2,
+        "maximum": 4
+      },
+      "enforcement": "metadata-only",
+      "hardCapApplied": false,
+      "usedForParameterFit": false,
+      "validationScenarioActiveDurationSeconds": 3,
+      "validationScenarioDurationIsNotALapPrediction": true,
+      "lapLevelComparison": {
+        "status": "unavailable",
+        "modeledSecondsPerLap": null,
+        "reason": "This invariant probe is a fixed-duration straight trace, not a complete simulated lap."
+      }
+    }
+  },
+  "policy": {
+    "generatorMechanicalPowerIsSolePropulsiveSacrifice": true,
+    "parallelDriveScaleApplied": false,
+    "eightKilowattClassificationThresholdApplied": false,
+    "durationObservationIsAnEnforcedGate": false,
+    "trackSpecificRuntimeCorrectionApplied": false
+  },
+  "scenario": {
+    "id": "steady-high-throttle-340-kph-superclip",
+    "deltaSeconds": 0.1,
+    "tickCount": 30,
+    "evaluationSpeedKph": 340,
+    "throttlePercent": 100,
+    "activeSampleCount": 30,
+    "activeDurationSeconds": 3,
+    "initialStoredEnergyMJ": 0.64,
+    "finalStoredEnergyMJ": 0.9458553968959191,
+    "cuKBusRechargeIncreaseMJ": 0.314725947732767,
+    "superclipAttributedCuKBusRechargeMJ": 0.314725947732767,
+    "storedEnergyIncreaseMJ": 0.3058553968959191,
+    "minimumCombustionWheelPowerKw": 384.303344506902,
+    "maximumActualGeneratorMechanicalPowerKw": 191.46844519950182,
+    "maximumWheelDrivePowerResidualKw": 0,
+    "maximumGeneratorPowerAgreementResidualKw": 1.4210854715202004e-14,
+    "maximumNetPowerTradeoffResidualKw": 2.842170943040401e-14,
+    "minimumAccelerationLossMps2": 0.07579601665054914,
+    "maximumTickStoreBalanceErrorMJ": 1.1102230246251565e-16,
+    "maximumTickConversionChainErrorMJ": 3.642919299551295e-17,
+    "representativeSamples": [
+      {
+        "accelerationLossMps2": 0.07579601665054914,
+        "actualDeploymentDcPowerKw": 0,
+        "actualGeneratorMechanicalPowerKw": 5.555005842522489,
+        "actualTotalRecoveryMechanicalPowerKw": 5.555005842522489,
+        "auditConversionChainErrorMJ": 3.049318610115481e-20,
+        "auditStoreBalanceErrorMJ": 0,
+        "baselineAccelerationMps2": 1.2275975402024097,
+        "baselineWheelDrivePowerKw": 384.303344506902,
+        "clippedAccelerationMps2": 1.1518015235518606,
+        "clippedGeneratorMechanicalPowerKw": 5.555005842522489,
+        "clippedNetWheelPowerKw": 378.74833866437956,
+        "clippedWheelDrivePowerKw": 384.303344506902,
+        "combustionWheelPowerKw": 384.303344506902,
+        "cuKBusRechargeThisLapMJ": 0.0005289179106019061,
+        "intensity": 0.039285440000000005,
+        "operatingMode": "full-throttle-superclip",
+        "requestedGeneratorMechanicalPowerKw": 5.555005842522489,
+        "stateOfCharge": 0.0701285025898229,
+        "storedEnergyThisLapMJ": 0.0005140103592915913,
+        "superclipCuKBusRechargeThisTickMJ": 0.0005289179106019061,
+        "throttlePercent": 100,
+        "tick": 0
+      },
+      {
+        "accelerationLossMps2": 2.6125166870762833,
+        "actualDeploymentDcPowerKw": 0,
+        "actualGeneratorMechanicalPowerKw": 191.46844519950182,
+        "actualTotalRecoveryMechanicalPowerKw": 191.46844519950187,
+        "auditConversionChainErrorMJ": 1.214306433183765e-17,
+        "auditStoreBalanceErrorMJ": 0,
+        "baselineAccelerationMps2": 1.2275975402024097,
+        "baselineWheelDrivePowerKw": 384.303344506902,
+        "clippedAccelerationMps2": -1.3849191468738733,
+        "clippedGeneratorMechanicalPowerKw": 191.46844519950182,
+        "clippedNetWheelPowerKw": 192.8348993074002,
+        "clippedWheelDrivePowerKw": 384.303344506902,
+        "combustionWheelPowerKw": 384.303344506902,
+        "cuKBusRechargeThisLapMJ": 0.1382088559696431,
+        "intensity": 0.6242165602652271,
+        "operatingMode": "full-throttle-superclip",
+        "requestedGeneratorMechanicalPowerKw": 191.46844519950182,
+        "stateOfCharge": 0.10357835984103467,
+        "storedEnergyThisLapMJ": 0.13431343936413873,
+        "superclipCuKBusRechargeThisTickMJ": 0.018230600084324946,
+        "throttlePercent": 100,
+        "tick": 15
+      },
+      {
+        "accelerationLossMps2": 1.3338152440208932,
+        "actualDeploymentDcPowerKw": 0,
+        "actualGeneratorMechanicalPowerKw": 97.75383721735345,
+        "actualTotalRecoveryMechanicalPowerKw": 97.75383721735363,
+        "auditConversionChainErrorMJ": 2.2551405187698492e-17,
+        "auditStoreBalanceErrorMJ": 0,
+        "baselineAccelerationMps2": 1.2275975402024097,
+        "baselineWheelDrivePowerKw": 384.303344506902,
+        "clippedAccelerationMps2": -0.1062177038184836,
+        "clippedGeneratorMechanicalPowerKw": 97.75383721735345,
+        "clippedNetWheelPowerKw": 286.54950728954856,
+        "clippedWheelDrivePowerKw": 384.303344506902,
+        "combustionWheelPowerKw": 384.303344506902,
+        "cuKBusRechargeThisLapMJ": 0.314725947732767,
+        "intensity": 0.36918060965345073,
+        "operatingMode": "full-throttle-superclip",
+        "requestedGeneratorMechanicalPowerKw": 97.75383721735345,
+        "stateOfCharge": 0.1464638492239798,
+        "storedEnergyThisLapMJ": 0.305855396895919,
+        "superclipCuKBusRechargeThisTickMJ": 0.009307596931499018,
+        "throttlePercent": 100,
+        "tick": 29
+      }
+    ]
+  },
+  "eightKilowattThresholdProbe": {
+    "below": {
+      "actualGeneratorMechanicalPowerKw": 7.99,
+      "cuKBusRechargeMJ": 0.0007607650154676,
+      "operatingMode": "full-throttle-superclip",
+      "requestedGeneratorMechanicalPowerKw": 7.99
+    },
+    "above": {
+      "actualGeneratorMechanicalPowerKw": 8.01,
+      "cuKBusRechargeMJ": 0.0007626693083724,
+      "operatingMode": "full-throttle-superclip",
+      "requestedGeneratorMechanicalPowerKw": 8.01
+    },
+    "classificationDependsOnActualFlowNotEightKilowatts": true
+  },
+  "determinism": {
+    "repeatedTraceIdentical": true,
+    "traceSha256": "83eaaa68c15f3b91dc9717929dff0ad3d97fc6f6a6218111537db75d3b023324"
+  },
+  "invariantFailures": []
+}
