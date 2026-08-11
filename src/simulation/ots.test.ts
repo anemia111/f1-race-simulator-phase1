@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { seriesPackageById } from '../series/seriesRegistry'
-import {
-  advanceRace,
-  createInitialRace,
-  skipFormationLap,
-} from './race'
+import { categoryPhysicsFor } from './categoryPhysics'
+import { createInitialRace } from './race'
 import { calculateCarTelemetry } from './telemetry'
 import { trackDynamicsAt } from './trackDynamics'
 
 describe('Super Formula OTS', () => {
-  it('uses a finite 200-second race allocation as power, not DRS eligibility', () => {
+  it('fails closed without a verified event OTS pack and clears legacy allocation state', () => {
     const series = seriesPackageById.get('super-formula')!
     const track = series.tracks[0]
     const team = series.teams[0]
@@ -41,6 +38,7 @@ describe('Super Formula OTS', () => {
       status: 'running' as const,
     }
     const common = {
+      categoryPhysics: categoryPhysicsFor('super-formula'),
       deltaSeconds: 1,
       driver,
       elapsedSeconds: 120,
@@ -56,49 +54,14 @@ describe('Super Formula OTS', () => {
       weather: 'clear' as const,
     }
     const active = calculateCarTelemetry({ ...common, car: baseCar })
-    const saving = calculateCarTelemetry({
-      ...common,
-      car: {
-        ...baseCar,
-        battlePhase: 'single-file',
-        gapToAhead: 4,
-        racePaceMode: 'standard',
-      },
-    })
 
-    expect(active.overtakeStatus).toBe('active')
-    expect(active.otsRemainingSeconds).toBeCloseTo(199, 6)
-    expect(saving.overtakeStatus).toBe('available')
-    expect(saving.otsRemainingSeconds).toBe(200)
-    expect(active.speedKph).toBeGreaterThan(saving.speedKph)
+    expect(active.overtakeStatus).toBe('disabled')
+    expect(active.otsRemainingSeconds).toBeUndefined()
+    expect(active.otsCooldownUntilSeconds).toBeUndefined()
     expect(active.activeAeroMode).toBe('corner')
   })
 
-  it('enables OTS at lights out so it can be used on the opening lap', () => {
-    const series = seriesPackageById.get('super-formula')!
-    const config = {
-      drivers: series.drivers,
-      overtakeActivation: series.rules.overtakeActivation,
-      overtakeSystem: series.rules.overtakeSystem,
-      seed: 'sf-opening-lap-ots',
-      seriesId: series.id,
-      teams: series.teams,
-      track: { ...series.tracks[0], rainProbability: 0 },
-      weekendStage: 'race' as const,
-    }
-    let snapshot = createInitialRace(config)
-
-    expect(snapshot.overtakeEnabled).toBe(false)
-    snapshot = skipFormationLap(snapshot, config)
-    snapshot = advanceRace(snapshot, 8, config)
-    snapshot = advanceRace(snapshot, 5, config)
-
-    expect(snapshot.startProcedure).toBe('racing')
-    expect(snapshot.overtakeEnabled).toBe(true)
-    expect(snapshot.overtakeEnableAtLeaderDistance).toBeNull()
-  })
-
-  it('disables OTS without consuming time under low-grip control', () => {
+  it('does not retain a historic OTS value during low-grip control', () => {
     const series = seriesPackageById.get('super-formula')!
     const track = series.tracks[0]
     const team = series.teams[0]
@@ -121,6 +84,7 @@ describe('Super Formula OTS', () => {
     }
     const result = calculateCarTelemetry({
       car,
+      categoryPhysics: categoryPhysicsFor('super-formula'),
       deltaSeconds: 2,
       driver,
       elapsedSeconds: 200,
@@ -136,6 +100,7 @@ describe('Super Formula OTS', () => {
     })
 
     expect(result.overtakeStatus).toBe('disabled')
-    expect(result.otsRemainingSeconds).toBe(73)
+    expect(result.otsRemainingSeconds).toBeUndefined()
+    expect(result.otsCooldownUntilSeconds).toBeUndefined()
   })
 })

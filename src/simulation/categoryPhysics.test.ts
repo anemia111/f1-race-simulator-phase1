@@ -320,7 +320,7 @@ describe('category-specific physical models', () => {
       massKg: 670,
     })
     expect(superFormula.combustionPowerKw).toBe(405)
-    expect(superFormula.overtakeBoostPowerKw).toBe(37)
+    expect(superFormula.overtakeBoostPowerKw).toBeNull()
     expect(categoryHasHybridEnergyStore(superFormula)).toBe(false)
   })
 

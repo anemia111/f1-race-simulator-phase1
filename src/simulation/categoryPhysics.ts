@@ -1,5 +1,6 @@
 import type { ExecutableSeriesId } from '../series/seriesIds'
 import type { WeekendStage } from '../types'
+import { resolveSuperFormulaOperational } from './superFormulaOperational'
 
 export type F1MinimumMassRule = {
   readonly kind: 'f1-2026-session-base-plus-nominal-tyre-mass'
@@ -169,7 +170,12 @@ export type CategoryPhysicsProfile = {
   maximumEngineRpm: number
   minimumEngineRpm: number
   minimumMassRule: CategoryMinimumMassRule
-  overtakeBoostPowerKw: number
+  /**
+   * SUPER FORMULA OTS boost is event-rule input, not a category constant. It
+   * remains `null` until a verified event pack has been resolved by the
+   * operational runtime.
+   */
+  overtakeBoostPowerKw: number | null
   rollingResistanceCoefficient: number
   /** Road speed at which top gear reaches the engine speed limit. */
   topGearDesignSpeedKph: number
@@ -190,8 +196,9 @@ export type CategoryPhysicsProfile = {
  * is session-dependent and resolved separately from the FIA Nominal Tyre Mass
  * input. The old 768 kg value remains only as an explicitly non-regulatory
  * simulation reference until that event input is available. SF uses JRP's
- * 405 kW and 670 kg specification; its OTS is combustion boost, not an
- * F1-style Energy Store.
+ * 405 kW and 670 kg specification. Its OTS, when an event rule verifies it,
+ * is combustion boost rather than an F1-style Energy Store; the base 2026
+ * regulation deliberately supplies no default allocation, boost, or cooldown.
  *
  * The aerodynamic and tyre figures below are derived, not published. Teams do
  * not release lift areas, friction coefficients or centre-of-gravity heights.
@@ -199,6 +206,8 @@ export type CategoryPhysicsProfile = {
  * loads each category is known to reach, and `tyreForces.test.ts` is what holds
  * them to that. Never present them as official values.
  */
+const superFormulaOperational = resolveSuperFormulaOperational()
+
 const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
     combustionPowerKw: 400,
@@ -262,7 +271,7 @@ const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
       massKg: 670,
       sourceId: 'jaf-sf-2026-unified-regulations',
     },
-    overtakeBoostPowerKw: 37,
+    overtakeBoostPowerKw: superFormulaOperational.ots.boostPowerKw,
     rollingResistanceCoefficient: 0.0125,
     topGearDesignSpeedKph: 305,
     unresolvedMinimumSimulationReference: null,

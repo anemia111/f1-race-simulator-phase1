@@ -45,6 +45,7 @@ import {
   advanceSuperClipping,
   type SuperClippingResult,
 } from './superClipping'
+import { resolveSuperFormulaOperational } from './superFormulaOperational'
 import {
   tireOperatingWindowFor,
   tireTrackGripMultiplier,
@@ -61,26 +62,6 @@ import {
   liveCorneringSpeedLimitKph,
   towDragReductionFor,
 } from './vehicleDynamics'
-
-/**
- * Super Formula OTS lockout after a use, per circuit. The series publishes 120 s
- * at Fuji and Motegi, 110 s at SUGO, and 100 s at Suzuka and Autopolis; others
- * fall back to the shortest published figure.
- */
-function otsCooldownSecondsFor(track: TrackDefinition): number {
-  switch (track.id) {
-    case 'fuji-sf':
-    case 'motegi-sf':
-      return 120
-    case 'sugo-sf':
-      return 110
-    case 'suzuka-approx':
-    case 'autopolis-sf':
-      return 100
-    default:
-      return 100
-  }
-}
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -278,6 +259,17 @@ export function calculateCarTelemetry(options: {
   } = options
   const hasHybridEnergyStore =
     categoryHasHybridEnergyStore(categoryPhysics)
+  const superFormulaOperational =
+    categoryPhysics.id === 'super-formula'
+      ? resolveSuperFormulaOperational()
+      : null
+  const superFormulaOts = superFormulaOperational?.ots
+  // Article 24.3.8 delegates OTS operation to an event source. With no
+  // verified event pack (or no evaluated event conditions), this is false and
+  // the runtime must neither activate OTS nor preserve a legacy allocation.
+  const otsRuntimeCanActivate =
+    superFormulaOts?.availability === 'verified-event-rule' &&
+    superFormulaOts.runtimeEligibility.canActivate
   const operationalVehicleMass =
     options.operationalVehicleMass ??
     resolveOperationalVehicleMass({
@@ -558,6 +550,7 @@ export function calculateCarTelemetry(options: {
     : behaviorManagedThrottlePercent
   const otsAvailable =
     overtakeSystem === 'ots' &&
+    otsRuntimeCanActivate &&
     !isPreparationLap &&
     sessionType === 'race-distance' &&
     raceControlOvertakeEnabled &&
@@ -746,9 +739,10 @@ export function calculateCarTelemetry(options: {
       : ersMode === 'balanced'
         ? intentScheduledDeploymentRequest * 0.72
         : intentScheduledDeploymentRequest
-  const extraCombustionPowerKw = otsActive
-    ? categoryPhysics.overtakeBoostPowerKw
-    : 0
+  const extraCombustionPowerKw =
+    otsActive && superFormulaOts?.availability === 'verified-event-rule'
+      ? superFormulaOts.boostPowerKw
+      : 0
   const combustionWheelPowerKw = combustionWheelPowerKwAt({
     categoryPhysics,
     clutchEngagementFraction: car.clutchEngagementFraction,
@@ -923,19 +917,26 @@ export function calculateCarTelemetry(options: {
       deltaSeconds
     : 0
   const otsRemainingSeconds =
-    overtakeSystem === 'ots'
-      ? Math.max(0, (car.otsRemainingSeconds ?? 200) - (otsActive ? deltaSeconds : 0))
-      : car.otsRemainingSeconds
-  // A use starts the circuit lockout when the driver comes off OTS, so the
-  // allocation is spent in several bursts rather than one continuous run.
+    overtakeSystem !== 'ots'
+      ? car.otsRemainingSeconds
+      : otsRuntimeCanActivate
+        ? Math.max(0, (car.otsRemainingSeconds ?? 0) - (otsActive ? deltaSeconds : 0))
+        : undefined
+  // A cooldown can only be created from an accepted event pack. Historic
+  // per-circuit values are intentionally not a runtime fallback.
   const otsJustReleased =
-    overtakeSystem === 'ots' && car.overtakeStatus === 'active' && !otsActive
+    overtakeSystem === 'ots' &&
+    otsRuntimeCanActivate &&
+    car.overtakeStatus === 'active' &&
+    !otsActive
   const otsCooldownUntilSeconds =
-    overtakeSystem === 'ots'
-      ? otsJustReleased
-        ? elapsedSeconds + otsCooldownSecondsFor(track)
-        : car.otsCooldownUntilSeconds
-      : car.otsCooldownUntilSeconds
+    overtakeSystem !== 'ots'
+      ? car.otsCooldownUntilSeconds
+      : !otsRuntimeCanActivate
+        ? undefined
+        : otsJustReleased && superFormulaOts?.availability === 'verified-event-rule'
+          ? elapsedSeconds + superFormulaOts.cooldownSeconds
+          : car.otsCooldownUntilSeconds
 
   return {
     activeAeroMode,

@@ -2405,7 +2405,7 @@ describe('start procedure and persisted weekend', () => {
         combustionPowerKwFor(team, physics) +
         (config.overtakeSystem === 'ots' &&
         nextFollower.overtakeStatus === 'active'
-          ? physics.overtakeBoostPowerKw
+          ? (physics.overtakeBoostPowerKw ?? 0)
           : 0),
       deploymentPowerKw: nextFollower.ersPowerKw,
       physics,

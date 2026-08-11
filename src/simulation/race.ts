@@ -5374,7 +5374,7 @@ export function advanceRace(
       combustionPowerKwFor(team, categoryPhysics) +
         (config.overtakeSystem === 'ots' &&
         displayTelemetry.overtakeStatus === 'active'
-          ? categoryPhysics.overtakeBoostPowerKw
+          ? (categoryPhysics.overtakeBoostPowerKw ?? 0)
           : 0)
     const powerUnitExplicitlyStopped =
       localControlPhase?.flag === 'red' || car.pitPhase === 'box'
@@ -7315,7 +7315,7 @@ export function advanceRace(
             combustionPowerKwFor(team, categoryPhysics) +
               (config.overtakeSystem === 'ots' &&
               car.overtakeStatus === 'active'
-                ? categoryPhysics.overtakeBoostPowerKw
+                ? (categoryPhysics.overtakeBoostPowerKw ?? 0)
                 : 0),
           deploymentPowerKw: car.ersPowerKw,
           physics: categoryPhysics,
