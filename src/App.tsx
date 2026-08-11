@@ -12,6 +12,7 @@ import type { PitWallSectorTiming } from './components/pitWall/types'
 import { SetupPanel } from './components/SetupPanel'
 import { FreeModeBuilder } from './components/FreeModeBuilder'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
+import { fiaPuEventInputFor } from './data/fiaPuEventInputs2026'
 import {
   SERIES_CONFIGURATION_STORAGE_KEY,
   parsePersistedSeriesConfiguration,
@@ -1493,6 +1494,8 @@ export default function App() {
         return {
           ...activeFreeModeRuntime.raceConfig,
           drivers,
+          eventId: null,
+          fiaPuEventInput: null,
           teams,
           track,
           weekendContext,
@@ -1502,11 +1505,16 @@ export default function App() {
 
       return {
         drivers: fieldCalibration.drivers,
+        eventId: selectedEvent.id,
         featureRaceMandatoryPitStop:
           selectedEvent.featureRaceMandatoryPitStop ??
           seriesPackage.rules.featureRaceMandatoryPitStop,
         featureRaceTwoDryCompounds:
           seriesPackage.rules.featureRaceTwoDryCompounds,
+        fiaPuEventInput:
+          selectedSeriesId === 'f1-custom'
+            ? fiaPuEventInputFor(selectedEvent.id)
+            : null,
         overtakeActivation: seriesPackage.rules.overtakeActivation,
         overtakeSystem: seriesPackage.rules.overtakeSystem,
         categoryRaceFormat: seriesPackage.rules.race,
@@ -3317,6 +3325,17 @@ export default function App() {
       ]
     : []
 
+  const activeRechargeRule =
+    snapshot.cars.find((car) => car.status === 'running')?.energyStore
+      .rechargeRule ?? snapshot.cars[0]?.energyStore.rechargeRule
+  const activeRechargeLimitLabel = !activeRechargeRule
+    ? 'recharge rule unavailable'
+    : activeRechargeRule.limit.kind === 'finite'
+      ? `${activeRechargeRule.limit.maxCuKBusRechargeMj} MJ CU-K recharge`
+      : activeRechargeRule.limit.kind === 'unlimited'
+        ? 'unlimited CU-K recharge'
+        : 'event recharge rule unavailable'
+
   const baselineBroadcastDataDetails: BroadcastDataDetail[] = [
     {
       label: 'OpenF1 link',
@@ -3380,8 +3399,11 @@ export default function App() {
     },
     {
       label: 'ERS limits',
-      source: 'FIA',
-      value: `${FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw} kW / ${FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj} MJ SOC / ${raceConfig.fiaEventRechargeLimitMj ?? FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj} MJ recharge`,
+      source:
+        !activeRechargeRule || activeRechargeRule.limit.kind === 'unavailable'
+          ? 'UNAVAILABLE'
+          : 'FIA',
+      value: `${FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw} kW / ${FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj} MJ SOC / ${activeRechargeLimitLabel}`,
     },
     {
       label: 'Low-grip ERS curve',

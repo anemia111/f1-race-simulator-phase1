@@ -23,8 +23,9 @@ FIA when the corresponding competition document is not public or normalized.
 | Active aero | B7.1.1-B7.1.2, C3.10.10/C3.11.6 | Normal Grip permits full activation in mapped zones. Front and rear positions transition continuously within 400 ms. State changes are restricted to stationary cars or Activation Zones, and a failure returns to the Corner-safe state. Low Grip prohibits full activation and permits front-wing-only partial activation in mapped Low Grip zones. |
 | Overtake | B7.2.2-B7.2.3 | Disabled at a race start, under Safety Car, and in Low Grip. Detection-line eligibility is latched and activation-line use is modelled. |
 | ERS-K power | C5.2.7-C5.2.8 | One pure authority applies the exact Normal, Overtake and Race/Sprint power-limited speed curves, then the absolute 350 kW cap. The non-public Low Grip curve fails closed as unavailable rather than using an estimate. |
-| Energy Store | C5.2.9 | Battery percentage maps to the public 4 MJ usable state-of-charge window. |
-| Recharge | C5.2.10, B7.2.1(c) | Public 8.5 MJ per-lap maximum by default, optional event reduction, 7 MJ qualifying default, a current 4 MJ qualifying floor, and no recharge limit behind the Safety Car in Low Grip. Sporting B08 limits sub-5-MJ use to the declared number of affected competitions. |
+| Energy Store | C5.2.9 | MJ is the runtime truth and UI percentage is derived from the fixed 4 MJ usable window. CU-K DC power, stored power, mechanical power, and battery/inverter/motor losses are separate ledger entries. |
+| Recharge | C5.2.10, B7.2.1 | Recharge is counted before battery loss at the CU-K HV DC Bus. The technical base is 8.5 MJ; event Competition Information supplies context-specific totals and the qualifying floor is 4 MJ. Suzuka document 4 is normalized as 8.5 MJ Race inactive, 9.0 MJ Race active at the Line, 8.0 MJ Qualifying, and 9.0 MJ Free Practice/non-Race out-lap. Missing event contexts fail unavailable. Low Grip behind the Safety Car is unlimited rather than an additive allowance. |
+| Superclip | C5.2, FIA 2026-04-20 refinement | Full-throttle superclip is an actual generator operating mode: ICE wheel power remains positive, generator mechanical power lowers net wheel power, and CU-K recharge increases. The communicated 2–4 s/lap duration is an observational sanity target, never a fixed runtime timer; the current fixed-duration invariant probe leaves the complete-lap comparison unavailable. |
 | Standing start ERS | C5.2.12 | MGU-K deployment is blocked below 50 km/h, except for the existing SECU low-power-start safety state. |
 | Race and Sprint distance | B2.3/B2.5 | Sprint exceeds 100 km; Grand Prix uses the official event lap count and time limits. |
 | Qualifying format | B2.4, B4.3 | Q1/Q2/Q3 run for 18/15/13 minutes with seven-minute intervals. The regulation's larger-field progression scales with the fielded entry: the default 20-car field runs 20 to 15 to 10, and a larger custom entry (for example 30 cars) extends to 30 to 20 to 10. Exact ties favour the earlier lap, Q2/Q3 no-time ordering uses flying-lap/left-pits/garage groups and the prior period, and a lap started before zero may finish. Team release waves target traffic gaps and avoid consecutive team-mate releases. Dry attempts use Soft tyres and execute an out lap, attack lap and in lap; the attack map targets a low end-of-lap SOC while preserving the published power and recharge ceilings. |
@@ -59,9 +60,10 @@ FIA when the corresponding competition document is not public or normalized.
 - `FIA-F1-DOC-111` contains the competition-specific Low Grip ERS curves but is
   not part of the public regulation PDF. The corresponding runtime input is
   explicitly unavailable; no numeric curve is invented.
-- Activation zones, detection lines, recharge reductions, and specified ERS
-  sectors may be amended in event documents. They remain calibrated or
-  simulated until an official event pack is normalized.
+- Activation zones, detection lines, recharge values, and specified ERS
+  sectors may be amended in event documents. Suzuka recharge values are
+  normalized from Power Unit Information document 4; every other missing
+  context remains unavailable rather than inheriting Suzuka or a track guess.
 - The Penalty Guidelines are guidelines rather than automatic mandatory
   outcomes unless expressly marked mandatory. The simulation therefore keeps
   responsibility, consequence, mitigating circumstances, and steward review
@@ -79,6 +81,7 @@ FIA when the corresponding competition document is not public or normalized.
 
 - https://www.fia.com/regulation/category/2182
 - https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders
+- https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_power_unit_information.pdf
 - https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf
 - https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf
 - https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf

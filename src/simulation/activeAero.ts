@@ -10,6 +10,7 @@ import type {
   OvertakeStatus,
   TrackDefinition,
 } from '../types'
+import { FIA_2026_REGULATION_PROFILE } from './regulations'
 
 export type {
   ActiveAeroFailureState,
@@ -613,7 +614,8 @@ export function overtakeStatusFor(options: {
     phase,
     raceControlEnabled = true,
     raceLap,
-    overtakeEnergyRemainingMj = 0.5,
+    overtakeEnergyRemainingMj =
+      FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj,
     sessionType = 'race-distance',
     track,
   } = options

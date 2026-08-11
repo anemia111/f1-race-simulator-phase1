@@ -1,38 +1,52 @@
 import type {
   BattlePhase,
-  EnergyRecoveryMode,
   EnergyStoreState,
+  ErsKOperatingMode,
   RacePaceMode,
+  RechargeRuleDefinition,
+  RechargeRuleState,
   Team,
   TimedRunPhase,
   TireCompound,
 } from '../types'
 import { effectiveMachineRating } from './machinePerformance'
 import {
-  deploymentPowerLimitKwForSpeed,
   FIA_2026_REGULATION_PROFILE,
+  resolveF1RechargeRule,
 } from './regulations'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+const finite = (value: number, fallback = 0) =>
+  Number.isFinite(value) ? value : fallback
 
 const smoothstep = (edge0: number, edge1: number, value: number) => {
   const progress = clamp((value - edge0) / Math.max(0.000001, edge1 - edge0), 0, 1)
   return progress * progress * (3 - 2 * progress)
 }
 
-const finite = (value: number, fallback = 0) =>
-  Number.isFinite(value) ? value : fallback
 const ENERGY_INTEGRATION_STEP_SECONDS = 0.5
 
 export const INITIAL_ENERGY_STORE_STATE_OF_CHARGE = 1
+
+/**
+ * Midpoint conversion model used only by a team-neutral offline reference lap.
+ * Live cars always use their own component efficiencies from the same model.
+ */
+export const REFERENCE_F1_ENERGY_CONVERSION = {
+  batteryChargeEfficiency: 0.9575,
+  batteryDischargeEfficiency: 0.9675,
+  inverterEfficiency: 0.9675,
+  motorEfficiency: 0.9425,
+} as const
 
 export type EnergySystemParameters = {
   usableEnergyMJ: number
   minimumUsableEnergyMJ: number
   maximumUsableEnergyMJ: number
-  maximumDeploymentPowerKw: number
-  maximumRecoveryPowerKw: number
+  maximumDeploymentDcPowerKw: number
+  maximumRecoveryMechanicalPowerKw: number
   batteryChargeEfficiency: number
   batteryDischargeEfficiency: number
   inverterEfficiency: number
@@ -64,22 +78,25 @@ export type EnergyDeploymentRequestOptions = {
 }
 
 export type AdvanceEnergyStoreOptions = {
-  additionalRecoveryRequestKw?: number
   allowLiftCoastRecovery?: boolean
   ambientTemperatureC: number
   brakePercent: number
+  /** Positive ICE contribution at the wheels, used only to classify superclip. */
+  combustionWheelPowerKw?: number
   deltaSeconds: number
-  deploymentPowerLimitKw: number
+  /** C5.2.8 CU-K HV DC-bus limit selected by the regulatory resolver. */
+  deploymentDcPowerLimitKw: number
   deploymentRequest: number
   driverErsManagement: number
   driverWetSkill: number
   gripMultiplier: number
-  maxRechargePerLapMj: number
-  /** Manual Override raises the regulation's deployment cutoff speed. */
-  overtakeActive?: boolean
+  /** Lap-start-latched rule; an in-lap option change cannot rewrite the ledger. */
+  rechargeRule: RechargeRuleDefinition
   recoveryRequestScale?: number
   speedKph: number
   state: EnergyStoreState
+  /** Mechanical generator request while ICE wheel power remains positive. */
+  superclipGeneratorRequestKw?: number
   surfaceWaterMm: number
   team: Team
   throttlePercent: number
@@ -87,9 +104,41 @@ export type AdvanceEnergyStoreOptions = {
   vehicleMassKg: number
 }
 
+/**
+ * Independent audit for one public integration call. Values are integrated
+ * from instantaneous powers and are not reconstructed from displayed SOC.
+ */
+export type EnergyFlowAudit = {
+  deltaSeconds: number
+  initialStoredEnergyMJ: number
+  finalStoredEnergyMJ: number
+  requestedRecoveryMechanicalEnergyMJ: number
+  recoveredMechanicalEnergyMJ: number
+  requestedSuperclipMechanicalEnergyMJ: number
+  recoveredSuperclipMechanicalEnergyMJ: number
+  rechargedAtCuKBusMJ: number
+  superclipRechargedAtCuKBusMJ: number
+  storedChargeEnergyMJ: number
+  energyRemovedFromStoreMJ: number
+  deployedAtCuKBusMJ: number
+  deployedMechanicalEnergyMJ: number
+  batteryLossEnergyMJ: number
+  inverterLossEnergyMJ: number
+  motorLossEnergyMJ: number
+  storeBalanceErrorMJ: number
+  conversionChainErrorMJ: number
+}
+
 export type EnergyStoreStep = {
   state: EnergyStoreState
   regenerativeResistancePowerKw: number
+  /** Accepted mechanical generator power, allocated by physical source. */
+  actualRecoverySourcePowerKw: {
+    braking: number
+    liftCoast: number
+    superclip: number
+  }
+  audit: EnergyFlowAudit
 }
 
 export function energySystemParametersFor(team: Team): EnergySystemParameters {
@@ -102,7 +151,6 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
   )
   const recoveryRating = effectiveMachineRating(machine.energyRecoveryEfficiency)
   const coolingRating = effectiveMachineRating(machine.coolingEfficiency)
-  const powerUnitRating = effectiveMachineRating(machine.puOutput)
   const activeAeroRating = effectiveMachineRating(machine.activeAeroEfficiency)
   const brakingStabilityRating = effectiveMachineRating(
     machine.brakingStability,
@@ -111,26 +159,26 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
     machine.brakingPerformance,
   )
 
+  const batteryChargeEfficiency = 0.94 + recoveryRating * 0.035
+  const inverterEfficiency = 0.95 + deploymentRating * 0.035
+  const motorEfficiency = 0.91 + deploymentRating * 0.065
+
   return {
     usableEnergyMJ,
     minimumUsableEnergyMJ,
     maximumUsableEnergyMJ: minimumUsableEnergyMJ + usableEnergyMJ,
-    maximumDeploymentPowerKw: Math.min(
+    maximumDeploymentDcPowerKw:
       FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-      300 + 50 * clamp(powerUnitRating * 0.45 + deploymentRating * 0.55, 0, 1),
-    ),
-    maximumRecoveryPowerKw: Math.min(
+    maximumRecoveryMechanicalPowerKw: Math.min(
       FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
       270 + 80 * recoveryRating,
     ),
-    batteryChargeEfficiency: 0.94 + recoveryRating * 0.035,
+    batteryChargeEfficiency,
     batteryDischargeEfficiency: 0.955 + deploymentRating * 0.025,
-    inverterEfficiency: 0.95 + deploymentRating * 0.035,
-    motorEfficiency: 0.91 + deploymentRating * 0.065,
+    inverterEfficiency,
+    motorEfficiency,
     recoveryEfficiency:
-      (0.9 + recoveryRating * 0.075) *
-      (0.945 + recoveryRating * 0.04) *
-      (0.94 + recoveryRating * 0.035),
+      batteryChargeEfficiency * inverterEfficiency * motorEfficiency,
     coolingEfficiency: 0.72 + coolingRating * 0.28,
     thermalResistance: 1.14 - coolingRating * 0.24,
     energyManagementSoftwareQuality: clamp(
@@ -155,9 +203,38 @@ export function energySystemParametersFor(team: Team): EnergySystemParameters {
   }
 }
 
+function createRechargeRuleState(
+  rule: RechargeRuleDefinition,
+  usedMJ = 0,
+): RechargeRuleState {
+  const finiteLimit =
+    rule.limit.kind === 'finite'
+      ? Math.max(0, finite(rule.limit.maxCuKBusRechargeMj))
+      : null
+  const nonnegativeUsedMJ = Math.max(0, finite(usedMJ))
+  const safeUsedMJ =
+    finiteLimit === null
+      ? nonnegativeUsedMJ
+      : Math.min(finiteLimit, nonnegativeUsedMJ)
+
+  return {
+    ...rule,
+    limit:
+      finiteLimit === null
+        ? rule.limit
+        : { kind: 'finite', maxCuKBusRechargeMj: finiteLimit },
+    usedMJ: safeUsedMJ,
+    remainingMJ:
+      finiteLimit === null ? null : Math.max(0, finiteLimit - safeUsedMJ),
+  }
+}
+
 export function createInitialEnergyStore(
   team: Team,
   initialStateOfCharge = INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
+  rechargeRule: RechargeRuleDefinition = resolveF1RechargeRule({
+    stage: 'race',
+  }),
 ): EnergyStoreState {
   const parameters = energySystemParametersFor(team)
   const stateOfCharge = clamp(initialStateOfCharge, 0, 1)
@@ -171,9 +248,12 @@ export function createInitialEnergyStore(
     minimumUsableEnergyMJ: parameters.minimumUsableEnergyMJ,
     maximumUsableEnergyMJ: parameters.maximumUsableEnergyMJ,
     stateOfCharge,
-    chargePowerKw: 0,
-    dischargePowerKw: 0,
-    requestedDeploymentPowerKw: 0,
+    chargeDcPowerKw: 0,
+    dischargeDcPowerKw: 0,
+    storedChargePowerKw: 0,
+    storedDischargePowerKw: 0,
+    requestedDeploymentDcPowerKw: 0,
+    actualDeploymentDcPowerKw: 0,
     actualDeploymentPowerKw: 0,
     requestedRecoveryPowerKw: 0,
     actualRecoveryPowerKw: 0,
@@ -181,24 +261,37 @@ export function createInitialEnergyStore(
     frictionBrakePowerKw: 0,
     recoveryTorqueNm: 0,
     motorMechanicalPowerKw: 0,
-    batteryChargePowerKw: 0,
-    batteryDischargePowerKw: 0,
+    batteryLossPowerKw: 0,
+    inverterLossPowerKw: 0,
+    motorLossPowerKw: 0,
     batteryTemperatureC: 42,
     motorGeneratorTemperatureC: 76,
     inverterTemperatureC: 58,
-    harvestPotentialThisLapMJ: 0,
-    actualHarvestedThisLapMJ: 0,
+    requestedRecoveryMechanicalEnergyThisLapMJ: 0,
+    recoveredMechanicalEnergyThisLapMJ: 0,
+    rechargedAtCuKBusThisLapMJ: 0,
+    storedEnergyThisLapMJ: 0,
+    deployedAtCuKBusThisLapMJ: 0,
     deployedMechanicalEnergyThisLapMJ: 0,
     energyRemovedThisLapMJ: 0,
+    batteryLossThisLapMJ: 0,
+    inverterLossThisLapMJ: 0,
+    motorLossThisLapMJ: 0,
+    unattributedConversionLossThisLapMJ: 0,
     conversionLossThisLapMJ: 0,
     lapStartEnergyMJ: currentEnergyMJ,
+    lastStepBalanceErrorMJ: 0,
     energyBalanceErrorMJ: 0,
     thermalDerating: 1,
-    socPowerLimitKw: parameters.maximumDeploymentPowerKw,
-    batteryAcceptancePowerKw: parameters.maximumRecoveryPowerKw,
-    maximumDeploymentPowerKw: parameters.maximumDeploymentPowerKw,
+    socDischargeDcPowerLimitKw: parameters.maximumDeploymentDcPowerKw,
+    batteryChargeDcPowerLimitKw:
+      parameters.maximumRecoveryMechanicalPowerKw *
+      parameters.motorEfficiency *
+      parameters.inverterEfficiency,
+    maximumDeploymentDcPowerKw: parameters.maximumDeploymentDcPowerKw,
     deploymentRequest: 0,
-    recoveryMode: 'none',
+    operatingMode: 'inactive',
+    rechargeRule: createRechargeRuleState(rechargeRule),
   }
 }
 
@@ -206,37 +299,30 @@ export function normalizeEnergyStoreState(
   state: EnergyStoreState | undefined,
   team: Team,
   fallbackBatteryPercent = INITIAL_ENERGY_STORE_STATE_OF_CHARGE * 100,
+  fallbackRechargeRule: RechargeRuleDefinition = resolveF1RechargeRule({
+    stage: 'race',
+  }),
 ): EnergyStoreState {
   if (!state) {
-    return createInitialEnergyStore(team, fallbackBatteryPercent / 100)
+    return createInitialEnergyStore(
+      team,
+      fallbackBatteryPercent / 100,
+      fallbackRechargeRule,
+    )
   }
 
   const parameters = energySystemParametersFor(team)
-  const minimumUsableEnergyMJ = finite(
-    state.minimumUsableEnergyMJ,
-    parameters.minimumUsableEnergyMJ,
-  )
-  const usableEnergyMJ = Math.max(
-    0.1,
-    finite(state.usableEnergyMJ, parameters.usableEnergyMJ),
-  )
-  const maximumUsableEnergyMJ = Math.max(
-    minimumUsableEnergyMJ + usableEnergyMJ,
-    finite(
-      state.maximumUsableEnergyMJ,
-      minimumUsableEnergyMJ + usableEnergyMJ,
-    ),
-  )
+  // These capacities are regulatory/runtime constants, not checkpoint inputs.
+  const minimumUsableEnergyMJ = parameters.minimumUsableEnergyMJ
+  const usableEnergyMJ = parameters.usableEnergyMJ
+  const maximumUsableEnergyMJ = parameters.maximumUsableEnergyMJ
   const currentEnergyMJ = clamp(
     finite(
       state.currentEnergyMJ,
       minimumUsableEnergyMJ +
         usableEnergyMJ *
           clamp(
-            finite(
-              state.stateOfCharge,
-              fallbackBatteryPercent / 100,
-            ),
+            finite(state.stateOfCharge, fallbackBatteryPercent / 100),
             0,
             1,
           ),
@@ -244,9 +330,18 @@ export function normalizeEnergyStoreState(
     minimumUsableEnergyMJ,
     maximumUsableEnergyMJ,
   )
+  const rechargeRule = createRechargeRuleState(
+    state.rechargeRule ?? fallbackRechargeRule,
+    finite(state.rechargedAtCuKBusThisLapMJ),
+  )
+  const initial = createInitialEnergyStore(
+    team,
+    fallbackBatteryPercent / 100,
+    rechargeRule,
+  )
 
   return {
-    ...createInitialEnergyStore(team),
+    ...initial,
     ...state,
     usableEnergyMJ,
     minimumUsableEnergyMJ,
@@ -257,21 +352,332 @@ export function normalizeEnergyStoreState(
       0,
       1,
     ),
+    requestedRecoveryMechanicalEnergyThisLapMJ: Math.max(
+      0,
+      finite(state.requestedRecoveryMechanicalEnergyThisLapMJ),
+    ),
+    recoveredMechanicalEnergyThisLapMJ: Math.max(
+      0,
+      finite(state.recoveredMechanicalEnergyThisLapMJ),
+    ),
+    rechargedAtCuKBusThisLapMJ: rechargeRule.usedMJ,
+    storedEnergyThisLapMJ: Math.max(0, finite(state.storedEnergyThisLapMJ)),
+    deployedAtCuKBusThisLapMJ: Math.max(
+      0,
+      finite(state.deployedAtCuKBusThisLapMJ),
+    ),
+    deployedMechanicalEnergyThisLapMJ: Math.max(
+      0,
+      finite(state.deployedMechanicalEnergyThisLapMJ),
+    ),
+    energyRemovedThisLapMJ: Math.max(
+      0,
+      finite(state.energyRemovedThisLapMJ),
+    ),
+    batteryLossThisLapMJ: Math.max(0, finite(state.batteryLossThisLapMJ)),
+    inverterLossThisLapMJ: Math.max(0, finite(state.inverterLossThisLapMJ)),
+    motorLossThisLapMJ: Math.max(0, finite(state.motorLossThisLapMJ)),
+    unattributedConversionLossThisLapMJ: Math.max(
+      0,
+      finite(state.unattributedConversionLossThisLapMJ),
+    ),
+    rechargeRule,
   }
 }
 
-export function startNextEnergyLap(state: EnergyStoreState): EnergyStoreState {
-  return {
+export function startNextEnergyLap(
+  state: EnergyStoreState,
+  rechargeRule: RechargeRuleDefinition = state.rechargeRule,
+): EnergyStoreState {
+  const next = {
     ...state,
-    chargePowerKw: 0,
-    dischargePowerKw: 0,
-    harvestPotentialThisLapMJ: 0,
-    actualHarvestedThisLapMJ: 0,
+    chargeDcPowerKw: 0,
+    dischargeDcPowerKw: 0,
+    storedChargePowerKw: 0,
+    storedDischargePowerKw: 0,
+    requestedDeploymentDcPowerKw: 0,
+    actualDeploymentDcPowerKw: 0,
+    actualDeploymentPowerKw: 0,
+    requestedRecoveryPowerKw: 0,
+    actualRecoveryPowerKw: 0,
+    requestedBrakePowerKw: 0,
+    frictionBrakePowerKw: 0,
+    recoveryTorqueNm: 0,
+    motorMechanicalPowerKw: 0,
+    batteryLossPowerKw: 0,
+    inverterLossPowerKw: 0,
+    motorLossPowerKw: 0,
+    requestedRecoveryMechanicalEnergyThisLapMJ: 0,
+    recoveredMechanicalEnergyThisLapMJ: 0,
+    rechargedAtCuKBusThisLapMJ: 0,
+    storedEnergyThisLapMJ: 0,
+    deployedAtCuKBusThisLapMJ: 0,
     deployedMechanicalEnergyThisLapMJ: 0,
     energyRemovedThisLapMJ: 0,
+    batteryLossThisLapMJ: 0,
+    inverterLossThisLapMJ: 0,
+    motorLossThisLapMJ: 0,
+    unattributedConversionLossThisLapMJ: 0,
     conversionLossThisLapMJ: 0,
     lapStartEnergyMJ: state.currentEnergyMJ,
+    lastStepBalanceErrorMJ: 0,
     energyBalanceErrorMJ: 0,
+    deploymentRequest: 0,
+    operatingMode: 'inactive' as const,
+    rechargeRule: createRechargeRuleState(rechargeRule),
+  }
+
+  return next
+}
+
+export type LapCrossingEnergyRebaseResult = {
+  state: EnergyStoreState
+  /** Share of the already-integrated recovery that the new rule accepted. */
+  rechargeAcceptanceScale: number
+  /** Share of the already-integrated deployment retained after SOC rebasing. */
+  deploymentAcceptanceScale: number
+}
+
+/**
+ * Rebases one already-integrated telemetry step at the final timing-line
+ * crossing inside that step. The physical step is deliberately not run twice:
+ * its cumulative deltas are divided at the interpolated crossing, then the
+ * post-Line share is placed in a fresh, lap-start-latched ledger.
+ *
+ * If the old lap's recharge ceiling curtailed the original whole-frame flow,
+ * this function cannot invent the recovery that a fresh rule might have
+ * accepted after the Line. That creates a conservative, frame-bounded
+ * under-recovery. Conversely, a tighter new rule scales the carried recovery,
+ * stored charge and conversion losses together, so charge is never retained
+ * without matching CU-K-bus ledger use.
+ */
+export function rebaseEnergyStoreAtLapCrossing(options: {
+  frameStartState: EnergyStoreState
+  integratedState: EnergyStoreState
+  postLineFraction: number
+  rechargeRule: RechargeRuleDefinition
+}): LapCrossingEnergyRebaseResult {
+  const { frameStartState, integratedState, rechargeRule } = options
+  const postLineFraction = clamp(finite(options.postLineFraction), 0, 1)
+  const preLineFraction = 1 - postLineFraction
+  const postDelta = (start: number, end: number) =>
+    Math.max(0, finite(end) - finite(start)) * postLineFraction
+
+  const rawRequestedRecoveryMJ = postDelta(
+    frameStartState.requestedRecoveryMechanicalEnergyThisLapMJ,
+    integratedState.requestedRecoveryMechanicalEnergyThisLapMJ,
+  )
+  const rawRecoveredMechanicalMJ = postDelta(
+    frameStartState.recoveredMechanicalEnergyThisLapMJ,
+    integratedState.recoveredMechanicalEnergyThisLapMJ,
+  )
+  const rawRechargedAtCuKBusMJ = postDelta(
+    frameStartState.rechargedAtCuKBusThisLapMJ,
+    integratedState.rechargedAtCuKBusThisLapMJ,
+  )
+  const rawStoredEnergyMJ = postDelta(
+    frameStartState.storedEnergyThisLapMJ,
+    integratedState.storedEnergyThisLapMJ,
+  )
+  const rawDeployedAtCuKBusMJ = postDelta(
+    frameStartState.deployedAtCuKBusThisLapMJ,
+    integratedState.deployedAtCuKBusThisLapMJ,
+  )
+  const rawDeployedMechanicalMJ = postDelta(
+    frameStartState.deployedMechanicalEnergyThisLapMJ,
+    integratedState.deployedMechanicalEnergyThisLapMJ,
+  )
+  const rawRemovedEnergyMJ = postDelta(
+    frameStartState.energyRemovedThisLapMJ,
+    integratedState.energyRemovedThisLapMJ,
+  )
+  const rawBatteryLossMJ = postDelta(
+    frameStartState.batteryLossThisLapMJ,
+    integratedState.batteryLossThisLapMJ,
+  )
+  const rawInverterLossMJ = postDelta(
+    frameStartState.inverterLossThisLapMJ,
+    integratedState.inverterLossThisLapMJ,
+  )
+  const rawMotorLossMJ = postDelta(
+    frameStartState.motorLossThisLapMJ,
+    integratedState.motorLossThisLapMJ,
+  )
+
+  const maximumNewLapRechargeMJ =
+    rechargeRule.limit.kind === 'unlimited'
+      ? Number.POSITIVE_INFINITY
+      : rechargeRule.limit.kind === 'finite'
+        ? Math.max(0, finite(rechargeRule.limit.maxCuKBusRechargeMj))
+        : 0
+  const acceptedRechargedAtCuKBusMJ = Math.min(
+    rawRechargedAtCuKBusMJ,
+    maximumNewLapRechargeMJ,
+  )
+  const rechargeAcceptanceScale =
+    rawRechargedAtCuKBusMJ > 1e-12
+      ? acceptedRechargedAtCuKBusMJ / rawRechargedAtCuKBusMJ
+      : rawRecoveredMechanicalMJ > 1e-12 || rawStoredEnergyMJ > 1e-12
+        ? 0
+        : 1
+  const recoveredMechanicalEnergyThisLapMJ =
+    rawRecoveredMechanicalMJ * rechargeAcceptanceScale
+  const storedEnergyThisLapMJ =
+    rawStoredEnergyMJ * rechargeAcceptanceScale
+
+  const interpolatedLapStartEnergyMJ = clamp(
+    frameStartState.currentEnergyMJ +
+      (integratedState.currentEnergyMJ - frameStartState.currentEnergyMJ) *
+        preLineFraction,
+    integratedState.minimumUsableEnergyMJ,
+    integratedState.maximumUsableEnergyMJ,
+  )
+  const maximumRemovableEnergyMJ = Math.max(
+    0,
+    interpolatedLapStartEnergyMJ +
+      storedEnergyThisLapMJ -
+      integratedState.minimumUsableEnergyMJ,
+  )
+  const energyRemovedThisLapMJ = Math.min(
+    rawRemovedEnergyMJ,
+    maximumRemovableEnergyMJ,
+  )
+  const deploymentAcceptanceScale =
+    rawRemovedEnergyMJ > 1e-12
+      ? energyRemovedThisLapMJ / rawRemovedEnergyMJ
+      : rawDeployedAtCuKBusMJ > 1e-12 || rawDeployedMechanicalMJ > 1e-12
+        ? 0
+        : 1
+  const deployedAtCuKBusThisLapMJ =
+    rawDeployedAtCuKBusMJ * deploymentAcceptanceScale
+  const deployedMechanicalEnergyThisLapMJ =
+    rawDeployedMechanicalMJ * deploymentAcceptanceScale
+  const currentEnergyMJ = clamp(
+    interpolatedLapStartEnergyMJ +
+      storedEnergyThisLapMJ -
+      energyRemovedThisLapMJ,
+    integratedState.minimumUsableEnergyMJ,
+    integratedState.maximumUsableEnergyMJ,
+  )
+
+  // The public state stores component losses jointly for charge and discharge.
+  // Preserve their observed proportions while making their sum close the
+  // accepted conversion chain exactly after either side has been curtailed.
+  const acceptedConversionLossMJ = Math.max(
+    0,
+    recoveredMechanicalEnergyThisLapMJ +
+      energyRemovedThisLapMJ -
+      storedEnergyThisLapMJ -
+      deployedMechanicalEnergyThisLapMJ,
+  )
+  const rawComponentLossMJ =
+    rawBatteryLossMJ + rawInverterLossMJ + rawMotorLossMJ
+  const batteryLossThisLapMJ =
+    rawComponentLossMJ > 1e-12
+      ? acceptedConversionLossMJ *
+        (rawBatteryLossMJ / rawComponentLossMJ)
+      : acceptedConversionLossMJ
+  const inverterLossThisLapMJ =
+    rawComponentLossMJ > 1e-12
+      ? acceptedConversionLossMJ *
+        (rawInverterLossMJ / rawComponentLossMJ)
+      : 0
+  const motorLossThisLapMJ = Math.max(
+    0,
+    acceptedConversionLossMJ -
+      batteryLossThisLapMJ -
+      inverterLossThisLapMJ,
+  )
+  const lossPowerScale =
+    rawComponentLossMJ > 1e-12
+      ? acceptedConversionLossMJ / rawComponentLossMJ
+      : 0
+  const balanceExpectedMJ =
+    interpolatedLapStartEnergyMJ +
+    storedEnergyThisLapMJ -
+    energyRemovedThisLapMJ
+  const conversionExpectedLossMJ =
+    recoveredMechanicalEnergyThisLapMJ +
+    energyRemovedThisLapMJ -
+    storedEnergyThisLapMJ -
+    deployedMechanicalEnergyThisLapMJ
+  const storeBalanceErrorMJ = currentEnergyMJ - balanceExpectedMJ
+  const conversionChainErrorMJ =
+    conversionExpectedLossMJ -
+    batteryLossThisLapMJ -
+    inverterLossThisLapMJ -
+    motorLossThisLapMJ
+  const actualDeploymentDcPowerKw =
+    integratedState.actualDeploymentDcPowerKw * deploymentAcceptanceScale
+  const actualDeploymentPowerKw =
+    integratedState.actualDeploymentPowerKw * deploymentAcceptanceScale
+  const actualRecoveryPowerKw =
+    integratedState.actualRecoveryPowerKw * rechargeAcceptanceScale
+  const rechargeRuleState = createRechargeRuleState(
+    rechargeRule,
+    acceptedRechargedAtCuKBusMJ,
+  )
+
+  return {
+    rechargeAcceptanceScale,
+    deploymentAcceptanceScale,
+    state: {
+      ...integratedState,
+      currentEnergyMJ,
+      stateOfCharge: clamp(
+        (currentEnergyMJ - integratedState.minimumUsableEnergyMJ) /
+          Math.max(0.000001, integratedState.usableEnergyMJ),
+        0,
+        1,
+      ),
+      chargeDcPowerKw:
+        integratedState.chargeDcPowerKw * rechargeAcceptanceScale,
+      dischargeDcPowerKw:
+        integratedState.dischargeDcPowerKw * deploymentAcceptanceScale,
+      storedChargePowerKw:
+        integratedState.storedChargePowerKw * rechargeAcceptanceScale,
+      storedDischargePowerKw:
+        integratedState.storedDischargePowerKw * deploymentAcceptanceScale,
+      actualDeploymentDcPowerKw,
+      actualDeploymentPowerKw,
+      actualRecoveryPowerKw,
+      frictionBrakePowerKw: Math.max(
+        0,
+        integratedState.requestedBrakePowerKw - actualRecoveryPowerKw,
+      ),
+      recoveryTorqueNm:
+        integratedState.recoveryTorqueNm * rechargeAcceptanceScale,
+      motorMechanicalPowerKw:
+        actualDeploymentPowerKw - actualRecoveryPowerKw,
+      batteryLossPowerKw:
+        integratedState.batteryLossPowerKw * lossPowerScale,
+      inverterLossPowerKw:
+        integratedState.inverterLossPowerKw * lossPowerScale,
+      motorLossPowerKw: integratedState.motorLossPowerKw * lossPowerScale,
+      requestedRecoveryMechanicalEnergyThisLapMJ: rawRequestedRecoveryMJ,
+      recoveredMechanicalEnergyThisLapMJ,
+      rechargedAtCuKBusThisLapMJ: acceptedRechargedAtCuKBusMJ,
+      storedEnergyThisLapMJ,
+      deployedAtCuKBusThisLapMJ,
+      deployedMechanicalEnergyThisLapMJ,
+      energyRemovedThisLapMJ,
+      batteryLossThisLapMJ,
+      inverterLossThisLapMJ,
+      motorLossThisLapMJ,
+      unattributedConversionLossThisLapMJ: 0,
+      conversionLossThisLapMJ: acceptedConversionLossMJ,
+      lapStartEnergyMJ: interpolatedLapStartEnergyMJ,
+      lastStepBalanceErrorMJ: Math.max(
+        Math.abs(storeBalanceErrorMJ),
+        Math.abs(conversionChainErrorMJ),
+      ),
+      energyBalanceErrorMJ: storeBalanceErrorMJ,
+      operatingMode:
+        actualDeploymentDcPowerKw <= 1e-9 && actualRecoveryPowerKw <= 1e-9
+          ? 'inactive'
+          : integratedState.operatingMode,
+      rechargeRule: rechargeRuleState,
+    },
   }
 }
 
@@ -337,9 +743,7 @@ export function energyDeploymentRequestFor(
     timedRunPhase,
   } = options
 
-  const minimumDeploymentThrottle =
-    timedRunPhase === 'attack-lap' ? 18 : 52
-
+  const minimumDeploymentThrottle = timedRunPhase === 'attack-lap' ? 18 : 52
   if (
     throttlePercent < minimumDeploymentThrottle ||
     timedRunPhase === 'garage' ||
@@ -363,10 +767,7 @@ export function energyDeploymentRequestFor(
     0,
     1,
   )
-  const selectiveValue = Math.pow(
-    straightValue,
-    0.86 + management * 0.48,
-  )
+  const selectiveValue = Math.pow(straightValue, 0.86 + management * 0.48)
   const sessionBudgetShare =
     timedRunPhase === 'attack-lap'
       ? 1
@@ -422,14 +823,12 @@ export function energyDeploymentRequestFor(
   const longStraightMultiplier =
     1 + clamp((straightLengthAheadMeters - 500) / 900, 0, 1) * 0.18
   const baseStraightAllocationPriority =
-    0.06 +
-    clamp((straightLengthAheadMeters - 150) / 1_000, 0, 1) * 0.94
+    0.06 + clamp((straightLengthAheadMeters - 150) / 1_000, 0, 1) * 0.94
   const endOfLapSpend = smoothstep(0.74, 0.98, lapProgress)
   const straightAllocationPriority =
     baseStraightAllocationPriority +
     (1 - baseStraightAllocationPriority) * endOfLapSpend
-  const terminalSpeedAllocation =
-    1 - smoothstep(420, 432, speedKph) * 0.65
+  const terminalSpeedAllocation = 1 - smoothstep(420, 432, speedKph) * 0.65
 
   const strategicRequest =
     (selectiveValue * budgetPressure * reserveFactor + lowSkillWaste) *
@@ -453,22 +852,61 @@ export function energyDeploymentRequestFor(
         neutralisationMultiplier
       : 0
 
-  return clamp(
-    Math.max(strategicRequest, qualifyingAttackMinimum),
+  return clamp(Math.max(strategicRequest, qualifyingAttackMinimum), 0, 1)
+}
+
+function operatingModeFor(options: {
+  actualBrakeRecoveryPowerKw: number
+  actualDeploymentDcPowerKw: number
+  actualLiftRecoveryPowerKw: number
+  actualRecoveryPowerKw: number
+  actualSuperclipGeneratorPowerKw: number
+  combustionWheelPowerKw: number
+  throttlePercent: number
+}): ErsKOperatingMode {
+  if (options.actualRecoveryPowerKw > 0.001) {
+    // A malformed mixed brake/superclip request remains braking regeneration.
+    // Full-throttle superclip is reserved for actual accepted superclip flow,
+    // not a request label attached to an unrelated recovery source.
+    if (options.actualBrakeRecoveryPowerKw > 0.001) {
+      return 'braking-regeneration'
+    }
+    if (
+      options.actualSuperclipGeneratorPowerKw > 0.001 &&
+      options.actualLiftRecoveryPowerKw <= 0.001 &&
+      options.throttlePercent >= 95 &&
+      options.combustionWheelPowerKw > 0.001
+    ) {
+      return 'full-throttle-superclip'
+    }
+    if (options.actualLiftRecoveryPowerKw > 0.001) {
+      return 'lift-coast-regeneration'
+    }
+  }
+  if (options.actualDeploymentDcPowerKw > 0.001) return 'propulsion'
+  return 'inactive'
+}
+
+function remainingRechargeAtCuKBusMJ(state: EnergyStoreState) {
+  if (state.rechargeRule.limit.kind === 'unlimited') {
+    return Number.POSITIVE_INFINITY
+  }
+  if (state.rechargeRule.limit.kind === 'unavailable') return 0
+  return Math.max(
     0,
-    1,
+    state.rechargeRule.limit.maxCuKBusRechargeMj -
+      state.rechargedAtCuKBusThisLapMJ,
   )
 }
 
-function recoveryModeFor(options: {
-  additionalRecoveryRequestKw: number
-  brakePercent: number
-  liftRecoveryRequestKw: number
-}): EnergyRecoveryMode {
-  if (options.additionalRecoveryRequestKw >= 8) return 'super-clipping'
-  if (options.brakePercent >= 4) return 'braking'
-  if (options.liftRecoveryRequestKw >= 3) return 'lift-coast'
-  return 'none'
+type EnergyStoreSubstep = {
+  state: EnergyStoreState
+  actualBrakeRecoveryPowerKw: number
+  actualLiftRecoveryPowerKw: number
+  actualSuperclipGeneratorPowerKw: number
+  requestedSuperclipMechanicalEnergyMJ: number
+  recoveredSuperclipMechanicalEnergyMJ: number
+  superclipRechargedAtCuKBusMJ: number
 }
 
 function advanceEnergyStoreSubstep(
@@ -476,7 +914,7 @@ function advanceEnergyStoreSubstep(
   state: EnergyStoreState,
   deltaSeconds: number,
   speedKph: number,
-): EnergyStoreState {
+): EnergyStoreSubstep {
   const parameters = energySystemParametersFor(options.team)
   const speedMps = Math.max(0, speedKph) / 3.6
   const brakeRequest = clamp(options.brakePercent / 100, 0, 1)
@@ -491,25 +929,21 @@ function advanceEnergyStoreSubstep(
   )
   const kineticEnergyDeltaMJ = Math.max(
     0,
-    (0.5 * Math.max(500, options.vehicleMassKg) *
+    (0.5 *
+      Math.max(500, options.vehicleMassKg) *
       (speedMps ** 2 - predictedEndSpeedMps ** 2)) /
       1_000_000,
   )
   const aerodynamicLossShare = clamp(0.08 + (speedKph / 420) * 0.24, 0.08, 0.34)
   const requestedBrakePowerKw =
-    deltaSeconds > 0
-      ? (kineticEnergyDeltaMJ * 1000) / deltaSeconds
-      : 0
-  const rearAxleRecoveryShare = 0.56
-  const driverRecoveryControl =
-    0.82 + clamp(options.driverErsManagement, 0, 1) * 0.18
+    deltaSeconds > 0 ? (kineticEnergyDeltaMJ * 1000) / deltaSeconds : 0
   const recoveryRequestScale = clamp(options.recoveryRequestScale ?? 1, 0, 1.25)
   const brakeRecoveryRequestKw =
     requestedBrakePowerKw *
     (1 - aerodynamicLossShare) *
-    rearAxleRecoveryShare *
+    0.56 *
     wetStability *
-    driverRecoveryControl *
+    (0.82 + clamp(options.driverErsManagement, 0, 1) * 0.18) *
     (0.84 + parameters.regenBlendingQuality * 0.16) *
     recoveryRequestScale
   const liftRecoveryRequestKw =
@@ -525,17 +959,26 @@ function advanceEnergyStoreSubstep(
           90,
         ) * recoveryRequestScale
       : 0
-  const additionalRecoveryRequestKw = Math.max(
+  const rawSuperclipGeneratorRequestKw = Math.max(
     0,
-    options.additionalRecoveryRequestKw ?? 0,
+    finite(options.superclipGeneratorRequestKw ?? 0),
   )
+  const combustionWheelPowerKw = Math.max(
+    0,
+    finite(options.combustionWheelPowerKw ?? 0),
+  )
+  // A superclip request is a scheduling intent, not proof of physical flow.
+  // Without high throttle and positive ICE wheel power it is ineligible; any
+  // independent braking/lift request remains attributable to its own source.
+  const superclipGeneratorRequestKw =
+    options.throttlePercent >= 95 && combustionWheelPowerKw > 0.001
+      ? rawSuperclipGeneratorRequestKw
+      : 0
   const requestedRecoveryPowerKw =
     brakeRecoveryRequestKw +
     liftRecoveryRequestKw +
-    additionalRecoveryRequestKw
-  const batteryChargeThermalFactor = batteryTemperatureChargeFactor(
-    state.batteryTemperatureC,
-  )
+    superclipGeneratorRequestKw
+
   const motorThermalFactor = motorTemperaturePowerFactor(
     state.motorGeneratorTemperatureC,
   )
@@ -543,106 +986,156 @@ function advanceEnergyStoreSubstep(
     state.inverterTemperatureC,
   )
   const thermalRecoveryFactor = Math.min(
-    batteryChargeThermalFactor,
+    batteryTemperatureChargeFactor(state.batteryTemperatureC),
     motorThermalFactor,
     inverterThermalFactor,
   )
-  const chargeAcceptanceFactor = socChargeAcceptanceFactor(state.stateOfCharge)
-  const batteryAcceptancePowerKw =
-    parameters.maximumRecoveryPowerKw *
-    chargeAcceptanceFactor *
+  const recoveryDcEfficiency =
+    parameters.motorEfficiency * parameters.inverterEfficiency
+  const batteryChargeDcPowerLimitKw =
+    parameters.maximumRecoveryMechanicalPowerKw *
+    recoveryDcEfficiency *
+    socChargeAcceptanceFactor(state.stateOfCharge) *
     thermalRecoveryFactor
-  const remainingRechargeMJ = Math.max(
-    0,
-    options.maxRechargePerLapMj - state.actualHarvestedThisLapMJ,
-  )
+  const remainingRechargeMJ = remainingRechargeAtCuKBusMJ(state)
   const energyRoomMJ = Math.max(
     0,
     state.maximumUsableEnergyMJ - state.currentEnergyMJ,
   )
+  const ledgerLimitedMechanicalPowerKw = Number.isFinite(remainingRechargeMJ)
+    ? (remainingRechargeMJ * 1000) /
+      Math.max(0.000001, deltaSeconds * recoveryDcEfficiency)
+    : Number.POSITIVE_INFINITY
   const storageLimitedMechanicalPowerKw =
-    (Math.min(remainingRechargeMJ, energyRoomMJ) * 1000) /
-    Math.max(0.000001, deltaSeconds * parameters.recoveryEfficiency)
-  const actualRecoveryPowerKw = Math.min(
-    requestedRecoveryPowerKw,
-    parameters.maximumRecoveryPowerKw,
-    batteryAcceptancePowerKw / Math.max(0.01, parameters.recoveryEfficiency),
-    storageLimitedMechanicalPowerKw,
+    (energyRoomMJ * 1000) /
+    Math.max(
+      0.000001,
+      deltaSeconds * recoveryDcEfficiency * parameters.batteryChargeEfficiency,
+    )
+  const actualRecoveryPowerKw = Math.max(
+    0,
+    Math.min(
+      requestedRecoveryPowerKw,
+      parameters.maximumRecoveryMechanicalPowerKw,
+      batteryChargeDcPowerLimitKw / Math.max(0.01, recoveryDcEfficiency),
+      ledgerLimitedMechanicalPowerKw,
+      storageLimitedMechanicalPowerKw,
+    ),
   )
-  const batteryChargePowerKw =
-    actualRecoveryPowerKw * parameters.recoveryEfficiency
+  const recoveryAcceptanceFraction =
+    requestedRecoveryPowerKw > 0
+      ? clamp(actualRecoveryPowerKw / requestedRecoveryPowerKw, 0, 1)
+      : 0
+  const actualBrakeRecoveryPowerKw =
+    brakeRecoveryRequestKw * recoveryAcceptanceFraction
+  const actualLiftRecoveryPowerKw =
+    liftRecoveryRequestKw * recoveryAcceptanceFraction
+  const actualSuperclipGeneratorPowerKw =
+    superclipGeneratorRequestKw * recoveryAcceptanceFraction
+  const chargeDcPowerKw = actualRecoveryPowerKw * recoveryDcEfficiency
+  const storedChargePowerKw =
+    chargeDcPowerKw * parameters.batteryChargeEfficiency
+  const rechargedAtCuKBusMJ = (chargeDcPowerKw * deltaSeconds) / 1000
+  const requestedSuperclipMechanicalEnergyMJ =
+    (superclipGeneratorRequestKw * deltaSeconds) / 1000
+  const recoveredSuperclipMechanicalEnergyMJ =
+    (actualSuperclipGeneratorPowerKw * deltaSeconds) / 1000
+  const superclipRechargedAtCuKBusMJ =
+    (actualSuperclipGeneratorPowerKw *
+      recoveryDcEfficiency *
+      deltaSeconds) /
+    1000
   const storedEnergyMJ = Math.min(
-    remainingRechargeMJ,
     energyRoomMJ,
-    (batteryChargePowerKw * deltaSeconds) / 1000,
+    (storedChargePowerKw * deltaSeconds) / 1000,
   )
+
   const deploymentThermalFactor = Math.min(
     batteryTemperaturePowerFactor(state.batteryTemperatureC),
     motorThermalFactor,
     inverterThermalFactor,
   )
-  const socPowerLimitKw =
-    parameters.maximumDeploymentPowerKw *
+  const socDischargeDcPowerLimitKw =
+    parameters.maximumDeploymentDcPowerKw *
     socDischargeFactor(state.stateOfCharge)
-  const maximumDeploymentPowerKw = Math.min(
-    Math.max(0, options.deploymentPowerLimitKw),
-    parameters.maximumDeploymentPowerKw,
+  const maximumDeploymentDcPowerKw = Math.min(
+    Math.max(0, finite(options.deploymentDcPowerLimitKw)),
+    parameters.maximumDeploymentDcPowerKw,
   )
-  const clippingDeploymentScale = clamp(
-    1 - additionalRecoveryRequestKw / Math.max(1, parameters.maximumRecoveryPowerKw),
-    0,
-    1,
-  )
-  const requestedDeploymentPowerKw =
-    brakeRequest >= 0.04
+  // A single MGU-K cannot be a motor and generator in the same substep.
+  const requestedDeploymentDcPowerKw =
+    brakeRequest >= 0.04 || actualRecoveryPowerKw > 0.001
       ? 0
-      : maximumDeploymentPowerKw *
-        clamp(options.deploymentRequest, 0, 1) *
-        clippingDeploymentScale
-  const totalDeploymentEfficiency =
-    parameters.batteryDischargeEfficiency *
-    parameters.inverterEfficiency *
-    parameters.motorEfficiency
+      : maximumDeploymentDcPowerKw * clamp(options.deploymentRequest, 0, 1)
   const availableStoredEnergyMJ = Math.max(
     0,
     state.currentEnergyMJ + storedEnergyMJ - state.minimumUsableEnergyMJ,
   )
-  const energyLimitedMechanicalPowerKw =
-    (availableStoredEnergyMJ * totalDeploymentEfficiency * 1000) /
+  const energyLimitedDcPowerKw =
+    (availableStoredEnergyMJ * parameters.batteryDischargeEfficiency * 1000) /
     Math.max(0.000001, deltaSeconds)
-  // The regulation's speed ramp is a hard limit on permitted deployment, not a
-  // strategy preference, so it belongs beside the state-of-charge and thermal
-  // limits rather than in the allocation heuristic. It is what gives the car a
-  // terminal velocity: without it the unit carries full electrical power to any
-  // speed and a long straight has no end.
-  const regulationSpeedLimitedPowerKw = deploymentPowerLimitKwForSpeed({
-    curve: options.overtakeActive ? 'overtake' : 'normal',
-    requestedPowerKw: maximumDeploymentPowerKw,
-    speedKph,
-  })
-  const actualDeploymentPowerKw = Math.min(
-    requestedDeploymentPowerKw,
-    maximumDeploymentPowerKw,
-    regulationSpeedLimitedPowerKw,
-    socPowerLimitKw,
-    maximumDeploymentPowerKw * deploymentThermalFactor,
-    energyLimitedMechanicalPowerKw,
+  // C5.2.8 constrains CU-K DC power. Shaft power is derived after this cap.
+  const actualDeploymentDcPowerKw = Math.max(
+    0,
+    Math.min(
+      requestedDeploymentDcPowerKw,
+      maximumDeploymentDcPowerKw,
+      socDischargeDcPowerLimitKw,
+      parameters.maximumDeploymentDcPowerKw * deploymentThermalFactor,
+      energyLimitedDcPowerKw,
+    ),
   )
-  const batteryDischargePowerKw =
-    actualDeploymentPowerKw / Math.max(0.01, totalDeploymentEfficiency)
+  const storedDischargePowerKw =
+    actualDeploymentDcPowerKw /
+    Math.max(0.01, parameters.batteryDischargeEfficiency)
   const removedEnergyMJ = Math.min(
     availableStoredEnergyMJ,
-    (batteryDischargePowerKw * deltaSeconds) / 1000,
+    (storedDischargePowerKw * deltaSeconds) / 1000,
   )
+  const actualDeploymentPowerKw =
+    actualDeploymentDcPowerKw *
+    parameters.inverterEfficiency *
+    parameters.motorEfficiency
+  const deployedAtCuKBusMJ =
+    (actualDeploymentDcPowerKw * deltaSeconds) / 1000
   const deliveredMechanicalEnergyMJ =
     (actualDeploymentPowerKw * deltaSeconds) / 1000
   const recoveredMechanicalEnergyMJ =
     (actualRecoveryPowerKw * deltaSeconds) / 1000
-  const conversionLossMJ = Math.max(
+
+  const recoveryMotorLossPowerKw =
+    actualRecoveryPowerKw * (1 - parameters.motorEfficiency)
+  const recoveryInverterInputPowerKw =
+    actualRecoveryPowerKw * parameters.motorEfficiency
+  const recoveryInverterLossPowerKw =
+    recoveryInverterInputPowerKw * (1 - parameters.inverterEfficiency)
+  const recoveryBatteryLossPowerKw =
+    chargeDcPowerKw * (1 - parameters.batteryChargeEfficiency)
+  const deploymentBatteryLossPowerKw =
+    storedDischargePowerKw - actualDeploymentDcPowerKw
+  const deploymentInverterLossPowerKw =
+    actualDeploymentDcPowerKw * (1 - parameters.inverterEfficiency)
+  const deploymentMotorInputPowerKw =
+    actualDeploymentDcPowerKw * parameters.inverterEfficiency
+  const deploymentMotorLossPowerKw =
+    deploymentMotorInputPowerKw * (1 - parameters.motorEfficiency)
+  const batteryLossPowerKw = Math.max(
     0,
-    recoveredMechanicalEnergyMJ - storedEnergyMJ +
-      removedEnergyMJ - deliveredMechanicalEnergyMJ,
+    recoveryBatteryLossPowerKw + deploymentBatteryLossPowerKw,
   )
+  const inverterLossPowerKw = Math.max(
+    0,
+    recoveryInverterLossPowerKw + deploymentInverterLossPowerKw,
+  )
+  const motorLossPowerKw = Math.max(
+    0,
+    recoveryMotorLossPowerKw + deploymentMotorLossPowerKw,
+  )
+  const batteryLossMJ = (batteryLossPowerKw * deltaSeconds) / 1000
+  const inverterLossMJ = (inverterLossPowerKw * deltaSeconds) / 1000
+  const motorLossMJ = (motorLossPowerKw * deltaSeconds) / 1000
+  const conversionLossMJ = batteryLossMJ + inverterLossMJ + motorLossMJ
+
   const currentEnergyMJ = clamp(
     state.currentEnergyMJ + storedEnergyMJ - removedEnergyMJ,
     state.minimumUsableEnergyMJ,
@@ -654,10 +1147,12 @@ function advanceEnergyStoreSubstep(
     0,
     1,
   )
+
   const chargeRatio =
-    batteryChargePowerKw / Math.max(1, parameters.maximumRecoveryPowerKw)
+    chargeDcPowerKw / Math.max(1, parameters.maximumDeploymentDcPowerKw)
   const dischargeRatio =
-    batteryDischargePowerKw / Math.max(1, parameters.maximumDeploymentPowerKw)
+    actualDeploymentDcPowerKw /
+    Math.max(1, parameters.maximumDeploymentDcPowerKw)
   const coolingAirflow = 0.35 + clamp(speedKph / 330, 0, 1.25)
   const batteryHeatPerSecond =
     (0.071 * Math.pow(dischargeRatio, 1.65) +
@@ -670,7 +1165,7 @@ function advanceEnergyStoreSubstep(
     parameters.coolingEfficiency
   const motorLoadRatio =
     Math.max(actualDeploymentPowerKw, actualRecoveryPowerKw) /
-    Math.max(1, parameters.maximumDeploymentPowerKw)
+    Math.max(1, parameters.maximumDeploymentDcPowerKw)
   const motorHeatPerSecond =
     0.145 * Math.pow(motorLoadRatio, 1.55) * parameters.thermalResistance
   const motorCoolingPerSecond =
@@ -679,8 +1174,8 @@ function advanceEnergyStoreSubstep(
     coolingAirflow *
     parameters.coolingEfficiency
   const inverterLoadRatio =
-    Math.max(batteryChargePowerKw, batteryDischargePowerKw) /
-    Math.max(1, parameters.maximumDeploymentPowerKw)
+    Math.max(chargeDcPowerKw, actualDeploymentDcPowerKw) /
+    Math.max(1, parameters.maximumDeploymentDcPowerKw)
   const inverterHeatPerSecond =
     0.102 * Math.pow(inverterLoadRatio, 1.5) * parameters.thermalResistance
   const inverterCoolingPerSecond =
@@ -706,65 +1201,139 @@ function advanceEnergyStoreSubstep(
     options.ambientTemperatureC,
     175,
   )
-  const actualHarvestedThisLapMJ =
-    state.actualHarvestedThisLapMJ + storedEnergyMJ
+
+  const rechargedAtCuKBusThisLapMJ =
+    state.rechargedAtCuKBusThisLapMJ + rechargedAtCuKBusMJ
+  const storedEnergyThisLapMJ = state.storedEnergyThisLapMJ + storedEnergyMJ
   const energyRemovedThisLapMJ =
     state.energyRemovedThisLapMJ + removedEnergyMJ
+  const batteryLossThisLapMJ = state.batteryLossThisLapMJ + batteryLossMJ
+  const inverterLossThisLapMJ = state.inverterLossThisLapMJ + inverterLossMJ
+  const motorLossThisLapMJ = state.motorLossThisLapMJ + motorLossMJ
   const balanceExpectedMJ =
     state.lapStartEnergyMJ +
-    actualHarvestedThisLapMJ -
+    storedEnergyThisLapMJ -
     energyRemovedThisLapMJ
+  const storeBalanceErrorMJ =
+    currentEnergyMJ -
+    (state.currentEnergyMJ + storedEnergyMJ - removedEnergyMJ)
+  const conversionChainErrorMJ =
+    recoveredMechanicalEnergyMJ +
+    removedEnergyMJ -
+    storedEnergyMJ -
+    deliveredMechanicalEnergyMJ -
+    conversionLossMJ
+  const operatingMode = operatingModeFor({
+    actualBrakeRecoveryPowerKw,
+    actualDeploymentDcPowerKw,
+    actualLiftRecoveryPowerKw,
+    actualRecoveryPowerKw,
+    actualSuperclipGeneratorPowerKw,
+    combustionWheelPowerKw,
+    throttlePercent: options.throttlePercent,
+  })
+  const rechargeRule = createRechargeRuleState(
+    state.rechargeRule,
+    rechargedAtCuKBusThisLapMJ,
+  )
 
   return {
-    ...state,
-    currentEnergyMJ,
-    stateOfCharge,
-    chargePowerKw: batteryChargePowerKw,
-    dischargePowerKw: batteryDischargePowerKw,
-    requestedDeploymentPowerKw,
-    actualDeploymentPowerKw,
-    requestedRecoveryPowerKw,
-    actualRecoveryPowerKw,
-    requestedBrakePowerKw,
-    frictionBrakePowerKw: Math.max(
-      0,
-      requestedBrakePowerKw - actualRecoveryPowerKw,
-    ),
-    recoveryTorqueNm:
-      speedMps > 0.5
-        ? (actualRecoveryPowerKw * 1000 * 0.36) / speedMps
-        : 0,
-    motorMechanicalPowerKw:
-      actualDeploymentPowerKw - actualRecoveryPowerKw,
-    batteryChargePowerKw,
-    batteryDischargePowerKw,
-    batteryTemperatureC,
-    motorGeneratorTemperatureC,
-    inverterTemperatureC,
-    harvestPotentialThisLapMJ:
-      state.harvestPotentialThisLapMJ +
-      (requestedRecoveryPowerKw * deltaSeconds) / 1000,
-    actualHarvestedThisLapMJ,
-    deployedMechanicalEnergyThisLapMJ:
-      state.deployedMechanicalEnergyThisLapMJ + deliveredMechanicalEnergyMJ,
-    energyRemovedThisLapMJ,
-    conversionLossThisLapMJ:
-      state.conversionLossThisLapMJ + conversionLossMJ,
-    energyBalanceErrorMJ: currentEnergyMJ - balanceExpectedMJ,
-    thermalDerating: Math.min(
-      batteryTemperaturePowerFactor(batteryTemperatureC),
-      motorTemperaturePowerFactor(motorGeneratorTemperatureC),
-      inverterTemperaturePowerFactor(inverterTemperatureC),
-    ),
-    socPowerLimitKw,
-    batteryAcceptancePowerKw,
-    maximumDeploymentPowerKw,
-    deploymentRequest: clamp(options.deploymentRequest, 0, 1),
-    recoveryMode: recoveryModeFor({
-      additionalRecoveryRequestKw,
-      brakePercent: options.brakePercent,
-      liftRecoveryRequestKw,
-    }),
+    state: {
+      ...state,
+      currentEnergyMJ,
+      stateOfCharge,
+      chargeDcPowerKw,
+      dischargeDcPowerKw: actualDeploymentDcPowerKw,
+      storedChargePowerKw,
+      storedDischargePowerKw,
+      requestedDeploymentDcPowerKw,
+      actualDeploymentDcPowerKw,
+      actualDeploymentPowerKw,
+      requestedRecoveryPowerKw,
+      actualRecoveryPowerKw,
+      requestedBrakePowerKw,
+      frictionBrakePowerKw: Math.max(
+        0,
+        requestedBrakePowerKw - actualRecoveryPowerKw,
+      ),
+      recoveryTorqueNm:
+        speedMps > 0.5
+          ? (actualRecoveryPowerKw * 1000 * 0.36) / speedMps
+          : 0,
+      motorMechanicalPowerKw:
+        actualDeploymentPowerKw - actualRecoveryPowerKw,
+      batteryLossPowerKw,
+      inverterLossPowerKw,
+      motorLossPowerKw,
+      batteryTemperatureC,
+      motorGeneratorTemperatureC,
+      inverterTemperatureC,
+      requestedRecoveryMechanicalEnergyThisLapMJ:
+        state.requestedRecoveryMechanicalEnergyThisLapMJ +
+        (requestedRecoveryPowerKw * deltaSeconds) / 1000,
+      recoveredMechanicalEnergyThisLapMJ:
+        state.recoveredMechanicalEnergyThisLapMJ + recoveredMechanicalEnergyMJ,
+      rechargedAtCuKBusThisLapMJ,
+      storedEnergyThisLapMJ,
+      deployedAtCuKBusThisLapMJ:
+        state.deployedAtCuKBusThisLapMJ + deployedAtCuKBusMJ,
+      deployedMechanicalEnergyThisLapMJ:
+        state.deployedMechanicalEnergyThisLapMJ + deliveredMechanicalEnergyMJ,
+      energyRemovedThisLapMJ,
+      batteryLossThisLapMJ,
+      inverterLossThisLapMJ,
+      motorLossThisLapMJ,
+      conversionLossThisLapMJ:
+        state.unattributedConversionLossThisLapMJ +
+        batteryLossThisLapMJ +
+        inverterLossThisLapMJ +
+        motorLossThisLapMJ,
+      lastStepBalanceErrorMJ: Math.max(
+        Math.abs(storeBalanceErrorMJ),
+        Math.abs(conversionChainErrorMJ),
+      ),
+      energyBalanceErrorMJ: currentEnergyMJ - balanceExpectedMJ,
+      thermalDerating: Math.min(
+        batteryTemperaturePowerFactor(batteryTemperatureC),
+        motorTemperaturePowerFactor(motorGeneratorTemperatureC),
+        inverterTemperaturePowerFactor(inverterTemperatureC),
+      ),
+      socDischargeDcPowerLimitKw,
+      batteryChargeDcPowerLimitKw,
+      maximumDeploymentDcPowerKw,
+      deploymentRequest: clamp(options.deploymentRequest, 0, 1),
+      operatingMode,
+      rechargeRule,
+    },
+    actualBrakeRecoveryPowerKw,
+    actualLiftRecoveryPowerKw,
+    actualSuperclipGeneratorPowerKw,
+    requestedSuperclipMechanicalEnergyMJ,
+    recoveredSuperclipMechanicalEnergyMJ,
+    superclipRechargedAtCuKBusMJ,
+  }
+}
+
+function emptyEnergyFlowAudit(storedEnergyMJ: number): EnergyFlowAudit {
+  return {
+    deltaSeconds: 0,
+    initialStoredEnergyMJ: storedEnergyMJ,
+    finalStoredEnergyMJ: storedEnergyMJ,
+    requestedRecoveryMechanicalEnergyMJ: 0,
+    recoveredMechanicalEnergyMJ: 0,
+    requestedSuperclipMechanicalEnergyMJ: 0,
+    recoveredSuperclipMechanicalEnergyMJ: 0,
+    rechargedAtCuKBusMJ: 0,
+    superclipRechargedAtCuKBusMJ: 0,
+    storedChargeEnergyMJ: 0,
+    energyRemovedFromStoreMJ: 0,
+    deployedAtCuKBusMJ: 0,
+    deployedMechanicalEnergyMJ: 0,
+    batteryLossEnergyMJ: 0,
+    inverterLossEnergyMJ: 0,
+    motorLossEnergyMJ: 0,
+    storeBalanceErrorMJ: 0,
+    conversionChainErrorMJ: 0,
   }
 }
 
@@ -780,42 +1349,80 @@ export function advanceEnergyStore(
     options.state,
     options.team,
     options.state.stateOfCharge * 100,
+    options.rechargeRule,
   )
 
   if (totalSeconds <= 0) {
-    return { state, regenerativeResistancePowerKw: 0 }
+    return {
+      state,
+      regenerativeResistancePowerKw: 0,
+      actualRecoverySourcePowerKw: {
+        braking: 0,
+        liftCoast: 0,
+        superclip: 0,
+      },
+      audit: emptyEnergyFlowAudit(state.currentEnergyMJ),
+    }
   }
 
   let remainingSeconds = totalSeconds
   let localSpeedKph = Math.max(0, options.speedKph)
-  const initialHarvestedEnergyMJ = state.actualHarvestedThisLapMJ
+  const initialStoredEnergyMJ = state.currentEnergyMJ
+  const initialRequestedRecoveryMJ =
+    state.requestedRecoveryMechanicalEnergyThisLapMJ
+  const initialRecoveredMechanicalMJ =
+    state.recoveredMechanicalEnergyThisLapMJ
+  const initialRechargedAtCuKBusMJ = state.rechargedAtCuKBusThisLapMJ
+  const initialStoredEnergyThisLapMJ = state.storedEnergyThisLapMJ
   const initialRemovedEnergyMJ = state.energyRemovedThisLapMJ
+  const initialDeployedAtCuKBusMJ = state.deployedAtCuKBusThisLapMJ
   const initialMechanicalDeploymentMJ =
     state.deployedMechanicalEnergyThisLapMJ
+  const initialBatteryLossMJ = state.batteryLossThisLapMJ
+  const initialInverterLossMJ = state.inverterLossThisLapMJ
+  const initialMotorLossMJ = state.motorLossThisLapMJ
   let requestedDeploymentIntegral = 0
   let requestedRecoveryIntegral = 0
   let requestedBrakeIntegral = 0
   let frictionBrakeIntegral = 0
   let recoveryTorqueIntegral = 0
+  let actualBrakeRecoveryIntegral = 0
+  let actualLiftRecoveryIntegral = 0
+  let actualSuperclipGeneratorIntegral = 0
+  let requestedSuperclipMechanicalEnergyMJ = 0
+  let recoveredSuperclipMechanicalEnergyMJ = 0
+  let superclipRechargedAtCuKBusMJ = 0
 
   while (remainingSeconds > 0.000001) {
     const stepSeconds = Math.min(
       ENERGY_INTEGRATION_STEP_SECONDS,
       remainingSeconds,
     )
-    state = advanceEnergyStoreSubstep(
+    const substep = advanceEnergyStoreSubstep(
       options,
       state,
       stepSeconds,
       localSpeedKph,
     )
+    state = substep.state
     requestedDeploymentIntegral +=
-      state.requestedDeploymentPowerKw * stepSeconds
-    requestedRecoveryIntegral +=
-      state.requestedRecoveryPowerKw * stepSeconds
+      state.requestedDeploymentDcPowerKw * stepSeconds
+    requestedRecoveryIntegral += state.requestedRecoveryPowerKw * stepSeconds
     requestedBrakeIntegral += state.requestedBrakePowerKw * stepSeconds
     frictionBrakeIntegral += state.frictionBrakePowerKw * stepSeconds
     recoveryTorqueIntegral += state.recoveryTorqueNm * stepSeconds
+    actualBrakeRecoveryIntegral +=
+      substep.actualBrakeRecoveryPowerKw * stepSeconds
+    actualLiftRecoveryIntegral +=
+      substep.actualLiftRecoveryPowerKw * stepSeconds
+    actualSuperclipGeneratorIntegral +=
+      substep.actualSuperclipGeneratorPowerKw * stepSeconds
+    requestedSuperclipMechanicalEnergyMJ +=
+      substep.requestedSuperclipMechanicalEnergyMJ
+    recoveredSuperclipMechanicalEnergyMJ +=
+      substep.recoveredSuperclipMechanicalEnergyMJ
+    superclipRechargedAtCuKBusMJ +=
+      substep.superclipRechargedAtCuKBusMJ
     const decelerationMps2 =
       5.1 *
       9.81 *
@@ -828,41 +1435,120 @@ export function advanceEnergyStore(
     remainingSeconds -= stepSeconds
   }
 
+  const requestedRecoveryMechanicalEnergyMJ =
+    state.requestedRecoveryMechanicalEnergyThisLapMJ -
+    initialRequestedRecoveryMJ
+  const recoveredMechanicalEnergyMJ =
+    state.recoveredMechanicalEnergyThisLapMJ - initialRecoveredMechanicalMJ
+  const rechargedAtCuKBusMJ =
+    state.rechargedAtCuKBusThisLapMJ - initialRechargedAtCuKBusMJ
   const storedEnergyMJ =
-    state.actualHarvestedThisLapMJ - initialHarvestedEnergyMJ
+    state.storedEnergyThisLapMJ - initialStoredEnergyThisLapMJ
   const removedEnergyMJ = state.energyRemovedThisLapMJ - initialRemovedEnergyMJ
+  const deployedAtCuKBusMJ =
+    state.deployedAtCuKBusThisLapMJ - initialDeployedAtCuKBusMJ
   const mechanicalDeploymentMJ =
-    state.deployedMechanicalEnergyThisLapMJ -
-    initialMechanicalDeploymentMJ
-  const averageStoredPowerKw = (storedEnergyMJ * 1000) / totalSeconds
-  const parameters = energySystemParametersFor(options.team)
-  const averageMechanicalRecoveryPowerKw = Math.min(
-    requestedRecoveryIntegral / totalSeconds,
-    averageStoredPowerKw / Math.max(0.01, parameters.recoveryEfficiency),
-  )
+    state.deployedMechanicalEnergyThisLapMJ - initialMechanicalDeploymentMJ
+  const batteryLossEnergyMJ = state.batteryLossThisLapMJ - initialBatteryLossMJ
+  const inverterLossEnergyMJ =
+    state.inverterLossThisLapMJ - initialInverterLossMJ
+  const motorLossEnergyMJ = state.motorLossThisLapMJ - initialMotorLossMJ
+  const averageMechanicalRecoveryPowerKw =
+    (recoveredMechanicalEnergyMJ * 1000) / totalSeconds
   const averageDeploymentPowerKw =
     (mechanicalDeploymentMJ * 1000) / totalSeconds
+  const averageDeploymentDcPowerKw =
+    (deployedAtCuKBusMJ * 1000) / totalSeconds
+  const actualSuperclipGeneratorPowerKw =
+    actualSuperclipGeneratorIntegral / totalSeconds
+  const actualBrakeRecoveryPowerKw =
+    actualBrakeRecoveryIntegral / totalSeconds
+  const actualLiftRecoveryPowerKw =
+    actualLiftRecoveryIntegral / totalSeconds
+  const operatingMode = operatingModeFor({
+    actualBrakeRecoveryPowerKw,
+    actualDeploymentDcPowerKw: averageDeploymentDcPowerKw,
+    actualLiftRecoveryPowerKw,
+    actualRecoveryPowerKw: averageMechanicalRecoveryPowerKw,
+    actualSuperclipGeneratorPowerKw,
+    combustionWheelPowerKw: Math.max(
+      0,
+      finite(options.combustionWheelPowerKw ?? 0),
+    ),
+    throttlePercent: options.throttlePercent,
+  })
+
   state = {
     ...state,
-    chargePowerKw: averageStoredPowerKw,
-    dischargePowerKw: (removedEnergyMJ * 1000) / totalSeconds,
-    requestedDeploymentPowerKw:
+    chargeDcPowerKw: (rechargedAtCuKBusMJ * 1000) / totalSeconds,
+    dischargeDcPowerKw: averageDeploymentDcPowerKw,
+    storedChargePowerKw: (storedEnergyMJ * 1000) / totalSeconds,
+    storedDischargePowerKw: (removedEnergyMJ * 1000) / totalSeconds,
+    requestedDeploymentDcPowerKw:
       requestedDeploymentIntegral / totalSeconds,
+    actualDeploymentDcPowerKw: averageDeploymentDcPowerKw,
     actualDeploymentPowerKw: averageDeploymentPowerKw,
     requestedRecoveryPowerKw: requestedRecoveryIntegral / totalSeconds,
-    batteryChargePowerKw: averageStoredPowerKw,
-    batteryDischargePowerKw: (removedEnergyMJ * 1000) / totalSeconds,
     actualRecoveryPowerKw: averageMechanicalRecoveryPowerKw,
     requestedBrakePowerKw: requestedBrakeIntegral / totalSeconds,
     frictionBrakePowerKw: frictionBrakeIntegral / totalSeconds,
     recoveryTorqueNm: recoveryTorqueIntegral / totalSeconds,
     motorMechanicalPowerKw:
       averageDeploymentPowerKw - averageMechanicalRecoveryPowerKw,
+    operatingMode,
+    batteryLossPowerKw: (batteryLossEnergyMJ * 1000) / totalSeconds,
+    inverterLossPowerKw: (inverterLossEnergyMJ * 1000) / totalSeconds,
+    motorLossPowerKw: (motorLossEnergyMJ * 1000) / totalSeconds,
+  }
+
+  const storeBalanceErrorMJ =
+    state.currentEnergyMJ -
+    (initialStoredEnergyMJ + storedEnergyMJ - removedEnergyMJ)
+  const conversionChainErrorMJ =
+    recoveredMechanicalEnergyMJ +
+    removedEnergyMJ -
+    storedEnergyMJ -
+    mechanicalDeploymentMJ -
+    batteryLossEnergyMJ -
+    inverterLossEnergyMJ -
+    motorLossEnergyMJ
+  const audit: EnergyFlowAudit = {
+    deltaSeconds: totalSeconds,
+    initialStoredEnergyMJ,
+    finalStoredEnergyMJ: state.currentEnergyMJ,
+    requestedRecoveryMechanicalEnergyMJ,
+    recoveredMechanicalEnergyMJ,
+    requestedSuperclipMechanicalEnergyMJ,
+    recoveredSuperclipMechanicalEnergyMJ,
+    rechargedAtCuKBusMJ,
+    superclipRechargedAtCuKBusMJ,
+    storedChargeEnergyMJ: storedEnergyMJ,
+    energyRemovedFromStoreMJ: removedEnergyMJ,
+    deployedAtCuKBusMJ,
+    deployedMechanicalEnergyMJ: mechanicalDeploymentMJ,
+    batteryLossEnergyMJ,
+    inverterLossEnergyMJ,
+    motorLossEnergyMJ,
+    storeBalanceErrorMJ,
+    conversionChainErrorMJ,
+  }
+  state = {
+    ...state,
+    lastStepBalanceErrorMJ: Math.max(
+      Math.abs(storeBalanceErrorMJ),
+      Math.abs(conversionChainErrorMJ),
+    ),
   }
 
   return {
     state,
     regenerativeResistancePowerKw: averageMechanicalRecoveryPowerKw,
+    actualRecoverySourcePowerKw: {
+      braking: actualBrakeRecoveryPowerKw,
+      liftCoast: actualLiftRecoveryPowerKw,
+      superclip: actualSuperclipGeneratorPowerKw,
+    },
+    audit,
   }
 }
 
@@ -870,7 +1556,7 @@ export function energyBalanceErrorMJ(state: EnergyStoreState) {
   return (
     state.currentEnergyMJ -
     (state.lapStartEnergyMJ +
-      state.actualHarvestedThisLapMJ -
+      state.storedEnergyThisLapMJ -
       state.energyRemovedThisLapMJ)
   )
 }

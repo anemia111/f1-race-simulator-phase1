@@ -229,7 +229,6 @@ export function RaceInsightsPanel({
           <span>Deployed</span><strong>{car.energyDeployedThisLapMj.toFixed(2)} MJ / lap</strong>
           <span>Super clipping</span><strong className={car.superClippingIntensity >= 0.63 ? 'flag-yellow' : undefined}>{car.superClippingIntensity < 0.04 ? 'OFF' : `${Math.round(car.superClippingIntensity * 100)}% / ${car.superClippingDurationSeconds.toFixed(1)}s`}</strong>
           <span>Clip recovery</span><strong>{Math.round(car.superClippingRegenPowerKw)} kW / {car.superClippingRecoveredThisLapMj.toFixed(2)} MJ</strong>
-          <span>Clip drive power</span><strong>{Math.round(car.superClippingDrivePowerScale * 100)}%</strong>
           <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
           <span>Weakest component</span><strong>{weakestComponentEntry ? `${weakestComponentEntry[0]} ${Math.round(weakestComponentEntry[1].conditionPercent)}%` : '-'}</strong>
           <span>Battle state</span><strong>{car.battlePhase}</strong>

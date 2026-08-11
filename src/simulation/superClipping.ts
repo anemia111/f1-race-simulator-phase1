@@ -1,14 +1,16 @@
 import type {
   BattlePhase,
-  CarSetup,
   Driver,
+  F1EnergyIntent,
   RacePaceMode,
   Team,
 } from '../types'
 import { driverSkillBlend } from './driverAbility'
 import { effectiveMachineRating } from './machinePerformance'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
-import { setupDragAreaMultiplier } from './vehicleDynamics'
+import {
+  FIA_2026_REGULATION_PROFILE,
+  permittedMguKDcPowerKwForSpeed,
+} from './regulations'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -25,45 +27,50 @@ export type SuperClippingLevel =
   | 'strong'
   | 'extreme'
 
-export type SuperClippingPower = {
-  drivePowerScale: number
-  electricalRecoveryPowerKw: number
+/**
+ * Strategy request only. The Energy Store owns every power, SOC, thermal and
+ * recharge-ledger limit, and returns the mechanical power actually absorbed.
+ */
+export type SuperClippingRequest = {
   level: SuperClippingLevel
-  regenerativeResistancePowerKw: number
+  requestedGeneratorMechanicalPowerKw: number
 }
 
-export type SuperClippingResult = SuperClippingPower & {
+export type SuperClippingResult = SuperClippingRequest & {
   demandIntensity: number
   intensity: number
 }
 
-export function superClippingSpeedWindowFor(team: Team, setup?: CarSetup) {
-  const machine = team.machine
-  const setupDrag = setupDragAreaMultiplier(setup)
-  const powerUnitRating = effectiveMachineRating(machine.puOutput)
-  const dragEfficiencyRating = effectiveMachineRating(machine.dragEfficiency)
-  const deploymentRating = effectiveMachineRating(
-    machine.electricalDeploymentEfficiency,
+/**
+ * High-speed opportunity derived from the authoritative C5.2.8 normal DC
+ * curve. It deliberately contains no estimated terminal speed or setup/team
+ * target: the opportunity grows only as permitted propulsion power falls.
+ */
+export function superClippingRegulatoryOpportunityForSpeedKph(speedKph: number) {
+  const maximumDcPowerKw = FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
+
+  if (!Number.isFinite(speedKph)) {
+    return {
+      normalCurveReductionFraction: 0,
+      normalDeploymentDcPowerKw: 0,
+      opportunity: 0,
+    }
+  }
+
+  const normalDeploymentDcPowerKw = permittedMguKDcPowerKwForSpeed({
+    curve: 'normal',
+    speedKph,
+  })
+  const normalCurveReductionFraction = clamp(
+    1 - normalDeploymentDcPowerKw / Math.max(1, maximumDcPowerKw),
+    0,
+    1,
   )
-  const referenceTopSpeedKph = clamp(
-    350 +
-      (powerUnitRating - 0.85) * 58 +
-      (dragEfficiencyRating - 0.85) * 68 +
-      (deploymentRating - 0.85) * 22 -
-      (setupDrag - 1) * 58,
-    342,
-    405,
-  )
-  const onsetKph = clamp(referenceTopSpeedKph - 48, 300, 355)
 
   return {
-    fullEffectKph: clamp(
-      referenceTopSpeedKph - 12,
-      onsetKph + 18,
-      393,
-    ),
-    onsetKph,
-    referenceTopSpeedKph,
+    normalCurveReductionFraction,
+    normalDeploymentDcPowerKw,
+    opportunity: smoothstep(0.08, 0.72, normalCurveReductionFraction),
   }
 }
 
@@ -78,79 +85,22 @@ export function superClippingLevelForIntensity(
 }
 
 /**
- * Converts clipping severity into wheel-power loss and recovery resistance.
- * Neither value contains a target speed: terminal speed emerges in the
- * longitudinal integrator where drag, wind, slope, setup, tow, and PU output
- * are all still active.
+ * Converts scheduling severity into a mechanical generator request. There is
+ * no parallel ICE derate: accepted generator power is the sole propulsive
+ * sacrifice applied by the longitudinal force model.
  */
-export function superClippingPowerForIntensity(options: {
-  batteryPercent: number
-  deltaSeconds: number
-  intensity: number
-  maxRechargePerLapMj: number
-  recoveredThisLapMj: number
-  team: Team
-}): SuperClippingPower {
-  const {
-    batteryPercent,
-    deltaSeconds,
-    maxRechargePerLapMj,
-    recoveredThisLapMj,
-    team,
-  } = options
-  const intensity = clamp(options.intensity, 0, 1)
-  const deploymentEfficiency = clamp(
-    effectiveMachineRating(team.machine.electricalDeploymentEfficiency),
-    0.72,
-    1,
-  )
-  const recoveryEfficiency = clamp(
-    effectiveMachineRating(team.machine.energyRecoveryEfficiency),
-    0.68,
-    1,
-  )
-  const powerUnitRating = effectiveMachineRating(team.machine.puOutput)
-  const systemSeverity =
-    1 +
-    (0.9 - deploymentEfficiency) * 0.35 +
-    (0.88 - powerUnitRating) * 0.12
-  const drivePowerScale = clamp(
-    1 - Math.pow(intensity, 1.08) * 0.335 * systemSeverity,
-    0.61,
-    1,
-  )
-  const requestedResistancePowerKw =
-    Math.pow(intensity, 1.3) *
-    (74 + (1 - recoveryEfficiency) * 65)
-  const requestedElectricalPowerKw =
-    requestedResistancePowerKw * recoveryEfficiency
-  const remainingLapRecoveryMj = Math.max(
-    0,
-    maxRechargePerLapMj - recoveredThisLapMj,
-  )
-  const batteryRoomMj =
-    ((100 - clamp(batteryPercent, 0, 100)) / 100) *
-    FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
-  const acceptanceLimitKw =
-    Math.min(remainingLapRecoveryMj, batteryRoomMj) *
-    1000 /
-    Math.max(0.01, deltaSeconds)
-  const electricalRecoveryPowerKw = clamp(
-    Math.min(
-      requestedElectricalPowerKw,
-      acceptanceLimitKw,
-      FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-    ),
-    0,
-    FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
-  )
+export function superClippingGeneratorRequestForIntensity(
+  intensityValue: number,
+): SuperClippingRequest {
+  const intensity = Number.isFinite(intensityValue)
+    ? clamp(intensityValue, 0, 1)
+    : 0
 
   return {
-    drivePowerScale,
-    electricalRecoveryPowerKw,
     level: superClippingLevelForIntensity(intensity),
-    regenerativeResistancePowerKw:
-      electricalRecoveryPowerKw / recoveryEfficiency,
+    requestedGeneratorMechanicalPowerKw:
+      FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw *
+      Math.pow(intensity, 1.28),
   }
 }
 
@@ -166,44 +116,46 @@ function deterministicStrategyVariation(key: string, lap: number) {
   return ((hash >>> 0) / 0xffffffff - 0.5) * 0.12
 }
 
-export function superClippingDemandFor(options: {
+export type SuperClippingDemandOptions = {
   battlePhase: BattlePhase
   batteryPercent: number
   brakePercent: number
-  deployedThisLapMj: number
+  deployedAtCuKBusThisLapMj: number
   driver: Driver
+  energyIntent: F1EnergyIntent
   fuelLoadKg: number
   gapToAheadSeconds: number
-  harvestedThisLapMj: number
   lap: number
   lowGripConditions: boolean
-  maxRechargePerLapMj: number
   phaseActive: boolean
   racePaceMode: RacePaceMode
+  rechargeRemainingAtCuKBusMj: number
+  rechargedAtCuKBusThisLapMj: number
   sessionType: 'race-distance' | 'limited-time'
-  setup?: CarSetup
   speedKph: number
   straightLengthAheadMeters: number
   straightness: number
   team: Team
   throttlePercent: number
-}) {
+}
+
+export function superClippingDemandFor(options: SuperClippingDemandOptions) {
   const {
     battlePhase,
     batteryPercent,
     brakePercent,
-    deployedThisLapMj,
+    deployedAtCuKBusThisLapMj,
     driver,
+    energyIntent,
     fuelLoadKg,
     gapToAheadSeconds,
-    harvestedThisLapMj,
     lap,
     lowGripConditions,
-    maxRechargePerLapMj,
     phaseActive,
     racePaceMode,
+    rechargeRemainingAtCuKBusMj,
+    rechargedAtCuKBusThisLapMj,
     sessionType,
-    setup,
     speedKph,
     straightLengthAheadMeters,
     straightness,
@@ -214,11 +166,12 @@ export function superClippingDemandFor(options: {
   if (
     phaseActive ||
     lowGripConditions ||
-    throttlePercent < 90 ||
+    throttlePercent < 95 ||
     brakePercent > 3 ||
     straightness < 0.78 ||
     straightLengthAheadMeters < 150 ||
-    harvestedThisLapMj >= maxRechargePerLapMj - 0.01 ||
+    Number.isNaN(rechargeRemainingAtCuKBusMj) ||
+    rechargeRemainingAtCuKBusMj <= 0.01 ||
     batteryPercent >= 98
   ) {
     return 0
@@ -229,20 +182,35 @@ export function superClippingDemandFor(options: {
     raceAwareness: 0.16,
     adaptability: 0.12,
   })
-  const reserveByMode: Record<RacePaceMode, number> = {
-    defend: 41,
-    push: 32,
-    save: 52,
-    standard: 43,
+  const isAttack =
+    battlePhase === 'attacking' || battlePhase === 'side-by-side'
+  const isDefend = battlePhase === 'defending'
+  const intentReservePercent =
+    (isAttack
+      ? energyIntent.attackEnergyReserve
+      : isDefend
+        ? energyIntent.defendEnergyReserve
+        : (energyIntent.attackEnergyReserve +
+            energyIntent.defendEnergyReserve) /
+          2) * 100
+  const modeReserveAdjustment: Record<RacePaceMode, number> = {
+    defend: -4,
+    push: -7,
+    save: 8,
+    standard: 0,
   }
+  const sessionReserveAdjustment = sessionType === 'limited-time' ? -5 : 0
+  const reserveTarget = clamp(
+    intentReservePercent +
+      modeReserveAdjustment[racePaceMode] +
+      sessionReserveAdjustment,
+    6,
+    58,
+  )
   const isBattle =
     (gapToAheadSeconds > 0 && gapToAheadSeconds < 1.4) ||
-    battlePhase === 'attacking' ||
-    battlePhase === 'defending' ||
-    battlePhase === 'side-by-side'
-  const sessionReserve = sessionType === 'limited-time' ? -6 : 0
-  const battleReserve = isBattle ? -7 : 0
-  const reserveTarget = reserveByMode[racePaceMode] + sessionReserve + battleReserve
+    isAttack ||
+    isDefend
   const batteryPressure = clamp(
     (reserveTarget - batteryPercent) / 31,
     0,
@@ -250,7 +218,7 @@ export function superClippingDemandFor(options: {
   )
   const netDeploymentMj = Math.max(
     0,
-    deployedThisLapMj - harvestedThisLapMj * 0.82,
+    deployedAtCuKBusThisLapMj - rechargedAtCuKBusThisLapMj,
   )
 
   if (batteryPercent >= reserveTarget + 18 && netDeploymentMj < 1) {
@@ -258,23 +226,16 @@ export function superClippingDemandFor(options: {
   }
 
   const energyPressure = clamp(netDeploymentMj / 3.4, 0, 1)
-  const recoveryHeadroom = clamp(
-    (maxRechargePerLapMj - harvestedThisLapMj) /
-      Math.max(0.1, maxRechargePerLapMj),
-    0,
-    1,
-  )
+  const recoveryHeadroom = Number.isFinite(rechargeRemainingAtCuKBusMj)
+    ? clamp(rechargeRemainingAtCuKBusMj / 2.2, 0, 1)
+    : 1
   const straightOpportunity = clamp(
     (straightLengthAheadMeters - 120) / 650,
     0.28,
     1,
   )
-  const speedWindow = superClippingSpeedWindowFor(team, setup)
-  const highSpeedOpportunity = smoothstep(
-    speedWindow.onsetKph,
-    speedWindow.fullEffectKph,
-    speedKph,
-  )
+  const highSpeedOpportunity =
+    superClippingRegulatoryOpportunityForSpeedKph(speedKph).opportunity
   const efficiencyPressure =
     (1 -
       effectiveMachineRating(team.machine.electricalDeploymentEfficiency)) *
@@ -285,6 +246,11 @@ export function superClippingDemandFor(options: {
   const severeScarcity = batteryPercent < 14 ? (14 - batteryPercent) * 0.025 : 0
   const strategyVariation = deterministicStrategyVariation(driver.id, lap)
   const battleProtection = isBattle && batteryPercent >= 14 ? 0.68 : 1
+  const intentAcceptance = clamp(
+    0.3 + energyIntent.superclipAcceptance * 1.05,
+    0.3,
+    1.2,
+  )
   const demand =
     (batteryPressure * 0.76 +
       energyPressure * 0.34 +
@@ -296,17 +262,18 @@ export function superClippingDemandFor(options: {
     recoveryHeadroom *
     straightOpportunity *
     highSpeedOpportunity *
-    battleProtection
+    battleProtection *
+    intentAcceptance
 
   return clamp(demand, 0, 1)
 }
 
-export function advanceSuperClipping(options: Parameters<
-  typeof superClippingDemandFor
->[0] & {
-  currentIntensity: number
-  deltaSeconds: number
-}): SuperClippingResult {
+export function advanceSuperClipping(
+  options: SuperClippingDemandOptions & {
+    currentIntensity: number
+    deltaSeconds: number
+  },
+): SuperClippingResult {
   const demandIntensity = superClippingDemandFor(options)
   const management = driverSkillBlend(options.driver, {
     ersManagement: 0.78,
@@ -322,17 +289,10 @@ export function advanceSuperClipping(options: Parameters<
   const intensity = rising
     ? Math.min(demandIntensity, currentIntensity + step)
     : Math.max(demandIntensity, currentIntensity - step)
-  const power = superClippingPowerForIntensity({
-    batteryPercent: options.batteryPercent,
-    deltaSeconds: options.deltaSeconds,
-    intensity,
-    maxRechargePerLapMj: options.maxRechargePerLapMj,
-    recoveredThisLapMj: options.harvestedThisLapMj,
-    team: options.team,
-  })
+  const request = superClippingGeneratorRequestForIntensity(intensity)
 
   return {
-    ...power,
+    ...request,
     demandIntensity,
     intensity,
   }

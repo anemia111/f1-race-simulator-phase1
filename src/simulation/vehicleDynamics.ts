@@ -101,7 +101,6 @@ export type LongitudinalStepInput = {
   /** Wake loss applied to generated downforce, never directly to road speed. */
   dirtyAirDownforceMultiplier?: number
   dynamics: LongitudinalDynamicsInput
-  drivePowerScale?: number
   ersPowerKw: number
   /** Combustion boost such as Super Formula OTS. */
   extraCombustionPowerKw?: number
@@ -132,13 +131,19 @@ export type LongitudinalStepResult = {
   dragForceN: number
   driveForceN: number
   gear: number
+  /** Mechanical generator power actually resisted at the tyre contact patch. */
+  generatorMechanicalPowerKw: number
   gradeForceN: number
+  /** Wheel drive power after subtracting generator resistance. */
+  netPowerUnitWheelPowerKw: number
   regenerativeResistanceForceN: number
   rollingResistanceForceN: number
   rpm: number
   speedKph: number
   tractionLimitN: number
   turboSpoolFraction: number
+  /** Positive ICE + MGU-K wheel power before generator resistance. */
+  wheelDrivePowerKw: number
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
@@ -863,6 +868,53 @@ export function combustionPowerKwFor(
 }
 
 /**
+ * Evaluates positive ICE power at the driven wheels using the same gear,
+ * torque curve, turbo, clutch and transmission model as the live integrator.
+ * This classifies full-throttle super-clipping before the following tick; it
+ * does not alter an Energy Store or regulatory limit.
+ */
+export function combustionWheelPowerKwAt(options: {
+  categoryPhysics?: CategoryPhysicsProfile
+  clutchEngagementFraction?: number
+  currentSpeedKph: number
+  extraCombustionPowerKw?: number
+  team: Team
+  throttlePercent: number
+  transmissionEfficiency?: number
+  turboSpoolFraction?: number
+}) {
+  const physics = options.categoryPhysics ?? categoryPhysicsFor(undefined)
+  const speedMps = Math.max(0, finiteOr(options.currentSpeedKph, 0)) / 3.6
+  const transmissionEfficiency = clamp(
+    finiteOr(
+      options.transmissionEfficiency ?? physics.drivetrainEfficiency,
+      physics.drivetrainEfficiency,
+    ),
+    0,
+    1,
+  )
+  const selection = selectGear({
+    clutchEngagementFraction: options.clutchEngagementFraction,
+    combustionPowerKw:
+      combustionPowerKwFor(options.team, physics) +
+      Math.max(0, finiteOr(options.extraCombustionPowerKw ?? 0, 0)),
+    deploymentPowerKw: 0,
+    physics,
+    speedMps,
+    transmissionEfficiency,
+    turboSpoolFraction: options.turboSpoolFraction,
+  })
+
+  return Math.max(
+    0,
+    (selection.driveForceN *
+      speedMps *
+      clamp(finiteOr(options.throttlePercent, 0) / 100, 0, 1)) /
+      1000,
+  )
+}
+
+/**
  * Team and setup variation expressed as generated aerodynamic load. Dirty air
  * reduces this quantity; it never multiplies speed or lap progress directly.
  */
@@ -1129,11 +1181,6 @@ export function integrateVehicleLongitudinalStep(
       clamp(finiteOr(input.fuelLoadKg, 0), 0, 120) +
       clamp(finiteOr(input.additionalMassKg ?? 0, 0), 0, 250),
   )
-  const drivePowerScale = clamp(
-    finiteOr(input.drivePowerScale ?? 1, 1),
-    0,
-    1,
-  )
   const extraCombustionPowerKw = Math.max(
     0,
     finiteOr(
@@ -1149,7 +1196,7 @@ export function integrateVehicleLongitudinalStep(
           combustionPowerKwFor(input.team, categoryPhysics),
         categoryPhysics.combustionPowerKw,
       ) + extraCombustionPowerKw,
-    ) * drivePowerScale
+    )
   // Energy-system output is already mechanical MGU-K power. It passes through
   // the driveline once below and must not receive a second electrical-efficiency
   // multiplier here.
@@ -1435,6 +1482,14 @@ export function integrateVehicleLongitudinalStep(
   lastTractionLimitN = finalForces.tractionLimitN
 
   const speedKph = Math.max(0, finiteOr(nextMps * 3.6, 0))
+  const wheelDrivePowerKw = Math.max(
+    0,
+    (lastDriveForceN * nextMps) / 1000,
+  )
+  const generatorMechanicalPowerKw = Math.max(
+    0,
+    (lastRegenerativeResistanceForceN * nextMps) / 1000,
+  )
 
   return {
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
@@ -1447,7 +1502,10 @@ export function integrateVehicleLongitudinalStep(
     dragForceN: Math.max(0, finiteOr(lastDragForceN, 0)),
     driveForceN: Math.max(0, finiteOr(lastDriveForceN, 0)),
     gear: lastSelection.gear,
+    generatorMechanicalPowerKw,
     gradeForceN: finiteOr(gradeForceN, 0),
+    netPowerUnitWheelPowerKw:
+      wheelDrivePowerKw - generatorMechanicalPowerKw,
     regenerativeResistanceForceN: Math.max(
       0,
       finiteOr(lastRegenerativeResistanceForceN, 0),
@@ -1460,6 +1518,7 @@ export function integrateVehicleLongitudinalStep(
     speedKph,
     tractionLimitN: Math.max(0, finiteOr(lastTractionLimitN, 0)),
     turboSpoolFraction: clamp(finiteOr(turboSpoolFraction, 0), 0, 1),
+    wheelDrivePowerKw,
   }
 }
 

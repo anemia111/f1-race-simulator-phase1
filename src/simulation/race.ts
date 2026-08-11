@@ -37,6 +37,7 @@ import {
   advanceEnergyStore,
   createInitialEnergyStore,
   INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
+  rebaseEnergyStoreAtLapCrossing,
   startNextEnergyLap,
 } from './energySystem'
 import {
@@ -151,8 +152,8 @@ import {
 import {
   compliesWithGrandPrixTireRule,
   FIA_2026_REGULATION_PROFILE,
-  maxRechargePerLapMjFor,
   nextLowGripCondition,
+  resolveF1RechargeRule,
   sessionDistanceLapsFor,
   shouldDeclareRainHazard,
 } from './regulations'
@@ -404,7 +405,8 @@ export function reformFieldForStandingRestart(
 /** Visual-only pit exit blend window after a completed stop. */
 const PIT_EXIT_VISUAL_SECONDS = 4
 const GRID_SETTLE_SECONDS = 8
-const OVERTAKE_EXTRA_ENERGY_MJ = 0.5
+const OVERTAKE_EXTRA_ENERGY_MJ =
+  FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj
 
 function advanceLiveActiveAeroState(options: {
   car: CarSnapshot
@@ -482,6 +484,60 @@ export function redRestartProcedureFor(
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+
+export function finalTimingLineSplit(options: {
+  nextTotalDistance: number
+  previousTotalDistance: number
+  processedLap: number
+}) {
+  const frameDistance = Math.max(
+    0,
+    options.nextTotalDistance - options.previousTotalDistance,
+  )
+  const firstUnprocessedLap =
+    Math.max(
+      Math.floor(options.previousTotalDistance),
+      Math.floor(options.processedLap),
+    ) + 1
+  const finalCrossedLap = Math.floor(options.nextTotalDistance)
+
+  if (frameDistance <= 0 || finalCrossedLap < firstUnprocessedLap) {
+    return null
+  }
+
+  const crossingFraction = clamp01(
+    (finalCrossedLap - options.previousTotalDistance) / frameDistance,
+  )
+
+  return {
+    crossedLapCount: finalCrossedLap - firstUnprocessedLap + 1,
+    finalCrossedLap,
+    crossingFraction,
+    postLineFraction: 1 - crossingFraction,
+  }
+}
+
+export function postLineEnergyUsageForFinalCrossing(options: {
+  deploymentAcceptanceScale: number
+  frameOvertakeEnergyUsedMJ: number
+  frameSuperclipRecoveredMJ: number
+  postLineFraction: number
+  rechargeAcceptanceScale: number
+}) {
+  const postLineFraction = clamp01(options.postLineFraction)
+
+  return {
+    overtakeEnergyUsedMJ:
+      Math.max(0, options.frameOvertakeEnergyUsedMJ) *
+      postLineFraction *
+      clamp01(options.deploymentAcceptanceScale),
+    superclipRecoveredMJ:
+      Math.max(0, options.frameSuperclipRecoveredMJ) *
+      postLineFraction *
+      clamp01(options.rechargeAcceptanceScale),
+  }
+}
+
 const progressWithin = (progress: number, start: number, end: number) =>
   start <= end
     ? progress >= start && progress <= end
@@ -1727,6 +1783,67 @@ function initialOvertakeEnableDistance(config: RaceConfig, leaderDistance: numbe
   return Math.floor(leaderDistance) + completedLapsRequired + detectionProgress
 }
 
+function rechargeRuleForLapStart(
+  config: RaceConfig,
+  stage: WeekendStage,
+  options: {
+    behindSafetyCar?: boolean
+    lowGripConditions?: boolean
+    overtakeAtLapStart?: boolean
+    timedRunPhase?: CarSnapshot['timedRunPhase']
+  } = {},
+) {
+  return resolveF1RechargeRule({
+    behindSafetyCar: options.behindSafetyCar,
+    eventId: config.eventId ?? undefined,
+    eventInput: config.fiaPuEventInput,
+    lowGripConditions: options.lowGripConditions,
+    overtakeAtLapStart: options.overtakeAtLapStart,
+    stage,
+    timedRunPhase: options.timedRunPhase,
+    trackId: config.track.id,
+  })
+}
+
+/**
+ * Keep every display and control latch derived from the one authoritative
+ * Energy Store ledger when a non-telemetry route starts a fresh energy lap.
+ *
+ * Formation/grid transitions and red-flag re-formations do not pass through
+ * the normal force-step Line handler, so they must not leave a new distance
+ * interval paired with the preceding lap's recharge budget or Overtake debit.
+ */
+function freshEnergyLapFields(options: {
+  car: CarSnapshot
+  energyStore: CarSnapshot['energyStore']
+  behindSafetyCar: boolean
+  lowGripConditions: boolean
+  processedLap?: number
+}) {
+  const { car, energyStore } = options
+
+  return {
+    energyStore,
+    energyHarvestedThisLapMj: energyStore.rechargedAtCuKBusThisLapMJ,
+    energyDeployedThisLapMj: energyStore.deployedAtCuKBusThisLapMJ,
+    ersBatteryPercent: Math.round(energyStore.stateOfCharge * 100),
+    ersPowerKw: energyStore.actualDeploymentPowerKw,
+    overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
+    overtakeRechargeAllowanceActiveThisLap: false,
+    energyLapStartedInLowGripConditions: options.lowGripConditions,
+    energyLapStartedBehindSafetyCar: options.behindSafetyCar,
+    superClippingDurationSeconds: 0,
+    superClippingIntensity: 0,
+    superClippingRecoveredThisLapMj: 0,
+    superClippingRegenPowerKw: 0,
+    superClippingStartedAtProgress: null,
+    superClippingStartedAtSeconds: null,
+    ...(options.processedLap === undefined
+      ? {}
+      : { processedLap: Math.max(car.processedLap, options.processedLap) }),
+  }
+}
+
 const weekendOrderFor = (config: RaceConfig): WeekendStage[] =>
   config.track.isSprintWeekend
     ? ['fp1', 'sprintQualifying', 'sprint', 'qualifying', 'race']
@@ -1822,6 +1939,16 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
   const weatherForecast = weatherForecastFor(config.seed, config.track, 0)
   const weekendOrder = weekendOrderFor(config)
   const isTimedSession = isTimedLapSession(weekendStage)
+  const initialRechargeRule = rechargeRuleForLapStart(
+    config,
+    weekendStage,
+    {
+      behindSafetyCar: formationBehindSafetyCar,
+      lowGripConditions,
+      overtakeAtLapStart: false,
+      timedRunPhase: isTimedSession ? 'garage' : null,
+    },
+  )
   const initialTimedSegment = config.timedSessionPlan?.segments[0] ?? null
   const startProcedure = isRaceDistance ? 'formation' : 'racing'
   const cars = config.drivers.map((driver, gridIndex) => {
@@ -1980,6 +2107,9 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       overtakeStatus: 'disabled',
       overtakeEligibility: null,
       overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
+      overtakeRechargeAllowanceActiveThisLap: false,
+      energyLapStartedInLowGripConditions: lowGripConditions,
+      energyLapStartedBehindSafetyCar: formationBehindSafetyCar,
       otsRemainingSeconds: config.overtakeSystem === 'ots' ? 200 : undefined,
       otsCooldownUntilSeconds: config.overtakeSystem === 'ots' ? 0 : undefined,
       energyHarvestedThisLapMj: 0,
@@ -1989,10 +2119,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       energyStore: createInitialEnergyStore(
         team,
         INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
+        initialRechargeRule,
       ),
       ersBatteryPercent: INITIAL_ENERGY_STORE_STATE_OF_CHARGE * 100,
       superClippingIntensity: 0,
-      superClippingDrivePowerScale: 1,
       superClippingRegenPowerKw: 0,
       superClippingRecoveredThisLapMj: 0,
       superClippingStartedAtSeconds: null,
@@ -2574,6 +2704,14 @@ export function advanceRace(
 
     const lightsOut = nextProcedure === 'racing' && snapshot.startProcedure === 'lights'
     const raceStartTriggered = nextProcedure === 'racing'
+    const raceStartRechargeRule = raceStartTriggered
+      ? rechargeRuleForLapStart(config, weekendStage, {
+          behindSafetyCar: snapshot.formationBehindSafetyCar,
+          lowGripConditions,
+          overtakeAtLapStart: false,
+          timedRunPhase: null,
+        })
+      : null
     const cars = snapshot.cars.map((car, index) => {
       const driver = drivers.get(car.driverId)
       const startAbility = driver
@@ -2590,6 +2728,19 @@ export function advanceRace(
           })
         : startAbility
       const team = teams.get(car.teamId)
+      const raceStartEnergyFields =
+        raceStartRechargeRule !== null && team !== undefined
+          ? freshEnergyLapFields({
+              car,
+              energyStore: createInitialEnergyStore(
+                team,
+                car.energyStore.stateOfCharge,
+                raceStartRechargeRule,
+              ),
+              behindSafetyCar: snapshot.formationBehindSafetyCar,
+              lowGripConditions,
+            })
+          : {}
       const machineLaunch = team
         ? (effectiveMachineRating(team.machine.traction) * 0.52 +
             effectiveMachineRating(team.machine.mechanicalGrip) * 0.3 +
@@ -2708,12 +2859,12 @@ export function advanceRace(
           energyHarvestedThisLapMj: 0,
           energyDeployedThisLapMj: 0,
           superClippingIntensity: 0,
-          superClippingDrivePowerScale: 1,
           superClippingRegenPowerKw: 0,
           superClippingRecoveredThisLapMj: 0,
           superClippingStartedAtSeconds: null,
           superClippingStartedAtProgress: null,
           superClippingDurationSeconds: 0,
+          ...raceStartEnergyFields,
           lapStartedAtSeconds: null,
           passedDoubleYellowThisLap: false,
           currentLapSectorTimes: emptyCurrentLapSectorTimes(),
@@ -2815,12 +2966,12 @@ export function advanceRace(
         energyHarvestedThisLapMj: 0,
         energyDeployedThisLapMj: 0,
         superClippingIntensity: 0,
-        superClippingDrivePowerScale: 1,
         superClippingRegenPowerKw: 0,
         superClippingRecoveredThisLapMj: 0,
         superClippingStartedAtSeconds: null,
         superClippingStartedAtProgress: null,
         superClippingDurationSeconds: 0,
+        ...raceStartEnergyFields,
         penaltySeconds:
           car.penaltySeconds + (jumpDecision?.seconds ?? 0),
         penalties: jumpStart
@@ -3680,7 +3831,7 @@ export function advanceRace(
         tireWearPercent: 0,
       }
     })
-    frameCars =
+    const reformedCars =
       restartProcedure === 'standing'
         ? reformFieldForStandingRestart(
             strategicallyPreparedCars,
@@ -3691,6 +3842,47 @@ export function advanceRace(
             strategicallyPreparedCars,
             SAFETY_CAR_QUEUE_MIN_GAP_SECONDS / baseLapTime,
           )
+    const preReformCarsByDriver = new Map(
+      strategicallyPreparedCars.map((car) => [car.driverId, car]),
+    )
+    const restartBehindSafetyCar = restartProcedure === 'rolling'
+    const restartRechargeRule = rechargeRuleForLapStart(config, weekendStage, {
+      behindSafetyCar: restartBehindSafetyCar,
+      lowGripConditions,
+      overtakeAtLapStart: false,
+      timedRunPhase: null,
+    })
+    frameCars = reformedCars.map((car) => {
+      const beforeReform = preReformCarsByDriver.get(car.driverId)
+      const crossedTimingLineDuringReform =
+        beforeReform !== undefined &&
+        car.status === 'running' &&
+        Math.floor(car.totalDistance) > Math.floor(beforeReform.totalDistance)
+
+      if (!crossedTimingLineDuringReform) {
+        return car
+      }
+
+      const team = teams.get(car.teamId)
+
+      if (!team) {
+        return car
+      }
+
+      // Re-forming the queue is a route change rather than a telemetry step.
+      // If that route carries a car through the Line, establish the same fresh
+      // ledger/latches that the normal Line handler would have established.
+      return {
+        ...car,
+        ...freshEnergyLapFields({
+          car,
+          energyStore: startNextEnergyLap(car.energyStore, restartRechargeRule),
+          behindSafetyCar: restartBehindSafetyCar,
+          lowGripConditions,
+          processedLap: Math.floor(car.totalDistance),
+        }),
+      }
+    })
     newEvents.push(
       makeEvent(
         `red-restart-${Math.floor(elapsedSeconds)}`,
@@ -4176,7 +4368,7 @@ export function advanceRace(
           ambientTemperatureC: airTemperatureC,
           brakePercent,
           deltaSeconds,
-          deploymentPowerLimitKw: 0,
+          deploymentDcPowerLimitKw: 0,
           deploymentRequest: 0,
           driverErsManagement: driverPerformanceAbility(
             driver,
@@ -4184,10 +4376,7 @@ export function advanceRace(
           ),
           driverWetSkill: driverPerformanceAbility(driver, 'wetSkill'),
           gripMultiplier: trackGrip,
-          maxRechargePerLapMj:
-            categoryPhysics.hybridDeploymentPowerLimitKw > 0
-              ? FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
-              : 0,
+          rechargeRule: car.energyStore.rechargeRule,
           speedKph,
           state: car.energyStore,
           surfaceWaterMm:
@@ -4205,8 +4394,8 @@ export function advanceRace(
         return {
           energyStore,
           energyHarvestedThisLapMj:
-            energyStore.actualHarvestedThisLapMJ,
-          energyDeployedThisLapMj: energyStore.energyRemovedThisLapMJ,
+            energyStore.rechargedAtCuKBusThisLapMJ,
+          energyDeployedThisLapMj: energyStore.deployedAtCuKBusThisLapMJ,
           ersBatteryPercent: Math.round(energyStore.stateOfCharge * 100),
           ersPowerKw: energyStore.actualDeploymentPowerKw,
         }
@@ -4291,6 +4480,8 @@ export function advanceRace(
             ? sameLapExitDistance
             : sameLapExitDistance + 1
         const lap = Math.floor(totalDistance)
+        const crossedTimingLineOnRelease = lap > currentLap
+        const startsNewEnergyLap = isTimedSession || crossedTimingLineOnRelease
         const pitEnergy = pitEnergyFields(80, 18, 0)
         const preparedStateOfCharge =
           practicePlan?.energyIntent === 'qualifying'
@@ -4300,20 +4491,72 @@ export function advanceRace(
               : practicePlan
                 ? 0.78
                 : null
-        const preparedEnergyStore =
-          preparedStateOfCharge === null
-            ? pitEnergy.energyStore
-            : createInitialEnergyStore(team, preparedStateOfCharge)
+        const pitReleaseBehindSafetyCar = phase?.flag === 'sc'
+        const pitReleaseRechargeRule = startsNewEnergyLap
+          ? rechargeRuleForLapStart(config, weekendStage, {
+              behindSafetyCar: pitReleaseBehindSafetyCar,
+              lowGripConditions,
+              overtakeAtLapStart: false,
+              timedRunPhase: isTimedSession ? 'out-lap' : car.timedRunPhase,
+            })
+          : car.energyStore.rechargeRule
+        const preparedEnergyStore = isTimedSession
+          ? createInitialEnergyStore(
+              team,
+              preparedStateOfCharge ?? pitEnergy.energyStore.stateOfCharge,
+              pitReleaseRechargeRule,
+            )
+          : crossedTimingLineOnRelease
+            ? startNextEnergyLap(
+                pitEnergy.energyStore,
+                pitReleaseRechargeRule,
+              )
+            : pitEnergy.energyStore
 
         return {
           ...car,
           ...pitEnergy,
           energyStore: preparedEnergyStore,
-          energyHarvestedThisLapMj: 0,
-          energyDeployedThisLapMj: 0,
+          energyHarvestedThisLapMj:
+            preparedEnergyStore.rechargedAtCuKBusThisLapMJ,
+          energyDeployedThisLapMj:
+            preparedEnergyStore.deployedAtCuKBusThisLapMJ,
           ersBatteryPercent: Math.round(
             preparedEnergyStore.stateOfCharge * 100,
           ),
+          overtakeEnergyRemainingMj: startsNewEnergyLap
+            ? OVERTAKE_EXTRA_ENERGY_MJ
+            : car.overtakeEnergyRemainingMj,
+          overtakeRechargeAllowanceActiveThisLap: startsNewEnergyLap
+            ? false
+            : car.overtakeRechargeAllowanceActiveThisLap,
+          energyLapStartedInLowGripConditions: startsNewEnergyLap
+            ? lowGripConditions
+            : car.energyLapStartedInLowGripConditions,
+          energyLapStartedBehindSafetyCar: startsNewEnergyLap
+            ? pitReleaseBehindSafetyCar
+            : car.energyLapStartedBehindSafetyCar,
+          processedLap: crossedTimingLineOnRelease
+            ? Math.max(car.processedLap, lap)
+            : car.processedLap,
+          superClippingDurationSeconds: startsNewEnergyLap
+            ? 0
+            : car.superClippingDurationSeconds,
+          superClippingIntensity: startsNewEnergyLap
+            ? 0
+            : car.superClippingIntensity,
+          superClippingRecoveredThisLapMj: startsNewEnergyLap
+            ? 0
+            : car.superClippingRecoveredThisLapMj,
+          superClippingRegenPowerKw: startsNewEnergyLap
+            ? 0
+            : car.superClippingRegenPowerKw,
+          superClippingStartedAtProgress: startsNewEnergyLap
+            ? null
+            : car.superClippingStartedAtProgress,
+          superClippingStartedAtSeconds: startsNewEnergyLap
+            ? null
+            : car.superClippingStartedAtSeconds,
           status: 'running' as const,
           totalDistance,
           lap,
@@ -4701,12 +4944,6 @@ export function advanceRace(
       snapshot.raceStartedAtSeconds !== null &&
       elapsedSeconds - snapshot.raceStartedAtSeconds < 4.5 &&
       (car.progress >= 0.88 || car.progress <= 0.1)
-    const maxRechargePerLapMj = maxRechargePerLapMjFor({
-      behindSafetyCar: localControlPhase?.flag === 'sc',
-      eventLimitMj: config.fiaEventRechargeLimitMj,
-      lowGripConditions,
-      stage: weekendStage,
-    })
     const blueFlagApproachingCar =
       isRaceDistance &&
       !localControlPhase &&
@@ -4752,7 +4989,6 @@ export function advanceRace(
       lowGripConditions,
       isFinalLap:
         isRaceDistance && Math.floor(car.totalDistance) >= raceLaps - 1,
-      maxRechargePerLapMj,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       overtakeSystem: config.overtakeSystem,
       operationalVehicleMass,
@@ -4791,41 +5027,39 @@ export function advanceRace(
         activeAeroState: cornerSafeAeroState,
         brakePercent: 0,
         energyStore: {
-          ...displayTelemetry.energyStore,
-          currentEnergyMJ: stationaryEnergyStore.currentEnergyMJ,
-          stateOfCharge: stationaryEnergyStore.stateOfCharge,
-          actualHarvestedThisLapMJ:
-            stationaryEnergyStore.actualHarvestedThisLapMJ,
-          deployedMechanicalEnergyThisLapMJ:
-            stationaryEnergyStore.deployedMechanicalEnergyThisLapMJ,
-          energyRemovedThisLapMJ:
-            stationaryEnergyStore.energyRemovedThisLapMJ,
-          conversionLossThisLapMJ:
-            stationaryEnergyStore.conversionLossThisLapMJ,
-          energyBalanceErrorMJ: stationaryEnergyStore.energyBalanceErrorMJ,
+          ...stationaryEnergyStore,
+          chargeDcPowerKw: 0,
+          dischargeDcPowerKw: 0,
+          storedChargePowerKw: 0,
+          storedDischargePowerKw: 0,
+          requestedDeploymentDcPowerKw: 0,
+          actualDeploymentDcPowerKw: 0,
           actualDeploymentPowerKw: 0,
           actualRecoveryPowerKw: 0,
-          batteryChargePowerKw: 0,
-          batteryDischargePowerKw: 0,
-          chargePowerKw: 0,
-          dischargePowerKw: 0,
           frictionBrakePowerKw: 0,
           motorMechanicalPowerKw: 0,
+          batteryLossPowerKw: 0,
+          deploymentRequest: 0,
+          inverterLossPowerKw: 0,
+          motorLossPowerKw: 0,
+          operatingMode: 'inactive',
           recoveryTorqueNm: 0,
           requestedBrakePowerKw: 0,
-          requestedDeploymentPowerKw: 0,
           requestedRecoveryPowerKw: 0,
         },
-        energyDeployedThisLapMj: paceManagedCar.energyDeployedThisLapMj,
-        energyHarvestedThisLapMj: paceManagedCar.energyHarvestedThisLapMj,
-        ersBatteryPercent: paceManagedCar.ersBatteryPercent,
+        energyDeployedThisLapMj:
+          stationaryEnergyStore.deployedAtCuKBusThisLapMJ,
+        energyHarvestedThisLapMj:
+          stationaryEnergyStore.rechargedAtCuKBusThisLapMJ,
+        ersBatteryPercent: Math.round(
+          stationaryEnergyStore.stateOfCharge * 100,
+        ),
         ersMode: 'harvest',
         ersPowerKw: 0,
         gear: 0,
         overtakeStatus: 'disabled',
         rpm: 0,
         speedKph: 0,
-        superClippingDrivePowerScale: 1,
         superClippingDurationSeconds: 0,
         superClippingIntensity: 0,
         superClippingRecoveredThisLapMj:
@@ -5136,15 +5370,12 @@ export function advanceRace(
     // Queue, pit and incident constraints can shorten the distance after the
     // force step. Reconcile the displayed driveline at that actual road speed
     // with the same PU model, without advancing turbo or clutch state twice.
-    const reconciledDrivePowerScale =
-      displayTelemetry.superClippingDrivePowerScale
     const reconciledCombustionPowerKw =
-      (combustionPowerKwFor(team, categoryPhysics) +
+      combustionPowerKwFor(team, categoryPhysics) +
         (config.overtakeSystem === 'ots' &&
         displayTelemetry.overtakeStatus === 'active'
           ? categoryPhysics.overtakeBoostPowerKw
-          : 0)) *
-      reconciledDrivePowerScale
+          : 0)
     const powerUnitExplicitlyStopped =
       localControlPhase?.flag === 'red' || car.pitPhase === 'box'
     const actualTravelPowerUnit =
@@ -5661,18 +5892,38 @@ export function advanceRace(
     // processed-lap marker also prevents a deterministic incident from being
     // rolled more than once after an unusual session-state transition.
     const startLap = Math.max(Math.floor(car.totalDistance), car.processedLap)
+    const finalLineSplit = finalTimingLineSplit({
+      nextTotalDistance: next.totalDistance,
+      previousTotalDistance: car.totalDistance,
+      processedLap: car.processedLap,
+    })
+    const frameIntegratedEnergyStore = next.energyStore
+    const frameIntegratedSuperclipRecoveredMJ =
+      next.superClippingRecoveredThisLapMj
+    const frameIntegratedSuperclipPowerKw = next.superClippingRegenPowerKw
+    const frameOvertakeEnergyUsedMJ = Math.max(
+      0,
+      car.overtakeEnergyRemainingMj - next.overtakeEnergyRemainingMj,
+    )
 
     // --- Lap-crossing decisions ----------------------------------------------
     for (let lap = startLap + 1; lap <= newLap && next.status === 'running'; lap += 1) {
-      next = {
-        ...next,
-        processedLap: lap,
-        overtakeEnergyRemainingMj: OVERTAKE_EXTRA_ENERGY_MJ,
-        energyStore: startNextEnergyLap(next.energyStore),
-        energyHarvestedThisLapMj: 0,
-        energyDeployedThisLapMj: 0,
-        superClippingRecoveredThisLapMj: 0,
-      }
+      const overtakeRechargeAllowanceActiveThisLap =
+        config.overtakeSystem !== 'ots' && next.overtakeStatus === 'active'
+      const nextLapTimedRunPhase =
+        isTimedSession && next.timedRunPhase === 'out-lap'
+          ? 'attack-lap'
+          : next.timedRunPhase
+      const nextLapRechargeRule = rechargeRuleForLapStart(
+        config,
+        weekendStage,
+        {
+          behindSafetyCar: localControlPhase?.flag === 'sc',
+          lowGripConditions,
+          overtakeAtLapStart: overtakeRechargeAllowanceActiveThisLap,
+          timedRunPhase: nextLapTimedRunPhase,
+        },
+      )
       const frameDistance = Math.max(
         0.000001,
         next.totalDistance - car.totalDistance,
@@ -5681,6 +5932,58 @@ export function advanceRace(
         1,
         Math.max(0, (lap - car.totalDistance) / frameDistance),
       )
+      const isFinalCrossingInFrame = lap === newLap
+      const postLineFraction = isFinalCrossingInFrame
+        ? (finalLineSplit?.postLineFraction ?? 0)
+        : 0
+      const rebasedEnergy = isFinalCrossingInFrame
+        ? rebaseEnergyStoreAtLapCrossing({
+            frameStartState: car.energyStore,
+            integratedState: frameIntegratedEnergyStore,
+            postLineFraction,
+            rechargeRule: nextLapRechargeRule,
+          })
+        : null
+      const nextLapEnergyStore =
+        rebasedEnergy?.state ??
+        startNextEnergyLap(next.energyStore, nextLapRechargeRule)
+      const postLineUsage = postLineEnergyUsageForFinalCrossing({
+        deploymentAcceptanceScale:
+          rebasedEnergy?.deploymentAcceptanceScale ?? 1,
+        frameOvertakeEnergyUsedMJ,
+        frameSuperclipRecoveredMJ: Math.max(
+          0,
+          frameIntegratedSuperclipRecoveredMJ -
+            car.superClippingRecoveredThisLapMj,
+        ),
+        postLineFraction,
+        rechargeAcceptanceScale:
+          rebasedEnergy?.rechargeAcceptanceScale ?? 1,
+      })
+      next = {
+        ...next,
+        processedLap: lap,
+        overtakeEnergyRemainingMj: Math.max(
+          0,
+          OVERTAKE_EXTRA_ENERGY_MJ - postLineUsage.overtakeEnergyUsedMJ,
+        ),
+        overtakeRechargeAllowanceActiveThisLap,
+        energyLapStartedInLowGripConditions: lowGripConditions,
+        energyLapStartedBehindSafetyCar: localControlPhase?.flag === 'sc',
+        energyStore: nextLapEnergyStore,
+        energyHarvestedThisLapMj:
+          nextLapEnergyStore.rechargedAtCuKBusThisLapMJ,
+        energyDeployedThisLapMj:
+          nextLapEnergyStore.deployedAtCuKBusThisLapMJ,
+        ersBatteryPercent: Math.round(nextLapEnergyStore.stateOfCharge * 100),
+        ersPowerKw: nextLapEnergyStore.actualDeploymentPowerKw,
+        superClippingRecoveredThisLapMj:
+          postLineUsage.superclipRecoveredMJ,
+        superClippingRegenPowerKw: rebasedEnergy
+          ? frameIntegratedSuperclipPowerKw *
+            rebasedEnergy.rechargeAcceptanceScale
+          : 0,
+      }
       const crossedAtSeconds =
         snapshot.elapsedSeconds + deltaSeconds * crossingFraction
 
@@ -7005,17 +7308,15 @@ export function advanceRace(
       deltaSeconds,
     )
     const team = teams.get(car.teamId)
-    const driveScale = car.superClippingDrivePowerScale ?? 1
     const powerUnit = team
       ? selectGear({
           clutchEngagementFraction: car.clutchEngagementFraction,
           combustionPowerKw:
-            (combustionPowerKwFor(team, categoryPhysics) +
+            combustionPowerKwFor(team, categoryPhysics) +
               (config.overtakeSystem === 'ots' &&
               car.overtakeStatus === 'active'
                 ? categoryPhysics.overtakeBoostPowerKw
-                : 0)) *
-            driveScale,
+                : 0),
           deploymentPowerKw: car.ersPowerKw,
           physics: categoryPhysics,
           speedMps: speedKph / 3.6,

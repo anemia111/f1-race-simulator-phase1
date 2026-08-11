@@ -1,14 +1,17 @@
 # Formula Race Simulator
 
-PC-first F1, Formula 2, Formula 3, and SUPER FORMULA race-control and timing
-simulator built with React, TypeScript, Vite, Three.js, and React Three Fiber.
-It is an observer simulation, not a driving game or a broadcast-video renderer.
+PC-first F1 and SUPER FORMULA race-control and timing simulator built with
+React, TypeScript, Vite, Three.js, and React Three Fiber. Formula 2 and Formula
+3 identities remain available in the historical driver pool, but those series
+are not executable. It is an observer simulation, not a driving game or a
+broadcast-video renderer.
 
 ## Current Features
 
-- Four selectable 2026 categories with independent fields, calendars,
-  qualifying, points, tire rules, overtake systems, and saved championships.
-  The relational driver pool contains 110 unique people.
+- Two executable 2026 series—F1 and SUPER FORMULA—with independent fields,
+  calendars, qualifying, points, tyre rules, overtake systems, and saved
+  championships. The relational driver pool contains 110 unique people,
+  including provenance-only F2/F3 identities.
 - 24 selectable F1 circuit packs: 23 OpenF1-derived centerlines plus the official
   2026 MADRING organizer vector. The current FIA calendar is 22 rounds after
   the Bahrain/Jeddah cancellation.
@@ -48,7 +51,9 @@ It is an observer simulation, not a driving game or a broadcast-video renderer.
   wet Safety Car starts, full-wet mandates, blue-flag yielding, and a visible
   Safety Car leading the queue. See
   [`docs/FIA_2026_REGULATION_COVERAGE.md`](docs/FIA_2026_REGULATION_COVERAGE.md)
-  for article-level coverage and non-public-document boundaries.
+  for article-level coverage and non-public-document boundaries, and
+  [`docs/F1_ERS_ENERGY_SUPERCLIPPING.md`](docs/F1_ERS_ENERGY_SUPERCLIPPING.md)
+  for the CU-K/shaft/Energy Store accounting boundaries.
 - One normal racing line with no artificial lateral weaving. Battle checks run
   in 12 lightweight track segments per lap.
 - The leaderboard is the timing tower: order, tyre life, gap/interval, last and
@@ -245,6 +250,9 @@ npm run build
 npm test
 npm run playtest
 npm run validate:montecarlo
+npm run validate:f1-current-generation
+npm run validate:energy-balance
+npm run validate:superclip
 npm run benchmark
 ```
 

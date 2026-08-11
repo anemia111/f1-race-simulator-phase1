@@ -378,8 +378,10 @@ try {
     relatedArtifacts: [
       'artifacts/f1-current-generation-physics-summary.json',
       'artifacts/active-aero-zone-audit.json',
+      'artifacts/energy-balance-validation/summary.json',
       'artifacts/regulation-authority-audit.json',
       'artifacts/source-manifest.json',
+      'artifacts/superclip-validation/summary.json',
     ],
     verdict: invariantFailures.length === 0 ? 'PASS' : 'FAIL',
     calibrationPolicy: {
@@ -411,8 +413,9 @@ try {
       qualifyingRechargeFloorMj:
         regulations.FIA_2026_REGULATION_PROFILE.energy
           .qualifyingMinimumLimitMj,
-      rechargeLimitMj:
+      technicalDefaultRechargeLimitMj:
         regulations.FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
+      contextualRechargeRequiresVerifiedEventInput: true,
       socWindowMj:
         regulations.FIA_2026_REGULATION_PROFILE.energy
           .usableStateOfChargeWindowMj,

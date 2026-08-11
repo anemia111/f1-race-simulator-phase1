@@ -23,6 +23,7 @@ import {
   airDensityKgM3,
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
+  combustionWheelPowerKwAt,
   integrateVehicleLongitudinalStep,
   integrateVehicleSpeedKph,
   liveCorneringSpeedLimitKph,
@@ -463,7 +464,7 @@ describe('multi-axis vehicle dynamics', () => {
     )
   })
 
-  it('does not apply a combustion derate or electrical-efficiency axis to allowed MGU-K kW', () => {
+  it('does not apply a second electrical-efficiency axis to mechanical MGU-K kW', () => {
     const result = integrateVehicleLongitudinalStep({
       activeAeroMode: 'straight',
       airDensityKgM3: 1.225,
@@ -472,7 +473,6 @@ describe('multi-axis vehicle dynamics', () => {
       combustionPowerKw: 0,
       currentSpeedKph: 180,
       deltaSeconds: 0,
-      drivePowerScale: 0,
       dynamics: { gradient: 0, straightness: 1 },
       ersPowerKw: 350,
       fuelLoadKg: 20,
@@ -484,6 +484,31 @@ describe('multi-axis vehicle dynamics', () => {
 
     expect(result.driveForceN).toBeGreaterThan(0)
     expect(result.accelerationMps2).toBeGreaterThan(0)
+  })
+
+  it('evaluates positive ICE wheel power from the live drivetrain state', () => {
+    const common = {
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 320,
+      team: initialTeams[0],
+      turboSpoolFraction: 1,
+    }
+    const fullThrottle = combustionWheelPowerKwAt({
+      ...common,
+      throttlePercent: 100,
+    })
+    const halfThrottle = combustionWheelPowerKwAt({
+      ...common,
+      throttlePercent: 50,
+    })
+    const noThrottle = combustionWheelPowerKwAt({
+      ...common,
+      throttlePercent: 0,
+    })
+
+    expect(fullThrottle).toBeGreaterThan(0)
+    expect(halfThrottle).toBeCloseTo(fullThrottle / 2, 10)
+    expect(noThrottle).toBe(0)
   })
 
   it('makes fuel mass reduce acceleration and the available braking deceleration', () => {

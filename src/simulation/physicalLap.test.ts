@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { tracks } from '../data/tracks'
+import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
 import {
   categoryPhysicsFor,
   resolveOperationalVehicleMass,
@@ -353,31 +354,52 @@ describe('simulatePhysicalLap', () => {
     })
 
     expect(REFERENCE_DEPLOYMENT_POLICY.scope).toBe('offline-reference-only')
-    expect(result.referenceDeploymentPowerKw).toBe(
+    expect(result.referenceDeploymentDcPowerKw).toBe(
       f1.hybridDeploymentPowerLimitKw,
+    )
+    expect(result.referenceDeploymentMechanicalPowerKw).toBeLessThan(
+      result.referenceDeploymentDcPowerKw,
     )
   })
 
   it('keeps the MGU-K energy a lap spends inside the qualifying allowance', () => {
     const f1 = categoryPhysicsFor('f1-custom')
-    // A single clear lap recovers up to the qualifying recharge limit and also
-    // empties the store it arrived with. Both numbers are published; neither
-    // is chosen here.
-    const allowanceMj =
-      FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj +
-      FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
 
-    // This assertion used to run the other way: it recorded that a reference
-    // lap spent more than twice the allowance, so that a change closing the
-    // gap would show up here rather than silently. The allocation in
-    // REFERENCE_DEPLOYMENT_POLICY closed it, so the same test now holds the
-    // budget it enforces. Every circuit, because an allowance that only binds
-    // on the ones that were measured is not an allowance.
     for (const track of tracks) {
       const result = simulatePhysicalLap(track, { physics: f1 })
 
-      expect(result.deploymentEnergyMj).toBeLessThanOrEqual(allowanceMj + 0.001)
+      expect(result.referenceDeploymentEnergyBudgetMj).not.toBeNull()
+      expect(result.deploymentEnergyMj).toBeLessThanOrEqual(
+        result.referenceDeploymentEnergyBudgetMj! + 0.001,
+      )
+      expect(result.referenceRechargeAtCuKBusMJ).toBe(
+        FIA_2026_REGULATION_PROFILE.energy.referenceAttackRechargePolicyMj,
+      )
+      expect(result.referenceRechargeResolution).toBe(
+        'simulator-reference-policy',
+      )
     }
+  })
+
+  it('uses the verified Suzuka qualifying recharge value before conversion', () => {
+    const policy = simulatePhysicalLap(trackById('suzuka-approx'), {
+      physics: f1,
+    })
+    const verified = simulatePhysicalLap(trackById('suzuka-approx'), {
+      eventId: 'f1-03',
+      fiaPuEventInput: fiaSuzukaPuEventInput2026,
+      physics: f1,
+      weekendStage: 'qualifying',
+    })
+
+    expect(verified.referenceRechargeAtCuKBusMJ).toBe(8)
+    expect(verified.referenceRechargeResolution).toBe('verified-event')
+    expect(verified.referenceRechargeSourceId).toBe(
+      fiaSuzukaPuEventInput2026.source.sourceId,
+    )
+    expect(verified.referenceDeploymentEnergyBudgetMj).toBeGreaterThan(
+      policy.referenceDeploymentEnergyBudgetMj!,
+    )
   })
 
   it('spends the allowance on slow corner exits rather than evenly', () => {

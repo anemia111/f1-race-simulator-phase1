@@ -1,47 +1,93 @@
-import { describe, expect, it } from 'vitest'
-import { initialDrivers, initialTeams } from '../data/grid2026'
-import type { EnergyStoreState } from '../types'
+import { describe, expect, it } from 'vitest';
+import { initialDrivers, initialTeams } from '../data/grid2026';
+import type { EnergyStoreState, RechargeRuleDefinition } from '../types';
 import {
   advanceEnergyStore,
   type AdvanceEnergyStoreOptions,
+  type EnergyStoreStep,
   createInitialEnergyStore,
   energyBalanceErrorMJ,
   energyDeploymentRequestFor,
   energySystemParametersFor,
+  normalizeEnergyStoreState,
+  rebaseEnergyStoreAtLapCrossing,
   startNextEnergyLap,
-} from './energySystem'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
-import { advanceSuperClipping } from './superClipping'
+} from './energySystem';
+import {
+  FIA_2026_REGULATION_PROFILE,
+  permittedMguKDcPowerKwForSpeed,
+  resolveF1RechargeRule,
+  type MguKPowerCurve,
+} from './regulations';
 
-const team = initialTeams.find((candidate) => candidate.id === 'ferrari')!
-const driver = initialDrivers.find((candidate) => candidate.code === 'LEC')!
-const maximumPowerKw = FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw
-const maximumRechargeMJ =
-  FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+const team = initialTeams.find((candidate) => candidate.id === 'ferrari')!;
+const driver = initialDrivers.find((candidate) => candidate.code === 'LEC')!;
+const raceRechargeRule = resolveF1RechargeRule({ stage: 'race' });
+
+function finiteRechargeRule(
+  maxCuKBusRechargeMj: number,
+  options: { additionalAllowanceMJ?: number; baseLimitMJ?: number } = {},
+): RechargeRuleDefinition {
+  return {
+    additionalAllowanceMJ: options.additionalAllowanceMJ ?? 0,
+    baseLimitMJ: options.baseLimitMJ ?? maxCuKBusRechargeMj,
+    limit: { kind: 'finite', maxCuKBusRechargeMj },
+    measuredAt: 'CU-K-HV-DC-bus',
+    resolution: 'verified-event',
+    ruleId: `test-finite-${maxCuKBusRechargeMj}`,
+    sourceId: 'phase4-energy-test',
+  };
+}
+
+const unlimitedRechargeRule: RechargeRuleDefinition = {
+  additionalAllowanceMJ: 0,
+  baseLimitMJ: null,
+  limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+  measuredAt: 'CU-K-HV-DC-bus',
+  resolution: 'technical-low-grip-safety-car',
+  ruleId: 'test-unlimited',
+  sourceId: 'phase4-energy-test',
+};
+
+const unavailableRechargeRule: RechargeRuleDefinition = {
+  additionalAllowanceMJ: 0,
+  baseLimitMJ: null,
+  limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+  measuredAt: 'CU-K-HV-DC-bus',
+  resolution: 'event-context-unavailable',
+  ruleId: 'test-unavailable',
+  sourceId: 'phase4-energy-test',
+};
 
 const defaultStep: Omit<AdvanceEnergyStoreOptions, 'state'> = {
   ambientTemperatureC: 25,
   brakePercent: 0,
+  combustionWheelPowerKw: 520,
   deltaSeconds: 1,
-  deploymentPowerLimitKw: maximumPowerKw,
+  deploymentDcPowerLimitKw: FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
   deploymentRequest: 0,
   driverErsManagement: driver.skills.ersManagement,
   driverWetSkill: driver.skills.wetSkill,
   gripMultiplier: 1,
-  maxRechargePerLapMj: maximumRechargeMJ,
+  rechargeRule: raceRechargeRule,
   speedKph: 300,
   surfaceWaterMm: 0,
   team,
   throttlePercent: 100,
   tire: 'M',
   vehicleMassKg: 840,
-}
+};
 
 function step(
   state: EnergyStoreState,
   overrides: Partial<Omit<AdvanceEnergyStoreOptions, 'state'>> = {},
 ) {
-  return advanceEnergyStore({ ...defaultStep, ...overrides, state })
+  return advanceEnergyStore({
+    ...defaultStep,
+    rechargeRule: state.rechargeRule,
+    ...overrides,
+    state,
+  });
 }
 
 function deploymentRequest(
@@ -64,541 +110,759 @@ function deploymentRequest(
     throttlePercent: 100,
     timedRunPhase: null,
     ...overrides,
-  })
+  });
 }
 
-describe('physical Energy Store integration', () => {
-  it('requests more electrical deployment in push mode than standard mode', () => {
-    const state = createInitialEnergyStore(team, 0.62)
+function expectAuditToClose(result: EnergyStoreStep) {
+  const { audit } = result;
+  const independentlyExpectedStoredEnergyMJ =
+    audit.initialStoredEnergyMJ +
+    audit.storedChargeEnergyMJ -
+    audit.energyRemovedFromStoreMJ;
+  const independentlyExpectedConversionResidualMJ =
+    audit.recoveredMechanicalEnergyMJ +
+    audit.energyRemovedFromStoreMJ -
+    audit.storedChargeEnergyMJ -
+    audit.deployedMechanicalEnergyMJ -
+    audit.batteryLossEnergyMJ -
+    audit.inverterLossEnergyMJ -
+    audit.motorLossEnergyMJ;
+
+  expect(audit.finalStoredEnergyMJ).toBeCloseTo(
+    independentlyExpectedStoredEnergyMJ,
+    10,
+  );
+  expect(Math.abs(audit.storeBalanceErrorMJ)).toBeLessThan(1e-9);
+  expect(Math.abs(independentlyExpectedConversionResidualMJ)).toBeLessThan(
+    1e-9,
+  );
+  expect(Math.abs(audit.conversionChainErrorMJ)).toBeLessThan(1e-9);
+  expect(result.state.lastStepBalanceErrorMJ).toBeLessThan(1e-9);
+}
+
+describe('Phase 4 Energy Store truth and C5.2.8 DC power', () => {
+  const curves: MguKPowerCurve[] = [
+    'normal',
+    'overtake',
+    'race-sprint-power-limited',
+  ];
+  const boundarySpeedsKph = [309, 310, 339, 340, 344.999, 345, 354.999, 355];
+  const dcBoundaryCases = curves.flatMap((curve) =>
+    boundarySpeedsKph.map((speedKph) => ({ curve, speedKph })),
+  );
+
+  it.each(dcBoundaryCases)(
+    'caps $curve deployment at the CU-K DC bus before converting to mechanical power at $speedKph km/h',
+    ({ curve, speedKph }) => {
+      const regulatoryDcLimitKw = permittedMguKDcPowerKwForSpeed({
+        curve,
+        speedKph,
+      });
+      const parameters = energySystemParametersFor(team);
+      const result = step(createInitialEnergyStore(team, 0.9), {
+        deltaSeconds: 0.05,
+        deploymentDcPowerLimitKw: regulatoryDcLimitKw,
+        deploymentRequest: 1,
+        speedKph,
+      });
+
+      expect(result.state.actualDeploymentDcPowerKw).toBeCloseTo(
+        regulatoryDcLimitKw,
+        8,
+      );
+      expect(result.state.actualDeploymentDcPowerKw).toBeLessThanOrEqual(
+        regulatoryDcLimitKw + 1e-9,
+      );
+      expect(result.state.actualDeploymentPowerKw).toBeCloseTo(
+        result.state.actualDeploymentDcPowerKw *
+          parameters.inverterEfficiency *
+          parameters.motorEfficiency,
+        8,
+      );
+      expect(result.state.storedDischargePowerKw).toBeGreaterThanOrEqual(
+        result.state.actualDeploymentDcPowerKw,
+      );
+      if (regulatoryDcLimitKw > 0) {
+        expect(result.state.actualDeploymentPowerKw).toBeLessThan(
+          result.state.actualDeploymentDcPowerKw,
+        );
+      }
+      expectAuditToClose(result);
+    },
+  );
+
+  it('normalizes every F1 Energy Store and corrupted checkpoints to the exact 4 MJ SOC window', () => {
+    for (const candidateTeam of initialTeams) {
+      const initial = createInitialEnergyStore(candidateTeam, 0.37);
+      const corrupted: EnergyStoreState = {
+        ...initial,
+        currentEnergyMJ: 91,
+        maximumUsableEnergyMJ: 99,
+        minimumUsableEnergyMJ: -7,
+        stateOfCharge: 0.12,
+        usableEnergyMJ: 106,
+      };
+      const normalized = normalizeEnergyStoreState(
+        corrupted,
+        candidateTeam,
+        37,
+        raceRechargeRule,
+      );
+
+      expect(
+        normalized.maximumUsableEnergyMJ - normalized.minimumUsableEnergyMJ,
+      ).toBe(FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj);
+      expect(normalized.usableEnergyMJ).toBe(4);
+      expect(normalized.currentEnergyMJ).toBe(normalized.maximumUsableEnergyMJ);
+      expect(normalized.stateOfCharge).toBe(1);
+    }
+  });
+
+  it('keeps stored energy and derived SOC inside the exact window under oversized requests', () => {
+    let state = createInitialEnergyStore(team, 0);
+
+    state = step(state, {
+      brakePercent: 100,
+      deltaSeconds: 60,
+      speedKph: 350,
+      throttlePercent: 0,
+    }).state;
+    expect(state.currentEnergyMJ).toBeLessThanOrEqual(
+      state.maximumUsableEnergyMJ,
+    );
+    expect(state.stateOfCharge).toBeLessThanOrEqual(1);
+
+    state = step(state, {
+      deltaSeconds: 60,
+      deploymentDcPowerLimitKw: 10_000,
+      deploymentRequest: 1,
+      speedKph: 100,
+    }).state;
+    expect(state.currentEnergyMJ).toBeGreaterThanOrEqual(
+      state.minimumUsableEnergyMJ,
+    );
+    expect(state.stateOfCharge).toBeGreaterThanOrEqual(0);
+    expect(state.stateOfCharge).toBeCloseTo(
+      (state.currentEnergyMJ - state.minimumUsableEnergyMJ) / 4,
+      10,
+    );
+  });
+});
+
+describe('Phase 4 CU-K HV DC-bus recharge ledger', () => {
+  it('caps a finite ledger at the bus, stores less after battery loss, and never nets later deployment', () => {
+    const rule = finiteRechargeRule(0.05, {
+      additionalAllowanceMJ: 0.02,
+      baseLimitMJ: 0.03,
+    });
+    const initial = createInitialEnergyStore(team, 0.3, rule);
+    const recovered = step(initial, {
+      brakePercent: 100,
+      deltaSeconds: 1,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+
+    expect(recovered.audit.rechargedAtCuKBusMJ).toBeCloseTo(0.05, 10);
+    expect(recovered.audit.storedChargeEnergyMJ).toBeGreaterThan(0);
+    expect(recovered.audit.storedChargeEnergyMJ).toBeLessThan(
+      recovered.audit.rechargedAtCuKBusMJ,
+    );
+    expect(recovered.state.rechargedAtCuKBusThisLapMJ).toBeCloseTo(0.05, 10);
+    expect(recovered.state.storedEnergyThisLapMJ).toBeCloseTo(
+      recovered.audit.storedChargeEnergyMJ,
+      10,
+    );
+    expect(recovered.state.rechargeRule).toMatchObject({
+      additionalAllowanceMJ: 0.02,
+      baseLimitMJ: 0.03,
+      measuredAt: 'CU-K-HV-DC-bus',
+      remainingMJ: 0,
+      usedMJ: 0.05,
+    });
+    expectAuditToClose(recovered);
+
+    const deployed = step(recovered.state, {
+      deltaSeconds: 0.5,
+      deploymentRequest: 1,
+      speedKph: 250,
+    });
+    expect(deployed.state.rechargeRule.usedMJ).toBeCloseTo(0.05, 10);
+
+    const attemptedRecovery = step(deployed.state, {
+      brakePercent: 100,
+      deltaSeconds: 1,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+    expect(attemptedRecovery.state.requestedRecoveryPowerKw).toBeGreaterThan(0);
+    expect(attemptedRecovery.state.actualRecoveryPowerKw).toBe(0);
+    expect(attemptedRecovery.state.rechargedAtCuKBusThisLapMJ).toBeCloseTo(
+      0.05,
+      10,
+    );
+    expect(attemptedRecovery.state.operatingMode).toBe('inactive');
+    expectAuditToClose(attemptedRecovery);
+  });
+
+  it('preserves unlimited bus usage with a null remainder and accepts additional recovery', () => {
+    const initial = createInitialEnergyStore(team, 0.25, unlimitedRechargeRule);
+    const preloaded: EnergyStoreState = {
+      ...initial,
+      rechargedAtCuKBusThisLapMJ: 12,
+      rechargeRule: {
+        ...initial.rechargeRule,
+        remainingMJ: null,
+        usedMJ: 12,
+      },
+    };
+    const recovered = step(preloaded, {
+      brakePercent: 70,
+      deltaSeconds: 0.5,
+      speedKph: 280,
+      throttlePercent: 0,
+    });
+
+    expect(recovered.state.rechargedAtCuKBusThisLapMJ).toBeGreaterThan(12);
+    expect(recovered.state.rechargeRule.limit).toEqual({
+      kind: 'unlimited',
+      maxCuKBusRechargeMj: null,
+    });
+    expect(recovered.state.rechargeRule.remainingMJ).toBeNull();
+    expect(recovered.state.rechargeRule.usedMJ).toBe(
+      recovered.state.rechargedAtCuKBusThisLapMJ,
+    );
+    expectAuditToClose(recovered);
+  });
+
+  it('fails closed when the recharge limit is unavailable', () => {
+    const initial = createInitialEnergyStore(
+      team,
+      0.25,
+      unavailableRechargeRule,
+    );
+    const attempted = step(initial, {
+      combustionWheelPowerKw: 500,
+      deltaSeconds: 1,
+      superclipGeneratorRequestKw: 80,
+      throttlePercent: 100,
+    });
+
+    expect(attempted.state.requestedRecoveryPowerKw).toBe(80);
+    expect(attempted.state.actualRecoveryPowerKw).toBe(0);
+    expect(attempted.state.chargeDcPowerKw).toBe(0);
+    expect(attempted.state.rechargedAtCuKBusThisLapMJ).toBe(0);
+    expect(attempted.state.rechargeRule).toMatchObject({
+      limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+      measuredAt: 'CU-K-HV-DC-bus',
+      remainingMJ: null,
+      usedMJ: 0,
+    });
+    expect(attempted.state.operatingMode).toBe('inactive');
+    expectAuditToClose(attempted);
+  });
+});
+
+describe('Phase 4 ERS-K operating modes', () => {
+  it('classifies actual propulsion', () => {
+    const result = step(createInitialEnergyStore(team, 0.8), {
+      deploymentRequest: 1,
+      speedKph: 250,
+    });
+
+    expect(result.state.actualDeploymentDcPowerKw).toBeGreaterThan(0);
+    expect(result.state.actualRecoveryPowerKw).toBe(0);
+    expect(result.state.operatingMode).toBe('propulsion');
+    expectAuditToClose(result);
+  });
+
+  it('classifies actual braking regeneration', () => {
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      brakePercent: 70,
+      speedKph: 280,
+      throttlePercent: 0,
+    });
+
+    expect(result.state.actualRecoveryPowerKw).toBeGreaterThan(0);
+    expect(result.state.operatingMode).toBe('braking-regeneration');
+    expectAuditToClose(result);
+  });
+
+  it('classifies actual lift-and-coast regeneration', () => {
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      brakePercent: 0,
+      speedKph: 200,
+      throttlePercent: 20,
+    });
+
+    expect(result.state.actualRecoveryPowerKw).toBeGreaterThan(0);
+    expect(result.state.operatingMode).toBe('lift-coast-regeneration');
+    expectAuditToClose(result);
+  });
+
+  it('classifies 7.99 kW of actual full-throttle generation as superclip and never motors simultaneously', () => {
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      combustionWheelPowerKw: 500,
+      deploymentRequest: 1,
+      superclipGeneratorRequestKw: 7.99,
+      throttlePercent: 100,
+    });
+
+    expect(result.state.requestedRecoveryPowerKw).toBeCloseTo(7.99, 10);
+    expect(result.state.actualRecoveryPowerKw).toBeCloseTo(7.99, 10);
+    expect(result.actualRecoverySourcePowerKw.superclip).toBeCloseTo(7.99, 10);
+    expect(result.state.operatingMode).toBe('full-throttle-superclip');
+    expect(result.state.chargeDcPowerKw).toBeGreaterThan(0);
+    expect(result.state.actualDeploymentDcPowerKw).toBe(0);
+    expect(result.state.dischargeDcPowerKw).toBe(0);
+    expect(result.state.motorMechanicalPowerKw).toBeLessThan(0);
+    expect(result.audit.recoveredSuperclipMechanicalEnergyMJ).toBeCloseTo(
+      result.audit.recoveredMechanicalEnergyMJ,
+      10,
+    );
+    expect(result.audit.superclipRechargedAtCuKBusMJ).toBeCloseTo(
+      result.audit.rechargedAtCuKBusMJ,
+      10,
+    );
+    expectAuditToClose(result);
+  });
+
+  it('does not relabel unrelated brake recovery from a mixed malformed request', () => {
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      brakePercent: 70,
+      combustionWheelPowerKw: 500,
+      superclipGeneratorRequestKw: 2,
+      throttlePercent: 100,
+    });
+
+    expect(result.state.actualRecoveryPowerKw).toBeGreaterThan(0);
+    expect(result.actualRecoverySourcePowerKw.superclip).toBeGreaterThan(0);
+    expect(result.actualRecoverySourcePowerKw.superclip).toBeLessThan(
+      result.state.actualRecoveryPowerKw,
+    );
+    expect(
+      result.actualRecoverySourcePowerKw.braking +
+        result.actualRecoverySourcePowerKw.liftCoast +
+        result.actualRecoverySourcePowerKw.superclip,
+    ).toBeCloseTo(result.state.actualRecoveryPowerKw, 10);
+    expect(result.audit.superclipRechargedAtCuKBusMJ).toBeGreaterThan(0);
+    expect(result.audit.superclipRechargedAtCuKBusMJ).toBeLessThan(
+      result.audit.rechargedAtCuKBusMJ,
+    );
+    expect(
+      result.audit.superclipRechargedAtCuKBusMJ /
+        result.audit.rechargedAtCuKBusMJ,
+    ).toBeCloseTo(
+      result.audit.recoveredSuperclipMechanicalEnergyMJ /
+        result.audit.recoveredMechanicalEnergyMJ,
+      10,
+    );
+    expect(result.state.operatingMode).toBe('braking-regeneration');
+    expect(result.state.actualDeploymentDcPowerKw).toBe(0);
+    expectAuditToClose(result);
+  });
+
+  it('does not accept a superclip request without high throttle and positive ICE wheel power', () => {
+    const lowThrottle = step(createInitialEnergyStore(team, 0.3), {
+      combustionWheelPowerKw: 500,
+      superclipGeneratorRequestKw: 120,
+      throttlePercent: 40,
+    });
+    const noIce = step(createInitialEnergyStore(team, 0.3), {
+      combustionWheelPowerKw: 0,
+      superclipGeneratorRequestKw: 120,
+      throttlePercent: 100,
+    });
+
+    expect(lowThrottle.actualRecoverySourcePowerKw.superclip).toBe(0);
+    expect(lowThrottle.audit.superclipRechargedAtCuKBusMJ).toBe(0);
+    expect(lowThrottle.state.operatingMode).toBe('lift-coast-regeneration');
+    expect(noIce.actualRecoverySourcePowerKw.superclip).toBe(0);
+    expect(noIce.audit.superclipRechargedAtCuKBusMJ).toBe(0);
+    expect(noIce.state.operatingMode).toBe('inactive');
+  });
+
+  it('classifies accepted superclip flow across the whole public tick even if the recharge ledger fills before its final slice', () => {
+    const result = step(
+      createInitialEnergyStore(team, 0.5, finiteRechargeRule(0.01)),
+      {
+        combustionWheelPowerKw: 500,
+        deltaSeconds: 2,
+        superclipGeneratorRequestKw: 120,
+        throttlePercent: 100,
+      },
+    );
+
+    expect(result.actualRecoverySourcePowerKw.superclip).toBeGreaterThan(0);
+    expect(result.state.actualRecoveryPowerKw).toBeGreaterThan(0);
+    expect(result.audit.superclipRechargedAtCuKBusMJ).toBeGreaterThan(0);
+    expect(result.state.rechargeRule.remainingMJ).toBe(0);
+    expect(result.state.operatingMode).toBe('full-throttle-superclip');
+    expectAuditToClose(result);
+  });
+
+  it('uses actual flow rather than a request label when selecting inactive', () => {
+    const initial = createInitialEnergyStore(
+      team,
+      0.3,
+      unavailableRechargeRule,
+    );
+    const result = step(initial, {
+      combustionWheelPowerKw: 500,
+      superclipGeneratorRequestKw: 120,
+      throttlePercent: 100,
+    });
+
+    expect(result.state.requestedRecoveryPowerKw).toBe(120);
+    expect(result.state.actualRecoveryPowerKw).toBe(0);
+    expect(result.state.operatingMode).toBe('inactive');
+    expectAuditToClose(result);
+  });
+
+  it('does not report a motor and generator in the same substep', () => {
+    const braking = step(createInitialEnergyStore(team, 0.45), {
+      brakePercent: 60,
+      deploymentRequest: 1,
+      speedKph: 260,
+      throttlePercent: 0,
+    });
+    const superclip = step(createInitialEnergyStore(team, 0.45), {
+      combustionWheelPowerKw: 500,
+      deploymentRequest: 1,
+      superclipGeneratorRequestKw: 40,
+      speedKph: 320,
+      throttlePercent: 100,
+    });
+
+    for (const result of [braking, superclip]) {
+      expect(result.state.actualRecoveryPowerKw).toBeGreaterThan(0);
+      expect(result.state.actualDeploymentDcPowerKw).toBe(0);
+      expect(result.audit.deployedAtCuKBusMJ).toBe(0);
+      expect(result.audit.rechargedAtCuKBusMJ).toBeGreaterThan(0);
+      expectAuditToClose(result);
+    }
+  });
+});
+
+describe('Phase 4 energy-flow audit, lap reset, and integration slicing', () => {
+  it('closes every tick and the independently summed lap balance across every operating mode', () => {
+    const initial = createInitialEnergyStore(team, 0.65);
+    let state = initial;
+    const results: EnergyStoreStep[] = [];
+    const inputs: Array<Partial<Omit<AdvanceEnergyStoreOptions, 'state'>>> = [
+      {
+        deltaSeconds: 0.4,
+        deploymentRequest: 0.6,
+        speedKph: 260,
+      },
+      {
+        brakePercent: 72,
+        deltaSeconds: 0.7,
+        speedKph: 300,
+        throttlePercent: 0,
+      },
+      {
+        deltaSeconds: 0.5,
+        speedKph: 190,
+        throttlePercent: 18,
+      },
+      {
+        combustionWheelPowerKw: 500,
+        deltaSeconds: 0.3,
+        deploymentRequest: 1,
+        speedKph: 320,
+        superclipGeneratorRequestKw: 12,
+        throttlePercent: 100,
+      },
+      {
+        combustionWheelPowerKw: 0,
+        deltaSeconds: 0.2,
+        speedKph: 70,
+        throttlePercent: 100,
+      },
+    ];
+
+    for (const input of inputs) {
+      const result = step(state, input);
+      expectAuditToClose(result);
+      results.push(result);
+      state = result.state;
+    }
+
+    const summedStoredChargeMJ = results.reduce(
+      (total, result) => total + result.audit.storedChargeEnergyMJ,
+      0,
+    );
+    const summedRemovedMJ = results.reduce(
+      (total, result) => total + result.audit.energyRemovedFromStoreMJ,
+      0,
+    );
+    const summedBusRechargeMJ = results.reduce(
+      (total, result) => total + result.audit.rechargedAtCuKBusMJ,
+      0,
+    );
+
+    expect(state.currentEnergyMJ).toBeCloseTo(
+      initial.currentEnergyMJ + summedStoredChargeMJ - summedRemovedMJ,
+      10,
+    );
+    expect(state.storedEnergyThisLapMJ).toBeCloseTo(summedStoredChargeMJ, 10);
+    expect(state.energyRemovedThisLapMJ).toBeCloseTo(summedRemovedMJ, 10);
+    expect(state.rechargedAtCuKBusThisLapMJ).toBeCloseTo(
+      summedBusRechargeMJ,
+      10,
+    );
+    expect(Math.abs(energyBalanceErrorMJ(state))).toBeLessThan(1e-9);
+  });
+
+  it('preserves MJ, SOC, and thermal truth while resetting every per-lap flow for a new rule', () => {
+    let state = createInitialEnergyStore(team, 0.55);
+    state = step(state, {
+      brakePercent: 70,
+      deltaSeconds: 0.8,
+      speedKph: 290,
+      throttlePercent: 0,
+    }).state;
+    state = step(state, {
+      deltaSeconds: 0.8,
+      deploymentRequest: 0.8,
+      speedKph: 250,
+    }).state;
+    const nextRule = finiteRechargeRule(0.2);
+    const next = startNextEnergyLap(state, nextRule);
+
+    expect(next.currentEnergyMJ).toBe(state.currentEnergyMJ);
+    expect(next.stateOfCharge).toBe(state.stateOfCharge);
+    expect(next.batteryTemperatureC).toBe(state.batteryTemperatureC);
+    expect(next.motorGeneratorTemperatureC).toBe(
+      state.motorGeneratorTemperatureC,
+    );
+    expect(next.inverterTemperatureC).toBe(state.inverterTemperatureC);
+    expect(next.lapStartEnergyMJ).toBe(state.currentEnergyMJ);
+    expect(next.operatingMode).toBe('inactive');
+
+    const resetFields = [
+      next.requestedRecoveryMechanicalEnergyThisLapMJ,
+      next.recoveredMechanicalEnergyThisLapMJ,
+      next.rechargedAtCuKBusThisLapMJ,
+      next.storedEnergyThisLapMJ,
+      next.deployedAtCuKBusThisLapMJ,
+      next.deployedMechanicalEnergyThisLapMJ,
+      next.energyRemovedThisLapMJ,
+      next.batteryLossThisLapMJ,
+      next.inverterLossThisLapMJ,
+      next.motorLossThisLapMJ,
+      next.conversionLossThisLapMJ,
+      next.lastStepBalanceErrorMJ,
+      next.energyBalanceErrorMJ,
+    ];
+    expect(resetFields.every((value) => value === 0)).toBe(true);
+    expect(next.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 0.2 },
+      remainingMJ: 0.2,
+      usedMJ: 0,
+    });
+  });
+
+  it('carries only the post-Line share from an old ledger near its ceiling into the new rule', () => {
+    const initialOldRule = finiteRechargeRule(0.09);
+    const expandedOldRule = finiteRechargeRule(0.1);
+    const nextRule = finiteRechargeRule(8);
+    const filled = step(
+      createInitialEnergyStore(team, 0.25, initialOldRule),
+      {
+        brakePercent: 100,
+        deltaSeconds: 2,
+        speedKph: 300,
+        throttlePercent: 0,
+      },
+    ).state;
+    const nearOldCeiling: EnergyStoreState = {
+      ...filled,
+      rechargeRule: {
+        ...expandedOldRule,
+        remainingMJ: 0.01,
+        usedMJ: 0.09,
+      },
+    };
+    const integrated = step(nearOldCeiling, {
+      brakePercent: 100,
+      deltaSeconds: 2,
+      speedKph: 300,
+      throttlePercent: 0,
+    }).state;
+    const fullFrameBusRechargeMJ =
+      integrated.rechargedAtCuKBusThisLapMJ -
+      nearOldCeiling.rechargedAtCuKBusThisLapMJ;
+    const rebased = rebaseEnergyStoreAtLapCrossing({
+      frameStartState: nearOldCeiling,
+      integratedState: integrated,
+      postLineFraction: 0.6,
+      rechargeRule: nextRule,
+    });
+
+    expect(fullFrameBusRechargeMJ).toBeCloseTo(0.01, 10);
+    expect(rebased.rechargeAcceptanceScale).toBe(1);
+    expect(rebased.state.rechargedAtCuKBusThisLapMJ).toBeCloseTo(
+      fullFrameBusRechargeMJ * 0.6,
+      10,
+    );
+    expect(rebased.state.rechargeRule.usedMJ).toBeCloseTo(
+      rebased.state.rechargedAtCuKBusThisLapMJ,
+      12,
+    );
+    expect(rebased.state.lapStartEnergyMJ).toBeCloseTo(
+      nearOldCeiling.currentEnergyMJ +
+        (integrated.currentEnergyMJ - nearOldCeiling.currentEnergyMJ) * 0.4,
+      12,
+    );
+    expect(Math.abs(energyBalanceErrorMJ(rebased.state))).toBeLessThan(1e-10);
+  });
+
+  it('rejects extreme post-Line recovery consistently when the new ledger is tighter', () => {
+    const oldRule = finiteRechargeRule(2);
+    const nextRule = finiteRechargeRule(0.001);
+    const initial = createInitialEnergyStore(team, 0.2, oldRule);
+    const integrated = step(initial, {
+      brakePercent: 100,
+      deltaSeconds: 8,
+      speedKph: 330,
+      throttlePercent: 0,
+    }).state;
+    const rebased = rebaseEnergyStoreAtLapCrossing({
+      frameStartState: initial,
+      integratedState: integrated,
+      postLineFraction: 0.75,
+      rechargeRule: nextRule,
+    });
+    const state = rebased.state;
+    const conversionResidualMJ =
+      state.recoveredMechanicalEnergyThisLapMJ +
+      state.energyRemovedThisLapMJ -
+      state.storedEnergyThisLapMJ -
+      state.deployedMechanicalEnergyThisLapMJ -
+      state.batteryLossThisLapMJ -
+      state.inverterLossThisLapMJ -
+      state.motorLossThisLapMJ;
+
+    expect(rebased.rechargeAcceptanceScale).toBeLessThan(1);
+    expect(state.rechargedAtCuKBusThisLapMJ).toBeCloseTo(0.001, 12);
+    expect(state.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 0.001 },
+      remainingMJ: 0,
+      usedMJ: 0.001,
+    });
+    expect(state.storedEnergyThisLapMJ).toBeLessThanOrEqual(
+      state.rechargedAtCuKBusThisLapMJ + 1e-12,
+    );
+    expect(state.frictionBrakePowerKw).toBeCloseTo(
+      Math.max(
+        0,
+        state.requestedBrakePowerKw - state.actualRecoveryPowerKw,
+      ),
+      12,
+    );
+    expect(Math.abs(energyBalanceErrorMJ(state))).toBeLessThan(1e-10);
+    expect(state.energyBalanceErrorMJ).toBeCloseTo(
+      energyBalanceErrorMJ(state),
+      12,
+    );
+    expect(Math.abs(conversionResidualMJ)).toBeLessThan(1e-10);
+
+    const checkpointNormalized = normalizeEnergyStoreState(
+      state,
+      team,
+      state.stateOfCharge * 100,
+      nextRule,
+    );
+    expect(checkpointNormalized.currentEnergyMJ).toBeCloseTo(
+      state.currentEnergyMJ,
+      12,
+    );
+    expect(checkpointNormalized.rechargedAtCuKBusThisLapMJ).toBeCloseTo(
+      state.rechargedAtCuKBusThisLapMJ,
+      12,
+    );
+    expect(checkpointNormalized.rechargeRule.usedMJ).toBeCloseTo(
+      checkpointNormalized.rechargedAtCuKBusThisLapMJ,
+      12,
+    );
+    expect(Math.abs(energyBalanceErrorMJ(checkpointNormalized))).toBeLessThan(
+      1e-10,
+    );
+  });
+
+  it('keeps energy integration stable when the same deployment interval is sliced', () => {
+    const initial = createInitialEnergyStore(team, 0.7);
+    const oneCall = step(initial, {
+      deltaSeconds: 2,
+      deploymentRequest: 0.65,
+      speedKph: 260,
+    });
+    expectAuditToClose(oneCall);
+
+    let slicedState = initial;
+    let slicedRemovedMJ = 0;
+    let slicedMechanicalMJ = 0;
+    for (let index = 0; index < 40; index += 1) {
+      const result = step(slicedState, {
+        deltaSeconds: 0.05,
+        deploymentRequest: 0.65,
+        speedKph: 260,
+      });
+      expectAuditToClose(result);
+      slicedRemovedMJ += result.audit.energyRemovedFromStoreMJ;
+      slicedMechanicalMJ += result.audit.deployedMechanicalEnergyMJ;
+      slicedState = result.state;
+    }
+
+    expect(
+      Math.abs(oneCall.state.currentEnergyMJ - slicedState.currentEnergyMJ),
+    ).toBeLessThan(0.015);
+    expect(
+      Math.abs(oneCall.audit.energyRemovedFromStoreMJ - slicedRemovedMJ),
+    ).toBeLessThan(0.015);
+    expect(
+      Math.abs(oneCall.audit.deployedMechanicalEnergyMJ - slicedMechanicalMJ),
+    ).toBeLessThan(0.015);
+    expect(Math.abs(energyBalanceErrorMJ(slicedState))).toBeLessThan(1e-9);
+  });
+});
+
+describe('energy scheduling remains an intent rather than a physical override', () => {
+  it('requests more deployment for push and attack without changing physical limits', () => {
+    const state = createInitialEnergyStore(team, 0.72);
     const standard = deploymentRequest(state, {
       paceMode: 'standard',
       straightLengthAheadMeters: 420,
       straightness: 0.68,
-    })
+    });
     const push = deploymentRequest(state, {
       paceMode: 'push',
       straightLengthAheadMeters: 420,
       straightness: 0.68,
-    })
-
-    expect(push).toBeGreaterThan(standard)
-  })
-
-  it('starts fully charged and spends stored energy through ERS deployment', () => {
-    const initial = createInitialEnergyStore(team)
-    const deployed = step(initial, {
-      deltaSeconds: 1,
-      deploymentRequest: 1,
-    }).state
-
-    expect(initial.stateOfCharge).toBe(1)
-    expect(initial.currentEnergyMJ).toBe(initial.maximumUsableEnergyMJ)
-    expect(deployed.actualDeploymentPowerKw).toBeGreaterThan(0)
-    expect(deployed.currentEnergyMJ).toBeLessThan(initial.currentEnergyMJ)
-    expect(deployed.stateOfCharge).toBeLessThan(1)
-  })
-
-  it('ENERGY-1: conserves stored energy through repeated recovery and deployment', () => {
-    const initial = createInitialEnergyStore(team, 0.64)
-    let state = initial
-
-    for (let cycle = 0; cycle < 10; cycle += 1) {
-      state = step(state, {
-        brakePercent: 82,
-        deltaSeconds: 0.75,
-        deploymentRequest: 0,
-        speedKph: 330,
-        throttlePercent: 0,
-      }).state
-      state = step(state, {
-        brakePercent: 0,
-        deltaSeconds: 0.75,
-        deploymentRequest: 0.72,
-        speedKph: 285,
-        throttlePercent: 100,
-      }).state
-    }
-
-    expect(state.actualHarvestedThisLapMJ).toBeGreaterThan(0)
-    expect(state.energyRemovedThisLapMJ).toBeGreaterThan(0)
-    expect(state.conversionLossThisLapMJ).toBeGreaterThan(0)
-    expect(state.currentEnergyMJ).toBeCloseTo(
-      initial.currentEnergyMJ +
-        state.actualHarvestedThisLapMJ -
-        state.energyRemovedThisLapMJ,
-      8,
-    )
-    expect(Math.abs(energyBalanceErrorMJ(state))).toBeLessThan(1e-8)
-
-    const oneCall = step(createInitialEnergyStore(team, 0.7), {
-      deltaSeconds: 2,
-      deploymentRequest: 0.65,
-    }).state
-    let sliced = createInitialEnergyStore(team, 0.7)
-    for (let index = 0; index < 40; index += 1) {
-      sliced = step(sliced, {
-        deltaSeconds: 0.05,
-        deploymentRequest: 0.65,
-      }).state
-    }
-    expect(
-      Math.abs(oneCall.currentEnergyMJ - sliced.currentEnergyMJ),
-    ).toBeLessThan(0.015)
-  })
-
-  it('ENERGY-2: high-speed heavy braking has more recovery potential than a low-speed stop', () => {
-    const initial = createInitialEnergyStore(team, 0.45)
-    const highSpeed = step(initial, {
-      brakePercent: 92,
-      deltaSeconds: 1,
-      speedKph: 418,
-      throttlePercent: 0,
-    }).state
-    const lowSpeed = step(initial, {
-      brakePercent: 35,
-      deltaSeconds: 0.45,
-      speedKph: 150,
-      throttlePercent: 0,
-    }).state
-
-    expect(highSpeed.harvestPotentialThisLapMJ).toBeGreaterThan(
-      lowSpeed.harvestPotentialThisLapMJ,
-    )
-    expect(highSpeed.actualHarvestedThisLapMJ).toBeGreaterThan(
-      lowSpeed.actualHarvestedThisLapMJ,
-    )
-  })
-
-  it('ENERGY-3: high SOC reduces charge acceptance and shifts braking to friction', () => {
-    const middle = step(createInitialEnergyStore(team, 0.5), {
-      brakePercent: 90,
-      speedKph: 350,
-      throttlePercent: 0,
-    }).state
-    const high = step(createInitialEnergyStore(team, 0.97), {
-      brakePercent: 90,
-      speedKph: 350,
-      throttlePercent: 0,
-    }).state
-
-    expect(high.harvestPotentialThisLapMJ).toBeCloseTo(
-      middle.harvestPotentialThisLapMJ,
-      6,
-    )
-    expect(high.actualHarvestedThisLapMJ).toBeLessThan(
-      middle.actualHarvestedThisLapMJ,
-    )
-    expect(high.batteryAcceptancePowerKw).toBeLessThan(
-      middle.batteryAcceptancePowerKw,
-    )
-    expect(high.frictionBrakePowerKw).toBeGreaterThan(
-      middle.frictionBrakePowerKw,
-    )
-  })
-
-  it('ENERGY-4: continuously derates deployment near the minimum SOC reserve', () => {
-    const outputAt = (soc: number) =>
-      step(createInitialEnergyStore(team, soc), {
-        deltaSeconds: 0.25,
-        deploymentRequest: 1,
-      }).state.actualDeploymentPowerKw
-    const high = outputAt(0.8)
-    const low = outputAt(0.15)
-    const critical = outputAt(0.025)
-
-    expect(high).toBeGreaterThan(low)
-    expect(low).toBeGreaterThan(critical)
-    expect(critical).toBeLessThan(high * 0.05)
-  })
-
-  it('ENERGY-5: heats under repeated electrical load and cools gradually', () => {
-    let state = createInitialEnergyStore(team, 0.62)
-    const initialTemperatureC = state.batteryTemperatureC
-
-    for (let cycle = 0; cycle < 120; cycle += 1) {
-      state = step(state, {
-        brakePercent: 88,
-        deltaSeconds: 0.5,
-        speedKph: 340,
-        throttlePercent: 0,
-      }).state
-      state = step(state, {
-        deltaSeconds: 0.5,
-        deploymentRequest: 0.72,
-        speedKph: 310,
-      }).state
-    }
-    const hotTemperatureC = state.batteryTemperatureC
-    const beforeOneCoolingSecondC = state.batteryTemperatureC
-    state = step(state, {
-      ambientTemperatureC: 18,
-      deltaSeconds: 1,
-      deploymentRequest: 0,
-      speedKph: 230,
-      throttlePercent: 25,
-    }).state
-
-    expect(hotTemperatureC).toBeGreaterThan(initialTemperatureC)
-    expect(state.batteryTemperatureC).toBeLessThan(beforeOneCoolingSecondC)
-    expect(beforeOneCoolingSecondC - state.batteryTemperatureC).toBeLessThan(1)
-  })
-
-  it('ENERGY-6: thermally derates a hot battery, motor-generator, and inverter', () => {
-    const normal = step(createInitialEnergyStore(team, 0.8), {
-      deltaSeconds: 0.25,
-      deploymentRequest: 1,
-    }).state
-    const hotInitial = {
-      ...createInitialEnergyStore(team, 0.8),
-      batteryTemperatureC: 84,
-      inverterTemperatureC: 142,
-      motorGeneratorTemperatureC: 176,
-    }
-    const hot = step(hotInitial, {
-      deltaSeconds: 0.25,
-      deploymentRequest: 1,
-    }).state
-
-    expect(hot.thermalDerating).toBeLessThan(normal.thermalDerating)
-    expect(hot.actualDeploymentPowerKw).toBeLessThan(
-      normal.actualDeploymentPowerKw,
-    )
-  })
-
-  it('ENERGY-7: stores less energy than the recovery machine absorbs', () => {
-    const initial = createInitialEnergyStore(team, 0.4)
-    const result = step(initial, {
-      brakePercent: 100,
-      deltaSeconds: 1,
-      speedKph: 360,
-      throttlePercent: 0,
-    }).state
-    const mechanicalRecoveryMJ = result.actualRecoveryPowerKw / 1000
-    const storedMJ = result.currentEnergyMJ - initial.currentEnergyMJ
-
-    expect(mechanicalRecoveryMJ).toBeGreaterThan(storedMJ)
-    expect(storedMJ).toBeGreaterThan(0)
-    expect(result.conversionLossThisLapMJ).toBeGreaterThan(0)
-  })
-
-  it('ENERGY-8: delivers less mechanical energy than it removes from storage', () => {
-    const initial = createInitialEnergyStore(team, 0.8)
-    const result = step(initial, {
-      deltaSeconds: 1,
-      deploymentRequest: 1,
-    }).state
-    const removedMJ = initial.currentEnergyMJ - result.currentEnergyMJ
-    const deliveredMJ = result.deployedMechanicalEnergyThisLapMJ
-
-    expect(removedMJ).toBeGreaterThan(deliveredMJ)
-    expect(deliveredMJ).toBeGreaterThan(0)
-    expect(result.conversionLossThisLapMJ).toBeCloseTo(
-      removedMJ - deliveredMJ,
-      8,
-    )
-  })
-
-  it('ENERGY-9: keeps energy for later high-value straights in the lap', () => {
-    const initial = createInitialEnergyStore(team, 0.9)
-    const firstRequest = deploymentRequest(initial, {
-      lapProgress: 0.08,
-      straightLengthAheadMeters: 1_100,
-    })
-    const afterFirst = step(initial, {
-      deltaSeconds: 1.5,
-      deploymentRequest: firstRequest,
-      speedKph: 250,
-    }).state
-    const secondRequest = deploymentRequest(afterFirst, {
-      lapProgress: 0.42,
-      straightLengthAheadMeters: 850,
-    })
-    const afterSecond = step(afterFirst, {
-      deltaSeconds: 1.5,
-      deploymentRequest: secondRequest,
-      speedKph: 275,
-    }).state
-    const thirdRequest = deploymentRequest(afterSecond, {
-      lapProgress: 0.76,
-      straightLengthAheadMeters: 1_250,
-    })
-
-    expect(firstRequest).toBeGreaterThan(0)
-    expect(secondRequest).toBeGreaterThan(0)
-    expect(thirdRequest).toBeGreaterThan(0)
-    expect(afterFirst.currentEnergyMJ).toBeGreaterThan(
-      initial.minimumUsableEnergyMJ + initial.usableEnergyMJ * 0.45,
-    )
-    expect(afterSecond.currentEnergyMJ).toBeGreaterThan(
-      initial.minimumUsableEnergyMJ,
-    )
-  })
-
-  it('ENERGY-10: increases deployment allocation for an attack opportunity', () => {
-    const state = createInitialEnergyStore(team, 0.75)
-    const normal = deploymentRequest(state)
+    });
     const attack = deploymentRequest(state, {
       battlePhase: 'attacking',
       overtakeActive: true,
-    })
+    });
 
-    expect(attack).toBeGreaterThan(normal)
-  })
+    expect(push).toBeGreaterThan(standard);
+    expect(attack).toBeGreaterThan(standard);
 
-  it('moves deployment away from terminal speed without cutting the throttle', () => {
-    const state = createInitialEnergyStore(team, 0.9)
-    const accelerating = deploymentRequest(state, { speedKph: 410 })
-    const terminal = deploymentRequest(state, { speedKph: 432 })
-
-    expect(accelerating).toBeGreaterThan(terminal)
-    expect(terminal).toBeGreaterThan(0)
-  })
-
-  it('prioritizes the standing launch without delaying any grid row', () => {
-    const state = createInitialEnergyStore(team, 1)
-    const normal = deploymentRequest(state, {
-      speedKph: 115,
-      straightLengthAheadMeters: 260,
-      straightness: 0.62,
-      throttlePercent: 78,
-    })
-    const launch = deploymentRequest(state, {
-      speedKph: 115,
-      standingStartLaunchActive: true,
-      straightLengthAheadMeters: 260,
-      straightness: 0.62,
-      throttlePercent: 78,
-    })
-
-    expect(normal).toBeGreaterThan(0)
-    expect(launch).toBeGreaterThan(normal)
-  })
-
-  it('ENERGY-11: spends more while defending and carries the SOC cost forward', () => {
-    const initial = createInitialEnergyStore(team, 0.72)
-    const normalRequest = deploymentRequest(initial)
-    const defendRequest = deploymentRequest(initial, {
-      battlePhase: 'defending',
-      paceMode: 'defend',
-    })
-    const normal = step(initial, {
-      deltaSeconds: 2,
-      deploymentRequest: normalRequest,
-    }).state
-    const defending = step(initial, {
-      deltaSeconds: 2,
-      deploymentRequest: defendRequest,
-    }).state
-
-    expect(defendRequest).toBeGreaterThan(normalRequest)
-    expect(defending.currentEnergyMJ).toBeLessThan(normal.currentEnergyMJ)
-    expect(defending.stateOfCharge).toBeLessThan(normal.stateOfCharge)
-  })
-
-  it('ENERGY-12: derives different race, VSC, and SC balances without auto-filling', () => {
-    const initial = createInitialEnergyStore(team, 0.55)
-    const racing = step(initial, {
-      deltaSeconds: 2,
-      deploymentRequest: deploymentRequest(initial),
-      speedKph: 300,
-    }).state
-    const vsc = step(initial, {
-      brakePercent: 22,
-      deltaSeconds: 2,
-      deploymentRequest: deploymentRequest(initial, {
-        phaseActive: true,
-        speedKph: 180,
-        throttlePercent: 38,
-      }),
-      speedKph: 180,
-      throttlePercent: 38,
-    }).state
-    const safetyCar = step(initial, {
-      brakePercent: 8,
-      deltaSeconds: 2,
-      deploymentRequest: deploymentRequest(initial, {
-        phaseActive: true,
-        speedKph: 105,
-        throttlePercent: 22,
-      }),
-      speedKph: 105,
-      throttlePercent: 22,
-    }).state
-
-    expect(racing.currentEnergyMJ).toBeLessThan(initial.currentEnergyMJ)
-    expect(vsc.actualHarvestedThisLapMJ).toBeGreaterThan(
-      safetyCar.actualHarvestedThisLapMJ,
-    )
-    expect(vsc.stateOfCharge).toBeLessThan(1)
-    expect(safetyCar.stateOfCharge).toBeLessThan(1)
-  })
-
-  it('ENERGY-13: reduces rear-axle recovery on a low-grip wet surface', () => {
-    const initial = createInitialEnergyStore(team, 0.45)
-    const dry = step(initial, {
-      brakePercent: 40,
-      speedKph: 220,
-      throttlePercent: 0,
-    }).state
-    const wet = step(initial, {
-      brakePercent: 40,
-      driverWetSkill: 0.82,
-      gripMultiplier: 0.58,
-      speedKph: 220,
-      surfaceWaterMm: 1.8,
-      throttlePercent: 0,
-      tire: 'W',
-    }).state
-
-    expect(wet.actualRecoveryPowerKw).toBeLessThan(dry.actualRecoveryPowerKw)
-    expect(wet.recoveryTorqueNm).toBeLessThan(dry.recoveryTorqueNm)
-    expect(
-      wet.frictionBrakePowerKw / wet.requestedBrakePowerKw,
-    ).toBeGreaterThan(dry.frictionBrakePowerKw / dry.requestedBrakePowerKw)
-  })
-
-  it('uses a qualifying recovery map without changing the recharge ceiling', () => {
-    const initial = createInitialEnergyStore(team, 0.45)
-    const normalRecovery = step(initial, {
-      brakePercent: 54,
-      recoveryRequestScale: 1,
-      speedKph: 285,
-      throttlePercent: 0,
-    }).state
-    const qualifyingRecovery = step(initial, {
-      brakePercent: 54,
-      recoveryRequestScale: 0.32,
-      speedKph: 285,
-      throttlePercent: 0,
-    }).state
-
-    expect(qualifyingRecovery.actualHarvestedThisLapMJ).toBeLessThan(
-      normalRecovery.actualHarvestedThisLapMJ,
-    )
-    expect(qualifyingRecovery.stateOfCharge).toBeLessThan(
-      normalRecovery.stateOfCharge,
-    )
-  })
-
-  // Split by phase, because the two halves happen at different speeds. The
-  // store is drained at 280 km/h, where deployment is legal: the regulation's
-  // ramp takes permitted MGU-K power to zero by 345, so the old 355 and 390
-  // asked for a state the rules do not allow and nothing drained. Clipping is
-  // then judged at 340, on the straight, which is where it happens. What the
-  // test checks is unchanged.
-  it('ENERGY-14: excessive early deployment creates real clipping recovery demand', () => {
-    let state = createInitialEnergyStore(team, 0.88)
-
-    for (let index = 0; index < 24; index += 1) {
-      state = step(state, {
-        deltaSeconds: 0.5,
-        deploymentRequest: 1,
-        speedKph: 280,
-      }).state
-    }
-    const clipping = advanceSuperClipping({
-      battlePhase: 'single-file',
-      batteryPercent: state.stateOfCharge * 100,
-      brakePercent: 0,
-      currentIntensity: 0,
-      deltaSeconds: 1,
-      deployedThisLapMj: state.energyRemovedThisLapMJ,
-      driver,
-      fuelLoadKg: 70,
-      gapToAheadSeconds: 3,
-      harvestedThisLapMj: state.actualHarvestedThisLapMJ,
-      lap: 8,
-      lowGripConditions: false,
-      maxRechargePerLapMj: maximumRechargeMJ,
-      phaseActive: false,
-      racePaceMode: 'standard',
-      sessionType: 'race-distance',
+    const standardStep = step(state, {
+      deploymentDcPowerLimitKw: 100,
+      deploymentRequest: standard,
       speedKph: 340,
-      straightLengthAheadMeters: 900,
-      straightness: 1,
-      team,
-      throttlePercent: 100,
-    })
-    const clippingStep = step(state, {
-      additionalRecoveryRequestKw:
-        clipping.regenerativeResistancePowerKw,
-      deltaSeconds: 1,
-      deploymentRequest: 1,
+    });
+    const attackStep = step(state, {
+      deploymentDcPowerLimitKw: 100,
+      deploymentRequest: attack,
       speedKph: 340,
-    }).state
-
-    expect(state.stateOfCharge).toBeLessThan(0.15)
-    expect(clipping.demandIntensity).toBeGreaterThan(0)
-    expect(clipping.intensity).toBeGreaterThan(0)
-    expect(clippingStep.recoveryMode).toBe('super-clipping')
-    expect(clippingStep.actualRecoveryPowerKw).toBeGreaterThan(0)
-    expect(clippingStep.actualDeploymentPowerKw).toBeLessThan(
-      energySystemParametersFor(team).maximumDeploymentPowerKw,
-    )
-  })
-
-  it('ENERGY-15: carries conserved SOC and thermal state through a 20-lap run', () => {
-    let state = createInitialEnergyStore(team, 0.68)
-    const laps: Array<{
-      endSoc: number
-      lossMJ: number
-      maximumPowerKw: number
-      startSoc: number
-      temperatureC: number
-    }> = []
-
-    for (let lap = 1; lap <= 20; lap += 1) {
-      const startSoc = state.stateOfCharge
-      state = step(state, {
-        brakePercent: 84,
-        deltaSeconds: 1,
-        deploymentRequest: 0,
-        speedKph: 335,
-        throttlePercent: 0,
-      }).state
-      state = step(state, {
-        deltaSeconds: 1.1,
-        deploymentRequest: deploymentRequest(state, {
-          lapProgress: 0.28,
-        }),
-        speedKph: 285,
-      }).state
-      state = step(state, {
-        brakePercent: 58,
-        deltaSeconds: 0.7,
-        deploymentRequest: 0,
-        speedKph: 245,
-        throttlePercent: 0,
-      }).state
-      state = step(state, {
-        deltaSeconds: 1,
-        deploymentRequest: deploymentRequest(state, {
-          lapProgress: 0.72,
-          straightLengthAheadMeters: 1_150,
-        }),
-        speedKph: 300,
-      }).state
-
-      expect(Math.abs(energyBalanceErrorMJ(state))).toBeLessThan(1e-8)
-      laps.push({
-        endSoc: state.stateOfCharge,
-        lossMJ: state.conversionLossThisLapMJ,
-        maximumPowerKw: state.maximumDeploymentPowerKw,
-        startSoc,
-        temperatureC: state.batteryTemperatureC,
-      })
-      const endEnergyMJ = state.currentEnergyMJ
-      state = startNextEnergyLap(state)
-      expect(state.currentEnergyMJ).toBeCloseTo(endEnergyMJ, 10)
-      expect(state.stateOfCharge).toBeCloseTo(laps.at(-1)!.endSoc, 10)
-    }
-
-    expect(laps).toHaveLength(20)
-    expect(laps.every((lap) => lap.lossMJ > 0)).toBe(true)
-    expect(laps.every((lap) => lap.maximumPowerKw > 0)).toBe(true)
-    expect(laps.every((lap) => lap.endSoc >= 0 && lap.endSoc <= 1)).toBe(true)
-    expect(laps[1].startSoc).toBeCloseTo(laps[0].endSoc, 10)
-    expect(new Set(laps.map((lap) => lap.endSoc.toFixed(4))).size).toBeGreaterThan(1)
-    expect(new Set(laps.map((lap) => lap.temperatureC.toFixed(3))).size).toBeGreaterThan(1)
-  })
-})
+    });
+    expect(standardStep.state.maximumDeploymentDcPowerKw).toBe(
+      attackStep.state.maximumDeploymentDcPowerKw,
+    );
+    expect(attackStep.state.actualDeploymentDcPowerKw).toBeLessThanOrEqual(100);
+  });
+});

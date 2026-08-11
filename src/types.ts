@@ -87,11 +87,12 @@ export type ActiveAeroState = {
 export type OvertakeStatus = 'disabled' | 'available' | 'active'
 export type RestartProcedure = 'none' | 'standing' | 'rolling'
 export type ErsMode = 'harvest' | 'balanced' | 'deploy'
-export type EnergyRecoveryMode =
-  | 'none'
-  | 'braking'
-  | 'lift-coast'
-  | 'super-clipping'
+export type ErsKOperatingMode =
+  | 'propulsion'
+  | 'braking-regeneration'
+  | 'lift-coast-regeneration'
+  | 'full-throttle-superclip'
+  | 'inactive'
 export type RacePaceMode = 'push' | 'standard' | 'save' | 'defend'
 export type BattlePhase =
   | 'single-file'
@@ -162,6 +163,90 @@ export type WeekendStage =
   | 'qualifying2'
   | 'race'
   | 'race2'
+
+export type RechargeMeasurementPoint = 'CU-K-HV-DC-bus'
+
+export type F1RechargeSessionType =
+  | 'freePractice'
+  | 'sprintQualifying'
+  | 'qualifying'
+  | 'sprint'
+  | 'race'
+export type RechargeLimit =
+  | { kind: 'finite'; maxCuKBusRechargeMj: number }
+  | { kind: 'unlimited'; maxCuKBusRechargeMj: null }
+  | { kind: 'unavailable'; maxCuKBusRechargeMj: null }
+export type FiaPuRechargeRule = {
+  id: string
+  sessionTypes: F1RechargeSessionType[]
+  lapKind: 'any' | 'out-lap-other-than-in-ttcs'
+  overtakeAtLapStart: 'active' | 'inactive' | 'not-applicable'
+  lowGrip: 'any' | 'required'
+  behindSafetyCar: 'any' | 'required'
+  limit: RechargeLimit
+  /** Optional decomposition supplied by the same event table. */
+  baseLimitMj?: number
+  additionalAllowanceMj?: number
+}
+
+/**
+ * Provenance-bearing event input from FIA Competition / Power Unit Information.
+ * Missing event or stage values resolve as unavailable unless the binding
+ * technical text itself defines the complete context. They are never inferred
+ * from a simulated lap or an observed speed trace.
+ */
+export type FiaPuEventInput = {
+  schemaVersion: 1
+  seriesId: 'f1-custom'
+  eventId: string
+  trackId: string
+  source: {
+    sourceId: string
+    authority: 'race-director-instruction'
+    documentNumber: number
+    documentDate: string
+    publishedAt: string
+    url: string
+    enclosure: string
+    sha256: string
+    validationStatus: 'verified'
+  }
+  recharge: {
+    measuredAt: RechargeMeasurementPoint
+    rules: FiaPuRechargeRule[]
+  }
+}
+
+export type RechargeRuleDefinition = {
+  limit: RechargeLimit
+  baseLimitMJ: number | null
+  additionalAllowanceMJ: number
+  measuredAt: RechargeMeasurementPoint
+  resolution:
+    | 'technical-default'
+    | 'technical-low-grip-safety-car'
+    | 'verified-event'
+    | 'event-context-unavailable'
+  ruleId: string
+  sourceId: string
+}
+
+export type RechargeRuleState = RechargeRuleDefinition & {
+  usedMJ: number
+  remainingMJ: number | null
+}
+
+/** High-level scheduling intent. The physical layer remains the sole SOC owner. */
+export type F1EnergyIntent = {
+  propulsionAggression: number
+  harvestPreference: number
+  liftCoastPreference: number
+  superclipAcceptance: number
+  endOfStraightHarvestBias: number
+  defendEnergyReserve: number
+  attackEnergyReserve: number
+  qualifyingSpendBias: number
+}
 
 /** Independent driver skills. The displayed overall is informational only. */
 export type DriverSkillProfile = {
@@ -840,6 +925,8 @@ export type RaceConfig = {
   teams: Team[]
   drivers: Driver[]
   seed: string
+  /** Exact competition identity required by event-scoped official inputs. */
+  eventId?: string | null
   /** Category identity keeps checkpoints and category-specific assists isolated. */
   seriesId?: ExecutableSeriesId
   vehicleEraId?: RuntimeVehicleEraId
@@ -864,8 +951,8 @@ export type RaceConfig = {
    * must never be inferred from the simulator's historical vehicle mass.
    */
   fiaNominalTyreMassKg?: number | null
-  /** FIA event directive override; public regulations otherwise expose 8.5 MJ. */
-  fiaEventRechargeLimitMj?: number | null
+  /** Provenance-bearing FIA Race Director Power Unit Information input. */
+  fiaPuEventInput?: FiaPuEventInput | null
   /** Persisted weekend effects passed from previously completed sessions. */
   weekendContext?: WeekendContext
   timedSessionPlan?: TimedSessionPlan
@@ -978,34 +1065,57 @@ export type EnergyStoreState = {
   minimumUsableEnergyMJ: number
   maximumUsableEnergyMJ: number
   stateOfCharge: number
-  chargePowerKw: number
-  dischargePowerKw: number
-  requestedDeploymentPowerKw: number
+  /** CU-K high-voltage DC-bus power entering the Energy Store path. */
+  chargeDcPowerKw: number
+  /** CU-K high-voltage DC-bus power leaving the Energy Store path. */
+  dischargeDcPowerKw: number
+  /** Rate actually added to stored Energy Store energy after battery loss. */
+  storedChargePowerKw: number
+  /** Rate removed from stored Energy Store energy, including battery loss. */
+  storedDischargePowerKw: number
+  requestedDeploymentDcPowerKw: number
+  actualDeploymentDcPowerKw: number
+  /** Mechanical MGU-K propulsion power delivered before the driveline. */
   actualDeploymentPowerKw: number
+  /** Mechanical generator request at the MGU-K shaft. */
   requestedRecoveryPowerKw: number
+  /** Mechanical generator power absorbed at the MGU-K shaft. */
   actualRecoveryPowerKw: number
   requestedBrakePowerKw: number
   frictionBrakePowerKw: number
   recoveryTorqueNm: number
   motorMechanicalPowerKw: number
-  batteryChargePowerKw: number
-  batteryDischargePowerKw: number
+  batteryLossPowerKw: number
+  inverterLossPowerKw: number
+  motorLossPowerKw: number
   batteryTemperatureC: number
   motorGeneratorTemperatureC: number
   inverterTemperatureC: number
-  harvestPotentialThisLapMJ: number
-  actualHarvestedThisLapMJ: number
+  requestedRecoveryMechanicalEnergyThisLapMJ: number
+  recoveredMechanicalEnergyThisLapMJ: number
+  /** Regulatory C5.2.10 ledger at the CU-K HV DC bus. */
+  rechargedAtCuKBusThisLapMJ: number
+  /** Energy actually added to the Energy Store after charge losses. */
+  storedEnergyThisLapMJ: number
+  deployedAtCuKBusThisLapMJ: number
   deployedMechanicalEnergyThisLapMJ: number
   energyRemovedThisLapMJ: number
+  batteryLossThisLapMJ: number
+  inverterLossThisLapMJ: number
+  motorLossThisLapMJ: number
+  /** Legacy checkpoint loss that predates component-level attribution. */
+  unattributedConversionLossThisLapMJ: number
   conversionLossThisLapMJ: number
   lapStartEnergyMJ: number
+  lastStepBalanceErrorMJ: number
   energyBalanceErrorMJ: number
   thermalDerating: number
-  socPowerLimitKw: number
-  batteryAcceptancePowerKw: number
-  maximumDeploymentPowerKw: number
+  socDischargeDcPowerLimitKw: number
+  batteryChargeDcPowerLimitKw: number
+  maximumDeploymentDcPowerKw: number
   deploymentRequest: number
-  recoveryMode: EnergyRecoveryMode
+  operatingMode: ErsKOperatingMode
+  rechargeRule: RechargeRuleState
 }
 
 export type CarSnapshot = {
@@ -1103,6 +1213,12 @@ export type CarSnapshot = {
   overtakeEligibility: OvertakeEligibility | null
   /** Additional electrical energy available to 2026 Overtake this lap. */
   overtakeEnergyRemainingMj: number
+  /** B7.2 recharge allowance latched from Overtake state at the lap-start line. */
+  overtakeRechargeAllowanceActiveThisLap: boolean
+  /** Low-grip condition latched at the Line for the current recharge ledger. */
+  energyLapStartedInLowGripConditions: boolean
+  /** Safety-car control latched at the Line for the current recharge ledger. */
+  energyLapStartedBehindSafetyCar: boolean
   /** Super Formula OTS allocation; absent for F1 active-aero weekends. */
   otsRemainingSeconds?: number
   /**
@@ -1111,9 +1227,9 @@ export type CarSnapshot = {
    * 100 s at Suzuka/Autopolis) so the allocation cannot be spent in one burst.
    */
   otsCooldownUntilSeconds?: number
-  /** ERS-K recharge accumulated on the current lap for regulation limits. */
+  /** Derived compatibility display: CU-K HV DC-bus recharge this lap. */
   energyHarvestedThisLapMj: number
-  /** Battery energy spent by the MGU-K on the current lap. */
+  /** Derived compatibility display: CU-K HV DC-bus deployment this lap. */
   energyDeployedThisLapMj: number
   ersMode: ErsMode
   /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
@@ -1123,11 +1239,9 @@ export type CarSnapshot = {
   ersBatteryPercent: number
   /** Continuous 0..1 high-speed energy-recovery severity. */
   superClippingIntensity: number
-  /** Fraction of normal PU + MGU-K wheel power currently available. */
-  superClippingDrivePowerScale: number
-  /** Electrical power being recovered specifically by super clipping. */
+  /** Actual mechanical generator power at the MGU-K shaft during superclip. */
   superClippingRegenPowerKw: number
-  /** Energy recovered by super clipping on the current lap. */
+  /** CU-K HV DC-bus recharge attributable to superclip on this lap. */
   superClippingRecoveredThisLapMj: number
   /** Simulation clock at the start of the current clipping episode. */
   superClippingStartedAtSeconds: number | null

@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
 import { sourceRegistry } from '../data/sourceRegistry'
 import { tracks } from '../data/tracks'
+import type { FiaPuEventInput } from '../types'
 import {
   FIA_2026_REGULATION_PROFILE,
   compliesWithGrandPrixTireRule,
   deploymentPowerLimitKwForSpeed,
-  maxRechargePerLapMjFor,
   nextLowGripCondition,
   permittedMguKDcPowerKwForSpeed,
+  resolveF1RechargeRule,
   sessionDistanceLapsFor,
   shouldDeclareRainHazard,
   sprintLapsFor,
@@ -76,25 +78,18 @@ describe('2026 session regulations', () => {
     expect(
       FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj,
     ).toBe(4)
-    expect(maxRechargePerLapMjFor({ stage: 'race' })).toBe(8.5)
-    expect(maxRechargePerLapMjFor({ stage: 'qualifying' })).toBe(7)
     expect(
-      maxRechargePerLapMjFor({ eventLimitMj: 6, stage: 'race' }),
-    ).toBe(7)
-    expect(
-      maxRechargePerLapMjFor({
-        eventLimitMj: 3,
-        stage: 'qualifying',
-      }),
-    ).toBe(4)
-    expect(
-      maxRechargePerLapMjFor({
+      resolveF1RechargeRule({
         behindSafetyCar: true,
-        eventLimitMj: 7,
         lowGripConditions: true,
         stage: 'race',
       }),
-    ).toBe(Number.POSITIVE_INFINITY)
+    ).toMatchObject({
+      baseLimitMJ: null,
+      limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+      measuredAt: 'CU-K-HV-DC-bus',
+      resolution: 'technical-low-grip-safety-car',
+    })
   })
 
   it('keeps the non-public low-grip MGU-K curve unavailable', () => {
@@ -152,6 +147,217 @@ describe('2026 session regulations', () => {
         weather: 'clear',
       }),
     ).toBe(true)
+  })
+})
+
+describe('FIA 2026 event recharge resolver', () => {
+  const suzukaContext = {
+    eventId: 'f1-03',
+    eventInput: fiaSuzukaPuEventInput2026,
+    trackId: 'suzuka-approx',
+  } as const
+
+  it('uses the C5.2.10 8.5 MJ base only for ordinary TTCS laps', () => {
+    expect(resolveF1RechargeRule({ stage: 'race' })).toEqual({
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+      measuredAt: 'CU-K-HV-DC-bus',
+      resolution: 'technical-default',
+      ruleId: 'fia-c5.2.10-default',
+      sourceId: 'fia-f1-2026-technical-c20',
+    })
+
+    for (const missingEventContext of [
+      { stage: 'qualifying' as const },
+      { stage: 'sprintQualifying' as const },
+      { stage: 'fp1' as const },
+      { overtakeAtLapStart: true, stage: 'race' as const },
+    ]) {
+      expect(resolveF1RechargeRule(missingEventContext)).toMatchObject({
+        baseLimitMJ: null,
+        limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+        resolution: 'event-context-unavailable',
+        ruleId: 'fia-event-context-unavailable',
+      })
+    }
+  })
+
+  it('treats the Overtake row as a 9.0 MJ total latched at lap start', () => {
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        overtakeAtLapStart: false,
+        stage: 'race',
+      }),
+    ).toMatchObject({
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+      resolution: 'verified-event',
+      ruleId: 'suzuka-race-overtake-inactive',
+    })
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        overtakeAtLapStart: true,
+        stage: 'race',
+      }),
+    ).toMatchObject({
+      additionalAllowanceMJ: 0.5,
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 9 },
+      resolution: 'verified-event',
+      ruleId: 'suzuka-race-overtake-active-at-lap-start',
+    })
+  })
+
+  it('selects the exact non-TTCS session and out-lap totals', () => {
+    const cases = [
+      {
+        expectedLimitMj: 8,
+        expectedRuleId: 'suzuka-qualifying',
+        stage: 'qualifying' as const,
+        timedRunPhase: 'attack-lap' as const,
+      },
+      {
+        expectedLimitMj: 9,
+        expectedRuleId: 'suzuka-out-lap-other-than-race',
+        stage: 'qualifying' as const,
+        timedRunPhase: 'out-lap' as const,
+      },
+      {
+        expectedLimitMj: 9,
+        expectedRuleId: 'suzuka-free-practice',
+        stage: 'fp1' as const,
+        timedRunPhase: 'attack-lap' as const,
+      },
+      {
+        expectedLimitMj: 9,
+        expectedRuleId: 'suzuka-out-lap-other-than-race',
+        stage: 'fp1' as const,
+        timedRunPhase: 'out-lap' as const,
+      },
+    ]
+
+    for (const testCase of cases) {
+      expect(
+        resolveF1RechargeRule({
+          ...suzukaContext,
+          stage: testCase.stage,
+          timedRunPhase: testCase.timedRunPhase,
+        }),
+      ).toMatchObject({
+        limit: {
+          kind: 'finite',
+          maxCuKBusRechargeMj: testCase.expectedLimitMj,
+        },
+        resolution: 'verified-event',
+        ruleId: testCase.expectedRuleId,
+      })
+    }
+
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        stage: 'sprintQualifying',
+      }),
+    ).toMatchObject({
+      limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+      resolution: 'event-context-unavailable',
+    })
+  })
+
+  it('makes the low-grip Safety Car rule unlimited, not an allowance', () => {
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        behindSafetyCar: true,
+        lowGripConditions: true,
+        stage: 'race',
+      }),
+    ).toMatchObject({
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: null,
+      limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+      resolution: 'technical-low-grip-safety-car',
+    })
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        behindSafetyCar: true,
+        lowGripConditions: false,
+        stage: 'race',
+      }).limit,
+    ).toEqual({ kind: 'finite', maxCuKBusRechargeMj: 8.5 })
+  })
+
+  it('rejects mismatched provenance and fails closed on ambiguous rules', () => {
+    expect(() =>
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        eventId: 'f1-04',
+        stage: 'race',
+      }),
+    ).toThrow(/event mismatch/u)
+    expect(() =>
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        stage: 'race',
+        trackId: 'montreal-approx',
+      }),
+    ).toThrow(/track mismatch/u)
+
+    const ambiguousInput: FiaPuEventInput = {
+      ...fiaSuzukaPuEventInput2026,
+      recharge: {
+        ...fiaSuzukaPuEventInput2026.recharge,
+        rules: [
+          ...fiaSuzukaPuEventInput2026.recharge.rules.map((rule) => ({
+            ...rule,
+            limit: { ...rule.limit },
+            sessionTypes: [...rule.sessionTypes],
+          })),
+          {
+            ...fiaSuzukaPuEventInput2026.recharge.rules[0],
+            id: 'suzuka-race-overtake-inactive-ambiguous',
+            limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+            sessionTypes: ['race'],
+          },
+        ],
+      },
+    }
+    expect(
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        eventInput: ambiguousInput,
+        stage: 'race',
+      }),
+    ).toMatchObject({
+      limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+      resolution: 'event-context-unavailable',
+    })
+
+    const nonClosingInput: FiaPuEventInput = {
+      ...fiaSuzukaPuEventInput2026,
+      recharge: {
+        ...fiaSuzukaPuEventInput2026.recharge,
+        rules: fiaSuzukaPuEventInput2026.recharge.rules.map((rule, index) => ({
+          ...rule,
+          baseLimitMj: index === 1 ? 9 : rule.baseLimitMj,
+          limit: { ...rule.limit },
+          sessionTypes: [...rule.sessionTypes],
+        })),
+      },
+    }
+    expect(() =>
+      resolveF1RechargeRule({
+        ...suzukaContext,
+        eventInput: nonClosingInput,
+        overtakeAtLapStart: true,
+        stage: 'race',
+      }),
+    ).toThrow(/decomposition does not close/u)
   })
 })
 

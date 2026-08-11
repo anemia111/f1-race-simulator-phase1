@@ -2,6 +2,7 @@
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { beforeAll } from 'vitest'
 import { tracks } from '../data/tracks'
+import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
 import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import { flagFromRaceControl } from '../services/openF1Derived'
 import { calibrateFieldFromOpenF1 } from '../services/openF1Performance'
@@ -13,6 +14,10 @@ import type {
   TireCompound,
 } from '../types'
 import { incidentForLap, terminalCrashFlagResponse } from './incidents'
+import {
+  overtakeAllowanceBoundedDcPowerLimitKw,
+  overtakeIncrementalDcEnergyUsedMj,
+} from './telemetry'
 import {
   battleDynamicsFor,
   crashFlagResponseFor,
@@ -35,8 +40,10 @@ import {
   blueFlagApproachingCarFor,
   carDefinesNeutralisationQueueOrder,
   createInitialRace,
+  finalTimingLineSplit,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
+  postLineEnergyUsageForFinalCrossing,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
   rankCars,
@@ -131,6 +138,557 @@ function runThroughStart(
   snapshot = advanceRace(snapshot, 5, config)
   return snapshot
 }
+
+describe('lap-start energy rule authority', () => {
+  it('carries only the physically accepted Overtake debit after a Line crossing', () => {
+    const remainingAllowanceMj = 0.011
+    const deltaSeconds = 1
+    const normalLimitKw = 100
+    const boundedLimitKw = overtakeAllowanceBoundedDcPowerLimitKw({
+      active: true,
+      declaredDeploymentDcPowerLimitKw: 350,
+      deltaSeconds,
+      normalDeploymentDcPowerLimitKw: normalLimitKw,
+      remainingAllowanceMj,
+    })
+    const physicalDebitMj = overtakeIncrementalDcEnergyUsedMj({
+      actualDeploymentDcPowerKw: boundedLimitKw,
+      active: true,
+      deltaSeconds,
+      normalDeploymentDcLimitKw: normalLimitKw,
+      remainingAllowanceMj,
+    })
+    const split = finalTimingLineSplit({
+      nextTotalDistance: 4.02,
+      previousTotalDistance: 3.98,
+      processedLap: 3,
+    })!
+    const retained = postLineEnergyUsageForFinalCrossing({
+      deploymentAcceptanceScale: 1,
+      frameOvertakeEnergyUsedMJ: physicalDebitMj,
+      frameSuperclipRecoveredMJ: 0,
+      postLineFraction: split.postLineFraction,
+      rechargeAcceptanceScale: 1,
+    })
+
+    expect(physicalDebitMj).toBeCloseTo(remainingAllowanceMj, 12)
+    expect(retained.overtakeEnergyUsedMJ).toBeCloseTo(
+      remainingAllowanceMj * split.postLineFraction,
+      12,
+    )
+    expect(retained.overtakeEnergyUsedMJ).toBeLessThanOrEqual(
+      remainingAllowanceMj,
+    )
+  })
+
+  it('allocates an extreme multi-Line frame only after its final crossing', () => {
+    const split = finalTimingLineSplit({
+      nextTotalDistance: 5.1,
+      previousTotalDistance: 2.9,
+      processedLap: 2,
+    })
+
+    expect(split).toMatchObject({
+      crossedLapCount: 3,
+      finalCrossedLap: 5,
+    })
+    expect(split?.crossingFraction).toBeCloseTo(
+      (5 - 2.9) / (5.1 - 2.9),
+      12,
+    )
+    expect(split?.postLineFraction).toBeCloseTo(
+      (5.1 - 5) / (5.1 - 2.9),
+      12,
+    )
+    const retained = postLineEnergyUsageForFinalCrossing({
+      deploymentAcceptanceScale: 1,
+      frameOvertakeEnergyUsedMJ: 0.22,
+      frameSuperclipRecoveredMJ: 0.44,
+      postLineFraction: split!.postLineFraction,
+      rechargeAcceptanceScale: 0.5,
+    })
+
+    expect(retained.overtakeEnergyUsedMJ).toBeCloseTo(
+      0.22 * split!.postLineFraction,
+      12,
+    )
+    expect(retained.superclipRecoveredMJ).toBeCloseTo(
+      0.44 * split!.postLineFraction * 0.5,
+      12,
+    )
+    expect(
+      finalTimingLineSplit({
+        nextTotalDistance: 5.1,
+        previousTotalDistance: 5.1,
+        processedLap: 5,
+      }),
+    ).toBeNull()
+  })
+
+  it('latches the Overtake recharge allowance at the line for the whole lap', () => {
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
+    const config: RaceConfig = {
+      ...makeConfig('lap-start-overtake-recharge-latch'),
+      eventId: 'f1-03',
+      fiaPuEventInput: fiaSuzukaPuEventInput2026,
+      overtakeSystem: 'active-aero',
+      track: {
+        ...suzuka,
+        rainProbability: 0,
+        overtakeControlLines: [
+          {
+            activationProgress: 0.99,
+            detectionGapSeconds: 1,
+            detectionProgress: 0.95,
+            source: 'derived',
+          },
+        ],
+      },
+    }
+    const started = runThroughStart(config)
+    const targetId = started.cars[0].driverId
+    const prepared: RaceSnapshot = {
+      ...started,
+      flag: 'clear',
+      flagLabel: 'CLEAR',
+      flagPhase: null,
+      lowGripConditions: false,
+      overtakeEnabled: true,
+      cars: started.cars.map((car, index) => {
+        const totalDistance = 2.999 - index * 0.01
+
+        return {
+          ...car,
+          battlePhase: 'single-file' as const,
+          battleOpponentId: null,
+          battlePhaseUntilSeconds: null,
+          gapToAhead: index === 0 ? 0 : 2,
+          gapToLeader: index * 2,
+          lap: 2,
+          lapStartedAtSeconds: started.elapsedSeconds - 80,
+          overtakeEligibility:
+            index === 0
+              ? {
+                  activationLap: 2,
+                  controlLineIndex: 0,
+                  detectedGapSeconds: 0.5,
+                  eligible: true,
+                }
+              : null,
+          overtakeStatus: index === 0 ? ('active' as const) : ('disabled' as const),
+          position: index + 1,
+          processedBattleSegment: Number.MAX_SAFE_INTEGER,
+          processedLap: 2,
+          progress: totalDistance - Math.floor(totalDistance),
+          speedKph: 330,
+          status: 'running' as const,
+          totalDistance,
+        }
+      }),
+    }
+
+    const crossed = advanceRace(prepared, 0.5, config)
+    const crossedTarget = crossed.cars.find((car) => car.driverId === targetId)!
+
+    expect(crossedTarget.processedLap).toBe(3)
+    expect(crossedTarget.overtakeRechargeAllowanceActiveThisLap).toBe(true)
+    expect(crossedTarget.energyStore.rechargeRule).toMatchObject({
+      additionalAllowanceMJ: 0.5,
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 9 },
+      ruleId: 'suzuka-race-overtake-active-at-lap-start',
+      usedMJ: 0,
+    })
+    expect(crossedTarget.energyDeployedThisLapMj).toBeGreaterThan(0)
+    expect(crossedTarget.energyDeployedThisLapMj).toBeCloseTo(
+      crossedTarget.energyStore.deployedAtCuKBusThisLapMJ,
+      12,
+    )
+    expect(crossedTarget.overtakeEnergyRemainingMj).toBeLessThan(0.5)
+    expect(
+      Math.abs(
+        crossedTarget.energyStore.currentEnergyMJ -
+          (crossedTarget.energyStore.lapStartEnergyMJ +
+            crossedTarget.energyStore.storedEnergyThisLapMJ -
+            crossedTarget.energyStore.energyRemovedThisLapMJ),
+      ),
+    ).toBeLessThan(1e-9)
+
+    const afterOvertake = advanceRace(
+      {
+        ...crossed,
+        cars: crossed.cars.map((car) =>
+          car.driverId === targetId
+            ? {
+                ...car,
+                overtakeEligibility: null,
+                overtakeStatus: 'disabled' as const,
+              }
+            : car,
+        ),
+      },
+      0.01,
+      config,
+    )
+    const heldTarget = afterOvertake.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(heldTarget.overtakeRechargeAllowanceActiveThisLap).toBe(true)
+    expect(heldTarget.energyStore.rechargeRule.ruleId).toBe(
+      'suzuka-race-overtake-active-at-lap-start',
+    )
+  })
+
+  it('latches the event out-lap rule at pit release and the attack-lap rule at the line', () => {
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
+    const config: RaceConfig = {
+      ...makeConfig('timed-session-recharge-latch'),
+      eventId: 'f1-03',
+      fiaPuEventInput: fiaSuzukaPuEventInput2026,
+      track: { ...suzuka, rainProbability: 0 },
+      weekendStage: 'qualifying',
+    }
+    const initial = createInitialRace(config)
+    const targetId = initial.cars[0].driverId
+    const released = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) => ({
+          ...car,
+          pitUntilSeconds: index === 0 ? 0 : null,
+        })),
+      },
+      0.1,
+      config,
+    )
+    const releasedTarget = released.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(releasedTarget).toMatchObject({
+      overtakeRechargeAllowanceActiveThisLap: false,
+      status: 'running',
+      timedRunPhase: 'out-lap',
+    })
+    expect(releasedTarget.energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 9 },
+      ruleId: 'suzuka-out-lap-other-than-race',
+      usedMJ: 0,
+    })
+
+    const crossed = advanceRace(
+      {
+        ...released,
+        cars: released.cars.map((car) =>
+          car.driverId === targetId
+            ? {
+                ...car,
+                lap: 0,
+                lapStartedAtSeconds: null,
+                processedBattleSegment: Number.MAX_SAFE_INTEGER,
+                processedLap: 0,
+                progress: 0.999,
+                speedKph: 300,
+                status: 'running' as const,
+                timedRunPhase: 'out-lap' as const,
+                totalDistance: 0.999,
+              }
+            : car,
+        ),
+      },
+      0.5,
+      config,
+    )
+    const crossedTarget = crossed.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(crossedTarget.processedLap).toBe(1)
+    expect(crossedTarget.timedRunPhase).toBe('attack-lap')
+    expect(crossedTarget.energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 8 },
+      ruleId: 'suzuka-qualifying',
+      usedMJ: 0,
+    })
+  })
+
+  it('starts a fresh lap energy ledger only when pit release crosses the Line', () => {
+    const config = makeConfig('race-pit-release-energy-line')
+    const initial = runThroughStart(config)
+    const withUsedEnergyLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => ({
+      ...car,
+      energyHarvestedThisLapMj: usedMJ,
+      energyStore: {
+        ...car.energyStore,
+        rechargedAtCuKBusThisLapMJ: usedMJ,
+        rechargeRule: {
+          ...car.energyStore.rechargeRule,
+          remainingMJ:
+            car.energyStore.rechargeRule.limit.kind === 'finite'
+              ? car.energyStore.rechargeRule.limit.maxCuKBusRechargeMj - usedMJ
+              : null,
+          usedMJ,
+        },
+      },
+      overtakeEnergyRemainingMj: 0.05,
+      superClippingRecoveredThisLapMj: Math.min(0.2, usedMJ),
+    })
+    const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
+    const beforeLine = withUsedEnergyLedger(initial.cars[0], 1.25)
+    const alreadyAfterLine = withUsedEnergyLedger(initial.cars[1], 0.75)
+    const forced: RaceSnapshot = {
+      ...initial,
+      flag: 'sc',
+      flagLabel: 'SC',
+      flagPhase: {
+        endMessage: 'Safety Car in.',
+        endSeconds: 1_000,
+        flag: 'sc',
+        id: 'pit-release-energy-sc',
+        lappedCarsMayOvertakeAtSeconds: null,
+        sector: 0,
+        startMessage: 'Safety Car deployed.',
+        startSeconds: 0,
+      },
+      lowGripConditions: true,
+      sectorFlags: ['sc', 'sc', 'sc'],
+      surfaceWaterMmBySector: [3, 3, 3],
+      trackGrip: 0.55,
+      weather: 'heavy-rain',
+      cars: initial.cars.map((car, index) => {
+        if (index === 0) {
+          return {
+            ...beforeLine,
+            lap: 3,
+            pitPhase: 'box' as const,
+            pitUntilSeconds: 0,
+            processedLap: 3,
+            progress: 0.98,
+            status: 'pit' as const,
+            totalDistance: 3.98,
+          }
+        }
+        if (index === 1) {
+          const progress = Math.max(0.001, pitExitProgress - 0.05)
+          return {
+            ...alreadyAfterLine,
+            lap: 4,
+            pitPhase: 'box' as const,
+            pitUntilSeconds: 0,
+            processedLap: 4,
+            progress,
+            status: 'pit' as const,
+            totalDistance: 4 + progress,
+          }
+        }
+        return car
+      }),
+    }
+    const released = advanceRace(forced, 0.1, config)
+    const crossed = released.cars[0]
+    const sameLap = released.cars[1]
+
+    expect(crossed).toMatchObject({
+      energyHarvestedThisLapMj: 0,
+      energyLapStartedBehindSafetyCar: true,
+      energyLapStartedInLowGripConditions: true,
+      overtakeEnergyRemainingMj: 0.5,
+      overtakeRechargeAllowanceActiveThisLap: false,
+      processedLap: 4,
+      superClippingRecoveredThisLapMj: 0,
+    })
+    expect(crossed.energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+      resolution: 'technical-low-grip-safety-car',
+      usedMJ: 0,
+    })
+    expect(sameLap.energyStore.rechargeRule.usedMJ).toBeCloseTo(0.75, 12)
+    expect(sameLap.overtakeEnergyRemainingMj).toBe(0.05)
+    expect(sameLap.superClippingRecoveredThisLapMj).toBe(0.2)
+  })
+
+  it('recreates the opening energy ledger from the current grid and rolling-start context', () => {
+    const base = makeConfig('formation-current-energy-context')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const staleEnergyLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => {
+      const rechargeLimit = car.energyStore.rechargeRule.limit
+
+      return {
+        ...car,
+        energyHarvestedThisLapMj: usedMJ,
+        energyStore: {
+          ...car.energyStore,
+          rechargedAtCuKBusThisLapMJ: usedMJ,
+          rechargeRule: {
+            ...car.energyStore.rechargeRule,
+            remainingMJ:
+              rechargeLimit.kind === 'finite'
+                ? rechargeLimit.maxCuKBusRechargeMj - usedMJ
+                : null,
+            usedMJ,
+          },
+        },
+      }
+    }
+    const soakTrack = (snapshot: RaceSnapshot) => ({
+      ...snapshot,
+      lowGripConditions: true,
+      surfaceWaterMmBySector: [3, 3, 3] as [number, number, number],
+      dryingLineBySector: [0, 0, 0] as [number, number, number],
+      cars: snapshot.cars.map((car) => staleEnergyLedger(car, 1.25)),
+    })
+    const initial = createInitialRace(config)
+    const grid = advanceRace(
+      initial,
+      initial.formationLapDurationSeconds * initial.formationLapsPlanned,
+      config,
+    )
+    const lights = advanceRace(grid, 8, config)
+    const startedFromGrid = advanceRace(soakTrack(lights), 5, config)
+
+    expect(startedFromGrid.startProcedure).toBe('racing')
+    expect(startedFromGrid.lowGripConditions).toBe(true)
+    startedFromGrid.cars.forEach((car) => {
+      expect(car.energyLapStartedBehindSafetyCar).toBe(false)
+      expect(car.energyLapStartedInLowGripConditions).toBe(true)
+      expect(car.energyStore.rechargeRule).toMatchObject({
+        limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+        usedMJ: 0,
+      })
+      expect(car.energyStore.rechargedAtCuKBusThisLapMJ).toBe(0)
+    })
+
+    const rollingStart = advanceRace(
+      {
+        ...soakTrack(createInitialRace(config)),
+        formationBehindSafetyCar: true,
+      },
+      initial.formationLapDurationSeconds * initial.formationLapsPlanned,
+      config,
+    )
+
+    expect(rollingStart.startProcedure).toBe('racing')
+    rollingStart.cars.forEach((car) => {
+      expect(car.energyLapStartedBehindSafetyCar).toBe(true)
+      expect(car.energyLapStartedInLowGripConditions).toBe(true)
+      expect(car.energyStore.rechargeRule).toMatchObject({
+        limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+        usedMJ: 0,
+      })
+    })
+  })
+
+  it('resets only reformed cars whose red restart route crosses the Line', () => {
+    const base = makeConfig('red-reform-energy-line')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const started = runThroughStart(config)
+    const sameLapId = started.cars[1].driverId
+    const crossedLineId = started.cars[2].driverId
+    const withUsedLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => {
+      const rechargeLimit = car.energyStore.rechargeRule.limit
+
+      return {
+        ...car,
+        energyHarvestedThisLapMj: usedMJ,
+        overtakeEnergyRemainingMj: 0.05,
+        superClippingRecoveredThisLapMj: 0.2,
+        energyStore: {
+          ...car.energyStore,
+          rechargedAtCuKBusThisLapMJ: usedMJ,
+          rechargeRule: {
+            ...car.energyStore.rechargeRule,
+            remainingMJ:
+              rechargeLimit.kind === 'finite'
+                ? rechargeLimit.maxCuKBusRechargeMj - usedMJ
+                : null,
+            usedMJ,
+          },
+        },
+      }
+    }
+    const redRestart = advanceRace(
+      {
+        ...started,
+        flag: 'red',
+        flagLabel: 'RED',
+        flagPhase: {
+          endMessage: 'Red flag lifted.',
+          endSeconds: started.elapsedSeconds,
+          flag: 'red',
+          id: 'red-reform-energy-line',
+          sector: 0,
+          startMessage: 'Red flag.',
+          startSeconds: started.elapsedSeconds - 10,
+        },
+        lowGripConditions: false,
+        cars: started.cars.map((car, index) => {
+          const totalDistance =
+            index === 0
+              ? 5.1
+              : index === 1
+                ? 5.05
+                : index === 2
+                  ? 4.99
+                  : 4.98 - (index - 3) * 0.001
+          const prepared =
+            index === 1
+              ? withUsedLedger(car, 0.75)
+              : index === 2
+                ? withUsedLedger(car, 1.25)
+                : car
+
+          return {
+            ...prepared,
+            lap: Math.floor(totalDistance),
+            processedLap: Math.floor(totalDistance),
+            progress: totalDistance - Math.floor(totalDistance),
+            speedKph: 0,
+            status: 'running' as const,
+            totalDistance,
+          }
+        }),
+      },
+      0.1,
+      config,
+    )
+    const sameLap = redRestart.cars.find(
+      (car) => car.driverId === sameLapId,
+    )!
+    const crossedLine = redRestart.cars.find(
+      (car) => car.driverId === crossedLineId,
+    )!
+
+    expect(redRestart.restartProcedure).toBe('standing')
+    expect(crossedLine.totalDistance).toBeGreaterThan(5)
+    expect(crossedLine.processedLap).toBe(5)
+    expect(crossedLine.energyLapStartedBehindSafetyCar).toBe(false)
+    expect(crossedLine.energyLapStartedInLowGripConditions).toBe(false)
+    expect(crossedLine.energyStore.rechargeRule.usedMJ).toBe(0)
+    expect(crossedLine.energyStore.rechargedAtCuKBusThisLapMJ).toBe(0)
+    expect(crossedLine.overtakeEnergyRemainingMj).toBe(0.5)
+    expect(crossedLine.superClippingRecoveredThisLapMj).toBe(0)
+
+    expect(sameLap.energyStore.rechargeRule.usedMJ).toBeCloseTo(0.75, 12)
+    expect(sameLap.overtakeEnergyRemainingMj).toBe(0.05)
+    expect(sameLap.superClippingRecoveredThisLapMj).toBe(0.2)
+  })
+})
 
 describe('blue flags', () => {
   it('shows only when a lead car is right on the gearbox of lapping traffic', () => {
@@ -1417,8 +1975,37 @@ describe('full race', () => {
     const config = makeConfig('off-track-stationary-state')
     const started = runThroughStart(config)
     const target = started.cars[4]
+    const rechargedAtCuKBusThisLapMJ = 1.2
+    const deployedAtCuKBusThisLapMJ = 0.8
+    const rechargeLimit = target.energyStore.rechargeRule.limit
     const waiting = {
       ...target,
+      energyDeployedThisLapMj: 99,
+      energyHarvestedThisLapMj: 99,
+      energyStore: {
+        ...target.energyStore,
+        actualDeploymentDcPowerKw: 280,
+        actualDeploymentPowerKw: 250,
+        actualRecoveryPowerKw: 35,
+        chargeDcPowerKw: 30,
+        deployedAtCuKBusThisLapMJ,
+        dischargeDcPowerKw: 280,
+        rechargedAtCuKBusThisLapMJ,
+        rechargeRule: {
+          ...target.energyStore.rechargeRule,
+          remainingMJ:
+            rechargeLimit.kind === 'finite'
+              ? rechargeLimit.maxCuKBusRechargeMj -
+                rechargedAtCuKBusThisLapMJ
+              : null,
+          usedMJ: rechargedAtCuKBusThisLapMJ,
+        },
+        requestedDeploymentDcPowerKw: 300,
+        requestedRecoveryPowerKw: 40,
+        storedChargePowerKw: 27,
+        storedDischargePowerKw: 290,
+      },
+      ersBatteryPercent: 0,
       offTrackSinceSeconds: started.elapsedSeconds,
       rejoinEligibleAtSeconds: started.elapsedSeconds + 10,
     }
@@ -1439,7 +2026,27 @@ describe('full race', () => {
     expect(held.energyStore.currentEnergyMJ).toBe(
       waiting.energyStore.currentEnergyMJ,
     )
-    expect(held.ersBatteryPercent).toBe(waiting.ersBatteryPercent)
+    expect(held.energyStore).toMatchObject({
+      actualDeploymentDcPowerKw: 0,
+      actualDeploymentPowerKw: 0,
+      actualRecoveryPowerKw: 0,
+      chargeDcPowerKw: 0,
+      deployedAtCuKBusThisLapMJ,
+      dischargeDcPowerKw: 0,
+      operatingMode: 'inactive',
+      rechargedAtCuKBusThisLapMJ,
+      requestedDeploymentDcPowerKw: 0,
+      requestedRecoveryPowerKw: 0,
+      storedChargePowerKw: 0,
+      storedDischargePowerKw: 0,
+    })
+    expect(held.energyHarvestedThisLapMj).toBe(
+      rechargedAtCuKBusThisLapMJ,
+    )
+    expect(held.energyDeployedThisLapMj).toBe(deployedAtCuKBusThisLapMJ)
+    expect(held.ersBatteryPercent).toBe(
+      Math.round(waiting.energyStore.stateOfCharge * 100),
+    )
   })
 })
 
@@ -1790,10 +2397,16 @@ describe('start procedure and persisted weekend', () => {
     const team = config.teams.find(
       (candidate) => candidate.id === nextFollower.teamId,
     )!
-    const driveScale = nextFollower.superClippingDrivePowerScale
     const expected = selectGear({
       clutchEngagementFraction: nextFollower.clutchEngagementFraction,
-      combustionPowerKw: combustionPowerKwFor(team, physics) * driveScale,
+      // Superclip is a real generator load in the longitudinal force balance;
+      // it does not rewrite the ICE power used to reconcile the gearbox.
+      combustionPowerKw:
+        combustionPowerKwFor(team, physics) +
+        (config.overtakeSystem === 'ots' &&
+        nextFollower.overtakeStatus === 'active'
+          ? physics.overtakeBoostPowerKw
+          : 0),
       deploymentPowerKw: nextFollower.ersPowerKw,
       physics,
       speedMps: actualTravelSpeedKph / 3.6,

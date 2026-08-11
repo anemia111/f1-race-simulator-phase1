@@ -21,6 +21,16 @@ export const sourceRegistry = {
     publishedAt: '2026-08-05',
     url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf',
   },
+  fiaEnergyRefinement2026: {
+    label: 'FIA 2026 F1 energy-management refinements',
+    publishedAt: '2026-04-20',
+    url: 'https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders',
+  },
+  fiaJapanPuInformation2026: {
+    label: 'FIA 2026 Japanese Grand Prix Power Unit Information, document 4',
+    publishedAt: '2026-03-26',
+    url: 'https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_power_unit_information.pdf',
+  },
   fiaDrivingStandards2026: {
     label: '2026 Formula 1 Driving Standards Guidelines v01',
     url: 'https://www.fia.com/sites/default/files/2026_f1_driving_standards_guidelines.pdf',

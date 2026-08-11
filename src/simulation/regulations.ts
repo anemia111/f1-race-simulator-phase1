@@ -1,6 +1,12 @@
 import type {
   CategoryRaceFormat,
   CarSnapshot,
+  F1RechargeSessionType,
+  FiaPuEventInput,
+  FiaPuRechargeRule,
+  RechargeLimit,
+  RechargeRuleDefinition,
+  TimedRunPhase,
   TrackDefinition,
   WeekendStage,
   WeatherState,
@@ -65,9 +71,12 @@ export const FIA_2026_REGULATION_PROFILE = {
     maxErsPowerKw: 350,
     usableStateOfChargeWindowMj: 4,
     publicRechargeLimitMj: 8.5,
-    qualifyingRechargeLimitMj: 7,
+    /** Simulator reference policy when an event PU document is unavailable. */
+    referenceAttackRechargePolicyMj: 7,
     normalCompetitionReducedLimitMj: 7,
     qualifyingMinimumLimitMj: 4,
+    /** C5.2.9 additional electrical deployment available to Overtake per lap. */
+    overtakeAdditionalEnergyPerLapMj: 0.5,
     standingStartDeploymentMinKph: 50,
     normalCurveTransitionKph: 340,
     raceSprintPowerLimitedTransitionKph: 310,
@@ -138,34 +147,301 @@ export function shouldDeclareRainHazard(options: {
   )
 }
 
-export function maxRechargePerLapMjFor(options: {
-  behindSafetyCar?: boolean
-  eventLimitMj?: number | null
-  lowGripConditions?: boolean
-  stage: WeekendStage
-}) {
-  if (options.behindSafetyCar && options.lowGripConditions) {
-    return Number.POSITIVE_INFINITY
+function f1RechargeSessionTypeFor(stage: WeekendStage): F1RechargeSessionType {
+  if (stage === 'fp1' || stage === 'fp2' || stage === 'fp3') {
+    return 'freePractice'
+  }
+  if (stage === 'sprintQualifying') return 'sprintQualifying'
+  if (stage === 'qualifying' || stage === 'qualifying2') return 'qualifying'
+  if (stage === 'sprint') return 'sprint'
+  return 'race'
+}
+
+function isFiniteRechargeLimit(limit: RechargeLimit): limit is Extract<
+  RechargeLimit,
+  { kind: 'finite' }
+> {
+  return limit.kind === 'finite'
+}
+
+const f1RechargeSessionTypes = new Set<F1RechargeSessionType>([
+  'freePractice',
+  'sprintQualifying',
+  'qualifying',
+  'sprint',
+  'race',
+])
+
+function validateFiaPuEventInput(input: FiaPuEventInput) {
+  if (
+    input.schemaVersion !== 1 ||
+    input.seriesId !== 'f1-custom' ||
+    input.eventId.trim().length === 0 ||
+    input.trackId.trim().length === 0 ||
+    input.source.sourceId.trim().length === 0 ||
+    input.source.authority !== 'race-director-instruction' ||
+    !Number.isInteger(input.source.documentNumber) ||
+    input.source.documentNumber <= 0 ||
+    !/^\d{4}-\d{2}-\d{2}$/u.test(input.source.documentDate) ||
+    !Number.isFinite(Date.parse(input.source.publishedAt)) ||
+    !/^https:\/\/www\.fia\.com\//u.test(input.source.url) ||
+    input.source.enclosure.trim().length === 0 ||
+    input.source.validationStatus !== 'verified' ||
+    input.recharge.measuredAt !== 'CU-K-HV-DC-bus' ||
+    !/^[a-f0-9]{64}$/u.test(input.source.sha256) ||
+    input.recharge.rules.length === 0
+  ) {
+    throw new TypeError('Invalid FIA Power Unit event input provenance')
   }
 
-  const isQualifying =
-    options.stage === 'qualifying' || options.stage === 'sprintQualifying'
-  const eventLimit = options.eventLimitMj
+  const ids = new Set<string>()
+  for (const rule of input.recharge.rules) {
+    if (rule.id.trim().length === 0 || ids.has(rule.id)) {
+      throw new TypeError(`Invalid or duplicate FIA recharge rule id: ${rule.id}`)
+    }
+    ids.add(rule.id)
 
-  if (eventLimit === undefined || eventLimit === null) {
-    return isQualifying
-      ? FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj
-      : FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+    if (rule.sessionTypes.length === 0) {
+      throw new TypeError(`FIA recharge rule has no session type: ${rule.id}`)
+    }
+    if (
+      rule.sessionTypes.some(
+        (sessionType) => !f1RechargeSessionTypes.has(sessionType),
+      ) ||
+      (rule.lapKind !== 'any' &&
+        rule.lapKind !== 'out-lap-other-than-in-ttcs') ||
+      (rule.overtakeAtLapStart !== 'active' &&
+        rule.overtakeAtLapStart !== 'inactive' &&
+        rule.overtakeAtLapStart !== 'not-applicable') ||
+      (rule.lowGrip !== 'any' && rule.lowGrip !== 'required') ||
+      (rule.behindSafetyCar !== 'any' &&
+        rule.behindSafetyCar !== 'required')
+    ) {
+      throw new TypeError(`Invalid FIA recharge rule condition: ${rule.id}`)
+    }
+    if (new Set(rule.sessionTypes).size !== rule.sessionTypes.length) {
+      throw new TypeError(`FIA recharge rule repeats a session type: ${rule.id}`)
+    }
+    if (
+      rule.lapKind === 'out-lap-other-than-in-ttcs' &&
+      rule.sessionTypes.some(
+        (sessionType) => sessionType === 'race' || sessionType === 'sprint',
+      )
+    ) {
+      throw new TypeError(`FIA non-TTCS out-lap rule includes TTCS: ${rule.id}`)
+    }
+    if (
+      rule.limit.kind !== 'finite' &&
+      rule.limit.kind !== 'unlimited' &&
+      rule.limit.kind !== 'unavailable'
+    ) {
+      throw new TypeError(`Invalid FIA recharge limit kind: ${rule.id}`)
+    }
+    if (
+      isFiniteRechargeLimit(rule.limit) &&
+      (!Number.isFinite(rule.limit.maxCuKBusRechargeMj) ||
+        rule.limit.maxCuKBusRechargeMj < 0 ||
+        rule.limit.maxCuKBusRechargeMj > 12)
+    ) {
+      throw new RangeError(`Invalid FIA recharge limit: ${rule.id}`)
+    }
+    if (
+      !isFiniteRechargeLimit(rule.limit) &&
+      rule.limit.maxCuKBusRechargeMj !== null
+    ) {
+      throw new TypeError(`Invalid non-finite FIA recharge limit: ${rule.id}`)
+    }
+    if (
+      rule.baseLimitMj !== undefined &&
+      (!Number.isFinite(rule.baseLimitMj) || rule.baseLimitMj < 0)
+    ) {
+      throw new RangeError(`Invalid FIA base recharge limit: ${rule.id}`)
+    }
+    if (
+      rule.additionalAllowanceMj !== undefined &&
+      (!Number.isFinite(rule.additionalAllowanceMj) ||
+        rule.additionalAllowanceMj < 0)
+    ) {
+      throw new RangeError(`Invalid FIA recharge allowance: ${rule.id}`)
+    }
+    const hasBase = rule.baseLimitMj !== undefined
+    const hasAllowance = rule.additionalAllowanceMj !== undefined
+    if (
+      hasBase !== hasAllowance ||
+      (!isFiniteRechargeLimit(rule.limit) && hasBase)
+    ) {
+      throw new TypeError(`Incomplete FIA recharge decomposition: ${rule.id}`)
+    }
+    if (
+      isFiniteRechargeLimit(rule.limit) &&
+      rule.baseLimitMj !== undefined &&
+      rule.additionalAllowanceMj !== undefined
+    ) {
+      const decomposedLimit =
+        rule.baseLimitMj + rule.additionalAllowanceMj
+      if (Math.abs(decomposedLimit - rule.limit.maxCuKBusRechargeMj) > 1e-9) {
+        throw new RangeError(
+          `FIA recharge decomposition does not close: ${rule.id}`,
+        )
+      }
+    }
   }
+}
 
-  const minimum = isQualifying
-    ? FIA_2026_REGULATION_PROFILE.energy.qualifyingMinimumLimitMj
-    : FIA_2026_REGULATION_PROFILE.energy.normalCompetitionReducedLimitMj
-
-  return Math.min(
-    FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
-    Math.max(minimum, eventLimit),
+function eventRechargeRuleMatches(
+  rule: FiaPuRechargeRule,
+  options: {
+    behindSafetyCar: boolean
+    isNonRaceOutLap: boolean
+    lowGripConditions: boolean
+    overtakeAtLapStart: boolean
+    sessionType: F1RechargeSessionType
+  },
+) {
+  return (
+    rule.sessionTypes.includes(options.sessionType) &&
+    (rule.lapKind === 'any' || options.isNonRaceOutLap) &&
+    (rule.overtakeAtLapStart === 'not-applicable' ||
+      (rule.overtakeAtLapStart === 'active') === options.overtakeAtLapStart) &&
+    (rule.lowGrip === 'any' || options.lowGripConditions) &&
+    (rule.behindSafetyCar === 'any' || options.behindSafetyCar)
   )
+}
+
+function rechargeRuleSpecificity(rule: FiaPuRechargeRule) {
+  return (
+    (rule.lapKind === 'out-lap-other-than-in-ttcs' ? 8 : 0) +
+    (rule.overtakeAtLapStart === 'not-applicable' ? 0 : 4) +
+    (rule.lowGrip === 'required' ? 2 : 0) +
+    (rule.behindSafetyCar === 'required' ? 1 : 0)
+  )
+}
+
+export function resolveF1RechargeRule(options: {
+  behindSafetyCar?: boolean
+  eventId?: string
+  eventInput?: FiaPuEventInput | null
+  lowGripConditions?: boolean
+  overtakeAtLapStart?: boolean
+  stage: WeekendStage
+  timedRunPhase?: TimedRunPhase | null
+  trackId?: string
+}): RechargeRuleDefinition {
+  const behindSafetyCar = options.behindSafetyCar === true
+  const lowGripConditions = options.lowGripConditions === true
+  const eventInput = options.eventInput ?? null
+  if (eventInput) {
+    validateFiaPuEventInput(eventInput)
+    if (options.eventId === undefined) {
+      throw new TypeError(
+        `FIA Power Unit input requires its event identity: ${eventInput.eventId}`,
+      )
+    }
+    if (options.eventId !== undefined && eventInput.eventId !== options.eventId) {
+      throw new TypeError(
+        `FIA Power Unit input event mismatch: ${eventInput.eventId} != ${options.eventId}`,
+      )
+    }
+    if (options.trackId !== undefined && eventInput.trackId !== options.trackId) {
+      throw new TypeError(
+        `FIA Power Unit input track mismatch: ${eventInput.trackId} != ${options.trackId}`,
+      )
+    }
+  }
+
+  if (behindSafetyCar && lowGripConditions) {
+    return {
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: null,
+      limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+      measuredAt: 'CU-K-HV-DC-bus',
+      resolution: 'technical-low-grip-safety-car',
+      ruleId: 'fia-c5.2.10-low-grip-safety-car',
+      sourceId: 'fia-f1-2026-technical-c20',
+    }
+  }
+
+  const sessionType = f1RechargeSessionTypeFor(options.stage)
+  const isNonRaceOutLap =
+    options.timedRunPhase === 'out-lap' &&
+    sessionType !== 'race' &&
+    sessionType !== 'sprint'
+
+  if (eventInput) {
+    const matches = eventInput.recharge.rules
+      .filter((rule) =>
+        eventRechargeRuleMatches(rule, {
+          behindSafetyCar,
+          isNonRaceOutLap,
+          lowGripConditions,
+          overtakeAtLapStart: options.overtakeAtLapStart === true,
+          sessionType,
+        }),
+      )
+      .sort(
+        (left, right) =>
+          rechargeRuleSpecificity(right) - rechargeRuleSpecificity(left),
+      )
+    const best = matches[0]
+    if (
+      !best ||
+      (matches[1] &&
+        rechargeRuleSpecificity(matches[1]) === rechargeRuleSpecificity(best))
+    ) {
+      return {
+        additionalAllowanceMJ: 0,
+        baseLimitMJ: null,
+        limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+        measuredAt: 'CU-K-HV-DC-bus',
+        resolution: 'event-context-unavailable',
+        ruleId: 'event-context-unavailable',
+        sourceId: eventInput.source.sourceId,
+      }
+    }
+
+    return {
+      additionalAllowanceMJ: best.additionalAllowanceMj ?? 0,
+      baseLimitMJ:
+        best.baseLimitMj ??
+        (isFiniteRechargeLimit(best.limit)
+          ? best.limit.maxCuKBusRechargeMj
+          : null),
+      limit: best.limit,
+      measuredAt: eventInput.recharge.measuredAt,
+      resolution: 'verified-event',
+      ruleId: best.id,
+      sourceId: eventInput.source.sourceId,
+    }
+  }
+
+  const hasTechnicalDefault =
+    (sessionType === 'race' || sessionType === 'sprint') &&
+    options.overtakeAtLapStart !== true
+
+  if (!hasTechnicalDefault) {
+    return {
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: null,
+      limit: { kind: 'unavailable', maxCuKBusRechargeMj: null },
+      measuredAt: 'CU-K-HV-DC-bus',
+      resolution: 'event-context-unavailable',
+      ruleId: 'fia-event-context-unavailable',
+      sourceId: 'fia-f1-2026-technical-c20',
+    }
+  }
+
+  const maximumRechargeMj =
+    FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+
+  return {
+    additionalAllowanceMJ: 0,
+    baseLimitMJ: maximumRechargeMj,
+    limit: { kind: 'finite', maxCuKBusRechargeMj: maximumRechargeMj },
+    measuredAt: 'CU-K-HV-DC-bus',
+    resolution: 'technical-default',
+    ruleId: 'fia-c5.2.10-default',
+    sourceId: 'fia-f1-2026-technical-c20',
+  }
 }
 
 export function sprintLapsFor(track: TrackDefinition) {

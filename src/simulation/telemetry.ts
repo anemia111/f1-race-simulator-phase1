@@ -31,13 +31,13 @@ import {
   driverBehaviorTraits,
   type DriverDecision,
 } from './driverDecision'
+import { f1EnergyIntentFor } from './driverEnergyIntent'
 import {
   advanceEnergyStore,
   energyDeploymentRequestFor,
   normalizeEnergyStoreState,
 } from './energySystem'
 import {
-  FIA_2026_REGULATION_PROFILE,
   permittedMguKDcPowerKwForSpeed,
   type MguKPowerCurve,
 } from './regulations'
@@ -54,6 +54,7 @@ import { trackDynamicsAt } from './trackDynamics'
 import { gripForSurfaceWater } from './trackWater'
 import {
   airDensityKgM3,
+  combustionWheelPowerKwAt,
   dirtyAirDownforceMultiplier,
   fuelMassEffects,
   integrateVehicleLongitudinalStep,
@@ -83,6 +84,55 @@ function otsCooldownSecondsFor(track: TrackDefinition): number {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+/** Debits only CU-K DC energy that could not have been used on the normal curve. */
+export function overtakeIncrementalDcEnergyUsedMj(options: {
+  actualDeploymentDcPowerKw: number
+  active: boolean
+  deltaSeconds: number
+  normalDeploymentDcLimitKw: number
+  remainingAllowanceMj: number
+}) {
+  if (!options.active) return 0
+
+  const incrementalDcPowerKw = Math.max(
+    0,
+    options.actualDeploymentDcPowerKw - options.normalDeploymentDcLimitKw,
+  )
+
+  return Math.min(
+    Math.max(0, options.remainingAllowanceMj),
+    (Math.max(0, options.deltaSeconds) * incrementalDcPowerKw) / 1000,
+  )
+}
+
+/**
+ * Caps the Overtake DC curve before integration so the remaining per-lap
+ * allowance cannot be spent beyond its ledger inside one simulation frame.
+ */
+export function overtakeAllowanceBoundedDcPowerLimitKw(options: {
+  active: boolean
+  declaredDeploymentDcPowerLimitKw: number
+  deltaSeconds: number
+  normalDeploymentDcPowerLimitKw: number
+  remainingAllowanceMj: number
+}) {
+  const declaredLimitKw = Math.max(
+    0,
+    options.declaredDeploymentDcPowerLimitKw,
+  )
+  if (!options.active) return declaredLimitKw
+
+  const deltaSeconds = Math.max(0, options.deltaSeconds)
+  const remainingAllowanceMj = Math.max(0, options.remainingAllowanceMj)
+  const allowancePowerKw =
+    deltaSeconds > 0 ? (remainingAllowanceMj * 1000) / deltaSeconds : 0
+
+  return Math.min(
+    declaredLimitKw,
+    Math.max(0, options.normalDeploymentDcPowerLimitKw) + allowancePowerKw,
+  )
+}
 
 function ersModeFor(options: {
   batteryPercent: number
@@ -144,7 +194,6 @@ type CalculatedTelemetry = {
   energyHarvestedThisLapMj: number
   energyDeployedThisLapMj: number
   superClippingIntensity: number
-  superClippingDrivePowerScale: number
   superClippingRegenPowerKw: number
   superClippingRecoveredThisLapMj: number
   superClippingStartedAtSeconds: number | null
@@ -168,7 +217,6 @@ export function calculateCarTelemetry(options: {
   isFinalLap?: boolean
   /** Authoritative FIA event input; null/omission keeps it unavailable. */
   fiaNominalTyreMassKg?: number | null
-  maxRechargePerLapMj?: number
   raceControlOvertakeEnabled?: boolean
   overtakeSystem?: 'active-aero' | 'ots'
   /** Pre-resolved by the weekend runtime when available. */
@@ -207,7 +255,6 @@ export function calculateCarTelemetry(options: {
     localFlagPaceScale = 1,
     lowGripConditions,
     isFinalLap = false,
-    maxRechargePerLapMj = FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
     raceControlOvertakeEnabled = true,
     overtakeSystem = 'active-aero',
     regulatoryMassIncreaseKg = 0,
@@ -547,6 +594,29 @@ export function calculateCarTelemetry(options: {
           sessionType,
           track,
         })
+  const energyIntent = f1EnergyIntentFor({
+    battlePhase: car.battlePhase,
+    driver,
+    isFinalLap,
+    lapProgress: car.progress,
+    paceMode: car.racePaceMode,
+    phaseActive: phase !== null,
+    state: energyStoreAtFrameStart,
+    straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
+    straightness: dynamics.straightness,
+    timedRunPhase,
+  })
+  const rechargeRemainingAtCuKBusMj =
+    energyStoreAtFrameStart.rechargeRule.limit.kind === 'finite'
+      ? Math.max(
+          0,
+          energyStoreAtFrameStart.rechargeRule.limit
+            .maxCuKBusRechargeMj -
+            energyStoreAtFrameStart.rechargedAtCuKBusThisLapMJ,
+        )
+      : energyStoreAtFrameStart.rechargeRule.limit.kind === 'unlimited'
+        ? Number.POSITIVE_INFINITY
+        : 0
   const superClipping: SuperClippingResult = hasHybridEnergyStore
     ? advanceSuperClipping({
         battlePhase: car.battlePhase,
@@ -554,18 +624,20 @@ export function calculateCarTelemetry(options: {
         brakePercent,
         currentIntensity: car.superClippingIntensity ?? 0,
         deltaSeconds,
-        deployedThisLapMj: car.energyDeployedThisLapMj ?? 0,
+        deployedAtCuKBusThisLapMj:
+          energyStoreAtFrameStart.deployedAtCuKBusThisLapMJ,
         driver,
+        energyIntent,
         fuelLoadKg: massEquivalentFuelLoadKg,
         gapToAheadSeconds: car.gapToAhead,
-        harvestedThisLapMj: car.energyHarvestedThisLapMj,
         lap: raceLap,
         lowGripConditions,
-        maxRechargePerLapMj,
         phaseActive: phase !== null,
         racePaceMode: car.racePaceMode,
+        rechargeRemainingAtCuKBusMj,
+        rechargedAtCuKBusThisLapMj:
+          energyStoreAtFrameStart.rechargedAtCuKBusThisLapMJ,
         sessionType,
-        setup,
         speedKph: car.speedKph,
         straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
         straightness: dynamics.straightness,
@@ -574,11 +646,9 @@ export function calculateCarTelemetry(options: {
       })
     : {
         demandIntensity: 0,
-        drivePowerScale: 1,
-        electricalRecoveryPowerKw: 0,
         intensity: 0,
         level: 'off',
-        regenerativeResistancePowerKw: 0,
+        requestedGeneratorMechanicalPowerKw: 0,
       }
   const requestedErsMode = ersModeFor({
     batteryPercent: batteryPercentAtFrameStart,
@@ -613,21 +683,37 @@ export function calculateCarTelemetry(options: {
         speedKph: car.speedKph,
       })
     : 0
-  const regulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
+  const uncappedRegulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
     ? 0
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
         declaredDeploymentPowerKw,
       )
-  const standardErsPowerKw =
-    ersMode === 'deploy' && !lowGripConditions
-      ? permittedMguKDcPowerKwForSpeed({
-          curve: specifiedErsPowerSector
-            ? 'race-sprint-power-limited'
-            : 'normal',
-          speedKph: car.speedKph,
-        })
-      : 0
+  const standardDeploymentDcLimitKw = lowGripConditions
+    ? 0
+    : permittedMguKDcPowerKwForSpeed({
+        curve: specifiedErsPowerSector
+          ? 'race-sprint-power-limited'
+          : 'normal',
+        speedKph: car.speedKph,
+      })
+  const normalRegulatoryDeploymentPowerLimitKw = standingStartMguKRestricted
+    ? 0
+    : Math.min(
+        categoryPhysics.hybridDeploymentPowerLimitKw,
+        standardDeploymentDcLimitKw,
+      )
+  const overtakeCurveActive = ersCurve === 'overtake'
+  const regulatoryDeploymentPowerLimitKw =
+    overtakeAllowanceBoundedDcPowerLimitKw({
+      active: overtakeCurveActive,
+      declaredDeploymentDcPowerLimitKw:
+        uncappedRegulatoryDeploymentPowerLimitKw,
+      deltaSeconds,
+      normalDeploymentDcPowerLimitKw:
+        normalRegulatoryDeploymentPowerLimitKw,
+      remainingAllowanceMj: car.overtakeEnergyRemainingMj,
+    })
   const driverErsManagement = driverSkillBlend(driver, {
     ersManagement: 0.64,
     raceAwareness: 0.22,
@@ -650,21 +736,43 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
     timedRunPhase,
   })
+  const intentScheduledDeploymentRequest =
+    deploymentRequest * (0.5 + energyIntent.propulsionAggression * 0.5)
   const effectiveDeploymentRequest =
     !hasHybridEnergyStore ||
     standingStartMguKRestricted ||
     ersMode === 'harvest'
       ? 0
       : ersMode === 'balanced'
-        ? deploymentRequest * 0.72
-        : deploymentRequest
+        ? intentScheduledDeploymentRequest * 0.72
+        : intentScheduledDeploymentRequest
+  const extraCombustionPowerKw = otsActive
+    ? categoryPhysics.overtakeBoostPowerKw
+    : 0
+  const combustionWheelPowerKw = combustionWheelPowerKwAt({
+    categoryPhysics,
+    clutchEngagementFraction: car.clutchEngagementFraction,
+    currentSpeedKph: car.speedKph,
+    extraCombustionPowerKw,
+    team,
+    throttlePercent,
+    turboSpoolFraction: car.turboSpoolFraction,
+  })
+  const qualifyingRecoveryRequestScale = isQualifyingAttack
+    ? batteryPercentAtFrameStart < 18
+      ? 0.82
+      : batteryPercentAtFrameStart < 35
+        ? 0.56
+        : 0.32
+    : 1
   const energyStep = advanceEnergyStore({
-    additionalRecoveryRequestKw:
-      superClipping.regenerativeResistancePowerKw,
+    allowLiftCoastRecovery:
+      hasHybridEnergyStore && energyIntent.liftCoastPreference > 0.08,
     ambientTemperatureC: airTemperatureC,
     brakePercent,
+    combustionWheelPowerKw,
     deltaSeconds,
-    deploymentPowerLimitKw: regulatoryDeploymentPowerLimitKw,
+    deploymentDcPowerLimitKw: regulatoryDeploymentPowerLimitKw,
     deploymentRequest: effectiveDeploymentRequest,
     driverErsManagement,
     driverWetSkill: driverSkillBlend(driver, {
@@ -673,19 +781,15 @@ export function calculateCarTelemetry(options: {
       adaptability: 0.14,
     }),
     gripMultiplier: localGrip,
-    maxRechargePerLapMj: hasHybridEnergyStore ? maxRechargePerLapMj : 0,
-    overtakeActive: overtakeStatus === 'active',
+    rechargeRule: energyStoreAtFrameStart.rechargeRule,
     recoveryRequestScale: !hasHybridEnergyStore
       ? 0
-      : isQualifyingAttack
-        ? batteryPercentAtFrameStart < 18
-          ? 0.82
-          : batteryPercentAtFrameStart < 35
-            ? 0.56
-            : 0.32
-        : 1,
+      : qualifyingRecoveryRequestScale *
+        (0.65 + energyIntent.harvestPreference * 0.35),
     speedKph: car.speedKph,
     state: energyStoreAtFrameStart,
+    superclipGeneratorRequestKw:
+      superClipping.requestedGeneratorMechanicalPowerKw,
     surfaceWaterMm,
     team,
     throttlePercent,
@@ -695,42 +799,21 @@ export function calculateCarTelemetry(options: {
   })
   const energyStore = energyStep.state
   const ersPowerKw = energyStore.actualDeploymentPowerKw
-  const harvestedThisFrameMj = Math.max(
-    0,
-    energyStore.actualHarvestedThisLapMJ -
-      energyStoreAtFrameStart.actualHarvestedThisLapMJ,
-  )
-  const superClippingRecoveryShare =
-    energyStore.requestedRecoveryPowerKw > 0
-      ? clamp(
-          superClipping.regenerativeResistancePowerKw /
-            energyStore.requestedRecoveryPowerKw,
-          0,
-          1,
-        )
-      : 0
+  const actualSuperClipping =
+    energyStore.operatingMode === 'full-throttle-superclip'
   const superClippingHarvestedThisFrameMj =
-    harvestedThisFrameMj * superClippingRecoveryShare
+    energyStep.audit.superclipRechargedAtCuKBusMJ
   const superClippingRecoveredThisLapMj =
     (car.superClippingRecoveredThisLapMj ?? 0) +
     superClippingHarvestedThisFrameMj
-  const energyDeployedThisLapMj = energyStore.energyRemovedThisLapMJ
-  const overtakeBoostShare =
-    overtakeStatus === 'active' && regulatoryDeploymentPowerLimitKw > 0
-      ? clamp(
-          (regulatoryDeploymentPowerLimitKw - standardErsPowerKw) /
-            regulatoryDeploymentPowerLimitKw,
-          0,
-          1,
-        )
-      : 0
-  const overtakeEnergyUsedMj =
-    overtakeStatus === 'active'
-      ? Math.min(
-          car.overtakeEnergyRemainingMj,
-          (deltaSeconds * ersPowerKw * overtakeBoostShare) / 1000,
-        )
-      : 0
+  const energyDeployedThisLapMj = energyStore.deployedAtCuKBusThisLapMJ
+  const overtakeEnergyUsedMj = overtakeIncrementalDcEnergyUsedMj({
+    actualDeploymentDcPowerKw: energyStore.actualDeploymentDcPowerKw,
+    active: overtakeCurveActive,
+    deltaSeconds,
+    normalDeploymentDcLimitKw: normalRegulatoryDeploymentPowerLimitKw,
+    remainingAllowanceMj: car.overtakeEnergyRemainingMj,
+  })
   const overtakeEnergyRemainingMj = Math.max(
     0,
     car.overtakeEnergyRemainingMj - overtakeEnergyUsedMj,
@@ -759,11 +842,9 @@ export function calculateCarTelemetry(options: {
     currentSpeedKph: car.speedKph,
     deltaSeconds,
     dirtyAirDownforceMultiplier: dirtyAirDownforce,
-    drivePowerScale: superClipping.drivePowerScale,
     dynamics,
     ersPowerKw,
-    extraCombustionPowerKw:
-      otsActive ? categoryPhysics.overtakeBoostPowerKw : 0,
+    extraCombustionPowerKw,
     fuelLoadKg: car.fuelLoadKg,
     gripMultiplier: utilisedGrip,
     headwindMps,
@@ -823,8 +904,10 @@ export function calculateCarTelemetry(options: {
       car.tire === 'S' ? 124 : 116,
     ),
   )
-  const superClippingActive = superClipping.intensity >= 0.04
-  const superClippingWasActive = (car.superClippingIntensity ?? 0) >= 0.04
+  const superClippingActive = actualSuperClipping
+  const superClippingWasActive =
+    (car.superClippingIntensity ?? 0) >= 0.04 &&
+    (car.superClippingRegenPowerKw ?? 0) > 0
   const superClippingStartedAtSeconds = superClippingActive
     ? superClippingWasActive
       ? car.superClippingStartedAtSeconds
@@ -871,12 +954,11 @@ export function calculateCarTelemetry(options: {
     overtakeEnergyRemainingMj,
     otsRemainingSeconds,
     otsCooldownUntilSeconds,
-    energyHarvestedThisLapMj: energyStore.actualHarvestedThisLapMJ,
+    energyHarvestedThisLapMj: energyStore.rechargedAtCuKBusThisLapMJ,
     energyDeployedThisLapMj,
-    superClippingIntensity: superClipping.intensity,
-    superClippingDrivePowerScale: superClipping.drivePowerScale,
+    superClippingIntensity: actualSuperClipping ? superClipping.intensity : 0,
     superClippingRegenPowerKw:
-      energyStore.actualRecoveryPowerKw * superClippingRecoveryShare,
+      energyStep.actualRecoverySourcePowerKw.superclip,
     superClippingRecoveredThisLapMj,
     superClippingStartedAtSeconds,
     superClippingStartedAtProgress,

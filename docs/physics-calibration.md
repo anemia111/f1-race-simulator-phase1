@@ -64,7 +64,7 @@ they cannot become an undocumented second calibration layer.
 | `drivetrain.ts` launch | launch RPM 0.38 of rev limit; clutch bite 0.35 engagement; MGU-K base speed 0.35 of rev limit | Current global defaults with category RPM/gear inputs | Engineering shape assumptions. High standing-start and low-speed force sensitivity, little steady-lap sensitivity. A category-specific override needs published motor/clutch evidence. |
 | `drivetrain.ts` turbo | spool time constant 0.55 s at zero rev, falling linearly to 0.13 s at the limiter; lift decay 0.30 s | Stateful combustion response, category physical behaviour | Commented engineering estimate. High throttle-transient sensitivity; zero effect on electrical torque. Validate against time-resolved acceleration, never lap time alone. |
 | `drivetrain.ts` clutch | engagement time constant 0.48 s; release 0.16 s; numerical floor 0.02 s | Stateful standing launch, category physical behaviour | Engineering estimate. High launch sensitivity. Must remain continuous and traction-limited in the launch tests. |
-| `physicalLap.ts` reference deployment | category MGU-K limit, bounded by the regulation speed ramp and by an 11 MJ lap allowance (7 MJ recharge limit + 4 MJ usable store window); 3 allocation passes and 2 trim passes | Explicit offline policy, category | Not a live SOC assumption or calibration. The allowance is two published regulation numbers added; the pass counts are numerical convergence, not tuning. Where the allowance is spent is ranked by seconds bought per joule. Live deployment still comes from `energySystem.ts`. |
+| `physicalLap.ts` reference deployment | category MGU-K limit, bounded by the exact speed curve and an event-aware mechanical allowance; 3 allocation passes and 5 trim passes | Explicit offline policy, category | Verified event recharge (or the labelled 7 MJ no-event reference policy) is measured at the CU-K bus; the 4 MJ SOC window is stored energy. Both are converted through the neutral battery/inverter/motor chain before becoming one mechanical allocation. They are never added directly. The pass counts are numerical convergence, not tuning. Live deployment remains owned by `energySystem.ts`. |
 | `physicalLap.ts` reference active aero | declared `aeroActivationZones`; neutral front/rear Corner/Straight area decomposition for both drag and load; Corner Mode under braking | Explicit offline policy, category | Uses `activeAeroReferenceAreaMultipliers`, the neutral adapter for the same front/rear category prior as the driven force path. No target speed, circuit factor or aggregate Straight-Mode scalar is present. `trackDynamics.buildProfile` opts out with `activeAeroZones: false` because it is a geometry classifier, not a lap. |
 | `vehicleGeometry.ts` footprint | width 1.90 m; length 5.20 m; track-edge margin 0.25 m; lateral margin 0.35 m; longitudinal margin 1.25 m | Published/inferred geometry and global collision envelope | Width is regulation-derived; length and margins are conservative simulation envelopes. High occupancy/contact sensitivity, no clear-air lap sensitivity. Category-specific geometry should replace these when sourced. |
 | `lateralDynamics.ts` response | maximum lateral speed 2.8 m/s; acceleration 4.0 m/s2; target response 0.25 s | Global lateral-control dynamics | Behavioural/engineering assumptions. High pass, defence and avoidance sensitivity. Validate with lane-change traces; do not fit finishing order. |
@@ -507,19 +507,26 @@ level and this are plausibly the same finding.
 
 ## The allowance, and where a lap spends it
 
-The budget is now enforced. `REFERENCE_DEPLOYMENT_POLICY` is
-`regulation-energy-budget-by-marginal-value`, and the eleven measured circuits
-went from 14-20 MJ to 10.2 MJ mean against an 11 MJ allowance.
+The budget is enforced by `REFERENCE_DEPLOYMENT_POLICY`, using
+`regulation-energy-budget-by-marginal-value`. Phase 4 corrected the accounting
+boundary: the regulatory recharge value is CU-K HV DC-bus energy, whereas the
+offline lap spends MGU-K mechanical energy. The two are no longer added as if
+they were the same quantity.
 
 ### How much a lap may spend
 
-Two published numbers, added, with nothing chosen in between:
+The inputs now remain at their own measurement boundaries:
 
-| | MJ | What it is |
-| --- | ---: | --- |
-| `qualifyingRechargeLimitMj` | 7 | Energy the lap may recover as it runs |
-| `usableStateOfChargeWindowMj` | 4 | The store it arrives with, filled on the out lap |
-| Allowance | 11 | What one clear lap can put on the road |
+| Input | Boundary | Resolution |
+| --- | --- | --- |
+| Event maximum Recharge | CU-K HV DC bus | Verified event Power Unit Information; unavailable when the context is missing |
+| Reference fallback | CU-K HV DC bus | Explicit simulator reference policy of 7 MJ, based on the FIA 2026-04-20 explanatory release; not labelled a binding event value |
+| Usable SOC window | Stored Energy Store energy | Fixed 4 MJ under C5.2.9 |
+| Offline deployment allowance | MGU-K mechanical energy | Both inputs converted through battery, inverter, and motor losses before allocation |
+
+The verified Suzuka table supplies 8.0 MJ for Qualifying, so its reference
+attack lap differs from the no-event 7 MJ policy. There is no universal
+FIA-exact `7 + 4 = 11 MJ` attack-lap value.
 
 The recharge limit alone is the bound on a lap repeated forever in a steady
 state. The reference lap is documented as the opposite of that - a single
@@ -530,16 +537,15 @@ steady-state lap with attack-lap evidence would be the same category error as
 comparing a race median with a reference lap, which this document already
 refuses to do elsewhere.
 
-`energySystem.ts` reaches the same total from the other side, and always did:
-`maxRechargePerLapMjFor` caps recovery per lap while deployment draws the
-store down. So the live path and the reference lap now agree about how much
-energy one lap has, having previously disagreed by a factor of two.
+`energySystem.ts` caps recovery at the CU-K bus, stores less after battery
+loss, removes more from the store than the bus receives during deployment,
+and delivers less mechanical power after inverter and motor losses. The
+offline reference applies the same ordering with a documented team-neutral
+conversion profile.
 
-`deployment-energy-budget` reports the spend against both bounds.
-`circuitsOverAllowance` is 0. `circuitsOverRepeatableLimit` is 11, and that is
-correct rather than a residual failure: every one of these laps is an attack
-lap that no car could repeat without recharging, which is exactly what an
-attack lap is.
+Validation reports must therefore identify the event/policy recharge source,
+the CU-K input, the converted mechanical allowance, and the actual mechanical
+spend separately. A single unlabeled `allowanceMj` is no longer sufficient.
 
 ### Where it spends it
 

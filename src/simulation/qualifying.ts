@@ -288,6 +288,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
       temperatureC: temperatures.airTemperatureC,
     }),
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
+    eventId: config.eventId,
+    fiaPuEventInput: config.fiaPuEventInput,
     dragAreaM2: vehicleDragAreaM2({
       // This is the Corner-Mode base area. `simulatePhysicalLap` applies the
       // decomposed front/rear map only inside declared activation zones.
@@ -302,6 +304,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     ),
     massKg: operationalMass.operationalMassKg + Math.max(0, fuelLoadKg),
     physics,
+    timedRunPhase: 'attack-lap',
+    weekendStage: config.weekendStage ?? 'qualifying',
   })
 
   cache.set(key, result)
