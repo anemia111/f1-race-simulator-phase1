@@ -57,7 +57,28 @@ describe('physical track-dynamics profile', () => {
     )
   })
 
-  it('uses physical track width instead of render width for the line', () => {
+  it('keeps the force-planning profile independent of render centreline elevation', () => {
+    const renderElevationOnly: TrackDefinition = {
+      ...suzuka,
+      centerline: suzuka.centerline.map(
+        ([x, _y, z], index): [number, number, number] => [
+          x,
+          index % 2 === 0 ? Number.NaN : 1_000_000,
+          z,
+        ],
+      ),
+    }
+    const original = sampledProfile(suzuka, f1)
+    const changed = sampledProfile(renderElevationOnly, f1)
+
+    expect(changed).toEqual(original)
+    expect(changed.every((point) => point.roadGradeFraction === 0)).toBe(true)
+    expect(
+      referenceProfileLapTimeSeconds(renderElevationOnly, f1),
+    ).toBeCloseTo(referenceProfileLapTimeSeconds(suzuka, f1), 10)
+  })
+
+  it('uses the retained policy width instead of render width for the line', () => {
     const changedRenderWidth: TrackDefinition = {
       ...suzuka,
       width: suzuka.width * 100,

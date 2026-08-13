@@ -271,7 +271,15 @@ function layoutDerivedProvenanceFor(
   }
 }
 
-function unavailableProvenanceFor(
+/**
+ * Labels a field deliberately omitted from the metric physical-track survey.
+ *
+ * Consumers may apply an explicit simulator policy on top of this state, but
+ * must retain this provenance rather than promoting the fallback to measured
+ * road data. Keeping the helper here lets force consumers share the exact
+ * unavailable contract without importing `physicalLap` and creating a cycle.
+ */
+export function unavailablePhysicalTrackFieldProvenance(
   field: Extract<
     PhysicalTrackField,
     | 'bankingDegrees'
@@ -310,9 +318,9 @@ function fieldProvenanceFor(track: TrackDefinition): PhysicalTrackFieldProvenanc
       track,
       'planar-layout-normalised-to-declared-length',
     ),
-    bankingDegrees: unavailableProvenanceFor('bankingDegrees'),
-    elevationMeters: unavailableProvenanceFor('elevationMeters'),
-    grade: unavailableProvenanceFor('grade'),
+    bankingDegrees: unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
+    elevationMeters: unavailablePhysicalTrackFieldProvenance('elevationMeters'),
+    grade: unavailablePhysicalTrackFieldProvenance('grade'),
     lapLengthMeters: declaredLengthProvenanceFor(track),
     planarCenterlineMeters: layoutDerivedProvenanceFor(
       track,
@@ -330,8 +338,8 @@ function fieldProvenanceFor(track: TrackDefinition): PhysicalTrackFieldProvenanc
       track,
       'three-point-planar-curvature',
     ),
-    usableWidthMeters: unavailableProvenanceFor('usableWidthMeters'),
-    verticalCurvaturePerMeter: unavailableProvenanceFor(
+    usableWidthMeters: unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
+    verticalCurvaturePerMeter: unavailablePhysicalTrackFieldProvenance(
       'verticalCurvaturePerMeter',
     ),
   })

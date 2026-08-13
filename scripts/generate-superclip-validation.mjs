@@ -101,7 +101,7 @@ try {
       clutchEngagementFraction: 1,
       currentSpeedKph: EVALUATION_SPEED_KPH,
       deltaSeconds: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 0,
       fuelLoadKg: 8,
       gripMultiplier: 1,

@@ -5,8 +5,8 @@ import { presentationLateralOffset } from './RaceScene'
 
 const trackById = (id: string) => tracks.find((track) => track.id === id)!
 
-describe('RaceScene physical lateral presentation', () => {
-  it('maps physical metres by the real carriageway width', () => {
+describe('RaceScene lateral presentation', () => {
+  it('maps simulator metres by the retained policy road width', () => {
     const monaco = trackById('monaco-approx')
     const silverstone = trackById('silverstone-approx')
     const monacoQuarterWidth = trackWidthMeters(monaco) / 4

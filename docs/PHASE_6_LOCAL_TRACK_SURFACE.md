@@ -97,6 +97,30 @@ Elevation, grade, vertical curvature, banking, and usable width are explicitly
 physical measurements. Consumers must branch on the resolver's discriminated
 availability result instead of receiving an invented neutral physical track.
 
+## Physical-road input boundary
+
+The legacy centreline's Y coordinate is a rendering/layout signal, not a
+surveyed elevation profile. It is therefore excluded from the live vehicle
+force path. Until a source-labelled metric elevation survey is supplied, live
+road grade is explicitly unavailable and the only applied fallback is a
+neutral grade fraction of `0`.
+
+The existing banking windows and carriageway-width table remain for
+compatibility with pre-existing simulator consumers, including racing-line,
+lateral-layout, timing-map, qualifying, strategy, and race-occupation paths.
+They are surfaced separately from physical provenance:
+
+- physical banking and usable-width provenance is `unavailable`;
+- a flat road uses a neutral-default fallback of `0 degrees` banking;
+- the named Zandvoort/Madrid banking windows and the 13/10/15 m width values
+  are labelled `legacy-simulator-policy`.
+
+They must not be presented as an official, observed, or surveyed circuit
+profile. `TrackDefinition.width` remains render-only and never supplies a
+physical carriageway measurement. A future metric road survey can replace
+these compatibility fallbacks only by carrying its own source, date, method,
+and confidence metadata.
+
 ## Explicitly not yet operational
 
 - Per-track roughness and drainage inputs;

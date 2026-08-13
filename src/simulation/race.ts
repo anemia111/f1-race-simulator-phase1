@@ -7970,9 +7970,9 @@ export function advanceRace(
   // not. Between barriers a driver leaves room they would use at a circuit
   // with run-off, and that is the difference between passing at Monaco and
   // passing at Monza. `overtakeDifficultyForTrack` already scores it from
-  // street layout, activation zones and measured width, and until now only
-  // priced a pit-stop rejoin: nothing about the circuit reached the racing,
-  // so Monaco produced as many passes as Monza.
+  // street layout, activation zones and the retained simulator-policy road
+  // width. Until now it only priced a pit-stop rejoin: nothing about the
+  // circuit reached the racing, so Monaco produced as many passes as Monza.
   //
   // At the hardest end this asks for about 2.4 m between centres against 1.95 m
   // at the easiest. A wider spread reads better against real pass counts but

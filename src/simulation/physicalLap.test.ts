@@ -8,6 +8,7 @@ import {
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import {
   bankingDegreesAt,
+  physicalRoadInputsAt,
   REFERENCE_DEPLOYMENT_POLICY,
   racingLineRadiusMeters,
   resistanceForceN,
@@ -169,6 +170,95 @@ describe('banking', () => {
     )
 
     expect(Math.max(...radii)).toBeGreaterThan(2000)
+  })
+})
+
+describe('physical road input provenance', () => {
+  it('keeps unavailable physical fields distinct from neutral and legacy-policy values', () => {
+    const flat = physicalRoadInputsAt(trackById('monza-approx'), 0.5)
+    const zandvoort = physicalRoadInputsAt(trackById('zandvoort-approx'), 0.2)
+    const zandvoortFlat = physicalRoadInputsAt(
+      trackById('zandvoort-approx'),
+      0.5,
+    )
+    const madrid = physicalRoadInputsAt(trackById('madrid-approx'), 0.9)
+    const monaco = physicalRoadInputsAt(trackById('monaco-approx'), 0.5)
+
+    expect(flat.gradeFraction).toMatchObject({
+      fallback: 'neutral-default',
+      physicalFieldProvenance: {
+        method: 'intentionally-unavailable',
+        source: 'unavailable',
+      },
+      value: 0,
+    })
+    expect(flat.bankingDegrees).toMatchObject({
+      fallback: 'neutral-default',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 0,
+    })
+    expect(zandvoort.bankingDegrees).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 19,
+    })
+    expect(zandvoort.bankingDegrees.fallbackLabel).toContain(
+      'LEGACY SIMULATOR POLICY',
+    )
+    expect(zandvoortFlat.bankingDegrees).toMatchObject({
+      fallback: 'neutral-default',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 0,
+    })
+    expect(madrid.bankingDegrees).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 13.5,
+    })
+    expect(monaco.usableWidthMeters).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 10,
+    })
+    expect(flat.usableWidthMeters).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      physicalFieldProvenance: { source: 'unavailable' },
+      value: 13,
+    })
+  })
+
+  it('does not derive usable width or a road input from render width', () => {
+    const suzuka = trackById('suzuka-approx')
+    const changedRenderWidth = {
+      ...suzuka,
+      width: suzuka.width * 100_000,
+    }
+
+    expect(physicalRoadInputsAt(changedRenderWidth, 0.37)).toEqual(
+      physicalRoadInputsAt(suzuka, 0.37),
+    )
+    expect(trackWidthMeters(changedRenderWidth)).toBe(trackWidthMeters(suzuka))
+    expect(trackGeometry(changedRenderWidth)).toEqual(trackGeometry(suzuka))
+  })
+
+  it('treats one lap as the wrapped start rather than the end of a banking window', () => {
+    const zandvoort = trackById('zandvoort-approx')
+
+    expect(physicalRoadInputsAt(zandvoort, 0.999).bankingDegrees).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      value: 18,
+    })
+    expect(physicalRoadInputsAt(zandvoort, -0.001).bankingDegrees).toMatchObject({
+      fallback: 'legacy-simulator-policy',
+      value: 18,
+    })
+    expect(physicalRoadInputsAt(zandvoort, 1).bankingDegrees).toMatchObject({
+      fallback: 'neutral-default',
+      value: 0,
+    })
+    expect(physicalRoadInputsAt(zandvoort, 1)).toEqual(
+      physicalRoadInputsAt(zandvoort, 0),
+    )
   })
 })
 

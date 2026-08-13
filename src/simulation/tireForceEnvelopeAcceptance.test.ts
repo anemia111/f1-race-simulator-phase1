@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import { seriesPackageById } from '../series/seriesRegistry'
-import type { CarSnapshot } from '../types'
+import type { CarSnapshot, TrackDefinition } from '../types'
 import { categoryPhysicsFor } from './categoryPhysics'
 import { createInitialRace } from './race'
 import { calculateCarTelemetry } from './telemetry'
@@ -70,12 +70,13 @@ function localF1GripFor(envelope: ReturnType<typeof f1EnvelopeFor>) {
 
 function f1CarForLiveBrake(
   tirePatch: F1TirePatch,
+  track: TrackDefinition = f1Track,
 ): CarSnapshot {
   const snapshot = createInitialRace({
     drivers: [f1Driver],
     seed: 'phase6-f1-force-acceptance',
     teams: [f1Team],
-    track: f1Track,
+    track,
   })
   const initial = snapshot.cars[0]
 
@@ -88,7 +89,7 @@ function f1CarForLiveBrake(
 
     return {
       progress,
-      dynamics: trackDynamicsAt(f1Track, progress, f1Physics),
+      dynamics: trackDynamicsAt(track, progress, f1Physics),
     }
   })
     .sort(
@@ -127,9 +128,12 @@ function f1CarForLiveBrake(
   }
 }
 
-function f1LiveBrakeTelemetry(tirePatch: F1TirePatch) {
+function f1LiveBrakeTelemetry(
+  tirePatch: F1TirePatch,
+  track: TrackDefinition = f1Track,
+) {
   return calculateCarTelemetry({
-    car: f1CarForLiveBrake(tirePatch),
+    car: f1CarForLiveBrake(tirePatch, track),
     categoryPhysics: f1Physics,
     deltaSeconds: 0.5,
     driver: f1Driver,
@@ -138,7 +142,7 @@ function f1LiveBrakeTelemetry(tirePatch: F1TirePatch) {
     phase: null,
     raceLap: 2,
     team: f1Team,
-    track: f1Track,
+    track,
     trackCondition: saturatedMismatchCondition,
     trackGrip: 0.52,
     weather: 'heavy-rain',
@@ -215,7 +219,7 @@ describe('Phase 6 F1 tyre-force acceptance', () => {
       categoryPhysics: f1Physics,
       currentSpeedKph: 250,
       deltaSeconds: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 0,
       fuelLoadKg: 35,
       team: f1Team,
@@ -253,6 +257,23 @@ describe('Phase 6 F1 tyre-force acceptance', () => {
     expect(healthy.brakePercent).toBeGreaterThan(0)
     expect(degraded.brakePercent).toBeGreaterThan(0)
     expect(degraded.speedKph).toBeGreaterThan(healthy.speedKph)
+  })
+
+  it('keeps live F1 telemetry independent of render centreline elevation', () => {
+    const renderElevationOnly: TrackDefinition = {
+      ...f1Track,
+      centerline: f1Track.centerline.map(
+        ([x, _y, z], index): [number, number, number] => [
+          x,
+          index % 2 === 0 ? Number.NaN : 1_000_000,
+          z,
+        ],
+      ),
+    }
+
+    expect(f1LiveBrakeTelemetry({}, renderElevationOnly)).toEqual(
+      f1LiveBrakeTelemetry({}, f1Track),
+    )
   })
 
   it('routes live brake temperature into the F1 recovery and friction-heat ledger', () => {

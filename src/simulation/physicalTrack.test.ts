@@ -7,6 +7,7 @@ import {
   PHYSICAL_TRACK_FIELDS,
   physicalTrackStationAt,
   resolvePhysicalTrack,
+  unavailablePhysicalTrackFieldProvenance,
 } from './physicalTrack'
 
 const referenceTrack = tracks.find((track) => track.id === 'suzuka-approx')!
@@ -85,6 +86,22 @@ describe('physical track contract', () => {
     expect(physical.fieldProvenance.usableWidthMeters.source).toBe(
       'unavailable',
     )
+  })
+
+  it('exports the same explicit unavailable provenance for road-input fallbacks', () => {
+    expect(
+      unavailablePhysicalTrackFieldProvenance('grade'),
+    ).toMatchObject({
+      confidence: 'unavailable',
+      method: 'intentionally-unavailable',
+      source: 'unavailable',
+    })
+    expect(
+      unavailablePhysicalTrackFieldProvenance('grade').sourceLabel,
+    ).toContain('grade')
+    expect(
+      unavailablePhysicalTrackFieldProvenance('usableWidthMeters').sourceLabel,
+    ).toContain('render width')
   })
 
   it('does not infer a physical elevation, grade, or planar shape from render Y', () => {

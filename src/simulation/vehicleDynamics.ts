@@ -57,7 +57,8 @@ export type LongitudinalDynamicsInput = {
   brakingTargetSpeedKph?: number
   corneringSpeedLimitKph?: number
   effectiveCornerRadiusM?: number
-  gradient: number
+  /** Signed physical road grade (rise/run); neutral where it is unavailable. */
+  roadGradeFraction: number
   referenceLineOffsetM?: number
   segmentLengthMeters?: number
   straightness: number
@@ -1228,10 +1229,10 @@ export function integrateVehicleLongitudinalStep(
   )
   const rollingResistanceForceN =
     massKg * GRAVITY_MPS2 * categoryPhysics.rollingResistanceCoefficient
-  // Track elevations use a compact normalized coordinate. Convert it to the
-  // local road-grade fraction before resolving the weight component.
+  // Road grade is a direct physical rise/run fraction. Render-centreline Y is
+  // deliberately not a force input; unavailable road data resolves neutrally.
   const roadGrade = clamp(
-    finiteOr(input.dynamics.gradient, 0) * 0.025,
+    finiteOr(input.dynamics.roadGradeFraction, 0),
     -0.035,
     0.035,
   )

@@ -4,6 +4,7 @@ import {
   type CategoryPhysicsProfile,
 } from './categoryPhysics'
 import {
+  physicalRoadInputsAt,
   simulatePhysicalLap,
   trackGeometry,
   type PhysicalReferenceLinePhase,
@@ -23,7 +24,8 @@ export type TrackDynamicPoint = {
   curvature: number
   effectiveCornerRadiusM: number
   fullThrottle: boolean
-  gradient: number
+  /** Signed physical road grade (rise/run); neutral where it is unavailable. */
+  roadGradeFraction: number
   referenceLineOffsetM: number
   referenceSpeedKph: number
   requiredBrakingDecelerationMps2: number
@@ -57,12 +59,6 @@ const profileCache = new WeakMap<
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-function pointAt(track: TrackDefinition, index: number) {
-  const length = track.centerline.length
-
-  return track.centerline[((index % length) + length) % length]
-}
-
 function buildGeometry(track: TrackDefinition): CachedGeometry {
   const points = trackGeometry(track)
   const lapLengthMeters = points.reduce(
@@ -92,16 +88,6 @@ function geometryFor(track: TrackDefinition) {
   }
 
   return geometry
-}
-
-function gradientAt(track: TrackDefinition, index: number) {
-  const previous = pointAt(track, index - 2)
-  const next = pointAt(track, index + 2)
-
-  // Elevation in the legacy centreline is only a scene-relative signal. Keep
-  // the public field for setup/weather consumers, but do not use it to scale
-  // the physical reference speed.
-  return clamp((next[1] - previous[1]) / 8, -1, 1)
 }
 
 /**
@@ -188,7 +174,10 @@ function buildProfile(
       fullThrottle:
         point.requiredBrakingDecelerationMps2 <= 1e-6 &&
         (accelerating || flatAtThisPoint),
-      gradient: gradientAt(track, index),
+      roadGradeFraction: physicalRoadInputsAt(
+        track,
+        index / physical.points.length,
+      ).gradeFraction.value,
       referenceLineOffsetM: point.referenceLineOffsetM,
       referenceSpeedKph,
       requiredBrakingDecelerationMps2:
