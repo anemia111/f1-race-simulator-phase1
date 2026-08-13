@@ -564,6 +564,43 @@ describe('multi-axis vehicle dynamics', () => {
     ).toBeLessThan(lightAcceleration.tractionLimitN / (768 + 5))
   })
 
+  it('intersects temperature-limited hardware with tyre braking before force integration', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 100,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 360,
+      deltaSeconds: 0,
+      dynamics: {
+        gradient: 0,
+        straightness: 1,
+      },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const operatingWindow = integrateVehicleLongitudinalStep({
+      ...common,
+      brakeTemperatureC: 620,
+    })
+    const overheated = integrateVehicleLongitudinalStep({
+      ...common,
+      brakeTemperatureC: 1_150,
+    })
+
+    expect(overheated.brakeHardwareCapacityMultiplier).toBeLessThan(
+      operatingWindow.brakeHardwareCapacityMultiplier,
+    )
+    expect(overheated.brakeForceN).toBeLessThan(operatingWindow.brakeForceN)
+    expect(overheated.accelerationMps2).toBeGreaterThan(
+      operatingWindow.accelerationMps2,
+    )
+  })
+
   it('uses wet grip and dirty-air downforce as tyre-force inputs', () => {
     const common = {
       activeAeroMode: 'corner' as const,

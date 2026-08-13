@@ -31,6 +31,7 @@ import {
   longitudinalTyreForceCapacityAt,
   maximumLateralAccelerationMps2,
 } from './tyreForces'
+import { brakeHardwareCapacityFor } from './brakeDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -89,6 +90,8 @@ export type LongitudinalStepInput = {
    * Live production callers should pass the operational resolver output.
    */
   baseVehicleMassKg?: number
+  /** Current disc/pad temperature used to constrain service-brake hardware. */
+  brakeTemperatureC?: number
   brakeReleaseSpeedKph?: number
   brakePercent: number
   categoryPhysics?: CategoryPhysicsProfile
@@ -126,6 +129,8 @@ export type LongitudinalStepInput = {
 
 export type LongitudinalStepResult = {
   accelerationMps2: number
+  /** Service-brake hardware availability applied before tyre-force limiting. */
+  brakeHardwareCapacityMultiplier: number
   brakeForceN: number
   clutchEngagementFraction: number
   dragForceN: number
@@ -1209,6 +1214,14 @@ export function integrateVehicleLongitudinalStep(
     0,
     1,
   )
+  // 620 C lies inside the neutral simulator-policy operating window. It
+  // preserves the compatibility behavior for callers that do not yet own a
+  // live disc-temperature state, while production telemetry supplies one.
+  const brakeHardwareCapacity = brakeHardwareCapacityFor({
+    brakeTemperatureC: input.brakeTemperatureC ?? 620,
+    maximumBrakeDecelerationMps2:
+      categoryPhysics.maximumBrakeDecelerationMps2,
+  })
   const gripMultiplier = vehicleTyreGripMultiplierForTeam(
     input.team,
     input.gripMultiplier,
@@ -1349,7 +1362,7 @@ export function integrateVehicleLongitudinalStep(
       })
       const serviceBrakeCapacityN = Math.min(
         capacity.brakeForceCapacityN,
-        categoryPhysics.maximumBrakeDecelerationMps2 * massKg,
+        brakeHardwareCapacity.maximumBrakeDecelerationMps2 * massKg,
       )
 
       tractionLimitN = capacity.drivenAxleForceCapacityN
@@ -1493,6 +1506,7 @@ export function integrateVehicleLongitudinalStep(
 
   return {
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
+    brakeHardwareCapacityMultiplier: brakeHardwareCapacity.capacityMultiplier,
     brakeForceN: Math.max(0, finiteOr(lastBrakeForceN, 0)),
     clutchEngagementFraction: clamp(
       finiteOr(clutchEngagementFraction, 0),

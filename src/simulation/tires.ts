@@ -10,6 +10,12 @@ import type {
   WeatherState,
 } from '../types'
 
+const clamp = (value: number, minimum: number, maximum: number) =>
+  Math.min(maximum, Math.max(minimum, value))
+
+const finiteOr = (value: number, fallback: number) =>
+  Number.isFinite(value) ? value : fallback
+
 export type TireCompoundSpec = {
   /** Lap-time offset of a fresh tire vs a fresh Medium (negative = faster). */
   offsetSeconds: number
@@ -41,6 +47,34 @@ export type TireDynamicState = {
   surfaceTemperatureC: number
   thermalStressPercent: number
   wearPercent: number
+}
+
+/**
+ * F1-only live tyre envelope used by the force solver.
+ *
+ * This is deliberately a bounded simulator-policy bridge from the Pirelli
+ * runtime state to the existing tyre-force model. It is not an assertion of
+ * unpublished compound friction coefficients. SUPER FORMULA control tyres do
+ * not carry this state and must not call this resolver.
+ */
+export type F1TireForceEnvelope = {
+  availability: 'simulator-policy'
+  gripMultiplier: number
+  thermalState: 'cold' | 'operating-window' | 'hot'
+}
+
+export type F1TireForceEnvelopeInput = {
+  compound: TireCompound
+  nomination?: TireNomination
+  state: Pick<
+    TireDynamicState,
+    | 'carcassTemperatureC'
+    | 'grainingPercent'
+    | 'overheatingPercent'
+    | 'surfaceTemperatureC'
+    | 'thermalStressPercent'
+    | 'wearPercent'
+  >
 }
 
 export type TireThermalWear = {
@@ -130,6 +164,102 @@ export function tireOperatingWindowFor(
   const targetC = targetByFamily[dryFamilyFor(compound, nomination) ?? 'C3']
 
   return { lowerC: targetC - 13, upperC: targetC + 17, targetC }
+}
+
+/**
+ * Resolves the portion of the live F1 tyre-force envelope that is carried by
+ * the tyre runtime rather than the track or vehicle model.
+ *
+ * The existing force solver already owns load sensitivity, downforce, surface
+ * water and the combined lateral/longitudinal force ellipse. This resolver
+ * only turns a non-neutral F1 tyre state into a bounded reduction of its
+ * available coefficient of friction. Its neutral plateau intentionally covers
+ * the current fresh-set runtime state (including the small surface/carcass
+ * temperature separation after a pit exit), so introducing this bridge does
+ * not re-tune a healthy baseline lap.
+ */
+export function f1TireForceEnvelopeFor(
+  input: F1TireForceEnvelopeInput,
+): F1TireForceEnvelope {
+  const window = tireOperatingWindowFor(input.compound, input.nomination)
+  const state = input.state
+  const thermalSpanC = Math.max(8, (window.upperC - window.lowerC) / 2)
+  const surfaceTemperatureC = finiteOr(
+    state.surfaceTemperatureC,
+    window.targetC,
+  )
+  const carcassTemperatureC = finiteOr(
+    state.carcassTemperatureC,
+    window.targetC,
+  )
+  const surfaceColdSeverity = clamp(
+    (window.lowerC - surfaceTemperatureC) / thermalSpanC,
+    0,
+    1,
+  )
+  const surfaceHotSeverity = clamp(
+    (surfaceTemperatureC - window.upperC) / thermalSpanC,
+    0,
+    1,
+  )
+  // The carcass follows the surface with a lag. A small separation is normal
+  // during warm-up and cooldown, so only a material lag changes the envelope.
+  const carcassColdSeverity = clamp(
+    (window.lowerC - 7 - carcassTemperatureC) / thermalSpanC,
+    0,
+    1,
+  )
+  const carcassHotSeverity = clamp(
+    (carcassTemperatureC - (window.upperC + 5)) / thermalSpanC,
+    0,
+    1,
+  )
+  const coldSeverity = Math.max(surfaceColdSeverity, carcassColdSeverity)
+  const hotSeverity = Math.max(surfaceHotSeverity, carcassHotSeverity)
+  const thermalSeverity = Math.max(coldSeverity, hotSeverity)
+  const effectiveWearPercent = clamp(
+    finiteOr(state.wearPercent, 0) + finiteOr(state.thermalStressPercent, 0),
+    0,
+    100,
+  )
+  // Permanent wear removes force capacity smoothly from a fresh-set baseline
+  // rather than becoming a lap-time-only correction. Zero wear remains an
+  // exact neutral multiplier for existing fresh-state behaviour.
+  const wearSeverity = effectiveWearPercent / 100
+  const grainingSeverity = clamp(
+    finiteOr(state.grainingPercent, 0) / 100,
+    0,
+    1,
+  )
+  const overheatingSeverity = clamp(
+    finiteOr(state.overheatingPercent, 0) / 100,
+    0,
+    1,
+  )
+  // Temperatures, graining and persistent overheating are overlapping tyre
+  // symptoms. The force envelope uses their dominant state so a single hot
+  // tyre is not charged again through three parallel grip penalties.
+  const transientStateSeverity = Math.max(
+    thermalSeverity,
+    grainingSeverity,
+    overheatingSeverity,
+  )
+  const gripMultiplier = clamp(
+    (1 - transientStateSeverity * 0.16) * (1 - wearSeverity * 0.12),
+    0.68,
+    1,
+  )
+
+  return {
+    availability: 'simulator-policy',
+    gripMultiplier,
+    thermalState:
+      coldSeverity > hotSeverity
+        ? 'cold'
+        : hotSeverity > 0
+          ? 'hot'
+          : 'operating-window',
+  }
 }
 
 /**

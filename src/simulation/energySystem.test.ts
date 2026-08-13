@@ -388,6 +388,42 @@ describe('Phase 4 ERS-K operating modes', () => {
     expectAuditToClose(result);
   });
 
+  it('uses a temperature-limited brake ceiling before calculating recovery and friction heat', () => {
+    const normal = step(createInitialEnergyStore(team, 0.3), {
+      brakeDecelerationLimitMps2: 49.05,
+      brakePercent: 100,
+      deltaSeconds: 0.5,
+      recoveryRequestScale: 0.1,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+    const overheated = step(createInitialEnergyStore(team, 0.3), {
+      // Matches the bounded policy's overheated range rather than inventing
+      // a team-specific brake specification.
+      brakeDecelerationLimitMps2: 41.2,
+      brakePercent: 100,
+      deltaSeconds: 0.5,
+      recoveryRequestScale: 0.1,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+
+    expect(overheated.state.requestedBrakePowerKw).toBeLessThan(
+      normal.state.requestedBrakePowerKw,
+    );
+    expect(overheated.state.frictionBrakePowerKw).toBeLessThan(
+      normal.state.frictionBrakePowerKw,
+    );
+    expect(overheated.actualRecoverySourcePowerKw.braking).toBeLessThan(
+      normal.actualRecoverySourcePowerKw.braking,
+    );
+    expect(overheated.audit.rechargedAtCuKBusMJ).toBeLessThan(
+      normal.audit.rechargedAtCuKBusMJ,
+    );
+    expectAuditToClose(normal);
+    expectAuditToClose(overheated);
+  });
+
   it('classifies actual lift-and-coast regeneration', () => {
     const result = step(createInitialEnergyStore(team, 0.3), {
       brakePercent: 0,

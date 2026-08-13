@@ -81,6 +81,12 @@ export type AdvanceEnergyStoreOptions = {
   allowLiftCoastRecovery?: boolean
   ambientTemperatureC: number
   brakePercent: number
+  /**
+   * Physical service-brake deceleration ceiling supplied by the live vehicle
+   * solver's inputs. This keeps braking recovery from being credited against
+   * more torque than cold or overheated hardware can actually accept.
+   */
+  brakeDecelerationLimitMps2?: number
   /** Positive ICE contribution at the wheels, used only to classify superclip. */
   combustionWheelPowerKw?: number
   deltaSeconds: number
@@ -922,7 +928,21 @@ function advanceEnergyStoreSubstep(
   const wetStability =
     tireRecoveryStability(options.tire, options.surfaceWaterMm) *
     (0.82 + clamp(options.driverWetSkill, 0, 1) * 0.18)
-  const maximumDecelerationMps2 = 5.1 * 9.81 * grip
+  // The legacy 5.1 g prediction remains the compatibility upper bound, but
+  // telemetry can now supply the same temperature-limited service-brake
+  // ceiling that constrains the live longitudinal force solve. Energy is
+  // therefore never credited from unavailable brake hardware.
+  const nominalMaximumDecelerationMps2 = 5.1 * 9.81 * grip
+  const maximumDecelerationMps2 = Math.min(
+    nominalMaximumDecelerationMps2,
+    Math.max(
+      0,
+      finite(
+        options.brakeDecelerationLimitMps2 ?? nominalMaximumDecelerationMps2,
+        nominalMaximumDecelerationMps2,
+      ),
+    ),
+  )
   const predictedEndSpeedMps = Math.max(
     0,
     speedMps - maximumDecelerationMps2 * brakeRequest * deltaSeconds,
