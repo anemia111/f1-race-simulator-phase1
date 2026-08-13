@@ -169,6 +169,10 @@ import {
   trackEvolutionLevelFor,
 } from './trackEvolution'
 import {
+  createTrackSurfaceStateFromLegacySectors,
+  trackSurfaceAt,
+} from './trackSurface'
+import {
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
   fuelBurnKgPerLap,
@@ -2721,6 +2725,21 @@ export function advanceRace(
         surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
         track: config.track,
       })
+  // The new local substrate is deterministically rehydrated from the existing
+  // checkpointed three-sector authority during this migration slice. It gives
+  // the live force path a lane/cell resolver without changing the racing-line
+  // water or rubber composition, and avoids a second snapshot authority.
+  const trackSurface = createTrackSurfaceStateFromLegacySectors(
+    {
+      dryingLineBySector: trackWater.dryingLineBySector,
+      rubberLevelBySector: trackRubber.rubberLevelBySector,
+      sectorMarks: config.track.sectorMarks,
+      surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
+    },
+    {
+      profile: config.track.surfaceProfile,
+    },
+  )
   const weekendStage = requestedWeekendStage
   const isRaceDistance = isRaceDistanceSession(weekendStage)
   const heatIndexC = f1WeatherRules
@@ -5207,16 +5226,19 @@ export function advanceRace(
     // Surface water is the single live wet-grip authority. Rainfall drives
     // that state; it is not also multiplied into tyre force as a second
     // weather-derived grip loss.
-    const baseLocalTrackGrip = 1
+    const localSurface = trackSurfaceAt(trackSurface, {
+      lateralOffsetM: car.lateralOffsetM,
+      progress: car.progress,
+    })
     const localTrackGrip = gripWithTrackRubber(
-      baseLocalTrackGrip,
-      trackRubber.rubberLevelBySector[carSector],
-      trackWater.surfaceWaterMmBySector[carSector],
+      localSurface.baseGripMultiplier,
+      localSurface.bondedRubber,
+      localSurface.waterFilmMm,
     )
     const localTireTrackCondition: TireTrackCondition = {
-      dryingLine: trackWater.dryingLineBySector[carSector],
+      dryingLine: localSurface.dryness,
       rainIntensityMmH,
-      surfaceWaterMm: trackWater.surfaceWaterMmBySector[carSector],
+      surfaceWaterMm: localSurface.waterFilmMm,
     }
     const controlPhase = phase ?? restartControlPhase ?? timedYellowControlPhase
     const localControlPhase = flagPhaseForProgress(
@@ -5497,7 +5519,7 @@ export function advanceRace(
       track: config.track,
       trackCondition: localTireTrackCondition,
       team,
-      surfaceWaterMm: trackWater.surfaceWaterMmBySector[carSector],
+      surfaceWaterMm: localTireTrackCondition.surfaceWaterMm,
       setup:
         config.weekendContext?.setupByDriver?.[driver.id] ??
         baselineSetupForTrack(config.track),

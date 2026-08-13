@@ -420,6 +420,26 @@ export type TrackProgressZone = {
   label: string
 }
 
+/**
+ * A force-model input for the local road surface. It is intentionally separate
+ * from render geometry and the legacy `surfaceRoughness` hint: values must
+ * identify whether they are sourced observations or simulator policy.
+ */
+export type TrackSurfaceProfile = {
+  baseFriction: number
+  source: 'official' | 'observed' | 'simulator-policy'
+  sourceLabel: string
+  sourceUrl?: string | null
+  sections?: Array<{
+    baseFriction: number
+    endProgress: number
+    source: 'official' | 'observed' | 'simulator-policy'
+    sourceLabel: string
+    sourceUrl?: string | null
+    startProgress: number
+  }>
+}
+
 export type OperationalDataSource =
   | 'official'
   | 'openf1'
@@ -823,6 +843,8 @@ export type TrackDefinition = {
   /** Physical inputs for air density and surface load; estimates are explicit. */
   altitudeMeters?: number
   surfaceRoughness?: number
+  /** Optional source-labelled local-surface force profile. */
+  surfaceProfile?: TrackSurfaceProfile
   tireNomination?: TireNomination
   baseLapTime: number
   baseLapTimeSource?: 'estimated' | 'openf1-observed' | '2026-reference'
