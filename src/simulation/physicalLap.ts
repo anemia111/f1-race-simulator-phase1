@@ -39,6 +39,8 @@ import {
   remainingEllipseForceN,
   tyreGripAt,
 } from './tyreForces'
+import { unavailablePhysicalTrackFieldProvenance } from './physicalTrack'
+import type { PhysicalTrackFieldProvenance } from './physicalTrack'
 import type {
   FiaPuEventInput,
   RechargeRuleDefinition,
@@ -140,49 +142,168 @@ export type BankedSection = {
   fromProgress: number
   toProgress: number
   degrees: number
+  /** Visible policy label; this is not a source-labelled road survey. */
+  policyLabel: string
 }
 
 /**
- * Banked sections, by lap progress.
+ * Legacy simulator-policy banked sections, by lap progress.
  *
- * Almost every modern circuit is within a couple of degrees of flat and is
- * treated as flat. Only a corner whose banking is a published feature of the
- * layout appears here.
- *
- * The angles come from those published descriptions. The progress ranges do
- * not: they are placed from the corner's position in the lap, so they locate
- * a real feature approximately rather than exactly. Applying a circuit's
- * banking to its whole lap instead is far worse — it lifted Zandvoort's
- * slowest corner to 164 km/h and cost 18 % of the lap time.
+ * These retained values preserve existing simulator behaviour, but neither
+ * the angles nor their progress ranges are a source-labelled physical banking
+ * profile. `physicalRoadInputsAt` exposes them as legacy policy rather than
+ * physical measurement. Every other point explicitly takes a neutral 0 degree
+ * fallback while banking remains unavailable in the physical-track contract.
  */
 export const TRACK_BANKED_SECTIONS: Record<string, BankedSection[]> = {
   'zandvoort-approx': [
     // Hugenholtz, turn 3 of 14.
-    { degrees: 19, fromProgress: 0.16, toProgress: 0.24 },
+    {
+      degrees: 19,
+      fromProgress: 0.16,
+      policyLabel:
+        'LEGACY SIMULATOR POLICY — retained Zandvoort Hugenholtz banking approximation',
+      toProgress: 0.24,
+    },
     // Arie Luyendyk, the banked final corner onto the straight.
-    { degrees: 18, fromProgress: 0.92, toProgress: 1 },
+    {
+      degrees: 18,
+      fromProgress: 0.92,
+      policyLabel:
+        'LEGACY SIMULATOR POLICY — retained Zandvoort Arie Luyendyk banking approximation',
+      toProgress: 1,
+    },
   ],
   'madrid-approx': [
-    // La Monumental, published as a 24 % banking, which is 13.5 degrees.
-    { degrees: 13.5, fromProgress: 0.86, toProgress: 0.96 },
+    // La Monumental retained as a legacy approximation (13.5 degrees).
+    {
+      degrees: 13.5,
+      fromProgress: 0.86,
+      policyLabel:
+        'LEGACY SIMULATOR POLICY — retained Madrid La Monumental banking approximation',
+      toProgress: 0.96,
+    },
   ],
+}
+
+export type PhysicalInputFallback =
+  | 'legacy-simulator-policy'
+  | 'neutral-default'
+
+/**
+ * A scalar currently applied to the simulator, paired with the honest
+ * physical-field state it stands in for. `value` is never promoted to an
+ * observed or official road input merely because the simulation can use it.
+ */
+export type AppliedPhysicalRoadInput = Readonly<{
+  fallback: PhysicalInputFallback
+  fallbackLabel: string
+  physicalFieldProvenance: PhysicalTrackFieldProvenance
+  value: number
+}>
+
+/**
+ * Physical road inputs available to a live force consumer at one lap point.
+ *
+ * All three physical fields are currently unavailable. The values here are
+ * deliberately explicit simulator fallbacks: grade and ordinary banking use
+ * neutral zero; the retained banking sections and width table retain their
+ * legacy-policy label.
+ */
+export type PhysicalRoadInputs = Readonly<{
+  bankingDegrees: AppliedPhysicalRoadInput
+  gradeFraction: AppliedPhysicalRoadInput
+  usableWidthMeters: AppliedPhysicalRoadInput
+}>
+
+function normalisedRoadProgress(progress: number) {
+  const finiteProgress = Number.isFinite(progress) ? progress : 0
+
+  return ((finiteProgress % 1) + 1) % 1
+}
+
+function bankedSectionAt(track: TrackDefinition, progress: number) {
+  const sections = TRACK_BANKED_SECTIONS[track.id]
+
+  if (!sections) {
+    return null
+  }
+
+  const normalised = normalisedRoadProgress(progress)
+
+  return (
+    sections.find(
+      (candidate) =>
+        normalised >= candidate.fromProgress && normalised <= candidate.toProgress,
+    ) ?? null
+  )
+}
+
+function appliedPhysicalRoadInput(
+  value: number,
+  fallback: PhysicalInputFallback,
+  fallbackLabel: string,
+  physicalFieldProvenance: PhysicalTrackFieldProvenance,
+): AppliedPhysicalRoadInput {
+  return Object.freeze({
+    fallback,
+    fallbackLabel,
+    physicalFieldProvenance,
+    value,
+  })
+}
+
+/**
+ * Resolves the simulator's explicitly-labelled physical-road fallbacks.
+ *
+ * This never reads `TrackDefinition.centerline[][1]` or
+ * `TrackDefinition.width`: those are rendering inputs. A future physical
+ * survey can replace an individual fallback only by also replacing its
+ * unavailable field provenance.
+ */
+export function physicalRoadInputsAt(
+  track: TrackDefinition,
+  progress: number,
+): PhysicalRoadInputs {
+  const section = bankedSectionAt(track, progress)
+  const widthOverride = LEGACY_TRACK_WIDTH_METERS[track.id]
+
+  const bankingDegrees = section
+    ? appliedPhysicalRoadInput(
+        section.degrees,
+        'legacy-simulator-policy',
+        section.policyLabel,
+        unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
+      )
+    : appliedPhysicalRoadInput(
+        0,
+        'neutral-default',
+        'NEUTRAL DEFAULT — 0 degrees while physical banking is unavailable',
+        unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
+      )
+
+  return Object.freeze({
+    bankingDegrees,
+    gradeFraction: appliedPhysicalRoadInput(
+      0,
+      'neutral-default',
+      'NEUTRAL DEFAULT — 0% grade while a physical elevation profile is unavailable',
+      unavailablePhysicalTrackFieldProvenance('grade'),
+    ),
+    usableWidthMeters: appliedPhysicalRoadInput(
+      widthOverride ?? LEGACY_DEFAULT_TRACK_WIDTH_M,
+      'legacy-simulator-policy',
+      widthOverride === undefined
+        ? 'LEGACY SIMULATOR POLICY — retained default usable-width assumption; no physical width survey'
+        : 'LEGACY SIMULATOR POLICY — retained circuit usable-width override; no physical width survey',
+      unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
+    ),
+  })
 }
 
 /** Banking at a point on the lap, in degrees. */
 export function bankingDegreesAt(track: TrackDefinition, progress: number) {
-  const sections = TRACK_BANKED_SECTIONS[track.id]
-
-  if (!sections) {
-    return 0
-  }
-
-  const normalized = ((progress % 1) + 1) % 1
-  const section = sections.find(
-    (candidate) =>
-      normalized >= candidate.fromProgress && normalized <= candidate.toProgress,
-  )
-
-  return section?.degrees ?? 0
+  return physicalRoadInputsAt(track, progress).bankingDegrees.value
 }
 
 export type TrackGeometryPoint = {
@@ -230,17 +351,15 @@ const RACING_LINE_REALISATION = 0.28
 export const DRIVER_TRANSIENT_EFFICIENCY = 0.97
 
 /**
- * Carriageway width in metres.
+ * Legacy simulator-policy usable width in metres.
  *
  * `TrackDefinition.width` cannot be used for this: it is a rendering value in
- * scene units, and converting it through the centreline scale gives 50 to 130
- * metres. Rather than invent twenty-four separate figures, everything takes
- * the modern-circuit default and only a genuinely different circuit carries an
- * override. The FIA requires at least 12 m and current permanent circuits are
- * typically 13 to 15 m.
+ * scene units. These retained values are not a physical carriageway survey;
+ * callers must use `physicalRoadInputsAt` when they also need the unavailable
+ * physical provenance and policy label.
  */
-const DEFAULT_TRACK_WIDTH_M = 13
-const TRACK_WIDTH_METERS: Record<string, number> = {
+const LEGACY_DEFAULT_TRACK_WIDTH_M = 13
+const LEGACY_TRACK_WIDTH_METERS: Record<string, number> = {
   // The narrowest circuit of the season; barriers both sides.
   'monaco-approx': 10,
   // Wide modern permanent layouts.
@@ -249,9 +368,9 @@ const TRACK_WIDTH_METERS: Record<string, number> = {
   'silverstone-approx': 15,
 }
 
-/** Carriageway width of a circuit, in metres. */
+/** Retained scalar wrapper for legacy simulator-policy usable width. */
 export function trackWidthMeters(track: TrackDefinition) {
-  return TRACK_WIDTH_METERS[track.id] ?? DEFAULT_TRACK_WIDTH_M
+  return physicalRoadInputsAt(track, 0).usableWidthMeters.value
 }
 
 /**

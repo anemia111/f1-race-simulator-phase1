@@ -115,8 +115,9 @@ function finiteSafetyMargin(value: number | undefined, fallback: number) {
 }
 
 /**
- * Course-coordinate limits from the physical carriageway width. The render
- * `TrackDefinition.width` field is intentionally never consulted.
+ * Course-coordinate limits from the retained simulator-policy road-width
+ * fallback. `TrackDefinition.width` is render-only and no surveyed
+ * carriageway width is currently available.
  */
 export function lateralBoundsForTrack(
   track: TrackDefinition,

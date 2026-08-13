@@ -99,10 +99,11 @@ function f1TiresFor(
 export function overtakeDifficultyForTrack(track: TrackDefinition) {
   const streetPremium = track.kind === 'street' ? 0.17 : 0
   const zoneRelief = Math.min(0.2, (track.overtakeControlLines?.length ?? 0) * 0.055)
-  // Measured carriageway, not `TrackDefinition.width`, which is a rendering
-  // value in scene units. Against the old formula's metre thresholds every
-  // circuit scored 2.2 to 2.85 and the relief was flat zero for all of them,
-  // so width never separated Monaco from Monza.
+  // Retained simulator-policy road-width assumption, not
+  // `TrackDefinition.width` or a surveyed carriageway measurement. Against
+  // the old formula's metre thresholds every circuit scored 2.2 to 2.85 and
+  // the relief was flat zero for all of them, so width never separated Monaco
+  // from Monza.
   const widthRelief = clamp((trackWidthMeters(track) - 9) * 0.02, 0, 0.12)
 
   return clamp(0.6 + streetPremium - zoneRelief - widthRelief, 0.25, 0.9)

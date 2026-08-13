@@ -347,7 +347,7 @@ describe('multi-axis vehicle dynamics', () => {
         brakePercent: 0,
         currentSpeedKph: speedKph,
         deltaSeconds: 0.1,
-        dynamics: { gradient: 0, straightness: 1 },
+        dynamics: { roadGradeFraction: 0, straightness: 1 },
         ersPowerKw: speedKph < 355 ? 350 : 0,
         fuelLoadKg: 8,
         gripMultiplier: 1,
@@ -371,7 +371,7 @@ describe('multi-axis vehicle dynamics', () => {
       activeAeroMode: 'straight' as const,
       airDensityKgM3: airDensityKgM3({ altitudeMeters: 650, temperatureC: 28 }),
       brakePercent: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 350,
       fuelLoadKg: 8,
       gripMultiplier: 1,
@@ -409,7 +409,7 @@ describe('multi-axis vehicle dynamics', () => {
       brakePercent: 0,
       currentSpeedKph: 260,
       deltaSeconds: 0.5,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       fuelLoadKg: 70,
       gripMultiplier: 1,
       team,
@@ -443,7 +443,7 @@ describe('multi-axis vehicle dynamics', () => {
       clutchEngagementFraction: 1,
       currentSpeedKph: 220,
       deltaSeconds: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       fuelLoadKg: 30,
       gripMultiplier: 1,
       team,
@@ -473,7 +473,7 @@ describe('multi-axis vehicle dynamics', () => {
       combustionPowerKw: 0,
       currentSpeedKph: 180,
       deltaSeconds: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 350,
       fuelLoadKg: 20,
       gripMultiplier: 1,
@@ -520,7 +520,7 @@ describe('multi-axis vehicle dynamics', () => {
       deltaSeconds: 0,
       dynamics: {
         effectiveCornerRadiusM: 120,
-        gradient: 0,
+        roadGradeFraction: 0,
         straightness: 0.3,
       },
       ersPowerKw: 0,
@@ -573,7 +573,7 @@ describe('multi-axis vehicle dynamics', () => {
       currentSpeedKph: 360,
       deltaSeconds: 0,
       dynamics: {
-        gradient: 0,
+        roadGradeFraction: 0,
         straightness: 1,
       },
       ersPowerKw: 0,
@@ -611,7 +611,7 @@ describe('multi-axis vehicle dynamics', () => {
       deltaSeconds: 0,
       dynamics: {
         effectiveCornerRadiusM: 180,
-        gradient: 0,
+        roadGradeFraction: 0,
         straightness: 0.4,
       },
       ersPowerKw: 350,
@@ -646,7 +646,7 @@ describe('multi-axis vehicle dynamics', () => {
       brakePercent: 0,
       currentSpeedKph: 300,
       deltaSeconds: 0,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 0,
       fuelLoadKg: 8,
       gripMultiplier: 1,
@@ -694,7 +694,7 @@ describe('multi-axis vehicle dynamics', () => {
       clutchEngagementFraction: 0,
       currentSpeedKph: 0,
       deltaSeconds: 0.1,
-      dynamics: { gradient: 0, straightness: 1 },
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
       ersPowerKw: 350,
       fuelLoadKg: 30,
       gripMultiplier: 1,
@@ -720,6 +720,45 @@ describe('multi-axis vehicle dynamics', () => {
     expect(result.rpm).toBeCloseTo(drivetrain.rpm, 10)
   })
 
+  it('uses direct physical road grade with a signed force and neutral invalid fallback', () => {
+    const common = {
+      activeAeroMode: 'straight' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 0,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 180,
+      deltaSeconds: 0,
+      ersPowerKw: 0,
+      fuelLoadKg: 30,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 0,
+    }
+    const stepAtGrade = (roadGradeFraction: number) =>
+      integrateVehicleLongitudinalStep({
+        ...common,
+        dynamics: { roadGradeFraction, straightness: 1 },
+      })
+    const level = stepAtGrade(0)
+    const uphill = stepAtGrade(0.01)
+    const downhill = stepAtGrade(-0.01)
+    const cappedUphill = stepAtGrade(0.035)
+    const overLimitUphill = stepAtGrade(0.35)
+    const unavailable = stepAtGrade(Number.NaN)
+
+    expect(uphill.gradeForceN).toBeGreaterThan(0)
+    expect(downhill.gradeForceN).toBeLessThan(0)
+    expect(uphill.accelerationMps2).toBeLessThan(level.accelerationMps2)
+    expect(downhill.accelerationMps2).toBeGreaterThan(level.accelerationMps2)
+    expect(overLimitUphill.gradeForceN).toBeCloseTo(
+      cappedUphill.gradeForceN,
+      10,
+    )
+    expect(unavailable.gradeForceN).toBe(0)
+    expect(unavailable.accelerationMps2).toBeCloseTo(level.accelerationMps2, 10)
+  })
+
   it('contains non-finite external inputs without emitting invalid vehicle state', () => {
     const result = integrateVehicleLongitudinalStep({
       activeAeroMode: 'straight',
@@ -730,7 +769,7 @@ describe('multi-axis vehicle dynamics', () => {
       deltaSeconds: 0.1,
       dynamics: {
         effectiveCornerRadiusM: Number.NaN,
-        gradient: Number.NaN,
+        roadGradeFraction: Number.NaN,
         straightness: 1,
       },
       ersPowerKw: Number.POSITIVE_INFINITY,
@@ -806,7 +845,7 @@ describe('multi-axis vehicle dynamics', () => {
           brakePercent: 0,
           currentSpeedKph: speedKph,
           deltaSeconds: 0.1,
-          dynamics: { gradient: 0, straightness: 1 },
+          dynamics: { roadGradeFraction: 0, straightness: 1 },
           ersPowerKw: speedKph < 355 ? 350 : 0,
           fuelLoadKg: 8,
           gripMultiplier: 1,

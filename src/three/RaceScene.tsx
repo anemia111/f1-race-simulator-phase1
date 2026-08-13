@@ -122,21 +122,24 @@ function presentationTrackWidth(track: TrackDefinition) {
   return clamp(track.width * 0.27, 0.58, 0.92)
 }
 
-/** Convert physical lateral metres into timing-map presentation units. */
+/**
+ * Convert simulator lateral metres into timing-map presentation units.
+ * The retained width is an explicit compatibility policy, not a survey.
+ */
 // oxlint-disable-next-line react/only-export-components -- exercised as a pure metres-to-map-unit boundary
 export function presentationLateralOffset(
   track: TrackDefinition,
   lateralOffsetM: number,
 ) {
-  const physicalWidthM = trackWidthMeters(track)
+  const policyRoadWidthM = trackWidthMeters(track)
   const finiteOffsetM = Number.isFinite(lateralOffsetM) ? lateralOffsetM : 0
   const boundedOffsetM = clamp(
     finiteOffsetM,
-    -physicalWidthM / 2,
-    physicalWidthM / 2,
+    -policyRoadWidthM / 2,
+    policyRoadWidthM / 2,
   )
 
-  return (boundedOffsetM / physicalWidthM) * presentationTrackWidth(track)
+  return (boundedOffsetM / policyRoadWidthM) * presentationTrackWidth(track)
 }
 
 function SpriteLabel({
