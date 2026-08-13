@@ -46,10 +46,12 @@ import {
 } from './superClipping'
 import { resolveSuperFormulaOperational } from './superFormulaOperational'
 import {
+  f1TireForceEnvelopeFor,
   tireOperatingWindowFor,
   tireTrackGripMultiplier,
   type TireTrackCondition,
 } from './tires'
+import { brakeHardwareCapacityFor } from './brakeDynamics'
 import { trackDynamicsAt } from './trackDynamics'
 import { gripForSurfaceWater } from './trackWater'
 import {
@@ -361,16 +363,60 @@ export function calculateCarTelemetry(options: {
   const compoundGrip = f1Tires
     ? tireTrackGripMultiplier(f1Tires.tire, trackCondition)
     : 1
+  // The F1 Pirelli runtime carries the state needed to resolve a live tyre
+  // force envelope. SUPER FORMULA deliberately has no equivalent coefficient
+  // state: its control-tire branch remains unavailable rather than borrowing
+  // an F1 zero-loss compatibility value.
+  const f1TireForceEnvelope =
+    f1Tires !== null && categoryPhysics.id === 'f1-custom'
+      ? f1TireForceEnvelopeFor({
+          compound: f1Tires.tire,
+          nomination: track.tireNomination,
+          state: {
+            carcassTemperatureC: f1Tires.tireCarcassTemperatureC,
+            grainingPercent: f1Tires.tireGrainingPercent,
+            overheatingPercent: f1Tires.tireOverheatingPercent,
+            surfaceTemperatureC: f1Tires.tireTemperatureC,
+            thermalStressPercent: f1Tires.tireThermalStressPercent,
+            wearPercent: f1Tires.tireWearPercent,
+          },
+        })
+      : null
   const surfaceGrip = gripForSurfaceWater(
     trackGrip,
     trackCondition.surfaceWaterMm,
     trackCondition.dryingLine,
   )
-  const localGrip = clamp(surfaceGrip * compoundGrip, 0.34, 1.08)
+  // This is the sole composition point for F1 tyre-state grip. Both the live
+  // cornering limit and the longitudinal force ellipse receive `utilisedGrip`
+  // below, so there is no separate lap-time-only tyre-state correction.
+  const localGrip = clamp(
+    surfaceGrip *
+      compoundGrip *
+      (f1TireForceEnvelope?.gripMultiplier ?? 1),
+    // `tyreForces` is numerically stable down to 0.05. Keeping the same
+    // lower boundary here ensures a wet/mismatched F1 tyre's dynamic-state
+    // loss remains visible instead of being flattened by a compatibility
+    // floor before it reaches the force ellipse.
+    0.05,
+    1.08,
+  )
   // Skill controls how much of the physical tyre envelope the driver can use;
   // it never raises the tyre above its modelled maximum.
   const utilisedGrip =
     localGrip * (0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
+  // This exact ceiling is also passed to the Energy Store. It prevents a
+  // cold/hot brake from crediting recovery against a nominal 5.1 g stop that
+  // the live vehicle solver will subsequently reject.
+  const brakeHardwareCapacity = brakeHardwareCapacityFor({
+    brakeTemperatureC: car.brakeTemperatureC,
+    maximumBrakeDecelerationMps2:
+      categoryPhysics.maximumBrakeDecelerationMps2,
+  })
+  const brakeRecoveryDecelerationLimitMps2 = Math.min(
+    5.1 * 9.81 * utilisedGrip,
+    brakeHardwareCapacity.maximumBrakeDecelerationMps2,
+  )
   // Geometry and the offline look-ahead event come from physicalLap, but the
   // limits themselves are solved again for this car's live mass, setup,
   // surface and wake. The offline terminal/deployment policy never becomes a
@@ -780,6 +826,7 @@ export function calculateCarTelemetry(options: {
             energyIntent.liftCoastPreference > 0.08,
           ambientTemperatureC: airTemperatureC,
           brakePercent,
+          brakeDecelerationLimitMps2: brakeRecoveryDecelerationLimitMps2,
           combustionWheelPowerKw,
           deltaSeconds,
           deploymentDcPowerLimitKw: regulatoryDeploymentPowerLimitKw,
@@ -844,6 +891,7 @@ export function calculateCarTelemetry(options: {
     airDensityKgM3: ambientAirDensityKgM3,
     baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
     brakePercent,
+    brakeTemperatureC: car.brakeTemperatureC,
     brakeReleaseSpeedKph:
       pitLaneSpeedLimitKph ??
       (brakePercent > 3

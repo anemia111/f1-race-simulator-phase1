@@ -4,9 +4,10 @@
 
 This is the first Phase 6 implementation slice. It introduces a deterministic,
 two-lane local-surface substrate and connects it to the live race force path.
-It does **not** claim that Phase 6 as a whole is complete: physical track
-geometry, sourced elevation/banking, tyre-transient force coupling, brake
-hardware capacity, and chassis response remain separate follow-up slices.
+It does **not** claim that Phase 6 as a whole is complete: source-backed
+elevation/banking, physical-width ingestion, tyre transient/relaxation,
+chassis response, and circuit-scenario validation remain separate follow-up
+slices.
 
 ## Runtime model
 
@@ -63,16 +64,48 @@ Consequently, a normal existing race keeps its prior racing-line result. A
 test-only policy profile proves the live coupling without presenting an
 invented circuit measurement as source data.
 
+## Tyre-force and brake-capacity follow-up
+
+The second Phase 6 slice connects the existing F1 tyre runtime state to the
+same live force envelope used by both cornering and longitudinal integration.
+`f1TireForceEnvelopeFor` is a bounded `simulator-policy` bridge: an in-window,
+fresh F1 set remains exactly neutral, while cold/hot temperatures, wear,
+thermal stress, graining, and overheating can only reduce available grip. The
+multiplier is composed once in telemetry before the existing force ellipse; it
+is not a lap-time correction. SUPER FORMULA retains its explicit
+source-unavailable control-tyre physical model and never receives F1/Pirelli
+coefficients.
+
+Service-brake hardware now has a temperature-dependent capacity resolver. Its
+bounded policy capacity is intersected with the requested brake force and the
+tyre longitudinal envelope in the vehicle solver, so cold or overheated brake
+hardware cannot be hidden by a later force calculation. The normal operating
+window remains neutral for compatibility. The same temperature-limited ceiling
+also bounds the Energy Store's braking-recovery and friction-brake prediction,
+so it cannot credit unavailable brake torque before the live force solve. The
+policy intentionally makes no claim about team-specific disc, pad, duct, or
+cooling data.
+
+## Physical-track contract follow-up
+
+`src/simulation/physicalTrack.ts` provides a pure, provenance-labelled metric
+planar adapter for later chassis and surface work. It scales only the existing
+horizontal layout to the declared lap length, validates a closed loop, and
+exposes arc stations, tangents, normals, and signed horizontal curvature.
+Elevation, grade, vertical curvature, banking, and usable width are explicitly
+`unavailable`: render-space Y and render width are never reinterpreted as
+physical measurements. Consumers must branch on the resolver's discriminated
+availability result instead of receiving an invented neutral physical track.
+
 ## Explicitly not yet operational
 
 - Per-track roughness and drainage inputs;
 - direct cell ownership/persistence across race ticks;
 - source-backed physical width, elevation, grade, banking, kerb, or runoff
   geometry;
-- tyre temperature, wear, graining, and relaxation-state effects on the live
-  force envelope;
-- temperature-dependent brake hardware capacity;
-- an SF control-tyre physics model. SUPER FORMULA remains source-unavailable
+- tyre relaxation/transient response, source-backed compound force
+  coefficients, or an SF control-tyre physics model. SUPER FORMULA remains
+  source-unavailable
   for those coefficients and does not reuse F1/Pirelli values.
 
 `advanceTrackSurfaceCell` is a bounded, deterministic pure update used to test
