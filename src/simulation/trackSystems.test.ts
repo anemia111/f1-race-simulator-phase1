@@ -6,7 +6,7 @@ import {
   overtakeStatusFor,
   updateOvertakeEligibilityAfterTravel,
 } from './activeAero'
-import { createInitialRace } from './race'
+import { advanceRace, createInitialRace } from './race'
 import {
   advanceVscMarshallingSectorTracking,
   distanceRespectingLocalYellowOrder,
@@ -31,6 +31,15 @@ import {
   gripForSurfaceWater,
 } from './trackWater'
 import { gripWithTrackRubber } from './trackEvolution'
+import {
+  createTrackSurfaceStateFromLegacySectors,
+  trackSurfaceAt,
+} from './trackSurface'
+import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  airDensityKgM3,
+  liveCorneringSpeedLimitKph,
+} from './vehicleDynamics'
 
 describe('track-dependent systems', () => {
   it('scopes a local yellow to the marshalling sector around the incident', () => {
@@ -393,6 +402,146 @@ describe('track-dependent systems', () => {
       rubberedDryGrip,
     )
     expect(gripForSurfaceWater(rubberedDryGrip, 1.5, 0)).toBeLessThan(1)
+  })
+
+  it('routes a local off-line surface penalty into the live force step once', () => {
+    const track = tracks[0]
+    const sharpestProgress = Array.from(
+      { length: track.centerline.length },
+      (_, index) => index / track.centerline.length,
+    ).sort(
+      (left, right) =>
+        trackDynamicsAt(track, right).curvature -
+        trackDynamicsAt(track, left).curvature,
+    )[0]
+    const surface = createTrackSurfaceStateFromLegacySectors({
+      dryingLineBySector: [1, 1, 1],
+      rubberLevelBySector: [1, 1, 1],
+      sectorMarks: track.sectorMarks,
+      surfaceWaterMmBySector: [0, 0, 0],
+    })
+    const racingLine = trackSurfaceAt(surface, {
+      lane: 'racing-line',
+      progress: sharpestProgress,
+    })
+    const offLine = trackSurfaceAt(surface, {
+      lane: 'off-line',
+      progress: sharpestProgress,
+    })
+    const dynamics = trackDynamicsAt(track, sharpestProgress)
+    const shared = {
+      airDensityKgM3: airDensityKgM3({
+        altitudeMeters: track.altitudeMeters,
+        temperatureC: 25,
+      }),
+      bankingDegrees: dynamics.bankingDegrees,
+      categoryPhysics: categoryPhysicsFor('f1-custom'),
+      evaluationSpeedKph: 180,
+      fuelLoadKg: 65,
+      radiusMeters: dynamics.effectiveCornerRadiusM,
+      team: initialTeams[0],
+    }
+    const onLineLimit = liveCorneringSpeedLimitKph({
+      ...shared,
+      gripMultiplier: gripWithTrackRubber(
+        racingLine.baseGripMultiplier,
+        racingLine.bondedRubber,
+        racingLine.waterFilmMm,
+      ),
+    })
+    const offLineLimit = liveCorneringSpeedLimitKph({
+      ...shared,
+      gripMultiplier: gripWithTrackRubber(
+        offLine.baseGripMultiplier,
+        offLine.bondedRubber,
+        offLine.waterFilmMm,
+      ),
+    })
+
+    expect(offLineLimit).toBeLessThan(onLineLimit)
+  })
+
+  it('uses a source-labelled track profile in the live race force path', () => {
+    const track = tracks[0]
+    const config = {
+      drivers: initialDrivers,
+      seed: 'surface-profile-live-race',
+      teams: initialTeams,
+      track,
+    }
+    const sharpestProgress = Array.from(
+      { length: track.centerline.length },
+      (_, index) => index / track.centerline.length,
+    ).sort(
+      (left, right) =>
+        trackDynamicsAt(track, right).curvature -
+        trackDynamicsAt(track, left).curvature,
+    )[0]
+    const initial = createInitialRace(config)
+    const prepared: typeof initial = {
+      ...initial,
+      cars: initial.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              progress: sharpestProgress,
+              speedKph: 180,
+              status: 'running' as const,
+              totalDistance: 1 + sharpestProgress,
+            }
+          : { ...car, speedKph: 0, status: 'retired' as const },
+      ),
+      dryingLineBySector: [1, 1, 1] as [number, number, number],
+      formationLapsCompleted: 1,
+      formationLapsPlanned: 0,
+      raceStartedAtSeconds: 0,
+      rubberLevelBySector: [1, 1, 1] as [number, number, number],
+      startProcedure: 'racing' as const,
+      startProcedureRemainingSeconds: 0,
+      surfaceWaterMmBySector: [0, 0, 0] as [number, number, number],
+    }
+    const lowerGripConfig = {
+      ...config,
+      track: {
+        ...track,
+        surfaceProfile: {
+          baseFriction: 0.82,
+          source: 'simulator-policy' as const,
+          sourceLabel: 'Test-only low-grip local surface policy',
+        },
+      },
+    }
+    const neutralProfileConfig = {
+      ...config,
+      track: {
+        ...track,
+        surfaceProfile: {
+          baseFriction: 1,
+          source: 'simulator-policy' as const,
+          sourceLabel: 'Test-only neutral local surface policy',
+        },
+      },
+    }
+    let baselineSnapshot = prepared
+    let lowerGripSnapshot = prepared
+    let neutralProfileSnapshot = prepared
+
+    for (let step = 0; step < 12; step += 1) {
+      baselineSnapshot = advanceRace(baselineSnapshot, 2, config)
+      lowerGripSnapshot = advanceRace(lowerGripSnapshot, 2, lowerGripConfig)
+      neutralProfileSnapshot = advanceRace(
+        neutralProfileSnapshot,
+        2,
+        neutralProfileConfig,
+      )
+    }
+
+    const baseline = baselineSnapshot.cars[0]
+    const lowerGrip = lowerGripSnapshot.cars[0]
+    const neutralProfile = neutralProfileSnapshot.cars[0]
+
+    expect(lowerGrip.totalDistance).toBeLessThan(baseline.totalDistance)
+    expect(neutralProfile.totalDistance).toBe(baseline.totalDistance)
   })
 
   it('requires remaining per-lap electrical energy for Overtake', () => {
