@@ -1,0 +1,30 @@
+
+> f1-race-simulator-phase1@0.0.0 build
+> tsc -b && vite build
+
+[36mvite v8.1.4 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2445 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                          0.41 kB
+dist/index.html                                    0.58 kB │ gzip:   0.35 kB
+dist/assets/raceWorker-BaA3-X3c.js               478.21 kB
+dist/assets/index-z7c0GNnW.css                    74.48 kB │ gzip:  14.07 kB
+dist/assets/workbox-window.prod.es5-Bd17z0YL.js    5.65 kB │ gzip:   2.20 kB
+dist/assets/SeriesDataManager-Dzi-c40B.js         30.01 kB │ gzip:   7.87 kB
+dist/assets/RaceScene-mqDh_00f.js                939.09 kB │ gzip: 250.95 kB
+dist/assets/index-B1gkfdW1.js                    995.42 kB │ gzip: 288.42 kB
+
+[32m✓ built in 2.60s[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+
+PWA v1.3.0
+mode      generateSW
+precache  10 entries (2464.33 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js

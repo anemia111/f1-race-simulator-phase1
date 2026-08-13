@@ -1,0 +1,8 @@
+﻿{
+    "command":  "npm run validate:speed-trap",
+    "status":  "timeout",
+    "timeoutSeconds":  1200,
+    "endedAtUtc":  "2026-08-08T10:32:52.7714083Z",
+    "exitCode":  null,
+    "partialLogFile":  "validate-speed-trap-20m.partial.log"
+}

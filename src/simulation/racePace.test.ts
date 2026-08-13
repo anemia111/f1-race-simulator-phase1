@@ -13,23 +13,47 @@ const config = {
 const baseCar = {
   ...createInitialRace(config).cars[4],
   damage: 0,
-  ersBatteryPercent: 72,
   gapToAhead: 2,
   position: 5,
   status: 'running' as const,
-  tireOverheatingPercent: 8,
-  tireWearPercent: 22,
   totalDistance: 18.4,
 }
 
 function mode(
-  overrides: Partial<typeof baseCar> = {},
+  overrides: Partial<Omit<typeof baseCar, 'runtimeSystems'>> & {
+    ersBatteryPercent?: number
+    tireOverheatingPercent?: number
+    tireWearPercent?: number
+  } = {},
   optionOverrides: Partial<
     Parameters<typeof automaticRacePaceModeFor>[0]
   > = {},
 ) {
+  const {
+    ersBatteryPercent,
+    tireOverheatingPercent,
+    tireWearPercent,
+    ...carOverrides
+  } = overrides
+  const runtimeSystems =
+    baseCar.runtimeSystems.kind === 'f1'
+      ? {
+          ...baseCar.runtimeSystems,
+          ersBatteryPercent:
+            ersBatteryPercent ?? baseCar.runtimeSystems.ersBatteryPercent,
+          tires: {
+            ...baseCar.runtimeSystems.tires,
+            tireOverheatingPercent:
+              tireOverheatingPercent ??
+              baseCar.runtimeSystems.tires.tireOverheatingPercent,
+            tireWearPercent:
+              tireWearPercent ?? baseCar.runtimeSystems.tires.tireWearPercent,
+          },
+        }
+      : baseCar.runtimeSystems
+
   return automaticRacePaceModeFor({
-    car: { ...baseCar, ...overrides },
+    car: { ...baseCar, ...carOverrides, runtimeSystems },
     gapBehindSeconds: 2,
     isRaceDistance: true,
     phaseActive: false,

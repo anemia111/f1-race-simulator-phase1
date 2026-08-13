@@ -118,11 +118,11 @@ describe('Free Mode runtime integration', () => {
     expect(snapshot.sessionStatus).toBe('finished')
   })
 
-  it('finishes a 30-car F3 session on an F1 circuit', () => {
+  it('finishes a 30-car Super Formula session on an F1 circuit', () => {
     const config = buildFreeModeRaceConfig(
       configurationFor({
         carCount: 30,
-        categoryId: 'f3',
+        categoryId: 'super-formula',
         sessionKind: 'practice',
         trackId: 'suzuka-approx',
       }),
@@ -154,10 +154,6 @@ describe('Free Mode runtime integration', () => {
     ['f1-custom', 40, 'fuji-sf'],
     ['super-formula', 40, 'albert-park-approx'],
     ['super-formula', 40, 'fuji-sf'],
-    ['f2', 30, 'albert-park-approx'],
-    ['f2', 30, 'fuji-sf'],
-    ['f3', 30, 'albert-park-approx'],
-    ['f3', 30, 'fuji-sf'],
   ] as const)(
     'advances %s machinery with %i cars on %s',
     (categoryId, carCount, trackId) => {

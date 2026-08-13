@@ -1,0 +1,5 @@
+﻿command: npx oxlint --deny-warnings
+startedAtUtc: 2026-08-08T09:39:28.8318827Z
+endedAtUtc: 2026-08-08T09:39:30.1693532Z
+exitCode: 0
+--- output ---

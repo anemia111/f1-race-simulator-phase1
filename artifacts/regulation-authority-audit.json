@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "cutoffDate": "2026-08-08",
+  "sourceCommit": "b29745e02ea6b5d2e21d559f75ffc0a8be9db9d5",
+  "series": {
+    "f1-custom": {
+      "runtimeEra": "f1-2026-current",
+      "bindingBase": [
+        "fia-f1-2026-sporting-b08",
+        "fia-f1-2026-technical-c20",
+        "fia-f1-2026-operational-f10"
+      ],
+      "nonbindingGuidelines": [
+        "fia-f1-2026-driving-standards-v01",
+        "fia-f1-2026-penalty-guidelines-v01"
+      ],
+      "verifiedEventInputs": [
+        "fia-f1-2026-japan-power-unit-information-r03"
+      ],
+      "officialExplanatoryInputs": [
+        "fia-f1-2026-energy-refinement-2026-04-20"
+      ],
+      "supersededAuthorities": [
+        "2026 Sporting Issue 07",
+        "2026 Technical Issue 19",
+        "2026 Operational Issue 09"
+      ],
+      "unresolvedPublicInputs": [
+        "FIA-F1-DOC-034",
+        "FIA-F1-DOC-058",
+        "FIA-F1-DOC-111"
+      ],
+      "implementedRuntimeCorrections": [
+        "Qualifying recharge floor authority is 4 MJ under C20, with the B08 event-count constraint retained as authority metadata.",
+        "The non-public low-grip power curve is unavailable and fails closed; Overtake is disabled under Low Grip.",
+        "DRS is not a 2026 F1 runtime state; raw historical OpenF1 DRS remains observational data.",
+        "C5.2.8 Normal, Overtake and Race/Sprint power-limited curves share one pure authority.",
+        "C4.1 minimum mass resolves by session, Nominal Tyre Mass and Heat Hazard addition without inferring a public tyre mass.",
+        "Continuous front/rear Corner and Straight Mode positions persist in live snapshots and feed the decomposed force model in the same tick.",
+        "Official event-map activation zones override explicitly labelled geometry-derived estimates; an official empty list remains authoritative.",
+        "C5.2.8 limits actual CU-K DC deployment before inverter and motor losses; mechanical deployment is derived downstream.",
+        "C5.2.10 Recharge is ledged at the CU-K HV DC Bus before battery loss, separately from stored Energy Store energy.",
+        "Suzuka Power Unit Information document 4 supplies verified context totals of 8.5/9.0 MJ in Race, 8.0 MJ in Qualifying, and 9.0 MJ in Free Practice/non-Race out laps.",
+        "Overtake recharge allowance is latched at the lap-start Line and Low Grip behind the Safety Car resolves as unlimited rather than an additive allowance.",
+        "Full-throttle superclip is classified from actual high-throttle positive-ICE generator flow and reduces wheel power through generator mechanical resistance without a second ICE scale."
+      ]
+    },
+    "super-formula": {
+      "runtimeEra": "sf-2026",
+      "bindingBase": [
+        "jaf-sf-2026-unified-regulations"
+      ],
+      "bindingCorrectionsAndBulletins": [
+        "jaf-sf-2026-correction-web011",
+        "jaf-race-bulletin-003-2026",
+        "jaf-sf-2026-substitute-round-3-web056"
+      ],
+      "officialExplanatoryInputs": [
+        "jrp-sf23-machine",
+        "yokohama-sf-2026-overview",
+        "yokohama-sf-supply-2030-release"
+      ],
+      "runtimeGateArtifact": "artifacts/sf-ots-validation/summary.json",
+      "implementedRuntimeCorrections": [
+        "Article 21 tyre-change worker count must be six.",
+        "Race-finish timing must include Bulletin 003-2026 interpretation.",
+        "Machine and tyre supplier pages are explanatory inputs, not regulations.",
+        "Super Formula uses an isolated runtime payload with no F1 ERS, active-aero, component, or tyre-family state.",
+        "Article 5 suspension eligibility is retained only in an official-adjudication ledger; FIA penalty mappings are unavailable.",
+        "Article 23 control-tyre inventory is a dry/wet allocation of six per driver.",
+        "Article 24 engine allocation is a two-engine entrant lifecycle ledger.",
+        "Article 24.3.8 OTS fails closed unless exact event-pack activation, power, and cooldown conditions are supplied.",
+        "Article 25 refuelling safety and numerical inputs remain unavailable without official event inputs.",
+        "Article 26.9 pit-lane speed limit is 60 km/h.",
+        "Super Formula race distance is available only from a verified event-specific input."
+      ]
+    }
+  },
+  "resolutionPolicy": {
+    "equalPrecedenceConflict": "unresolved",
+    "missingOfficialValue": "unavailable",
+    "lastWriteWinsAllowed": false,
+    "simulatorPolicyMayMasqueradeAsOfficial": false,
+    "eventScopeRequiredForEventDocuments": true
+  },
+  "runtimeGateArtifact": "artifacts/f1-current-generation-gate.json",
+  "status": "phase-5-super-formula-first-class-runtime-boundary-implemented"
+}

@@ -12,6 +12,32 @@ import {
   integrateVehicleLongitudinalStep,
   liveCorneringSpeedLimitKph,
 } from './vehicleDynamics'
+import type { F1RuntimeSystems } from './runtimeSystems'
+
+function requireF1Runtime(
+  runtimeSystems: CarSnapshot['runtimeSystems'],
+): F1RuntimeSystems {
+  if (runtimeSystems.kind !== 'f1') {
+    throw new Error('This F1 calibration fixture requires an F1 runtime')
+  }
+
+  return runtimeSystems
+}
+
+function withF1Runtime(
+  car: CarSnapshot,
+  patch: Partial<Omit<F1RuntimeSystems, 'kind'>>,
+): CarSnapshot {
+  const runtimeSystems = requireF1Runtime(car.runtimeSystems)
+
+  return {
+    ...car,
+    runtimeSystems: {
+      ...runtimeSystems,
+      ...patch,
+    },
+  }
+}
 
 function runSpeedTrace(
   track: TrackDefinition,
@@ -88,6 +114,7 @@ function runSpeedTrace(
       trackGrip: 1,
       weather: 'clear',
     })
+    const telemetryRuntime = requireF1Runtime(telemetry.runtimeSystems)
     const progressDelta = progressForProfileSpeed(
       track,
       car.progress,
@@ -96,16 +123,20 @@ function runSpeedTrace(
     )
 
     maximumSpeedKph = Math.max(maximumSpeedKph, telemetry.speedKph)
-    maximumErsPowerKw = Math.max(maximumErsPowerKw, telemetry.ersPowerKw)
+    maximumErsPowerKw = Math.max(
+      maximumErsPowerKw,
+      telemetryRuntime.ersPowerKw,
+    )
     maximumReferenceSpeedKph = Math.max(
       maximumReferenceSpeedKph,
       dynamics.referenceSpeedKph,
     )
     if (dynamics.fullThrottle) {
       fullThrottleSamples += 1
-      fullThrottleErsTotalKw += telemetry.ersPowerKw
+      fullThrottleErsTotalKw += telemetryRuntime.ersPowerKw
     }
-    straightAeroSamples += telemetry.activeAeroMode === 'straight' ? 1 : 0
+    straightAeroSamples +=
+      telemetryRuntime.activeAeroMode === 'straight' ? 1 : 0
     car = {
       ...car,
       ...telemetry,
@@ -163,7 +194,9 @@ function runIntegratedRaceSpeedTrace(
     )
     minimumBatteryPercent = Math.min(
       minimumBatteryPercent,
-      ...snapshot.cars.map((car) => car.ersBatteryPercent),
+      ...snapshot.cars.map((car) =>
+        requireF1Runtime(car.runtimeSystems).ersBatteryPercent,
+      ),
     )
   }
 
@@ -274,31 +307,38 @@ describe('on-track speed calibration', () => {
         weather: 'clear',
       })
     const healthy = calculate(commonCar)
-    const energyMinimum = commonCar.energyStore.minimumUsableEnergyMJ
-    const depleted = calculate({
-      ...commonCar,
+    const commonRuntime = requireF1Runtime(commonCar.runtimeSystems)
+    const energyMinimum = commonRuntime.energyStore.minimumUsableEnergyMJ
+    const depleted = calculate(withF1Runtime(commonCar, {
       energyStore: {
-        ...commonCar.energyStore,
+        ...commonRuntime.energyStore,
         currentEnergyMJ: energyMinimum,
         stateOfCharge: 0,
       },
       ersBatteryPercent: 0,
-    })
-    const thermallyLimited = calculate({
-      ...commonCar,
+    }))
+    const thermallyLimited = calculate(withF1Runtime(commonCar, {
       energyStore: {
-        ...commonCar.energyStore,
+        ...commonRuntime.energyStore,
         batteryTemperatureC: 96,
         inverterTemperatureC: 132,
         motorGeneratorTemperatureC: 154,
       },
-    })
+    }))
 
-    expect(healthy.ersPowerKw).toBeGreaterThan(depleted.ersPowerKw)
-    expect(depleted.ersPowerKw).toBe(0)
+    const healthyRuntime = requireF1Runtime(healthy.runtimeSystems)
+    const depletedRuntime = requireF1Runtime(depleted.runtimeSystems)
+    const thermallyLimitedRuntime = requireF1Runtime(
+      thermallyLimited.runtimeSystems,
+    )
+
+    expect(healthyRuntime.ersPowerKw).toBeGreaterThan(
+      depletedRuntime.ersPowerKw,
+    )
+    expect(depletedRuntime.ersPowerKw).toBe(0)
     expect(healthy.speedKph).toBeGreaterThan(depleted.speedKph)
-    expect(healthy.ersPowerKw).toBeGreaterThan(
-      thermallyLimited.ersPowerKw,
+    expect(healthyRuntime.ersPowerKw).toBeGreaterThan(
+      thermallyLimitedRuntime.ersPowerKw,
     )
     expect(healthy.speedKph).toBeGreaterThan(thermallyLimited.speedKph)
   })

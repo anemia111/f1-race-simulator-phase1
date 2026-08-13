@@ -1,0 +1,6 @@
+﻿command: node --version
+startedAtUtc: 2026-08-08T09:37:14.4306649Z
+endedAtUtc: 2026-08-08T09:37:14.5228368Z
+exitCode: 0
+--- output ---
+v24.15.0

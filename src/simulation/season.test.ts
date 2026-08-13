@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
+import { seriesPackageById } from '../series/seriesRegistry'
 import { createInitialRace } from './race'
 import {
   applySeasonGarageToWeekend,
   completedSeasonEventCount,
   createSeasonState,
+  eligibleSuperFormulaDriversForNextEvent,
   rankSeasonEntries,
+  recordOfficialSuperFormulaPenaltyPointAdjudication,
+  recordOfficialSuperFormulaSuspensionServed,
   recordQualifyingPoints,
   recordSeasonRound,
   seasonSessionId,
+  superFormulaNextEventEligibility,
   updateSeasonGarageFromCars,
   updateSeasonGarageReplacement,
 } from './season'
@@ -169,10 +174,10 @@ describe('local season standings', () => {
     expect(halfSprint.driverPoints[cars[0].driverId]).toBe(8)
   })
 
-  it('uses the F2/F3 reduced points tables at each distance threshold', () => {
+  it('uses supplied reduced points tables at each distance threshold', () => {
     const snapshot = createInitialRace({
       drivers: initialDrivers,
-      seed: 'support-series-reduced-points',
+      seed: 'reduced-points-policy',
       teams: initialTeams,
       track: tracks[0],
     })
@@ -320,24 +325,35 @@ describe('local season standings', () => {
       track: tracks[0],
     })
     const wornCars = snapshot.cars.map((car, index) =>
-      index === 0
+      index === 0 && car.runtimeSystems.kind === 'f1'
         ? {
             ...car,
-            components: {
-              ...car.components,
-              ice: { ...car.components.ice, conditionPercent: 52 },
+            runtimeSystems: {
+              ...car.runtimeSystems,
+              components: {
+                ...car.runtimeSystems.components,
+                ice: {
+                  ...car.runtimeSystems.components.ice,
+                  conditionPercent: 52,
+                },
+              },
             },
           }
         : car,
     )
+    const firstCar = wornCars[0]
+
+    if (firstCar.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime state for F1 garage coverage.')
+    }
     const stored = updateSeasonGarageFromCars(
       createSeasonState(initialDrivers),
       wornCars,
     )
     const replacementStored = updateSeasonGarageReplacement(
       stored,
-      wornCars[0].driverId,
-      wornCars[0].components,
+      firstCar.driverId,
+      firstCar.runtimeSystems.components,
       10,
     )
     const nextWeekend = applySeasonGarageToWeekend(
@@ -346,8 +362,12 @@ describe('local season standings', () => {
       initialDrivers,
     )
 
+    if (nextWeekend.seriesId !== 'f1-custom') {
+      throw new Error('Expected an F1 weekend lifecycle payload.')
+    }
+
     expect(
-      nextWeekend.componentConditionByDriver[wornCars[0].driverId].ice
+      nextWeekend.componentConditionByDriver[firstCar.driverId].ice
         .conditionPercent,
     ).toBe(52)
     expect(nextWeekend.gridPenaltyByDriver[wornCars[0].driverId]).toBe(10)
@@ -358,6 +378,9 @@ describe('local season standings', () => {
       stage: 'race',
     })
 
+    if (afterRace.seriesId !== 'f1-custom') {
+      throw new Error('Expected an F1 season lifecycle payload.')
+    }
     expect(afterRace.garage.pendingGridPenaltyByDriver).toEqual({})
   })
 
@@ -369,12 +392,150 @@ describe('local season standings', () => {
         ...createSeasonState(),
         garage: {
           componentsByDriver: {},
+          kind: 'f1',
           pendingGridPenaltyByDriver: { [driverId]: 500 },
         },
       },
       initialDrivers,
     )
 
+    if (weekend.seriesId !== 'f1-custom') {
+      throw new Error('Expected an F1 weekend lifecycle payload.')
+    }
+
     expect(weekend.gridPenaltyByDriver[driverId]).toBe(initialDrivers.length)
+  })
+
+  it('creates a SUPER FORMULA lifecycle without an F1 component garage or Pirelli inventory', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const weekend = createWeekendContext(
+      series.drivers,
+      false,
+      series.tracks[0],
+      undefined,
+      'super-formula',
+    )
+    const season = createSeasonState(series.drivers, 'super-formula')
+
+    expect(weekend.seriesId).toBe('super-formula')
+    expect(weekend).not.toHaveProperty('componentConditionByDriver')
+    expect(weekend).not.toHaveProperty('tireSetsByDriver')
+    expect(weekend.controlTireInventoryByDriver[series.drivers[0].id]).toMatchObject({
+      sets: { dry: { maximumSets: 6 }, wet: { maximumSets: 6 } },
+    })
+    expect(season.garage).toMatchObject({
+      kind: 'super-formula',
+    })
+    expect(season.garage).not.toHaveProperty('componentsByDriver')
+    expect(season.discipline).toMatchObject({
+      kind: 'super-formula-article-5',
+      penaltyLedgerByDriver: {
+        [series.drivers[0].id]: {
+          kind: 'super-formula-2026-penalty-point-ledger',
+        },
+      },
+    })
+    expect(createSeasonState()).not.toHaveProperty('discipline')
+  })
+
+  it('uses explicit Article 5 official adjudications to gate a SUPER FORMULA next event', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const driver = series.drivers[0]
+    const initial = createSeasonState(series.drivers, 'super-formula')
+    const race = createInitialRace({
+      drivers: series.drivers,
+      overtakeSystem: 'ots',
+      seed: 'sf-article-5-official-only',
+      seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
+      teams: series.teams,
+      track: series.tracks[0],
+      weekendStage: 'race',
+    })
+    const afterGenericRacePoints = recordSeasonRound(initial, {
+      cars: race.cars.map((car) =>
+        car.driverId === driver.id
+          ? { ...car, penaltyPoints: 6, status: 'finished' as const }
+          : { ...car, status: 'finished' as const },
+      ),
+      roundId: 'sf-article-5-generic-race-points',
+      stage: 'race',
+    })
+
+    if (afterGenericRacePoints.seriesId !== 'super-formula') {
+      throw new Error('Expected a SUPER FORMULA season state.')
+    }
+
+    expect(
+      afterGenericRacePoints.discipline.penaltyLedgerByDriver[driver.id]
+        .pointEntries,
+    ).toEqual([])
+    expect(
+      superFormulaNextEventEligibility(afterGenericRacePoints, driver.id),
+    ).toMatchObject({ status: 'eligible', suspension: null })
+
+    const adjudicated = recordOfficialSuperFormulaPenaltyPointAdjudication(
+      afterGenericRacePoints,
+      {
+        assessedOn: '2026-08-01',
+        driverId: driver.id,
+        officialDecisionId: 'official-article-5-2026-08-01',
+        points: 6,
+      },
+    )
+
+    expect(adjudicated.assessment).toMatchObject({
+      status: 'next-event-suspension-assessed',
+      suspension: { thresholdPoints: 6 },
+    })
+    expect(
+      superFormulaNextEventEligibility(adjudicated.season, driver.id),
+    ).toMatchObject({ status: 'next-event-suspension-pending' })
+    expect(
+      eligibleSuperFormulaDriversForNextEvent(
+        adjudicated.season,
+        series.drivers,
+      ).map((candidate) => candidate.id),
+    ).not.toContain(driver.id)
+
+    if (!adjudicated.assessment.suspension) {
+      throw new Error('Expected Article 5 next-event suspension.')
+    }
+    const served = recordOfficialSuperFormulaSuspensionServed(
+      adjudicated.season,
+      {
+        driverId: driver.id,
+        suspensionId: adjudicated.assessment.suspension.id,
+        suspensionLiftedOn: '2026-08-08',
+      },
+    )
+
+    expect(
+      superFormulaNextEventEligibility(served.season, driver.id),
+    ).toMatchObject({ status: 'eligible', suspension: null })
+    expect(
+      eligibleSuperFormulaDriversForNextEvent(
+        served.season,
+        series.drivers,
+      ).map((candidate) => candidate.id),
+    ).toContain(driver.id)
+    expect(
+      served.season.discipline.penaltyLedgerByDriver[driver.id].pointEntries,
+    ).toEqual([
+      expect.objectContaining({
+        clearedOn: '2026-08-08',
+        id: 'official-article-5-2026-08-01',
+      }),
+    ])
   })
 })

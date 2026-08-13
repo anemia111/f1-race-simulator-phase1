@@ -70,8 +70,7 @@ describe('sector timing colors', () => {
       position: 1,
       sectors: [30, 30, 30] as [number, number, number],
       segment: 'Q1',
-      tire: 'S' as const,
-      tireAgeLaps: 1,
+      tireRun: { ageLaps: 1, compound: 'S' as const, kind: 'f1-pirelli' as const },
       trackGrip: 1,
       weather: 'clear' as const,
     }

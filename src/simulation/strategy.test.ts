@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
+import type { CarSnapshot } from '../types'
 import { isDryCompound } from './tires'
 import { f1PitCrewSpeedForTeam } from '../data/f1PitCrewCalibration'
 import {
@@ -11,27 +12,47 @@ import {
   F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
 } from '../data/f1PitLaneObservations2026'
 import {
+  decideRedFlagTireChange,
   decidePitStop,
   PIT_LANE_LOSS_PER_TRANSIT_SECOND,
   PIT_LANE_TRANSIT_BASE_SECONDS,
   pitLaneLossSecondsForTrack,
   pitStopLossSeconds,
   pitTuning,
+  strategyOutlookFor,
 } from './strategy'
 import type { WeatherForecast } from './weather'
+import type { F1RuntimeTireState } from './runtimeSystems'
 
 const driver = initialDrivers[0]
 
-const carState = (overrides: Partial<Parameters<typeof decidePitStop>[0]['car']> = {}) => ({
-  tire: 'M' as const,
-  tireAgeLaps: 26,
-  tireWearPercent: 74,
-  tireThermalStressPercent: 0,
+const f1RuntimeSystemsFor = (overrides: Partial<F1RuntimeTireState> = {}) =>
+  ({
+    kind: 'f1',
+    tires: {
+      compoundsUsed: ['M'],
+      tire: 'M',
+      tireAgeLaps: 26,
+      tireThermalStressPercent: 0,
+      tireWearPercent: 74,
+      ...overrides,
+    },
+  }) as CarSnapshot['runtimeSystems']
+
+const carState = (overrides: Partial<F1RuntimeTireState> = {}) => ({
+  runtimeSystems: f1RuntimeSystemsFor(overrides),
   brakeTemperatureC: 620,
-  compoundsUsed: ['M' as const],
   damage: 0,
   pitStops: 0,
-  ...overrides,
+})
+
+const superFormulaCarState = () => ({
+  runtimeSystems: {
+    kind: 'super-formula',
+  } as CarSnapshot['runtimeSystems'],
+  brakeTemperatureC: 620,
+  damage: 0,
+  pitStops: 0,
 })
 
 const rainForecast: WeatherForecast = {
@@ -85,6 +106,45 @@ describe('tyre choice reads the racing line, not the forecast', () => {
     })
 
     expect(decision?.compound).toBe('I')
+  })
+})
+
+describe('F1 tyre strategy category boundary', () => {
+  it('does not produce a Pirelli pit or red-flag tyre call for SUPER FORMULA', () => {
+    const car = superFormulaCarState()
+
+    expect(
+      decidePitStop({
+        ...baseOptions,
+        car,
+      }),
+    ).toBeNull()
+    expect(
+      decideRedFlagTireChange({
+        car,
+        driver,
+        lap: 20,
+        raceLaps: 58,
+        seed: 'sf-red-flag-tyre-boundary',
+        trackGrip: 1,
+        weather: 'clear',
+      }),
+    ).toBeNull()
+  })
+
+  it('withholds the F1 Pirelli strategy outlook for SUPER FORMULA', () => {
+    expect(
+      strategyOutlookFor({
+        car: superFormulaCarState(),
+        driver,
+        lap: 20,
+        raceLaps: 58,
+        seed: 'sf-outlook-tyre-boundary',
+        trackGrip: 1,
+        underSafetyCar: false,
+        weather: 'clear',
+      }),
+    ).toBeNull()
   })
 })
 

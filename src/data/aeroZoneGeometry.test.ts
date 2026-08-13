@@ -59,14 +59,28 @@ describe('aero activation zone geometry', () => {
     const unbounded = deriveAeroActivationZones(centerline, 'permanent')
     const floored = deriveAeroActivationZones(centerline, 'permanent', {
       lapMeters,
-      // Longer than the whole lap, so every run is rejected and the
-      // longest-segment fallback is what remains.
+      // Longer than the whole lap, so every run is rejected. There is no
+      // unsafe longest-segment fallback in the physical estimator.
       minimumStraightMeters: lapMeters * 2,
     })
 
     expect(unbounded.length).toBeGreaterThan(0)
-    expect(floored.length).toBeGreaterThan(0)
+    expect(floored).toEqual([])
     expect(floored).not.toEqual(unbounded)
+  })
+
+  it('rejects a visually smooth section when its physical curvature is unsafe', () => {
+    const centerline = ovalCenterline()
+    const zones = deriveAeroActivationZones(centerline, 'permanent', {
+      // Compress the otherwise smooth oval into a 400 m lap. At the screening
+      // speed its physical curvature produces far more than the 0.85 g ceiling,
+      // so heading smoothness alone must not create an activation zone.
+      lapMeters: 400,
+      maximumEstimatedLateralLoadG: 0.85,
+      minimumStraightMeters: 0,
+    })
+
+    expect(zones).toEqual([])
   })
 
   it('honours the label and low-grip mode a circuit asks for', () => {
@@ -77,7 +91,9 @@ describe('aero activation zone geometry', () => {
 
     expect(zones[0].label).toBe('ZONE 1')
     expect(zones.every((zone) => zone.lowGripMode === 'disabled')).toBe(true)
-    expect(zones.every((zone) => zone.source === 'derived')).toBe(true)
+    expect(
+      zones.every((zone) => zone.source === 'geometry-derived-estimate'),
+    ).toBe(true)
   })
 })
 
@@ -132,8 +148,11 @@ describe('domestic circuit activation zones', () => {
       const layout = supportSeriesTrackLayouts[track.id]
 
       expect(layout, track.id).toBeDefined()
-      expect(track.aeroActivationZones?.every((zone) => zone.source === 'derived'))
-        .toBe(true)
+      expect(
+        track.aeroActivationZones?.every(
+          (zone) => zone.source === 'geometry-derived-estimate',
+        ),
+      ).toBe(true)
     })
   })
 })

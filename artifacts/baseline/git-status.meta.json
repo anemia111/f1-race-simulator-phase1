@@ -1,0 +1,7 @@
+﻿{
+    "command":  "git status --short --branch",
+    "startedAtUtc":  "2026-08-08T09:37:13.2568670Z",
+    "endedAtUtc":  "2026-08-08T09:37:13.4112399Z",
+    "exitCode":  0,
+    "logFile":  "git-status.log"
+}

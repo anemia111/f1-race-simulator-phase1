@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 1,
+  "cutoffDate": "2026-08-08",
+  "retrievedAt": "2026-08-09T11:02:12.0889603+09:00",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
+  "policy": {
+    "cacheFullDocuments": false,
+    "reason": "FIA, JAF, JRP, Yokohama and Haas terms restrict republication; the repository stores attributed facts, retrieval metadata and hashes rather than mirrored documents.",
+    "precedence": [
+      "binding base regulation",
+      "binding official correction",
+      "binding event special regulation or bulletin",
+      "race-director instruction within delegated scope",
+      "official guideline",
+      "official explanatory material",
+      "simulator policy"
+    ]
+  },
+  "sources": [
+    {
+      "id": "fia-f1-2026-category",
+      "issuer": "FIA",
+      "title": "2026 Formula One World Championship regulations",
+      "kind": "official-index",
+      "url": "https://www.fia.com/regulation/category/2182",
+      "publishedAt": null,
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "notes": "The brief's category 110 page remains an umbrella archive; category 2182 is the canonical 2026 listing."
+    },
+    {
+      "id": "fia-f1-2026-sporting-b08",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Sporting Regulations, Section B, Issue 08",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "cbe329807d7803a4db511f80d829de1212d0c6a1c3b327cddb1b841823baa9fd",
+      "facts": [
+        "B7.2.1(c) limits use of a qualifying recharge floor below 5 MJ to no more than four of at most twelve affected competitions."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-technical-c20",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Technical Regulations, Section C, Issue 20",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "cf0b919eef5eecc27497fb6de012f8d27e200f6dbd34d62b7e5385f7274ff652",
+      "facts": [
+        "C2.3.3 limits wheelbase to 3400 mm.",
+        "C3.10.10 and C3.11.6 require front and rear Straight Mode to decrease flap incidence, settle within 400 ms and return to Corner Mode on failure; they do not publish a decrease angle or aerodynamic force coefficient.",
+        "C4.1 defines 726 kg plus Nominal Tyre Mass for Sprint Qualifying and Qualifying, and 724 kg plus Nominal Tyre Mass for other sessions.",
+        "C4.7 assigns Nominal Tyre Mass measurement and later publication to the tyre provider; Issue 20 contains no public numeric Nominal Tyre Mass.",
+        "C5.2.7-C5.2.8 define the 350 kW absolute MGU-K DC cap and the Normal, Overtake and Race/Sprint power-limited speed curves.",
+        "C5.2.9 limits the Energy Store maximum-to-minimum state-of-charge window to 4 MJ.",
+        "C5.2.10(ii) changes the qualifying recharge floor from 5 MJ to 4 MJ.",
+        "C5.2.8(iii) and (iv) apply during any power-limited period.",
+        "C5.2.12 normally withholds standing-start positive MGU-K torque until 50 km/h and permits the stated SECU minimum-acceleration safety exception."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-operational-f10",
+      "issuer": "FIA",
+      "title": "2026 Formula 1 Operational Regulations, Section F, Issue 10",
+      "kind": "binding-regulation",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf",
+      "publishedAt": "2026-08-05",
+      "approvedAt": "2026-08-03",
+      "effectiveFrom": "2026-08-05",
+      "status": "current-at-cutoff",
+      "sha256": "c53c9f07e6313d0c0a0263204d745ba1f99e8c496286924a2166bc66dac38845"
+    },
+    {
+      "id": "fia-f1-2026-energy-refinement-2026-04-20",
+      "issuer": "FIA",
+      "title": "Refinements to the 2026 FIA Formula 1 Regulations agreed by all stakeholders",
+      "kind": "official-explanatory-material",
+      "url": "https://www.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders",
+      "publishedAt": "2026-04-20",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "The communicated refinement reduced the qualifying maximum recharge from 8 MJ to 7 MJ from Miami, while event Competition Information remains the binding context-specific input.",
+        "The communicated objective is to reduce superclip duration to approximately two to four seconds per lap; this is observational validation evidence, not a runtime hard cap.",
+        "The communicated peak superclip recovery-power ceiling was increased from 250 kW to 350 kW."
+      ],
+      "limitations": [
+        "The release does not replace an event's published Power Unit Information table and does not justify a universal qualifying value for earlier events."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-japan-power-unit-information-r03",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Japanese Grand Prix Power Unit Information",
+      "kind": "race-director-instruction",
+      "url": "https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_power_unit_information.pdf",
+      "publishedAt": "2026-03-26T01:49:00+01:00",
+      "documentDate": "2026-03-26",
+      "documentNumber": 4,
+      "enclosure": "R03_Japan_Power_Unit_Information.pdf",
+      "effectiveFrom": "2026-03-27",
+      "status": "verified-event-input",
+      "sha256": "8d29d55f1632af79e72e836e74a658ec0ec0d68fa278fe374e6d00c3e7aeed20",
+      "byteLength": 469648,
+      "retrievedAt": "2026-08-09T11:02:12.0889603+09:00",
+      "retrievalVerification": {
+        "httpStatus": 200,
+        "contentType": "application/pdf",
+        "attemptCount": 2,
+        "identicalBytesAcrossAttempts": true
+      },
+      "facts": [
+        "C5.2.10 maximum Recharge at the CU-K HV DC Bus is 8.5 MJ for a Race lap with Overtake inactive and 9.0 MJ total when Overtake is active at the Line.",
+        "Maximum Recharge is 8.0 MJ for Qualifying, 9.0 MJ for Free Practice, and 9.0 MJ for out laps other than in Race.",
+        "The 9.0 MJ Race Overtake-active total decomposes as 8.5 MJ base plus the event table's 0.5 MJ allowance and must not receive a second addition."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only",
+      "limitations": [
+        "An earlier Phase 4 draft recorded a different hash without archived bytes. That value was replaced after two identical live retrievals; its origin cannot be reproduced from this workspace."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-driving-standards-v01",
+      "issuer": "FIA",
+      "title": "2026 F1 Driving Standards Guidelines",
+      "kind": "official-nonbinding-guideline",
+      "url": "https://www.fia.com/sites/default/files/2026_f1_driving_standards_guidelines.pdf",
+      "publishedAt": "2026-03-06",
+      "documentDate": "2026-02-26",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": "a21a1c3cc1789a225956e0ca70b1223583d8883c3b970a2aab88214c0f7d2e0c",
+      "notes": "FIA explicitly states that the guidelines have no regulatory value."
+    },
+    {
+      "id": "fia-f1-2026-penalty-guidelines-v01",
+      "issuer": "FIA",
+      "title": "2026 F1 Penalty Guidelines",
+      "kind": "official-nonbinding-guideline",
+      "url": "https://www.fia.com/sites/default/files/2026_f1_penalty_guidelines.pdf",
+      "publishedAt": "2026-03-06",
+      "documentDate": "2026-03-02",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": "ebc9b9f955b6728e45240f39ac0274d01c76cbff81c7ffa13413165be309d731",
+      "notes": "FIA explicitly states that the guidelines have no regulatory value."
+    },
+    {
+      "id": "fia-f1-2026-energy-wmsc-2026-06-23",
+      "issuer": "FIA",
+      "title": "Building a stronger future: updated regulations approved by World Motor Sport Council",
+      "kind": "official-decision-summary",
+      "url": "https://www.fia.com/news/building-stronger-future-fia-championships-updated-regulations-approved-world-motor-sport",
+      "publishedAt": "2026-06-23",
+      "effectiveFrom": "2026-06-23",
+      "status": "superseded-where-binding-regulations-differ",
+      "sha256": null,
+      "facts": [
+        "In low-grip conditions Boost may only prevent a power reduction and may not increase output.",
+        "Overtake is disabled in the affected low-grip condition."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-active-aero-overview",
+      "issuer": "FIA",
+      "title": "F1's New Era: Everything you need to know about how the FIA is making Formula 1 more competitive, more sustainable and safer in 2026",
+      "kind": "official-explanatory-material",
+      "url": "https://www.fia.com/news/f1s-new-era-everything-you-need-know-about-how-fia-making-formula-1-more-competitive-more",
+      "publishedAt": "2025-12-17",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Straight Mode moves both front and rear flaps and reduces overall drag.",
+        "Corner Mode is the high-downforce position.",
+        "Straight Mode is available at predetermined points on straights of a minimum length and is independent of the following-car gap used for Overtake."
+      ],
+      "limitations": [
+        "The published 30 percent downforce and 55 percent drag changes compare vehicle generations; they are not Corner-to-Straight mode deltas and are not model coefficients."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-australia-post-race-transcript",
+      "issuer": "FIA",
+      "title": "F1 - 2026 Australian Grand Prix Post-Race Press Conference Transcript",
+      "kind": "official-observation-transcript",
+      "url": "https://www.fia.com/news/f1-2026-australian-grand-prix-post-race-press-conference-transcript",
+      "publishedAt": "2026-03-08",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "A driver described loss of front-end response and understeer while using Straight Mode, including when moving out of a slipstream."
+      ],
+      "limitations": [
+        "Qualitative validation evidence only; it supplies no coefficient, target speed or calibration value."
+      ]
+    },
+    {
+      "id": "fia-f1-2026-belgium-circuit-map-v4",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Belgian Grand Prix Circuit Map, Pit Lane Drawing, Emergency Exits Map and Red Zone",
+      "kind": "binding-event-operation-map",
+      "url": "https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "publishedAt": "2026-07-16",
+      "documentDate": "2026-07-16",
+      "effectiveFrom": "2026-07-16",
+      "status": "current-at-cutoff",
+      "sha256": "584d96cf7d651b1eef1554a0032382eb79ba515028035c79b1e0273ea44a38f1",
+      "facts": [
+        "Version 4, issued 2026-07-16, publishes five Straight Mode zones, one Overtake detection/activation pair, sector lengths and the 7.004 km centreline length."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only"
+    },
+    {
+      "id": "fia-f1-2026-hungary-circuit-map-v2",
+      "issuer": "FIA Formula 1 Race Director",
+      "title": "2026 Hungarian Grand Prix Circuit Map, Pit Lane Drawing, Emergency Exits Map and Red Zone",
+      "kind": "binding-event-operation-map",
+      "url": "https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf",
+      "publishedAt": "2026-07-23",
+      "documentDate": "2026-07-23",
+      "mapIssuedAt": "2026-07-21",
+      "effectiveFrom": "2026-07-23",
+      "status": "current-at-cutoff",
+      "sha256": "9e0d7e4c730b3572d36f2b7f5552fa9607ba808cfc4b9dca2f4a2523405b8a63",
+      "facts": [
+        "Version 2 publishes four Straight Mode zones, including a Turn 1A-entry anchor distinct from Turn 1, one Overtake detection/activation pair, sector lengths and the 4.381 km centreline length."
+      ],
+      "redistribution": "link-hash-and-extracted-facts-only"
+    },
+    {
+      "id": "dimastrogiovanni-reina-burzoni-2019-active-drag",
+      "issuer": "SAGE Publications",
+      "title": "An improved active drag reduction system for formula race cars",
+      "kind": "peer-reviewed-research",
+      "url": "https://doi.org/10.1177/0954407019862913",
+      "publishedAt": "2019-07-18",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "publisher-text-and-data-mining-terms; redistribution not assumed",
+      "limitations": [
+        "Used only to justify decomposed whole-vehicle active-aerodynamic modelling and validation methodology; no paper result is copied into a 2026 F1 coefficient."
+      ]
+    },
+    {
+      "id": "diba-barari-esmailzadeh-2014-active-aero-handling",
+      "issuer": "Taylor & Francis",
+      "title": "Handling and safety enhancement of race cars using active aerodynamic systems",
+      "kind": "peer-reviewed-research",
+      "url": "https://doi.org/10.1080/00423114.2014.930158",
+      "publishedAt": "2014-07-10",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "redistribution not established; link and bibliographic metadata only",
+      "limitations": [
+        "Used qualitatively for load-distribution and handling sensitivity; no paper result is treated as team-specific 2026 F1 data."
+      ]
+    },
+    {
+      "id": "buscariolo-et-al-2019-imperial-front-wing",
+      "issuer": "arXiv / authors",
+      "title": "Spectral/hp element simulation of flow past a Formula One front wing: validation against experiments",
+      "kind": "primary-research-preprint",
+      "url": "https://arxiv.org/abs/1909.06701",
+      "publishedAt": "2019-09-15",
+      "effectiveFrom": null,
+      "status": "methodology-reference",
+      "sha256": null,
+      "licenseStatus": "linked from arXiv; repository does not redistribute the paper",
+      "limitations": [
+        "Used to support sensitivity to ride height and wake/flow structures and the need for validation; no geometry or coefficient is copied into the simulator."
+      ]
+    },
+    {
+      "id": "jaf-sf-2026-unified-regulations",
+      "issuer": "JAF",
+      "title": "2026 SUPER FORMULA Unified Regulations",
+      "kind": "binding-regulation",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf",
+      "publishedAt": "2026-01-23",
+      "enactedAt": "2025-12-11",
+      "effectiveFrom": "2026-01-01",
+      "status": "current-consolidated-at-cutoff",
+      "sha256": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+      "notes": "The currently retrieved PDF contains the corrected Article 21 value despite older portal metadata; retain retrieval date and hash."
+    },
+    {
+      "id": "jaf-sf-2026-correction-web011",
+      "issuer": "JAF",
+      "title": "Correction notice No.2026-WEB011",
+      "kind": "binding-official-correction",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3402/3404/4458/20260203.pdf",
+      "publishedAt": "2026-02-03",
+      "effectiveFrom": "2026-02-03",
+      "status": "incorporated-into-current-consolidated-pdf",
+      "sha256": "0a46c56d502e5f60cfc258658cd108393b59f77c4214846e5dcc0da24d679623",
+      "facts": [
+        "Article 21 tyre-change worker count is corrected from five to six."
+      ]
+    },
+    {
+      "id": "jaf-race-bulletin-003-2026",
+      "issuer": "JAF",
+      "title": "Race Championship Bulletin No.003-2026",
+      "kind": "binding-official-bulletin",
+      "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3493/race_bulletin_003-2026_20260610.pdf",
+      "publishedAt": "2026-06-10",
+      "effectiveFrom": "2026-06-10",
+      "status": "current-at-cutoff",
+      "sha256": "a93903db08d3f0c90aa3785a6b7159a2ada3042c097a928488ead3165a87c9d3",
+      "facts": [
+        "Immediately effective interpretation of race-finish timing for SUPER FORMULA and SUPER FORMULA LIGHTS."
+      ]
+    },
+    {
+      "id": "jaf-sf-2026-substitute-round-3-web056",
+      "issuer": "JAF",
+      "title": "Substitute Round 3 notice No.2026-WEB056",
+      "kind": "binding-calendar-notice",
+      "url": "https://motorsports.jaf.or.jp/regulations/announcement/notice/2026/20260715_01",
+      "publishedAt": "2026-07-15",
+      "effectiveFrom": "2026-07-15",
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Fuji Rounds 3, 6 and 7 form a three-race meeting."
+      ]
+    },
+    {
+      "id": "jrp-sf23-machine",
+      "issuer": "JRP / SUPER FORMULA",
+      "title": "SUPER FORMULA machine",
+      "kind": "official-explanatory-material",
+      "url": "https://superformula.net/sf3/about_sf/about_machine/",
+      "publishedAt": null,
+      "effectiveFrom": null,
+      "status": "live-undated",
+      "sha256": null,
+      "facts": [
+        "Dallara SF23 chassis.",
+        "Yokohama control tyres.",
+        "Honda and Toyota engine performance equalisation."
+      ]
+    },
+    {
+      "id": "yokohama-sf-2026-overview",
+      "issuer": "Yokohama Rubber",
+      "title": "2026 SUPER FORMULA tyre overview",
+      "kind": "official-supplier-explanatory-material",
+      "url": "https://www.y-yokohama.com/motorsports/special-contents/specialpage002/",
+      "publishedAt": null,
+      "effectiveFrom": "2026-01-01",
+      "status": "live-undated",
+      "sha256": null,
+      "facts": [
+        "270/620R13 front and 360/620R13 rear.",
+        "One dry and one wet specification.",
+        "Approximately 46 percent recycled or renewable raw materials averaged across dry and wet tyres."
+      ]
+    },
+    {
+      "id": "yokohama-sf-supply-2030-release",
+      "issuer": "Yokohama Rubber",
+      "title": "Exclusive SUPER FORMULA control-tyre supply through 2030",
+      "kind": "official-supplier-release",
+      "url": "https://www.y-yokohama.com/release/?id=4730",
+      "publishedAt": "2026-02-27",
+      "effectiveFrom": "2026-02-27",
+      "status": "current-at-cutoff",
+      "sha256": null
+    },
+    {
+      "id": "haas-fuji-tpc-2026-06-25",
+      "issuer": "TGR Haas F1 Team",
+      "title": "Sho Tsuboi and Nirei Fukuzumi drive Fuji Speedway TPC event",
+      "kind": "official-team-announcement",
+      "url": "https://haasf1team.com/news/sho-tsuboi-and-nirei-fukuzumi-drive-fuji-speedway-tpc-event",
+      "publishedAt": "2026-06-25",
+      "effectiveFrom": null,
+      "status": "current-at-cutoff",
+      "sha256": null,
+      "facts": [
+        "Drivers: Sho Tsuboi and Nirei Fukuzumi.",
+        "Venue and dates: Fuji Speedway, 2026-07-28 to 2026-07-29."
+      ],
+      "limitations": [
+        "The announcement does not identify the chassis as VF-25.",
+        "No official lap timing is supplied."
+      ]
+    }
+  ],
+  "unavailableAuthorities": [
+    {
+      "ids": [
+        "FIA-F1-DOC-034",
+        "FIA-F1-DOC-058",
+        "FIA-F1-DOC-111"
+      ],
+      "reason": "Referenced by Technical Issue 20 for event parameters or low-grip curves but not published in the public regulation category at the cutoff. Official event Power Unit Information may publish derived competition values without publishing these underlying documents.",
+      "runtimePolicy": "Do not invent values. Use only a separately verified official event table where one is public; otherwise resolve the affected event input as unavailable."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+﻿{
+    "command":  "npm run playtest",
+    "startedAtUtc":  "2026-08-08T11:13:48.7614818Z",
+    "endedAtUtc":  "2026-08-08T11:19:46.8343262Z",
+    "exitCode":  0,
+    "status":  "completed",
+    "logFile":  "playtest.log"
+}

@@ -1,0 +1,6 @@
+
+> f1-race-simulator-phase1@0.0.0 validate:long-run:quick
+> node scripts/validate-long-run-pace.mjs --track=albert-park-approx --seeds=3 --workers=1 --label=quick
+
+[albert-park-approx] 3/3 races complete
+Long-run validation FAIL: 1 track(s), reports in C:\Users\yuuki\OneDrive\ドキュメント\ChatGPT\f1\f1-race-simulator-phase1\docs\validation\long-run-pace-2026

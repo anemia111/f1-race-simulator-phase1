@@ -6,8 +6,25 @@ import type {
   WeekendContext,
   WeekendStage,
 } from '../types'
-import { createCarComponents, normalizeCarComponents } from './components'
+import {
+  createF1CarComponents,
+  normalizeF1CarComponents,
+} from './components'
 import { driverOverallAbilityPoints } from './driverAbility'
+import {
+  createSuperFormula2026EngineLedger,
+  type SuperFormula2026EngineLedger,
+} from './superFormulaEngineLedger'
+import {
+  createSuperFormula2026PenaltyPointLedger,
+  recordSuperFormula2026PenaltyPoints,
+  serveSuperFormula2026NextEventSuspension,
+  type SuperFormula2026NextEventSuspension,
+  type SuperFormula2026PenaltyPointLedger,
+  type SuperFormula2026PenaltySuspensionAssessment,
+  type SuperFormula2026SuspensionServedTransition,
+} from './superFormulaPenaltyLedger'
+import { isF1RuntimeSystems, isSuperFormulaRuntimeSystems } from './runtimeSystems'
 
 const grandPrixPoints = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 const sprintPoints = [8, 7, 6, 5, 4, 3, 2, 1]
@@ -15,14 +32,13 @@ const quarterRacePoints = [6, 4, 3, 2, 1]
 const halfRacePoints = [13, 10, 8, 6, 5, 4, 3, 2, 1]
 const threeQuarterRacePoints = [19, 14, 12, 9, 8, 6, 5, 3, 2, 1]
 
-export type SeasonState = {
+export type SeasonStateBase = {
   completedRounds: string[]
   driverPoints: Record<string, number>
   teamPoints: Record<string, number>
   /** Race finishing positions used for FIA championship countback. */
   driverResults: Record<string, number[]>
   teamResults: Record<string, number[]>
-  garage: SeasonGarageState
   /** Immutable race-day identities and ratings; later transfers cannot rewrite history. */
   resultArchive: SeasonResultSnapshot[]
 }
@@ -60,11 +76,46 @@ export type SeasonResultSnapshot = {
   stage: Extract<WeekendStage, 'race' | 'race2' | 'sprint'>
 }
 
-export type SeasonGarageState = {
+/** FIA B8.2 lifecycle state, valid only for F1 seasons. */
+export type F1SeasonGarageState = {
+  kind: 'f1'
   componentsByDriver: Record<string, CarComponents>
   /** Component-allocation penalties waiting to be served at a Grand Prix. */
   pendingGridPenaltyByDriver: Record<string, number>
 }
+
+/** Article 24 engine lifecycle state, valid only for SUPER FORMULA seasons. */
+export type SuperFormulaSeasonGarageState = {
+  engineLedgerByEntrant: Record<string, SuperFormula2026EngineLedger>
+  kind: 'super-formula'
+}
+
+/**
+ * Article 5 driver discipline is a separate legal record, not a race-session
+ * stewarding counter. It is stored only in a SUPER FORMULA season and only
+ * changed from explicit official adjudications.
+ */
+export type SuperFormulaSeasonDisciplineState = {
+  kind: 'super-formula-article-5'
+  penaltyLedgerByDriver: Record<string, SuperFormula2026PenaltyPointLedger>
+}
+
+export type SeasonGarageState =
+  | F1SeasonGarageState
+  | SuperFormulaSeasonGarageState
+
+export type F1SeasonState = SeasonStateBase & {
+  garage: F1SeasonGarageState
+  seriesId: 'f1-custom'
+}
+
+export type SuperFormulaSeasonState = SeasonStateBase & {
+  discipline: SuperFormulaSeasonDisciplineState
+  garage: SuperFormulaSeasonGarageState
+  seriesId: 'super-formula'
+}
+
+export type SeasonState = F1SeasonState | SuperFormulaSeasonState
 
 export function seasonSessionId(
   trackId: string,
@@ -95,21 +146,216 @@ export function canonicalSeasonSessionId(value: string) {
     : value
 }
 
-export function createSeasonState(drivers: Driver[] = []): SeasonState {
-  return {
+export function createSeasonState(
+  drivers?: Driver[],
+  seriesId?: 'f1-custom',
+): F1SeasonState
+export function createSeasonState(
+  drivers: Driver[],
+  seriesId: 'super-formula',
+): SuperFormulaSeasonState
+export function createSeasonState(
+  drivers: Driver[],
+  seriesId: SeasonState['seriesId'],
+): SeasonState
+export function createSeasonState(
+  drivers: Driver[] = [],
+  seriesId: SeasonState['seriesId'] = 'f1-custom',
+): SeasonState {
+  const shared: SeasonStateBase = {
     completedRounds: [],
     driverPoints: {},
     teamPoints: {},
     driverResults: {},
     teamResults: {},
     resultArchive: [],
+  }
+
+  if (seriesId === 'super-formula') {
+    return {
+      ...shared,
+      seriesId,
+      discipline: {
+        kind: 'super-formula-article-5',
+        penaltyLedgerByDriver: Object.fromEntries(
+          drivers.map((driver) => [
+            driver.id,
+            createSuperFormula2026PenaltyPointLedger({
+              driverId: driver.id,
+            }),
+          ]),
+        ),
+      },
+      garage: {
+        engineLedgerByEntrant: Object.fromEntries(
+          [...new Set(drivers.map((driver) => driver.teamId))].map(
+            (entrantId) => [
+              entrantId,
+              createSuperFormula2026EngineLedger({ entrantId }),
+            ],
+          ),
+        ),
+        kind: 'super-formula',
+      },
+    }
+  }
+
+  return {
+    ...shared,
+    seriesId,
     garage: {
       componentsByDriver: Object.fromEntries(
-        drivers.map((driver) => [driver.id, createCarComponents()]),
+        drivers.map((driver) => [driver.id, createF1CarComponents()]),
       ),
+      kind: 'f1',
       pendingGridPenaltyByDriver: {},
     },
   }
+}
+
+const superFormulaPenaltyLedgerForDriver = (
+  season: SuperFormulaSeasonState,
+  driverId: string,
+) =>
+  season.discipline.penaltyLedgerByDriver[driverId] ??
+  createSuperFormula2026PenaltyPointLedger({ driverId })
+
+const withSuperFormulaPenaltyLedger = (
+  season: SuperFormulaSeasonState,
+  driverId: string,
+  ledger: SuperFormula2026PenaltyPointLedger,
+): SuperFormulaSeasonState => ({
+  ...season,
+  discipline: {
+    ...season.discipline,
+    penaltyLedgerByDriver: {
+      ...season.discipline.penaltyLedgerByDriver,
+      [driverId]: ledger,
+    },
+  },
+})
+
+export type SuperFormulaOfficialPenaltyPointAdjudication = {
+  /** Stable ID from the official decision; never a simulated incident ID. */
+  officialDecisionId: string
+  assessedOn: string
+  driverId: string
+  points: number
+}
+
+export type SuperFormulaOfficialPenaltyPointAdjudicationResult = {
+  assessment: SuperFormula2026PenaltySuspensionAssessment
+  season: SuperFormulaSeasonState
+}
+
+/**
+ * Records a source-of-truth Article 5 decision. This intentionally accepts no
+ * `CarSnapshot`, steward-case, or generic race `penaltyPoints` input: those
+ * simulation outcomes are not an official JAF point adjudication.
+ */
+export function recordOfficialSuperFormulaPenaltyPointAdjudication(
+  season: SuperFormulaSeasonState,
+  adjudication: SuperFormulaOfficialPenaltyPointAdjudication,
+): SuperFormulaOfficialPenaltyPointAdjudicationResult {
+  const ledger = superFormulaPenaltyLedgerForDriver(
+    season,
+    adjudication.driverId,
+  )
+  const assessment = recordSuperFormula2026PenaltyPoints({
+    assessedOn: adjudication.assessedOn,
+    ledger,
+    pointEntryId: adjudication.officialDecisionId,
+    points: adjudication.points,
+  })
+
+  return {
+    assessment,
+    season: withSuperFormulaPenaltyLedger(
+      season,
+      adjudication.driverId,
+      assessment.ledger,
+    ),
+  }
+}
+
+export type SuperFormulaOfficialSuspensionServedRecord = {
+  driverId: string
+  suspensionId: string
+  suspensionLiftedOn: string
+}
+
+export type SuperFormulaOfficialSuspensionServedResult = {
+  season: SuperFormulaSeasonState
+  transition: SuperFormula2026SuspensionServedTransition
+}
+
+/**
+ * Clears Article 5 points only after the pending next-event suspension is
+ * explicitly recorded as served and lifted by an official result.
+ */
+export function recordOfficialSuperFormulaSuspensionServed(
+  season: SuperFormulaSeasonState,
+  record: SuperFormulaOfficialSuspensionServedRecord,
+): SuperFormulaOfficialSuspensionServedResult {
+  const ledger = superFormulaPenaltyLedgerForDriver(season, record.driverId)
+  const transition = serveSuperFormula2026NextEventSuspension({
+    ledger,
+    suspensionId: record.suspensionId,
+    suspensionLiftedOn: record.suspensionLiftedOn,
+  })
+
+  return {
+    season: withSuperFormulaPenaltyLedger(
+      season,
+      record.driverId,
+      transition.ledger,
+    ),
+    transition,
+  }
+}
+
+export type SuperFormulaNextEventEligibility = {
+  driverId: string
+  ledger: SuperFormula2026PenaltyPointLedger
+  status: 'eligible' | 'next-event-suspension-pending'
+  suspension: SuperFormula2026NextEventSuspension | null
+}
+
+/**
+ * Category-specific entry gate for the next event. Callers must not start a
+ * driver with a pending Article 5 suspension; serving it remains an explicit
+ * official transition rather than a simulated race-side effect.
+ */
+export function superFormulaNextEventEligibility(
+  season: SuperFormulaSeasonState,
+  driverId: string,
+): SuperFormulaNextEventEligibility {
+  const ledger = superFormulaPenaltyLedgerForDriver(season, driverId)
+  const suspension =
+    ledger.suspensions.find((candidate) => candidate.servedOn === null) ?? null
+
+  return {
+    driverId,
+    ledger,
+    status:
+      suspension === null ? 'eligible' : 'next-event-suspension-pending',
+    suspension,
+  }
+}
+
+/**
+ * Production entrant gate for a SUPER FORMULA event. The returned list is
+ * deliberately derived only from the Article 5 official ledger; it does not
+ * inspect the shared simulator penalty counter or incident history.
+ */
+export function eligibleSuperFormulaDriversForNextEvent(
+  season: SuperFormulaSeasonState,
+  drivers: readonly Driver[],
+): Driver[] {
+  return drivers.filter(
+    (driver) =>
+      superFormulaNextEventEligibility(season, driver.id).status === 'eligible',
+  )
 }
 
 export function applySeasonGarageToWeekend(
@@ -117,13 +363,34 @@ export function applySeasonGarageToWeekend(
   season: SeasonState,
   drivers: Driver[],
 ): WeekendContext {
+  if (weekend.seriesId !== season.seriesId) {
+    return weekend
+  }
+
+  if (
+    weekend.seriesId === 'super-formula' &&
+    season.seriesId === 'super-formula'
+  ) {
+    return {
+      ...weekend,
+      engineLedgerByEntrant: {
+        ...weekend.engineLedgerByEntrant,
+        ...season.garage.engineLedgerByEntrant,
+      },
+    }
+  }
+
+  if (weekend.seriesId !== 'f1-custom' || season.seriesId !== 'f1-custom') {
+    return weekend
+  }
+
   const componentConditionByDriver = {
     ...weekend.componentConditionByDriver,
   }
   const gridPenaltyByDriver = { ...weekend.gridPenaltyByDriver }
 
   for (const driver of drivers) {
-    componentConditionByDriver[driver.id] = normalizeCarComponents(
+    componentConditionByDriver[driver.id] = normalizeF1CarComponents(
       season.garage.componentsByDriver[driver.id] ??
         componentConditionByDriver[driver.id],
     )
@@ -148,9 +415,43 @@ export function applySeasonGarageToWeekend(
 }
 
 export function updateSeasonGarageFromCars(
+  season: F1SeasonState,
+  cars: CarSnapshot[],
+): F1SeasonState
+export function updateSeasonGarageFromCars(
+  season: SuperFormulaSeasonState,
+  cars: CarSnapshot[],
+): SuperFormulaSeasonState
+export function updateSeasonGarageFromCars(
+  season: SeasonState,
+  cars: CarSnapshot[],
+): SeasonState
+export function updateSeasonGarageFromCars(
   season: SeasonState,
   cars: CarSnapshot[],
 ): SeasonState {
+  if (season.seriesId === 'super-formula') {
+    return {
+      ...season,
+      garage: {
+        ...season.garage,
+        engineLedgerByEntrant: cars.reduce<
+          SuperFormulaSeasonGarageState['engineLedgerByEntrant']
+        >(
+          (ledgers, car) =>
+            isSuperFormulaRuntimeSystems(car.runtimeSystems)
+              ? {
+                  ...ledgers,
+                  [car.runtimeSystems.engineLedger.entrantId]:
+                    car.runtimeSystems.engineLedger,
+                }
+              : ledgers,
+          { ...season.garage.engineLedgerByEntrant },
+        ),
+      },
+    }
+  }
+
   return {
     ...season,
     garage: {
@@ -158,10 +459,16 @@ export function updateSeasonGarageFromCars(
       componentsByDriver: {
         ...season.garage.componentsByDriver,
         ...Object.fromEntries(
-          cars.map((car) => [
-            car.driverId,
-            normalizeCarComponents(car.components),
-          ]),
+          cars.flatMap((car) =>
+            isF1RuntimeSystems(car.runtimeSystems)
+              ? [
+                  [
+                    car.driverId,
+                    normalizeF1CarComponents(car.runtimeSystems.components),
+                  ] as const,
+                ]
+              : [],
+          ),
         ),
       },
     },
@@ -169,17 +476,17 @@ export function updateSeasonGarageFromCars(
 }
 
 export function updateSeasonGarageReplacement(
-  season: SeasonState,
+  season: F1SeasonState,
   driverId: string,
   components: CarComponents,
   addedGridPenalty: number,
-): SeasonState {
+): F1SeasonState {
   return {
     ...season,
     garage: {
       componentsByDriver: {
         ...season.garage.componentsByDriver,
-        [driverId]: normalizeCarComponents(components),
+        [driverId]: normalizeF1CarComponents(components),
       },
       pendingGridPenaltyByDriver: {
         ...season.garage.pendingGridPenaltyByDriver,
@@ -187,6 +494,7 @@ export function updateSeasonGarageReplacement(
           (season.garage.pendingGridPenaltyByDriver[driverId] ?? 0) +
           Math.max(0, addedGridPenalty),
       },
+      kind: 'f1',
     },
   }
 }
@@ -309,7 +617,7 @@ export function recordSeasonRound(
   const teamPoints = { ...season.teamPoints }
   const driverResults = { ...season.driverResults }
   const teamResults = { ...season.teamResults }
-  const garageAfterSession = updateSeasonGarageFromCars(season, options.cars).garage
+  const seasonAfterGarage = updateSeasonGarageFromCars(season, options.cars)
   const scoringCarsByTeam = new Map<string, number>()
   const pointsAwardedByDriver = new Map<string, number>()
 
@@ -440,7 +748,7 @@ export function recordSeasonRound(
     stage: options.stage,
   }
 
-  return {
+  const common = {
     completedRounds: [...season.completedRounds, options.roundId],
     driverPoints,
     teamPoints,
@@ -450,13 +758,25 @@ export function recordSeasonRound(
       ...(season.resultArchive ?? []),
       resultSnapshot,
     ].slice(-64),
-    garage: {
-      ...garageAfterSession,
-      pendingGridPenaltyByDriver:
-        options.stage === 'race' || options.stage === 'race2'
-          ? {}
-          : garageAfterSession.pendingGridPenaltyByDriver,
-    },
+  }
+
+  if (seasonAfterGarage.seriesId === 'f1-custom') {
+    return {
+      ...seasonAfterGarage,
+      ...common,
+      garage: {
+        ...seasonAfterGarage.garage,
+        pendingGridPenaltyByDriver:
+          options.stage === 'race' || options.stage === 'race2'
+            ? {}
+            : seasonAfterGarage.garage.pendingGridPenaltyByDriver,
+      },
+    }
+  }
+
+  return {
+    ...seasonAfterGarage,
+    ...common,
   }
 }
 

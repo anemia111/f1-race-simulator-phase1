@@ -253,8 +253,7 @@ export function longitudinalTyreForceCapacityAt(options: {
     staticFrontShare,
     totalVerticalLoadN: grip.verticalLoadN,
   })
-  const referenceWeightN =
-    Math.max(1, options.physics.minimumMassKg) * GRAVITY_MPS2
+  const referenceWeightN = mass * GRAVITY_MPS2
   const frontForceCapacityN =
     tyreFrictionCoefficient({
       physics: options.physics,

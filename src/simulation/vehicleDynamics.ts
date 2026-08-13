@@ -16,6 +16,7 @@ import {
 } from './machinePerformance'
 import {
   categoryPhysicsFor,
+  resolveOperationalVehicleMass,
   type CategoryPhysicsProfile,
 } from './categoryPhysics'
 import {
@@ -61,11 +62,33 @@ export type LongitudinalDynamicsInput = {
   straightness: number
 }
 
+/**
+ * Structural subset of the active-aero State of Deployment. A full
+ * `ActiveAeroState` is structurally assignable to this input, which keeps the
+ * force model independent from the command/state-machine implementation.
+ */
+export type ActiveAeroStructuralInput = Readonly<{
+  frontStraightFraction: number
+  rearStraightFraction: number
+  transitionProgress: number
+}>
+
 export type LongitudinalStepInput = {
   activeAeroMode: ActiveAeroMode
-  /** Ballast or carried mass beyond the category minimum and fuel. */
+  /** Continuous wing positions. `activeAeroMode` is a compatibility fallback. */
+  activeAeroState?: ActiveAeroStructuralInput
+  /** Ballast or carried mass beyond the resolved operational mass and fuel. */
   additionalMassKg?: number
   airDensityKgM3: number
+  /** Positive pitch is a bounded nose-down aerodynamic approximation. */
+  aeroPitchDegrees?: number
+  /** Absolute body-to-air yaw used for the bounded aero sensitivity term. */
+  aeroYawDegrees?: number
+  /**
+   * Session-aware base vehicle mass, already including any heat-hazard mass.
+   * Live production callers should pass the operational resolver output.
+   */
+  baseVehicleMassKg?: number
   brakeReleaseSpeedKph?: number
   brakePercent: number
   categoryPhysics?: CategoryPhysicsProfile
@@ -78,7 +101,6 @@ export type LongitudinalStepInput = {
   /** Wake loss applied to generated downforce, never directly to road speed. */
   dirtyAirDownforceMultiplier?: number
   dynamics: LongitudinalDynamicsInput
-  drivePowerScale?: number
   ersPowerKw: number
   /** Combustion boost such as Super Formula OTS. */
   extraCombustionPowerKw?: number
@@ -109,13 +131,19 @@ export type LongitudinalStepResult = {
   dragForceN: number
   driveForceN: number
   gear: number
+  /** Mechanical generator power actually resisted at the tyre contact patch. */
+  generatorMechanicalPowerKw: number
   gradeForceN: number
+  /** Wheel drive power after subtracting generator resistance. */
+  netPowerUnitWheelPowerKw: number
   regenerativeResistanceForceN: number
   rollingResistanceForceN: number
   rpm: number
   speedKph: number
   tractionLimitN: number
   turboSpoolFraction: number
+  /** Positive ICE + MGU-K wheel power before generator resistance. */
+  wheelDrivePowerKw: number
 }
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
@@ -233,52 +261,290 @@ export function airDensityKgM3(options: {
   return pressurePa / (287.05 * temperatureK)
 }
 
-function activeAeroDragMultiplier(
-  mode: ActiveAeroMode,
-  team: Team,
-  categoryPhysics: CategoryPhysicsProfile,
-) {
-  const efficiency = machinePaceRating(team.machine.activeAeroEfficiency)
-  const efficiencyCorrection = clamp(
-    1 - (efficiency - MACHINE_PERFORMANCE_REFERENCE) * 0.12,
-    0.975,
-    1.025,
-  )
+export type ActiveAeroForceAssumptions = Readonly<{
+  frontDownforceShare: number
+  frontDragShare: number
+  frontStraightDownforceRetention: number
+  frontStraightDragRetention: number
+  frontWakeExponent: number
+  pitchBalanceShiftMaximum: number
+  pitchDownforceLossMaximum: number
+  pitchReferenceDegrees: number
+  rearStraightDownforceRetention: number
+  rearStraightDragRetention: number
+  rearWakeExponent: number
+  rideHeightDownforceLossMaximum: number
+  rideHeightDragPenaltyMaximum: number
+  rideHeightReferenceMm: number
+  rideHeightSensitivityRangeMm: number
+  transitionDownforceLossFraction: number
+  transitionDragPenaltyFraction: number
+  yawDownforceLossMaximum: number
+  yawDragPenaltyMaximum: number
+  yawReferenceDegrees: number
+}>
 
+export type ActiveAeroForceProvenance = Readonly<{
+  assumptionSetId: string
+  classification: 'category-level-prior-only'
+  confidence: 'low' | 'high'
+  methodVersion: 'decomposed-active-aero-force-v1'
+  /** No public 2026 constructor range exists; never replace null by inference. */
+  publicCoefficientRange: null
+  sourceIds: readonly string[]
+  statement: string
+  validationStatus: 'prior-only' | 'structural-fixed-aero'
+}>
+
+type ActiveAeroCategoryPrior = Readonly<{
+  activeAeroAvailable: boolean
+  assumptions: ActiveAeroForceAssumptions
+  provenance: ActiveAeroForceProvenance
+}>
+
+/**
+ * Conservative category priors, not a fit to a speed, lap, circuit or team.
+ * The cited public material establishes the mechanisms (independent front and
+ * rear movement, lower drag in Straight Mode, ride/yaw/wake sensitivity), but
+ * does not publish the coefficients. The bounded coefficients below are
+ * therefore returned with every force result as explicit modeling assumptions.
+ */
+const ACTIVE_AERO_CATEGORY_PRIORS = {
+  'f1-custom': {
+    activeAeroAvailable: true,
+    assumptions: {
+      frontDownforceShare: 0.44,
+      frontDragShare: 0.42,
+      frontStraightDownforceRetention: 0.72,
+      frontStraightDragRetention: 0.82,
+      frontWakeExponent: 1.2,
+      pitchBalanceShiftMaximum: 0.025,
+      pitchDownforceLossMaximum: 0.05,
+      pitchReferenceDegrees: 3,
+      rearStraightDownforceRetention: 0.88,
+      rearStraightDragRetention: 0.68,
+      rearWakeExponent: 0.8,
+      rideHeightDownforceLossMaximum: 0.08,
+      rideHeightDragPenaltyMaximum: 0.025,
+      rideHeightReferenceMm: 28,
+      rideHeightSensitivityRangeMm: 18,
+      transitionDownforceLossFraction: 0.02,
+      transitionDragPenaltyFraction: 0.015,
+      yawDownforceLossMaximum: 0.1,
+      yawDragPenaltyMaximum: 0.04,
+      yawReferenceDegrees: 8,
+    },
+    provenance: {
+      assumptionSetId: 'f1-2026-decomposed-active-aero-prior-v1',
+      classification: 'category-level-prior-only',
+      confidence: 'low',
+      methodVersion: 'decomposed-active-aero-force-v1',
+      publicCoefficientRange: null,
+      sourceIds: [
+        'fia-f1-2026-technical-c20',
+        'fia-f1-2026-active-aero-overview',
+        'fia-f1-2026-australia-post-race-transcript',
+        'dimastrogiovanni-reina-burzoni-2019-active-drag',
+        'diba-barari-esmailzadeh-2014-active-aero-handling',
+        'buscariolo-et-al-2019-imperial-front-wing',
+      ],
+      statement:
+        'Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.',
+      validationStatus: 'prior-only',
+    },
+  },
+  'super-formula': {
+    activeAeroAvailable: false,
+    assumptions: {
+      frontDownforceShare: 0.43,
+      frontDragShare: 0.43,
+      frontStraightDownforceRetention: 1,
+      frontStraightDragRetention: 1,
+      frontWakeExponent: 1.15,
+      pitchBalanceShiftMaximum: 0.02,
+      pitchDownforceLossMaximum: 0.04,
+      pitchReferenceDegrees: 3,
+      rearStraightDownforceRetention: 1,
+      rearStraightDragRetention: 1,
+      rearWakeExponent: 0.82,
+      rideHeightDownforceLossMaximum: 0.065,
+      rideHeightDragPenaltyMaximum: 0.02,
+      rideHeightReferenceMm: 28,
+      rideHeightSensitivityRangeMm: 20,
+      transitionDownforceLossFraction: 0,
+      transitionDragPenaltyFraction: 0,
+      yawDownforceLossMaximum: 0.08,
+      yawDragPenaltyMaximum: 0.035,
+      yawReferenceDegrees: 8,
+    },
+    provenance: {
+      assumptionSetId: 'sf-2026-fixed-aero-prior-v1',
+      classification: 'category-level-prior-only',
+      confidence: 'high',
+      methodVersion: 'decomposed-active-aero-force-v1',
+      publicCoefficientRange: null,
+      sourceIds: ['jaf-sf-2026-unified-regulations'],
+      statement:
+        'Super Formula has fixed bodywork in this model; deployment fractions are intentionally neutral.',
+      validationStatus: 'structural-fixed-aero',
+    },
+  },
+} as const satisfies Record<
+  CategoryPhysicsProfile['id'],
+  ActiveAeroCategoryPrior
+>
+
+export type ActiveAeroForceResult = Readonly<{
+  activeAeroAvailable: boolean
+  aeroBalanceFrontFraction: number
+  aeroBalanceShift: number
+  assumptions: ActiveAeroForceAssumptions
+  effectiveDownforceMultiplier: number
+  effectiveDragAreaM2: number
+  frontDownforceN: number
+  frontDragN: number
+  modifiers: Readonly<{
+    frontWakeMultiplier: number
+    pitchBalanceShift: number
+    pitchDownforceMultiplier: number
+    rearWakeMultiplier: number
+    rideHeightDownforceMultiplier: number
+    rideHeightDragMultiplier: number
+    transitionEnvelope: number
+    yawDownforceMultiplier: number
+    yawDragMultiplier: number
+  }>
+  provenance: ActiveAeroForceProvenance
+  rearDownforceN: number
+  rearDragN: number
+  structuralInput: ActiveAeroStructuralInput
+  totalDownforceN: number
+  totalDragN: number
+  transitionTransientDownforceLossN: number
+  transitionTransientDragN: number
+}>
+
+function activeAeroStateForMode(
+  mode: ActiveAeroMode,
+): ActiveAeroStructuralInput {
   if (mode === 'straight') {
-    return clamp(
-      categoryPhysics.straightAeroDragMultiplier * efficiencyCorrection,
-      0.45,
-      1,
-    )
+    return {
+      frontStraightFraction: 1,
+      rearStraightFraction: 1,
+      transitionProgress: 1,
+    }
   }
 
   if (mode === 'partial-straight') {
-    return clamp(
-      categoryPhysics.partialAeroDragMultiplier * efficiencyCorrection,
-      0.65,
-      1,
-    )
+    return {
+      frontStraightFraction: 1,
+      rearStraightFraction: 0,
+      transitionProgress: 1,
+    }
   }
 
-  return 1
+  return {
+    frontStraightFraction: 0,
+    rearStraightFraction: 0,
+    transitionProgress: 1,
+  }
 }
 
-export function vehicleDragAreaM2(options: {
-  activeAeroMode: ActiveAeroMode
-  categoryPhysics?: CategoryPhysicsProfile
+export type ActiveAeroReferenceAreaMultipliers = Readonly<{
+  aeroBalanceFrontFraction: number
+  downforceAreaMultiplier: number
+  dragAreaMultiplier: number
+  frontDownforceAreaMultiplier: number
+  frontDragAreaMultiplier: number
+  rearDownforceAreaMultiplier: number
+  rearDragAreaMultiplier: number
+  structuralInput: ActiveAeroStructuralInput
+}>
+
+/**
+ * Category-neutral area ratios for offline/reference laps.
+ *
+ * The live force path additionally applies team, setup, ride-height, pitch,
+ * yaw and wake inputs. An offline lap has none of those observations, so this
+ * adapter uses the same decomposed category prior at its neutral point instead
+ * of reviving one aggregate Straight-Mode drag scalar.
+ */
+export function activeAeroReferenceAreaMultipliers(options: {
+  activeAeroState: ActiveAeroStructuralInput
+  categoryPhysics: CategoryPhysicsProfile
+}): ActiveAeroReferenceAreaMultipliers {
+  const prior = ACTIVE_AERO_CATEGORY_PRIORS[options.categoryPhysics.id]
+  const assumptions = prior.assumptions
+  const structuralInput = {
+    frontStraightFraction: prior.activeAeroAvailable
+      ? clamp(finiteOr(options.activeAeroState.frontStraightFraction, 0), 0, 1)
+      : 0,
+    rearStraightFraction: prior.activeAeroAvailable
+      ? clamp(finiteOr(options.activeAeroState.rearStraightFraction, 0), 0, 1)
+      : 0,
+    transitionProgress: prior.activeAeroAvailable
+      ? clamp(finiteOr(options.activeAeroState.transitionProgress, 1), 0, 1)
+      : 1,
+  } satisfies ActiveAeroStructuralInput
+  const retention = (straightRetention: number, straightFraction: number) =>
+    1 - (1 - straightRetention) * straightFraction
+  const transitionEnvelope = prior.activeAeroAvailable
+    ? Math.sin(Math.PI * structuralInput.transitionProgress)
+    : 0
+  const transitionDragMultiplier =
+    assumptions.transitionDragPenaltyFraction * transitionEnvelope
+  const transitionDownforceMultiplier =
+    1 - assumptions.transitionDownforceLossFraction * transitionEnvelope
+  const frontDragAreaMultiplier =
+    assumptions.frontDragShare *
+    (retention(
+      assumptions.frontStraightDragRetention,
+      structuralInput.frontStraightFraction,
+    ) + transitionDragMultiplier)
+  const rearDragAreaMultiplier =
+    (1 - assumptions.frontDragShare) *
+    (retention(
+      assumptions.rearStraightDragRetention,
+      structuralInput.rearStraightFraction,
+    ) + transitionDragMultiplier)
+  const frontDownforceAreaMultiplier =
+    assumptions.frontDownforceShare *
+    retention(
+      assumptions.frontStraightDownforceRetention,
+      structuralInput.frontStraightFraction,
+    ) *
+    transitionDownforceMultiplier
+  const rearDownforceAreaMultiplier =
+    (1 - assumptions.frontDownforceShare) *
+    retention(
+      assumptions.rearStraightDownforceRetention,
+      structuralInput.rearStraightFraction,
+    ) *
+    transitionDownforceMultiplier
+  const downforceAreaMultiplier =
+    frontDownforceAreaMultiplier + rearDownforceAreaMultiplier
+
+  return {
+    aeroBalanceFrontFraction:
+      downforceAreaMultiplier > 1e-9
+        ? frontDownforceAreaMultiplier / downforceAreaMultiplier
+        : assumptions.frontDownforceShare,
+    downforceAreaMultiplier,
+    dragAreaMultiplier: frontDragAreaMultiplier + rearDragAreaMultiplier,
+    frontDownforceAreaMultiplier,
+    frontDragAreaMultiplier,
+    rearDownforceAreaMultiplier,
+    rearDragAreaMultiplier,
+    structuralInput,
+  }
+}
+
+function baseVehicleDragAreaM2(options: {
+  categoryPhysics: CategoryPhysicsProfile
   setup?: CarSetup
   team: Team
-  towDragReduction?: number
 }) {
-  const {
-    activeAeroMode,
-    categoryPhysics = categoryPhysicsFor(undefined),
-    setup,
-    team,
-    towDragReduction = 0,
-  } = options
-  const machine = team.machine
+  const machine = options.team.machine
   const baseDragArea =
     1.18 -
     machinePaceRating(machine.dragEfficiency) * 0.1 -
@@ -287,13 +553,278 @@ export function vehicleDragAreaM2(options: {
 
   return clamp(
     baseDragArea *
-      categoryPhysics.dragAreaScale *
-      setupDragAreaMultiplier(setup) *
-      activeAeroDragMultiplier(activeAeroMode, team, categoryPhysics) *
-      (1 - clamp(towDragReduction, 0, 0.2)),
+      options.categoryPhysics.dragAreaScale *
+      setupDragAreaMultiplier(options.setup),
     0.325,
     1.45,
   )
+}
+
+/**
+ * Pure decomposed aerodynamic force model for the continuous State of
+ * Deployment. Positive pitch means nose-down; yaw is the absolute body-to-air
+ * angle. Neither input is inferred from a lap-time or speed observation.
+ */
+export function activeAeroForceComponents(options: {
+  activeAeroState: ActiveAeroStructuralInput
+  airDensityKgM3: number
+  airSpeedMps: number
+  categoryPhysics: CategoryPhysicsProfile
+  dirtyAirDownforceMultiplier?: number
+  pitchDegrees?: number
+  setup?: CarSetup
+  team: Team
+  towDragReduction?: number
+  yawDegrees?: number
+}): ActiveAeroForceResult {
+  const prior = ACTIVE_AERO_CATEGORY_PRIORS[options.categoryPhysics.id]
+  const assumptions = prior.assumptions
+  const activeAeroAvailable = prior.activeAeroAvailable
+  const structuralInput = {
+    frontStraightFraction: activeAeroAvailable
+      ? clamp(
+          finiteOr(options.activeAeroState.frontStraightFraction, 0),
+          0,
+          1,
+        )
+      : 0,
+    rearStraightFraction: activeAeroAvailable
+      ? clamp(
+          finiteOr(options.activeAeroState.rearStraightFraction, 0),
+          0,
+          1,
+        )
+      : 0,
+    transitionProgress: activeAeroAvailable
+      ? clamp(finiteOr(options.activeAeroState.transitionProgress, 1), 0, 1)
+      : 1,
+  } satisfies ActiveAeroStructuralInput
+  const dynamicPressurePa =
+    0.5 *
+    Math.max(0, finiteOr(options.airDensityKgM3, 1.225)) *
+    Math.max(0, finiteOr(options.airSpeedMps, 0)) ** 2
+  const baseDragAreaM2 = baseVehicleDragAreaM2({
+    categoryPhysics: options.categoryPhysics,
+    setup: options.setup,
+    team: options.team,
+  })
+  const baseLiftAreaM2 =
+    options.categoryPhysics.liftAreaM2 *
+    vehicleDownforceMultiplier({ setup: options.setup, team: options.team })
+  const efficiencyDelta =
+    machinePaceRating(options.team.machine.activeAeroEfficiency) -
+    MACHINE_PERFORMANCE_REFERENCE
+  const dragEffectScale = clamp(1 + efficiencyDelta * 0.08, 0.98, 1.02)
+  const downforceLossScale = clamp(1 - efficiencyDelta * 0.05, 0.985, 1.015)
+  const retention = (
+    straightRetention: number,
+    straightFraction: number,
+    effectScale: number,
+  ) =>
+    clamp(
+      1 -
+        (1 - straightRetention) * straightFraction * effectScale,
+      straightRetention * 0.97,
+      1,
+    )
+  const rideHeightMm = finiteOr(
+    options.setup?.rideHeightMm ?? assumptions.rideHeightReferenceMm,
+    assumptions.rideHeightReferenceMm,
+  )
+  const rideHeightSensitivity = clamp(
+    Math.abs(rideHeightMm - assumptions.rideHeightReferenceMm) /
+      assumptions.rideHeightSensitivityRangeMm,
+    0,
+    1,
+  )
+  const rideHeightDownforceMultiplier =
+    1 -
+    assumptions.rideHeightDownforceLossMaximum * rideHeightSensitivity ** 2
+  const rideHeightDragMultiplier =
+    1 + assumptions.rideHeightDragPenaltyMaximum * rideHeightSensitivity ** 2
+  const pitchFraction = clamp(
+    finiteOr(options.pitchDegrees ?? 0, 0) / assumptions.pitchReferenceDegrees,
+    -1,
+    1,
+  )
+  const pitchDownforceMultiplier =
+    1 - assumptions.pitchDownforceLossMaximum * Math.abs(pitchFraction) ** 2
+  const pitchBalanceShift =
+    assumptions.pitchBalanceShiftMaximum * pitchFraction
+  const yawFraction = clamp(
+    Math.abs(finiteOr(options.yawDegrees ?? 0, 0)) /
+      assumptions.yawReferenceDegrees,
+    0,
+    1,
+  )
+  const yawDownforceMultiplier =
+    1 - assumptions.yawDownforceLossMaximum * yawFraction ** 2
+  const yawDragMultiplier =
+    1 + assumptions.yawDragPenaltyMaximum * yawFraction ** 2
+  const wake = clamp(
+    finiteOr(options.dirtyAirDownforceMultiplier ?? 1, 1),
+    0.5,
+    1,
+  )
+  const frontWakeMultiplier = clamp(
+    wake ** assumptions.frontWakeExponent,
+    0.4,
+    1,
+  )
+  const rearWakeMultiplier = clamp(
+    wake ** assumptions.rearWakeExponent,
+    0.4,
+    1,
+  )
+  const tow = clamp(finiteOr(options.towDragReduction ?? 0, 0), 0, 0.2)
+  const frontTowMultiplier = clamp(1 - tow * 1.05, 0.75, 1)
+  const rearTowMultiplier = clamp(1 - tow * 0.85, 0.75, 1)
+  const transitionEnvelope = activeAeroAvailable
+    ? Math.sin(Math.PI * structuralInput.transitionProgress)
+    : 0
+  const frontDragRetention = retention(
+    assumptions.frontStraightDragRetention,
+    structuralInput.frontStraightFraction,
+    dragEffectScale,
+  )
+  const rearDragRetention = retention(
+    assumptions.rearStraightDragRetention,
+    structuralInput.rearStraightFraction,
+    dragEffectScale,
+  )
+  const transitionDragAreaM2 =
+    baseDragAreaM2 *
+    assumptions.transitionDragPenaltyFraction *
+    transitionEnvelope
+  const frontDragAreaM2 =
+    baseDragAreaM2 *
+      assumptions.frontDragShare *
+      frontDragRetention *
+      rideHeightDragMultiplier *
+      yawDragMultiplier *
+      frontTowMultiplier +
+    transitionDragAreaM2 * assumptions.frontDragShare
+  const rearDragAreaM2 =
+    baseDragAreaM2 *
+      (1 - assumptions.frontDragShare) *
+      rearDragRetention *
+      rideHeightDragMultiplier *
+      yawDragMultiplier *
+      rearTowMultiplier +
+    transitionDragAreaM2 * (1 - assumptions.frontDragShare)
+  const frontBalanceBeforeDeployment = clamp(
+    assumptions.frontDownforceShare + pitchBalanceShift,
+    0.35,
+    0.6,
+  )
+  const frontDownforceRetention = retention(
+    assumptions.frontStraightDownforceRetention,
+    structuralInput.frontStraightFraction,
+    downforceLossScale,
+  )
+  const rearDownforceRetention = retention(
+    assumptions.rearStraightDownforceRetention,
+    structuralInput.rearStraightFraction,
+    downforceLossScale,
+  )
+  const commonDownforceMultiplier =
+    rideHeightDownforceMultiplier *
+    pitchDownforceMultiplier *
+    yawDownforceMultiplier
+  const transitionDownforceMultiplier =
+    1 -
+    assumptions.transitionDownforceLossFraction * transitionEnvelope
+  const frontDownforceAreaBeforeTransitionM2 =
+    baseLiftAreaM2 *
+    frontBalanceBeforeDeployment *
+    frontDownforceRetention *
+    frontWakeMultiplier *
+    commonDownforceMultiplier
+  const rearDownforceAreaBeforeTransitionM2 =
+    baseLiftAreaM2 *
+    (1 - frontBalanceBeforeDeployment) *
+    rearDownforceRetention *
+    rearWakeMultiplier *
+    commonDownforceMultiplier
+  const frontDownforceAreaM2 =
+    frontDownforceAreaBeforeTransitionM2 * transitionDownforceMultiplier
+  const rearDownforceAreaM2 =
+    rearDownforceAreaBeforeTransitionM2 * transitionDownforceMultiplier
+  const effectiveDragAreaM2 = Math.max(0, frontDragAreaM2 + rearDragAreaM2)
+  const effectiveDownforceAreaM2 = Math.max(
+    0,
+    frontDownforceAreaM2 + rearDownforceAreaM2,
+  )
+  const frontDragN = dynamicPressurePa * frontDragAreaM2
+  const rearDragN = dynamicPressurePa * rearDragAreaM2
+  const frontDownforceN = dynamicPressurePa * frontDownforceAreaM2
+  const rearDownforceN = dynamicPressurePa * rearDownforceAreaM2
+  const totalDownforceN = frontDownforceN + rearDownforceN
+  const aeroBalanceFrontFraction =
+    effectiveDownforceAreaM2 > 1e-9
+      ? frontDownforceAreaM2 / effectiveDownforceAreaM2
+      : assumptions.frontDownforceShare
+
+  return {
+    activeAeroAvailable,
+    aeroBalanceFrontFraction,
+    aeroBalanceShift:
+      aeroBalanceFrontFraction - assumptions.frontDownforceShare,
+    assumptions,
+    effectiveDownforceMultiplier:
+      effectiveDownforceAreaM2 /
+      Math.max(1e-9, options.categoryPhysics.liftAreaM2),
+    effectiveDragAreaM2,
+    frontDownforceN,
+    frontDragN,
+    modifiers: {
+      frontWakeMultiplier,
+      pitchBalanceShift,
+      pitchDownforceMultiplier,
+      rearWakeMultiplier,
+      rideHeightDownforceMultiplier,
+      rideHeightDragMultiplier,
+      transitionEnvelope,
+      yawDownforceMultiplier,
+      yawDragMultiplier,
+    },
+    provenance: prior.provenance,
+    rearDownforceN,
+    rearDragN,
+    structuralInput,
+    totalDownforceN,
+    totalDragN: frontDragN + rearDragN,
+    transitionTransientDownforceLossN:
+      dynamicPressurePa *
+      (frontDownforceAreaBeforeTransitionM2 +
+        rearDownforceAreaBeforeTransitionM2) *
+      (1 - transitionDownforceMultiplier),
+    transitionTransientDragN: dynamicPressurePa * transitionDragAreaM2,
+  }
+}
+
+export function vehicleDragAreaM2(options: {
+  activeAeroMode: ActiveAeroMode
+  activeAeroState?: ActiveAeroStructuralInput
+  categoryPhysics?: CategoryPhysicsProfile
+  setup?: CarSetup
+  team: Team
+  towDragReduction?: number
+}) {
+  const categoryPhysics =
+    options.categoryPhysics ?? categoryPhysicsFor(undefined)
+
+  return activeAeroForceComponents({
+    activeAeroState:
+      options.activeAeroState ?? activeAeroStateForMode(options.activeAeroMode),
+    // q = 1 Pa makes the pure force decomposition directly observable as area.
+    airDensityKgM3: 2,
+    airSpeedMps: 1,
+    categoryPhysics,
+    setup: options.setup,
+    team: options.team,
+    towDragReduction: options.towDragReduction,
+  }).effectiveDragAreaM2
 }
 
 /**
@@ -334,6 +865,53 @@ export function combustionPowerKwFor(
   )
 
   return categoryPhysics.combustionPowerKw * performanceScale
+}
+
+/**
+ * Evaluates positive ICE power at the driven wheels using the same gear,
+ * torque curve, turbo, clutch and transmission model as the live integrator.
+ * This classifies full-throttle super-clipping before the following tick; it
+ * does not alter an Energy Store or regulatory limit.
+ */
+export function combustionWheelPowerKwAt(options: {
+  categoryPhysics?: CategoryPhysicsProfile
+  clutchEngagementFraction?: number
+  currentSpeedKph: number
+  extraCombustionPowerKw?: number
+  team: Team
+  throttlePercent: number
+  transmissionEfficiency?: number
+  turboSpoolFraction?: number
+}) {
+  const physics = options.categoryPhysics ?? categoryPhysicsFor(undefined)
+  const speedMps = Math.max(0, finiteOr(options.currentSpeedKph, 0)) / 3.6
+  const transmissionEfficiency = clamp(
+    finiteOr(
+      options.transmissionEfficiency ?? physics.drivetrainEfficiency,
+      physics.drivetrainEfficiency,
+    ),
+    0,
+    1,
+  )
+  const selection = selectGear({
+    clutchEngagementFraction: options.clutchEngagementFraction,
+    combustionPowerKw:
+      combustionPowerKwFor(options.team, physics) +
+      Math.max(0, finiteOr(options.extraCombustionPowerKw ?? 0, 0)),
+    deploymentPowerKw: 0,
+    physics,
+    speedMps,
+    transmissionEfficiency,
+    turboSpoolFraction: options.turboSpoolFraction,
+  })
+
+  return Math.max(
+    0,
+    (selection.driveForceN *
+      speedMps *
+      clamp(finiteOr(options.throttlePercent, 0) / 100, 0, 1)) /
+      1000,
+  )
 }
 
 /**
@@ -401,8 +979,12 @@ export function vehicleTyreGripMultiplierForTeam(
  * target on its own.
  */
 export function liveCorneringSpeedLimitKph(options: {
+  /** Continuous bodywork position used by the same live force decomposition. */
+  activeAeroState?: ActiveAeroStructuralInput
   additionalMassKg?: number
   airDensityKgM3: number
+  /** Session-aware base mass, already including heat-hazard mass. */
+  baseVehicleMassKg?: number
   bankingDegrees: number
   categoryPhysics: CategoryPhysicsProfile
   dirtyAirDownforceMultiplier?: number
@@ -418,15 +1000,34 @@ export function liveCorneringSpeedLimitKph(options: {
     return Number.POSITIVE_INFINITY
   }
 
+  const baseVehicleMassKg =
+    options.baseVehicleMassKg ??
+    resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: null,
+      physics: options.categoryPhysics,
+      weekendStage: 'race',
+    }).operationalMassKg
   const exactMassKg =
-    options.categoryPhysics.minimumMassKg +
+    baseVehicleMassKg +
     clamp(finiteOr(options.fuelLoadKg, 0), 0, 120) +
     clamp(finiteOr(options.additionalMassKg ?? 0, 0), 0, 250)
-  const exactDownforceMultiplier = vehicleDownforceMultiplier({
-    dirtyAirDownforceMultiplier: options.dirtyAirDownforceMultiplier,
-    setup: options.setup,
-    team: options.team,
-  })
+  const exactDownforceMultiplier = options.activeAeroState
+    ? activeAeroForceComponents({
+        activeAeroState: options.activeAeroState,
+        // q = 1 Pa exposes the effective load area without introducing a
+        // speed target; the returned multiplier is independent of q.
+        airDensityKgM3: 2,
+        airSpeedMps: 1,
+        categoryPhysics: options.categoryPhysics,
+        dirtyAirDownforceMultiplier: options.dirtyAirDownforceMultiplier,
+        setup: options.setup,
+        team: options.team,
+      }).effectiveDownforceMultiplier
+    : vehicleDownforceMultiplier({
+        dirtyAirDownforceMultiplier: options.dirtyAirDownforceMultiplier,
+        setup: options.setup,
+        team: options.team,
+      })
   const exactGripMultiplier = vehicleTyreGripMultiplierForTeam(
     options.team,
     options.gripMultiplier,
@@ -567,16 +1168,18 @@ export function integrateVehicleLongitudinalStep(
 ): LongitudinalStepResult {
   const categoryPhysics =
     input.categoryPhysics ?? categoryPhysicsFor(undefined)
+  const baseVehicleMassKg =
+    input.baseVehicleMassKg ??
+    resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: null,
+      physics: categoryPhysics,
+      weekendStage: 'race',
+    }).operationalMassKg
   const massKg = Math.max(
     1,
-    categoryPhysics.minimumMassKg +
+    baseVehicleMassKg +
       clamp(finiteOr(input.fuelLoadKg, 0), 0, 120) +
       clamp(finiteOr(input.additionalMassKg ?? 0, 0), 0, 250),
-  )
-  const drivePowerScale = clamp(
-    finiteOr(input.drivePowerScale ?? 1, 1),
-    0,
-    1,
   )
   const extraCombustionPowerKw = Math.max(
     0,
@@ -593,7 +1196,7 @@ export function integrateVehicleLongitudinalStep(
           combustionPowerKwFor(input.team, categoryPhysics),
         categoryPhysics.combustionPowerKw,
       ) + extraCombustionPowerKw,
-    ) * drivePowerScale
+    )
   // Energy-system output is already mechanical MGU-K power. It passes through
   // the driveline once below and must not receive a second electrical-efficiency
   // multiplier here.
@@ -606,18 +1209,6 @@ export function integrateVehicleLongitudinalStep(
     0,
     1,
   )
-  const dragAreaM2 = vehicleDragAreaM2({
-    activeAeroMode: input.activeAeroMode,
-    categoryPhysics,
-    setup: input.setup,
-    team: input.team,
-    towDragReduction: input.towDragReduction,
-  })
-  const downforceMultiplier = vehicleDownforceMultiplier({
-    dirtyAirDownforceMultiplier: input.dirtyAirDownforceMultiplier,
-    setup: input.setup,
-    team: input.team,
-  })
   const gripMultiplier = vehicleTyreGripMultiplierForTeam(
     input.team,
     input.gripMultiplier,
@@ -632,6 +1223,25 @@ export function integrateVehicleLongitudinalStep(
     0.035,
   )
   const gradeForceN = massKg * GRAVITY_MPS2 * Math.sin(Math.atan(roadGrade))
+  const activeAeroState =
+    input.activeAeroState ?? activeAeroStateForMode(input.activeAeroMode)
+  const inferredPitchDegrees =
+    input.aeroPitchDegrees ??
+    clamp(
+      clamp(finiteOr(input.brakePercent, 0) / 100, 0, 1) * 1.2 -
+        clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1) * 0.35,
+      -3,
+      3,
+    )
+  const inferredYawDegrees =
+    input.aeroYawDegrees ??
+    clamp(
+      (1 - clamp(finiteOr(input.dynamics.straightness, 1), 0, 1)) * 2.5 +
+        Math.abs(finiteOr(input.dynamics.referenceLineOffsetM ?? 0, 0)) *
+          0.2,
+      0,
+      8,
+    )
   const elapsedSeconds = Math.max(0, finiteOr(input.deltaSeconds, 0))
   const integrationSteps = Math.min(
     240,
@@ -684,12 +1294,26 @@ export function integrateVehicleLongitudinalStep(
       0,
       speedMps + finiteOr(input.headwindMps ?? 0, 0),
     )
-    const dragForceN =
-      0.5 *
-      Math.max(0, finiteOr(input.airDensityKgM3, 1.225)) *
-      dragAreaM2 *
-      airSpeedMps *
-      airSpeedMps
+    const aeroForces = activeAeroForceComponents({
+      activeAeroState,
+      airDensityKgM3: input.airDensityKgM3,
+      airSpeedMps,
+      categoryPhysics,
+      dirtyAirDownforceMultiplier: input.dirtyAirDownforceMultiplier,
+      pitchDegrees: inferredPitchDegrees,
+      setup: input.setup,
+      team: input.team,
+      towDragReduction: input.towDragReduction,
+      yawDegrees: inferredYawDegrees,
+    })
+    const dragForceN = aeroForces.totalDragN
+    const staticWeightN = massKg * GRAVITY_MPS2
+    const staticFrontShare = clamp(
+      (staticWeightN * 0.45 + aeroForces.frontDownforceN) /
+        Math.max(1, staticWeightN + aeroForces.totalDownforceN),
+      0.35,
+      0.6,
+    )
     const lateralForceN = lateralTyreForceDemandN({
       bankingDegrees: input.dynamics.bankingDegrees,
       massKg,
@@ -714,13 +1338,14 @@ export function integrateVehicleLongitudinalStep(
       const capacity = longitudinalTyreForceCapacityAt({
         airDensityKgM3: input.airDensityKgM3,
         brakeBiasFraction: (input.setup?.brakeBiasPercent ?? 56) / 100,
-        downforceMultiplier,
+        downforceMultiplier: aeroForces.effectiveDownforceMultiplier,
         gripMultiplier,
         lateralForceN,
         longitudinalAccelerationMps2: accelerationMps2,
         massKg,
         physics: categoryPhysics,
         speedMps,
+        staticFrontShare,
       })
       const serviceBrakeCapacityN = Math.min(
         capacity.brakeForceCapacityN,
@@ -857,6 +1482,14 @@ export function integrateVehicleLongitudinalStep(
   lastTractionLimitN = finalForces.tractionLimitN
 
   const speedKph = Math.max(0, finiteOr(nextMps * 3.6, 0))
+  const wheelDrivePowerKw = Math.max(
+    0,
+    (lastDriveForceN * nextMps) / 1000,
+  )
+  const generatorMechanicalPowerKw = Math.max(
+    0,
+    (lastRegenerativeResistanceForceN * nextMps) / 1000,
+  )
 
   return {
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
@@ -869,7 +1502,10 @@ export function integrateVehicleLongitudinalStep(
     dragForceN: Math.max(0, finiteOr(lastDragForceN, 0)),
     driveForceN: Math.max(0, finiteOr(lastDriveForceN, 0)),
     gear: lastSelection.gear,
+    generatorMechanicalPowerKw,
     gradeForceN: finiteOr(gradeForceN, 0),
+    netPowerUnitWheelPowerKw:
+      wheelDrivePowerKw - generatorMechanicalPowerKw,
     regenerativeResistanceForceN: Math.max(
       0,
       finiteOr(lastRegenerativeResistanceForceN, 0),
@@ -882,6 +1518,7 @@ export function integrateVehicleLongitudinalStep(
     speedKph,
     tractionLimitN: Math.max(0, finiteOr(lastTractionLimitN, 0)),
     turboSpoolFraction: clamp(finiteOr(turboSpoolFraction, 0), 0, 1),
+    wheelDrivePowerKw,
   }
 }
 

@@ -47,13 +47,17 @@ export type PitWallTabProps = {
   /** Decides which race-only read-outs this session is allowed to show. */
   session: PitWallSession
   snapshot: RaceSnapshot
-  /** Computed once by the panel so every tab reports the same tyre state. */
-  strategy: PitStrategyOutlook
+  /**
+   * F1-only strategy model. SUPER FORMULA deliberately receives no fallback
+   * F1/Pirelli strategy object until a source-backed event model exists.
+   */
+  strategy: PitStrategyOutlook | null
   telemetryIsOpenF1: boolean
   /** Resolved by the timing tower; the pit wall only presents it. */
   timing: PitWallSectorTiming
   timingIsOpenF1: boolean
-  tireCondition: TireCondition
+  /** F1-only Pirelli physical tyre state; unavailable for SUPER FORMULA. */
+  tireCondition: TireCondition | null
   tireLabels: Record<TireCompound, string>
   track: TrackDefinition
 }

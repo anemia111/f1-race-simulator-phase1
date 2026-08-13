@@ -15,6 +15,7 @@ import {
   createEntrantsFromCategoryGrid,
   freeModeStageFor,
   freeModeTrackOptions,
+  suggestFreeModeRaceLaps,
 } from './freeModeRegistry'
 import {
   FREE_MODE_MAX_CARS,
@@ -172,11 +173,26 @@ describe('Free Mode registry and validation', () => {
     expect(f1.track.baseLapTime).toBeLessThan(superFormula.track.baseLapTime)
   })
 
-  it('loads all four vehicle categories and the complete 110-driver pool', () => {
+  it('keeps SUPER FORMULA Free Mode laps user-selected rather than inferring a calendar distance', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const fuji = superFormula.tracks.find((track) => track.id === 'fuji-sf')!
+    const configuration = configurationFor('super-formula', 'fuji-sf', 10)
+    configuration.raceLaps = 17
+
+    expect(suggestFreeModeRaceLaps(superFormula, fuji)).toBe(10)
+
+    const runtime = buildFreeModeRuntime(configuration, context())
+    expect(runtime.raceLapsProvenance).toBe('user-selected')
+    expect(runtime.raceConfig.sessionRaceLapsOverride).toBe(17)
+    expect(runtime.raceConfig).not.toHaveProperty('featureRaceMandatoryPitStop')
+    expect(runtime.raceConfig).not.toHaveProperty('overtakeActivation')
+    expect(runtime.raceConfig).not.toHaveProperty('qualifyingDryCompound')
+    expect(runtime.raceConfig).not.toHaveProperty('tireAllocation')
+  })
+
+  it('loads only F1 and Super Formula machinery plus the 110-driver pool', () => {
     expect([...seriesById.keys()]).toEqual([
       'f1-custom',
-      'f2',
-      'f3',
       'super-formula',
     ])
     expect(driverPool2026).toHaveLength(110)
@@ -306,10 +322,6 @@ describe('Free Mode RaceConfig generation', () => {
     ['f1-custom', 'fuji-sf', 'active-aero'],
     ['super-formula', 'albert-park-approx', 'ots'],
     ['super-formula', 'fuji-sf', 'ots'],
-    ['f2', 'albert-park-approx', 'drs'],
-    ['f2', 'fuji-sf', 'drs'],
-    ['f3', 'albert-park-approx', 'drs'],
-    ['f3', 'fuji-sf', 'drs'],
   ] as const)(
     'runs %s machinery on %s while retaining %s rules',
     (categoryId, trackId, overtakeSystem) => {
@@ -317,9 +329,13 @@ describe('Free Mode RaceConfig generation', () => {
       const config = buildFreeModeRaceConfig(configuration, context())
 
       expect(config.seriesId).toBe(categoryId)
+      expect(config.vehicleEraId).toBe(
+        categoryId === 'f1-custom' ? 'f1-2026-current' : 'sf-2026',
+      )
       expect(config.overtakeSystem).toBe(overtakeSystem)
       expect(config.track.id).toBe(trackId)
       expect(config.track.freeModeProvenance).toBeDefined()
+      expect(config.weekendContext?.seriesId).toBe(categoryId)
       expect(createInitialRace(config).cars).toHaveLength(10)
     },
   )

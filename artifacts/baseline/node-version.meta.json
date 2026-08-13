@@ -1,0 +1,7 @@
+﻿{
+    "command":  "node --version",
+    "startedAtUtc":  "2026-08-08T09:37:14.4306649Z",
+    "endedAtUtc":  "2026-08-08T09:37:14.5228368Z",
+    "exitCode":  0,
+    "logFile":  "node-version.log"
+}

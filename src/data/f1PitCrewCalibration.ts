@@ -46,8 +46,8 @@ const VARIANCE_P25_SECONDS = -Math.log(0.75) * 0.78
  * observed sample, so a rating of 1 describes a crew that matches the best
  * anyone managed rather than an unreachable ideal.
  *
- * Teams with no observation keep the neutral baseline. F2, F3 and Super
- * Formula have no equivalent data and use their own rating paths.
+ * Teams with no observation keep the neutral baseline. Super Formula has no
+ * equivalent observation table and uses its own rating path.
  */
 const ratingFor = (observation: PitCrewStationaryObservation) =>
   Math.round(

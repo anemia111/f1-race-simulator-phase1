@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-08",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "branchAtStart": "master",
+  "originMaster": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "referenceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "referenceDiffEmpty": true,
+  "environment": {
+    "node": "v24.15.0",
+    "npm": "11.12.1"
+  },
+  "commands": [
+    {
+      "command": "npm ci",
+      "exitCode": 0,
+      "durationSeconds": 92.316,
+      "verdict": "pass",
+      "notes": [
+        "436 packages installed; 4 high-severity npm audit findings reported but installation succeeded."
+      ]
+    },
+    {
+      "command": "npx oxlint --deny-warnings",
+      "exitCode": 0,
+      "durationSeconds": 1.337,
+      "verdict": "pass"
+    },
+    {
+      "command": "npm test",
+      "exitCode": null,
+      "durationSeconds": 1826.586,
+      "verdict": "timeout",
+      "notes": [
+        "Initial run exceeded the explicit 1800-second limit; output buffering prevented suite counts."
+      ]
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "durationSeconds": 847.551,
+      "verdict": "pass-on-rerun",
+      "metrics": {
+        "testFilesPassed": 70,
+        "testsPassed": 807,
+        "vitestDurationSeconds": 845.23
+      }
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "durationSeconds": 58.286,
+      "verdict": "pass-with-expected-large-chunk-warning"
+    },
+    {
+      "command": "npm run validate:physics-calibration",
+      "exitCode": 0,
+      "durationSeconds": 4.845,
+      "verdict": "pass",
+      "metrics": {
+        "fitPerformed": false,
+        "trackSpecificMultiplierCount": 0,
+        "calibrationLapMaeSeconds": 1.315949,
+        "calibrationLapMapePercent": 1.671539,
+        "holdoutLapMaeSecondsAggregateOnly": 3.017403,
+        "holdoutLapMapePercentAggregateOnly": 3.487471,
+        "overallLapMaeSeconds": 2.244015,
+        "overallLapMapePercent": 2.662047,
+        "maximumSpeedMaeKph": 7.821263,
+        "meanAttackLapEnergyUseMJ": 10.201569,
+        "maximumAttackLapEnergyUseMJ": 11
+      }
+    },
+    {
+      "command": "npm run validate:speed-trap",
+      "exitCode": null,
+      "durationSeconds": 1200,
+      "verdict": "timeout",
+      "notes": [
+        "First attempt reached 12 circuits before the explicit 20-minute limit."
+      ]
+    },
+    {
+      "command": "npm run validate:speed-trap",
+      "exitCode": 1,
+      "durationSeconds": 1970.234,
+      "verdict": "aggregate-pass-per-circuit-fail",
+      "metrics": {
+        "circuitsMeasured": 24,
+        "observedReferenceCircuits": 11,
+        "medianMaeKph": 7.52,
+        "medianBiasKph": -1.27,
+        "peakMaeKph": 7.68,
+        "peakBiasKph": -2.96,
+        "perCircuitOuterBoundKph": 18,
+        "perCircuitFailureCount": 4,
+        "failureCircuits": [
+          "silverstone-approx",
+          "hungaroring-approx"
+        ]
+      }
+    },
+    {
+      "command": "npm run validate:long-run:quick",
+      "exitCode": 0,
+      "durationSeconds": 338.76,
+      "verdict": "report-fail-despite-zero-exit",
+      "metrics": {
+        "track": "albert-park-approx",
+        "seedCount": 3,
+        "raceFastestQualifyingGapSeconds": 1.173,
+        "cleanSameStintP95Seconds": 1.299,
+        "overOneSecondChangeRate": 0.1259
+      }
+    },
+    {
+      "command": "npm run validate:montecarlo",
+      "exitCodes": [
+        1,
+        1,
+        0
+      ],
+      "verdict": "timing-flake",
+      "metrics": {
+        "failedRuns": 2,
+        "totalRuns": 3,
+        "failureMode": "one 10000-run test exceeded fixed 5000ms timeout",
+        "assertionMismatchObserved": false
+      }
+    },
+    {
+      "command": "npm run playtest",
+      "exitCode": 0,
+      "durationSeconds": 358.073,
+      "verdict": "pass",
+      "metrics": {
+        "pageErrorCount": 0,
+        "desktopViewports": [
+          "1440x900",
+          "1280x720"
+        ]
+      }
+    },
+    {
+      "command": "npm run benchmark",
+      "exitCode": 0,
+      "durationSeconds": 28.798,
+      "verdict": "pass-nonstrict-software-renderer",
+      "metrics": {
+        "renderer": "SwiftShader",
+        "standardFieldFps": 54.5251,
+        "freeMode40CarFps": 48.8772,
+        "standardHeapMb": 31.5666,
+        "pageErrorCount": 0
+      }
+    }
+  ],
+  "existingFailures": [
+    "Speed-trap per-circuit 18 km/h gate fails at Silverstone and Hungaroring while aggregate gates pass.",
+    "Long-run quick report is FAIL even though the command exits zero.",
+    "Monte Carlo fixed 5-second timeout reproduced in two of three runs.",
+    "Initial full Vitest run exceeded 30 minutes, while the 60-minute rerun passed all 807 tests in about 14 minutes."
+  ],
+  "holdoutPolicy": {
+    "individualValuesUsedForParameterSelection": false,
+    "accessLog": "../holdout-access-log.jsonl",
+    "status": "sealed-until-phase-17-after-required-phase-0-command-and-recorded-disclosure"
+  }
+}

@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
-import { pitWallLapLog, pitWallObservedSource } from '../../domain/pitWall'
+import {
+  pitWallLapLog,
+  pitWallObservedSource,
+} from '../../domain/pitWall'
 import {
   formatLapTime,
   formatSectorTime,
@@ -21,7 +24,11 @@ export function PitWallLapLog({
   session,
   timingIsOpenF1,
 }: PitWallTabProps) {
-  const timingSource = pitWallObservedSource(timingIsOpenF1, openF1Mode)
+  const f1Runtime =
+    car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
+  const timingSource = f1Runtime
+    ? pitWallObservedSource(timingIsOpenF1, openF1Mode)
+    : 'SIM'
   const rows = useMemo(() => pitWallLapLog(car.lapHistory), [car.lapHistory])
 
   if (rows.length === 0) {
@@ -55,7 +62,7 @@ export function PitWallLapLog({
               <th scope="col">S1</th>
               <th scope="col">S2</th>
               <th scope="col">S3</th>
-              <th scope="col">Tyre</th>
+              <th scope="col">{f1Runtime ? 'Tyre' : 'Control tyre'}</th>
               <th scope="col">Pos</th>
               <th scope="col">Note</th>
             </tr>
@@ -88,10 +95,22 @@ export function PitWallLapLog({
                       : UNMEASURED_SECTOR_TIME}
                   </td>
                 ))}
-                <td title={`${row.tireAgeLaps} laps on this set at the line`}>
-                  {row.tire}
-                  <small>{row.tireAgeLaps}</small>
-                </td>
+                {row.tireDisplay.kind === 'f1-pirelli' ? (
+                  <td
+                    title={`${row.tireDisplay.ageLaps} laps on this set at the line`}
+                  >
+                    {row.tireDisplay.compound}
+                    <small>{row.tireDisplay.ageLaps}</small>
+                  </td>
+                ) : (
+                  <td
+                    title={`SUPER FORMULA ${row.tireDisplay.surface} control tyre; physical model unavailable`}
+                  >
+                    {row.tireDisplay.surface.toUpperCase()} CTRL
+                    <small>{row.tireDisplay.lapsOnCurrentSet} laps / MODEL --</small>
+                    <PitWallSourceTag source="UNAVAILABLE" />
+                  </td>
+                )}
                 <td>P{row.position}</td>
                 <td className="pit-wall-lap-log-note">
                   {[

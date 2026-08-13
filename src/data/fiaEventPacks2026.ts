@@ -12,6 +12,7 @@ export type FiaEventPack = {
   documents: {
     eventPageUrl: string
     circuitMapUrl: string | null
+    powerUnitInformationUrl: string | null
     redZoneUrl: string | null
   }
   coverage: {
@@ -23,11 +24,17 @@ export type FiaEventPack = {
   }
   /** True only when values have been normalized, not merely linked. */
   normalizedOperationalData: boolean
+  /**
+   * An event-specific power-unit input has been normalized for this pack.
+   * This presentation flag is not an authority to reuse it by track ID;
+   * runtime resolution remains exact-event-ID scoped.
+   */
+  normalizedPowerUnitInput: boolean
 }
 
 const FIA_EVENT_BASE =
   'https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/event/'
-const AS_OF = '2026-07-13'
+const AS_OF = '2026-08-08'
 
 const events: Record<string, string> = {
   'albert-park-approx': 'Australian Grand Prix',
@@ -85,6 +92,11 @@ const redZones: Partial<Record<string, string>> = {
     'https://www.fia.com/system/files/decision-document/2026_british_grand_prix_-_competition_notes_-_red_zone_v2.pdf',
 }
 
+const powerUnitInformation: Partial<Record<string, string>> = {
+  'suzuka-approx':
+    'https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_power_unit_information.pdf',
+}
+
 function eventPageUrl(eventName: string) {
   return `${FIA_EVENT_BASE}${encodeURIComponent(eventName)}`
 }
@@ -112,10 +124,12 @@ export const fiaEventPacks2026: FiaEventPack[] = Object.entries(events).map(
       documents: {
         circuitMapUrl: circuitMaps[trackId] ?? null,
         eventPageUrl: eventPageUrl(eventName),
+        powerUnitInformationUrl: powerUnitInformation[trackId] ?? null,
         redZoneUrl: redZones[trackId] ?? null,
       },
       eventName,
       normalizedOperationalData: false,
+      normalizedPowerUnitInput: powerUnitInformation[trackId] !== undefined,
       status,
       trackId,
     }

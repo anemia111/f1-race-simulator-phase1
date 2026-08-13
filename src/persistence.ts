@@ -7,21 +7,26 @@ import type {
   TireSet,
   TireSetAllocation,
   TrackDefinition,
+  F1WeekendContext,
+  SuperFormulaWeekendContext,
   WeekendContext,
   WeekendStage,
   MachinePerformanceProfile,
 } from './types'
-import { normalizeCarComponents } from './simulation/components'
+import { normalizeF1CarComponents } from './simulation/components'
 import {
   DRIVER_ABILITY_STATS,
   clampDriverAbility,
   driverAbilityValue,
 } from './simulation/driverAbility'
 import type {
+  F1SeasonState,
   SeasonResultSnapshot,
   SeasonState,
+  SuperFormulaSeasonState,
 } from './simulation/season'
 import type { SeriesId } from './series/types'
+import { isExecutableSeriesId } from './series/seriesIds'
 import {
   canonicalSeasonSessionId,
   createSeasonState,
@@ -29,11 +34,20 @@ import {
 import { createWeekendContext } from './simulation/weekend'
 import { normalizeCarSetup } from './simulation/engineering'
 import { normalizeSimulationSeed } from './simulation/random'
+import {
+  validateSuperFormulaControlTireInventory,
+} from './simulation/superFormulaControlTires2026'
+import {
+  validateSuperFormula2026EngineLedger,
+} from './simulation/superFormulaEngineLedger'
+import {
+  validateSuperFormula2026PenaltyPointLedger,
+} from './simulation/superFormulaPenaltyLedger'
 
-export const WEEKEND_STORAGE_KEY = 'race-sim-weekend-v3-multi-series'
+export const WEEKEND_STORAGE_KEY = 'race-sim-weekend-v4-runtime-boundary'
 export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
 export const OLDER_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v1'
-export const SEASON_STORAGE_KEY = 'f1-sim-season-v3'
+export const SEASON_STORAGE_KEY = 'race-sim-season-v4-runtime-boundary'
 export const LEGACY_SEASON_STORAGE_KEY = 'f1-sim-season-v2'
 export const DRIVER_RATINGS_STORAGE_KEY =
   'race-sim-driver-ratings-v4-100-scale'
@@ -55,7 +69,7 @@ const gridSources: GridSource[] = ['brief', 'qualifying', 'openf1']
 const compounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 
 export type PersistedWeekend = {
-  version: 3
+  version: 4
   seriesId: SeriesId
   eventId?: string
   trackId: string
@@ -484,9 +498,8 @@ export function serializeDriverRatings(
 const isWeekendStage = (value: unknown): value is WeekendStage =>
   typeof value === 'string' && weekendStages.includes(value as WeekendStage)
 
-const seriesIds: SeriesId[] = ['f1-custom', 'f2', 'f3', 'super-formula']
 const isSeriesId = (value: unknown): value is SeriesId =>
-  typeof value === 'string' && seriesIds.includes(value as SeriesId)
+  isExecutableSeriesId(value)
 
 function normalizeTireSet(value: unknown): TireSet | null {
   if (!isRecord(value)) {
@@ -529,6 +542,7 @@ function normalizeWeekendContext(
   value: unknown,
   drivers: Driver[],
   track: TrackDefinition,
+  seriesId: WeekendContext['seriesId'],
   tireAllocation?: TireSetAllocation,
 ): WeekendContext {
   const base = createWeekendContext(
@@ -536,6 +550,7 @@ function normalizeWeekendContext(
     track.isSprintWeekend,
     track,
     tireAllocation,
+    seriesId,
   )
 
   if (!isRecord(value)) {
@@ -543,7 +558,7 @@ function normalizeWeekendContext(
   }
 
   const validDriverIds = new Set(drivers.map((driver) => driver.id))
-  const source = value as Partial<WeekendContext>
+  const source = value
   const completed = Array.isArray(source.completed)
     ? Array.from(new Set(source.completed.filter(isWeekendStage)))
     : []
@@ -564,9 +579,12 @@ function normalizeWeekendContext(
     return ids.length === drivers.length ? ids : undefined
   }
   const gridByStage: WeekendContext['gridByStage'] = {}
-  const sprintGrid = normalizeGrid(source.gridByStage?.sprint)
-  const raceGrid = normalizeGrid(source.gridByStage?.race)
-  const race2Grid = normalizeGrid(source.gridByStage?.race2)
+  const sourceGridByStage = isRecord(source.gridByStage)
+    ? source.gridByStage
+    : {}
+  const sprintGrid = normalizeGrid(sourceGridByStage.sprint)
+  const raceGrid = normalizeGrid(sourceGridByStage.race)
+  const race2Grid = normalizeGrid(sourceGridByStage.race2)
 
   if (sprintGrid) {
     gridByStage.sprint = sprintGrid
@@ -578,13 +596,50 @@ function normalizeWeekendContext(
     gridByStage.race2 = race2Grid
   }
 
+  const sourceSetupByDriver = isRecord(source.setupByDriver)
+    ? source.setupByDriver
+    : {}
+  const sourceSetupBonusByDriver = isRecord(source.setupBonusByDriver)
+    ? source.setupBonusByDriver
+    : {}
+  const sourceSetupConfidenceByDriver = isRecord(
+    source.setupConfidenceByDriver,
+  )
+    ? source.setupConfidenceByDriver
+    : {}
+  const sourceParcFermeLockedByDriver = isRecord(
+    source.parcFermeLockedByDriver,
+  )
+    ? source.parcFermeLockedByDriver
+    : {}
+  const sourceGridPenaltyByDriver = isRecord(source.gridPenaltyByDriver)
+    ? source.gridPenaltyByDriver
+    : {}
+  const sourcePitLaneStartByDriver = isRecord(source.pitLaneStartByDriver)
+    ? source.pitLaneStartByDriver
+    : {}
+  const sourceQualificationStatusByDriver = isRecord(
+    source.qualificationStatusByDriver,
+  )
+    ? source.qualificationStatusByDriver
+    : {}
+  const setupByDriver = { ...base.setupByDriver }
+  const setupBonusByDriver = { ...base.setupBonusByDriver }
+  const setupConfidenceByDriver = { ...base.setupConfidenceByDriver }
+  const parcFermeLockedByDriver = { ...base.parcFermeLockedByDriver }
+  const gridPenaltyByDriver = { ...base.gridPenaltyByDriver }
+  const pitLaneStartByDriver = { ...base.pitLaneStartByDriver }
+  const qualificationStatusByDriver = {
+    ...base.qualificationStatusByDriver,
+  }
+
   for (const driver of drivers) {
     const id = driver.id
-    const setupCandidate = source.setupByDriver?.[id]
+    const setupCandidate = sourceSetupByDriver[id]
 
     if (isRecord(setupCandidate)) {
       const setup = base.setupByDriver[id]
-      base.setupByDriver[id] = normalizeCarSetup({
+      setupByDriver[id] = normalizeCarSetup({
         brakeBiasPercent: finiteNumber(
           setupCandidate.brakeBiasPercent,
           setup.brakeBiasPercent,
@@ -606,52 +661,139 @@ function normalizeWeekendContext(
       })
     }
 
-    base.setupBonusByDriver[id] = Math.min(
+    setupBonusByDriver[id] = Math.min(
       0.35,
-      Math.max(0, finiteNumber(source.setupBonusByDriver?.[id], 0)),
+      Math.max(0, finiteNumber(sourceSetupBonusByDriver[id], 0)),
     )
-    base.setupConfidenceByDriver[id] = Math.min(
+    setupConfidenceByDriver[id] = Math.min(
       1,
-      Math.max(0, finiteNumber(source.setupConfidenceByDriver?.[id], 0)),
+      Math.max(0, finiteNumber(sourceSetupConfidenceByDriver[id], 0)),
     )
-    base.parcFermeLockedByDriver[id] =
-      typeof source.parcFermeLockedByDriver?.[id] === 'boolean'
-        ? source.parcFermeLockedByDriver[id]
+    parcFermeLockedByDriver[id] =
+      typeof sourceParcFermeLockedByDriver[id] === 'boolean'
+        ? sourceParcFermeLockedByDriver[id]
         : false
-    base.gridPenaltyByDriver[id] = Math.min(
+    gridPenaltyByDriver[id] = Math.min(
       drivers.length,
-      Math.max(0, finiteNumber(source.gridPenaltyByDriver?.[id], 0)),
+      Math.max(0, finiteNumber(sourceGridPenaltyByDriver[id], 0)),
     )
-    base.pitLaneStartByDriver[id] =
-      typeof source.pitLaneStartByDriver?.[id] === 'boolean'
-        ? source.pitLaneStartByDriver[id]
+    pitLaneStartByDriver[id] =
+      typeof sourcePitLaneStartByDriver[id] === 'boolean'
+        ? sourcePitLaneStartByDriver[id]
         : false
-    const qualificationStatus = source.qualificationStatusByDriver?.[id]
-    base.qualificationStatusByDriver[id] =
+    const qualificationStatus = sourceQualificationStatusByDriver[id]
+    qualificationStatusByDriver[id] =
       qualificationStatus === 'exempt' ||
       qualificationStatus === 'not-qualified'
         ? qualificationStatus
         : 'qualified'
-    base.componentConditionByDriver[id] = normalizeCarComponents(
-      source.componentConditionByDriver?.[id],
+  }
+
+  const shared = {
+    completed,
+    gridByStage,
+    gridPenaltyByDriver,
+    notes: Array.isArray(source.notes)
+      ? source.notes
+          .filter((note): note is string => typeof note === 'string')
+          .slice(-30)
+          .map((note) => note.slice(0, 240))
+      : [],
+    parcFermeLockedByDriver,
+    pitLaneStartByDriver,
+    qualificationStatusByDriver,
+    setupBonusByDriver,
+    setupByDriver,
+    setupConfidenceByDriver,
+  }
+
+  if (seriesId === 'super-formula') {
+    const superFormulaBase = base as SuperFormulaWeekendContext
+    const carriesF1Lifecycle =
+      Object.hasOwn(source, 'componentConditionByDriver') ||
+      Object.hasOwn(source, 'tireSetInventoryByDriver') ||
+      Object.hasOwn(source, 'tireSetsByDriver')
+
+    if (source.seriesId !== 'super-formula' || carriesF1Lifecycle) {
+      return superFormulaBase
+    }
+
+    const controlTireInventoryByDriver = {
+      ...superFormulaBase.controlTireInventoryByDriver,
+    }
+    const engineLedgerByEntrant = {
+      ...superFormulaBase.engineLedgerByEntrant,
+    }
+    const sourceControlTires = isRecord(source.controlTireInventoryByDriver)
+      ? source.controlTireInventoryByDriver
+      : {}
+    const sourceEngineLedgers = isRecord(source.engineLedgerByEntrant)
+      ? source.engineLedgerByEntrant
+      : {}
+
+    for (const driver of drivers) {
+      const controlTires = sourceControlTires[driver.id]
+      if (validateSuperFormulaControlTireInventory(controlTires).valid) {
+        controlTireInventoryByDriver[driver.id] =
+          controlTires as SuperFormulaWeekendContext['controlTireInventoryByDriver'][string]
+      }
+
+      const ledger = sourceEngineLedgers[driver.teamId]
+      const validation = validateSuperFormula2026EngineLedger(ledger)
+      if (validation.valid && validation.ledger.entrantId === driver.teamId) {
+        engineLedgerByEntrant[driver.teamId] = validation.ledger
+      }
+    }
+
+    return {
+      ...superFormulaBase,
+      ...shared,
+      controlTireInventoryByDriver,
+      engineLedgerByEntrant,
+    }
+  }
+
+  const f1Base = base as F1WeekendContext
+  const componentConditionByDriver = { ...f1Base.componentConditionByDriver }
+  const tireSetsByDriver = { ...f1Base.tireSetsByDriver }
+  const tireSetInventoryByDriver = { ...f1Base.tireSetInventoryByDriver }
+  const sourceComponentsByDriver = isRecord(source.componentConditionByDriver)
+    ? source.componentConditionByDriver
+    : {}
+  const sourceTireSetsByDriver = isRecord(source.tireSetsByDriver)
+    ? source.tireSetsByDriver
+    : {}
+  const sourceTireSetInventoryByDriver = isRecord(source.tireSetInventoryByDriver)
+    ? source.tireSetInventoryByDriver
+    : {}
+
+  for (const driver of drivers) {
+    const id = driver.id
+    componentConditionByDriver[id] = normalizeF1CarComponents(
+      isRecord(sourceComponentsByDriver[id])
+        ? sourceComponentsByDriver[id]
+        : null,
     )
+    const driverTireSets = isRecord(sourceTireSetsByDriver[id])
+      ? sourceTireSetsByDriver[id]
+      : {}
 
     for (const compound of compounds) {
-      base.tireSetsByDriver[id][compound] = Math.max(
+      tireSetsByDriver[id][compound] = Math.max(
         0,
         Math.min(
-          base.tireSetsByDriver[id][compound] ?? 0,
+          tireSetsByDriver[id][compound] ?? 0,
           Math.floor(
             finiteNumber(
-              source.tireSetsByDriver?.[id]?.[compound],
-              base.tireSetsByDriver[id][compound] ?? 0,
+              driverTireSets[compound],
+              tireSetsByDriver[id][compound] ?? 0,
             ),
           ),
         ),
       )
     }
 
-    const storedSets = source.tireSetInventoryByDriver?.[id]
+    const storedSets = sourceTireSetInventoryByDriver[id]
     if (Array.isArray(storedSets)) {
       const normalizedSets = storedSets
         .slice(0, MAX_PERSISTED_TIRE_SETS_PER_DRIVER)
@@ -659,21 +801,17 @@ function normalizeWeekendContext(
         .filter((set): set is TireSet => set !== null)
 
       if (normalizedSets.length > 0) {
-        base.tireSetInventoryByDriver[id] = normalizedSets
+        tireSetInventoryByDriver[id] = normalizedSets
       }
     }
   }
 
   return {
-    ...base,
-    completed,
-    gridByStage,
-    notes: Array.isArray(source.notes)
-      ? source.notes
-          .filter((note): note is string => typeof note === 'string')
-          .slice(-30)
-          .map((note) => note.slice(0, 240))
-      : [],
+    ...f1Base,
+    ...shared,
+    componentConditionByDriver,
+    tireSetInventoryByDriver,
+    tireSetsByDriver,
   }
 }
 
@@ -695,13 +833,28 @@ export function parsePersistedWeekend(
       return null
     }
 
-    const seriesId = isSeriesId(parsed.seriesId)
-      ? parsed.seriesId
-      : 'f1-custom'
+    // Version-1 F1 saves predate the series field, so an absent value has one
+    // safe migration. An explicit removed/unknown series is incompatible and
+    // must not silently acquire F1 machinery, rules or championship state.
+    const seriesId =
+      parsed.seriesId === undefined
+        ? 'f1-custom'
+        : isSeriesId(parsed.seriesId)
+          ? parsed.seriesId
+          : null
     const track = tracks.find((candidate) => candidate.id === parsed.trackId)
+    const isLegacyF1Weekend =
+      seriesId === 'f1-custom' &&
+      (parsed.version === undefined ||
+        parsed.version === 1 ||
+        parsed.version === 2 ||
+        parsed.version === 3)
+    const isCurrentWeekend = parsed.version === 4
 
     if (
+      seriesId === null ||
       !track ||
+      (!isCurrentWeekend && !isLegacyF1Weekend) ||
       (expectedSeriesId !== undefined && seriesId !== expectedSeriesId) ||
       typeof parsed.seed !== 'string' ||
       !isWeekendStage(parsed.stage) ||
@@ -712,7 +865,7 @@ export function parsePersistedWeekend(
     }
 
     return {
-      version: 3,
+      version: 4,
       seriesId,
       eventId:
         typeof parsed.eventId === 'string' && isSafeStorageKey(parsed.eventId)
@@ -726,6 +879,7 @@ export function parsePersistedWeekend(
         parsed.weekendContext,
         drivers,
         track,
+        seriesId,
         tireAllocation,
       ),
     }
@@ -734,22 +888,42 @@ export function parsePersistedWeekend(
   }
 }
 
-export function parsePersistedSeason(raw: string | null): SeasonState {
+export function parsePersistedSeason(
+  raw: string | null,
+  expectedSeriesId?: 'f1-custom',
+): F1SeasonState
+export function parsePersistedSeason(
+  raw: string | null,
+  expectedSeriesId: 'super-formula',
+): SuperFormulaSeasonState
+export function parsePersistedSeason(
+  raw: string | null,
+  expectedSeriesId: WeekendContext['seriesId'] = 'f1-custom',
+): SeasonState {
   if (!raw) {
-    return createSeasonState()
+    return createSeasonState([], expectedSeriesId)
   }
 
   try {
     const parsed = JSON.parse(raw) as unknown
 
     if (!isRecord(parsed)) {
-      return createSeasonState()
+      return createSeasonState([], expectedSeriesId)
+    }
+
+    const seriesMatches =
+      expectedSeriesId === 'f1-custom'
+        ? parsed.seriesId === undefined || parsed.seriesId === 'f1-custom'
+        : parsed.seriesId === 'super-formula'
+
+    if (!seriesMatches) {
+      return createSeasonState([], expectedSeriesId)
     }
 
     const completedRounds = normalizeCompletedRounds(parsed.completedRounds)
 
     if (!isRecord(parsed.driverPoints) || !isRecord(parsed.teamPoints)) {
-      return createSeasonState()
+      return createSeasonState([], expectedSeriesId)
     }
 
     const driverPoints = normalizePointsRecord(parsed.driverPoints)
@@ -757,7 +931,99 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
     const driverResults = normalizeResultsRecord(parsed.driverResults)
     const teamResults = normalizeResultsRecord(parsed.teamResults)
 
-    const garage = createSeasonState().garage
+    const common = {
+      completedRounds,
+      driverPoints,
+      teamPoints,
+      driverResults,
+      teamResults,
+      resultArchive: normalizeResultArchive(parsed.resultArchive),
+    }
+
+    if (expectedSeriesId === 'super-formula') {
+      if (
+        !isRecord(parsed.garage) ||
+        parsed.garage.kind !== 'super-formula' ||
+        Object.hasOwn(parsed.garage, 'componentsByDriver') ||
+        Object.hasOwn(parsed.garage, 'pendingGridPenaltyByDriver') ||
+        !isRecord(parsed.garage.engineLedgerByEntrant)
+      ) {
+        return createSeasonState([], 'super-formula')
+      }
+
+      const base = createSeasonState([], 'super-formula')
+      const engineLedgerByEntrant = { ...base.garage.engineLedgerByEntrant }
+      const penaltyLedgerByDriver = {
+        ...base.discipline.penaltyLedgerByDriver,
+      }
+
+      for (const [entrantId, ledger] of Object.entries(
+        parsed.garage.engineLedgerByEntrant,
+      ).slice(0, MAX_PERSISTED_ENTRIES)) {
+        if (!isSafeStorageKey(entrantId)) {
+          continue
+        }
+
+        const validation = validateSuperFormula2026EngineLedger(ledger)
+        if (validation.valid && validation.ledger.entrantId === entrantId) {
+          engineLedgerByEntrant[entrantId] = validation.ledger
+        }
+      }
+
+      // Pre-Article-5 saves have no discipline payload and intentionally
+      // migrate to an empty official register. If it is present, reject an
+      // invalid or F1-shaped discipline record rather than silently treating
+      // simulation stewarding points as legal JAF entries.
+      if (
+        isRecord(parsed.discipline) &&
+        Object.keys(parsed.discipline).length === 2 &&
+        parsed.discipline.kind === 'super-formula-article-5' &&
+        isRecord(parsed.discipline.penaltyLedgerByDriver)
+      ) {
+        for (const [driverId, ledger] of Object.entries(
+          parsed.discipline.penaltyLedgerByDriver,
+        ).slice(0, MAX_PERSISTED_ENTRIES)) {
+          if (!isSafeStorageKey(driverId)) {
+            continue
+          }
+
+          const validation = validateSuperFormula2026PenaltyPointLedger(ledger)
+          if (validation.valid && validation.ledger.driverId === driverId) {
+            penaltyLedgerByDriver[driverId] = validation.ledger
+          }
+        }
+      }
+
+      return {
+        ...common,
+        seriesId: 'super-formula',
+        discipline: {
+          kind: 'super-formula-article-5',
+          penaltyLedgerByDriver,
+        },
+        garage: {
+          engineLedgerByEntrant,
+          kind: 'super-formula',
+        },
+      }
+    }
+
+    if (
+      isRecord(parsed.garage) &&
+      parsed.garage.kind !== undefined &&
+      parsed.garage.kind !== 'f1'
+    ) {
+      return createSeasonState()
+    }
+
+    const base = createSeasonState()
+    const garage = {
+      componentsByDriver: { ...base.garage.componentsByDriver },
+      kind: 'f1' as const,
+      pendingGridPenaltyByDriver: {
+        ...base.garage.pendingGridPenaltyByDriver,
+      },
+    }
 
     if (isRecord(parsed.garage)) {
       if (isRecord(parsed.garage.componentsByDriver)) {
@@ -768,7 +1034,7 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
             continue
           }
 
-          garage.componentsByDriver[driverId] = normalizeCarComponents(
+          garage.componentsByDriver[driverId] = normalizeF1CarComponents(
             isRecord(components) ? components : null,
           )
         }
@@ -794,15 +1060,11 @@ export function parsePersistedSeason(raw: string | null): SeasonState {
     }
 
     return {
-      completedRounds,
-      driverPoints,
-      teamPoints,
-      driverResults,
-      teamResults,
-      resultArchive: normalizeResultArchive(parsed.resultArchive),
+      ...common,
+      seriesId: 'f1-custom',
       garage,
     }
   } catch {
-    return createSeasonState()
+    return createSeasonState([], expectedSeriesId)
   }
 }

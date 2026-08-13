@@ -6,8 +6,10 @@ import {
   driverAbilityGroupValue,
 } from '../simulation/driverAbility'
 import {
+  driverPool2026,
   isLegacySupportDriverProfile,
   isLegacySupportMachineProfile,
+  seatedDriverFrom,
   validateSeriesPackage,
 } from '../series/seriesRegistry'
 import type {
@@ -456,6 +458,7 @@ function parseStoredDrivers(
   }
 
   const baseById = new Map(series.drivers.map((driver) => [driver.id, driver]))
+  const poolById = new Map(driverPool2026.map((driver) => [driver.id, driver]))
   const normalizedValue = value.map((candidate) => {
     if (
       series.id !== 'super-formula' ||
@@ -482,7 +485,23 @@ function parseStoredDrivers(
   const ids = normalizedValue.map((driver, index) =>
     isRecord(driver) ? requiredText(driver.id, `drivers[${index}].id`) : '',
   )
-  validateExactIds('drivers', ids, series.drivers.map((driver) => driver.id))
+  const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index)
+  const unknownIds = ids.filter((id) => !poolById.has(id))
+  const identityIssues = [
+    ids.length !== series.carCount
+      ? `drivers must contain exactly ${series.carCount} pool identities.`
+      : null,
+    duplicateIds.length > 0
+      ? `drivers has duplicate ids: ${Array.from(new Set(duplicateIds)).join(', ')}.`
+      : null,
+    unknownIds.length > 0
+      ? `drivers has unknown pool ids: ${Array.from(new Set(unknownIds)).join(', ')}.`
+      : null,
+  ].filter((issue): issue is string => issue !== null)
+
+  if (identityIssues.length > 0) {
+    throw new SeriesConfigurationValidationError(identityIssues)
+  }
 
   const drivers = normalizedValue.map((candidate, index) => {
     if (!isRecord(candidate) || !isRecord(candidate.skills)) {
@@ -492,10 +511,15 @@ function parseStoredDrivers(
     }
 
     const id = ids[index]
-    const base = baseById.get(id)!
     const candidateSkills = candidate.skills as Record<string, unknown>
     const teamId = requiredText(candidate.teamId, `${id}.teamId`)
     const role = candidate.seatRole ?? 'regular'
+    const carNumber = integerNumber(
+      candidate.carNumber,
+      `${id}.carNumber`,
+      1,
+      999,
+    )
 
     if (!teamIds.has(teamId)) {
       throw new SeriesConfigurationValidationError([
@@ -508,6 +532,16 @@ function parseStoredDrivers(
     ) {
       throw new SeriesConfigurationValidationError([`${id}.seatRole is invalid.`])
     }
+
+    const poolRecord = poolById.get(id)!
+    const base =
+      baseById.get(id) ??
+      seatedDriverFrom(poolRecord, {
+        carNumber,
+        seatRole: role as DriverRole,
+        seriesId: series.id,
+        teamId,
+      })
 
     const skills = Object.fromEntries(
       DRIVER_ABILITY_STATS.map((stat) => [
@@ -532,7 +566,7 @@ function parseStoredDrivers(
 
     return {
       ...base,
-      carNumber: integerNumber(candidate.carNumber, `${id}.carNumber`, 1, 999),
+      carNumber,
       code: requiredText(candidate.code, `${id}.code`, 5).toUpperCase(),
       id,
       name: requiredText(candidate.name, `${id}.name`),
@@ -607,10 +641,21 @@ function parseConfigurationValue(
           )
           return candidate
         })()
+  let removedLegacyBaseLapTimeMultiplier = false
   const rules =
     value.rules === undefined
       ? cloneJson(series.rules)
-      : cloneJson(value.rules as SeriesRules)
+      : (() => {
+          const candidate = cloneJson(value.rules) as SeriesRules &
+            Record<string, unknown>
+
+          if ('baseLapTimeMultiplier' in candidate) {
+            Reflect.deleteProperty(candidate, 'baseLapTimeMultiplier')
+            removedLegacyBaseLapTimeMultiplier = true
+          }
+
+          return candidate
+        })()
 
   try {
     validateSeriesPackage({ ...series, calendar, drivers, rules, teams })
@@ -625,6 +670,10 @@ function parseConfigurationValue(
         .map((entry) => entry.slice(0, 160))
         .slice(-20)
     : []
+
+  if (removedLegacyBaseLapTimeMultiplier) {
+    migrationHistory.push('removed legacy baseLapTimeMultiplier')
+  }
 
   return { calendar, drivers, migrationHistory, rules, teams }
 }

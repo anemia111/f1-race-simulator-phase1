@@ -8,13 +8,11 @@ type PursuitCar = Pick<
   CarSnapshot,
   | 'damage'
   | 'driverId'
-  | 'ersBatteryPercent'
   | 'gapToAhead'
   | 'position'
   | 'racePaceMode'
+  | 'runtimeSystems'
   | 'status'
-  | 'tireOverheatingPercent'
-  | 'tireWearPercent'
   | 'totalDistance'
 >
 
@@ -39,6 +37,19 @@ export function automaticRacePaceModeFor(options: {
     seed,
   } = options
 
+  // The F1 pace planner may react to SOC.  SUPER FORMULA deliberately has no
+  // electrical-store/SOC compatibility value, so its shared pace planner
+  // treats energy as unconstrained instead of manufacturing a zero percent
+  // battery and permanently selecting Save.
+  const f1BatteryPercent =
+    car.runtimeSystems.kind === 'f1'
+      ? car.runtimeSystems.ersBatteryPercent
+      : null
+  const f1Tires =
+    car.runtimeSystems.kind === 'f1' ? car.runtimeSystems.tires : null
+  const energyAtLeast = (minimumPercent: number) =>
+    f1BatteryPercent === null || f1BatteryPercent >= minimumPercent
+
   if (!isRaceDistance || car.status !== 'running') {
     return car.racePaceMode
   }
@@ -51,14 +62,17 @@ export function automaticRacePaceModeFor(options: {
   const remainingLaps = Math.max(1, raceLaps - completedLaps)
   const finalSprintLaps = Math.max(2, Math.ceil(raceLaps * 0.05))
   const tireAtRisk =
-    car.tireWearPercent >= 88 || car.tireOverheatingPercent >= 68
+    f1Tires !== null &&
+    (f1Tires.tireWearPercent >= 88 || f1Tires.tireOverheatingPercent >= 68)
   const carAtRisk = car.damage >= 0.45
-  const lowEnergy = car.ersBatteryPercent < 24
+  const lowEnergy =
+    f1BatteryPercent !== null && f1BatteryPercent < 24
   const fuelAtRisk = fuelMarginKg < 1.25
   const fuelHealthyForPush = fuelMarginKg >= 1.8
   const healthyForPush =
-    car.tireWearPercent < 82 &&
-    car.tireOverheatingPercent < 55 &&
+    (f1Tires === null ||
+      (f1Tires.tireWearPercent < 82 &&
+        f1Tires.tireOverheatingPercent < 55)) &&
     car.damage < 0.28
 
   if (tireAtRisk || carAtRisk) {
@@ -76,7 +90,7 @@ export function automaticRacePaceModeFor(options: {
     remainingLaps <= finalSprintLaps &&
     car.gapToAhead > 0 &&
     car.gapToAhead <= 6 &&
-    car.ersBatteryPercent >= 18 &&
+    energyAtLeast(18) &&
     fuelHealthyForPush &&
     healthyForPush
   ) {
@@ -102,7 +116,7 @@ export function automaticRacePaceModeFor(options: {
       gapBehindSeconds !== null &&
       gapBehindSeconds >= 1.05 &&
       gapBehindSeconds <= 3.2 &&
-      car.ersBatteryPercent >= 46 &&
+      energyAtLeast(46) &&
       fuelHealthyForPush &&
       healthyForPush
 
@@ -110,11 +124,13 @@ export function automaticRacePaceModeFor(options: {
       return 'push'
     }
 
-    if (underAttack && car.ersBatteryPercent >= 30) {
+    if (underAttack && energyAtLeast(30)) {
       return 'defend'
     }
 
-    return car.ersBatteryPercent < 40 ? 'save' : 'standard'
+    return f1BatteryPercent !== null && f1BatteryPercent < 40
+      ? 'save'
+      : 'standard'
   }
 
   const gap = car.gapToAhead
@@ -124,7 +140,7 @@ export function automaticRacePaceModeFor(options: {
   // you do when the road ahead is out of reach.
   if (
     underAttack &&
-    car.ersBatteryPercent >= 30 &&
+    energyAtLeast(30) &&
     (gap <= 0 || gap > 2.4)
   ) {
     return 'defend'
@@ -137,7 +153,7 @@ export function automaticRacePaceModeFor(options: {
   // Once the car is near Overtake range, prioritize closing the final gap.
   if (
     gap <= 2.4 &&
-    car.ersBatteryPercent >= 30 &&
+    energyAtLeast(30) &&
     fuelHealthyForPush &&
     healthyForPush
   ) {
@@ -148,7 +164,7 @@ export function automaticRacePaceModeFor(options: {
   // draining the Energy Store with several sub-lap mode reversals.
   if (
     gap <= 5.5 &&
-    car.ersBatteryPercent >= 36 &&
+    energyAtLeast(36) &&
     fuelHealthyForPush &&
     healthyForPush
   ) {
@@ -173,8 +189,8 @@ export function automaticRacePaceModeFor(options: {
   }
 
   if (
-    car.ersBatteryPercent < 42 ||
-    car.tireOverheatingPercent >= 48
+    (f1BatteryPercent !== null && f1BatteryPercent < 42) ||
+    (f1Tires !== null && f1Tires.tireOverheatingPercent >= 48)
   ) {
     return 'save'
   }

@@ -5,6 +5,7 @@ import {
   filterPitWallRaceControl,
   pitWallBoxCommands,
   pitWallCapabilitiesFor,
+  pitWallCapabilitiesForRuntime,
   pitWallIntervals,
   pitWallLapLog,
   pitWallObservedSource,
@@ -15,6 +16,15 @@ import {
   raceControlKindFromMessage,
 } from './pitWall'
 import type { CarSnapshot, LapRecord, RaceEvent } from '../types'
+import { createSuperFormulaRuntimeSystems } from '../simulation/runtimeSystems'
+
+const f1RuntimeWithTireSets = (
+  tireSetsRemaining: Partial<Record<'S' | 'M' | 'H' | 'I' | 'W', number>> = {},
+) =>
+  ({
+    kind: 'f1',
+    tires: { tireSetsRemaining },
+  }) as CarSnapshot['runtimeSystems']
 
 const carStub = (overrides: Partial<CarSnapshot>): CarSnapshot =>
   ({
@@ -22,8 +32,8 @@ const carStub = (overrides: Partial<CarSnapshot>): CarSnapshot =>
     driverId: 'a',
     gapToAhead: 0,
     position: 1,
+    runtimeSystems: f1RuntimeWithTireSets(),
     status: 'running',
-    tireSetsRemaining: {},
     ...overrides,
   }) as CarSnapshot
 
@@ -45,8 +55,7 @@ const lapStub = (overrides: Partial<LapRecord>): LapRecord =>
     pitStop: false,
     position: 1,
     sectors: [30, 30, 30],
-    tire: 'M',
-    tireAgeLaps: 1,
+    tireRun: { ageLaps: 1, compound: 'M', kind: 'f1-pirelli' },
     ...overrides,
   }) as LapRecord
 
@@ -168,6 +177,27 @@ describe('pitWallLapLog', () => {
   it('returns nothing before the car has completed a lap', () => {
     expect(pitWallLapLog([])).toEqual([])
   })
+
+  it('keeps an SF dry/wet control-tyre lap distinct from an F1 compound', () => {
+    const row = pitWallLapLog([
+      lapStub({
+        tireRun: {
+          kind: 'super-formula-control-tire',
+          lapsOnCurrentSet: 3,
+          physicalModelAvailability: 'unavailable',
+          surface: 'wet',
+        },
+      }),
+    ])[0]
+
+    expect(row.tireDisplay).toEqual({
+      kind: 'super-formula-control-tire',
+      label: 'wet control / 3 laps',
+      lapsOnCurrentSet: 3,
+      physicalModelAvailability: 'unavailable',
+      surface: 'wet',
+    })
+  })
 })
 
 describe('componentConditionState', () => {
@@ -226,19 +256,6 @@ describe('pitWallCapabilitiesFor', () => {
     )
   })
 
-  it('never claims a hybrid Energy Store or active aero for F2 and F3', () => {
-    for (const seriesId of ['f2', 'f3'] as const) {
-      const capabilities = pitWallCapabilitiesFor({
-        overtakeSystem: 'drs',
-        seriesId,
-      })
-
-      expect(capabilities.hybridErs).toBe(false)
-      expect(capabilities.activeAero).toBe(false)
-      expect(capabilities.overtakeLabel).toBe('DRS')
-    }
-  })
-
   it('reports SUPER FORMULA push-to-pass without F1 systems', () => {
     const capabilities = pitWallCapabilitiesFor({
       overtakeSystem: 'ots',
@@ -249,6 +266,19 @@ describe('pitWallCapabilitiesFor', () => {
       activeAero: false,
       hybridErs: false,
       ots: true,
+      overtakeLabel: 'OTS',
+    })
+  })
+
+  it('does not call OTS enabled when the live SF runtime lacks an event rule', () => {
+    const capabilities = pitWallCapabilitiesForRuntime(
+      createSuperFormulaRuntimeSystems({ entrantId: 'sf-test' }),
+    )
+
+    expect(capabilities).toMatchObject({
+      activeAero: false,
+      hybridErs: false,
+      ots: false,
       overtakeLabel: 'OTS',
     })
   })
@@ -325,7 +355,10 @@ describe('pitWallIntervals', () => {
 describe('pitWallBoxCommands', () => {
   it('disables a compound with no remaining set and explains why', () => {
     const commands = pitWallBoxCommands(
-      carStub({ status: 'running', tireSetsRemaining: { M: 2, S: 0 } }),
+      carStub({
+        runtimeSystems: f1RuntimeWithTireSets({ M: 2, S: 0 }),
+        status: 'running',
+      }),
     )
     const soft = commands.find((command) => command.compound === 'S')
     const medium = commands.find((command) => command.compound === 'M')
@@ -339,7 +372,7 @@ describe('pitWallBoxCommands', () => {
 
   it('treats a missing compound entry as no sets remaining', () => {
     const commands = pitWallBoxCommands(
-      carStub({ status: 'running', tireSetsRemaining: {} }),
+      carStub({ runtimeSystems: f1RuntimeWithTireSets(), status: 'running' }),
     )
 
     expect(commands.every((command) => command.disabled)).toBe(true)
@@ -349,7 +382,10 @@ describe('pitWallBoxCommands', () => {
   it('blocks every box call for a car that is not running', () => {
     for (const status of ['retired', 'dns', 'disqualified', 'finished'] as const) {
       const commands = pitWallBoxCommands(
-        carStub({ status, tireSetsRemaining: { H: 3, M: 3, S: 3 } }),
+        carStub({
+          runtimeSystems: f1RuntimeWithTireSets({ H: 3, M: 3, S: 3 }),
+          status,
+        }),
       )
 
       expect(commands.every((command) => command.disabled)).toBe(true)
@@ -361,6 +397,18 @@ describe('pitWallBoxCommands', () => {
     expect(
       pitWallBoxCommands(carStub({})).map((command) => command.compound),
     ).toEqual(['S', 'M', 'H', 'I', 'W'])
+  })
+
+  it('does not offer F1 compound box calls to a SUPER FORMULA runtime', () => {
+    expect(
+      pitWallBoxCommands(
+        carStub({
+          runtimeSystems: createSuperFormulaRuntimeSystems({
+            entrantId: 'sf-test',
+          }),
+        }),
+      ),
+    ).toEqual([])
   })
 })
 

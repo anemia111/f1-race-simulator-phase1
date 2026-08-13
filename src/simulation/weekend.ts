@@ -1,12 +1,15 @@
 import type {
   Driver,
   CarSnapshot,
+  F1WeekendContext,
+  SuperFormulaWeekendContext,
   TireNomination,
   TireSet,
   TireSetAllocation,
   TrackDefinition,
   TireCompound,
   WeekendContext,
+  WeekendContextBase,
   WeekendStage,
 } from '../types'
 import type {
@@ -16,28 +19,97 @@ import type {
 } from './qualifying'
 import { weekendTireAllocation } from './weekendTires'
 import { baselineSetupForTrack } from './engineering'
-import { createCarComponents } from './components'
+import { createF1CarComponents } from './components'
 import {
   isFeatureRaceStage,
   isStandardQualifyingStage,
 } from './sessionRules'
+import {
+  createSuperFormulaControlTireInventory,
+} from './superFormulaControlTires2026'
+import { createSuperFormula2026EngineLedger } from './superFormulaEngineLedger'
+import {
+  isF1RuntimeSystems,
+  isSuperFormulaRuntimeSystems,
+} from './runtimeSystems'
 
 const allCompounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 
 export function createWeekendContext(
   drivers: Driver[],
+  isSprintWeekend?: boolean,
+  track?: TrackDefinition,
+  categoryTireAllocation?: TireSetAllocation,
+  seriesId?: 'f1-custom',
+): F1WeekendContext
+export function createWeekendContext(
+  drivers: Driver[],
+  isSprintWeekend: boolean | undefined,
+  track: TrackDefinition | undefined,
+  categoryTireAllocation: TireSetAllocation | undefined,
+  seriesId: 'super-formula',
+): SuperFormulaWeekendContext
+export function createWeekendContext(
+  drivers: Driver[],
+  isSprintWeekend: boolean | undefined,
+  track: TrackDefinition | undefined,
+  categoryTireAllocation: TireSetAllocation | undefined,
+  seriesId: WeekendContext['seriesId'],
+): WeekendContext
+export function createWeekendContext(
+  drivers: Driver[],
   isSprintWeekend = false,
   track?: TrackDefinition,
   categoryTireAllocation?: TireSetAllocation,
+  seriesId: WeekendContext['seriesId'] = 'f1-custom',
 ): WeekendContext {
-  const tireSetsByDriver: WeekendContext['tireSetsByDriver'] = {}
-  const tireSetInventoryByDriver: WeekendContext['tireSetInventoryByDriver'] = {}
   const setupByDriver: WeekendContext['setupByDriver'] = {}
   const setupConfidenceByDriver: WeekendContext['setupConfidenceByDriver'] = {}
   const parcFermeLockedByDriver: WeekendContext['parcFermeLockedByDriver'] = {}
-  const componentConditionByDriver: WeekendContext['componentConditionByDriver'] = {}
   const pitLaneStartByDriver: WeekendContext['pitLaneStartByDriver'] = {}
   const qualificationStatusByDriver: WeekendContext['qualificationStatusByDriver'] = {}
+  const shared = {
+    completed: [],
+    gridByStage: {},
+    gridPenaltyByDriver: {},
+    notes: [],
+    pitLaneStartByDriver,
+    qualificationStatusByDriver,
+    parcFermeLockedByDriver,
+    setupBonusByDriver: {},
+    setupByDriver,
+    setupConfidenceByDriver,
+  } satisfies WeekendContextBase
+
+  if (seriesId === 'super-formula') {
+    const controlTireInventoryByDriver: SuperFormulaWeekendContext['controlTireInventoryByDriver'] = {}
+    const engineLedgerByEntrant: SuperFormulaWeekendContext['engineLedgerByEntrant'] = {}
+
+    for (const driver of drivers) {
+      setupByDriver[driver.id] = baselineSetupForTrack(track)
+      setupConfidenceByDriver[driver.id] = 0
+      parcFermeLockedByDriver[driver.id] = false
+      pitLaneStartByDriver[driver.id] = false
+      qualificationStatusByDriver[driver.id] = 'qualified'
+      controlTireInventoryByDriver[driver.id] =
+        createSuperFormulaControlTireInventory()
+      if (!engineLedgerByEntrant[driver.teamId]) {
+        engineLedgerByEntrant[driver.teamId] =
+          createSuperFormula2026EngineLedger({ entrantId: driver.teamId })
+      }
+    }
+
+    return {
+      ...shared,
+      controlTireInventoryByDriver,
+      engineLedgerByEntrant,
+      seriesId,
+    }
+  }
+
+  const tireSetsByDriver: F1WeekendContext['tireSetsByDriver'] = {}
+  const tireSetInventoryByDriver: F1WeekendContext['tireSetInventoryByDriver'] = {}
+  const componentConditionByDriver: F1WeekendContext['componentConditionByDriver'] = {}
   const allocation = weekendTireAllocation(
     isSprintWeekend,
     categoryTireAllocation,
@@ -56,7 +128,7 @@ export function createWeekendContext(
     setupByDriver[driver.id] = baselineSetupForTrack(track)
     setupConfidenceByDriver[driver.id] = 0
     parcFermeLockedByDriver[driver.id] = false
-    componentConditionByDriver[driver.id] = createCarComponents()
+    componentConditionByDriver[driver.id] = createF1CarComponents()
     pitLaneStartByDriver[driver.id] = false
     qualificationStatusByDriver[driver.id] = 'qualified'
     tireSetInventoryByDriver[driver.id] = allCompounds.flatMap((compound) =>
@@ -75,24 +147,16 @@ export function createWeekendContext(
   }
 
   return {
-    completed: [],
+    ...shared,
     componentConditionByDriver,
-    gridByStage: {},
-    gridPenaltyByDriver: {},
-    notes: [],
-    pitLaneStartByDriver,
-    qualificationStatusByDriver,
-    parcFermeLockedByDriver,
-    setupBonusByDriver: {},
-    setupByDriver,
-    setupConfidenceByDriver,
+    seriesId,
     tireSetInventoryByDriver,
     tireSetsByDriver,
   }
 }
 
 function recordDetailedTireSets(
-  inventoryByDriver: WeekendContext['tireSetInventoryByDriver'],
+  inventoryByDriver: F1WeekendContext['tireSetInventoryByDriver'],
   driverId: string,
   compounds: TireCompound[],
   lapsCompleted: number,
@@ -121,7 +185,7 @@ function recordDetailedTireSets(
 }
 
 function consumeCompound(
-  context: WeekendContext,
+  context: F1WeekendContext,
   driverId: string,
   compound: TireCompound,
   sets = 1,
@@ -135,6 +199,72 @@ function consumeCompound(
       [compound]: Math.max(0, (inventory[compound] ?? 0) - sets),
     },
   }
+}
+
+function f1ComponentsFromCars(
+  previous: F1WeekendContext['componentConditionByDriver'],
+  cars: CarSnapshot[] | undefined,
+): F1WeekendContext['componentConditionByDriver'] {
+  if (!cars) {
+    return previous
+  }
+
+  return cars.reduce<F1WeekendContext['componentConditionByDriver']>(
+    (componentsByDriver, car) =>
+      isF1RuntimeSystems(car.runtimeSystems)
+        ? {
+            ...componentsByDriver,
+            [car.driverId]: car.runtimeSystems.components,
+          }
+        : componentsByDriver,
+    { ...previous },
+  )
+}
+
+function superFormulaLifecycleFromCars(
+  previous: SuperFormulaWeekendContext,
+  cars: CarSnapshot[] | undefined,
+): Pick<
+  SuperFormulaWeekendContext,
+  'controlTireInventoryByDriver' | 'engineLedgerByEntrant'
+> {
+  if (!cars) {
+    return {
+      controlTireInventoryByDriver: previous.controlTireInventoryByDriver,
+      engineLedgerByEntrant: previous.engineLedgerByEntrant,
+    }
+  }
+
+  return cars.reduce<
+    Pick<
+      SuperFormulaWeekendContext,
+      'controlTireInventoryByDriver' | 'engineLedgerByEntrant'
+    >
+  >(
+    (lifecycle, car) => {
+      if (!isSuperFormulaRuntimeSystems(car.runtimeSystems)) {
+        return lifecycle
+      }
+
+      return {
+        controlTireInventoryByDriver: {
+          ...lifecycle.controlTireInventoryByDriver,
+          [car.driverId]: car.runtimeSystems.controlTires,
+        },
+        engineLedgerByEntrant: {
+          ...lifecycle.engineLedgerByEntrant,
+          [car.runtimeSystems.engineLedger.entrantId]:
+            car.runtimeSystems.engineLedger,
+        },
+      }
+    },
+    {
+      controlTireInventoryByDriver: {
+        ...previous.controlTireInventoryByDriver,
+      },
+      engineLedgerByEntrant: { ...previous.engineLedgerByEntrant },
+    },
+  )
 }
 
 function hasMeasuredQualifyingEvidence(cars: CarSnapshot[] | undefined) {
@@ -194,9 +324,6 @@ export function completePracticeSession(
   const setupBonusByDriver = { ...previous.setupBonusByDriver }
   const setupByDriver = { ...previous.setupByDriver }
   const setupConfidenceByDriver = { ...previous.setupConfidenceByDriver }
-  let tireSetsByDriver = previous.tireSetsByDriver
-  let tireSetInventoryByDriver = previous.tireSetInventoryByDriver
-
   for (const result of results) {
     // A 0..0.35s race-pace improvement, capped across the weekend.
     setupBonusByDriver[result.driverId] = Math.min(
@@ -208,7 +335,37 @@ export function completePracticeSession(
       setupConfidenceByDriver[result.driverId] ?? 0,
       result.setupConfidence,
     )
-    const compoundCounts = result.runCompounds.reduce<Partial<Record<TireCompound, number>>>(
+  }
+
+  const common = {
+    completed: previous.completed.includes(stage)
+      ? previous.completed
+      : [...previous.completed, stage],
+    notes: [...previous.notes, `${stage.toUpperCase()} setup data locked`].slice(-8),
+    setupBonusByDriver,
+    setupByDriver,
+    setupConfidenceByDriver,
+  }
+
+  if (previous.seriesId === 'super-formula') {
+    // No sourced SF dry/wet set-selection evidence is available, so we
+    // deliberately do not translate timed-session tyres into a control-tyre
+    // consumption record.
+    return {
+      ...previous,
+      ...common,
+      ...superFormulaLifecycleFromCars(previous, cars),
+    }
+  }
+
+  let tireSetsByDriver = previous.tireSetsByDriver
+  let tireSetInventoryByDriver = previous.tireSetInventoryByDriver
+
+  for (const result of results) {
+    const f1RunCompounds = result.runTires.flatMap((tire) =>
+      tire.kind === 'f1-pirelli-session-tire' ? [tire.compound] : [],
+    )
+    const compoundCounts = f1RunCompounds.reduce<Partial<Record<TireCompound, number>>>(
       (counts, compound) => ({ ...counts, [compound]: (counts[compound] ?? 0) + 1 }),
       {},
     )
@@ -225,25 +382,18 @@ export function completePracticeSession(
     tireSetInventoryByDriver = recordDetailedTireSets(
       tireSetInventoryByDriver,
       result.driverId,
-      result.runCompounds,
+      f1RunCompounds,
       result.lapsCompleted,
     )
   }
 
   return {
     ...previous,
-    componentConditionByDriver: cars
-      ? Object.fromEntries(
-          cars.map((car) => [car.driverId, car.components]),
-        )
-      : previous.componentConditionByDriver,
-    completed: previous.completed.includes(stage)
-      ? previous.completed
-      : [...previous.completed, stage],
-    notes: [...previous.notes, `${stage.toUpperCase()} setup data locked`].slice(-8),
-    setupBonusByDriver,
-    setupByDriver,
-    setupConfidenceByDriver,
+    ...common,
+    componentConditionByDriver: f1ComponentsFromCars(
+      previous.componentConditionByDriver,
+      cars,
+    ),
     tireSetInventoryByDriver,
     tireSetsByDriver,
   }
@@ -264,8 +414,6 @@ export function completeQualifyingSession(
     return previous
   }
 
-  let tireSetsByDriver = previous.tireSetsByDriver
-  let tireSetInventoryByDriver = previous.tireSetInventoryByDriver
   const parcFermeLockedByDriver = { ...previous.parcFermeLockedByDriver }
   const gridPenaltyByDriver = { ...previous.gridPenaltyByDriver }
   const qualificationStatusByDriver = {
@@ -279,9 +427,19 @@ export function completeQualifyingSession(
     cars,
     preferMeasuredCars,
   )
+  let tireSetsByDriver: F1WeekendContext['tireSetsByDriver'] =
+    previous.seriesId === 'f1-custom' ? previous.tireSetsByDriver : {}
+  let tireSetInventoryByDriver: F1WeekendContext['tireSetInventoryByDriver'] =
+    previous.seriesId === 'f1-custom'
+      ? previous.tireSetInventoryByDriver
+      : {}
 
-  if (useMeasuredCars) {
+  if (previous.seriesId === 'f1-custom' && useMeasuredCars) {
     for (const car of cars!) {
+      if (car.runtimeSystems.kind !== 'f1') {
+        continue
+      }
+      const f1Runtime = car.runtimeSystems
       const previousSets = previous.tireSetsByDriver[car.driverId] ?? {}
       const consumedCompounds = allCompounds.flatMap((compound) =>
         Array.from(
@@ -289,7 +447,7 @@ export function completeQualifyingSession(
             length: Math.max(
               0,
               (previousSets[compound] ?? 0) -
-                (car.tireSetsRemaining[compound] ?? 0),
+                (f1Runtime.tires.tireSetsRemaining[compound] ?? 0),
             ),
           },
           () => compound,
@@ -298,7 +456,7 @@ export function completeQualifyingSession(
 
       tireSetsByDriver = {
         ...tireSetsByDriver,
-        [car.driverId]: { ...car.tireSetsRemaining },
+        [car.driverId]: { ...f1Runtime.tires.tireSetsRemaining },
       }
       tireSetInventoryByDriver = recordDetailedTireSets(
         tireSetInventoryByDriver,
@@ -307,22 +465,26 @@ export function completeQualifyingSession(
         car.lapHistory.length,
       )
     }
-  } else {
+  } else if (previous.seriesId === 'f1-custom') {
     const usageResults = segments
       ? segments.flatMap((segment) => segment.results)
       : results
 
     for (const result of usageResults) {
+      if (result.tire.kind !== 'f1-pirelli-session-tire') {
+        continue
+      }
+      const compound = result.tire.compound
       tireSetsByDriver = consumeCompound(
         { ...previous, tireSetsByDriver },
         result.driverId,
-        result.compound,
+        compound,
         result.setsUsed,
       )
       tireSetInventoryByDriver = recordDetailedTireSets(
         tireSetInventoryByDriver,
         result.driverId,
-        Array.from({ length: result.setsUsed }, () => result.compound),
+        Array.from({ length: result.setsUsed }, () => compound),
         Math.max(1, result.validRunCount),
       )
     }
@@ -363,13 +525,7 @@ export function completeQualifyingSession(
         : 'race'
   const orderedIds = completedClassification.map((result) => result.driverId)
 
-  return {
-    ...previous,
-    componentConditionByDriver: cars
-      ? Object.fromEntries(
-          cars.map((car) => [car.driverId, car.components]),
-        )
-      : previous.componentConditionByDriver,
+  const common = {
     completed: previous.completed.includes(stage)
       ? previous.completed
       : [...previous.completed, stage],
@@ -381,6 +537,23 @@ export function completeQualifyingSession(
       `${stage === 'sprintQualifying' ? 'Sprint Shootout' : stage === 'qualifying2' ? 'Qualifying 2' : 'Qualifying'} grid locked`,
     ].slice(-8),
     parcFermeLockedByDriver,
+  }
+
+  if (previous.seriesId === 'super-formula') {
+    return {
+      ...previous,
+      ...common,
+      ...superFormulaLifecycleFromCars(previous, cars),
+    }
+  }
+
+  return {
+    ...previous,
+    ...common,
+    componentConditionByDriver: f1ComponentsFromCars(
+      previous.componentConditionByDriver,
+      cars,
+    ),
     tireSetInventoryByDriver,
     tireSetsByDriver,
   }
@@ -400,18 +573,29 @@ export function completeRaceSession(
     return previous
   }
 
-  return {
-    ...previous,
-    componentConditionByDriver: cars
-      ? Object.fromEntries(
-          cars.map((car) => [car.driverId, car.components]),
-        )
-      : previous.componentConditionByDriver,
+  const common = {
     completed: [...previous.completed, stage],
     notes: [
       ...previous.notes,
       `${stage === 'sprint' ? 'Sprint' : stage === 'race2' ? 'Race 2' : 'Race'} classification recorded`,
     ].slice(-8),
+  }
+
+  if (previous.seriesId === 'super-formula') {
+    return {
+      ...previous,
+      ...common,
+      ...superFormulaLifecycleFromCars(previous, cars),
+    }
+  }
+
+  return {
+    ...previous,
+    ...common,
+    componentConditionByDriver: f1ComponentsFromCars(
+      previous.componentConditionByDriver,
+      cars,
+    ),
   }
 }
 
@@ -481,7 +665,9 @@ export function weekendTireAvailability(
   driverId: string,
   compound: TireCompound,
 ) {
-  return context?.tireSetsByDriver[driverId]?.[compound] ?? null
+  return context?.seriesId === 'f1-custom'
+    ? context.tireSetsByDriver[driverId]?.[compound] ?? null
+    : null
 }
 
 export function emptyCompoundInventory() {

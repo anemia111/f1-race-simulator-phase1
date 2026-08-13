@@ -1,4 +1,5 @@
 import { MAX_SIMULATION_SEED_LENGTH } from '../simulation/random'
+import { isExecutableSeriesId } from '../series/seriesIds'
 import type { SeriesId } from '../series/types'
 import type {
   FreeModeBuildContext,
@@ -11,12 +12,6 @@ import type {
 export const FREE_MODE_MIN_CARS = 1
 export const FREE_MODE_MAX_CARS = 40
 
-const seriesIds = new Set<SeriesId>([
-  'f1-custom',
-  'f2',
-  'f3',
-  'super-formula',
-])
 const sessionKinds = new Set(['practice', 'qualifying', 'race'])
 const practiceStages = new Set(['fp1', 'fp2', 'fp3'])
 const gridModes = new Set(['manual', 'random', 'qualifying-result'])
@@ -238,8 +233,7 @@ export function parseFreeModeConfiguration(
   if (
     !isRecord(value) ||
     value.version !== 1 ||
-    typeof value.categoryId !== 'string' ||
-    !seriesIds.has(value.categoryId as SeriesId) ||
+    !isExecutableSeriesId(value.categoryId) ||
     typeof value.trackId !== 'string' ||
     value.trackId.length < 1 ||
     value.trackId.length > 120 ||

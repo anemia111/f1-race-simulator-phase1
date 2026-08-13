@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { RaceSnapshot } from '../types'
 import {
   buildRaceClassification,
+  classificationTireDisplayFor,
   fastestLapFromClassification,
   lapDeficitLabel,
+  tireDisplayForLapRecord,
 } from './classification'
 import { createInitialRace } from './race'
+import { createSuperFormulaRuntimeSystems } from './runtimeSystems'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 
@@ -54,6 +57,74 @@ describe('race classification', () => {
     })
     expect(entries[2].gapLabel).toBe('DNF mechanical')
     expect(entries[2].statusLabel).toBe('DNF')
+    expect(entries[0].tireDisplay.kind).toBe('f1-pirelli')
+    if (entries[0].tireDisplay.kind === 'f1-pirelli') {
+      expect(entries[0].tireDisplay.history).toEqual(
+        snapshot.cars[0].runtimeSystems.kind === 'f1'
+          ? snapshot.cars[0].runtimeSystems.tires.compoundsUsed
+          : [],
+      )
+    }
+  })
+
+  it('keeps SUPER FORMULA control surfaces separate from the F1 compound family', () => {
+    const snapshot = snapshotFixture()
+    const superFormulaCar = {
+      ...snapshot.cars[0],
+      runtimeSystems: createSuperFormulaRuntimeSystems({
+        entrantId: snapshot.cars[0].teamId,
+      }),
+    }
+    const superFormulaSnapshot = {
+      ...snapshot,
+      cars: [superFormulaCar, ...snapshot.cars.slice(1)],
+    }
+    const entry = buildRaceClassification(superFormulaSnapshot)[0]
+
+    expect(entry.tireDisplay).toMatchObject({
+      kind: 'super-formula-control-tire',
+      lapsOnCurrentSet: 0,
+      physicalModelAvailability: 'unavailable',
+      setUsage: {
+        dry: { remainingSets: 5, usedSets: 1 },
+        wet: { remainingSets: 6, usedSets: 0 },
+      },
+      surface: 'dry',
+    })
+    expect(entry.tireDisplay).not.toHaveProperty('compound')
+    expect(entry.tireDisplay).not.toHaveProperty('history')
+    expect(classificationTireDisplayFor(superFormulaCar)).toEqual(
+      entry.tireDisplay,
+    )
+  })
+
+  it('formats persisted F1 and SUPER FORMULA lap tyre records without coercion', () => {
+    expect(
+      tireDisplayForLapRecord({
+        tireRun: { ageLaps: 12, compound: 'M', kind: 'f1-pirelli' },
+      }),
+    ).toEqual({
+      ageLaps: 12,
+      compound: 'M',
+      kind: 'f1-pirelli',
+      label: 'M / 12 laps',
+    })
+    expect(
+      tireDisplayForLapRecord({
+        tireRun: {
+          kind: 'super-formula-control-tire',
+          lapsOnCurrentSet: 7,
+          physicalModelAvailability: 'unavailable',
+          surface: 'wet',
+        },
+      }),
+    ).toEqual({
+      kind: 'super-formula-control-tire',
+      label: 'wet control / 7 laps',
+      lapsOnCurrentSet: 7,
+      physicalModelAvailability: 'unavailable',
+      surface: 'wet',
+    })
   })
 
   it('labels a lapped finisher by lap deficit, not crossing-time difference', () => {

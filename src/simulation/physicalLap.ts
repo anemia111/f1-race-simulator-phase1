@@ -18,13 +18,20 @@
  * comes from `tyreForces`.
  */
 import { activeAeroZoneAt } from './activeAero'
-import { categoryPhysicsFor, type CategoryPhysicsProfile } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+  type CategoryPhysicsProfile,
+} from './categoryPhysics'
 import { powerUnitDriveForceN } from './drivetrain'
+import { REFERENCE_F1_ENERGY_CONVERSION } from './energySystem'
 import {
   deploymentPowerLimitKwForSpeed,
   FIA_2026_REGULATION_PROFILE,
+  resolveF1RechargeRule,
 } from './regulations'
 import { FORMULA_VEHICLE_HALF_WIDTH_M } from './vehicleGeometry'
+import { activeAeroReferenceAreaMultipliers } from './vehicleDynamics'
 import {
   aerodynamicDownforceN,
   corneringSpeedLimitMps,
@@ -32,7 +39,13 @@ import {
   remainingEllipseForceN,
   tyreGripAt,
 } from './tyreForces'
-import type { TrackDefinition } from '../types'
+import type {
+  FiaPuEventInput,
+  RechargeRuleDefinition,
+  TimedRunPhase,
+  TrackDefinition,
+  WeekendStage,
+} from '../types'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -43,34 +56,46 @@ export type PhysicalLapOptions = {
   dragAreaM2?: number
   /** Surface and compound state, as in `tyreForces`. */
   gripMultiplier?: number
+  /** Authoritative FIA event input; null/omission keeps it unavailable. */
+  fiaNominalTyreMassKg?: number | null
+  /** C4.1/C4.6 mass added by a declared heat hazard. */
+  heatHazardAddedMassKg?: number
   massKg?: number
   /**
-   * MGU-K deployment assumed available under acceleration while constructing
-   * an offline reference profile. This is never a live Energy Store command.
+   * CU-K DC deployment request assumed available under acceleration while
+   * constructing an offline reference profile. This is never a live Energy
+   * Store command; mechanical power is derived after conversion loss.
    */
   deploymentPowerKw?: number
   /**
    * MGU-K energy the lap is allowed to spend, in MJ.
    *
-   * Omitted, an F1 lap takes the regulation's qualifying recharge limit,
-   * because a reference lap that spends more than the rules permit is not a
-   * lap the rules allow however well its time matches. `null` removes the
-   * budget and restores the unbounded capability envelope; only a consumer
-   * that wants "what the car could do here" rather than "what one lap does"
-   * should ask for that.
+   * Omitted, an F1 lap resolves a verified event recharge rule. If no event
+   * document exists it uses the separately labelled reference policy, then
+   * converts DC-bus/store energy through the neutral component loss chain.
+   * `null` removes the budget and restores the unbounded capability envelope;
+   * only a consumer that wants capability rather than one legal lap should
+   * ask for that.
    */
   deploymentEnergyBudgetMj?: number | null
+  /** Exact competition identity paired with an event-scoped PU input. */
+  eventId?: string | null
+  /** Verified event PU input used to resolve the qualifying recharge ledger. */
+  fiaPuEventInput?: FiaPuEventInput | null
+  timedRunPhase?: TimedRunPhase | null
   /**
    * Whether the lap opens the active-aero flap in the circuit's declared
    * zones. True for any caller asking what one lap does.
    *
    * A caller that wants the car's capability envelope rather than a particular
    * lap should pass false, and generally wants `deploymentEnergyBudgetMj:
-   * null` for the same reason. Corner speeds and braking are unaffected either
-   * way: the flap is shut on the brakes and in the corners.
+   * null` for the same reason. Braking uses Corner Mode; inside an activation
+   * zone, drag and load come from the same decomposed front/rear reference map.
    */
   activeAeroZones?: boolean
   physics?: CategoryPhysicsProfile
+  /** Defaults to qualifying because this is an offline reference lap. */
+  weekendStage?: WeekendStage
 }
 
 /**
@@ -103,11 +128,12 @@ const DEPLOYMENT_ALLOCATION_PASSES = 3
 /**
  * How many times the finished profile is given back the energy it overspent.
  *
- * Two is enough because the first trim removes the whole overshoot and the
- * second only confirms that re-sweeping the trimmed profile did not create a
- * new one.
+ * The exact Issue 20 speed curve can move a segment across a piecewise power
+ * boundary after a sweep. Five bounded passes let the final profile settle to
+ * sub-kJ agreement after that boundary movement; this is numerical
+ * convergence, not an additional energy allowance.
  */
-const DEPLOYMENT_TRIM_PASSES = 2
+const DEPLOYMENT_TRIM_PASSES = 5
 
 export type BankedSection = {
   /** Lap progress the banking runs between, 0 to 1. */
@@ -408,20 +434,27 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
  * Manual Override is a driver action and has no place on a reference lap, so
  * the standard cutoff is used.
  */
-const permittedDeploymentKw = (requestedPowerKw: number, speedMps: number) =>
+const permittedDeploymentMechanicalKw = (
+  requestedDcPowerKw: number,
+  speedMps: number,
+) =>
   deploymentPowerLimitKwForSpeed({
-    requestedPowerKw,
+    curve: 'normal',
+    requestedPowerKw: requestedDcPowerKw,
     speedKph: Math.max(0, speedMps) * 3.6,
-  })
+  }) *
+  REFERENCE_F1_ENERGY_CONVERSION.inverterEfficiency *
+  REFERENCE_F1_ENERGY_CONVERSION.motorEfficiency
 
 /**
  * Lap energy allowance, in MJ, or null where the concept does not apply.
  *
  * A category with no MGU-K has nothing to budget. For one that has, the
- * allowance is what a clear qualifying lap can actually put on the road, which
- * is the sum of two published numbers and not a fitted one:
+ * allowance is what a clear qualifying lap can actually put on the road. It is
+ * assembled from explicit provenance-bearing boundaries and is never fitted:
  *
- * - `qualifyingRechargeLimitMj`, the energy the lap may recover as it runs;
+ * - the verified event recharge limit, or the explicitly labelled simulator
+ *   reference policy informed by the FIA explanation when event data is absent;
  * - `usableStateOfChargeWindowMj`, the store the car arrives with, having
  *   filled it on the out lap.
  *
@@ -435,47 +468,102 @@ const permittedDeploymentKw = (requestedPowerKw: number, speedMps: number) =>
 function resolveEnergyBudgetMj(
   options: PhysicalLapOptions,
   physics: CategoryPhysicsProfile,
+  trackId?: string,
 ) {
   if (physics.hybridDeploymentPowerLimitKw <= 0) {
-    return null
+    return {
+      mechanicalBudgetMj: null,
+      rechargeAtCuKBusMJ: null,
+      resolution: 'not-applicable' as const,
+      sourceId: null,
+    }
   }
 
   if (options.deploymentEnergyBudgetMj === undefined) {
-    return (
-      FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj +
-      FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
-    )
+    const rechargeRule = resolveF1RechargeRule({
+      eventId: options.eventId ?? undefined,
+      eventInput: options.fiaPuEventInput,
+      stage: options.weekendStage ?? 'qualifying',
+      timedRunPhase: options.timedRunPhase ?? 'attack-lap',
+      trackId,
+    })
+    // When no event document is available, 7 MJ remains an explicitly named
+    // reference-lap policy from the April FIA explanation, not a claim about a
+    // binding event value. Verified event inputs (Suzuka: 8 MJ in qualifying)
+    // take precedence and naturally change the attack-lap allowance.
+    const rechargeAtCuKBusMJ =
+      rechargeRule.limit.kind === 'finite'
+        ? rechargeRule.limit.maxCuKBusRechargeMj
+        : FIA_2026_REGULATION_PROFILE.energy.referenceAttackRechargePolicyMj
+    const conversion = REFERENCE_F1_ENERGY_CONVERSION
+    const deploymentAtCuKBusMJ =
+      FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj *
+        conversion.batteryDischargeEfficiency +
+      rechargeAtCuKBusMJ *
+        conversion.batteryChargeEfficiency *
+        conversion.batteryDischargeEfficiency
+
+    return {
+      mechanicalBudgetMj:
+        deploymentAtCuKBusMJ *
+        conversion.inverterEfficiency *
+        conversion.motorEfficiency,
+      rechargeAtCuKBusMJ,
+      resolution:
+        rechargeRule.limit.kind === 'finite'
+          ? rechargeRule.resolution
+          : ('simulator-reference-policy' as const),
+      sourceId:
+        rechargeRule.limit.kind === 'finite'
+          ? rechargeRule.sourceId
+          : 'fia-f1-2026-energy-refinement-2026-04-20',
+    }
   }
 
   const requested = options.deploymentEnergyBudgetMj
 
-  return requested === null || !Number.isFinite(requested)
-    ? null
-    : Math.max(0, requested)
+  return {
+    mechanicalBudgetMj:
+      requested === null || !Number.isFinite(requested)
+        ? null
+        : Math.max(0, requested),
+    rechargeAtCuKBusMJ: null,
+    resolution: 'explicit-mechanical-budget' as const,
+    sourceId: null,
+  }
 }
 
-function resolveOptions(options: PhysicalLapOptions) {
+function resolveOptions(options: PhysicalLapOptions, trackId?: string) {
   const physics = options.physics ?? categoryPhysicsFor(undefined)
+  const operationalMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: options.fiaNominalTyreMassKg ?? null,
+    heatHazardAddedMassKg: options.heatHazardAddedMassKg,
+    physics,
+    weekendStage: options.weekendStage ?? 'qualifying',
+  })
+
+  const energyBudget = resolveEnergyBudgetMj(options, physics, trackId)
 
   return {
     airDensityKgM3: options.airDensityKgM3 ?? 1.225,
-    deploymentEnergyBudgetMj: resolveEnergyBudgetMj(options, physics),
-    deploymentPowerKw:
+    deploymentEnergyBudgetMj: energyBudget.mechanicalBudgetMj,
+    deploymentDcPowerKw:
       options.deploymentPowerKw ?? physics.hybridDeploymentPowerLimitKw,
     dragAreaM2: options.dragAreaM2 ?? 1.05 * physics.dragAreaScale,
     gripMultiplier: options.gripMultiplier ?? 1,
-    massKg: options.massKg ?? physics.minimumMassKg + 30,
+    massKg: options.massKg ?? operationalMass.operationalMassKg + 30,
     physics,
+    referenceRechargeAtCuKBusMJ: energyBudget.rechargeAtCuKBusMJ,
+    referenceRechargeResolution: energyBudget.resolution,
+    referenceRechargeSourceId: energyBudget.sourceId,
   }
 }
 
 /**
  * Aerodynamic drag plus rolling resistance, in newtons.
  *
- * `dragAreaScale` is the active-aero state: 1 is the closed-wing corner
- * configuration, and a value below 1 is the shed drag of an open flap. The
- * reference lap passes the same multiplier the race path applies in
- * `vehicleDragAreaM2`, so both read one number for the same effect.
+ * `dragAreaScale` is a pure area ratio supplied by the decomposed front/rear
+ * active-aero reference adapter. It is not a target-speed correction.
  */
 export function resistanceForceN(
   speedMps: number,
@@ -508,8 +596,8 @@ export function terminalSpeedMps(
     const middle = (low + high) / 2
     const surplus =
       powerUnitDriveForceN({
-        deploymentPowerKw: permittedDeploymentKw(
-          resolved.deploymentPowerKw,
+        deploymentPowerKw: permittedDeploymentMechanicalKw(
+          resolved.deploymentDcPowerKw,
           middle,
         ),
         physics: resolved.physics,
@@ -534,8 +622,20 @@ export type PhysicalLapResult = {
   minimumSpeedKph: number
   /** One offline planning point for every centreline point. */
   points: PhysicalLapPoint[]
-  /** Constant deployment assumption used to construct this reference only. */
-  referenceDeploymentPowerKw: number
+  /** Constant CU-K DC request used to construct this reference only. */
+  referenceDeploymentDcPowerKw: number
+  /** Mechanical shaft power after the neutral conversion model at low speed. */
+  referenceDeploymentMechanicalPowerKw: number
+  /** Mechanical attack-lap allocation after all conversion losses. */
+  referenceDeploymentEnergyBudgetMj: number | null
+  /** Event/policy recharge input before Energy Store conversion losses. */
+  referenceRechargeAtCuKBusMJ: number | null
+  referenceRechargeResolution:
+    | RechargeRuleDefinition['resolution']
+    | 'simulator-reference-policy'
+    | 'explicit-mechanical-budget'
+    | 'not-applicable'
+  referenceRechargeSourceId: string | null
   /**
    * MGU-K energy the lap assumes, in megajoules.
    *
@@ -643,23 +743,42 @@ export function simulatePhysicalLap(
   track: TrackDefinition,
   options: PhysicalLapOptions = {},
 ): PhysicalLapResult {
-  const resolved = resolveOptions(options)
+  const resolved = resolveOptions(options, track.id)
   const geometry = trackGeometry(track)
   const count = geometry.length
-  // Active aero is a property of where the car is on the road, not of the car,
-  // so the reference lap reads the same declared zones the race path reads
-  // through `activeAeroModeFor`. Without this the lap runs the closed-wing
-  // drag area everywhere, one terminal speed serves the whole calendar, and
-  // every circuit long enough to reach it peaks at the same number.
-  const straightDragScale =
-    options.activeAeroZones === false
-      ? 1
-      : clamp(resolved.physics.straightAeroDragMultiplier, 0.45, 1)
-  const dragScaleAt = geometry.map((_, index) =>
-    activeAeroZoneAt(track, index / count) ? straightDragScale : 1,
+  // The offline lap reads the same declared zones as live runtime, but at the
+  // category prior's neutral point because pitch, yaw, setup and wake are not
+  // observations available to this planner.
+  const cornerAeroAreas = activeAeroReferenceAreaMultipliers({
+    activeAeroState: {
+      frontStraightFraction: 0,
+      rearStraightFraction: 0,
+      transitionProgress: 1,
+    },
+    categoryPhysics: resolved.physics,
+  })
+  const straightAeroAreas = activeAeroReferenceAreaMultipliers({
+    activeAeroState: {
+      frontStraightFraction: 1,
+      rearStraightFraction: 1,
+      transitionProgress: 1,
+    },
+    categoryPhysics: resolved.physics,
+  })
+  const aeroAreasAt = geometry.map((_, index) =>
+    options.activeAeroZones !== false &&
+    activeAeroZoneAt(track, index / count)
+      ? straightAeroAreas
+      : cornerAeroAreas,
+  )
+  const dragScaleAt = aeroAreasAt.map(({ dragAreaMultiplier }) =>
+    dragAreaMultiplier,
   )
   const cornerCeilingMps = terminalSpeedMps(options)
-  const straightCeilingMps = terminalSpeedMps(options, straightDragScale)
+  const straightCeilingMps = terminalSpeedMps(
+    options,
+    straightAeroAreas.dragAreaMultiplier,
+  )
   const ceilingAt = dragScaleAt.map((scale) =>
     scale < 1 ? straightCeilingMps : cornerCeilingMps,
   )
@@ -671,8 +790,13 @@ export function simulatePhysicalLap(
     // together rather than only one of them.
     gripMultiplier: resolved.gripMultiplier * DRIVER_TRANSIENT_EFFICIENCY,
     massKg: resolved.massKg,
-    physics: resolved.physics,
   }
+  const physicsAt = (index: number) => ({
+    ...resolved.physics,
+    liftAreaM2:
+      resolved.physics.liftAreaM2 *
+      aeroAreasAt[index].downforceAreaMultiplier,
+  })
   // Keep the lateral limit separate from the offline reference envelope. The
   // latter is capped by the reference PU/drag policy so a quasi-steady lap can
   // be integrated, but live control must never mistake that terminal-speed
@@ -686,6 +810,7 @@ export function simulatePhysicalLap(
         ? bankingDegreesAt(track, index / count)
         : 0,
       ceilingMps: lateralSearchCeilingMps,
+      physics: physicsAt(index),
       radiusMeters: point.radiusMeters,
     })
 
@@ -709,7 +834,11 @@ export function simulatePhysicalLap(
       return 0
     }
 
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      physics: physicsAt(index),
+      speedMps,
+    })
     const demandN = (resolved.massKg * speedMps * speedMps) / radius
 
     return clamp(demandN / Math.max(1, grip.availableForceN), 0, 1)
@@ -723,7 +852,11 @@ export function simulatePhysicalLap(
     speedMps: number,
     share: number,
   ) => {
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      physics: physicsAt(index),
+      speedMps,
+    })
     const longitudinalBudgetN = remainingEllipseForceN({
       availableForceN: grip.availableForceN,
       usedForceN:
@@ -731,8 +864,8 @@ export function simulatePhysicalLap(
     })
     const driveForceN = Math.min(
       powerUnitDriveForceN({
-        deploymentPowerKw: permittedDeploymentKw(
-          resolved.deploymentPowerKw * share,
+        deploymentPowerKw: permittedDeploymentMechanicalKw(
+          resolved.deploymentDcPowerKw * share,
           speedMps,
         ),
         physics: resolved.physics,
@@ -751,7 +884,12 @@ export function simulatePhysicalLap(
   const tractionLimitedAccelerationMps2 = (index: number, speedMps: number) =>
     accelerationWithShareMps2(index, speedMps, deploymentShare[index])
   const brakingDecelerationMps2 = (index: number, speedMps: number) => {
-    const grip = tyreGripAt({ ...gripArgs, speedMps })
+    const grip = tyreGripAt({
+      ...gripArgs,
+      // The driver-adjustable bodywork returns to Corner Mode on the brakes.
+      physics: resolved.physics,
+      speedMps,
+    })
     const longitudinalBudgetN = remainingEllipseForceN({
       availableForceN: grip.availableForceN,
       usedForceN:
@@ -839,7 +977,10 @@ export function simulatePhysicalLap(
 
     return {
       energyMj:
-        (permittedDeploymentKw(resolved.deploymentPowerKw * share, averageMps) *
+        (permittedDeploymentMechanicalKw(
+          resolved.deploymentDcPowerKw * share,
+          averageMps,
+        ) *
           seconds) /
         1000,
       seconds,
@@ -855,7 +996,11 @@ export function simulatePhysicalLap(
    * is charged nothing; costing it as if it were spent would make the
    * allocation buy far less than the allowance actually pays for.
    */
-  const energyDrawMj = (index: number, profile: number[]) => {
+  const energyDrawMj = (
+    index: number,
+    profile: number[],
+    share = 1,
+  ) => {
     const entryMps = profile[index]
     const exitMps = profile[(index + 1) % count]
 
@@ -866,10 +1011,40 @@ export function simulatePhysicalLap(
     const averageMps = Math.max(1, (entryMps + exitMps) / 2)
 
     return (
-      (permittedDeploymentKw(resolved.deploymentPowerKw, averageMps) *
+      (permittedDeploymentMechanicalKw(
+        resolved.deploymentDcPowerKw * clamp(share, 0, 1),
+        averageMps,
+      ) *
         (geometry[index].segmentLengthMeters / averageMps)) /
       1000
     )
+  }
+
+  /**
+   * Finds the greatest request share whose exact, speed-limited energy draw is
+   * affordable. A proportional share is wrong near a C5.2.8 boundary because
+   * the regulatory cap can hold output flat while requested power is reduced.
+   */
+  const affordableDeploymentShare = (
+    index: number,
+    profile: number[],
+    affordableMj: number,
+    maximumShare = 1,
+  ) => {
+    let lower = 0
+    let upper = clamp(maximumShare, 0, 1)
+
+    for (let iteration = 0; iteration < 32; iteration += 1) {
+      const candidate = (lower + upper) / 2
+
+      if (energyDrawMj(index, profile, candidate) <= affordableMj) {
+        lower = candidate
+      } else {
+        upper = candidate
+      }
+    }
+
+    return lower
   }
 
   /**
@@ -941,8 +1116,11 @@ export function simulatePhysicalLap(
 
         // The segment the allowance runs out on takes the share it can pay
         // for, rather than being switched off, so the profile stays continuous.
-        next[index] = Math.min(1, remainingMj / drawMj)
-        remainingMj -= drawMj
+        next[index] =
+          remainingMj >= drawMj
+            ? 1
+            : affordableDeploymentShare(index, speeds, remainingMj)
+        remainingMj -= energyDrawMj(index, speeds, next[index])
       }
 
       deploymentShare = next
@@ -956,7 +1134,8 @@ export function simulatePhysicalLap(
     // removes energy, so this cannot run away.
     for (let trim = 0; trim < DEPLOYMENT_TRIM_PASSES; trim += 1) {
       const spentMj = order.reduce(
-        (total, index) => total + energyDrawMj(index, speeds) * deploymentShare[index],
+        (total, index) =>
+          total + energyDrawMj(index, speeds, deploymentShare[index]),
         0,
       )
       let excessMj = spentMj - resolved.deploymentEnergyBudgetMj
@@ -967,15 +1146,26 @@ export function simulatePhysicalLap(
 
       for (let rank = order.length - 1; rank >= 0 && excessMj > 0; rank -= 1) {
         const index = order[rank]
-        const spentHereMj =
-          energyDrawMj(index, speeds) * deploymentShare[index]
+        const spentHereMj = energyDrawMj(
+          index,
+          speeds,
+          deploymentShare[index],
+        )
 
         if (spentHereMj <= 0) {
           continue
         }
 
-        const releasedMj = Math.min(spentHereMj, excessMj)
-        deploymentShare[index] *= 1 - releasedMj / spentHereMj
+        const targetMj = Math.max(0, spentHereMj - excessMj)
+        const nextShare = affordableDeploymentShare(
+          index,
+          speeds,
+          targetMj,
+          deploymentShare[index],
+        )
+        const releasedMj =
+          spentHereMj - energyDrawMj(index, speeds, nextShare)
+        deploymentShare[index] = nextShare
         excessMj -= releasedMj
       }
 
@@ -1081,27 +1271,11 @@ export function simulatePhysicalLap(
   // allocation granted that segment. Integrating the permitted power over
   // exactly those segments gives what the finished lap spends, which is the
   // number `deployment-energy-budget` compares with the regulation.
-  const deploymentEnergyMj = geometry.reduce((total, point, index) => {
-    const entryMps = speeds[index]
-    const exitMps = speeds[(index + 1) % count]
-
-    if (exitMps <= entryMps) {
-      return total
-    }
-
-    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
-    const secondsOnSegment = point.segmentLengthMeters / averageMps
-
-    return (
-      total +
-      (permittedDeploymentKw(
-        resolved.deploymentPowerKw * deploymentShare[index],
-        averageMps,
-      ) *
-        secondsOnSegment) /
-        1000
-    )
-  }, 0)
+  const deploymentEnergyMj = geometry.reduce(
+    (total, _point, index) =>
+      total + energyDrawMj(index, speeds, deploymentShare[index]),
+    0,
+  )
 
   return {
     deploymentEnergyMj,
@@ -1109,7 +1283,15 @@ export function simulatePhysicalLap(
     maximumSpeedKph: Math.max(...speeds) * 3.6,
     minimumSpeedKph: Math.min(...speeds) * 3.6,
     points,
-    referenceDeploymentPowerKw: resolved.deploymentPowerKw,
+    referenceDeploymentDcPowerKw: resolved.deploymentDcPowerKw,
+    referenceDeploymentMechanicalPowerKw:
+      resolved.deploymentDcPowerKw *
+      REFERENCE_F1_ENERGY_CONVERSION.inverterEfficiency *
+      REFERENCE_F1_ENERGY_CONVERSION.motorEfficiency,
+    referenceDeploymentEnergyBudgetMj: resolved.deploymentEnergyBudgetMj,
+    referenceRechargeAtCuKBusMJ: resolved.referenceRechargeAtCuKBusMJ,
+    referenceRechargeResolution: resolved.referenceRechargeResolution,
+    referenceRechargeSourceId: resolved.referenceRechargeSourceId,
     speedsMps: speeds,
   }
 }

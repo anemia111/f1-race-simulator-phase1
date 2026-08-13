@@ -6,11 +6,13 @@ import type {
   Driver,
   RaceConfig,
   Team,
+  TimedSessionTire,
   TimedSessionSegmentPlan,
   TireCompound,
   WeatherState,
+  WeekendStage,
 } from '../types'
-import type { SeriesRules } from '../series/types'
+import { isF1SeriesRules, type SeriesRules } from '../series/types'
 import {
   driverLimitBreakFraction,
   driverPerformanceAbility,
@@ -20,7 +22,10 @@ import {
   baselineSetupForTrack,
   practiceSetupRecommendation,
 } from './engineering'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
 import {
   decideDriverBehavior,
@@ -38,6 +43,7 @@ import {
   type QualifyingReleaseSlot,
 } from './qualifyingStrategy'
 import { tireTrackGripMultiplier } from './tires'
+import { createSuperFormulaControlTireInventory } from './superFormulaControlTires2026'
 import { gripForSurfaceWater } from './trackWater'
 import {
   airDensityKgM3,
@@ -80,7 +86,7 @@ export type QualifyingResult = {
   lapTimeSeconds: number
   deltaSeconds: number
   segment: QualifyingSegmentName
-  compound: TireCompound
+  tire: TimedSessionTire
   sessionDurationSeconds: number
   abortedRunCount: number
   deletedRunCount: number
@@ -106,6 +112,7 @@ export type QualifyingSegment = {
   eliminatedDriverIds: string[]
   sessionDurationSeconds: number
   suspensionSeconds: number
+  tire: TimedSessionTire
   weather: WeatherState
   weatherLabel: string
 }
@@ -130,9 +137,8 @@ export type PracticeSessionResult = {
   setupConfidence: number
   lapsCompleted: number
   runCount: number
-  runCompounds: TireCompound[]
+  runTires: TimedSessionTire[]
   programs: Array<{
-    compound: TireCompound
     fuelLoadKg: number
     kind: NonNullable<
       ReturnType<typeof practiceProgramFor>
@@ -140,6 +146,7 @@ export type PracticeSessionResult = {
     label: string
     shortLabel: string
     targetFlyingLaps: number
+    tire: TimedSessionTire
     workItems: readonly string[]
   }>
   firstPitExitAtSeconds: number
@@ -152,7 +159,7 @@ export type PracticeSessionResult = {
 type QualifyingRun = {
   aborted: boolean
   deleted: boolean
-  compound: TireCompound
+  tire: TimedSessionTire
   pitExitAtSeconds: number
   outLapTimeSeconds: number
   flyingLapStartedAtSeconds: number
@@ -172,28 +179,77 @@ const timedPhysicalLapCache = new WeakMap<
 >()
 
 type TimedPhysicalLapOptions = {
-  compound: TireCompound
   config: RaceConfig
   fuelLoadKg: number
   setup: CarSetup
   team: Team
+  tire: TimedSessionTire
   trackGrip: number
   weather: WeatherState
+  weekendStage: WeekendStage
 }
 
 const finiteKey = (value: number) =>
   Number.isFinite(value) ? value.toFixed(5) : 'invalid'
 
+/**
+ * Returns the only SF timed-session tyre state that can be represented from
+ * the bundled source: dry/wet control surface plus an explicitly unavailable
+ * physical model. No coefficient is introduced into the lap calculation.
+ */
+export function superFormulaControlSessionTireForWeather(
+  weather: WeatherState,
+): Extract<TimedSessionTire, { kind: 'super-formula-control-session-tire' }> {
+  const inventory = createSuperFormulaControlTireInventory()
+
+  return {
+    kind: 'super-formula-control-session-tire',
+    physicalModel: {
+      availability: 'unavailable',
+      simulatorPolicy: 'do-not-apply-physical-tire-coefficients',
+      sourceInput: inventory.specification.physicalCoefficients,
+      value: null,
+    },
+    surface: weather === 'clear' ? 'dry' : 'wet',
+  }
+}
+
+function sessionTireCacheKey(tire: TimedSessionTire) {
+  return tire.kind === 'f1-pirelli-session-tire'
+    ? `f1-pirelli:${tire.compound}`
+    : `super-formula-control:${tire.surface}:${tire.physicalModel.availability}`
+}
+
+function assertTimedSessionTireMatchesCategory(
+  config: RaceConfig,
+  tire: TimedSessionTire,
+) {
+  const isSuperFormula = config.seriesId === 'super-formula'
+  const matchesCategory = isSuperFormula
+    ? tire.kind === 'super-formula-control-session-tire'
+    : tire.kind === 'f1-pirelli-session-tire'
+
+  if (!matchesCategory) {
+    throw new Error(
+      isSuperFormula
+        ? 'SUPER FORMULA timed sessions require a dry/wet control-session tyre.'
+        : 'F1 timed sessions require a Pirelli session tyre.',
+    )
+  }
+}
+
 function physicalLapCacheKey(options: TimedPhysicalLapOptions) {
-  const { compound, config, fuelLoadKg, setup, team, trackGrip, weather } =
+  const { config, fuelLoadKg, setup, team, tire, trackGrip, weather } =
     options
   const machine = team.machine
 
   return [
     config.seriesId ?? 'f1-custom',
     config.track.id,
+    options.weekendStage,
+    finiteKey(config.fiaNominalTyreMassKg ?? Number.NaN),
     weather,
-    compound,
+    sessionTireCacheKey(tire),
     finiteKey(fuelLoadKg),
     finiteKey(trackGrip),
     finiteKey(machine.puOutput),
@@ -222,6 +278,7 @@ function surfaceWaterForWeather(weather: WeatherState) {
  * are the only inputs that can change the reference lap.
  */
 function timedPhysicalLap(options: TimedPhysicalLapOptions) {
+  assertTimedSessionTireMatchesCategory(options.config, options.tire)
   let cache = timedPhysicalLapCache.get(options.config)
 
   if (!cache) {
@@ -237,15 +294,20 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
   }
 
   const {
-    compound,
     config,
     fuelLoadKg,
     setup,
     team,
+    tire,
     trackGrip,
     weather,
   } = options
   const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const operationalMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
+    physics: categoryPhysics,
+    weekendStage: options.weekendStage,
+  })
   const waterMm = surfaceWaterForWeather(weather)
   const trackCondition = {
     dryingLine: weather === 'clear' ? 1 : 0,
@@ -258,7 +320,11 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     waterMm,
     trackCondition.dryingLine,
   )
-  const compoundGrip = tireTrackGripMultiplier(compound, trackCondition)
+  const categoryTyreGrip =
+    config.seriesId !== 'super-formula' &&
+    tire.kind === 'f1-pirelli-session-tire'
+      ? tireTrackGripMultiplier(tire.compound, trackCondition)
+      : null
   const downforceScale = vehicleDownforceMultiplier({ setup, team })
   const physics = {
     ...categoryPhysics,
@@ -276,18 +342,26 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
       temperatureC: temperatures.airTemperatureC,
     }),
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
+    eventId: config.eventId,
+    fiaPuEventInput: config.fiaPuEventInput,
     dragAreaM2: vehicleDragAreaM2({
-      activeAeroMode: 'partial-straight',
+      // This is the Corner-Mode base area. `simulatePhysicalLap` applies the
+      // decomposed front/rear map only inside declared activation zones.
+      activeAeroMode: 'corner',
       categoryPhysics,
       setup,
       team,
     }),
     gripMultiplier: vehicleTyreGripMultiplierForTeam(
       team,
-      surfaceGrip * compoundGrip,
+      categoryTyreGrip === null
+        ? surfaceGrip
+        : surfaceGrip * categoryTyreGrip,
     ),
-    massKg: categoryPhysics.minimumMassKg + Math.max(0, fuelLoadKg),
+    massKg: operationalMass.operationalMassKg + Math.max(0, fuelLoadKg),
     physics,
+    timedRunPhase: 'attack-lap',
+    weekendStage: config.weekendStage ?? 'qualifying',
   })
 
   cache.set(key, result)
@@ -495,6 +569,47 @@ function compoundForQualifyingSegment(
   return configuredDryCompound ?? 'S'
 }
 
+function sessionTireForQualifyingSegment(
+  config: RaceConfig,
+  segment: QualifyingSegmentName,
+  weather: WeatherState,
+): TimedSessionTire {
+  if (config.seriesId === 'super-formula') {
+    return superFormulaControlSessionTireForWeather(weather)
+  }
+
+  return {
+    compound: compoundForQualifyingSegment(
+      segment,
+      weather,
+      config.qualifyingDryCompound,
+    ),
+    kind: 'f1-pirelli-session-tire',
+  }
+}
+
+function sessionTireForPracticeProgram(
+  config: RaceConfig,
+  weather: WeatherState,
+  options: Parameters<typeof practiceDryCompoundFor>[0],
+): TimedSessionTire {
+  if (config.seriesId === 'super-formula') {
+    return superFormulaControlSessionTireForWeather(weather)
+  }
+
+  const compound =
+    weather === 'heavy-rain'
+      ? ('W' as const)
+      : weather === 'light-rain'
+        ? ('I' as const)
+        : practiceDryCompoundFor(options)
+
+  return {
+    compound,
+    kind: 'f1-pirelli-session-tire',
+  }
+}
+
 function qualifyingRunLapTime(
   seed: string,
   segment: QualifyingSegmentName,
@@ -503,7 +618,7 @@ function qualifyingRunLapTime(
   config: RaceConfig,
   weather: WeatherState,
   trackGrip: number,
-  compound: TireCompound,
+  tire: TimedSessionTire,
   run: number,
 ): number {
   const setup =
@@ -511,13 +626,16 @@ function qualifyingRunLapTime(
     baselineSetupForTrack(config.track)
   const fuelLoadKg = Math.max(4, baseFuelBurnKgPerLap(config.track) * 2)
   const physicalOptions = {
-    compound,
     config,
     fuelLoadKg,
     setup,
     team,
+    tire,
     trackGrip,
     weather,
+    weekendStage: segment.startsWith('SQ')
+      ? ('sprintQualifying' as const)
+      : ('qualifying' as const),
   }
   const physicalLapTimeSeconds = timedSessionPhysicalLapSeconds(
     physicalOptions,
@@ -543,11 +661,7 @@ function qualifyingRunsForDriver(
   releaseSlots: QualifyingReleaseSlot[],
   sessionDurationSeconds: number,
 ): QualifyingRun[] {
-  const compound = compoundForQualifyingSegment(
-    segment,
-    weather,
-    config.qualifyingDryCompound,
-  )
+  const tire = sessionTireForQualifyingSegment(config, segment, weather)
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
   const awareness = driverPerformanceAbility(driver, 'raceAwareness')
 
@@ -560,7 +674,7 @@ function qualifyingRunsForDriver(
       config,
       weather,
       trackGrip,
-      compound,
+      tire,
       run,
     )
     const runKey = `${seed}:run-lap:${segment}:${driver.id}:${run}`
@@ -596,7 +710,7 @@ function qualifyingRunsForDriver(
     return {
       aborted,
       deleted,
-      compound,
+      tire,
       pitExitAtSeconds,
       outLapTimeSeconds,
       flyingLapStartedAtSeconds,
@@ -713,11 +827,6 @@ function runQualifyingSegment(
     ? ('sprintQualifying' as const)
     : ('qualifying' as const)
   const segmentPlan: TimedSessionSegmentPlan = {
-    compound: compoundForQualifyingSegment(
-      segment,
-      weather,
-      config.qualifyingDryCompound,
-    ),
     declaredWet: weather !== 'clear',
     endsAtSeconds: sessionDurationSeconds,
     name: segment,
@@ -725,6 +834,7 @@ function runQualifyingSegment(
     startsAtSeconds: 0,
     suspensionEndsAtSeconds: null,
     suspensionStartsAtSeconds: null,
+    tire: sessionTireForQualifyingSegment(config, segment, weather),
   }
   const releaseSlotsByDriver = new Map<string, QualifyingReleaseSlot[]>()
 
@@ -985,6 +1095,9 @@ function runKnockoutSession(
         eliminatedDriverIds: firstEliminated.map((result) => result.driverId),
         sessionDurationSeconds: durationForSegment(segments[0]),
         suspensionSeconds: qualifyingSuspensionSeconds(config, segments[0]),
+        tire:
+          first[0]?.tire ??
+          sessionTireForQualifyingSegment(config, segments[0], 'clear'),
         weather: first[0]?.weather ?? 'clear',
         weatherLabel: first[0]?.weatherLabel ?? 'CLEAR',
       },
@@ -994,6 +1107,9 @@ function runKnockoutSession(
         eliminatedDriverIds: secondEliminated.map((result) => result.driverId),
         sessionDurationSeconds: durationForSegment(segments[1]),
         suspensionSeconds: qualifyingSuspensionSeconds(config, segments[1]),
+        tire:
+          second[0]?.tire ??
+          sessionTireForQualifyingSegment(config, segments[1], 'clear'),
         weather: second[0]?.weather ?? 'clear',
         weatherLabel: second[0]?.weatherLabel ?? 'CLEAR',
       },
@@ -1003,6 +1119,9 @@ function runKnockoutSession(
         eliminatedDriverIds: [],
         sessionDurationSeconds: durationForSegment(segments[2]),
         suspensionSeconds: qualifyingSuspensionSeconds(config, segments[2]),
+        tire:
+          third[0]?.tire ??
+          sessionTireForQualifyingSegment(config, segments[2], 'clear'),
         weather: third[0]?.weather ?? 'clear',
         weatherLabel: third[0]?.weatherLabel ?? 'CLEAR',
       },
@@ -1018,13 +1137,18 @@ function qualifyingSegmentSummary(
   eliminatedDriverIds: string[],
   durationSeconds: number,
 ): QualifyingSegment {
+  const weather = results[0]?.weather ?? 'clear'
+
   return {
     eliminatedDriverIds,
     name,
     results,
     sessionDurationSeconds: durationSeconds,
     suspensionSeconds: qualifyingSuspensionSeconds(config, name),
-    weather: results[0]?.weather ?? 'clear',
+    tire:
+      results[0]?.tire ??
+      sessionTireForQualifyingSegment(config, name, weather),
+    weather,
     weatherLabel: results[0]?.weatherLabel ?? 'CLEAR',
   }
 }
@@ -1039,7 +1163,7 @@ function driversForResults(config: RaceConfig, results: QualifyingResult[]) {
 
 /**
  * Runs the category's configured 2026 qualifying format. F1 uses three-stage
- * knockout qualifying, F2/F3 use one timed session, and Super Formula splits
+ * knockout qualifying while Super Formula splits
  * the opening session into independent groups before its final segment.
  */
 export function runSeriesQualifying(
@@ -1048,8 +1172,13 @@ export function runSeriesQualifying(
 ): KnockoutQualifying {
   const config: RaceConfig = {
     ...baseConfig,
-    qualifyingDryCompound:
-      baseConfig.qualifyingDryCompound ?? rules.tires.qualifyingDryCompound,
+    seriesId: isF1SeriesRules(rules) ? 'f1-custom' : 'super-formula',
+    ...(isF1SeriesRules(rules)
+      ? {
+          qualifyingDryCompound:
+            baseConfig.qualifyingDryCompound ?? rules.tires.qualifyingDryCompound,
+        }
+      : {}),
   }
   const segmentRules = rules.qualifying.segments
 
@@ -1268,21 +1397,15 @@ export function runPracticeSession(
         seed: config.seed,
         stage,
       })!
-      const compound =
-        weather === 'heavy-rain'
-          ? ('W' as const)
-          : weather === 'light-rain'
-            ? ('I' as const)
-            : practiceDryCompoundFor({
-                driverId: driver.id,
-                plan,
-                runIndex,
-                seed: config.seed,
-                stage,
-              })
+      const tire = sessionTireForPracticeProgram(config, weather, {
+        driverId: driver.id,
+        plan,
+        runIndex,
+        seed: config.seed,
+        stage,
+      })
 
       return {
-        compound,
         fuelLoadKg: Math.min(
           110,
           Math.max(
@@ -1294,6 +1417,7 @@ export function runPracticeSession(
         label: plan.label,
         shortLabel: plan.shortLabel,
         targetFlyingLaps: plan.targetFlyingLaps,
+        tire,
         workItems: plan.workItems,
       }
     })
@@ -1336,15 +1460,16 @@ export function runPracticeSession(
         (longest, candidate) =>
           candidate.fuelLoadKg > longest.fuelLoadKg ? candidate : longest,
         programs[0]!,
-      )
+    )
     const bestPhysicalOptions = {
-      compound: bestProgram.compound,
       config,
       fuelLoadKg: bestProgram.fuelLoadKg,
       setup: sessionSetup,
       team,
+      tire: bestProgram.tire,
       trackGrip,
       weather,
+      weekendStage: stage,
     }
     const bestLapTimeSeconds =
       timedSessionPhysicalLapSeconds(bestPhysicalOptions) +
@@ -1353,15 +1478,16 @@ export function runPracticeSession(
         driver,
         run: stageIndex,
         seed: `${config.seed}:practice:${stage}:${driver.id}:best`,
-      })
+    })
     const longRunPhysicalOptions = {
-      compound: longRunProgram.compound,
       config,
       fuelLoadKg: longRunProgram.fuelLoadKg,
       setup: sessionSetup,
       team,
+      tire: longRunProgram.tire,
       trackGrip,
       weather,
+      weekendStage: stage,
     }
     const longRunPaceSeconds =
       timedSessionPhysicalLapSeconds(longRunPhysicalOptions) +
@@ -1394,7 +1520,7 @@ export function runPracticeSession(
       setupScore,
       stage,
     })
-    const runCompounds = programs.map((program) => program.compound)
+    const runTires = programs.map((program) => program.tire)
 
     return {
       driverId: driver.id,
@@ -1411,7 +1537,7 @@ export function runPracticeSession(
       setupConfidence: setup.confidence,
       lapsCompleted,
       runCount,
-      runCompounds,
+      runTires,
       programs,
       firstPitExitAtSeconds,
       finalPitExitAtSeconds,

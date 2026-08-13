@@ -1,0 +1,7 @@
+﻿{
+    "command":  "git diff",
+    "startedAtUtc":  "2026-08-08T09:37:13.8586698Z",
+    "endedAtUtc":  "2026-08-08T09:37:13.9726002Z",
+    "exitCode":  0,
+    "logFile":  "git-diff.log"
+}

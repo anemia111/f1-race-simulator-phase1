@@ -47,7 +47,6 @@ export function buildTimedSessionPlan(
       const endsAtSeconds =
         cursor + durationSeconds + suspensionSeconds
       const plan: TimedSessionSegmentPlan = {
-        compound: segment.results[0]?.compound ?? 'S',
         declaredWet: segment.weather !== 'clear',
         displayLabel: options.displayLabel,
         endsAtSeconds,
@@ -61,6 +60,7 @@ export function buildTimedSessionPlan(
         startsAtSeconds: cursor,
         suspensionEndsAtSeconds,
         suspensionStartsAtSeconds,
+        tire: segment.tire,
       }
 
       cursor = endsAtSeconds

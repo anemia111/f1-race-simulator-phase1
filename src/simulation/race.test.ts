@@ -2,10 +2,13 @@
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { beforeAll } from 'vitest'
 import { tracks } from '../data/tracks'
+import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
+import { seriesPackageById } from '../series/seriesRegistry'
 import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import { flagFromRaceControl } from '../services/openF1Derived'
 import { calibrateFieldFromOpenF1 } from '../services/openF1Performance'
 import type {
+  CarSnapshot,
   PenaltyRecord,
   RaceConfig,
   RaceSnapshot,
@@ -13,6 +16,10 @@ import type {
   TireCompound,
 } from '../types'
 import { incidentForLap, terminalCrashFlagResponse } from './incidents'
+import {
+  overtakeAllowanceBoundedDcPowerLimitKw,
+  overtakeIncrementalDcEnergyUsedMj,
+} from './telemetry'
 import {
   battleDynamicsFor,
   crashFlagResponseFor,
@@ -35,8 +42,10 @@ import {
   blueFlagApproachingCarFor,
   carDefinesNeutralisationQueueOrder,
   createInitialRace,
+  finalTimingLineSplit,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
+  postLineEnergyUsageForFinalCrossing,
   reformFieldForRedRestart,
   reformFieldForStandingRestart,
   rankCars,
@@ -61,6 +70,7 @@ import {
   MAX_LATERAL_SPEED_MPS,
 } from './lateralDynamics'
 import { categoryPhysicsFor } from './categoryPhysics'
+import { createInitialActiveAeroState } from './activeAero'
 import { selectGear } from './drivetrain'
 import { combustionPowerKwFor } from './vehicleDynamics'
 import { startingGridDistance } from './startingGrid'
@@ -91,6 +101,7 @@ import {
   completeRaceSession,
   createWeekendContext,
 } from './weekend'
+import { replaceSuperFormula2026Engine } from './superFormulaEngineLedger'
 import {
   trackGripForSector,
   trackGripForWeather,
@@ -129,6 +140,597 @@ function runThroughStart(
   snapshot = advanceRace(snapshot, 8, config)
   snapshot = advanceRace(snapshot, 5, config)
   return snapshot
+}
+
+describe('lap-start energy rule authority', () => {
+  it('carries only the physically accepted Overtake debit after a Line crossing', () => {
+    const remainingAllowanceMj = 0.011
+    const deltaSeconds = 1
+    const normalLimitKw = 100
+    const boundedLimitKw = overtakeAllowanceBoundedDcPowerLimitKw({
+      active: true,
+      declaredDeploymentDcPowerLimitKw: 350,
+      deltaSeconds,
+      normalDeploymentDcPowerLimitKw: normalLimitKw,
+      remainingAllowanceMj,
+    })
+    const physicalDebitMj = overtakeIncrementalDcEnergyUsedMj({
+      actualDeploymentDcPowerKw: boundedLimitKw,
+      active: true,
+      deltaSeconds,
+      normalDeploymentDcLimitKw: normalLimitKw,
+      remainingAllowanceMj,
+    })
+    const split = finalTimingLineSplit({
+      nextTotalDistance: 4.02,
+      previousTotalDistance: 3.98,
+      processedLap: 3,
+    })!
+    const retained = postLineEnergyUsageForFinalCrossing({
+      deploymentAcceptanceScale: 1,
+      frameOvertakeEnergyUsedMJ: physicalDebitMj,
+      frameSuperclipRecoveredMJ: 0,
+      postLineFraction: split.postLineFraction,
+      rechargeAcceptanceScale: 1,
+    })
+
+    expect(physicalDebitMj).toBeCloseTo(remainingAllowanceMj, 12)
+    expect(retained.overtakeEnergyUsedMJ).toBeCloseTo(
+      remainingAllowanceMj * split.postLineFraction,
+      12,
+    )
+    expect(retained.overtakeEnergyUsedMJ).toBeLessThanOrEqual(
+      remainingAllowanceMj,
+    )
+  })
+
+  it('allocates an extreme multi-Line frame only after its final crossing', () => {
+    const split = finalTimingLineSplit({
+      nextTotalDistance: 5.1,
+      previousTotalDistance: 2.9,
+      processedLap: 2,
+    })
+
+    expect(split).toMatchObject({
+      crossedLapCount: 3,
+      finalCrossedLap: 5,
+    })
+    expect(split?.crossingFraction).toBeCloseTo(
+      (5 - 2.9) / (5.1 - 2.9),
+      12,
+    )
+    expect(split?.postLineFraction).toBeCloseTo(
+      (5.1 - 5) / (5.1 - 2.9),
+      12,
+    )
+    const retained = postLineEnergyUsageForFinalCrossing({
+      deploymentAcceptanceScale: 1,
+      frameOvertakeEnergyUsedMJ: 0.22,
+      frameSuperclipRecoveredMJ: 0.44,
+      postLineFraction: split!.postLineFraction,
+      rechargeAcceptanceScale: 0.5,
+    })
+
+    expect(retained.overtakeEnergyUsedMJ).toBeCloseTo(
+      0.22 * split!.postLineFraction,
+      12,
+    )
+    expect(retained.superclipRecoveredMJ).toBeCloseTo(
+      0.44 * split!.postLineFraction * 0.5,
+      12,
+    )
+    expect(
+      finalTimingLineSplit({
+        nextTotalDistance: 5.1,
+        previousTotalDistance: 5.1,
+        processedLap: 5,
+      }),
+    ).toBeNull()
+  })
+
+  it('latches the Overtake recharge allowance at the line for the whole lap', () => {
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
+    const config: RaceConfig = {
+      ...makeConfig('lap-start-overtake-recharge-latch'),
+      eventId: 'f1-03',
+      fiaPuEventInput: fiaSuzukaPuEventInput2026,
+      overtakeSystem: 'active-aero',
+      track: {
+        ...suzuka,
+        rainProbability: 0,
+        overtakeControlLines: [
+          {
+            activationProgress: 0.99,
+            detectionGapSeconds: 1,
+            detectionProgress: 0.95,
+            source: 'derived',
+          },
+        ],
+      },
+    }
+    const started = runThroughStart(config)
+    const targetId = started.cars[0].driverId
+    const prepared: RaceSnapshot = {
+      ...started,
+      flag: 'clear',
+      flagLabel: 'CLEAR',
+      flagPhase: null,
+      lowGripConditions: false,
+      overtakeEnabled: true,
+      cars: started.cars.map((car, index) => {
+        const totalDistance = 2.999 - index * 0.01
+
+        return withF1RuntimeFields({
+          ...car,
+          battlePhase: 'single-file' as const,
+          battleOpponentId: null,
+          battlePhaseUntilSeconds: null,
+          gapToAhead: index === 0 ? 0 : 2,
+          gapToLeader: index * 2,
+          lap: 2,
+          lapStartedAtSeconds: started.elapsedSeconds - 80,
+          overtakeStatus: index === 0 ? ('active' as const) : ('disabled' as const),
+          position: index + 1,
+          processedBattleSegment: Number.MAX_SAFE_INTEGER,
+          processedLap: 2,
+          progress: totalDistance - Math.floor(totalDistance),
+          speedKph: 330,
+          status: 'running' as const,
+          totalDistance,
+        }, {
+          overtakeEligibility:
+            index === 0
+              ? {
+                  activationLap: 2,
+                  controlLineIndex: 0,
+                  detectedGapSeconds: 0.5,
+                  eligible: true,
+                }
+              : null,
+        })
+      }),
+    }
+
+    const crossed = advanceRace(prepared, 0.5, config)
+    const crossedTarget = crossed.cars.find((car) => car.driverId === targetId)!
+
+    expect(crossedTarget.processedLap).toBe(3)
+    expect(f1Runtime(crossedTarget).overtakeRechargeAllowanceActiveThisLap).toBe(true)
+    expect(f1Runtime(crossedTarget).energyStore.rechargeRule).toMatchObject({
+      additionalAllowanceMJ: 0.5,
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 9 },
+      ruleId: 'suzuka-race-overtake-active-at-lap-start',
+      usedMJ: 0,
+    })
+    expect(f1Runtime(crossedTarget).energyDeployedThisLapMj).toBeGreaterThan(0)
+    expect(f1Runtime(crossedTarget).energyDeployedThisLapMj).toBeCloseTo(
+      f1Runtime(crossedTarget).energyStore.deployedAtCuKBusThisLapMJ,
+      12,
+    )
+    expect(f1Runtime(crossedTarget).overtakeEnergyRemainingMj).toBeLessThan(0.5)
+    expect(
+      Math.abs(
+        f1Runtime(crossedTarget).energyStore.currentEnergyMJ -
+          (f1Runtime(crossedTarget).energyStore.lapStartEnergyMJ +
+            f1Runtime(crossedTarget).energyStore.storedEnergyThisLapMJ -
+            f1Runtime(crossedTarget).energyStore.energyRemovedThisLapMJ),
+      ),
+    ).toBeLessThan(1e-9)
+
+    const afterOvertake = advanceRace(
+      {
+        ...crossed,
+        cars: crossed.cars.map((car) =>
+          car.driverId === targetId
+            ? withF1RuntimeFields({
+                ...car,
+                overtakeStatus: 'disabled' as const,
+              }, { overtakeEligibility: null })
+            : car,
+        ),
+      },
+      0.01,
+      config,
+    )
+    const heldTarget = afterOvertake.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(f1Runtime(heldTarget).overtakeRechargeAllowanceActiveThisLap).toBe(true)
+    expect(f1Runtime(heldTarget).energyStore.rechargeRule.ruleId).toBe(
+      'suzuka-race-overtake-active-at-lap-start',
+    )
+  })
+
+  it('latches the event out-lap rule at pit release and the attack-lap rule at the line', () => {
+    const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
+    const config: RaceConfig = {
+      ...makeConfig('timed-session-recharge-latch'),
+      eventId: 'f1-03',
+      fiaPuEventInput: fiaSuzukaPuEventInput2026,
+      track: { ...suzuka, rainProbability: 0 },
+      weekendStage: 'qualifying',
+    }
+    const initial = createInitialRace(config)
+    const targetId = initial.cars[0].driverId
+    const released = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) => ({
+          ...car,
+          pitUntilSeconds: index === 0 ? 0 : null,
+        })),
+      },
+      0.1,
+      config,
+    )
+    const releasedTarget = released.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(releasedTarget).toMatchObject({
+      status: 'running',
+      timedRunPhase: 'out-lap',
+    })
+    expect(f1Runtime(releasedTarget).overtakeRechargeAllowanceActiveThisLap).toBe(false)
+    expect(f1Runtime(releasedTarget).energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 9 },
+      ruleId: 'suzuka-out-lap-other-than-race',
+      usedMJ: 0,
+    })
+
+    const crossed = advanceRace(
+      {
+        ...released,
+        cars: released.cars.map((car) =>
+          car.driverId === targetId
+            ? {
+                ...car,
+                lap: 0,
+                lapStartedAtSeconds: null,
+                processedBattleSegment: Number.MAX_SAFE_INTEGER,
+                processedLap: 0,
+                progress: 0.999,
+                speedKph: 300,
+                status: 'running' as const,
+                timedRunPhase: 'out-lap' as const,
+                totalDistance: 0.999,
+              }
+            : car,
+        ),
+      },
+      0.5,
+      config,
+    )
+    const crossedTarget = crossed.cars.find(
+      (car) => car.driverId === targetId,
+    )!
+
+    expect(crossedTarget.processedLap).toBe(1)
+    expect(crossedTarget.timedRunPhase).toBe('attack-lap')
+    expect(f1Runtime(crossedTarget).energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 8 },
+      ruleId: 'suzuka-qualifying',
+      usedMJ: 0,
+    })
+  })
+
+  it('starts a fresh lap energy ledger only when pit release crosses the Line', () => {
+    const config = makeConfig('race-pit-release-energy-line')
+    const initial = runThroughStart(config)
+    const withUsedEnergyLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => {
+      const runtime = f1Runtime(car)
+
+      return withF1RuntimeFields(car, {
+        energyHarvestedThisLapMj: usedMJ,
+        energyStore: {
+          ...runtime.energyStore,
+        rechargedAtCuKBusThisLapMJ: usedMJ,
+        rechargeRule: {
+            ...runtime.energyStore.rechargeRule,
+          remainingMJ:
+              runtime.energyStore.rechargeRule.limit.kind === 'finite'
+                ? runtime.energyStore.rechargeRule.limit.maxCuKBusRechargeMj - usedMJ
+              : null,
+          usedMJ,
+        },
+        },
+        overtakeEnergyRemainingMj: 0.05,
+        superClippingRecoveredThisLapMj: Math.min(0.2, usedMJ),
+      })
+    }
+    const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
+    const beforeLine = withUsedEnergyLedger(initial.cars[0], 1.25)
+    const alreadyAfterLine = withUsedEnergyLedger(initial.cars[1], 0.75)
+    const forced: RaceSnapshot = {
+      ...initial,
+      flag: 'sc',
+      flagLabel: 'SC',
+      flagPhase: {
+        endMessage: 'Safety Car in.',
+        endSeconds: 1_000,
+        flag: 'sc',
+        id: 'pit-release-energy-sc',
+        lappedCarsMayOvertakeAtSeconds: null,
+        sector: 0,
+        startMessage: 'Safety Car deployed.',
+        startSeconds: 0,
+      },
+      lowGripConditions: true,
+      sectorFlags: ['sc', 'sc', 'sc'],
+      surfaceWaterMmBySector: [3, 3, 3],
+      trackGrip: 0.55,
+      weather: 'heavy-rain',
+      cars: initial.cars.map((car, index) => {
+        if (index === 0) {
+          return {
+            ...beforeLine,
+            lap: 3,
+            pitPhase: 'box' as const,
+            pitUntilSeconds: 0,
+            processedLap: 3,
+            progress: 0.98,
+            status: 'pit' as const,
+            totalDistance: 3.98,
+          }
+        }
+        if (index === 1) {
+          const progress = Math.max(0.001, pitExitProgress - 0.05)
+          return {
+            ...alreadyAfterLine,
+            lap: 4,
+            pitPhase: 'box' as const,
+            pitUntilSeconds: 0,
+            processedLap: 4,
+            progress,
+            status: 'pit' as const,
+            totalDistance: 4 + progress,
+          }
+        }
+        return car
+      }),
+    }
+    const released = advanceRace(forced, 0.1, config)
+    const crossed = released.cars[0]
+    const sameLap = released.cars[1]
+
+    expect(crossed.processedLap).toBe(4)
+    expect(f1Runtime(crossed)).toMatchObject({
+      energyHarvestedThisLapMj: 0,
+      energyLapStartedBehindSafetyCar: true,
+      energyLapStartedInLowGripConditions: true,
+      overtakeEnergyRemainingMj: 0.5,
+      overtakeRechargeAllowanceActiveThisLap: false,
+      superClippingRecoveredThisLapMj: 0,
+    })
+    expect(f1Runtime(crossed).energyStore.rechargeRule).toMatchObject({
+      limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+      resolution: 'technical-low-grip-safety-car',
+      usedMJ: 0,
+    })
+    expect(f1Runtime(sameLap).energyStore.rechargeRule.usedMJ).toBeCloseTo(0.75, 12)
+    expect(f1Runtime(sameLap).overtakeEnergyRemainingMj).toBe(0.05)
+    expect(f1Runtime(sameLap).superClippingRecoveredThisLapMj).toBe(0.2)
+  })
+
+  it('recreates the opening energy ledger from the current grid and rolling-start context', () => {
+    const base = makeConfig('formation-current-energy-context')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const staleEnergyLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => {
+      const runtime = f1Runtime(car)
+      const rechargeLimit = runtime.energyStore.rechargeRule.limit
+
+      return withF1RuntimeFields(car, {
+        energyHarvestedThisLapMj: usedMJ,
+        energyStore: {
+          ...runtime.energyStore,
+          rechargedAtCuKBusThisLapMJ: usedMJ,
+          rechargeRule: {
+            ...runtime.energyStore.rechargeRule,
+            remainingMJ:
+              rechargeLimit.kind === 'finite'
+                ? rechargeLimit.maxCuKBusRechargeMj - usedMJ
+                : null,
+            usedMJ,
+          },
+        },
+      })
+    }
+    const soakTrack = (snapshot: RaceSnapshot) => ({
+      ...snapshot,
+      lowGripConditions: true,
+      surfaceWaterMmBySector: [3, 3, 3] as [number, number, number],
+      dryingLineBySector: [0, 0, 0] as [number, number, number],
+      cars: snapshot.cars.map((car) => staleEnergyLedger(car, 1.25)),
+    })
+    const initial = createInitialRace(config)
+    const grid = advanceRace(
+      initial,
+      initial.formationLapDurationSeconds * initial.formationLapsPlanned,
+      config,
+    )
+    const lights = advanceRace(grid, 8, config)
+    const startedFromGrid = advanceRace(soakTrack(lights), 5, config)
+
+    expect(startedFromGrid.startProcedure).toBe('racing')
+    expect(startedFromGrid.lowGripConditions).toBe(true)
+    startedFromGrid.cars.forEach((car) => {
+      expect(f1Runtime(car).energyLapStartedBehindSafetyCar).toBe(false)
+      expect(f1Runtime(car).energyLapStartedInLowGripConditions).toBe(true)
+      expect(f1Runtime(car).energyStore.rechargeRule).toMatchObject({
+        limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+        usedMJ: 0,
+      })
+      expect(f1Runtime(car).energyStore.rechargedAtCuKBusThisLapMJ).toBe(0)
+    })
+
+    const rollingStart = advanceRace(
+      {
+        ...soakTrack(createInitialRace(config)),
+        formationBehindSafetyCar: true,
+      },
+      initial.formationLapDurationSeconds * initial.formationLapsPlanned,
+      config,
+    )
+
+    expect(rollingStart.startProcedure).toBe('racing')
+    rollingStart.cars.forEach((car) => {
+      expect(f1Runtime(car).energyLapStartedBehindSafetyCar).toBe(true)
+      expect(f1Runtime(car).energyLapStartedInLowGripConditions).toBe(true)
+      expect(f1Runtime(car).energyStore.rechargeRule).toMatchObject({
+        limit: { kind: 'unlimited', maxCuKBusRechargeMj: null },
+        usedMJ: 0,
+      })
+    })
+  })
+
+  it('resets only reformed cars whose red restart route crosses the Line', () => {
+    const base = makeConfig('red-reform-energy-line')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const started = runThroughStart(config)
+    const sameLapId = started.cars[1].driverId
+    const crossedLineId = started.cars[2].driverId
+    const withUsedLedger = (
+      car: RaceSnapshot['cars'][number],
+      usedMJ: number,
+    ) => {
+      const runtime = f1Runtime(car)
+      const rechargeLimit = runtime.energyStore.rechargeRule.limit
+
+      return withF1RuntimeFields(car, {
+        energyHarvestedThisLapMj: usedMJ,
+        overtakeEnergyRemainingMj: 0.05,
+        superClippingRecoveredThisLapMj: 0.2,
+        energyStore: {
+          ...runtime.energyStore,
+          rechargedAtCuKBusThisLapMJ: usedMJ,
+          rechargeRule: {
+            ...runtime.energyStore.rechargeRule,
+            remainingMJ:
+              rechargeLimit.kind === 'finite'
+                ? rechargeLimit.maxCuKBusRechargeMj - usedMJ
+                : null,
+            usedMJ,
+          },
+        },
+      })
+    }
+    const redRestart = advanceRace(
+      {
+        ...started,
+        flag: 'red',
+        flagLabel: 'RED',
+        flagPhase: {
+          endMessage: 'Red flag lifted.',
+          endSeconds: started.elapsedSeconds,
+          flag: 'red',
+          id: 'red-reform-energy-line',
+          sector: 0,
+          startMessage: 'Red flag.',
+          startSeconds: started.elapsedSeconds - 10,
+        },
+        lowGripConditions: false,
+        cars: started.cars.map((car, index) => {
+          const totalDistance =
+            index === 0
+              ? 5.1
+              : index === 1
+                ? 5.05
+                : index === 2
+                  ? 4.99
+                  : 4.98 - (index - 3) * 0.001
+          const prepared =
+            index === 1
+              ? withUsedLedger(car, 0.75)
+              : index === 2
+                ? withUsedLedger(car, 1.25)
+                : car
+
+          return {
+            ...prepared,
+            lap: Math.floor(totalDistance),
+            processedLap: Math.floor(totalDistance),
+            progress: totalDistance - Math.floor(totalDistance),
+            speedKph: 0,
+            status: 'running' as const,
+            totalDistance,
+          }
+        }),
+      },
+      0.1,
+      config,
+    )
+    const sameLap = redRestart.cars.find(
+      (car) => car.driverId === sameLapId,
+    )!
+    const crossedLine = redRestart.cars.find(
+      (car) => car.driverId === crossedLineId,
+    )!
+
+    expect(redRestart.restartProcedure).toBe('standing')
+    expect(crossedLine.totalDistance).toBeGreaterThan(5)
+    expect(crossedLine.processedLap).toBe(5)
+    expect(f1Runtime(crossedLine).energyLapStartedBehindSafetyCar).toBe(false)
+    expect(f1Runtime(crossedLine).energyLapStartedInLowGripConditions).toBe(false)
+    expect(f1Runtime(crossedLine).energyStore.rechargeRule.usedMJ).toBe(0)
+    expect(f1Runtime(crossedLine).energyStore.rechargedAtCuKBusThisLapMJ).toBe(0)
+    expect(f1Runtime(crossedLine).overtakeEnergyRemainingMj).toBe(0.5)
+    expect(f1Runtime(crossedLine).superClippingRecoveredThisLapMj).toBe(0)
+
+    expect(f1Runtime(sameLap).energyStore.rechargeRule.usedMJ).toBeCloseTo(0.75, 12)
+    expect(f1Runtime(sameLap).overtakeEnergyRemainingMj).toBe(0.05)
+    expect(f1Runtime(sameLap).superClippingRecoveredThisLapMj).toBe(0.2)
+  })
+})
+
+function f1Runtime(car: CarSnapshot) {
+  if (car.runtimeSystems.kind !== 'f1') {
+    throw new Error(`Expected F1 runtime for ${car.driverId}`)
+  }
+
+  return car.runtimeSystems
+}
+
+function withF1RuntimeFields(
+  car: CarSnapshot,
+  fields: Partial<Omit<ReturnType<typeof f1Runtime>, 'kind'>>,
+): CarSnapshot {
+  return {
+    ...car,
+    runtimeSystems: {
+      ...f1Runtime(car),
+      ...fields,
+    },
+  }
+}
+
+function f1Tires(car: CarSnapshot) {
+  return f1Runtime(car).tires
+}
+
+function withF1Tires(
+  car: CarSnapshot,
+  fields: Partial<ReturnType<typeof f1Tires>>,
+): CarSnapshot {
+  return withF1RuntimeFields(car, {
+    tires: {
+      ...f1Tires(car),
+      ...fields,
+    },
+  })
 }
 
 describe('blue flags', () => {
@@ -303,6 +905,81 @@ describe('steward decisions', () => {
     expect(investigatedCar.stewardStatus).not.toBe('investigating')
     expect(investigatedCar.penaltyPoints).toBe(2)
   })
+
+  it('fails closed for FIA/ISC automatic stewarding in SUPER FORMULA', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const config: RaceConfig = {
+      drivers: series.drivers,
+      overtakeSystem: 'ots',
+      seed: 'sf-steward-points-are-not-article-5',
+      seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
+      teams: series.teams,
+      track: series.tracks[0],
+      weekendStage: 'race',
+    }
+    const initial = createInitialRace(config)
+    const investigation = {
+      elapsedSeconds: 0,
+      id: `investigation-sf-contact-${initial.cars[0].driverId}-${initial.cars[1].driverId}`,
+      kind: 'investigation' as const,
+      message: 'Contact under investigation.',
+      timeLabel: '0:00',
+    }
+    const snapshot = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) =>
+          index === 0
+            ? {
+                ...car,
+                stewardNote: 'Contact under review',
+                stewardStatus: 'investigating' as const,
+              }
+            : car,
+        ),
+        elapsedSeconds: 40,
+        events: [investigation, ...initial.events],
+        stewardCases: [
+          {
+            id: investigation.id,
+            openedAtSeconds: 0,
+            resolveAtSeconds: 22,
+            driverId: initial.cars[0].driverId,
+            otherDriverId: initial.cars[1].driverId,
+            offence: 'causing-collision',
+            article: 'ISC App. L Ch. IV 2(d)',
+            responsibilityShare: 0.7,
+            consequence: 'significant',
+          },
+        ],
+        startProcedure: 'racing',
+        startProcedureRemainingSeconds: 0,
+      },
+      0.5,
+      config,
+    )
+    const investigatedCar = snapshot.cars.find(
+      (car) => car.driverId === initial.cars[0].driverId,
+    )!
+
+    expect(investigatedCar.runtimeSystems.kind).toBe('super-formula')
+    expect(investigatedCar.penaltySeconds).toBe(0)
+    expect(investigatedCar.penaltyPoints).toBe(0)
+    expect(investigatedCar.penalties).toEqual([])
+    expect(snapshot.stewardCases).toEqual([])
+    const review = snapshot.events.find(
+      (event) => event.id === `decision-${investigation.id}`,
+    )
+    expect(review).toMatchObject({ kind: 'investigation' })
+    expect(review?.message).not.toMatch(/\b(?:FIA|ISC)\b/u)
+    expect(review?.message).toContain('official event decision required')
+  })
 })
 
 describe('starting grid', () => {
@@ -332,10 +1009,10 @@ describe('starting grid', () => {
 
     raceStates.forEach((raceState) => {
       raceState.cars.forEach((car) => {
-        expect(car.ersBatteryPercent).toBe(100)
-        expect(car.energyStore.stateOfCharge).toBe(1)
-        expect(car.energyStore.currentEnergyMJ).toBeCloseTo(
-          car.energyStore.maximumUsableEnergyMJ,
+        expect(f1Runtime(car).ersBatteryPercent).toBe(100)
+        expect(f1Runtime(car).energyStore.stateOfCharge).toBe(1)
+        expect(f1Runtime(car).energyStore.currentEnergyMJ).toBeCloseTo(
+          f1Runtime(car).energyStore.maximumUsableEnergyMJ,
           10,
         )
       })
@@ -397,6 +1074,11 @@ describe('starting grid', () => {
     expect(onGrid.every((car) => car.gear === 1 && car.rpm > 0)).toBe(true)
     expect(
       onGrid.every(
+        (car) => f1Runtime(car).standingStartMguKReleaseLatched === false,
+      ),
+    ).toBe(true)
+    expect(
+      onGrid.every(
         (car) =>
           Number.isFinite(car.turboSpoolFraction ?? Number.NaN) &&
           (car.turboSpoolFraction ?? 0) > 0 &&
@@ -422,7 +1104,62 @@ describe('starting grid', () => {
         expect(car.totalDistance).toBeGreaterThan(
           distanceAtLightsOut.get(car.driverId)!,
         )
+        if (car.speedKph < 50) {
+          expect(f1Runtime(car).ersPowerKw).toBe(0)
+          expect(f1Runtime(car).standingStartMguKReleaseLatched).toBe(false)
+        }
       })
+
+    let releaseCheck = launched
+    for (
+      let step = 0;
+      step < 30 &&
+      !releaseCheck.cars.some(
+        (car) => f1Runtime(car).standingStartMguKReleaseLatched === true,
+      );
+      step += 1
+    ) {
+      releaseCheck = advanceRace(releaseCheck, 0.25, config)
+    }
+    expect(
+      releaseCheck.cars.some(
+        (car) =>
+          !car.startsFromPitLane &&
+          car.speedKph >= 50 &&
+          f1Runtime(car).standingStartMguKReleaseLatched === true,
+      ),
+    ).toBe(true)
+  })
+
+  it('does not treat a seeded low-power start as an SECU safety exception', () => {
+    const base = makeConfig('low-power-is-not-secu')
+    const config = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const lightsOut = runThroughStart(config)
+    const target = lightsOut.cars.find((car) => !car.startsFromPitLane)!
+    const flagged = {
+      ...lightsOut,
+      cars: lightsOut.cars.map((car) =>
+        car.driverId === target.driverId
+          ? withF1RuntimeFields({
+              ...car,
+              lowPowerStartDetected: true,
+              speedKph: 0,
+            }, { standingStartMguKReleaseLatched: false })
+          : car,
+      ),
+    }
+    const advanced = advanceRace(flagged, 0.1, config)
+    const gated = advanced.cars.find(
+      (car) => car.driverId === target.driverId,
+    )!
+
+    expect(gated.lowPowerStartDetected).toBe(true)
+    expect(gated.speedKph).toBeLessThan(50)
+    expect(f1Runtime(gated).ersPowerKw).toBe(0)
+    expect(f1Runtime(gated).standingStartMguKReleaseLatched).toBe(false)
   })
 
   it('does not send cars straight into the pits on the opening tour', () => {
@@ -444,7 +1181,7 @@ describe('starting grid', () => {
     }
     const snapshot = createInitialRace(config)
 
-    expect(snapshot.cars.every((car) => isDryCompound(car.tire))).toBe(true)
+    expect(snapshot.cars.every((car) => isDryCompound(f1Tires(car).tire))).toBe(true)
   })
 
   it('uses a Safety Car formation and compulsory wets in severe rain', () => {
@@ -469,7 +1206,7 @@ describe('starting grid', () => {
     expect(initial.sectorFlags).toEqual(['sc', 'sc', 'sc'])
     expect(initial.lowGripConditions).toBe(true)
     expect(initial.overtakeEnabled).toBe(false)
-    expect(initial.cars.every((car) => car.tire === 'W')).toBe(true)
+    expect(initial.cars.every((car) => f1Tires(car).tire === 'W')).toBe(true)
 
     const rollingStart = advanceRace(
       initial,
@@ -577,20 +1314,21 @@ describe('starting grid', () => {
     const started = runThroughStart(config)
     const staged: RaceSnapshot = {
       ...started,
-      cars: started.cars.map((car, index) => ({
+      cars: started.cars.map((car, index) => withF1Tires({
         ...car,
         totalDistance: 9.999 - index * 0.00001,
         lap: 9,
         progress: 0.999 - index * 0.00001,
         processedLap: 9,
-        tire: 'S' as const,
-        tireAgeLaps: 17,
-        tireWearPercent: 82,
         brakeTemperatureC: 760,
         brakeOverheatSeconds: 0,
         damage: 0,
         gapToAhead: index === 0 ? 0 : 1.8,
         gapToLeader: index * 1.8,
+      }, {
+        tire: 'S',
+        tireAgeLaps: 17,
+        tireWearPercent: 82,
       })),
     }
     const next = advanceRace(staged, 1, config)
@@ -599,7 +1337,7 @@ describe('starting grid', () => {
         car.status === 'pit' &&
         car.damage < pitTuning.damagePitThreshold &&
         car.brakeOverheatSeconds < pitTuning.brakeOverheatPitSeconds &&
-        car.tireWearPercent < 88,
+        f1Tires(car).tireWearPercent < 88,
     )
 
     expect(routinePitting.length).toBeLessThanOrEqual(
@@ -1279,10 +2017,10 @@ describe('full race', () => {
   it('enforces the two-compound rule for every finisher', () => {
     for (const car of finished.cars) {
       if (car.status === 'finished') {
-        const wetRaceExemption = car.compoundsUsed.some(
+        const wetRaceExemption = f1Tires(car).compoundsUsed.some(
           (compound) => !isDryCompound(compound),
         )
-        const dryCompounds = car.compoundsUsed.filter(isDryCompound)
+        const dryCompounds = f1Tires(car).compoundsUsed.filter(isDryCompound)
 
         if (!wetRaceExemption) {
           expect(new Set(dryCompounds).size).toBeGreaterThanOrEqual(2)
@@ -1357,11 +2095,42 @@ describe('full race', () => {
     const config = makeConfig('off-track-stationary-state')
     const started = runThroughStart(config)
     const target = started.cars[4]
-    const waiting = {
+    const rechargedAtCuKBusThisLapMJ = 1.2
+    const deployedAtCuKBusThisLapMJ = 0.8
+    const targetRuntime = f1Runtime(target)
+    const rechargeLimit = targetRuntime.energyStore.rechargeRule.limit
+    const waiting = withF1RuntimeFields({
       ...target,
       offTrackSinceSeconds: started.elapsedSeconds,
       rejoinEligibleAtSeconds: started.elapsedSeconds + 10,
-    }
+    }, {
+      energyDeployedThisLapMj: 99,
+      energyHarvestedThisLapMj: 99,
+      energyStore: {
+        ...targetRuntime.energyStore,
+        actualDeploymentDcPowerKw: 280,
+        actualDeploymentPowerKw: 250,
+        actualRecoveryPowerKw: 35,
+        chargeDcPowerKw: 30,
+        deployedAtCuKBusThisLapMJ,
+        dischargeDcPowerKw: 280,
+        rechargedAtCuKBusThisLapMJ,
+        rechargeRule: {
+          ...targetRuntime.energyStore.rechargeRule,
+          remainingMJ:
+            rechargeLimit.kind === 'finite'
+              ? rechargeLimit.maxCuKBusRechargeMj -
+                rechargedAtCuKBusThisLapMJ
+              : null,
+          usedMJ: rechargedAtCuKBusThisLapMJ,
+        },
+        requestedDeploymentDcPowerKw: 300,
+        requestedRecoveryPowerKw: 40,
+        storedChargePowerKw: 27,
+        storedDischargePowerKw: 290,
+      },
+      ersBatteryPercent: 0,
+    })
     const snapshot = {
       ...started,
       cars: started.cars.map((car) =>
@@ -1375,11 +2144,31 @@ describe('full race', () => {
 
     expect(held.totalDistance).toBe(waiting.totalDistance)
     expect(held.speedKph).toBe(0)
-    expect(held.tireWearPercent).toBe(waiting.tireWearPercent)
-    expect(held.energyStore.currentEnergyMJ).toBe(
-      waiting.energyStore.currentEnergyMJ,
+    expect(f1Tires(held).tireWearPercent).toBe(f1Tires(waiting).tireWearPercent)
+    expect(f1Runtime(held).energyStore.currentEnergyMJ).toBe(
+      f1Runtime(waiting).energyStore.currentEnergyMJ,
     )
-    expect(held.ersBatteryPercent).toBe(waiting.ersBatteryPercent)
+    expect(f1Runtime(held).energyStore).toMatchObject({
+      actualDeploymentDcPowerKw: 0,
+      actualDeploymentPowerKw: 0,
+      actualRecoveryPowerKw: 0,
+      chargeDcPowerKw: 0,
+      deployedAtCuKBusThisLapMJ,
+      dischargeDcPowerKw: 0,
+      operatingMode: 'inactive',
+      rechargedAtCuKBusThisLapMJ,
+      requestedDeploymentDcPowerKw: 0,
+      requestedRecoveryPowerKw: 0,
+      storedChargePowerKw: 0,
+      storedDischargePowerKw: 0,
+    })
+    expect(f1Runtime(held).energyHarvestedThisLapMj).toBe(
+      rechargedAtCuKBusThisLapMJ,
+    )
+    expect(f1Runtime(held).energyDeployedThisLapMj).toBe(deployedAtCuKBusThisLapMJ)
+    expect(f1Runtime(held).ersBatteryPercent).toBe(
+      Math.round(f1Runtime(waiting).energyStore.stateOfCharge * 100),
+    )
   })
 })
 
@@ -1730,11 +2519,17 @@ describe('start procedure and persisted weekend', () => {
     const team = config.teams.find(
       (candidate) => candidate.id === nextFollower.teamId,
     )!
-    const driveScale = nextFollower.superClippingDrivePowerScale
     const expected = selectGear({
       clutchEngagementFraction: nextFollower.clutchEngagementFraction,
-      combustionPowerKw: combustionPowerKwFor(team, physics) * driveScale,
-      deploymentPowerKw: nextFollower.ersPowerKw,
+      // Superclip is a real generator load in the longitudinal force balance;
+      // it does not rewrite the ICE power used to reconcile the gearbox.
+      combustionPowerKw:
+        combustionPowerKwFor(team, physics) +
+        (config.overtakeSystem === 'ots' &&
+        nextFollower.overtakeStatus === 'active'
+          ? (physics.overtakeBoostPowerKw ?? 0)
+          : 0),
+      deploymentPowerKw: f1Runtime(nextFollower).ersPowerKw,
       physics,
       speedMps: actualTravelSpeedKph / 3.6,
       transmissionEfficiency: physics.drivetrainEfficiency,
@@ -1867,6 +2662,9 @@ describe('start procedure and persisted weekend', () => {
   it('uses the measured qualifying order and tyre inventory as the completed result', () => {
     const config = makeConfig('measured-qualifying-result')
     const context = createWeekendContext(config.drivers)
+    if (context.seriesId !== 'f1-custom') {
+      throw new Error('Expected F1 weekend context')
+    }
     const knockout = runKnockoutQualifying(config)
     const snapshot = createInitialRace({
       ...config,
@@ -1880,15 +2678,16 @@ describe('start procedure and persisted weekend', () => {
         const startingSoftSets = context.tireSetsByDriver[car.driverId].S ?? 0
         const usedSets = index === 0 ? 3 : 1
 
-        return {
+        return withF1Tires({
           ...car,
           bestLapTimeSeconds: 88 + index * 0.2,
           position: index + 1,
+        }, {
           tireSetsRemaining: {
-            ...car.tireSetsRemaining,
+            ...f1Tires(car).tireSetsRemaining,
             S: Math.max(0, startingSoftSets - usedSets),
           },
-        }
+        })
       })
     const completed = completeQualifyingSession(
       context,
@@ -1898,6 +2697,9 @@ describe('start procedure and persisted weekend', () => {
       measuredCars,
       true,
     )
+    if (completed.seriesId !== 'f1-custom') {
+      throw new Error('Expected completed F1 weekend context')
+    }
     const classification = completedQualifyingClassification(
       knockout.classification,
       measuredCars,
@@ -1907,7 +2709,7 @@ describe('start procedure and persisted weekend', () => {
     expect(classification[0].driverId).toBe(measuredCars[0].driverId)
     expect(completed.gridByStage.race?.[0]).toBe(measuredCars[0].driverId)
     expect(completed.tireSetsByDriver[measuredCars[0].driverId].S).toBe(
-      measuredCars[0].tireSetsRemaining.S,
+      f1Tires(measuredCars[0]).tireSetsRemaining.S,
     )
     expect(
       completed.tireSetInventoryByDriver[measuredCars[0].driverId].filter(
@@ -1926,7 +2728,7 @@ describe('start procedure and persisted weekend', () => {
         abortedRunCount: 0,
         classificationStatus: 'classified' as const,
         code: driver.code,
-        compound: 'M' as const,
+        tire: { compound: 'M' as const, kind: 'f1-pirelli-session-tire' as const },
         deletedRunCount: 0,
         deltaSeconds: position * 0.1,
         driverId: driver.id,
@@ -2207,8 +3009,8 @@ describe('tires', () => {
 
     const sampledCars = snapshot.cars.filter((car) => car.lapHistory.length > 0)
     expect(sampledCars.length).toBeGreaterThan(0)
-    expect(sampledCars.every((car) => car.tireWearPercent > 0)).toBe(true)
-    expect(sampledCars.every((car) => car.tireWearPercent < 16)).toBe(true)
+    expect(sampledCars.every((car) => f1Tires(car).tireWearPercent > 0)).toBe(true)
+    expect(sampledCars.every((car) => f1Tires(car).tireWearPercent < 16)).toBe(true)
     expect(
       sampledCars.every((car) => {
         const lapTime = car.lapHistory[0].lapTimeSeconds
@@ -2273,12 +3075,13 @@ describe('weather and wet strategy', () => {
   it('does not schedule a repair-only service while the VSC is active', () => {
     const driver = initialDrivers[0]
     const baseCar = createInitialRace(makeConfig('vsc-repair-rule')).cars[0]
-    const car = {
+    const car = withF1Tires({
       ...baseCar,
       damage: 0.85,
+    }, {
       tireAgeLaps: 1,
       tireWearPercent: 4,
-    }
+    })
     const shared = {
       car,
       driver,
@@ -2303,11 +3106,12 @@ describe('weather and wet strategy', () => {
     }).cars[0]
     const calls = initialDrivers.map((driver) =>
       decidePitStop({
-        car: {
+        car: withF1Tires({
           ...baseCar,
+        }, {
           tireAgeLaps: 8,
           tireWearPercent: 38,
-        },
+        }),
         controlPhase: 'safety-car',
         driver,
         lap: 18,
@@ -2329,8 +3133,8 @@ describe('weather and wet strategy', () => {
   it('recalculates red-flag tyres while fresh-tyre cars retain track position', () => {
     const baseCar = createInitialRace(makeConfig('red-flag-strategy')).cars[0]
     const freshDecision = decideRedFlagTireChange({
-      availableCompounds: baseCar.tireSetsRemaining,
-      car: { ...baseCar, tireAgeLaps: 1, tireWearPercent: 8 },
+      availableCompounds: f1Tires(baseCar).tireSetsRemaining,
+      car: withF1Tires(baseCar, { tireAgeLaps: 1, tireWearPercent: 8 }),
       driver: initialDrivers[0],
       lap: 24,
       raceLaps: 58,
@@ -2340,8 +3144,8 @@ describe('weather and wet strategy', () => {
     })
     const fieldDecisions = initialDrivers.map((driver) =>
       decideRedFlagTireChange({
-        availableCompounds: baseCar.tireSetsRemaining,
-        car: { ...baseCar, tireAgeLaps: 9, tireWearPercent: 42 },
+        availableCompounds: f1Tires(baseCar).tireSetsRemaining,
+        car: withF1Tires(baseCar, { tireAgeLaps: 9, tireWearPercent: 42 }),
         driver,
         lap: 24,
         raceLaps: 58,
@@ -2401,15 +3205,18 @@ describe('weather and wet strategy', () => {
 
   it('pits for wets when caught on dry tires in heavy rain', () => {
     const driver = initialDrivers[0]
-    const car = {
-      tire: 'M' as const,
-      tireAgeLaps: 8,
-      tireWearPercent: 42,
+    const baseCar = createInitialRace(makeConfig('wet-call')).cars[0]
+    const car = withF1Tires({
+      ...baseCar,
       brakeTemperatureC: 720,
-      compoundsUsed: ['M'] as TireCompound[],
       damage: 0,
       pitStops: 0,
-    }
+    }, {
+      tire: 'M',
+      tireAgeLaps: 8,
+      tireWearPercent: 42,
+      compoundsUsed: ['M'] as TireCompound[],
+    })
     const decision = decidePitStop({
       seed: 'wet-call',
       driver,
@@ -2431,13 +3238,14 @@ describe('weather and wet strategy', () => {
       decidePitStop({
         seed: 'drying-crossover',
         driver,
-        car: {
+        car: withF1Tires({
           ...baseCar,
+        }, {
           tire: 'I',
           compoundsUsed: ['I'],
           tireAgeLaps: 4,
           tireWearPercent: 24,
-        },
+        }),
         lap: 5,
         raceLaps: 58,
         underSafetyCar: false,
@@ -2458,13 +3266,14 @@ describe('weather and wet strategy', () => {
     const decision = decidePitStop({
       seed: 'drying-congestion',
       driver: initialDrivers[0],
-      car: {
+      car: withF1Tires({
         ...baseCar,
+      }, {
         tire: 'I',
         compoundsUsed: ['I'],
         tireAgeLaps: 4,
         tireWearPercent: 24,
-      },
+      }),
       lap: 5,
       raceLaps: 58,
       underSafetyCar: false,
@@ -2479,7 +3288,7 @@ describe('weather and wet strategy', () => {
   it('explains a weather crossover as an immediate strategy call', () => {
     const car = createInitialRace(makeConfig('strategy-outlook')).cars[0]
     const outlook = strategyOutlookFor({
-      car: { ...car, tire: 'S', tireAgeLaps: 8 },
+      car: withF1Tires(car, { tire: 'S', tireAgeLaps: 8 }),
       driver: initialDrivers[0],
       lap: 14,
       raceLaps: 58,
@@ -2489,15 +3298,15 @@ describe('weather and wet strategy', () => {
       weather: 'heavy-rain',
     })
 
-    expect(outlook.urgency).toBe('box')
-    expect(outlook.compound).toBe('W')
-    expect(outlook.estimatedStopLap).toBe(14)
+    expect(outlook?.urgency).toBe('box')
+    expect(outlook?.compound).toBe('W')
+    expect(outlook?.estimatedStopLap).toBe(14)
   })
 
   it('keeps inters as the next choice in light rain', () => {
     const car = createInitialRace(makeConfig('strategy-inter')).cars[0]
     const outlook = strategyOutlookFor({
-      car: { ...car, tire: 'I', tireAgeLaps: 5 },
+      car: withF1Tires(car, { tire: 'I', tireAgeLaps: 5 }),
       driver: initialDrivers[0],
       lap: 12,
       raceLaps: 58,
@@ -2507,20 +3316,23 @@ describe('weather and wet strategy', () => {
       weather: 'light-rain',
     })
 
-    expect(outlook.compound).toBe('I')
+    expect(outlook?.compound).toBe('I')
   })
 
   it('can pit early for a reliable weather forecast under safety car', () => {
     const driver = initialDrivers[0]
-    const car = {
-      tire: 'M' as const,
-      tireAgeLaps: 12,
-      tireWearPercent: 55,
+    const baseCar = createInitialRace(makeConfig('forecast-call')).cars[0]
+    const car = withF1Tires({
+      ...baseCar,
       brakeTemperatureC: 760,
-      compoundsUsed: ['M'] as TireCompound[],
       damage: 0,
       pitStops: 0,
-    }
+    }, {
+      tire: 'M',
+      tireAgeLaps: 12,
+      tireWearPercent: 55,
+      compoundsUsed: ['M'] as TireCompound[],
+    })
     const decision = decidePitStop({
       seed: 'forecast-call',
       driver,
@@ -2551,15 +3363,18 @@ describe('weather and wet strategy', () => {
       skills: { ...initialDrivers[0].skills, overtakingSkill: 0.95 },
     }
     const cliff = effectiveCliffLaps('M', driver.skills.tireManagement)
-    const car = {
-      tire: 'M' as const,
-      tireAgeLaps: Math.ceil(cliff - 3),
-      tireWearPercent: 58,
+    const baseCar = createInitialRace(makeConfig('undercut-window')).cars[0]
+    const car = withF1Tires({
+      ...baseCar,
       brakeTemperatureC: 780,
-      compoundsUsed: ['M'] as TireCompound[],
       damage: 0,
       pitStops: 0,
-    }
+    }, {
+      tire: 'M',
+      tireAgeLaps: Math.ceil(cliff - 3),
+      tireWearPercent: 58,
+      compoundsUsed: ['M'] as TireCompound[],
+    })
     const outcomes = Array.from({ length: 80 }, (_, index) =>
       decidePitStop({
         seed: `undercut-window-${index}`,
@@ -2585,15 +3400,18 @@ describe('weather and wet strategy', () => {
       skills: { ...initialDrivers[0].skills, overtakingSkill: 0.95 },
     }
     const cliff = effectiveCliffLaps('M', driver.skills.tireManagement)
-    const car = {
-      tire: 'M' as const,
-      tireAgeLaps: Math.ceil(cliff - 2),
-      tireWearPercent: 64,
+    const baseCar = createInitialRace(makeConfig('pit-lane-congestion')).cars[0]
+    const car = withF1Tires({
+      ...baseCar,
       brakeTemperatureC: 780,
-      compoundsUsed: ['M'] as TireCompound[],
       damage: 0,
       pitStops: 0,
-    }
+    }, {
+      tire: 'M',
+      tireAgeLaps: Math.ceil(cliff - 2),
+      tireWearPercent: 64,
+      compoundsUsed: ['M'] as TireCompound[],
+    })
     const decision = decidePitStop({
       seed: 'pit-lane-congestion',
       driver,
@@ -2617,7 +3435,7 @@ describe('weather and wet strategy', () => {
     const tireDecision = decidePitStop({
       seed: 'sensor-strategy-tire',
       driver: initialDrivers[0],
-      car: { ...baseCar, tireWearPercent: 91, brakeTemperatureC: 760 },
+      car: withF1Tires({ ...baseCar, brakeTemperatureC: 760 }, { tireWearPercent: 91 }),
       lap: 12,
       raceLaps: 57,
       underSafetyCar: false,
@@ -2627,12 +3445,11 @@ describe('weather and wet strategy', () => {
     const brakeDecision = decidePitStop({
       seed: 'sensor-strategy-brake',
       driver: initialDrivers[0],
-      car: {
+      car: withF1Tires({
         ...baseCar,
-        tireWearPercent: 22,
         brakeTemperatureC: 1115,
         brakeOverheatSeconds: pitTuning.brakeOverheatPitSeconds + 1,
-      },
+      }, { tireWearPercent: 22 }),
       lap: 12,
       raceLaps: 57,
       underSafetyCar: false,
@@ -2649,12 +3466,11 @@ describe('weather and wet strategy', () => {
     const decision = decidePitStop({
       seed: 'brake-peak',
       driver: initialDrivers[0],
-      car: {
+      car: withF1Tires({
         ...baseCar,
-        tireWearPercent: 22,
         brakeTemperatureC: 1115,
         brakeOverheatSeconds: 4,
-      },
+      }, { tireWearPercent: 22 }),
       lap: 12,
       raceLaps: 57,
       underSafetyCar: false,
@@ -2678,7 +3494,7 @@ describe('manual strategy request', () => {
 
     expect(requests.has(initialDrivers[0].id)).toBe(false)
     expect(car.pitStops).toBeGreaterThanOrEqual(1)
-    expect(car.pendingTire === 'H' || car.tire === 'H').toBe(true)
+    expect(f1Tires(car).pendingTire === 'H' || f1Tires(car).tire === 'H').toBe(true)
     expect(car.lapHistory.some((lap) => lap.pitStop)).toBe(true)
   })
 
@@ -2692,7 +3508,7 @@ describe('manual strategy request', () => {
     const car = snapshot.cars.find((candidate) => candidate.driverId === initialDrivers[0].id)!
 
     expect(car.racePaceMode).toBe('push')
-    expect(car.tireWearPercent).toBeGreaterThan(0)
+    expect(f1Tires(car).tireWearPercent).toBeGreaterThan(0)
     expect(car.brakeTemperatureC).toBeGreaterThan(260)
   })
 
@@ -2705,15 +3521,17 @@ describe('manual strategy request', () => {
       ...snapshot,
       cars: snapshot.cars.map((car) =>
         car.driverId === target.driverId
-          ? {
+          ? withF1Tires(withF1RuntimeFields({
               ...car,
               damage: 0,
-              ersBatteryPercent: 78,
               gapToAhead: 1.8,
               racePaceMode: 'standard' as const,
+            }, {
+              ersBatteryPercent: 78,
+            }), {
               tireOverheatingPercent: 10,
               tireWearPercent: 18,
-            }
+            })
           : car,
       ),
     }
@@ -2966,8 +3784,8 @@ describe('OpenF1 field calibration', () => {
 describe('overtaking', () => {
   function closeBattleFixture() {
     const snapshot = createInitialRace(makeConfig('battle-fixture'))
-    const defenderCar = { ...snapshot.cars[0], tire: 'H' as const }
-    const attackerCar = { ...snapshot.cars[1], tire: 'S' as const }
+    const defenderCar = withF1Tires(snapshot.cars[0], { tire: 'H' })
+    const attackerCar = withF1Tires(snapshot.cars[1], { tire: 'S' })
     const defender = {
       ...initialDrivers.find((driver) => driver.id === defenderCar.driverId)!,
       skills: {
@@ -3100,21 +3918,19 @@ describe('overtaking', () => {
     }
     const withoutEligibility = battleDynamicsFor({
       ...context,
-      attackerCar: {
+      attackerCar: withF1RuntimeFields({
         ...fixture.attackerCar,
         overtakeStatus: 'available',
-        ersPowerKw: 250,
-      },
-      defenderCar: { ...fixture.defenderCar, ersPowerKw: 250 },
+      }, { ersPowerKw: 250 }),
+      defenderCar: withF1RuntimeFields(fixture.defenderCar, { ersPowerKw: 250 }),
     })
     const withEligibility = battleDynamicsFor({
       ...context,
-      attackerCar: {
+      attackerCar: withF1RuntimeFields({
         ...fixture.attackerCar,
         overtakeStatus: 'active',
-        ersPowerKw: 350,
-      },
-      defenderCar: { ...fixture.defenderCar, ersPowerKw: 250 },
+      }, { ersPowerKw: 350 }),
+      defenderCar: withF1RuntimeFields(fixture.defenderCar, { ersPowerKw: 250 }),
     })
 
     expect(withoutEligibility.assistance).toBe('tow')
@@ -3140,17 +3956,14 @@ describe('overtaking', () => {
     }
     const closing = battleDynamicsFor({
       ...fixture,
-      attackerCar: {
+      attackerCar: withF1RuntimeFields({
         ...fixture.attackerCar,
-        ersPowerKw: 350,
         speedKph: 408,
-      },
-      defenderCar: {
+      }, { ersPowerKw: 350 }),
+      defenderCar: withF1RuntimeFields({
         ...fixture.defenderCar,
-        ersPowerKw: 0,
         speedKph: 350,
-        superClippingIntensity: 1,
-      },
+      }, { ersPowerKw: 0, superClippingIntensity: 1 }),
       gapToAheadSeconds: 0.7,
       lap: 14,
       seed: 'clipping-closing-speed',
@@ -3178,33 +3991,29 @@ describe('overtaking', () => {
     }
     const healthyTires = battleDynamicsFor({
       ...baseContext,
-      attackerCar: {
-        ...fixture.attackerCar,
+      attackerCar: withF1Tires(fixture.attackerCar, {
         tireAgeLaps: 2,
         tireTemperatureC: 98,
         tireWearPercent: 8,
-      },
-      defenderCar: {
-        ...fixture.defenderCar,
+      }),
+      defenderCar: withF1Tires(fixture.defenderCar, {
         tireAgeLaps: 25,
         tireTemperatureC: 122,
         tireWearPercent: 88,
-      },
+      }),
     })
     const reversedTires = battleDynamicsFor({
       ...baseContext,
-      attackerCar: {
-        ...fixture.attackerCar,
+      attackerCar: withF1Tires(fixture.attackerCar, {
         tireAgeLaps: 25,
         tireTemperatureC: 122,
         tireWearPercent: 88,
-      },
-      defenderCar: {
-        ...fixture.defenderCar,
+      }),
+      defenderCar: withF1Tires(fixture.defenderCar, {
         tireAgeLaps: 2,
         tireTemperatureC: 98,
         tireWearPercent: 8,
-      },
+      }),
     })
 
     expect(healthyTires.tirePerformanceEdge).toBeGreaterThan(0)
@@ -3362,7 +4171,13 @@ describe('qualifying', () => {
           result.abortedRunCount >= 0,
       ),
     ).toBe(true)
-    expect(session.classification.every((result) => result.compound === 'S')).toBe(true)
+    expect(
+      session.classification.every(
+        (result) =>
+          result.tire.kind === 'f1-pirelli-session-tire' &&
+          result.tire.compound === 'S',
+      ),
+    ).toBe(true)
     expect(
       session.classification.every(
         (result) =>
@@ -3387,15 +4202,27 @@ describe('qualifying', () => {
     expect(session.segments[0].sessionDurationSeconds).toBe(12 * 60)
     expect(session.segments[1].sessionDurationSeconds).toBe(10 * 60)
     expect(session.segments[2].sessionDurationSeconds).toBe(8 * 60)
-    expect(session.segments[0].results.every((result) => result.compound === 'M')).toBe(
-      true,
-    )
-    expect(session.segments[1].results.every((result) => result.compound === 'M')).toBe(
-      true,
-    )
-    expect(session.segments[2].results.every((result) => result.compound === 'S')).toBe(
-      true,
-    )
+    expect(
+      session.segments[0].results.every(
+        (result) =>
+          result.tire.kind === 'f1-pirelli-session-tire' &&
+          result.tire.compound === 'M',
+      ),
+    ).toBe(true)
+    expect(
+      session.segments[1].results.every(
+        (result) =>
+          result.tire.kind === 'f1-pirelli-session-tire' &&
+          result.tire.compound === 'M',
+      ),
+    ).toBe(true)
+    expect(
+      session.segments[2].results.every(
+        (result) =>
+          result.tire.kind === 'f1-pirelli-session-tire' &&
+          result.tire.compound === 'S',
+      ),
+    ).toBe(true)
   })
 
   it('builds a weekend tire plan from qualifying and sprint qualifying usage', () => {
@@ -3535,10 +4362,12 @@ describe('qualifying', () => {
       weekendContext,
       weekendStage: 'race',
     })
+    const car = snapshot.cars.find((candidate) => candidate.driverId === driver.id)
 
-    expect(
-      snapshot.cars.find((car) => car.driverId === driver.id)?.tireSetsRemaining.S,
-    ).toBe(1)
+    expect(car?.runtimeSystems.kind).toBe('f1')
+    expect(car && car.runtimeSystems.kind === 'f1'
+      ? car.runtimeSystems.tires.tireSetsRemaining.S
+      : undefined).toBe(1)
   })
 
   it('models practice as a one-hour setup session', () => {
@@ -3773,6 +4602,260 @@ describe('race session completion', () => {
     expect(
       completeRaceSession(base, 'sprint').completed,
     ).toContain('sprint')
+  })
+})
+
+describe('SUPER FORMULA race-distance authority', () => {
+  const series = seriesPackageById.get('super-formula')!
+  const baseConfig: RaceConfig = {
+    drivers: series.drivers,
+    overtakeSystem: 'ots',
+    seed: 'sf-race-distance-authority',
+    seriesId: 'super-formula',
+    teams: series.teams,
+    track: series.tracks[0],
+    weekendStage: 'race',
+  }
+
+  it('does not invent a race distance from a Super Formula track or category default', () => {
+    expect(() => createInitialRace(baseConfig)).toThrow(
+      'SUPER FORMULA race distance is unavailable',
+    )
+  })
+
+  it('uses an explicitly supplied event or Free Mode lap count without a fallback', () => {
+    expect(
+      createInitialRace({ ...baseConfig, sessionRaceLapsOverride: 25 }).raceLaps,
+    ).toBe(25)
+  })
+
+  it('seeds a later SF session from the prior control-tyre and entrant-engine lifecycle', () => {
+    const initialWeekend = createWeekendContext(
+      series.drivers,
+      false,
+      series.tracks[0],
+      undefined,
+      'super-formula',
+    )
+    const firstSession = createInitialRace({
+      ...baseConfig,
+      weekendContext: initialWeekend,
+      sessionRaceLapsOverride: 25,
+    })
+    const firstCar = firstSession.cars[0]
+
+    if (firstCar.runtimeSystems.kind !== 'super-formula') {
+      throw new Error('Expected SUPER FORMULA runtime')
+    }
+
+    const afterFirstSession = completeRaceSession(
+      initialWeekend,
+      'race',
+      firstSession.cars,
+    )
+    if (afterFirstSession.seriesId !== 'super-formula') {
+      throw new Error('Expected SUPER FORMULA weekend lifecycle')
+    }
+
+    const engineReplacement = replaceSuperFormula2026Engine(
+      afterFirstSession.engineLedgerByEntrant[firstCar.teamId],
+    )
+    expect(engineReplacement.status).toBe('replaced')
+    if (engineReplacement.status !== 'replaced') {
+      throw new Error('Expected a second allowed SUPER FORMULA engine')
+    }
+
+    const secondWeekend = {
+      ...afterFirstSession,
+      engineLedgerByEntrant: {
+        ...afterFirstSession.engineLedgerByEntrant,
+        [firstCar.teamId]: engineReplacement.ledger,
+      },
+    }
+    const secondSession = createInitialRace({
+      ...baseConfig,
+      weekendContext: secondWeekend,
+      sessionRaceLapsOverride: 25,
+    })
+    const secondCar = secondSession.cars.find(
+      (car) => car.driverId === firstCar.driverId,
+    )!
+
+    if (secondCar.runtimeSystems.kind !== 'super-formula') {
+      throw new Error('Expected SUPER FORMULA runtime')
+    }
+
+    const surface = firstCar.runtimeSystems.liveTires.activeSurface
+    expect(
+      secondCar.runtimeSystems.controlTires.sets[surface].usedSets,
+    ).toBe(
+      firstCar.runtimeSystems.controlTires.sets[surface].usedSets + 1,
+    )
+    expect(secondCar.runtimeSystems.engineLedger).toEqual(
+      engineReplacement.ledger,
+    )
+    expect(secondCar.runtimeSystems.engineLedger.engine.used).toBe(2)
+  })
+})
+
+describe('live active-aero persistence', () => {
+  const aeroTrack = {
+    ...tracks[0],
+    aeroActivationZones: [
+      {
+        end: 0.8,
+        label: 'TEST SM A1',
+        lowGripMode: 'partial' as const,
+        source: 'official' as const,
+        start: 0.2,
+      },
+    ],
+    rainProbability: 0,
+  }
+  const f1Config: RaceConfig = {
+    ...makeConfig('live-active-aero'),
+    overtakeSystem: 'active-aero',
+    seriesId: 'f1-custom',
+    track: aeroTrack,
+  }
+
+  const singleRunningCarAt = (
+    config: RaceConfig,
+    progress: number,
+  ): RaceSnapshot => {
+    const initial = createInitialRace(config)
+    const totalDistance = 2 + progress
+
+    return {
+      ...initial,
+      elapsedLabel: '00:00:10',
+      elapsedSeconds: 10,
+      raceStartedAtSeconds: 0,
+      startProcedure: 'racing',
+      startProcedureRemainingSeconds: 0,
+      cars: initial.cars.map((car, index) =>
+        index === 0
+          ? car.runtimeSystems.kind === 'f1'
+            ? withF1RuntimeFields({
+              ...car,
+              lap: 2,
+              pitPhase: 'none' as const,
+              pitLaneProgress: null,
+              position: 1,
+              progress,
+              speedKph: 240,
+              status: 'running' as const,
+              totalDistance,
+            }, {
+              activeAeroMode: 'corner',
+              activeAeroState: createInitialActiveAeroState(),
+            })
+            : {
+                ...car,
+                lap: 2,
+                pitPhase: 'none' as const,
+                pitLaneProgress: null,
+                position: 1,
+                progress,
+                speedKph: 240,
+                status: 'running' as const,
+                totalDistance,
+              }
+          : {
+              ...car,
+              position: index + 1,
+              status: 'dns' as const,
+            },
+      ),
+    }
+  }
+
+  it('initializes F1 aero and keeps Super Formula clear of F1 aero state', () => {
+    const f1 = createInitialRace(f1Config)
+    const sfConfig: RaceConfig = {
+      ...f1Config,
+      overtakeSystem: 'ots',
+      seed: 'sf-no-active-aero',
+      seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
+    }
+    const sf = singleRunningCarAt(sfConfig, 0.3)
+    const advancedSf = advanceRace(sf, 0.1, sfConfig)
+
+    expect(f1.cars.every((car) => f1Runtime(car).activeAeroState !== undefined)).toBe(true)
+    expect(
+      createInitialRace(sfConfig).cars.every(
+        (car) => car.runtimeSystems.kind === 'super-formula',
+      ),
+    ).toBe(true)
+    expect(advancedSf.cars[0].runtimeSystems.kind).toBe('super-formula')
+    expect('activeAeroState' in advancedSf.cars[0].runtimeSystems).toBe(false)
+  })
+
+  it('persists a continuous transition and returns safely at zone exit', () => {
+    let snapshot = singleRunningCarAt(f1Config, 0.3)
+
+    snapshot = advanceRace(snapshot, 0.1, f1Config)
+    const started = f1Runtime(snapshot.cars[0]).activeAeroState
+    expect(started).toMatchObject({
+      command: 'straight',
+      front: 'transition-to-straight',
+      rear: 'transition-to-straight',
+    })
+    expect(started.frontStraightFraction).toBeGreaterThan(0)
+    expect(started.frontStraightFraction).toBeLessThan(1)
+    expect(f1Runtime(snapshot.cars[0]).activeAeroMode).toBe('corner')
+
+    for (let step = 0; step < 3; step += 1) {
+      snapshot = advanceRace(snapshot, 0.1, f1Config)
+    }
+
+    const settled = f1Runtime(snapshot.cars[0]).activeAeroState
+    expect(settled.transition).toBeNull()
+    expect(settled.frontStraightFraction).toBe(1)
+    expect(settled.rearStraightFraction).toBe(1)
+    expect(f1Runtime(snapshot.cars[0]).activeAeroMode).toBe('straight')
+    expect(snapshot.elapsedSeconds - settled.commandAtSeconds!).toBeLessThanOrEqual(
+      0.400_000_001,
+    )
+
+    snapshot = {
+      ...snapshot,
+      cars: snapshot.cars.map((car, index) =>
+        index === 0
+          ? {
+              ...car,
+              lap: 2,
+              progress: 0.9,
+              speedKph: 240,
+              totalDistance: 2.9,
+            }
+          : car,
+      ),
+    }
+    snapshot = advanceRace(snapshot, 0.1, f1Config)
+    const returning = f1Runtime(snapshot.cars[0]).activeAeroState
+
+    expect(returning).toMatchObject({
+      activationZoneId: null,
+      command: 'corner',
+      front: 'transition-to-corner',
+      rear: 'transition-to-corner',
+    })
+    expect(f1Runtime(snapshot.cars[0]).activeAeroMode).toBe('corner')
+
+    for (let step = 0; step < 3; step += 1) {
+      snapshot = advanceRace(snapshot, 0.1, f1Config)
+    }
+
+    expect(f1Runtime(snapshot.cars[0]).activeAeroState).toMatchObject({
+      command: 'corner',
+      front: 'corner',
+      frontStraightFraction: 0,
+      rear: 'corner',
+      rearStraightFraction: 0,
+      transition: null,
+    })
   })
 })
 

@@ -233,51 +233,78 @@ export function battleDynamicsFor(
     : zone === 'straight' && gapToAheadSeconds <= 1.2
       ? 'tow'
       : 'none'
-  const attackerTireDelta = tireDeltaSeconds(
-    attackerCar.tire,
-    attackerCar.tireAgeLaps,
-    driverPerformanceAbility(attacker, 'tireManagement'),
-    weather,
-    trackGrip,
-    attackerCar.tireTemperatureC,
-    attackerCar.tireWearPercent,
-    track?.tireNomination,
-    undefined,
-    attackerCar.tireThermalStressPercent ?? 0,
-    undefined,
-    {
-      carcassTemperatureC: attackerCar.tireCarcassTemperatureC,
-      grainingPercent: attackerCar.tireGrainingPercent,
-      overheatingPercent: attackerCar.tireOverheatingPercent,
-    },
-  )
-  const defenderTireDelta = tireDeltaSeconds(
-    defenderCar.tire,
-    defenderCar.tireAgeLaps,
-    driverPerformanceAbility(defender, 'tireManagement'),
-    weather,
-    trackGrip,
-    defenderCar.tireTemperatureC,
-    defenderCar.tireWearPercent,
-    track?.tireNomination,
-    undefined,
-    defenderCar.tireThermalStressPercent ?? 0,
-    undefined,
-    {
-      carcassTemperatureC: defenderCar.tireCarcassTemperatureC,
-      grainingPercent: defenderCar.tireGrainingPercent,
-      overheatingPercent: defenderCar.tireOverheatingPercent,
-    },
-  )
-  const tirePerformanceEdge = clamp(
-    (defenderTireDelta - attackerTireDelta) * 0.085,
-    -0.18,
-    0.18,
-  )
-  const ersPowerDeltaKw =
-    zone === 'straight'
-      ? attackerCar.ersPowerKw - defenderCar.ersPowerKw
+  // The Pirelli thermal and compound model is F1-only.  A SUPER FORMULA car
+  // has source-bound control tyres instead, so a mixed/non-F1 comparison is
+  // deliberately neutral rather than deriving an edge from an S/M/H/I/W
+  // compatibility value.
+  const attackerF1Tires =
+    attackerCar.runtimeSystems.kind === 'f1'
+      ? attackerCar.runtimeSystems.tires
+      : null
+  const defenderF1Tires =
+    defenderCar.runtimeSystems.kind === 'f1'
+      ? defenderCar.runtimeSystems.tires
+      : null
+  const tirePerformanceEdge =
+    attackerF1Tires && defenderF1Tires
+      ? (() => {
+          const attackerTireDelta = tireDeltaSeconds(
+            attackerF1Tires.tire,
+            attackerF1Tires.tireAgeLaps,
+            driverPerformanceAbility(attacker, 'tireManagement'),
+            weather,
+            trackGrip,
+            attackerF1Tires.tireTemperatureC,
+            attackerF1Tires.tireWearPercent,
+            track?.tireNomination,
+            undefined,
+            attackerF1Tires.tireThermalStressPercent ?? 0,
+            undefined,
+            {
+              carcassTemperatureC: attackerF1Tires.tireCarcassTemperatureC,
+              grainingPercent: attackerF1Tires.tireGrainingPercent,
+              overheatingPercent: attackerF1Tires.tireOverheatingPercent,
+            },
+          )
+          const defenderTireDelta = tireDeltaSeconds(
+            defenderF1Tires.tire,
+            defenderF1Tires.tireAgeLaps,
+            driverPerformanceAbility(defender, 'tireManagement'),
+            weather,
+            trackGrip,
+            defenderF1Tires.tireTemperatureC,
+            defenderF1Tires.tireWearPercent,
+            track?.tireNomination,
+            undefined,
+            defenderF1Tires.tireThermalStressPercent ?? 0,
+            undefined,
+            {
+              carcassTemperatureC: defenderF1Tires.tireCarcassTemperatureC,
+              grainingPercent: defenderF1Tires.tireGrainingPercent,
+              overheatingPercent: defenderF1Tires.tireOverheatingPercent,
+            },
+          )
+
+          return clamp(
+            (defenderTireDelta - attackerTireDelta) * 0.085,
+            -0.18,
+            0.18,
+          )
+        })()
       : 0
+  // ERS is an F1-only physical subsystem.  A SUPER FORMULA battle may still
+  // receive the common `overtake` assistance from a verified OTS runtime,
+  // but it must never borrow F1 deployment power as a surrogate.
+  const attackerErsPowerKw =
+    attackerCar.runtimeSystems.kind === 'f1'
+      ? attackerCar.runtimeSystems.ersPowerKw
+      : 0
+  const defenderErsPowerKw =
+    defenderCar.runtimeSystems.kind === 'f1'
+      ? defenderCar.runtimeSystems.ersPowerKw
+      : 0
+  const ersPowerDeltaKw =
+    zone === 'straight' ? attackerErsPowerKw - defenderErsPowerKw : 0
   const electricalPerformanceEdge =
     zone === 'straight'
       ? clamp((ersPowerDeltaKw / 150) * 0.075, -0.075, 0.075)

@@ -1,0 +1,504 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T11:40:44.210Z",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "summary": {
+    "explicitWorldTruthTypePresent": false,
+    "explicitWorldTruthMatchCount": 0,
+    "boundaryCandidateCount": 70,
+    "status": "no-explicit-world-truth-boundary"
+  },
+  "note": "Absence of a WorldTruth symbol is not proof of safe observability. Every listed wall-clock, nondeterministic, and forecast access must be classified before agent migration.",
+  "matches": [
+    {
+      "category": "external-nondeterminism",
+      "excerpt": "Math.random().toString(36).slice(2, 12)",
+      "file": "src/App.tsx",
+      "line": 530,
+      "symbol": "Math.random"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "return `auto-${Date.now().toString(36)}-${randomPart}`",
+      "file": "src/App.tsx",
+      "line": 532,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const ageSeconds = Math.max(0, Math.round((Date.now() - new Date(isoDate).getTime()) / 1000))",
+      "file": "src/App.tsx",
+      "line": 952,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = Date.now()",
+      "file": "src/App.tsx",
+      "line": 1017,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "`${sessionLabel} historical forecast input`,",
+      "file": "src/App.tsx",
+      "line": 3213,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "!normalizedLabel.includes('historical forecast input')",
+      "file": "src/App.tsx",
+      "line": 3220,
+      "symbol": "forecast"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "return `free-entry-${Date.now()}`",
+      "file": "src/components/FreeModeBuilder.tsx",
+      "line": 101,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "id: globalThis.crypto?.randomUUID?.() ?? `preset-${Date.now()}`,",
+      "file": "src/components/FreeModeBuilder.tsx",
+      "line": 550,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "id: globalThis.crypto?.randomUUID?.() ?? `preset-${Date.now()}`,",
+      "file": "src/components/FreeModeBuilder.tsx",
+      "line": 579,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "label=\"Forecast\"",
+      "file": "src/components/pitWall/PitWallWeather.tsx",
+      "line": 69,
+      "symbol": "forecast"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "nowMs = Date.now(),",
+      "file": "src/data/openF1Standings2026.ts",
+      "line": 120,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "nowMs = Date.now(),",
+      "file": "src/domain/dataMode.ts",
+      "line": 8,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "savedAt = Date.now(),",
+      "file": "src/hooks/raceSession.ts",
+      "line": 221,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "now = Date.now(),",
+      "file": "src/hooks/raceSession.ts",
+      "line": 242,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "now = Date.now(),",
+      "file": "src/hooks/raceSession.ts",
+      "line": 274,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "savedAt = Date.now(),",
+      "file": "src/hooks/raceSession.ts",
+      "line": 299,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = Date.now()",
+      "file": "src/hooks/useOpenF1Data.ts",
+      "line": 150,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const cachedBundle = { bundle, fetchedAt: Date.now() }",
+      "file": "src/hooks/useOpenF1Data.ts",
+      "line": 222,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "if (!cached || Date.now() - cached.fetchedAt > refreshDelayFor(cached.bundle)) {",
+      "file": "src/hooks/useOpenF1Data.ts",
+      "line": 245,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "cache.set(cacheKey, { data, fetchedAt: Date.now() })",
+      "file": "src/hooks/useOpenF1SeasonStandings.ts",
+      "line": 49,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "if (cached && Date.now() - cached.fetchedAt <= refreshMs) {",
+      "file": "src/hooks/useOpenF1SeasonStandings.ts",
+      "line": 64,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "Date.now(),",
+      "file": "src/hooks/useRaceSimulation.ts",
+      "line": 60,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "Date.now(),",
+      "file": "src/hooks/useRaceSimulation.ts",
+      "line": 109,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "lastFallbackPublishRef.current = performance.now()",
+      "file": "src/hooks/useRaceSimulation.ts",
+      "line": 200,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = performance.now()",
+      "file": "src/hooks/useRaceSimulation.ts",
+      "line": 215,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = Date.now()",
+      "file": "src/hooks/useRaceSimulation.ts",
+      "line": 247,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "lastRequestAt + OPENF1_REQUEST_GAP_MS - Date.now(),",
+      "file": "src/services/openF1.ts",
+      "line": 573,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "rateLimitedUntil - Date.now(),",
+      "file": "src/services/openF1.ts",
+      "line": 574,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "lastRequestAt = Date.now()",
+      "file": "src/services/openF1.ts",
+      "line": 581,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "rateLimitedUntil = Math.max(rateLimitedUntil, Date.now() + backoffMs)",
+      "file": "src/services/openF1.ts",
+      "line": 599,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "? Math.min(Date.now(), requestedCutoff)",
+      "file": "src/services/openF1.ts",
+      "line": 1112,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": ": Date.now()",
+      "file": "src/services/openF1.ts",
+      "line": 1113,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "targetMs = Date.now(),",
+      "file": "src/services/openF1Derived.ts",
+      "line": 237,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": ": Date.now()",
+      "file": "src/services/openF1Derived.ts",
+      "line": 297,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": ": Date.now()",
+      "file": "src/services/openF1Derived.ts",
+      "line": 300,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const forecast = weatherForecastFor(",
+      "file": "src/simulation/qualifyingStrategy.ts",
+      "line": 116,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "(forecast.willChange &&",
+      "file": "src/simulation/qualifyingStrategy.ts",
+      "line": 123,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.weather !== 'clear' &&",
+      "file": "src/simulation/qualifyingStrategy.ts",
+      "line": 124,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.secondsAhead <= durationSeconds)",
+      "file": "src/simulation/qualifyingStrategy.ts",
+      "line": 125,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const weatherForecast = weatherForecastFor(config.seed, config.track, 0)",
+      "file": "src/simulation/race.ts",
+      "line": 1769,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "weatherForecastLabel: weatherForecast.label,",
+      "file": "src/simulation/race.ts",
+      "line": 2101,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const weatherForecast = weatherForecastFor(config.seed, config.track, elapsedSeconds)",
+      "file": "src/simulation/race.ts",
+      "line": 2260,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "weatherForecastLabel: weatherForecast.label,",
+      "file": "src/simulation/race.ts",
+      "line": 2845,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast: weatherForecast,",
+      "file": "src/simulation/race.ts",
+      "line": 6546,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "weatherForecastLabel: weatherForecast.label,",
+      "file": "src/simulation/race.ts",
+      "line": 7422,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "import type { WeatherForecast } from './weather'",
+      "file": "src/simulation/strategy.ts",
+      "line": 30,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "| 'forecast'",
+      "file": "src/simulation/strategy.ts",
+      "line": 44,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast?: WeatherForecast",
+      "file": "src/simulation/strategy.ts",
+      "line": 527,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast,",
+      "file": "src/simulation/strategy.ts",
+      "line": 565,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "// forecast. This is the authority on wet versus dry.",
+      "file": "src/simulation/strategy.ts",
+      "line": 627,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "// A forecast may bring a stop forward, but only once the track has actually",
+      "file": "src/simulation/strategy.ts",
+      "line": 633,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast?.willChange === true &&",
+      "file": "src/simulation/strategy.ts",
+      "line": 637,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.secondsAhead <= 180 &&",
+      "file": "src/simulation/strategy.ts",
+      "line": 638,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.confidence >= 0.65 &&",
+      "file": "src/simulation/strategy.ts",
+      "line": 639,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const strategicWeather = forecastIsActionable ? forecast.weather : weather",
+      "file": "src/simulation/strategy.ts",
+      "line": 641,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const strategicGrip = forecastIsActionable ? forecast.trackGrip : trackGrip",
+      "file": "src/simulation/strategy.ts",
+      "line": 642,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "// A forecast may bring a car forward onto a wet tyre, but the track still has",
+      "file": "src/simulation/strategy.ts",
+      "line": 664,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "// whatever the forecast or the grip estimate said. If the anticipation model",
+      "file": "src/simulation/strategy.ts",
+      "line": 676,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "return { compound, reason: 'forecast' }",
+      "file": "src/simulation/strategy.ts",
+      "line": 861,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "export type WeatherForecast = {",
+      "file": "src/simulation/weather.ts",
+      "line": 13,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "* A shower can be weaker in one sector while preserving the global forecast.",
+      "file": "src/simulation/weather.ts",
+      "line": 176,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "): WeatherForecast {",
+      "file": "src/simulation/weather.ts",
+      "line": 296,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "const forecast = weatherForecastFor(config.seed, config.track, 0)",
+      "file": "src/simulation/weekendTires.ts",
+      "line": 117,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.willChange &&",
+      "file": "src/simulation/weekendTires.ts",
+      "line": 120,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.weather === 'heavy-rain' &&",
+      "file": "src/simulation/weekendTires.ts",
+      "line": 121,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.secondsAhead <= 180 &&",
+      "file": "src/simulation/weekendTires.ts",
+      "line": 122,
+      "symbol": "forecast"
+    },
+    {
+      "category": "observation-boundary-candidate",
+      "excerpt": "forecast.confidence >= 0.65",
+      "file": "src/simulation/weekendTires.ts",
+      "line": 123,
+      "symbol": "forecast"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = performance.now()",
+      "file": "src/three/RaceScene.tsx",
+      "line": 1303,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "lastPublishedAt = performance.now()",
+      "file": "src/workers/raceWorker.ts",
+      "line": 44,
+      "symbol": "Date.now-or-performance.now"
+    },
+    {
+      "category": "wall-clock-access",
+      "excerpt": "const now = performance.now()",
+      "file": "src/workers/raceWorker.ts",
+      "line": 87,
+      "symbol": "Date.now-or-performance.now"
+    }
+  ]
+}

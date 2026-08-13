@@ -4,6 +4,7 @@ import type { RaceSnapshot } from '../types'
 import {
   buildRaceClassification,
   fastestLapFromClassification,
+  type ClassificationTireDisplay,
 } from '../simulation/classification'
 
 const LAP_CHART_WIDTH = 340
@@ -109,6 +110,11 @@ const formatLapTime = (seconds: number | null) => {
 const changeLabel = (change: number) =>
   change > 0 ? `+${change}` : change < 0 ? `${change}` : '0'
 
+const classificationTireSummary = (tireDisplay: ClassificationTireDisplay) =>
+  tireDisplay.kind === 'f1-pirelli'
+    ? tireDisplay.history.join(' ') || 'no set recorded'
+    : `${tireDisplay.surface.toUpperCase()} control / ${tireDisplay.lapsOnCurrentSet} laps / physical model unavailable`
+
 export function RaceClassificationPanel({
   onClose,
   snapshot,
@@ -171,7 +177,7 @@ export function RaceClassificationPanel({
             </span>
             <div className="result-driver">
               <strong>{entry.code}</strong>
-              <span>G{entry.gridPosition} / {entry.pitStops} stop{entry.pitStops === 1 ? '' : 's'} / {entry.compoundsUsed.join(' ')} / {entry.trackLimitWarnings} TL</span>
+              <span>G{entry.gridPosition} / {entry.pitStops} stop{entry.pitStops === 1 ? '' : 's'} / {classificationTireSummary(entry.tireDisplay)} / {entry.trackLimitWarnings} TL</span>
             </div>
             <span className={`result-change ${entry.positionChange === 0 ? 'result-neutral' : entry.positionChange > 0 ? 'result-up' : 'result-down'}`}>
               {changeLabel(entry.positionChange)}
@@ -185,7 +191,7 @@ export function RaceClassificationPanel({
       </ol>
       <footer>
         <Flag aria-hidden="true" size={13} />
-        <span>Grid change / pit stops / compound history / penalties</span>
+        <span>Grid change / pit stops / tyre history or control state / penalties</span>
       </footer>
     </section>
   )

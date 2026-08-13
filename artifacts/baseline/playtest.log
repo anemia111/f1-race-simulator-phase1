@@ -1,0 +1,1550 @@
+
+> f1-race-simulator-phase1@0.0.0 playtest
+> node scripts/run-built-playtest.mjs
+
+{
+  "freeMode": {
+    "activeApplicationMode": "FREE",
+    "builderLayout": {
+      "bottom": 886,
+      "documentHeight": 900,
+      "documentWidth": 1440,
+      "height": 870,
+      "scrollWidth": 1410,
+      "viewportHeight": 900,
+      "viewportWidth": 1440,
+      "width": 1410
+    },
+    "builderScroll": {
+      "clientHeight": 493,
+      "maxScrollTop": 1067,
+      "reachedBottom": true,
+      "scrollHeight": 1560
+    },
+    "carNumbers": [
+      "#1",
+      "#81",
+      "#63",
+      "#12",
+      "#77",
+      "#16",
+      "#44",
+      "#31",
+      "#3",
+      "#6",
+      "#11",
+      "#10",
+      "#43",
+      "#30",
+      "#22",
+      "#67",
+      "#87",
+      "#55",
+      "#23",
+      "#27",
+      "#5",
+      "#14",
+      "#2",
+      "#4",
+      "#7",
+      "#8",
+      "#9",
+      "#13",
+      "#15",
+      "#17",
+      "#18",
+      "#19",
+      "#20",
+      "#21",
+      "#24",
+      "#25",
+      "#26",
+      "#28",
+      "#29",
+      "#32"
+    ],
+    "championshipEventAfterFree": "SPANISH GRAND PRIX 2026",
+    "championshipEventBeforeFree": "SPANISH GRAND PRIX 2026",
+    "championshipStorageUnchanged": true,
+    "dataModes": [
+      {
+        "active": true,
+        "disabled": false,
+        "label": "SIM"
+      },
+      {
+        "active": false,
+        "disabled": true,
+        "label": "HIST"
+      },
+      {
+        "active": false,
+        "disabled": true,
+        "label": "LIVE"
+      }
+    ],
+    "escapeClosed": true,
+    "freeLapChartLineCount": 40,
+    "freePitWallHeader": "PIT WALL\nNOR\n#1\nMCLAREN\nP1\nRACE / LAP 1 OF 1",
+    "freePitWallReadouts": 26,
+    "initialFocus": "Close Free Mode Builder",
+    "keyboardNumberEdited": true,
+    "leaderboardScroll": {
+      "clientHeight": 618,
+      "maxScrollTop": 342,
+      "reachedBottom": true,
+      "scrollHeight": 960
+    },
+    "pageErrors": [],
+    "rowValidationWorked": true,
+    "seriesDisabled": true,
+    "startDisabled": false,
+    "vehicleNumberSearchWorked": true
+  },
+  "seriesModes": {
+    "pageErrors": [],
+    "results": {
+      "f2": {
+        "cars": 22,
+        "eventName": "F2 ROUND 1 / AUSTRALIA 2026",
+        "timingTitle": "RACE LEADERBOARD\nLIVE\nGAP",
+        "pitWallOverview": [
+          "Position\nP2\nSIM",
+          "Gap to leader\n+0.2s\nSIM",
+          "Interval ahead\nDUE +0.200\nSIM",
+          "Interval behind\nHER +0.200\nSIM",
+          "Lap\n1 / 33\nSIM",
+          "Grid\nP2\nSIM",
+          "Last lap\n--:--.---\nSIM",
+          "Best lap\n--:--.---\nSIM",
+          "Speed\n144 km/h\nSIM",
+          "Gear\n1\nSIM",
+          "RPM\n6,200\nSIM",
+          "Throttle\n42%\nSIM",
+          "Brake\n18%\nSIM",
+          "Pace mode\nSTANDARD\nSIM",
+          "Compound\nH\nSIM",
+          "Stint age\n0 laps\nSIM",
+          "Life remaining\n100% FRESH\nSIM",
+          "Tyre temp\n86C WINDOW\nSIM",
+          "Stops\n0\nSIM",
+          "Compounds used\nH\nSIM",
+          "ERS / battery\nN/A\nN/A",
+          "Active aero\nN/A\nN/A",
+          "DRS\nDISABLED\nSIM",
+          "Status\nRUNNING\nSIM",
+          "Pending penalties\nNONE\nSIM",
+          "Blue flag\nCLEAR\nSIM"
+        ]
+      },
+      "f3": {
+        "cars": 30,
+        "eventName": "F3 ROUND 1 / AUSTRALIA 2026",
+        "timingTitle": "RACE LEADERBOARD\nLIVE\nGAP",
+        "pitWallOverview": [
+          "Position\nP9\nSIM",
+          "Gap to leader\n+1.6s\nSIM",
+          "Interval ahead\nSHA +0.206\nSIM",
+          "Interval behind\nGIU +0.206\nSIM",
+          "Lap\n0 / 28\nSIM",
+          "Grid\nP9\nSIM",
+          "Last lap\n--:--.---\nSIM",
+          "Best lap\n--:--.---\nSIM",
+          "Speed\n140 km/h\nSIM",
+          "Gear\n1\nSIM",
+          "RPM\n6,200\nSIM",
+          "Throttle\n42%\nSIM",
+          "Brake\n18%\nSIM",
+          "Pace mode\nSTANDARD\nSIM",
+          "Compound\nM\nSIM",
+          "Stint age\n0 laps\nSIM",
+          "Life remaining\n100% FRESH\nSIM",
+          "Tyre temp\n86C WINDOW\nSIM",
+          "Stops\n0\nSIM",
+          "Compounds used\nM\nSIM",
+          "ERS / battery\nN/A\nN/A",
+          "Active aero\nN/A\nN/A",
+          "DRS\nDISABLED\nSIM",
+          "Status\nRUNNING\nSIM",
+          "Pending penalties\nNONE\nSIM",
+          "Blue flag\nCLEAR\nSIM"
+        ],
+        "madridSessions": [
+          "fp1",
+          "qualifying",
+          "qualifying2",
+          "sprint",
+          "race",
+          "race2"
+        ],
+        "madridScreenshot": "C:\\Users\\yuuki\\AppData\\Local\\Temp\\f1-simulator-qa\\broadcast-f3-madrid.png"
+      },
+      "super-formula": {
+        "cars": 24,
+        "eventName": "SF ROUND 1 / JAPAN 2026",
+        "timingTitle": "RACE LEADERBOARD\nLIVE\nGAP",
+        "pitWallOverview": [
+          "Position\nP4\nSIM",
+          "Gap to leader\n+0.7s\nSIM",
+          "Interval ahead\nNOJ +0.222\nSIM",
+          "Interval behind\nMAK +0.222\nSIM",
+          "Lap\n1 / 19\nSIM",
+          "Grid\nP4\nSIM",
+          "Last lap\n--:--.---\nSIM",
+          "Best lap\n--:--.---\nSIM",
+          "Speed\n130 km/h\nSIM",
+          "Gear\n1\nSIM",
+          "RPM\n6,200\nSIM",
+          "Throttle\n42%\nSIM",
+          "Brake\n18%\nSIM",
+          "Pace mode\nSTANDARD\nSIM",
+          "Compound\nM\nSIM",
+          "Stint age\n0 laps\nSIM",
+          "Life remaining\n100% FRESH\nSIM",
+          "Tyre temp\n86C WINDOW\nSIM",
+          "Stops\n0\nSIM",
+          "Compounds used\nM\nSIM",
+          "ERS / battery\nN/A\nN/A",
+          "Active aero\nN/A\nN/A",
+          "OTS\n200s remaining\nSIM",
+          "Status\nRUNNING\nSIM",
+          "Pending penalties\nNONE\nSIM",
+          "Blue flag\nCLEAR\nSIM"
+        ],
+        "replacementSessions": [
+          "race"
+        ],
+        "replacementProgress": "SIM\nRACE\nCHAMP\nFREE\nRACE\n1 / 25\n00:00:00",
+        "replacementScreenshot": "C:\\Users\\yuuki\\AppData\\Local\\Temp\\f1-simulator-qa\\broadcast-sf-replacement.png"
+      }
+    },
+    "seriesOptions": [
+      "f1-custom",
+      "f2",
+      "f3",
+      "super-formula"
+    ]
+  },
+  "viewports": [
+    {
+      "activePitRows": 0,
+      "batteryValues": [
+        "32%",
+        "27%",
+        "25%",
+        "26%",
+        "27%",
+        "27%",
+        "27%",
+        "31%",
+        "29%",
+        "27%",
+        "26%",
+        "30%",
+        "27%",
+        "31%",
+        "29%",
+        "26%",
+        "24%",
+        "26%",
+        "24%",
+        "29%",
+        "23%",
+        "51%"
+      ],
+      "canvas": {
+        "alphaRatio": 0.04884096848553844,
+        "brightRatio": 0.024938596960195736,
+        "coloredRatio": 0.03193429796119894,
+        "height": 758,
+        "ok": true,
+        "width": 839
+      },
+      "centerMapLayout": {
+        "centerHeight": 794,
+        "mapHeight": 794,
+        "mapHeightRatio": 1
+      },
+      "chaseSelected": "true",
+      "classificationVisible": true,
+      "lapChartLineCount": 22,
+      "dataDetails": 25,
+      "dataManagerAudit": "Save version\n1\nDriver records\n22 / 22\nTeam records\n11 / 11\nPool records\n110\nDuplicate ability profiles\n0\nMigration entries\n0",
+      "dataManagerDriverRows": 110,
+      "dataManagerDriverScroll": {
+        "clientHeight": 655,
+        "maxScrollTop": 2755,
+        "reachedBottom": true,
+        "scrollHeight": 3410
+      },
+      "dataManagerEventInputs": 7,
+      "dataManagerLayout": {
+        "clientHeight": 850,
+        "clientWidth": 1390,
+        "scrollHeight": 850,
+        "scrollWidth": 1390
+      },
+      "dataManagerQualifyingRows": 4,
+      "dataManagerRuleInputs": 18,
+      "dataManagerRuleRows": 25,
+      "dataManagerSelectedEvent": "EVENT OVERRIDE\nR16 f1-16\nmadrid-approx",
+      "dataManagerTeamRows": 11,
+      "headerText": "AUSTRALIAN GRAND PRIX 2026\nF1 / Albert Park\nF1\nFIA Formula 2\nFIA Formula 3\nSUPER FORMULA\nSIM\nFP1\nFP2\nFP3\nQUALIFYING\nRACE\nCHAMP\nFREE\nRACE\n1 / 58\n00:00:00\nTRACK TEMP\n47.3C\nAIR TEMP\n32.3C\nHUMIDITY\n51%\nWIND\n19.1 km/h E",
+      "initialSectorStatuses": {
+        "pending": 66,
+        "total": 66
+      },
+      "initialSectorValues": [
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---"
+      ],
+      "insightsVisible": true,
+      "layout": {
+        "app": {
+          "bottom": 900,
+          "height": 900,
+          "left": 0,
+          "right": 1440,
+          "top": 0,
+          "width": 1440
+        },
+        "clippedButtons": 0,
+        "documentHeight": 900,
+        "documentWidth": 1440,
+        "footer": {
+          "bottom": 900,
+          "top": 858
+        },
+        "panels": [
+          {
+            "bottom": 852,
+            "left": 82,
+            "right": 586.734375,
+            "top": 58
+          },
+          {
+            "bottom": 852,
+            "left": 592.734375,
+            "right": 1434,
+            "top": 58
+          }
+        ],
+        "top": {
+          "bottom": 52,
+          "top": 0
+        },
+        "viewportHeight": 900,
+        "viewportWidth": 1440,
+        "workspace": {
+          "bottom": 858,
+          "left": 76,
+          "right": 1440,
+          "top": 52
+        }
+      },
+      "leaderboardRows": 22,
+      "leaderboardScroll": {
+        "clientHeight": 618,
+        "maxScrollTop": 0,
+        "reachedBottom": true,
+        "scrollHeight": 618
+      },
+      "leaderboardHeader": "POS\nDRIVER\nTYRE\nINT\nLAST\nBEST\nS1\nS2\nS3\nST\nUSED\nSPD\nERS",
+      "leaderboardColumnVisibility": {
+        "battery": true,
+        "speed": true
+      },
+      "duplicateGapPanels": 0,
+      "reclaimedSideSpace": {
+        "leaderboardRatio": 0.8513853904282116
+      },
+      "liveTimingClosed": true,
+      "liveTimingRestored": true,
+      "miniSectors": 528,
+      "driverAbilityMaxes": [
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1"
+      ],
+      "driverAbilityControlChanged": true,
+      "driverOverallAbility": "91",
+      "driverAbilityValues": [
+        "92",
+        "92",
+        "92",
+        "91",
+        "90",
+        "90",
+        "91",
+        "91",
+        "91",
+        "89",
+        "92",
+        "92"
+      ],
+      "initialMiniSectorStates": {
+        "colored": 0,
+        "dim": 528
+      },
+      "name": "desktop",
+      "observedMeasuredSector": true,
+      "observedOverallBest": true,
+      "overviewNavigationItems": 0,
+      "pageErrors": [],
+      "pitWallBoxApplied": true,
+      "pitWallBoxCommandLabel": "BOX S\n8",
+      "pitWallBoxStates": [
+        {
+          "disabled": false,
+          "label": "BOX S8",
+          "title": "Box RUS for Soft at the next safe lap crossing (8 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX M2",
+          "title": "Box RUS for Medium at the next safe lap crossing (2 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX H2",
+          "title": "Box RUS for Hard at the next safe lap crossing (2 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX I5",
+          "title": "Box RUS for Intermediate at the next safe lap crossing (5 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX W2",
+          "title": "Box RUS for Wet at the next safe lap crossing (2 sets left)"
+        }
+      ],
+      "pitWallCloseButtonClosed": true,
+      "pitWallErsReadout": "ERS / battery\n14% / BALANCED\nSIM",
+      "pitWallEscapeClosed": true,
+      "pitWallFilterCounts": [
+        {
+          "entries": 33,
+          "filterLabel": "ALL"
+        },
+        {
+          "entries": 1,
+          "filterLabel": "FLAGS"
+        },
+        {
+          "entries": 8,
+          "filterLabel": "PENALTIES"
+        }
+      ],
+      "pitWallFollowedDriverSelection": true,
+      "pitWallHeader": "PIT WALL\nRUS\n#63\nMERCEDES\nP2\nRACE / LAP 5 OF 58",
+      "pitWallInitialFocus": "Close pit wall",
+      "pitWallLapLogSample": {
+        "cells": [
+          "4",
+          "1:26.724",
+          "28.634",
+          "20.541",
+          "37.550",
+          "M4",
+          "P2",
+          "-"
+        ]
+      },
+      "pitWallLapLogScrolls": {
+        "clientHeight": 577,
+        "overflowY": "auto"
+      },
+      "pitWallLayout": {
+        "bottom": 848,
+        "canvasLeft": 593.734375,
+        "canvasVisibleWidth": 839.265625,
+        "canvasWidth": 839.265625,
+        "documentHeight": 900,
+        "documentWidth": 1440,
+        "footerTop": 858,
+        "leaderboardLeft": 82,
+        "leaderboardRight": 586.734375,
+        "left": 82,
+        "reachedBottom": true,
+        "right": 586.75,
+        "top": 52,
+        "viewportHeight": 900,
+        "viewportWidth": 1440
+      },
+      "pitWallPaceApplied": true,
+      "pitWallReplacedClassification": true,
+      "pitWallSelectedCode": "RUS",
+      "pitWallSelectorMovedTimingTower": true,
+      "pitWallTabViews": [
+        {
+          "groups": [
+            "RUNNING ORDER",
+            "LAP TIMING",
+            "SECTORS AND MINI SECTORS",
+            "CAR STATE",
+            "TYRES",
+            "SYSTEMS"
+          ],
+          "label": "OVERVIEW",
+          "lapLogRows": 0,
+          "readouts": 26,
+          "selected": "true"
+        },
+        {
+          "groups": [],
+          "label": "LAP LOG",
+          "lapLogRows": 4,
+          "readouts": 0,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "RECOMMENDATION",
+            "STOP NOW MODEL",
+            "PIT LANE",
+            "TYRE INVENTORY"
+          ],
+          "label": "STRATEGY",
+          "lapLogRows": 0,
+          "readouts": 25,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "ENERGY STORE",
+            "OVERTAKE SYSTEMS",
+            "DRIVE AND THERMAL",
+            "COMPONENT CONDITION",
+            "INTEGRITY"
+          ],
+          "label": "CAR SYSTEMS",
+          "lapLogRows": 0,
+          "readouts": 31,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "ATMOSPHERE",
+            "SURFACE",
+            "SECTOR SURFACE",
+            "RACE CONTROL STATE",
+            "CIRCUIT"
+          ],
+          "label": "WEATHER & TRACK",
+          "lapLogRows": 0,
+          "readouts": 32,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "CONTROL STATUS"
+          ],
+          "label": "RACE CONTROL",
+          "lapLogRows": 0,
+          "readouts": 8,
+          "selected": "true"
+        }
+      ],
+      "pitWallTimedSessions": [
+        {
+          "enabled": true,
+          "header": "PIT WALL\nHUL\n#27\nAUDI\nP14\nPRACTICE / LAP 0",
+          "stage": "fp1",
+          "strategyRows": [
+            {
+              "label": "Call",
+              "value": "N/A"
+            },
+            {
+              "label": "Reason",
+              "value": "N/A"
+            },
+            {
+              "label": "Target stop",
+              "value": "N/A"
+            },
+            {
+              "label": "Next tyre",
+              "value": "N/A"
+            },
+            {
+              "label": "Confidence",
+              "value": "N/A"
+            },
+            {
+              "label": "Laps remaining",
+              "value": "N/A"
+            },
+            {
+              "label": "Pit lane loss",
+              "value": "14.1s"
+            },
+            {
+              "label": "Effective loss",
+              "value": "17.5s"
+            },
+            {
+              "label": "Rejoin",
+              "value": "N/A"
+            },
+            {
+              "label": "Rejoin change",
+              "value": "N/A"
+            },
+            {
+              "label": "Expected delta",
+              "value": "N/A"
+            },
+            {
+              "label": "Gap ahead",
+              "value": "PIT"
+            },
+            {
+              "label": "Pit entry",
+              "value": "OPEN"
+            },
+            {
+              "label": "Pit exit",
+              "value": "OPEN"
+            },
+            {
+              "label": "Control phase",
+              "value": "GREEN"
+            },
+            {
+              "label": "Team mate",
+              "value": "BOR IN PIT"
+            },
+            {
+              "label": "Double stack",
+              "value": "RISK"
+            },
+            {
+              "label": "Own pit phase",
+              "value": "BOX"
+            },
+            {
+              "label": "Sets remaining",
+              "value": "20"
+            },
+            {
+              "label": "Soft",
+              "value": "8 AVAILABLE"
+            },
+            {
+              "label": "Medium",
+              "value": "3 AVAILABLE"
+            },
+            {
+              "label": "Hard",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Intermediate",
+              "value": "5 AVAILABLE"
+            },
+            {
+              "label": "Wet",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Current tyre life",
+              "value": "100% FRESH"
+            }
+          ],
+          "targetStop": ""
+        },
+        {
+          "enabled": true,
+          "header": "PIT WALL\nHUL\n#27\nAUDI\nP16\nQUALIFYING / LAP 0",
+          "stage": "qualifying",
+          "strategyRows": [
+            {
+              "label": "Call",
+              "value": "N/A"
+            },
+            {
+              "label": "Reason",
+              "value": "N/A"
+            },
+            {
+              "label": "Target stop",
+              "value": "N/A"
+            },
+            {
+              "label": "Next tyre",
+              "value": "N/A"
+            },
+            {
+              "label": "Confidence",
+              "value": "N/A"
+            },
+            {
+              "label": "Laps remaining",
+              "value": "N/A"
+            },
+            {
+              "label": "Pit lane loss",
+              "value": "14.1s"
+            },
+            {
+              "label": "Effective loss",
+              "value": "17.5s"
+            },
+            {
+              "label": "Rejoin",
+              "value": "N/A"
+            },
+            {
+              "label": "Rejoin change",
+              "value": "N/A"
+            },
+            {
+              "label": "Expected delta",
+              "value": "N/A"
+            },
+            {
+              "label": "Gap ahead",
+              "value": "NO TIME"
+            },
+            {
+              "label": "Pit entry",
+              "value": "OPEN"
+            },
+            {
+              "label": "Pit exit",
+              "value": "OPEN"
+            },
+            {
+              "label": "Control phase",
+              "value": "GREEN"
+            },
+            {
+              "label": "Team mate",
+              "value": "BOR IN PIT"
+            },
+            {
+              "label": "Double stack",
+              "value": "RISK"
+            },
+            {
+              "label": "Own pit phase",
+              "value": "EXIT"
+            },
+            {
+              "label": "Sets remaining",
+              "value": "9"
+            },
+            {
+              "label": "Soft",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Medium",
+              "value": "NONE"
+            },
+            {
+              "label": "Hard",
+              "value": "NONE"
+            },
+            {
+              "label": "Intermediate",
+              "value": "5 AVAILABLE"
+            },
+            {
+              "label": "Wet",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Current tyre life",
+              "value": "100% FRESH"
+            }
+          ],
+          "targetStop": ""
+        }
+      ],
+      "removedBottomPanelLabels": [],
+      "resumeVisible": true,
+      "screenshotPath": "C:\\Users\\yuuki\\AppData\\Local\\Temp\\f1-simulator-qa\\broadcast-desktop.png",
+      "sectorStatuses": {
+        "overallBest": 0,
+        "personalBest": 4,
+        "slower": 41
+      },
+      "selectedRows": 1,
+      "setupVisible": true,
+      "speed60Selected": "true",
+      "strategyControlsVisible": true,
+      "tireLifeValues": [
+        "91",
+        "87",
+        "90",
+        "82",
+        "87",
+        "87",
+        "87",
+        "82",
+        "87",
+        "87",
+        "87",
+        "87",
+        "87",
+        "81",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "89"
+      ],
+      "typography": {
+        "app": 10,
+        "leaderboard": 9,
+        "panelTitle": 11
+      },
+      "runningMiniSectorStates": {
+        "colored": 440,
+        "dim": 88
+      },
+      "tokenInputVisible": true,
+      "trackTitle": "TRACK MAP - ALBERT PARK\n5.278 KM / 5 ACTIVE AERO ZONES"
+    },
+    {
+      "activePitRows": 0,
+      "batteryValues": [
+        "14%",
+        "18%",
+        "13%",
+        "13%",
+        "14%",
+        "13%",
+        "18%",
+        "21%",
+        "19%",
+        "35%",
+        "31%",
+        "32%",
+        "29%",
+        "27%",
+        "33%",
+        "29%",
+        "32%",
+        "27%",
+        "31%",
+        "29%",
+        "34%",
+        "42%"
+      ],
+      "canvas": {
+        "alphaRatio": 0.05644923734040301,
+        "brightRatio": 0.031449927738348385,
+        "coloredRatio": 0.03621367356144081,
+        "height": 588,
+        "ok": true,
+        "width": 739
+      },
+      "centerMapLayout": {
+        "centerHeight": 624,
+        "mapHeight": 624,
+        "mapHeightRatio": 1
+      },
+      "chaseSelected": "true",
+      "classificationVisible": true,
+      "lapChartLineCount": 22,
+      "dataDetails": 25,
+      "dataManagerAudit": "Save version\n1\nDriver records\n22 / 22\nTeam records\n11 / 11\nPool records\n110\nDuplicate ability profiles\n0\nMigration entries\n0",
+      "dataManagerDriverRows": 110,
+      "dataManagerDriverScroll": {
+        "clientHeight": 475,
+        "maxScrollTop": 2935,
+        "reachedBottom": true,
+        "scrollHeight": 3410
+      },
+      "dataManagerEventInputs": 7,
+      "dataManagerLayout": {
+        "clientHeight": 670,
+        "clientWidth": 1230,
+        "scrollHeight": 670,
+        "scrollWidth": 1230
+      },
+      "dataManagerQualifyingRows": 4,
+      "dataManagerRuleInputs": 18,
+      "dataManagerRuleRows": 25,
+      "dataManagerSelectedEvent": "EVENT OVERRIDE\nR16 f1-16\nmadrid-approx",
+      "dataManagerTeamRows": 11,
+      "headerText": "AUSTRALIAN GRAND PRIX 2026\nF1 / Albert Park\nF1\nFIA Formula 2\nFIA Formula 3\nSUPER FORMULA\nSIM\nFP1\nFP2\nFP3\nQUALIFYING\nRACE\nCHAMP\nFREE\nRACE\n1 / 58\n00:00:00\nTRACK TEMP\n43.8C\nAIR TEMP\n28.8C\nHUMIDITY\n51%\nWIND\n7.2 km/h N",
+      "initialSectorStatuses": {
+        "pending": 66,
+        "total": 66
+      },
+      "initialSectorValues": [
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---",
+        "--.---"
+      ],
+      "insightsVisible": true,
+      "layout": {
+        "app": {
+          "bottom": 720,
+          "height": 720,
+          "left": 0,
+          "right": 1280,
+          "top": 0,
+          "width": 1280
+        },
+        "clippedButtons": 0,
+        "documentHeight": 720,
+        "documentWidth": 1280,
+        "footer": {
+          "bottom": 720,
+          "top": 682
+        },
+        "panels": [
+          {
+            "bottom": 676,
+            "left": 82,
+            "right": 526.734375,
+            "top": 52
+          },
+          {
+            "bottom": 676,
+            "left": 532.734375,
+            "right": 1274,
+            "top": 52
+          }
+        ],
+        "top": {
+          "bottom": 46,
+          "top": 0
+        },
+        "viewportHeight": 720,
+        "viewportWidth": 1280,
+        "workspace": {
+          "bottom": 682,
+          "left": 76,
+          "right": 1280,
+          "top": 46
+        }
+      },
+      "leaderboardRows": 22,
+      "leaderboardScroll": {
+        "clientHeight": 464,
+        "maxScrollTop": 64,
+        "reachedBottom": true,
+        "scrollHeight": 528
+      },
+      "leaderboardHeader": "POS\nDRIVER\nTYRE\nINT\nLAST\nBEST\nS1\nS2\nS3\nST\nUSED\nSPD\nERS",
+      "leaderboardColumnVisibility": {
+        "battery": true,
+        "speed": true
+      },
+      "duplicateGapPanels": 0,
+      "reclaimedSideSpace": {
+        "leaderboardRatio": 0.8365384615384616
+      },
+      "liveTimingClosed": true,
+      "liveTimingRestored": true,
+      "miniSectors": 528,
+      "driverAbilityMaxes": [
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1"
+      ],
+      "driverAbilityControlChanged": true,
+      "driverOverallAbility": "91",
+      "driverAbilityValues": [
+        "92",
+        "92",
+        "92",
+        "91",
+        "90",
+        "90",
+        "91",
+        "91",
+        "91",
+        "89",
+        "92",
+        "92"
+      ],
+      "initialMiniSectorStates": {
+        "colored": 0,
+        "dim": 528
+      },
+      "name": "desktop-compact",
+      "observedMeasuredSector": true,
+      "observedOverallBest": true,
+      "overviewNavigationItems": 0,
+      "pageErrors": [],
+      "pitWallBoxApplied": true,
+      "pitWallBoxCommandLabel": "BOX S\n8",
+      "pitWallBoxStates": [
+        {
+          "disabled": false,
+          "label": "BOX S8",
+          "title": "Box RUS for Soft at the next safe lap crossing (8 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX M2",
+          "title": "Box RUS for Medium at the next safe lap crossing (2 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX H2",
+          "title": "Box RUS for Hard at the next safe lap crossing (2 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX I5",
+          "title": "Box RUS for Intermediate at the next safe lap crossing (5 sets left)"
+        },
+        {
+          "disabled": false,
+          "label": "BOX W2",
+          "title": "Box RUS for Wet at the next safe lap crossing (2 sets left)"
+        }
+      ],
+      "pitWallCloseButtonClosed": true,
+      "pitWallErsReadout": "ERS / battery\n15% / BALANCED\nSIM",
+      "pitWallEscapeClosed": true,
+      "pitWallFilterCounts": [
+        {
+          "entries": 37,
+          "filterLabel": "ALL"
+        },
+        {
+          "entries": 1,
+          "filterLabel": "FLAGS"
+        },
+        {
+          "entries": 8,
+          "filterLabel": "PENALTIES"
+        }
+      ],
+      "pitWallFollowedDriverSelection": true,
+      "pitWallHeader": "PIT WALL\nRUS\n#63\nMERCEDES\nP2\nRACE / LAP 5 OF 58",
+      "pitWallInitialFocus": "Close pit wall",
+      "pitWallLapLogSample": {
+        "cells": [
+          "4",
+          "1:26.592",
+          "28.942",
+          "20.314",
+          "37.336",
+          "M4",
+          "P2",
+          "-"
+        ]
+      },
+      "pitWallLapLogScrolls": {
+        "clientHeight": 409,
+        "overflowY": "auto"
+      },
+      "pitWallLayout": {
+        "bottom": 674,
+        "canvasLeft": 533.734375,
+        "canvasVisibleWidth": 739.265625,
+        "canvasWidth": 739.265625,
+        "documentHeight": 720,
+        "documentWidth": 1280,
+        "footerTop": 682,
+        "leaderboardLeft": 82,
+        "leaderboardRight": 526.734375,
+        "left": 82,
+        "reachedBottom": true,
+        "right": 526.75,
+        "top": 46,
+        "viewportHeight": 720,
+        "viewportWidth": 1280
+      },
+      "pitWallPaceApplied": true,
+      "pitWallReplacedClassification": true,
+      "pitWallSelectedCode": "RUS",
+      "pitWallSelectorMovedTimingTower": true,
+      "pitWallTabViews": [
+        {
+          "groups": [
+            "RUNNING ORDER",
+            "LAP TIMING",
+            "SECTORS AND MINI SECTORS",
+            "CAR STATE",
+            "TYRES",
+            "SYSTEMS"
+          ],
+          "label": "OVERVIEW",
+          "lapLogRows": 0,
+          "readouts": 26,
+          "selected": "true"
+        },
+        {
+          "groups": [],
+          "label": "LAP LOG",
+          "lapLogRows": 4,
+          "readouts": 0,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "RECOMMENDATION",
+            "STOP NOW MODEL",
+            "PIT LANE",
+            "TYRE INVENTORY"
+          ],
+          "label": "STRATEGY",
+          "lapLogRows": 0,
+          "readouts": 25,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "ENERGY STORE",
+            "OVERTAKE SYSTEMS",
+            "DRIVE AND THERMAL",
+            "COMPONENT CONDITION",
+            "INTEGRITY"
+          ],
+          "label": "CAR SYSTEMS",
+          "lapLogRows": 0,
+          "readouts": 31,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "ATMOSPHERE",
+            "SURFACE",
+            "SECTOR SURFACE",
+            "RACE CONTROL STATE",
+            "CIRCUIT"
+          ],
+          "label": "WEATHER & TRACK",
+          "lapLogRows": 0,
+          "readouts": 32,
+          "selected": "true"
+        },
+        {
+          "groups": [
+            "CONTROL STATUS"
+          ],
+          "label": "RACE CONTROL",
+          "lapLogRows": 0,
+          "readouts": 8,
+          "selected": "true"
+        }
+      ],
+      "pitWallTimedSessions": [
+        {
+          "enabled": true,
+          "header": "PIT WALL\nHUL\n#27\nAUDI\nP13\nPRACTICE / LAP 0",
+          "stage": "fp1",
+          "strategyRows": [
+            {
+              "label": "Call",
+              "value": "N/A"
+            },
+            {
+              "label": "Reason",
+              "value": "N/A"
+            },
+            {
+              "label": "Target stop",
+              "value": "N/A"
+            },
+            {
+              "label": "Next tyre",
+              "value": "N/A"
+            },
+            {
+              "label": "Confidence",
+              "value": "N/A"
+            },
+            {
+              "label": "Laps remaining",
+              "value": "N/A"
+            },
+            {
+              "label": "Pit lane loss",
+              "value": "14.1s"
+            },
+            {
+              "label": "Effective loss",
+              "value": "17.5s"
+            },
+            {
+              "label": "Rejoin",
+              "value": "N/A"
+            },
+            {
+              "label": "Rejoin change",
+              "value": "N/A"
+            },
+            {
+              "label": "Expected delta",
+              "value": "N/A"
+            },
+            {
+              "label": "Gap ahead",
+              "value": "PIT"
+            },
+            {
+              "label": "Pit entry",
+              "value": "OPEN"
+            },
+            {
+              "label": "Pit exit",
+              "value": "OPEN"
+            },
+            {
+              "label": "Control phase",
+              "value": "GREEN"
+            },
+            {
+              "label": "Team mate",
+              "value": "BOR IN PIT"
+            },
+            {
+              "label": "Double stack",
+              "value": "RISK"
+            },
+            {
+              "label": "Own pit phase",
+              "value": "BOX"
+            },
+            {
+              "label": "Sets remaining",
+              "value": "20"
+            },
+            {
+              "label": "Soft",
+              "value": "8 AVAILABLE"
+            },
+            {
+              "label": "Medium",
+              "value": "3 AVAILABLE"
+            },
+            {
+              "label": "Hard",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Intermediate",
+              "value": "5 AVAILABLE"
+            },
+            {
+              "label": "Wet",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Current tyre life",
+              "value": "100% FRESH"
+            }
+          ],
+          "targetStop": ""
+        },
+        {
+          "enabled": true,
+          "header": "PIT WALL\nHUL\n#27\nAUDI\nP12\nQUALIFYING / LAP 0",
+          "stage": "qualifying",
+          "strategyRows": [
+            {
+              "label": "Call",
+              "value": "N/A"
+            },
+            {
+              "label": "Reason",
+              "value": "N/A"
+            },
+            {
+              "label": "Target stop",
+              "value": "N/A"
+            },
+            {
+              "label": "Next tyre",
+              "value": "N/A"
+            },
+            {
+              "label": "Confidence",
+              "value": "N/A"
+            },
+            {
+              "label": "Laps remaining",
+              "value": "N/A"
+            },
+            {
+              "label": "Pit lane loss",
+              "value": "14.1s"
+            },
+            {
+              "label": "Effective loss",
+              "value": "17.5s"
+            },
+            {
+              "label": "Rejoin",
+              "value": "N/A"
+            },
+            {
+              "label": "Rejoin change",
+              "value": "N/A"
+            },
+            {
+              "label": "Expected delta",
+              "value": "N/A"
+            },
+            {
+              "label": "Gap ahead",
+              "value": "--"
+            },
+            {
+              "label": "Pit entry",
+              "value": "OPEN"
+            },
+            {
+              "label": "Pit exit",
+              "value": "OPEN"
+            },
+            {
+              "label": "Control phase",
+              "value": "GREEN"
+            },
+            {
+              "label": "Team mate",
+              "value": "BOR IN PIT"
+            },
+            {
+              "label": "Double stack",
+              "value": "RISK"
+            },
+            {
+              "label": "Own pit phase",
+              "value": "EXIT"
+            },
+            {
+              "label": "Sets remaining",
+              "value": "7"
+            },
+            {
+              "label": "Soft",
+              "value": "4 AVAILABLE"
+            },
+            {
+              "label": "Medium",
+              "value": "NONE"
+            },
+            {
+              "label": "Hard",
+              "value": "NONE"
+            },
+            {
+              "label": "Intermediate",
+              "value": "1 AVAILABLE"
+            },
+            {
+              "label": "Wet",
+              "value": "2 AVAILABLE"
+            },
+            {
+              "label": "Current tyre life",
+              "value": "100% FRESH"
+            }
+          ],
+          "targetStop": ""
+        }
+      ],
+      "removedBottomPanelLabels": [],
+      "resumeVisible": true,
+      "screenshotPath": "C:\\Users\\yuuki\\AppData\\Local\\Temp\\f1-simulator-qa\\broadcast-compact.png",
+      "sectorStatuses": {
+        "overallBest": 0,
+        "personalBest": 4,
+        "slower": 42
+      },
+      "selectedRows": 1,
+      "setupVisible": true,
+      "speed60Selected": "true",
+      "strategyControlsVisible": true,
+      "tireLifeValues": [
+        "88",
+        "87",
+        "90",
+        "81",
+        "87",
+        "87",
+        "87",
+        "81",
+        "86",
+        "87",
+        "87",
+        "87",
+        "87",
+        "82",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "90",
+        "89"
+      ],
+      "typography": {
+        "app": 10,
+        "leaderboard": 9,
+        "panelTitle": 11
+      },
+      "runningMiniSectorStates": {
+        "colored": 484,
+        "dim": 44
+      },
+      "tokenInputVisible": true,
+      "trackTitle": "TRACK MAP - ALBERT PARK\n5.278 KM / 5 ACTIVE AERO ZONES"
+    }
+  ]
+}

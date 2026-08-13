@@ -1,0 +1,652 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T11:40:44.210Z",
+  "sourceCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "scope": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "summary": {
+    "matchCount": 90,
+    "explicitDecisionLogTypePresent": false,
+    "knownDecisionModules": [
+      "src/simulation/driverDecision.ts",
+      "src/simulation/strategy.ts",
+      "src/simulation/overtaking.ts",
+      "src/simulation/neutralisation.ts",
+      "src/simulation/classification.ts"
+    ]
+  },
+  "matches": [
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallLapLog({",
+      "file": "src/components/pitWall/PitWallLapLog.tsx",
+      "line": 18,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallOverview({",
+      "file": "src/components/pitWall/PitWallOverview.tsx",
+      "line": 45,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallRaceControl({",
+      "file": "src/components/pitWall/PitWallRaceControl.tsx",
+      "line": 11,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallSourceTag({ source }: { source: PitWallSource }) {",
+      "file": "src/components/pitWall/PitWallShared.tsx",
+      "line": 16,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallMetric({",
+      "file": "src/components/pitWall/PitWallShared.tsx",
+      "line": 32,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallStatusBadge({",
+      "file": "src/components/pitWall/PitWallShared.tsx",
+      "line": 54,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallConditionGauge({",
+      "file": "src/components/pitWall/PitWallShared.tsx",
+      "line": 68,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallGroup({",
+      "file": "src/components/pitWall/PitWallShared.tsx",
+      "line": 98,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallStrategy({",
+      "file": "src/components/pitWall/PitWallStrategy.tsx",
+      "line": 27,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallSystems({",
+      "file": "src/components/pitWall/PitWallSystems.tsx",
+      "line": 26,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallWeather({",
+      "file": "src/components/pitWall/PitWallWeather.tsx",
+      "line": 16,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function PitWallPanel({",
+      "file": "src/components/PitWallPanel.tsx",
+      "line": 82,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function f1PitCrewSpeedForTeam(teamName: string): number {",
+      "file": "src/data/f1PitCrewCalibration.ts",
+      "line": 73,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function hasCompleteF1PitCrewCalibration(teamNames: string[]): boolean {",
+      "file": "src/data/f1PitCrewCalibration.ts",
+      "line": 77,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function observedPitLaneTransitSeconds(trackId: string): number | null {",
+      "file": "src/data/f1PitLaneObservations2026.ts",
+      "line": 70,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallObservedSource(",
+      "file": "src/domain/pitWall.ts",
+      "line": 65,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallSessionFor(stage: WeekendStage): PitWallSession {",
+      "file": "src/domain/pitWall.ts",
+      "line": 145,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallCapabilitiesFor(options: {",
+      "file": "src/domain/pitWall.ts",
+      "line": 189,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallIntervals(",
+      "file": "src/domain/pitWall.ts",
+      "line": 227,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallLapLog(laps: LapRecord[]): PitWallLapLogRow[] {",
+      "file": "src/domain/pitWall.ts",
+      "line": 288,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallBoxCommands(",
+      "file": "src/domain/pitWall.ts",
+      "line": 346,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallPaceCommandDisabledReason(",
+      "file": "src/domain/pitWall.ts",
+      "line": 368,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function raceControlKindFromMessage(message: string): RaceEventKind {",
+      "file": "src/domain/pitWall.ts",
+      "line": 416,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitWallRaceControlEntries(options: {",
+      "file": "src/domain/pitWall.ts",
+      "line": 451,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function filterPitWallRaceControl(",
+      "file": "src/domain/pitWall.ts",
+      "line": 487,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function usePitStrategyOutlook(options: {",
+      "file": "src/hooks/usePitStrategyOutlook.ts",
+      "line": 34,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function flagFromRaceControl(",
+      "file": "src/services/openF1Derived.ts",
+      "line": 130,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function sectorFlagsFromRaceControl(",
+      "file": "src/services/openF1Derived.ts",
+      "line": 168,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function updateOvertakeEligibilityAfterTravel(options: {",
+      "file": "src/simulation/activeAero.ts",
+      "line": 62,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function overtakeStatusFor(options: {",
+      "file": "src/simulation/activeAero.ts",
+      "line": 164,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function overtakeDeploymentLimitKw(basePowerKw: number) {",
+      "file": "src/simulation/activeAero.ts",
+      "line": 246,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function componentPacePenaltySeconds(components: CarComponents) {",
+      "file": "src/simulation/components.ts",
+      "line": 116,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "physical-intent-contract",
+      "excerpt": "export type DriverDecisionIntent =",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 43,
+      "symbol": "DriverDecisionIntent"
+    },
+    {
+      "category": "physical-intent-contract",
+      "excerpt": "intent: DriverDecisionIntent",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 130,
+      "symbol": "DriverDecisionIntent"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function driverDecisionWindow(trackProgress: number): number {",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 325,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "function decisionRoll(",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 338,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function signedDecisionRoll(",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 352,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "return decisionRoll(context, role, opponentId, channel) * 2 - 1",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 358,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "physical-intent-contract",
+      "excerpt": "intent: DriverDecisionIntent",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 376,
+      "symbol": "DriverDecisionIntent"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "decisionRoll(",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 416,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "return decisionRoll(context, role, opponentId, 'open-side') < 0.5 ? -1 : 1",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 517,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "physical-intent-contract",
+      "excerpt": "intent: DriverDecisionIntent,",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 700,
+      "symbol": "DriverDecisionIntent"
+    },
+    {
+      "category": "physical-intent-contract",
+      "excerpt": "function nominalControls(intent: DriverDecisionIntent): {",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 729,
+      "symbol": "DriverDecisionIntent"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function decideDriverBehavior(",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 806,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "decisionRoll(",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 870,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "decisionRoll(context, 'attack', chosen.opponentId, 'attempt') <",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 910,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "decision-rng",
+      "excerpt": "decisionRoll(context, 'defend', chosen.opponentId, 'attempt') <",
+      "file": "src/simulation/driverDecision.ts",
+      "line": 914,
+      "symbol": "decisionRoll"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function qualifyingSetupPenaltySeconds(",
+      "file": "src/simulation/engineering.ts",
+      "line": 189,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function pitExitClosureWindow(",
+      "file": "src/simulation/neutralisation.ts",
+      "line": 431,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function driverOvertaking(driver: Driver): number {",
+      "file": "src/simulation/overtaking.ts",
+      "line": 109,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null {",
+      "file": "src/simulation/overtaking.ts",
+      "line": 316,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitBoxProgress(",
+      "file": "src/simulation/pitLane.ts",
+      "line": 8,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitBoxSlotForTeam(",
+      "file": "src/simulation/pitLane.ts",
+      "line": 23,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitBoxProgressForTeam(",
+      "file": "src/simulation/pitLane.ts",
+      "line": 32,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitLaneMotionAt(",
+      "file": "src/simulation/pitLane.ts",
+      "line": 68,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function makePenalty(",
+      "file": "src/simulation/race.ts",
+      "line": 492,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function applyStewardPenalty(",
+      "file": "src/simulation/race.ts",
+      "line": 514,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function initialOvertakeEnableDistance(config: RaceConfig, leaderDistance: number) {",
+      "file": "src/simulation/race.ts",
+      "line": 1669,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function penaltyFromWarnings(warnings: number): number {",
+      "file": "src/simulation/raceEvents.ts",
+      "line": 258,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function owedPenaltySeconds(",
+      "file": "src/simulation/raceEvents.ts",
+      "line": 263,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function penaltyLabel(decision: StewardPenaltyDecision): string {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 52,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function jumpStartDecision(movementMeters: number): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 68,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function trackLimitPenaltyFromWarnings(warnings: number): number {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 95,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function collisionDecision(stewardCase: StewardCase): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 99,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function trackExcursionDecision(options: {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 135,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function stewardCaseDecision(",
+      "file": "src/simulation/stewarding.ts",
+      "line": 174,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitLaneSpeedingDecision(excessKph: number): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 195,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function unsafeReleaseDecision(options: {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 214,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function blueFlagDecision(ignoredForSeconds: number): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 233,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function yellowFlagDecision(doubleYellow: boolean): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 253,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function proceduralPenaltyDeadlineLap(",
+      "file": "src/simulation/stewarding.ts",
+      "line": 270,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function vscSpeedingDecision(redSectors: number): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 284,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function vscEndingDeltaDecision(redDeltaSeconds: number): StewardPenaltyDecision {",
+      "file": "src/simulation/stewarding.ts",
+      "line": 307,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function overtakeDifficultyForTrack(track: TrackDefinition) {",
+      "file": "src/simulation/strategy.ts",
+      "line": 83,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function normalizedPitControlPhase(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 95,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function effectivePitLaneLossSecondsForControlPhase(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 103,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitLaneLossSecondsForTrack(track: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 178,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function estimatePitOpportunity(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 247,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function decideRedFlagTireChange(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 383,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function decidePitStop(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 498,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function strategyOutlookFor(options: {",
+      "file": "src/simulation/strategy.ts",
+      "line": 994,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function pitStopLossSeconds(",
+      "file": "src/simulation/strategy.ts",
+      "line": 1187,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function deterministicStrategyVariation(key: string, lap: number) {",
+      "file": "src/simulation/superClipping.ts",
+      "line": 157,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function timedSessionYieldDecision(options: {",
+      "file": "src/simulation/timedSessionTraffic.ts",
+      "line": 80,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function weatherTirePenalty(",
+      "file": "src/simulation/tires.ts",
+      "line": 572,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "export function tireTrackPenaltySeconds(",
+      "file": "src/simulation/tires.ts",
+      "line": 654,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function pitLaneOffset(track: TrackDefinition) {",
+      "file": "src/three/RaceScene.tsx",
+      "line": 193,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function InstancedPitBoxes({ boxes }: { boxes: PosedInstance[] }) {",
+      "file": "src/three/RaceScene.tsx",
+      "line": 202,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function PitLane({",
+      "file": "src/three/RaceScene.tsx",
+      "line": 394,
+      "symbol": "decision-or-strategy-function"
+    },
+    {
+      "category": "decision-function",
+      "excerpt": "function RaceControlLines({",
+      "file": "src/three/RaceScene.tsx",
+      "line": 522,
+      "symbol": "decision-or-strategy-function"
+    }
+  ]
+}

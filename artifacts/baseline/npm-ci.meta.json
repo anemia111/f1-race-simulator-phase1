@@ -1,0 +1,7 @@
+﻿{
+    "command":  "npm ci",
+    "startedAtUtc":  "2026-08-08T09:37:16.0026625Z",
+    "endedAtUtc":  "2026-08-08T09:38:48.3183484Z",
+    "exitCode":  0,
+    "logFile":  "npm-ci.log"
+}

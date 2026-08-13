@@ -1,0 +1,8 @@
+﻿{
+    "command":  "npm run validate:long-run:quick",
+    "startedAtUtc":  "2026-08-08T11:06:28.7363553Z",
+    "endedAtUtc":  "2026-08-08T11:12:07.4967450Z",
+    "exitCode":  0,
+    "status":  "completed",
+    "logFile":  "validate-long-run-quick.log"
+}

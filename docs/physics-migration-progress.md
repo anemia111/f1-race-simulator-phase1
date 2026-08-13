@@ -78,7 +78,7 @@ Status: complete; commit `2017cf4`.
 - Live gaps and neutralisation spacing use metric arc distance and road speed,
   not `baseLapTime`. Tyre wear advances from physical distance. Blue flags
   shape throttle instead of multiplying post-physics travel.
-- F1/F2/F3/SF have separate mass, tyre, aero, PU, gearbox and deployment
+- F1/SF have separate mass, tyre, aero, PU, gearbox and deployment
   profiles and separate cached reference profiles. Running cars at a clamped
   zero road speed retain first gear and finite launch/idle RPM.
 - Removed the old raw speed factor, 68/395 clamp, 12.5/44 envelope, 20-pass

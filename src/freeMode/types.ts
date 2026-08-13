@@ -100,6 +100,12 @@ export type FreeModeBuildContext = {
 export type FreeModeRuntime = {
   configuration: FreeModeConfiguration
   qualifyingFormatLabel: string
+  /**
+   * Free Mode race laps are an operator choice.  In particular, this never
+   * claims that a selected SUPER FORMULA circuit supplies a calendar race
+   * distance when no exact event operation was chosen.
+   */
+  raceLapsProvenance: 'user-selected'
   raceConfig: RaceConfig
   rules: SeriesRules
   sourceTeams: Team[]

@@ -4,6 +4,7 @@ import {
   componentConditionState,
   componentDisplayLabels,
   PIT_WALL_NOT_APPLICABLE,
+  PIT_WALL_UNAVAILABLE,
   pitWallObservedSource,
 } from '../../domain/pitWall'
 import { weakestComponent } from '../../simulation/components'
@@ -24,28 +25,39 @@ const BRAKE_OVERHEAT_WATCH_SECONDS = 4
 const BRAKE_OVERHEAT_CRITICAL_SECONDS = 12
 
 export function PitWallSystems({
-  capabilities,
   car,
   openF1Mode,
   telemetryIsOpenF1,
   tireCondition,
 }: PitWallTabProps) {
-  const telemetrySource = pitWallObservedSource(telemetryIsOpenF1, openF1Mode)
+  const f1Runtime =
+    car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
+  const superFormulaRuntime =
+    car.runtimeSystems.kind === 'super-formula'
+      ? car.runtimeSystems
+      : null
+  const telemetrySource = f1Runtime
+    ? pitWallObservedSource(telemetryIsOpenF1, openF1Mode)
+    : 'SIM'
   const componentEntries = useMemo(
     () =>
-      (Object.entries(car.components) as Array<
-        [keyof CarComponents, CarComponents[keyof CarComponents]]
-      >).sort(
-        (left, right) =>
-          left[1].conditionPercent - right[1].conditionPercent,
-      ),
-    [car.components],
+      f1Runtime
+        ? (Object.entries(f1Runtime.components) as Array<
+            [keyof CarComponents, CarComponents[keyof CarComponents]]
+          >).sort(
+            (left, right) =>
+              left[1].conditionPercent - right[1].conditionPercent,
+          )
+        : [],
+    [f1Runtime],
   )
   const weakest = useMemo(
-    () => weakestComponent(car.components),
-    [car.components],
+    () => (f1Runtime ? weakestComponent(f1Runtime.components) : null),
+    [f1Runtime],
   )
-  const weakestState = componentConditionState(weakest[1].conditionPercent)
+  const weakestState = weakest
+    ? componentConditionState(weakest[1].conditionPercent)
+    : null
   const brakeTone =
     car.brakeOverheatSeconds >= BRAKE_OVERHEAT_CRITICAL_SECONDS
       ? 'critical'
@@ -56,90 +68,124 @@ export function PitWallSystems({
 
   return (
     <div className="pit-wall-columns">
-      <PitWallGroup title="Energy Store">
-        {capabilities.hybridErs ? (
-          <>
+      {f1Runtime ? (
+        <>
+          <PitWallGroup title="Energy Store">
             <PitWallMetric
               label="SOC"
               source="SIM"
-              value={`${Math.round(car.ersBatteryPercent)}%`}
+              value={`${Math.round(f1Runtime.ersBatteryPercent)}%`}
             />
             <PitWallMetric
               label="Stored energy"
               source="SIM"
-              value={`${car.energyStore.currentEnergyMJ.toFixed(2)} MJ`}
+              value={`${f1Runtime.energyStore.currentEnergyMJ.toFixed(2)} MJ`}
             />
             <PitWallMetric
               label="Deployment"
               source="SIM"
-              value={`${Math.round(car.energyStore.actualDeploymentPowerKw)} kW`}
+              value={`${Math.round(f1Runtime.energyStore.actualDeploymentPowerKw)} kW`}
             />
             <PitWallMetric
               label="Recovery"
               source="SIM"
-              value={`${Math.round(car.energyStore.actualRecoveryPowerKw)} kW`}
+              value={`${Math.round(f1Runtime.energyStore.actualRecoveryPowerKw)} kW`}
             />
             <PitWallMetric
               label="ERS mode"
               source="SIM"
-              value={car.ersMode.toUpperCase()}
+              value={f1Runtime.ersMode.toUpperCase()}
             />
             <PitWallMetric
               label="Lap balance"
               source="SIM"
               title="Harvested versus deployed on the current lap"
-              value={`${car.energyHarvestedThisLapMj.toFixed(2)} / ${car.energyDeployedThisLapMj.toFixed(2)} MJ`}
+              value={`${f1Runtime.energyHarvestedThisLapMj.toFixed(2)} / ${f1Runtime.energyDeployedThisLapMj.toFixed(2)} MJ`}
             />
-          </>
-        ) : (
-          <PitWallMetric
-            label="Hybrid Energy Store"
-            source="UNAVAILABLE"
-            title="This category runs no hybrid Energy Store, so there is no SOC, deployment, or recovery to report"
-            value={PIT_WALL_NOT_APPLICABLE}
-          />
-        )}
-      </PitWallGroup>
+          </PitWallGroup>
 
-      <PitWallGroup title="Overtake systems">
-        <PitWallMetric
-          label="Active aero"
-          source={capabilities.activeAero ? 'SIM' : 'UNAVAILABLE'}
-          title={
-            capabilities.activeAero
-              ? undefined
-              : 'This category has no driver-adjustable active aero'
-          }
-          value={
-            capabilities.activeAero
-              ? car.activeAeroMode.toUpperCase()
-              : PIT_WALL_NOT_APPLICABLE
-          }
-        />
-        <PitWallMetric
-          label={capabilities.overtakeStatusLabel}
-          source="SIM"
-          value={
-            capabilities.ots
-              ? `${Math.ceil(car.otsRemainingSeconds ?? 0)}s remaining`
-              : car.overtakeStatus.toUpperCase()
-          }
-        />
-        <PitWallMetric
-          label="Overtake energy"
-          source={capabilities.hybridErs ? 'SIM' : 'UNAVAILABLE'}
-          value={
-            capabilities.hybridErs
-              ? `${car.overtakeEnergyRemainingMj.toFixed(2)} MJ`
-              : PIT_WALL_NOT_APPLICABLE
-          }
-        />
-        <PitWallMetric
-          label="Battle state"
-          source="SIM"
-          value={car.battlePhase.replace(/-/gu, ' ').toUpperCase()}
-        />
-      </PitWallGroup>
+          <PitWallGroup title="Overtake systems">
+            <PitWallMetric
+              label="Active aero"
+              source="SIM"
+              value={f1Runtime.activeAeroMode.toUpperCase()}
+            />
+            <PitWallMetric
+              label="Overtake"
+              source="SIM"
+              value={car.overtakeStatus.toUpperCase()}
+            />
+            <PitWallMetric
+              label="Overtake energy"
+              source="SIM"
+              value={`${f1Runtime.overtakeEnergyRemainingMj.toFixed(2)} MJ`}
+            />
+            <PitWallMetric
+              label="Battle state"
+              source="SIM"
+              value={car.battlePhase.replace(/-/gu, ' ').toUpperCase()}
+            />
+          </PitWallGroup>
+        </>
+      ) : superFormulaRuntime ? (
+        <PitWallGroup title="SUPER FORMULA systems">
+          <PitWallMetric
+            label="Engine allocation"
+            source="JAF"
+            value={`${superFormulaRuntime.engineLedger.engine.used}/${superFormulaRuntime.engineLedger.engine.maximumPerEntrantPerSeason} per entrant`}
+          />
+          <PitWallMetric
+            label="Gearbox model"
+            source="UNAVAILABLE"
+            title={superFormulaRuntime.gearbox.reason}
+            value={PIT_WALL_UNAVAILABLE}
+          />
+          <PitWallMetric
+            label="OTS"
+            source={
+              superFormulaRuntime.ots.availability === 'verified-event-rule'
+                ? 'EVENT'
+                : 'UNAVAILABLE'
+            }
+            title={
+              superFormulaRuntime.ots.availability === 'verified-event-rule'
+                ? `${superFormulaRuntime.ots.activationConditions}; runtime condition evaluation pending`
+                : superFormulaRuntime.ots.reason
+            }
+            value={
+              superFormulaRuntime.ots.availability === 'verified-event-rule'
+                ? `CONFIGURED / ${superFormulaRuntime.ots.allocationSeconds}s`
+                : PIT_WALL_UNAVAILABLE
+            }
+          />
+          <PitWallMetric
+            label="Refuelling"
+            source="JAF"
+            title={
+              superFormulaRuntime.refuelling.permittedByRegulation
+                ? `Safety gate: ${superFormulaRuntime.refuelling.safetyGate.status}`
+                : superFormulaRuntime.refuelling.reason
+            }
+            value={
+              superFormulaRuntime.refuelling.permittedByRegulation
+                ? superFormulaRuntime.refuelling.safetyGate.status.toUpperCase()
+                : PIT_WALL_UNAVAILABLE
+            }
+          />
+          <PitWallMetric
+            label="Fuel flow / service time"
+            source="UNAVAILABLE"
+            title="No verified fuel-transfer rate or timed service input is available"
+            value={PIT_WALL_UNAVAILABLE}
+          />
+          <PitWallMetric
+            label="Control tyres"
+            source="JAF"
+            title="Published dry/wet set maxima; no verified physical coefficients or subdivision"
+            value={`D ${superFormulaRuntime.controlTires.sets.dry.remainingSets}/${superFormulaRuntime.controlTires.sets.dry.allocatedSets} · W ${superFormulaRuntime.controlTires.sets.wet.remainingSets}/${superFormulaRuntime.controlTires.sets.wet.allocatedSets}`}
+          />
+        </PitWallGroup>
+      ) : null}
 
       <PitWallGroup title="Drive and thermal">
         <PitWallMetric
@@ -174,42 +220,76 @@ export function PitWallSystems({
           title={`${car.brakeOverheatSeconds.toFixed(1)}s continuously above the safe brake range`}
           value={`${Math.round(car.brakeTemperatureC)}C`}
         />
-        <PitWallMetric
-          label="Tyre temp"
-          source="SIM"
-          value={`${Math.round(car.tireTemperatureC)}C ${tireCondition.operatingState.toUpperCase()}`}
-        />
-        <PitWallMetric
-          label="Tyre wear"
-          source="SIM"
-          tone={
-            tireCondition.wearState === 'critical'
-              ? 'critical'
-              : tireCondition.wearState === 'used'
-                ? 'watch'
-                : 'good'
-          }
-          value={`${Math.round(car.tireWearPercent)}% worn`}
-        />
+        {f1Runtime && tireCondition ? (
+          <>
+            <PitWallMetric
+              label="Tyre temp"
+              source="SIM"
+              value={`${Math.round(f1Runtime.tires.tireTemperatureC)}C ${tireCondition.operatingState.toUpperCase()}`}
+            />
+            <PitWallMetric
+              label="Tyre wear"
+              source="SIM"
+              tone={
+                tireCondition.wearState === 'critical'
+                  ? 'critical'
+                  : tireCondition.wearState === 'used'
+                    ? 'watch'
+                    : 'good'
+              }
+              value={`${Math.round(f1Runtime.tires.tireWearPercent)}% worn`}
+            />
+          </>
+        ) : superFormulaRuntime ? (
+          <>
+            <PitWallMetric
+              label="Fitted control tyre"
+              source="SIM"
+              title={superFormulaRuntime.liveTires.fitment.selectionProvenance.rationale}
+              value={`${superFormulaRuntime.liveTires.activeSurface.toUpperCase()} / ${superFormulaRuntime.liveTires.lapsOnCurrentSet} laps`}
+            />
+            <PitWallMetric
+              label="Physical tyre model"
+              source="UNAVAILABLE"
+              title="No verified control-tyre physical coefficients are available"
+              value={PIT_WALL_UNAVAILABLE}
+            />
+            <PitWallMetric
+              label="Dry / wet sets"
+              source="JAF"
+              value={`${superFormulaRuntime.controlTires.sets.dry.remainingSets}/${superFormulaRuntime.controlTires.sets.dry.allocatedSets} / ${superFormulaRuntime.controlTires.sets.wet.remainingSets}/${superFormulaRuntime.controlTires.sets.wet.allocatedSets}`}
+            />
+          </>
+        ) : null}
       </PitWallGroup>
 
-      <PitWallGroup title="Component condition" wide>
-        {componentEntries.map(([key, condition]) => (
-          <PitWallConditionGauge
-            key={key}
-            label={componentDisplayLabels[key]}
-            percent={condition.conditionPercent}
-          />
-        ))}
-      </PitWallGroup>
+      {f1Runtime ? (
+        <PitWallGroup title="Component condition" wide>
+          {componentEntries.map(([key, condition]) => (
+            <PitWallConditionGauge
+              key={key}
+              label={componentDisplayLabels[key]}
+              percent={condition.conditionPercent}
+            />
+          ))}
+        </PitWallGroup>
+      ) : null}
 
       <PitWallGroup title="Integrity">
-        <PitWallMetric
-          label="Weakest part"
-          source="SIM"
-          tone={weakestState}
-          value={`${componentDisplayLabels[weakest[0]]} ${Math.round(weakest[1].conditionPercent)}% ${componentConditionLabels[weakestState]}`}
-        />
+        {f1Runtime && weakest && weakestState ? (
+          <PitWallMetric
+            label="Weakest part"
+            source="SIM"
+            tone={weakestState}
+            value={`${componentDisplayLabels[weakest[0]]} ${Math.round(weakest[1].conditionPercent)}% ${componentConditionLabels[weakestState]}`}
+          />
+        ) : superFormulaRuntime ? (
+          <PitWallMetric
+            label="Engine state"
+            source="JAF"
+            value={`${superFormulaRuntime.engineLedger.engine.used}/${superFormulaRuntime.engineLedger.engine.maximumPerEntrantPerSeason} declared`}
+          />
+        ) : null}
         <PitWallMetric
           label="Car damage"
           source="SIM"
@@ -222,12 +302,14 @@ export function PitWallSystems({
           }
           value={damagePercent > 0 ? `${damagePercent}%` : 'NONE'}
         />
-        <PitWallMetric
-          label="Aero components"
-          source="UNAVAILABLE"
-          title="Bodywork is not tracked as a separately replaceable component; accumulated aerodynamic loss is reported as car damage"
-          value={PIT_WALL_NOT_APPLICABLE}
-        />
+        {f1Runtime ? (
+          <PitWallMetric
+            label="Aero components"
+            source="UNAVAILABLE"
+            title="Bodywork is not tracked as a separately replaceable component; accumulated aerodynamic loss is reported as car damage"
+            value={PIT_WALL_NOT_APPLICABLE}
+          />
+        ) : null}
         <PitWallMetric
           label="Warning lights"
           source="SIM"

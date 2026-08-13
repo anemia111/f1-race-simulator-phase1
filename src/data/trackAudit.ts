@@ -135,7 +135,9 @@ export function auditTrackCalendar(
     ).length,
     derivedOperationalCount: tracks.filter(
       (track) =>
-        track.aeroActivationZones?.some((zone) => zone.source === 'derived') ||
+        track.aeroActivationZones?.some(
+          (zone) => zone.source === 'geometry-derived-estimate',
+        ) ||
         track.overtakeControlLines?.some((line) => line.source === 'derived'),
     ).length,
     errorCount,

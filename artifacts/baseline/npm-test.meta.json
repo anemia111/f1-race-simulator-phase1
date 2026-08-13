@@ -1,0 +1,9 @@
+﻿{
+    "command":  "npm test",
+    "startedAtUtc":  "2026-08-08T09:39:31.0000000Z",
+    "endedAtUtc":  "2026-08-08T10:09:57.5864050Z",
+    "exitCode":  null,
+    "status":  "timeout",
+    "timeoutSeconds":  1800,
+    "logFile":  "npm-test-timeout.log"
+}

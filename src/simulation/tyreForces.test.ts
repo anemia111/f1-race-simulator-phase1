@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { categoryPhysicsFor } from './categoryPhysics'
+import {
+  categoryPhysicsFor,
+  resolveOperationalVehicleMass,
+} from './categoryPhysics'
 import {
   aerodynamicDownforceN,
   axleLoadsN,
@@ -14,15 +17,19 @@ import {
 } from './tyreForces'
 
 const f1 = categoryPhysicsFor('f1-custom')
-const f2 = categoryPhysicsFor('f2')
-const f3 = categoryPhysicsFor('f3')
 const superFormula = categoryPhysicsFor('super-formula')
 
 const kph = (mps: number) => mps * 3.6
 const mps = (speedKph: number) => speedKph / 3.6
-/** Race trim: minimum mass plus a representative fuel load. */
+/** Algebra fixture only; not an FIA C4.7 observation. */
+const TEST_FIXTURE_NOMINAL_TYRE_MASS_KG = 40
+/** Race trim: resolved test minimum plus a representative fuel load. */
 const massFor = (physics: typeof f1, fuelKg = 30) =>
-  physics.minimumMassKg + fuelKg
+  resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+    physics,
+    weekendStage: 'race',
+  }).operationalMassKg + fuelKg
 
 describe('aerodynamicDownforceN', () => {
   it('rises with the square of speed', () => {
@@ -279,30 +286,7 @@ describe('maximumLateralAccelerationMps2', () => {
     expect(fast / GRAVITY_MPS2).toBeLessThan(6.5)
   })
 
-  it('reproduces the published feeder-series peak lateral figures', () => {
-    // F2 publishes 3.5 g and F3 publishes 2.6 g. Neither number is an input to
-    // the model: they fall out of the lift area, tyre coefficient and load
-    // sensitivity, so this is what stops those being tuned to anything.
-    const f3At250 =
-      maximumLateralAccelerationMps2({
-        massKg: massFor(f3),
-        physics: f3,
-        speedMps: mps(250),
-      }) / GRAVITY_MPS2
-    const f2At300 =
-      maximumLateralAccelerationMps2({
-        massKg: massFor(f2),
-        physics: f2,
-        speedMps: mps(300),
-      }) / GRAVITY_MPS2
-
-    expect(f3At250).toBeGreaterThan(2.4)
-    expect(f3At250).toBeLessThan(2.9)
-    expect(f2At300).toBeGreaterThan(3.3)
-    expect(f2At300).toBeLessThan(3.9)
-  })
-
-  it('orders the categories by downforce at speed', () => {
+  it('orders the executable categories by downforce at speed', () => {
     const at250 = (physics: typeof f1) =>
       maximumLateralAccelerationMps2({
         massKg: massFor(physics),
@@ -311,8 +295,6 @@ describe('maximumLateralAccelerationMps2', () => {
       })
 
     expect(at250(f1)).toBeGreaterThan(at250(superFormula))
-    expect(at250(superFormula)).toBeGreaterThan(at250(f2))
-    expect(at250(f2)).toBeGreaterThan(at250(f3))
   })
 
   it('gives back lateral grip that is already being spent on braking', () => {
@@ -375,8 +357,6 @@ describe('corneringSpeedLimitMps', () => {
     }
 
     expect(flatRadiusFor(f1)).toBeLessThan(flatRadiusFor(superFormula))
-    expect(flatRadiusFor(superFormula)).toBeLessThan(flatRadiusFor(f2))
-    expect(flatRadiusFor(f2)).toBeLessThan(flatRadiusFor(f3))
   })
 
   it('rises with radius', () => {

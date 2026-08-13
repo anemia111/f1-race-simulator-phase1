@@ -1,7 +1,10 @@
 import seriesDataJson from '../data/motorsportSeries2026.json'
 import { expandedDriverSkills, type CompactDriverRatings } from '../data/driverProfiles'
 import { initialDrivers, initialTeams } from '../data/grid2026'
-import { reserveDrivers } from '../data/performanceCsv'
+import {
+  PERFORMANCE_CSV_FILE,
+  reserveDrivers,
+} from '../data/performanceCsv'
 import {
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_LIMIT_BREAK_MAX,
@@ -23,14 +26,32 @@ import type {
   TrackDefinition,
 } from '../types'
 import type {
-  DriverAssignmentRecord,
-  DriverPoolRecord,
+  F1TireRules,
+  SeriesEventOperation,
   SeriesCalendarEvent,
   SeriesId,
   SeriesPackage,
+  SeriesRuleProvenance,
   SeriesRules,
   SeriesSource,
+  SuperFormulaEventOperations,
+  SuperFormulaOtsEventOperation,
+  SuperFormulaRaceDistanceOperation,
+  SuperFormulaSeriesRules,
 } from './types'
+import { isF1SeriesRules, isSuperFormulaSeriesRules } from './types'
+import {
+  HISTORICAL_DRIVER_POOL_METHOD_VERSION,
+  historicalDriverPool2026,
+  materializeAssignedDriver,
+  validateDriverAssignments,
+  validateDriverPool,
+  type DriverAssignment,
+  type DriverPoolProvenance,
+  type DriverPoolRecord,
+  type DriverSourceRole,
+} from './driverPool'
+import { resolveRuntimeVehicleEra } from './vehicleEraRegistry'
 
 const DATA_FILE = 'src/data/motorsportSeries2026.json'
 
@@ -64,7 +85,12 @@ type RawSeries = {
   teams?: RawTeam[]
 }
 
-type RawReserve = Omit<DriverPoolRecord, 'potential'> & {
+type RawReserve = {
+  code: string
+  id: string
+  name: string
+  nationality: string
+  overall: number
   potential: number
   teamId: string
 }
@@ -240,7 +266,48 @@ function legacyOneMakeMachineProfile(
   }
 }
 
-function oneMakeMachineProfile(
+function oneMakeMachineProfile(baseRating: number): MachinePerformanceProfile {
+  const base = clamp(baseRating / 100, 0.65, 0.95)
+
+  return {
+    activeAeroEfficiency: base,
+    aerodynamicEfficiency: base,
+    brakeCooling: base,
+    brakingPerformance: base,
+    brakingStability: base,
+    bumpTolerance: base,
+    coolingEfficiency: base,
+    dirtyAirTolerance: base,
+    downforceGeneration: base,
+    dragEfficiency: base,
+    electricalDeploymentEfficiency: base,
+    energyRecoveryEfficiency: base,
+    frontTireManagement: base,
+    fuelEfficiency: base,
+    highSpeedCornerPerformance: base,
+    intermediatePerformance: base,
+    kerbHandling: base,
+    lowSpeedCornerPerformance: base,
+    mechanicalGrip: base,
+    mediumSpeedCornerPerformance: base,
+    puOutput: base,
+    qualifyingPace: base,
+    racePace: base,
+    rearTireManagement: base,
+    reliability: base,
+    rideCompliance: base,
+    straightLineEfficiency: base,
+    tireDegManagement: base,
+    tireWarmup: base,
+    towSensitivity: base,
+    traction: base,
+    wetPerformance: base,
+  }
+}
+
+// Matches the operations-tuned SF profile present at the Phase 0 baseline so
+// persisted configurations can be migrated to the one-make hardware boundary.
+function phaseZeroOneMakeMachineProfile(
   baseRating: number,
   operations: number,
 ): MachinePerformanceProfile {
@@ -306,9 +373,15 @@ export function isLegacySupportMachineProfile(
   baseRating: number,
   operations: number,
 ) {
-  return profilesEqual(
-    candidate,
-    legacyOneMakeMachineProfile(baseRating, operations),
+  return (
+    profilesEqual(
+      candidate,
+      legacyOneMakeMachineProfile(baseRating, operations),
+    ) ||
+    profilesEqual(
+      candidate,
+      phaseZeroOneMakeMachineProfile(baseRating, operations),
+    )
   )
 }
 
@@ -380,10 +453,7 @@ function createSeriesField(definition: RawSeries) {
   const teams = (definition.teams ?? []).map<Team>((team) => ({
     color: team.color,
     id: team.id,
-    machine: oneMakeMachineProfile(
-      definition.rules.vehicleBaseRating ?? 86,
-      team.operations,
-    ),
+    machine: oneMakeMachineProfile(definition.rules.vehicleBaseRating ?? 86),
     name: team.name,
     performanceSource: {
       fileName: DATA_FILE,
@@ -453,26 +523,39 @@ function tracksFor(definition: RawSeries) {
         referenceSeries === null
           ? undefined
           : paceReference2026For(referenceSeries, trackId)
-      const scaledBaseLapTime = Number(
-        (track.baseLapTime * definition.rules.baseLapTimeMultiplier).toFixed(3),
-      )
+      const {
+        raceLaps: sourceRaceLaps,
+        raceLapsSource: sourceRaceLapsSource,
+        ...trackWithoutRaceDistance
+      } = track
+      const f1Rules = isF1SeriesRules(definition.rules)
+        ? definition.rules
+        : null
 
+      // A SUPER FORMULA circuit can host several events with different
+      // operation papers. Do not manufacture a category-wide lap count from
+      // a track record or copy a one-off event to every use of that circuit.
       return {
-        ...track,
+        ...trackWithoutRaceDistance,
         baseLapTime: simulationBaseLapTimeForPaceReference(
           paceReference2026,
-          scaledBaseLapTime,
+          track.baseLapTime,
         ),
         baseLapTimeSource:
           baseLapTimeSourceForPaceReference(paceReference2026),
         isSprintWeekend: Boolean(event?.sprint),
         paceReference2026,
-        raceLaps: Math.max(
-          12,
-          Math.round((track.raceLaps ?? 50) * definition.rules.raceDistanceRatio),
-        ),
-        raceLapsSource:
-          definition.id === 'f1-custom' ? track.raceLapsSource : 'estimated',
+        ...(f1Rules
+          ? {
+              raceLaps: Math.max(
+                12,
+                Math.round(
+                  (sourceRaceLaps ?? 50) * f1Rules.raceDistanceRatio,
+                ),
+              ),
+              raceLapsSource: sourceRaceLapsSource,
+            }
+          : {}),
       }
     },
   )
@@ -492,16 +575,16 @@ const validWeekendStages = new Set([
 ])
 
 function validateTireAllocation(
-  pkg: SeriesPackage,
+  packageId: SeriesPackage['id'],
   label: string,
-  allocation: SeriesRules['tires']['standardAllocation'],
+  allocation: F1TireRules['standardAllocation'],
 ) {
   for (const compound of tireCompounds) {
     const count = allocation[compound]
 
     if (!Number.isInteger(count) || count < 0) {
       throw new Error(
-        `${DATA_FILE}: ${pkg.id} ${label} allocation has invalid ${compound} count ${count}`,
+        `${DATA_FILE}: ${packageId} ${label} allocation has invalid ${compound} count ${count}`,
       )
     }
   }
@@ -544,11 +627,176 @@ function validateQualifyingStructure(
   }
 }
 
+function validateRuleProvenance(
+  provenance: SeriesRuleProvenance,
+  label: string,
+) {
+  if (
+    !provenance.sourceId ||
+    !provenance.url ||
+    !provenance.publishedAt ||
+    (provenance.checksum !== null && !provenance.checksum) ||
+    (provenance.effectiveFrom !== null && !provenance.effectiveFrom)
+  ) {
+    throw new Error(`${DATA_FILE}: ${label} has incomplete provenance`)
+  }
+}
+
+function validateEventOperation<Value>(
+  operation: SeriesEventOperation<Value>,
+  label: string,
+  isValidValue: (value: Value) => boolean,
+) {
+  validateRuleProvenance(operation.provenance, label)
+
+  if (operation.availability === 'unavailable') {
+    if (operation.value !== null || !operation.reason.trim()) {
+      throw new Error(`${DATA_FILE}: ${label} must fail closed with a reason`)
+    }
+    return
+  }
+
+  if (!isValidValue(operation.value)) {
+    throw new Error(`${DATA_FILE}: ${label} has an invalid event override`)
+  }
+}
+
+function isValidRaceDistanceOperation(
+  value: SuperFormulaRaceDistanceOperation,
+) {
+  return (
+    Number.isInteger(value.laps) &&
+    value.laps > 0 &&
+    [value.timeLimitSeconds, value.overallTimeLimitSeconds].every(
+      (limit) => limit === null || (Number.isFinite(limit) && limit > 0),
+    ) &&
+    (value.timeLimitSeconds === null ||
+      value.overallTimeLimitSeconds === null ||
+      value.overallTimeLimitSeconds >= value.timeLimitSeconds)
+  )
+}
+
+function isValidOtsOperation(value: SuperFormulaOtsEventOperation) {
+  return (
+    value.activationConditions.trim().length > 0 &&
+    Number.isFinite(value.allocationSeconds) &&
+    value.allocationSeconds > 0 &&
+    Number.isFinite(value.boostPowerKw) &&
+    value.boostPowerKw >= 0 &&
+    Number.isFinite(value.cooldownSeconds) &&
+    value.cooldownSeconds >= 0
+  )
+}
+
+function validateSuperFormulaEventOperations(
+  operations: Partial<SuperFormulaEventOperations>,
+  label: string,
+) {
+  if (operations.mandatoryPitStop) {
+    validateEventOperation(
+      operations.mandatoryPitStop,
+      `${label} mandatory-pit-stop`,
+      (value) => typeof value === 'boolean',
+    )
+  }
+  if (operations.ots) {
+    validateEventOperation(operations.ots, `${label} OTS`, isValidOtsOperation)
+  }
+  if (operations.raceDistance) {
+    validateEventOperation(
+      operations.raceDistance,
+      `${label} race-distance`,
+      isValidRaceDistanceOperation,
+    )
+  }
+}
+
+function validateSuperFormulaRules(rules: SuperFormulaSeriesRules) {
+  const legacyFields = [
+    'featureRaceMandatoryPitStop',
+    'featureRaceTwoDryCompounds',
+    'overtakeActivation',
+    'raceDistanceRatio',
+  ]
+
+  if (legacyFields.some((field) => field in rules)) {
+    throw new Error(
+      `${DATA_FILE}: SUPER FORMULA must not carry F1 generic race-operation defaults`,
+    )
+  }
+
+  const tires = rules.tires
+  if (
+    tires.kind !== 'yokohama-control-tyres-2026' ||
+    !Number.isInteger(tires.dry.maxSetsPerCarPerRace) ||
+    tires.dry.maxSetsPerCarPerRace < 1 ||
+    !Number.isInteger(tires.wet.maxSetsPerCarPerRace) ||
+    tires.wet.maxSetsPerCarPerRace < 1
+  ) {
+    throw new Error(`${DATA_FILE}: SUPER FORMULA has invalid control-tyre rules`)
+  }
+
+  validateRuleProvenance(tires.dry.provenance, 'SUPER FORMULA dry tyres')
+  validateRuleProvenance(tires.wet.provenance, 'SUPER FORMULA wet tyres')
+  validateSuperFormulaEventOperations(rules.eventOperations, 'SUPER FORMULA base')
+
+  if (
+    rules.eventOperations.mandatoryPitStop.availability !== 'unavailable' ||
+    rules.eventOperations.ots.availability !== 'unavailable' ||
+    rules.eventOperations.raceDistance.availability !== 'unavailable'
+  ) {
+    throw new Error(
+      `${DATA_FILE}: SUPER FORMULA base rules must not masquerade as event operations`,
+    )
+  }
+}
+
+/**
+ * Resolves a SUPER FORMULA event only by replacing a fail-closed base entry
+ * with an exact event override.  A track match is deliberately insufficient.
+ */
+export function resolveSuperFormulaEventOperations(
+  pkg: SeriesPackage,
+  eventId: string | null | undefined,
+): SuperFormulaEventOperations | null {
+  if (!isSuperFormulaSeriesRules(pkg.rules)) {
+    return null
+  }
+
+  const event =
+    eventId === null || eventId === undefined
+      ? undefined
+      : pkg.calendar.find((candidate) => candidate.id === eventId)
+
+  return {
+    ...pkg.rules.eventOperations,
+    ...(event?.eventOperations ?? {}),
+  }
+}
+
 export function validateSeriesPackage(pkg: SeriesPackage) {
   if (pkg.teams.length !== pkg.teamCount || pkg.drivers.length !== pkg.carCount) {
     throw new Error(
       `${DATA_FILE}: ${pkg.id} expected ${pkg.teamCount} teams/${pkg.carCount} cars; received ${pkg.teams.length}/${pkg.drivers.length}`,
     )
+  }
+
+  const f1RuleSurface = isF1SeriesRules(pkg.rules) ? pkg.rules : null
+  const f1Rules = f1RuleSurface !== null
+  if (
+    (pkg.id === 'f1-custom' && !f1Rules) ||
+    (pkg.id === 'super-formula' && !isSuperFormulaSeriesRules(pkg.rules))
+  ) {
+    throw new Error(`${DATA_FILE}: ${pkg.id} has a mismatched rule surface`)
+  }
+
+  if (isSuperFormulaSeriesRules(pkg.rules)) {
+    validateSuperFormulaRules(pkg.rules)
+    if (pkg.tracks.some((track) => track.raceLaps !== undefined)) {
+      throw new Error(
+        `${DATA_FILE}: SUPER FORMULA tracks must not carry a generic race-distance default`,
+      )
+    }
   }
 
   const driverIds = new Set(pkg.drivers.map((driver) => driver.id))
@@ -626,6 +874,26 @@ export function validateSeriesPackage(pkg: SeriesPackage) {
           event.raceOverallTimeLimitSeconds <= 0))
     ) {
       throw new Error(`${DATA_FILE}: ${pkg.id} has invalid calendar event ${event.id}`)
+    }
+
+    if (!f1Rules) {
+      const legacyOperationFields = [
+        'featureRaceMandatoryPitStop',
+        'raceLaps',
+        'raceOverallTimeLimitSeconds',
+        'raceTimeLimitSeconds',
+      ]
+      if (legacyOperationFields.some((field) => field in event)) {
+        throw new Error(
+          `${DATA_FILE}: SUPER FORMULA event ${event.id} must use provenance-bearing eventOperations`,
+        )
+      }
+      if (event.eventOperations) {
+        validateSuperFormulaEventOperations(
+          event.eventOperations,
+          `SUPER FORMULA event ${event.id}`,
+        )
+      }
     }
 
     if (event.weekendStages) {
@@ -754,29 +1022,42 @@ export function validateSeriesPackage(pkg: SeriesPackage) {
     throw new Error(`${DATA_FILE}: ${pkg.id} has an invalid fastest-lap rule`)
   }
 
-  validateTireAllocation(pkg, 'standard', pkg.rules.tires.standardAllocation)
-  if (pkg.rules.tires.sprintAllocation) {
-    validateTireAllocation(pkg, 'sprint', pkg.rules.tires.sprintAllocation)
-  }
-
-  if (
-    pkg.rules.tires.standardAllocation[
-      pkg.rules.tires.qualifyingDryCompound
-    ] < 1
-  ) {
-    throw new Error(
-      `${DATA_FILE}: ${pkg.id} qualifying compound is not in its tire allocation`,
+  if (f1RuleSurface) {
+    validateTireAllocation(
+      pkg.id,
+      'standard',
+      f1RuleSurface.tires.standardAllocation,
     )
-  }
+    if (f1RuleSurface.tires.sprintAllocation) {
+      validateTireAllocation(
+        pkg.id,
+        'sprint',
+        f1RuleSurface.tires.sprintAllocation,
+      )
+    }
 
-  const suppliedDrySpecifications = (['H', 'M', 'S'] as const).filter(
-    (compound) => pkg.rules.tires.standardAllocation[compound] > 0,
-  ).length
+    if (
+      f1RuleSurface.tires.standardAllocation[
+        f1RuleSurface.tires.qualifyingDryCompound
+      ] < 1
+    ) {
+      throw new Error(
+        `${DATA_FILE}: ${pkg.id} qualifying compound is not in its tire allocation`,
+      )
+    }
 
-  if (pkg.rules.featureRaceTwoDryCompounds && suppliedDrySpecifications < 2) {
-    throw new Error(
-      `${DATA_FILE}: ${pkg.id} requires two dry specifications but supplies ${suppliedDrySpecifications}`,
-    )
+    const suppliedDrySpecifications = (['H', 'M', 'S'] as const).filter(
+      (compound) => f1RuleSurface.tires.standardAllocation[compound] > 0,
+    ).length
+
+    if (
+      f1RuleSurface.featureRaceTwoDryCompounds &&
+      suppliedDrySpecifications < 2
+    ) {
+      throw new Error(
+        `${DATA_FILE}: ${pkg.id} requires two dry specifications but supplies ${suppliedDrySpecifications}`,
+      )
+    }
   }
 }
 
@@ -797,6 +1078,10 @@ export const seriesPackages: SeriesPackage[] = rawData.series.map((definition) =
     teamCount: definition.teamCount,
     teams: field.teams,
     tracks: tracksFor(definition),
+    vehicleEraId: resolveRuntimeVehicleEra({
+      eventDate: rawData.sourceDate,
+      seriesId: definition.id,
+    }).eraId,
   }
 
   validateSeriesPackage(pkg)
@@ -809,147 +1094,293 @@ export const seriesPackageById = new Map(
 
 export const defaultSeriesPackage = seriesPackageById.get('f1-custom')!
 
-const poolById = new Map<string, DriverPoolRecord>()
+const compactRatingSourceColumns = {
+  adaptability: 'Adaptability',
+  consistency: 'Consistency',
+  defending: 'Defending',
+  errorControl: 'Error control',
+  experience: 'Experience',
+  overtaking: 'Overtaking',
+  qualifyingPace: 'Qualifying pace',
+  racePace: 'Race pace',
+  raceStart: 'Race start',
+  technicalFeedback: 'Technical feedback',
+  tyreManagement: 'Tyre management',
+  wetSkill: 'Wet skill',
+} as const satisfies Record<keyof CompactDriverRatings, string>
 
-// F1 reserves are named in the performance CSV but hold no race seat, so they
-// are pooled alongside the fielded grids instead of through the JSON reserve
-// list, which keeps their authored ability axes available.
-for (const series of [
-  ...seriesPackages,
-  { drivers: reserveDrivers, id: 'f1-custom' as const },
-]) {
-  for (const driver of series.drivers) {
-    const candidate: DriverPoolRecord = {
-      code: driver.code,
-      id: driver.id,
-      name: driver.name,
-      nationality: driver.nationality ?? 'UNK',
-      overall: driver.performanceSource?.overall ?? 0,
-      potential: Math.round((driver.potential ?? 0) * 100),
-    }
-    const current = poolById.get(driver.id)
+function compactRatingsFromDriver(driver: Driver): CompactDriverRatings {
+  const rawRatings = driver.performanceSource?.rawRatings
 
-    if (current && current.name !== candidate.name) {
-      throw new Error(`${DATA_FILE}: driver id ${driver.id} maps to multiple names`)
-    }
+  if (!rawRatings) {
+    throw new Error(`${DATA_FILE}: driver ${driver.id} has no rating source`)
+  }
 
-    if (!current || candidate.overall > current.overall) {
-      poolById.set(driver.id, candidate)
-    }
+  return Object.fromEntries(
+    Object.entries(compactRatingSourceColumns).map(([key, column]) => {
+      const value = rawRatings[column]
+
+      if (!Number.isFinite(value)) {
+        throw new Error(
+          `${DATA_FILE}: driver ${driver.id} has no numeric ${column} rating`,
+        )
+      }
+
+      return [key, value / 100]
+    }),
+  ) as CompactDriverRatings
+}
+
+function poolSourceRoleFor(driver: Driver): DriverSourceRole {
+  if (driver.seatRole === 'reserve') return 'reserve'
+  if (driver.seatRole === 'third_car') return 'test'
+  return 'regular'
+}
+
+type PoolDriverSource = {
+  confidence: DriverPoolProvenance['confidence']
+  methodVersion?: string
+  seriesId: SeriesId
+  sourceDate: string
+  sourceFile: string
+  sourceType: DriverPoolProvenance['sourceType']
+  team?: Team
+}
+
+function poolRecordFromDriver(
+  driver: Driver,
+  source: PoolDriverSource,
+): DriverPoolRecord {
+  const sourceRole = poolSourceRoleFor(driver)
+  const sourceId = `${source.seriesId}:2026:${driver.id}`
+  const sourceIds = [sourceId]
+  const provenance: DriverPoolProvenance = {
+    confidence: source.confidence,
+    id: sourceId,
+    methodVersion: source.methodVersion,
+    sourceCarNumber: driver.carNumber,
+    sourceDate: source.sourceDate,
+    sourceFile: source.sourceFile,
+    sourceIds,
+    sourceRole,
+    sourceSeason: 2026,
+    sourceSeriesId: source.seriesId,
+    sourceTeam: source.team
+      ? { name: source.team.name, sourceId: source.team.id }
+      : undefined,
+    sourceType: source.sourceType,
+  }
+
+  return {
+    careerHistory: [
+      {
+        role: sourceRole,
+        season: 2026,
+        seriesId: source.seriesId,
+        sourceCarNumber: driver.carNumber,
+        sourceIds,
+        sourceTeamId: source.team?.id,
+        sourceTeamName: source.team?.name,
+      },
+    ],
+    code: driver.code,
+    id: driver.id,
+    name: driver.name,
+    nationality: driver.nationality ?? 'UNK',
+    overall: driver.performanceSource?.overall ?? 0,
+    potential: Math.round((driver.potential ?? 0) * 100),
+    provenance: [provenance],
+    ratingSourceProvenanceId: provenance.id,
+    ratings: compactRatingsFromDriver(driver),
   }
 }
 
-for (const reserve of rawData.reserves) {
-  if (poolById.has(reserve.id)) {
-    throw new Error(`${DATA_FILE}: reserve id ${reserve.id} duplicates the driver pool`)
+function poolRecordFromReserve(reserve: RawReserve): DriverPoolRecord {
+  const raw: RawDriver = {
+    code: reserve.code,
+    id: reserve.id,
+    name: reserve.name,
+    nationality: reserve.nationality,
+    number: 0,
+    overall: reserve.overall,
+    potential: reserve.potential,
   }
-  poolById.set(reserve.id, {
+  const sourceId = `f1-custom:2026:${reserve.id}:reserve-registry`
+  const sourceIds = [sourceId]
+  const sourceTeam = initialTeams.find((team) => team.id === reserve.teamId)
+
+  if (!sourceTeam) {
+    throw new Error(
+      `${DATA_FILE}: reserve ${reserve.id} references missing team ${reserve.teamId}`,
+    )
+  }
+
+  return {
+    careerHistory: [
+      {
+        role: 'reserve',
+        season: 2026,
+        seriesId: 'f1-custom',
+        sourceIds,
+        sourceTeamId: sourceTeam.id,
+        sourceTeamName: sourceTeam.name,
+      },
+    ],
     code: reserve.code,
     id: reserve.id,
     name: reserve.name,
     nationality: reserve.nationality,
     overall: reserve.overall,
     potential: reserve.potential,
-  })
-}
-
-export const driverPool2026 = [...poolById.values()]
-
-if (driverPool2026.length !== 110) {
-  throw new Error(
-    `${DATA_FILE}: expected 110 unique drivers, received ${driverPool2026.length}`,
-  )
-}
-
-// Keeps the fully-rated record for every pool member so a driver can take a
-// seat in another category without being rebuilt from `overall` alone. The F1
-// field carries twelve authored axes from the CSV, and re-deriving them would
-// quietly flatten that detail.
-const ratedDriverById = new Map<string, Driver>()
-
-for (const series of [...seriesPackages, { drivers: reserveDrivers }]) {
-  for (const driver of series.drivers) {
-    const current = ratedDriverById.get(driver.id)
-
-    if (
-      !current ||
-      (driver.performanceSource?.overall ?? 0) >
-        (current.performanceSource?.overall ?? 0)
-    ) {
-      ratedDriverById.set(driver.id, driver)
-    }
+    provenance: [
+      {
+        confidence: 'low',
+        id: sourceId,
+        methodVersion: HISTORICAL_DRIVER_POOL_METHOD_VERSION,
+        sourceDate: rawData.sourceDate,
+        sourceFile: DATA_FILE,
+        sourceIds,
+        sourceRole: 'reserve',
+        sourceSeason: 2026,
+        sourceSeriesId: 'f1-custom',
+        sourceTeam: { name: sourceTeam.name, sourceId: sourceTeam.id },
+        sourceType: 'synthetic',
+      },
+    ],
+    ratingSourceProvenanceId: sourceId,
+    ratings: compactRatingsFor(raw),
   }
 }
 
+const poolById = new Map<string, DriverPoolRecord>()
+
+function mergePoolRecord(candidate: DriverPoolRecord) {
+  const current = poolById.get(candidate.id)
+
+  if (!current) {
+    poolById.set(candidate.id, candidate)
+    return
+  }
+
+  if (current.name !== candidate.name) {
+    throw new Error(`${DATA_FILE}: driver id ${candidate.id} maps to multiple names`)
+  }
+
+  const winner = candidate.overall > current.overall ? candidate : current
+  const provenanceIds = new Set(current.provenance.map((source) => source.id))
+  const provenance = [
+    ...current.provenance,
+    ...candidate.provenance.filter((source) => !provenanceIds.has(source.id)),
+  ] as DriverPoolRecord['provenance']
+  const careerKeys = new Set(
+    current.careerHistory.map(
+      (entry) =>
+        `${entry.season}:${entry.seriesId}:${entry.sourceTeamId ?? ''}:${entry.role}`,
+    ),
+  )
+  const careerHistory = [
+    ...current.careerHistory,
+    ...candidate.careerHistory.filter(
+      (entry) =>
+        !careerKeys.has(
+          `${entry.season}:${entry.seriesId}:${entry.sourceTeamId ?? ''}:${entry.role}`,
+        ),
+    ),
+  ] as DriverPoolRecord['careerHistory']
+
+  poolById.set(candidate.id, { ...winner, careerHistory, provenance })
+}
+
+const f1Package = seriesPackageById.get('f1-custom')!
+const superFormulaPackage = seriesPackageById.get('super-formula')!
+const f1TeamById = new Map(f1Package.teams.map((team) => [team.id, team]))
+const superFormulaTeamById = new Map(
+  superFormulaPackage.teams.map((team) => [team.id, team]),
+)
+
+for (const driver of f1Package.drivers) {
+  mergePoolRecord(
+    poolRecordFromDriver(driver, {
+      confidence: 'medium',
+      seriesId: 'f1-custom',
+      sourceDate: rawData.sourceDate,
+      sourceFile: PERFORMANCE_CSV_FILE,
+      sourceType: 'editorial',
+      team: f1TeamById.get(driver.teamId),
+    }),
+  )
+}
+
+for (const driver of historicalDriverPool2026) mergePoolRecord(driver)
+
+for (const driver of superFormulaPackage.drivers) {
+  mergePoolRecord(
+    poolRecordFromDriver(driver, {
+      confidence: 'low',
+      methodVersion: HISTORICAL_DRIVER_POOL_METHOD_VERSION,
+      seriesId: 'super-formula',
+      sourceDate: rawData.sourceDate,
+      sourceFile: DATA_FILE,
+      sourceType: 'synthetic',
+      team: superFormulaTeamById.get(driver.teamId),
+    }),
+  )
+}
+
+for (const driver of reserveDrivers) {
+  mergePoolRecord(
+    poolRecordFromDriver(driver, {
+      confidence: 'medium',
+      seriesId: 'f1-custom',
+      sourceDate: rawData.sourceDate,
+      sourceFile: PERFORMANCE_CSV_FILE,
+      sourceType: 'editorial',
+      team: f1TeamById.get(driver.teamId),
+    }),
+  )
+}
+
+for (const reserve of rawData.reserves) {
+  mergePoolRecord(poolRecordFromReserve(reserve))
+}
+
+export const driverPool2026 = validateDriverPool([...poolById.values()], {
+  expectedIdentityCount: 110,
+  expectedProvenanceBySourceSeries: { f2: 22, f3: 30 },
+  expectedProvenanceCount: 111,
+})
+
 export type SeatAssignment = {
   carNumber: number
+  season?: number
   seatRole?: NonNullable<Driver['seatRole']>
+  seriesId: SeriesId
   startOffset?: number
   teamId: string
 }
 
-/**
- * Builds the driver record for a pool member taking a seat in any series.
- * Ratings are absolute across categories, so the driver keeps their own values
- * wherever they race. Reserves exist only as pool records, so their axes are
- * estimated from `overall` the same way the support-series fields are.
- */
+/** Builds a shared pool identity into a target-series seat. */
 export function seatedDriverFrom(
   poolDriver: DriverPoolRecord,
   seat: SeatAssignment,
 ): Driver {
-  const rated = ratedDriverById.get(poolDriver.id)
-
-  if (rated) {
-    return {
-      ...rated,
-      carNumber: seat.carNumber,
-      seatRole: seat.seatRole ?? rated.seatRole ?? 'regular',
-      startOffset: seat.startOffset ?? rated.startOffset,
-      teamId: seat.teamId,
-    }
-  }
-
-  const raw: RawDriver = {
-    code: poolDriver.code,
-    id: poolDriver.id,
-    name: poolDriver.name,
-    nationality: poolDriver.nationality,
-    number: seat.carNumber,
-    overall: poolDriver.overall,
-    potential: poolDriver.potential,
-  }
-  const ratings = compactRatingsFor(raw)
-
-  return {
-    carNumber: seat.carNumber,
-    code: poolDriver.code,
-    id: poolDriver.id,
-    name: poolDriver.name,
-    nationality: poolDriver.nationality,
-    performanceSource: {
-      fileName: DATA_FILE,
-      overall: poolDriver.overall,
-      rawRatings: rawRatingsFor(raw, ratings),
-    },
-    potential: poolDriver.potential / 100,
-    seatRole: seat.seatRole ?? 'regular',
-    skills: expandedDriverSkills(ratings),
-    startOffset: seat.startOffset ?? 0,
-    style: { ...neutralDriverStyle },
-    teamId: seat.teamId,
-    tire: 'M',
-  }
+  return materializeAssignedDriver(poolDriver, {
+    ...seat,
+    season: seat.season ?? 2026,
+  })
 }
 
-export const driverAssignments2026: DriverAssignmentRecord[] = [
+const proposedDriverAssignments2026: DriverAssignment[] = [
   ...seriesPackages.flatMap((series) =>
     series.drivers.map((driver) => ({
       active: true,
       carNumber: driver.carNumber,
       driverId: driver.id,
-      role: driver.seatRole ?? 'regular',
-      season: 2026 as const,
+      role:
+        driver.seatRole === 'third_car'
+          ? ('test' as const)
+          : (driver.seatRole ?? 'regular'),
+      season: 2026,
       seriesId: series.id,
       teamId: driver.teamId,
     })),
@@ -959,7 +1390,7 @@ export const driverAssignments2026: DriverAssignmentRecord[] = [
     carNumber: null,
     driverId: reserve.id,
     role: 'reserve' as const,
-    season: 2026 as const,
+    season: 2026,
     seriesId: 'f1-custom' as const,
     teamId: reserve.teamId,
   })),
@@ -981,20 +1412,45 @@ export const driverAssignments2026: DriverAssignmentRecord[] = [
     seriesId: 'f1-custom',
     teamId: 'alpine',
   },
-  {
-    active: true,
-    carNumber: null,
-    driverId: 'yuki_tsunoda',
-    role: 'reserve',
-    season: 2026,
-    seriesId: 'f1-custom',
-    teamId: 'red-bull-racing',
-  },
 ]
+
+export const driverAssignments2026 = validateDriverAssignments(
+  proposedDriverAssignments2026,
+  {
+    driverPool: driverPool2026,
+    expectedSeason: 2026,
+    seriesCarCapacity: Object.fromEntries(
+      seriesPackages.map((series) => [series.id, series.carCount]),
+    ),
+    teams: seriesPackages.flatMap((series) =>
+      series.teams.map((team) => ({
+        id: team.id,
+        seatCapacity: series.drivers.filter(
+          (driver) => driver.teamId === team.id,
+        ).length,
+        seriesId: series.id,
+      })),
+    ),
+  },
+)
 
 export const seriesRegistryAudit = {
   assignmentCount: driverAssignments2026.length,
+  danglingAssignmentCount: driverAssignments2026.filter(
+    (assignment) => !poolById.has(assignment.driverId),
+  ).length,
   driverPoolCount: driverPool2026.length,
+  executableSeriesIds: seriesPackages.map((series) => series.id),
+  f2HistoricalDriverCount: historicalDriverPool2026.filter(
+    (driver) => driver.provenance[0].sourceSeriesId === 'f2',
+  ).length,
+  f3HistoricalDriverCount: historicalDriverPool2026.filter(
+    (driver) => driver.provenance[0].sourceSeriesId === 'f3',
+  ).length,
+  provenanceCount: driverPool2026.reduce(
+    (count, driver) => count + driver.provenance.length,
+    0,
+  ),
   schemaVersion: rawData.schemaVersion,
   sourceDate: rawData.sourceDate,
 }

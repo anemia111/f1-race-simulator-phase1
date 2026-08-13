@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T05:53:00.791Z",
+  "baselineCommit": "09b1d61fa9fc54dc17cc181a619198592ef8cb9e",
+  "verdict": "PASS",
+  "executableSeries": {
+    "before": [
+      "f1-custom",
+      "f2",
+      "f3",
+      "super-formula"
+    ],
+    "after": [
+      "f1-custom",
+      "super-formula"
+    ]
+  },
+  "driverPool": {
+    "identityCount": 110,
+    "provenanceCount": 111,
+    "historicalIdentityCount": 52,
+    "f2HistoricalCount": 22,
+    "f3HistoricalCount": 30,
+    "missingIds": [],
+    "extraIds": [],
+    "sourceMismatchCount": 0,
+    "mismatches": [],
+    "danglingLiveSeatKeyCount": 0,
+    "danglingLiveSeatKeys": []
+  },
+  "directPaceCorrectionAudit": {
+    "runtimeBaseLapTimeMultiplierCount": 0,
+    "references": [],
+    "compatibilityOnlyReferences": [
+      {
+        "count": 3,
+        "file": "src/data/seriesConfiguration.ts"
+      }
+    ]
+  },
+  "invariantFailures": []
+}

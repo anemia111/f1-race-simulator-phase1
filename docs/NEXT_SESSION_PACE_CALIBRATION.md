@@ -98,10 +98,11 @@ F1レースシミュレータの物理較正を続けてほしい。
   最もエネルギーを使うサーキットが最も遅い。
 - **センターラインのノイズによる直線上の幻コーナー** — 直線長の 1.2〜1.4% しか
   速度制限がかからず、キャップも 256〜298 km/h。racing line の拡幅が吸収済み。
-- **`straightAeroDragMultiplier` を 0.56 にする** — 較正スプリットの2つの観測は
-  そこで同時に最小になるが、この定数は実走経路と共有されており、
+- **削除済みの `straightAeroDragMultiplier` を 0.56 で復活させる** — 較正スプリットの2つの観測は
+  過去の単一scalar sweepではそこで同時に最小になったが、当時この定数は実走経路と共有されており、
   `validate:speed-trap` の4ゲート中3つが落ちる
-  （median MAE 9.73/8、median bias +5.16/±5、peak MAE 8.99/8）。
+  （median MAE 9.73/8、median bias +5.16/±5、peak MAE 8.99/8）。Phase 3で
+  front/rearのdrag/load分解へ置換済みなので、scalar自体を較正候補へ戻さない。
 - **`trackDynamics.buildProfile` にエアロゾーンを入れる** — speed trap の
   median が 7.66 → 8.36 に動いてゲートが落ちる。あれは幾何分類器であって
   フラップの開く場所に依存してはいけない。

@@ -54,16 +54,31 @@ const MINIMUM_AERO_STRAIGHT_METERS = 300
  * hand-written progress list, so a long straight cannot be missed and a short
  * one cannot be given a zone it does not deserve.
  */
-const derivedZonesFor = (trackId: string, lapKm: number) =>
+const derivedZonesFor = (
+  trackId: string,
+  lapKm: number,
+  pitEntryProgress: number,
+  pitExitProgress: number,
+) =>
   deriveAeroActivationZones(
     supportSeriesTrackLayouts[trackId]!.centerline,
     'permanent',
     {
+      // This is a conservative geometry-screening assumption, not an observed
+      // speed or a target for the vehicle model.
+      expectedTransitionSpeedKph: 300,
       label: (index) => `ZONE ${index + 1}`,
       lapMeters: lapKm * 1_000,
       lowGripMode: 'disabled',
       minimumStraightMeters: MINIMUM_AERO_STRAIGHT_METERS,
+      pitEntryProgress,
+      pitExitProgress,
+      // These physical tracks belong to the SF calendar, but the Straight Mode
+      // estimates are data for an F1 car selected in Free Mode. SF continues to
+      // use OTS and never consumes this active-aero scope.
+      runtimeScope: 'f1-free-mode',
       targetCount: 3,
+      trackWidthModelUnits: commonTrackData.width,
     },
   )
 
@@ -73,7 +88,12 @@ const operationalData = (
   trackId: string,
   lapKm: number,
 ) => {
-  const aeroActivationZones = derivedZonesFor(trackId, lapKm)
+  const aeroActivationZones = derivedZonesFor(
+    trackId,
+    lapKm,
+    entryProgress,
+    exitProgress,
+  )
 
   return {
     aeroActivationZones,

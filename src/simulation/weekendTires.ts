@@ -41,7 +41,7 @@ export type WeekendTirePlan = {
 
 export type WeekendTireAllocation = Record<TireCompound, number>
 
-// FIA 2026 F1 Sporting Regulations Issue 07, Article B6.2.4.
+// FIA 2026 F1 Sporting Regulations Issue 08, Article B6.2.4.
 const standardWeekendAllocation: WeekendTireAllocation = {
   H: 2,
   I: 5,
@@ -85,14 +85,18 @@ function addQualifyingUsage(
   results: QualifyingResult[],
 ) {
   for (const result of results) {
-    if (!dryCompounds.has(result.compound)) {
+    if (result.tire.kind !== 'f1-pirelli-session-tire') {
+      continue
+    }
+    const compound = result.tire.compound
+    if (!dryCompounds.has(compound)) {
       continue
     }
 
     const current = usage.get(result.driverId) ?? emptyInventory()
-    const compound = result.compound as keyof DrySetInventory
+    const dryCompound = compound as keyof DrySetInventory
 
-    current[compound] += result.setsUsed
+    current[dryCompound] += result.setsUsed
     usage.set(result.driverId, current)
   }
 }

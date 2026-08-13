@@ -39,6 +39,13 @@ describe('physics calibration policy', () => {
     expect(JSON.stringify(PHYSICS_CALIBRATION_PARAMETERS)).not.toMatch(
       /trackId|paceScale|baseLapTime|lapTimeMultiplier/,
     )
+    const keys = PHYSICS_CALIBRATION_PARAMETERS.map(
+      (parameter) => parameter.key,
+    )
+    expect(keys).toEqual(
+      expect.arrayContaining(['otherSessionBaseKg', 'qualifyingBaseKg']),
+    )
+    expect(keys).not.toContain('minimumMassKg')
   })
 
   it('accepts bounded physical candidates without changing them', () => {
@@ -76,9 +83,9 @@ describe('physics calibration policy', () => {
       validatePhysicsCalibrationCandidates([
         {
           categoryId: 'f1-custom',
-          parameterKey: 'minimumMassKg',
+          parameterKey: 'otherSessionBaseKg',
           scope: 'category',
-          value: 768,
+          value: 724,
         },
       ]),
     ).toThrow(/fixed physical input/)

@@ -12,6 +12,7 @@ import type { PitWallSectorTiming } from './components/pitWall/types'
 import { SetupPanel } from './components/SetupPanel'
 import { FreeModeBuilder } from './components/FreeModeBuilder'
 import { fiaEventPackFor } from './data/fiaEventPacks2026'
+import { fiaPuEventInputFor } from './data/fiaPuEventInputs2026'
 import {
   SERIES_CONFIGURATION_STORAGE_KEY,
   parsePersistedSeriesConfiguration,
@@ -55,8 +56,10 @@ import {
   runPracticeSession,
   runSeriesQualifying,
   runSprintShootoutQualifying,
+  type KnockoutQualifying,
   type QualifyingResult,
 } from './simulation/qualifying'
+import type { LapTireDisplay } from './simulation/classification'
 import {
   applyPracticeSetup,
   buildPracticeSetupSummary,
@@ -98,6 +101,7 @@ import { buildOpenF1TimelineFrame } from './services/openF1Timeline'
 import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
+  eligibleSuperFormulaDriversForNextEvent,
   recordSeasonRound,
   recordQualifyingPoints,
   seasonSessionId,
@@ -160,10 +164,15 @@ import {
   defaultSeriesPackage,
   driverAssignments2026,
   driverPool2026,
+  resolveSuperFormulaEventOperations,
   seriesPackageById,
   seriesPackages,
 } from './series/seriesRegistry'
-import type { SeriesId, SeriesPackage } from './series/types'
+import {
+  isF1SeriesRules,
+  type SeriesId,
+  type SeriesPackage,
+} from './series/types'
 
 const RaceScene = lazy(() =>
   import('./three/RaceScene').then((module) => ({ default: module.RaceScene })),
@@ -229,6 +238,10 @@ const initialTrack = initialSeriesPackage.tracks[0]
 function loadPersistedWeekend(
   series: SeriesPackage,
 ): PersistedWeekend | null {
+  const tireAllocation = isF1SeriesRules(series.rules)
+    ? series.rules.tires.standardAllocation
+    : undefined
+
   return parsePersistedWeekend(
     readFirstAvailableStorageValue(
       [
@@ -241,7 +254,7 @@ function loadPersistedWeekend(
     series.tracks,
     series.drivers,
     series.id,
-    series.rules.tires.standardAllocation,
+    tireAllocation,
   )
 }
 
@@ -260,23 +273,26 @@ const scopedStorageKey = (base: string, seriesId: SeriesId) =>
   `${base}:${seriesId}`
 
 function loadPersistedSeason(seriesId: SeriesId): SeasonState {
-  return parsePersistedSeason(
-    readFirstAvailableStorageValue(
-      seriesId === 'f1-custom'
-        ? [
-            scopedStorageKey(SEASON_STORAGE_KEY, seriesId),
-            SEASON_STORAGE_KEY,
-            LEGACY_SEASON_STORAGE_KEY,
-          ]
-        : [scopedStorageKey(SEASON_STORAGE_KEY, seriesId)],
-      (key) => window.localStorage.getItem(key),
-    ),
+  const raw = readFirstAvailableStorageValue(
+    seriesId === 'f1-custom'
+      ? [
+          scopedStorageKey(SEASON_STORAGE_KEY, seriesId),
+          SEASON_STORAGE_KEY,
+          LEGACY_SEASON_STORAGE_KEY,
+        ]
+      : [scopedStorageKey(SEASON_STORAGE_KEY, seriesId)],
+    (key) => window.localStorage.getItem(key),
   )
+
+  return seriesId === 'super-formula'
+    ? parsePersistedSeason(raw, 'super-formula')
+    : parsePersistedSeason(raw, 'f1-custom')
 }
 
 type TimingRow = {
   aeroOvertakeLabel: string
-  batteryPercent: number
+  /** F1 Energy Store SOC; SUPER FORMULA intentionally has no compatibility value. */
+  batteryPercent: number | null
   brakePercent: number
   car: CarSnapshot
   displayGapToLeaderLabel: string
@@ -299,10 +315,13 @@ type TimingRow = {
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
-  tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation'
-  tireLifePercent: number
-  tirePaceDeltaSeconds: number
-  tireTemperatureC: number
+  /** Discriminated presentation state; SF never receives a Pirelli alias. */
+  tireDisplay: LapTireDisplay
+  tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation' | 'unavailable'
+  tireLifePercent: number | null
+  tirePaceDeltaSeconds: number | null
+  /** F1 Pirelli temperature only; SF physical model is explicitly unavailable. */
+  tireTemperatureC: number | null
 }
 
 type TimingRowWithoutSectorStatuses = Omit<TimingRow, 'sectorStatuses'>
@@ -425,6 +444,28 @@ function loadSeriesConfiguration(
 const initialSeriesConfiguration = loadSeriesConfiguration(
   initialSeriesPackage,
 )
+const initialConfiguredSeriesPackage: SeriesPackage = {
+  ...initialSeriesPackage,
+  calendar: initialSeriesConfiguration.calendar,
+  drivers: initialSeriesConfiguration.drivers,
+  rules: initialSeriesConfiguration.rules,
+  teams: initialSeriesConfiguration.teams,
+}
+const initialConfiguredCalendarEvent =
+  initialConfiguredSeriesPackage.calendar.find(
+    (event) => event.id === initialCalendarEvent.id,
+  ) ??
+  initialConfiguredSeriesPackage.calendar.find(
+    (event) => event.trackId === (persistedWeekend?.trackId ?? initialTrack.id),
+  ) ??
+  initialConfiguredSeriesPackage.calendar.find((event) => !event.cancelled) ??
+  initialConfiguredSeriesPackage.calendar[0]
+const initialConfiguredTrack =
+  initialConfiguredSeriesPackage.tracks.find(
+    (track) =>
+      track.id ===
+      (persistedWeekend?.trackId ?? initialConfiguredCalendarEvent.trackId),
+  ) ?? initialTrack
 
 function configuredSeriesPackagesForFreeMode() {
   return seriesPackages.map((series) => {
@@ -504,14 +545,88 @@ const weekendStagesFor = (
     : series.rules.weekendStages
 }
 
+/**
+ * Unlike F1, SUPER FORMULA has no track- or category-level race-distance
+ * fallback. A championship race stage is selectable only when its exact
+ * event operation carries a verified distance. Free Mode owns its lap count
+ * separately, so it is intentionally outside this guard.
+ */
+const unavailableSuperFormulaRaceDistanceReason = (
+  series: SeriesPackage,
+  eventId: string | null | undefined,
+  stage: WeekendStage,
+) => {
+  if (isF1SeriesRules(series.rules) || !isRaceDistanceSession(stage)) {
+    return null
+  }
+
+  const operation = resolveSuperFormulaEventOperations(series, eventId)
+    ?.raceDistance
+
+  if (operation?.availability === 'verified-event-override') {
+    return null
+  }
+
+  return operation?.availability === 'unavailable'
+    ? operation.reason
+    : operation
+      ? 'No exact SUPER FORMULA event race-distance override is loaded.'
+      : 'No SUPER FORMULA event operation is loaded.'
+}
+
+/**
+ * Keep the persisted/default selection from ever instantiating an SF race
+ * with an unavailable event operation. The normal SF weekend falls back to
+ * qualifying; an anomalous race-only event falls back to a harmless practice
+ * view while the UI explains that its event document is required.
+ */
+const selectableWeekendStageFor = (
+  series: SeriesPackage,
+  eventId: string,
+  stages: readonly WeekendStage[],
+  preferredStage: WeekendStage,
+) => {
+  const requestedStage = stages.includes(preferredStage)
+    ? preferredStage
+    : stages.includes('race')
+      ? 'race'
+      : stages.at(-1) ?? 'race'
+
+  if (
+    unavailableSuperFormulaRaceDistanceReason(
+      series,
+      eventId,
+      requestedStage,
+    ) === null
+  ) {
+    return requestedStage
+  }
+
+  return (
+    [...stages]
+      .reverse()
+      .find(
+        (stage) =>
+          unavailableSuperFormulaRaceDistanceReason(series, eventId, stage) ===
+          null,
+      ) ?? 'fp1'
+  )
+}
+
 const tireAllocationFor = (
   series: SeriesPackage,
   isSprintWeekend: boolean,
-) => ({
-  ...(isSprintWeekend && series.rules.tires.sprintAllocation
-    ? series.rules.tires.sprintAllocation
-    : series.rules.tires.standardAllocation),
-})
+) => {
+  if (!isF1SeriesRules(series.rules)) {
+    return undefined
+  }
+
+  return {
+    ...(isSprintWeekend && series.rules.tires.sprintAllocation
+      ? series.rules.tires.sprintAllocation
+      : series.rules.tires.standardAllocation),
+  }
+}
 
 const hashUnit = (value: string) => {
   let hash = 2166136261
@@ -803,6 +918,7 @@ const openF1TimingForCar = (
   | 'speedKph'
   | 'telemetrySource'
   | 'throttlePercent'
+  | 'tireDisplay'
   | 'tireLifePercent'
   | 'tireModelSource'
   | 'tirePaceDeltaSeconds'
@@ -852,12 +968,41 @@ const openF1AeroLabel = (drs: number | null | undefined) => {
   return '-'
 }
 
+const tireDisplayForCar = (car: CarSnapshot): LapTireDisplay => {
+  if (car.runtimeSystems.kind === 'f1') {
+    const tires = car.runtimeSystems.tires
+
+    return {
+      ageLaps: tires.tireAgeLaps,
+      compound: tires.tire,
+      kind: 'f1-pirelli',
+      label: `${tires.tire} / ${tires.tireAgeLaps} laps`,
+    }
+  }
+
+  const { liveTires } = car.runtimeSystems
+
+  return {
+    kind: 'super-formula-control-tire',
+    label: `${liveTires.activeSurface} control / ${liveTires.lapsOnCurrentSet} laps`,
+    lapsOnCurrentSet: liveTires.lapsOnCurrentSet,
+    physicalModelAvailability: liveTires.physicalModel.availability,
+    surface: liveTires.activeSurface,
+  }
+}
+
 const telemetryForCar = (
   car: CarSnapshot,
   openF1CarDataByCode: Map<string, OpenF1CarData>,
 ) => {
+  const runtimeSystems = car.runtimeSystems
+  const f1Runtime =
+    runtimeSystems.kind === 'f1' ? runtimeSystems : null
+  const superFormulaRuntime =
+    runtimeSystems.kind === 'super-formula' ? runtimeSystems : null
   const openF1Sample = openF1CarDataByCode.get(car.code)
   const hasOpenF1Telemetry =
+    f1Runtime !== null &&
     openF1Sample !== undefined &&
     openF1Sample.speed > 0 &&
     openF1Sample.rpm > 0
@@ -868,16 +1013,20 @@ const telemetryForCar = (
   return {
     aeroOvertakeLabel: hasOpenF1Telemetry
       ? openF1AeroLabel(openF1Sample.drs)
-      : car.otsRemainingSeconds !== undefined
-        ? `OTS ${car.overtakeStatus === 'active' ? 'ON' : car.overtakeStatus === 'available' ? 'RDY' : 'OFF'} ${Math.ceil(car.otsRemainingSeconds)}s`
-      : `${car.activeAeroMode === 'straight' ? 'F' : car.activeAeroMode === 'partial-straight' ? 'P' : 'C'}${
+      : f1Runtime
+        ? `${f1Runtime.activeAeroMode === 'straight' ? 'F' : f1Runtime.activeAeroMode === 'partial-straight' ? 'P' : 'C'}${
           car.overtakeStatus === 'active'
             ? '+OVT'
             : car.overtakeStatus === 'available'
               ? '+RDY'
               : ''
-        }`,
-    batteryPercent: Math.round(car.ersBatteryPercent),
+        }`
+        : superFormulaRuntime?.ots.availability === 'verified-event-rule'
+          ? 'OTS EVENT RULE'
+          : 'OTS N/A',
+    batteryPercent: f1Runtime
+      ? Math.round(f1Runtime.ersBatteryPercent)
+      : null,
     brakePercent: hasOpenF1Telemetry ? openF1Sample.brake : Math.round(car.brakePercent),
     gear: hasOpenF1Telemetry ? openF1Sample.n_gear : car.gear,
     rpm: hasOpenF1Telemetry ? openF1Sample.rpm : car.rpm,
@@ -886,7 +1035,9 @@ const telemetryForCar = (
     throttlePercent: hasOpenF1Telemetry
       ? openF1Sample.throttle
       : Math.round(car.throttlePercent),
-    tireTemperatureC: Math.round(car.tireTemperatureC),
+    tireTemperatureC: f1Runtime
+      ? Math.round(f1Runtime.tires.tireTemperatureC)
+      : null,
   }
 }
 
@@ -1188,6 +1339,9 @@ export default function App() {
     configuredRules,
     registrySeriesPackage,
   ])
+  const f1SeriesRules = isF1SeriesRules(seriesPackage.rules)
+    ? seriesPackage.rules
+    : null
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview')
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [isPaused, setIsPaused] = useState(false)
@@ -1205,30 +1359,33 @@ export default function App() {
     () => persistedWeekend?.seed ?? createAutoScenarioSeed(),
   )
   const [selectedTrackId, setSelectedTrackId] = useState(
-    persistedWeekend?.trackId ?? initialTrack.id,
+    initialConfiguredTrack.id,
   )
   const [selectedEventId, setSelectedEventId] = useState(
-    initialCalendarEvent.id,
+    initialConfiguredCalendarEvent.id,
   )
   const [selectedWeekendStage, setSelectedWeekendStage] =
     useState<WeekendStage>(() => {
-      if (!persistedWeekend) {
-        return 'race'
-      }
-
       const persistedTrack =
-        initialSeriesPackage.tracks.find(
-          (candidate) => candidate.id === persistedWeekend.trackId,
-        ) ?? initialTrack
-
-      return weekendStagesFor(
-        initialSeriesPackage,
+        initialConfiguredSeriesPackage.tracks.find(
+          (candidate) => candidate.id === persistedWeekend?.trackId,
+        ) ?? initialConfiguredTrack
+      const stages = weekendStagesFor(
+        initialConfiguredSeriesPackage,
         persistedTrack,
-        initialCalendarEvent.id,
-      ).includes(persistedWeekend.stage)
-        ? persistedWeekend.stage
-        : 'race'
+        initialConfiguredCalendarEvent.id,
+      )
+
+      return selectableWeekendStageFor(
+        initialConfiguredSeriesPackage,
+        initialConfiguredCalendarEvent.id,
+        stages,
+        persistedWeekend?.stage ?? 'race',
+      )
     })
+  const [raceOperationNotice, setRaceOperationNotice] = useState<string | null>(
+    null,
+  )
   const [gridSource, setGridSource] = useState<GridSource>(
     persistedWeekend?.gridSource ?? 'qualifying',
   )
@@ -1255,12 +1412,13 @@ export default function App() {
       : applySeasonGarageToWeekend(
           createWeekendContext(
             initialSeriesConfiguration.drivers,
-            initialTrack.isSprintWeekend,
-            initialTrack,
+            initialConfiguredTrack.isSprintWeekend,
+            initialConfiguredTrack,
             tireAllocationFor(
-              initialSeriesPackage,
-              initialTrack.isSprintWeekend,
+              initialConfiguredSeriesPackage,
+              initialConfiguredTrack.isSprintWeekend,
             ),
+            initialSeriesId,
           ),
           season,
           initialSeriesConfiguration.drivers,
@@ -1327,7 +1485,7 @@ export default function App() {
       window.localStorage.setItem(
         WEEKEND_STORAGE_KEY,
         JSON.stringify({
-          version: 3,
+          version: 4,
           seriesId: selectedSeriesId,
           eventId: selectedEventId,
           trackId: selectedTrackId,
@@ -1479,6 +1637,36 @@ export default function App() {
       ),
     [drivers, openF1Bundle, seasonStandings.data, teams],
   )
+  const suspendedSuperFormulaDrivers = useMemo(() => {
+    if (
+      applicationMode !== 'championship' ||
+      selectedSeriesId !== 'super-formula' ||
+      season.seriesId !== 'super-formula'
+    ) {
+      return [] as Driver[]
+    }
+
+    const eligibleDriverIds = new Set(
+      eligibleSuperFormulaDriversForNextEvent(
+        season,
+        fieldCalibration.drivers,
+      ).map((driver) => driver.id),
+    )
+
+    return fieldCalibration.drivers.filter(
+      (driver) => !eligibleDriverIds.has(driver.id),
+    )
+  }, [applicationMode, fieldCalibration.drivers, season, selectedSeriesId])
+  const championshipEntrantDrivers = useMemo(
+    () =>
+      selectedSeriesId === 'super-formula' && season.seriesId === 'super-formula'
+        ? eligibleSuperFormulaDriversForNextEvent(
+            season,
+            fieldCalibration.drivers,
+          )
+        : fieldCalibration.drivers,
+    [fieldCalibration.drivers, season, selectedSeriesId],
+  )
   const trackCalibration = useMemo(
     () => buildOpenF1TrackCalibration(openF1Bundle),
     [openF1Bundle],
@@ -1493,6 +1681,7 @@ export default function App() {
         return {
           ...activeFreeModeRuntime.raceConfig,
           drivers,
+          eventId: null,
           teams,
           track,
           weekendContext,
@@ -1500,47 +1689,82 @@ export default function App() {
         }
       }
 
-      return {
-        drivers: fieldCalibration.drivers,
-        featureRaceMandatoryPitStop:
-          selectedEvent.featureRaceMandatoryPitStop ??
-          seriesPackage.rules.featureRaceMandatoryPitStop,
-        featureRaceTwoDryCompounds:
-          seriesPackage.rules.featureRaceTwoDryCompounds,
-        overtakeActivation: seriesPackage.rules.overtakeActivation,
+      const f1Rules = isF1SeriesRules(seriesPackage.rules)
+        ? seriesPackage.rules
+        : null
+      const superFormulaEventOperations = f1Rules
+        ? null
+        : resolveSuperFormulaEventOperations(seriesPackage, selectedEvent.id)
+      const verifiedSuperFormulaRaceDistance =
+        superFormulaEventOperations?.raceDistance.availability ===
+        'verified-event-override'
+          ? superFormulaEventOperations.raceDistance.value
+          : null
+      const sharedConfig = {
+        // A pending Article 5 suspension removes a SUPER FORMULA driver from
+        // every session at the next event. This gate consumes only the
+        // explicit official ledger, never simulated stewarding points.
+        drivers: championshipEntrantDrivers,
+        eventId: selectedEvent.id,
         overtakeSystem: seriesPackage.rules.overtakeSystem,
         categoryRaceFormat: seriesPackage.rules.race,
         seed: normalizeSimulationSeed(seed),
         seriesId: selectedSeriesId,
+        vehicleEraId: seriesPackage.vehicleEraId,
         teams: fieldCalibration.teams,
         tireSupplier: seriesPackage.rules.tireSupplier,
-        tireAllocation: tireAllocationFor(
-          seriesPackage,
-          track.isSprintWeekend,
-        ),
-        qualifyingDryCompound:
-          seriesPackage.rules.tires.qualifyingDryCompound,
-        sessionOverallTimeLimitSecondsOverride:
-          isRaceDistanceSession(selectedWeekendStage)
-            ? (selectedEvent.raceOverallTimeLimitSeconds ?? null)
-            : null,
-        sessionRaceLapsOverride:
-          isFeatureRaceStage(selectedWeekendStage)
-            ? (selectedEvent.raceLaps ?? null)
-            : null,
-        sessionRaceTimeLimitSecondsOverride:
-          isFeatureRaceStage(selectedWeekendStage)
-            ? (selectedEvent.raceTimeLimitSeconds ?? null)
-            : null,
         track: calibratedTrack,
         weekendStage: simulationStageFor(selectedWeekendStage),
         weekendContext,
       }
+
+      if (f1Rules) {
+        return {
+          ...sharedConfig,
+          featureRaceMandatoryPitStop:
+            selectedEvent.featureRaceMandatoryPitStop ??
+            f1Rules.featureRaceMandatoryPitStop,
+          featureRaceTwoDryCompounds: f1Rules.featureRaceTwoDryCompounds,
+          fiaPuEventInput: fiaPuEventInputFor(selectedEvent.id),
+          overtakeActivation: f1Rules.overtakeActivation,
+          qualifyingDryCompound: f1Rules.tires.qualifyingDryCompound,
+          sessionOverallTimeLimitSecondsOverride:
+            isRaceDistanceSession(selectedWeekendStage)
+              ? (selectedEvent.raceOverallTimeLimitSeconds ?? null)
+              : null,
+          sessionRaceLapsOverride: isFeatureRaceStage(selectedWeekendStage)
+            ? (selectedEvent.raceLaps ?? null)
+            : null,
+          sessionRaceTimeLimitSecondsOverride: isFeatureRaceStage(
+            selectedWeekendStage,
+          )
+            ? (selectedEvent.raceTimeLimitSeconds ?? null)
+            : null,
+          tireAllocation: tireAllocationFor(seriesPackage, track.isSprintWeekend),
+        }
+      }
+
+      // SF race distance has no category/track default. Only a
+      // provenance-bearing exact event operation may configure these generic
+      // session fields. F1-only ERS, tyre-allocation, qualifying-compound and
+      // mandatory-pit fields are deliberately absent from this branch.
+      return verifiedSuperFormulaRaceDistance &&
+        isFeatureRaceStage(selectedWeekendStage)
+        ? {
+            ...sharedConfig,
+            sessionOverallTimeLimitSecondsOverride:
+              verifiedSuperFormulaRaceDistance.overallTimeLimitSeconds,
+            sessionRaceLapsOverride: verifiedSuperFormulaRaceDistance.laps,
+            sessionRaceTimeLimitSecondsOverride:
+              verifiedSuperFormulaRaceDistance.timeLimitSeconds,
+          }
+        : sharedConfig
     },
     [
       activeFreeModeRuntime,
       applicationMode,
       calibratedTrack,
+      championshipEntrantDrivers,
       drivers,
       fieldCalibration,
       seed,
@@ -1607,9 +1831,17 @@ export default function App() {
       ),
     [activeSeriesRules, qualifyingBaseConfig],
   )
-  const sprintShootout = useMemo(
-    () => runSprintShootoutQualifying(preparedBaseConfig),
-    [preparedBaseConfig],
+  const supportsF1SprintShootout =
+    f1SeriesRules !== null &&
+    weekendStagesFor(seriesPackage, track, selectedEventId).includes(
+      'sprintQualifying',
+    )
+  const sprintShootout = useMemo<KnockoutQualifying>(
+    () =>
+      supportsF1SprintShootout
+        ? runSprintShootoutQualifying(preparedBaseConfig)
+        : { classification: [], segments: [] },
+    [preparedBaseConfig, supportsF1SprintShootout],
   )
   const classificationSegments = useMemo(
     () =>
@@ -1630,23 +1862,25 @@ export default function App() {
     ],
   )
   const weekendTirePlan = useMemo(
-    () =>
-      buildWeekendTirePlan(
+    () => {
+      // The F1 planner owns its 305 km / 35-lap strategy heuristics.  SUPER
+      // FORMULA has no compatible compound plan, so never call it here.
+      if (!f1SeriesRules) {
+        return null
+      }
+
+      return buildWeekendTirePlan(
         preparedBaseConfig,
         standardQualifying,
-        weekendStagesFor(seriesPackage, track, selectedEventId).includes(
-          'sprintQualifying',
-        )
-          ? sprintShootout
-          : null,
-      ),
+        supportsF1SprintShootout ? sprintShootout : null,
+      )
+    },
     [
+      f1SeriesRules,
       preparedBaseConfig,
-      selectedEventId,
-      seriesPackage,
       sprintShootout,
       standardQualifying,
-      track,
+      supportsF1SprintShootout,
     ],
   )
   const knockoutQualifying = useMemo(
@@ -1698,7 +1932,7 @@ export default function App() {
     const bundle = openF1State.data
     const tiresByCode = new Map<string, TireCompound>()
 
-    if (!bundle) {
+    if (!f1SeriesRules || !bundle) {
       return tiresByCode
     }
 
@@ -1723,7 +1957,7 @@ export default function App() {
     }
 
     return tiresByCode
-  }, [openF1State.data])
+  }, [f1SeriesRules, openF1State.data])
   const openF1LiveState = useMemo(
     () =>
       buildOpenF1LiveRaceState(
@@ -1750,6 +1984,33 @@ export default function App() {
     () => weekendStagesFor(seriesPackage, track, selectedEventId),
     [selectedEventId, seriesPackage, track],
   )
+  const superFormulaRaceDistanceUnavailableReason =
+    applicationMode === 'championship'
+      ? unavailableSuperFormulaRaceDistanceReason(
+          seriesPackage,
+          selectedEvent.id,
+          'race',
+        )
+      : null
+  const selectableWeekendStages = useMemo(
+    () =>
+      superFormulaRaceDistanceUnavailableReason === null
+        ? weekendStages
+        : weekendStages.filter(
+            (stage) =>
+              unavailableSuperFormulaRaceDistanceReason(
+                seriesPackage,
+                selectedEvent.id,
+                stage,
+              ) === null,
+          ),
+    [
+      selectedEvent.id,
+      seriesPackage,
+      superFormulaRaceDistanceUnavailableReason,
+      weekendStages,
+    ],
+  )
   const stageGridResults =
     selectedWeekendStage === 'sprint'
       ? seriesPackage.rules.sprintGridReverseCount > 0
@@ -1764,7 +2025,10 @@ export default function App() {
   const tirePlansByDriver = useMemo(
     () =>
       new Map(
-        weekendTirePlan.driverPlans.map((plan) => [plan.driverId, plan]),
+        (weekendTirePlan?.driverPlans ?? []).map((plan) => [
+          plan.driverId,
+          plan,
+        ]),
       ),
     [weekendTirePlan],
   )
@@ -1793,6 +2057,10 @@ export default function App() {
               selectedWeekendStage,
             )
           : fallbackGrid)
+
+      if (!f1SeriesRules) {
+        return ordered
+      }
 
       return ordered.map((driver) => {
         const plan = tirePlansByDriver.get(driver.id)
@@ -1830,6 +2098,7 @@ export default function App() {
       stageGridResults,
       tirePlansByDriver,
       weekendContext,
+      f1SeriesRules,
     ],
   )
   const raceConfig: RaceConfig = useMemo(
@@ -1881,6 +2150,7 @@ export default function App() {
         selectedTrackId,
         selectedWeekendStage,
         gridSource,
+        suspendedSuperFormulaDrivers.map((driver) => driver.id),
         applicationMode === 'free'
           ? activeFreeModeRuntime?.configuration
           : null,
@@ -1894,6 +2164,7 @@ export default function App() {
       selectedSeriesId,
       selectedTrackId,
       selectedWeekendStage,
+      suspendedSuperFormulaDrivers,
     ],
   )
   const {
@@ -2088,11 +2359,23 @@ export default function App() {
       return
     }
 
+    if (
+      unavailableSuperFormulaRaceDistanceReason(
+        seriesPackage,
+        selectedEvent.id,
+        nextStage,
+      ) !== null
+    ) {
+      return
+    }
+
     setSeed(createAutoScenarioSeed())
     setSelectedWeekendStage(nextStage)
   }, [
     applicationMode,
+    selectedEvent.id,
     selectedWeekendStage,
+    seriesPackage,
     snapshot.sessionStatus,
     snapshotIsCurrent,
     weekendStages,
@@ -2215,30 +2498,67 @@ export default function App() {
     raceConfig.timedSessionPlan?.totalDurationSeconds ??
     raceConfig.sessionDurationSeconds ??
     sessionDurationSecondsFor(selectedWeekendStage)
-  const configuredRaceDistanceKm =
-    selectedWeekendStage === 'sprint'
-      ? (seriesPackage.rules.race.sprintDistanceOverridesKm[track.id] ??
-        seriesPackage.rules.race.sprintDistanceKm)
-      : (seriesPackage.rules.race.featureDistanceOverridesKm[track.id] ??
-        seriesPackage.rules.race.featureDistanceKm)
-  const configuredRaceTimeLimitSeconds =
-    isFeatureRaceStage(selectedWeekendStage) &&
-    selectedEvent.raceTimeLimitSeconds !== undefined
+  const superFormulaEventOperations = f1SeriesRules
+    ? null
+    : resolveSuperFormulaEventOperations(seriesPackage, selectedEvent.id)
+  const verifiedSuperFormulaRaceDistance =
+    superFormulaEventOperations?.raceDistance.availability ===
+    'verified-event-override'
+      ? superFormulaEventOperations.raceDistance.value
+      : null
+  const configuredRaceDistanceKm = f1SeriesRules
+    ? selectedWeekendStage === 'sprint'
+      ? (f1SeriesRules.race.sprintDistanceOverridesKm[track.id] ??
+        f1SeriesRules.race.sprintDistanceKm)
+      : (f1SeriesRules.race.featureDistanceOverridesKm[track.id] ??
+        f1SeriesRules.race.featureDistanceKm)
+    : null
+  const configuredRaceTimeLimitSeconds = f1SeriesRules
+    ? isFeatureRaceStage(selectedWeekendStage) &&
+      selectedEvent.raceTimeLimitSeconds !== undefined
       ? selectedEvent.raceTimeLimitSeconds
       : selectedWeekendStage === 'sprint'
-      ? seriesPackage.rules.race.sprintTimeLimitSeconds
-      : seriesPackage.rules.race.featureTimeLimitSeconds
-  const categoryRaceFormatLabel = [
-    configuredRaceDistanceKm === null
-      ? null
-      : `${configuredRaceDistanceKm} km+`,
-    `${snapshot.raceLaps} laps`,
-    configuredRaceTimeLimitSeconds === null
-      ? null
-      : `${Math.round(configuredRaceTimeLimitSeconds / 60)}m max`,
-  ]
-    .filter((value): value is string => value !== null)
-    .join(' / ')
+        ? f1SeriesRules.race.sprintTimeLimitSeconds
+        : f1SeriesRules.race.featureTimeLimitSeconds
+    : null
+  const f1RaceFormatLabel = f1SeriesRules
+    ? [
+        configuredRaceDistanceKm === null
+          ? null
+          : `${configuredRaceDistanceKm} km+`,
+        `${snapshot.raceLaps} laps`,
+        configuredRaceTimeLimitSeconds === null
+          ? null
+          : `${Math.round(configuredRaceTimeLimitSeconds / 60)}m max`,
+      ]
+        .filter((value): value is string => value !== null)
+        .join(' / ')
+    : null
+  const superFormulaRaceFormatLabel = verifiedSuperFormulaRaceDistance
+    ? [
+        `${verifiedSuperFormulaRaceDistance.laps} laps (verified event)`,
+        verifiedSuperFormulaRaceDistance.timeLimitSeconds === null
+          ? null
+          : `${Math.round(
+              verifiedSuperFormulaRaceDistance.timeLimitSeconds / 60,
+            )}m max`,
+        verifiedSuperFormulaRaceDistance.overallTimeLimitSeconds === null
+          ? null
+          : `${Math.round(
+              verifiedSuperFormulaRaceDistance.overallTimeLimitSeconds / 60,
+            )}m overall`,
+      ]
+        .filter((value): value is string => value !== null)
+        .join(' / ')
+    : `UNAVAILABLE — ${
+        superFormulaEventOperations?.raceDistance.availability === 'unavailable'
+          ? superFormulaEventOperations.raceDistance.reason
+          : 'No exact SUPER FORMULA event operation selected.'
+      }`
+  const categoryRaceFormatLabel =
+    applicationMode === 'free' && activeFreeModeRuntime
+      ? `${activeFreeModeRuntime.configuration.raceLaps} laps / ${activeFreeModeRuntime.raceLapsProvenance}`
+      : f1RaceFormatLabel ?? superFormulaRaceFormatLabel
   const categorySessionFormatLabel = isPracticeStage(selectedWeekendStage)
     ? `${Math.round(seriesPackage.rules.freePracticeDurationSeconds / 60)}m practice`
     : isStandardQualifyingStage(selectedWeekendStage)
@@ -2422,71 +2742,89 @@ export default function App() {
           car.lapHistory,
           activeTimedSegment?.name ?? null,
         )
-        const tireSampleCount =
-          raceConfig.track.observedCalibration?.tireSampleCountByCompound[
-            car.tire
-          ] ?? 0
+        const tireDisplay = tireDisplayForCar(car)
+        const f1Tires =
+          car.runtimeSystems.kind === 'f1'
+            ? car.runtimeSystems.tires
+            : null
         const driver = raceConfig.drivers.find(
           (candidate) => candidate.id === car.driverId,
         )
-        const tireManagement = driver
-          ? driverAbilityValue(driver, 'tireManagement')
-          : 0.8
-        const tireModel = {
+        const sharedTireModel = {
           driverOverallAbility: driver
             ? driverConfiguredOverallAbilityPoints(driver)
             : 0,
           performancePaceDeltaSeconds:
             fieldCalibration.teamPaceDeltaSeconds[car.teamId] ?? null,
           performanceSource: fieldCalibration.source,
-          tireModelSource:
-            selectedSeriesId === 'f1-custom' && tireSampleCount >= 4
-              ? ('openf1-calibrated' as const)
-              : selectedSeriesId === 'f1-custom' &&
-                  isDryCompound(car.tire) &&
-                  raceConfig.track.tireNomination?.source === 'pirelli'
-                ? ('pirelli' as const)
-                : ('simulation' as const),
-          tirePaceDeltaSeconds: tireDeltaSeconds(
-            car.tire,
-            car.tireAgeLaps,
-            tireManagement,
-            snapshot.weather,
-            snapshot.trackGrip,
-            car.tireTemperatureC,
-            car.tireWearPercent,
-            raceConfig.track.tireNomination,
-            {
-              degradationPerLapSeconds:
-                raceConfig.track.observedCalibration
-                  ?.tireDegradationByCompound[car.tire],
-              paceOffsetSeconds:
-                raceConfig.track.observedCalibration
-                  ?.tirePaceOffsetByCompound[car.tire],
-              sampleCount: tireSampleCount,
-            },
-            car.tireThermalStressPercent ?? 0,
-            {
-              dryingLine: averageDryingLine,
-              rainIntensityMmH,
-              surfaceWaterMm: averageSurfaceWaterMm,
-            },
-            {
-              carcassTemperatureC: car.tireCarcassTemperatureC,
-              grainingPercent: car.tireGrainingPercent,
-              overheatingPercent: car.tireOverheatingPercent,
-            },
-          ),
-          tireLifePercent: tireConditionFor(
-            car.tire,
-            car.tireAgeLaps,
-            tireManagement,
-            car.tireTemperatureC,
-            car.tireWearPercent,
-            raceConfig.track.tireNomination,
-            car.tireThermalStressPercent ?? 0,
-          ).lifeRemainingPercent,
         }
+        const tireModel = f1Tires
+          ? (() => {
+              const tireSampleCount =
+                raceConfig.track.observedCalibration
+                  ?.tireSampleCountByCompound[f1Tires.tire] ?? 0
+              const tireManagement = driver
+                ? driverAbilityValue(driver, 'tireManagement')
+                : 0.8
+
+              return {
+                ...sharedTireModel,
+                tireDisplay,
+                tireModelSource:
+                  tireSampleCount >= 4
+                    ? ('openf1-calibrated' as const)
+                    : isDryCompound(f1Tires.tire) &&
+                        raceConfig.track.tireNomination?.source === 'pirelli'
+                      ? ('pirelli' as const)
+                      : ('simulation' as const),
+                tirePaceDeltaSeconds: tireDeltaSeconds(
+                  f1Tires.tire,
+                  f1Tires.tireAgeLaps,
+                  tireManagement,
+                  snapshot.weather,
+                  snapshot.trackGrip,
+                  f1Tires.tireTemperatureC,
+                  f1Tires.tireWearPercent,
+                  raceConfig.track.tireNomination,
+                  {
+                    degradationPerLapSeconds:
+                      raceConfig.track.observedCalibration
+                        ?.tireDegradationByCompound[f1Tires.tire],
+                    paceOffsetSeconds:
+                      raceConfig.track.observedCalibration
+                        ?.tirePaceOffsetByCompound[f1Tires.tire],
+                    sampleCount: tireSampleCount,
+                  },
+                  f1Tires.tireThermalStressPercent,
+                  {
+                    dryingLine: averageDryingLine,
+                    rainIntensityMmH,
+                    surfaceWaterMm: averageSurfaceWaterMm,
+                  },
+                  {
+                    carcassTemperatureC: f1Tires.tireCarcassTemperatureC,
+                    grainingPercent: f1Tires.tireGrainingPercent,
+                    overheatingPercent: f1Tires.tireOverheatingPercent,
+                  },
+                ),
+                tireLifePercent: tireConditionFor(
+                  f1Tires.tire,
+                  f1Tires.tireAgeLaps,
+                  tireManagement,
+                  f1Tires.tireTemperatureC,
+                  f1Tires.tireWearPercent,
+                  raceConfig.track.tireNomination,
+                  f1Tires.tireThermalStressPercent,
+                ).lifeRemainingPercent,
+              }
+            })()
+          : {
+              ...sharedTireModel,
+              tireDisplay,
+              tireLifePercent: null,
+              tireModelSource: 'unavailable' as const,
+              tirePaceDeltaSeconds: null,
+            }
         const hasCurrentLapSector = car.currentLapSectorTimes.some(
           (sectorTime) => sectorTime !== null,
         )
@@ -2632,7 +2970,6 @@ export default function App() {
       openF1TimingSources,
       fieldCalibration,
       raceConfig,
-      selectedSeriesId,
       snapshot.dryingLineBySector,
       snapshot.elapsedSeconds,
       snapshot.surfaceWaterMmBySector,
@@ -2703,12 +3040,18 @@ export default function App() {
     const nextDrivers = nextConfiguration.drivers
     const nextSeason = loadPersistedSeason(nextSeries.id)
     const nextStages = weekendStagesFor(nextSeries, nextTrack, nextEvent.id)
-    const nextStage =
+    const preferredStage =
       savedWeekend && nextStages.includes(savedWeekend.stage)
         ? savedWeekend.stage
         : nextStages.includes('race')
           ? 'race'
           : nextStages.at(-1) ?? 'race'
+    const nextStage = selectableWeekendStageFor(
+      nextSeries,
+      nextEvent.id,
+      nextStages,
+      preferredStage,
+    )
 
     setApplicationMode('championship')
     setActiveFreeModeRuntime(null)
@@ -2720,6 +3063,7 @@ export default function App() {
     setSelectedEventId(nextEvent.id)
     setSelectedTrackId(nextTrack.id)
     setSelectedWeekendStage(nextStage)
+    setRaceOperationNotice(null)
     setTeams(copyTeams(nextConfiguration.teams))
     setDrivers(copyDrivers(nextDrivers))
     setConfigurationMigrationHistory(nextConfiguration.migrationHistory)
@@ -2737,6 +3081,7 @@ export default function App() {
             nextTrack.isSprintWeekend,
             nextTrack,
             tireAllocationFor(nextSeries, nextTrack.isSprintWeekend),
+            nextSeries.id,
           ),
           nextSeason,
           nextDrivers,
@@ -2771,6 +3116,7 @@ export default function App() {
         false,
         runtime.raceConfig.track,
         runtime.raceConfig.tireAllocation,
+        runtime.raceConfig.seriesId ?? configuration.categoryId,
       )
 
     if (applicationMode === 'championship') {
@@ -2785,6 +3131,7 @@ export default function App() {
     setSelectedEventId('free-session')
     setSelectedTrackId(runtime.raceConfig.track.id)
     setSelectedWeekendStage(stage)
+    setRaceOperationNotice(null)
     setTeams(copyTeams(runtime.raceConfig.teams))
     setDrivers(copyDrivers(runtime.raceConfig.drivers))
     setSelectedTeamId(runtime.raceConfig.teams[0]?.id ?? '')
@@ -2813,6 +3160,17 @@ export default function App() {
       ) ??
       seriesPackage.tracks[0]
     const stages = weekendStagesFor(seriesPackage, nextTrack, nextEvent.id)
+    const preferredStage = stages.includes(selectedWeekendStage)
+      ? selectedWeekendStage
+      : stages.includes('race')
+        ? 'race'
+        : stages.at(-1) ?? 'race'
+    const nextStage = selectableWeekendStageFor(
+      seriesPackage,
+      nextEvent.id,
+      stages,
+      preferredStage,
+    )
 
     const seasonWithCurrentWear = updateSeasonGarageFromCars(
       season,
@@ -2822,6 +3180,8 @@ export default function App() {
     setSeason(seasonWithCurrentWear)
     setSelectedEventId(nextEvent.id)
     setSelectedTrackId(nextTrack.id)
+    setSelectedWeekendStage(nextStage)
+    setRaceOperationNotice(null)
     setSeed(createAutoScenarioSeed())
     setWeekendContext(
       applySeasonGarageToWeekend(
@@ -2830,15 +3190,13 @@ export default function App() {
           nextTrack.isSprintWeekend,
           nextTrack,
           tireAllocationFor(seriesPackage, nextTrack.isSprintWeekend),
+          seriesPackage.id,
         ),
         seasonWithCurrentWear,
         drivers,
       ),
     )
 
-    if (!stages.includes(selectedWeekendStage)) {
-      setSelectedWeekendStage('race')
-    }
   }
 
   /**
@@ -2884,6 +3242,23 @@ export default function App() {
   }
 
   const jumpToWeekendStage = (stage: WeekendStage) => {
+    const unavailableReason =
+      applicationMode === 'championship'
+        ? unavailableSuperFormulaRaceDistanceReason(
+            seriesPackage,
+            selectedEvent.id,
+            stage,
+          )
+        : null
+
+    if (unavailableReason !== null) {
+      setRaceOperationNotice(
+        `Race launch unavailable: event document required. ${unavailableReason}`,
+      )
+      return
+    }
+
+    setRaceOperationNotice(null)
     const targetIndex = weekendStages.indexOf(stage)
     const currentIndex = weekendStages.indexOf(selectedWeekendStage)
 
@@ -2988,7 +3363,7 @@ export default function App() {
     driverId: string,
     key: keyof CarComponents,
   ) => {
-    if (!isPaused) {
+    if (!isPaused || weekendContext.seriesId !== 'f1-custom') {
       return
     }
 
@@ -3003,27 +3378,35 @@ export default function App() {
     const componentLabel = key === 'mguK' ? 'MGU-K' : key
     const note = `${driver?.code ?? driverId}: ${componentLabel} replaced${replacement.gridPenalty > 0 ? ` (+${replacement.gridPenalty} grid)` : ''}`
 
-    setWeekendContext((current) => ({
-      ...current,
-      componentConditionByDriver: {
-        ...current.componentConditionByDriver,
-        [driverId]: replacement.components,
-      },
-      gridPenaltyByDriver: {
-        ...current.gridPenaltyByDriver,
-        [driverId]:
-          (current.gridPenaltyByDriver[driverId] ?? 0) +
-          replacement.gridPenalty,
-      },
-      notes: [...current.notes, note].slice(-30),
-    }))
+    setWeekendContext((current) => {
+      if (current.seriesId !== 'f1-custom') {
+        return current
+      }
+
+      return {
+        ...current,
+        componentConditionByDriver: {
+          ...current.componentConditionByDriver,
+          [driverId]: replacement.components,
+        },
+        gridPenaltyByDriver: {
+          ...current.gridPenaltyByDriver,
+          [driverId]:
+            (current.gridPenaltyByDriver[driverId] ?? 0) +
+            replacement.gridPenalty,
+        },
+        notes: [...current.notes, note].slice(-30),
+      }
+    })
     setSeason((current) =>
-      updateSeasonGarageReplacement(
-        current,
-        driverId,
-        replacement.components,
-        replacement.gridPenalty,
-      ),
+      current.seriesId === 'f1-custom'
+        ? updateSeasonGarageReplacement(
+            current,
+            driverId,
+            replacement.components,
+            replacement.gridPenalty,
+          )
+        : current,
     )
   }
 
@@ -3079,6 +3462,29 @@ export default function App() {
 
   const resetGrid = () => {
     const resetDrivers = copyDrivers(registrySeriesPackage.drivers)
+    const resetEvent =
+      registrySeriesPackage.calendar.find(
+        (event) => event.id === selectedEventId,
+      ) ??
+      registrySeriesPackage.calendar.find(
+        (event) => event.trackId === selectedTrackId,
+      ) ??
+      registrySeriesPackage.calendar[0]
+    const resetTrack =
+      registrySeriesPackage.tracks.find(
+        (candidate) => candidate.id === resetEvent.trackId,
+      ) ?? registrySeriesPackage.tracks[0]
+    const resetStages = weekendStagesFor(
+      registrySeriesPackage,
+      resetTrack,
+      resetEvent.id,
+    )
+    const resetStage = selectableWeekendStageFor(
+      registrySeriesPackage,
+      resetEvent.id,
+      resetStages,
+      selectedWeekendStage,
+    )
 
     setTeams(copyTeams(registrySeriesPackage.teams))
     setDrivers(resetDrivers)
@@ -3096,6 +3502,10 @@ export default function App() {
       ...history,
       `official-baseline-reset:${new Date().toISOString()}`,
     ].slice(-20))
+    setSelectedEventId(resetEvent.id)
+    setSelectedTrackId(resetTrack.id)
+    setSelectedWeekendStage(resetStage)
+    setRaceOperationNotice(null)
     setSelectedTeamId(registrySeriesPackage.teams[0].id)
     setSelectedDriverId(resetDrivers[0].id)
     setSeed(createAutoScenarioSeed())
@@ -3103,9 +3513,13 @@ export default function App() {
       applySeasonGarageToWeekend(
         createWeekendContext(
           resetDrivers,
-          track.isSprintWeekend,
-          track,
-          tireAllocationFor(registrySeriesPackage, track.isSprintWeekend),
+          resetTrack.isSprintWeekend,
+          resetTrack,
+          tireAllocationFor(
+            registrySeriesPackage,
+            resetTrack.isSprintWeekend,
+          ),
+          registrySeriesPackage.id,
         ),
         season,
         resetDrivers,
@@ -3121,10 +3535,34 @@ export default function App() {
     nextRules?: SeriesPackage['rules'],
     nextCalendar?: SeriesPackage['calendar'],
   ) => {
+    const nextSeries: SeriesPackage = {
+      ...seriesPackage,
+      calendar: nextCalendar ?? seriesPackage.calendar,
+      rules: nextRules ?? seriesPackage.rules,
+    }
+    const nextEvent =
+      nextSeries.calendar.find((event) => event.id === selectedEventId) ??
+      nextSeries.calendar.find((event) => event.trackId === selectedTrackId) ??
+      nextSeries.calendar[0]
+    const nextTrack =
+      nextSeries.tracks.find((candidate) => candidate.id === nextEvent.trackId) ??
+      nextSeries.tracks[0]
+    const nextStages = weekendStagesFor(nextSeries, nextTrack, nextEvent.id)
+    const nextStage = selectableWeekendStageFor(
+      nextSeries,
+      nextEvent.id,
+      nextStages,
+      selectedWeekendStage,
+    )
+
     setTeams(copyTeams(nextTeams))
     setDrivers(copyDrivers(nextDrivers))
     if (nextRules) setConfiguredRules(nextRules)
     if (nextCalendar) setConfiguredCalendar(nextCalendar)
+    setSelectedEventId(nextEvent.id)
+    setSelectedTrackId(nextTrack.id)
+    setSelectedWeekendStage(nextStage)
+    setRaceOperationNotice(null)
     setSelectedTeamId((current) =>
       nextTeams.some((team) => team.id === current)
         ? current
@@ -3316,6 +3754,24 @@ export default function App() {
       ]
     : []
 
+  const activeF1Runtime = snapshot.cars
+    .find(
+      (car) =>
+        car.status === 'running' && car.runtimeSystems.kind === 'f1',
+    )
+    ?.runtimeSystems
+  const activeRechargeRule =
+    activeF1Runtime?.kind === 'f1'
+      ? activeF1Runtime.energyStore.rechargeRule
+      : null
+  const activeRechargeLimitLabel = !activeRechargeRule
+    ? 'recharge rule unavailable'
+    : activeRechargeRule.limit.kind === 'finite'
+      ? `${activeRechargeRule.limit.maxCuKBusRechargeMj} MJ CU-K recharge`
+      : activeRechargeRule.limit.kind === 'unlimited'
+        ? 'unlimited CU-K recharge'
+        : 'event recharge rule unavailable'
+
   const baselineBroadcastDataDetails: BroadcastDataDetail[] = [
     {
       label: 'OpenF1 link',
@@ -3368,7 +3824,10 @@ export default function App() {
     {
       label: 'Heat Hazard',
       source: 'FIA',
-      value: `${snapshot.heatIndexC.toFixed(1)}°C HI / ${snapshot.heatHazardDeclared ? 'DECLARED' : 'NOT DECLARED'} / +${snapshot.heatHazardMassIncreaseKg}kg`,
+      value:
+        snapshot.heatIndexC === null
+          ? 'UNAVAILABLE — F1 declaration model does not apply'
+          : `${snapshot.heatIndexC.toFixed(1)}°C HI / ${snapshot.heatHazardDeclared ? 'DECLARED' : 'NOT DECLARED'} / +${snapshot.heatHazardMassIncreaseKg}kg`,
     },
     {
       label: 'Grip declaration',
@@ -3379,8 +3838,11 @@ export default function App() {
     },
     {
       label: 'ERS limits',
-      source: 'FIA',
-      value: `${FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw} kW / ${FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj} MJ SOC / ${raceConfig.fiaEventRechargeLimitMj ?? FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj} MJ recharge`,
+      source:
+        !activeRechargeRule || activeRechargeRule.limit.kind === 'unavailable'
+          ? 'UNAVAILABLE'
+          : 'FIA',
+      value: `${FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw} kW / ${FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj} MJ SOC / ${activeRechargeLimitLabel}`,
     },
     {
       label: 'Low-grip ERS curve',
@@ -3429,6 +3891,7 @@ export default function App() {
     'Newest sample',
     'Timing rows',
     'Telemetry rows',
+    'Race distance',
     '2026 rulebook',
     'Heat Hazard',
     'Grip declaration',
@@ -3443,6 +3906,11 @@ export default function App() {
             label: 'Session mode',
             source: 'SIM' as const,
             value: `FREE · ${registrySeriesPackage.shortLabel} · ${activeFreeModeRuntime.configuration.entrants.length} cars`,
+          },
+          {
+            label: 'Race laps',
+            source: 'SIM' as const,
+            value: `${activeFreeModeRuntime.configuration.raceLaps} laps / ${activeFreeModeRuntime.raceLapsProvenance}`,
           },
           {
             label: 'Qualifying structure',
@@ -3463,6 +3931,23 @@ export default function App() {
                 : ('OFF' as const),
             value: `${seriesPackage.rules.overtakeSystem.toUpperCase()} · ${raceConfig.track.freeModeProvenance?.overtakeZones ?? 'native'}`,
           },
+          ...(selectedCar.runtimeSystems.kind === 'super-formula'
+            ? [
+                {
+                  label: 'OTS event rule',
+                source:
+                  selectedCar.runtimeSystems.ots.availability ===
+                  'verified-event-rule'
+                    ? ('OFF' as const)
+                    : ('UNAVAILABLE' as const),
+                value:
+                  selectedCar.runtimeSystems.ots.availability ===
+                  'verified-event-rule'
+                    ? 'OTS event rule loaded; activation evaluation pending'
+                    : `OTS unavailable — ${selectedCar.runtimeSystems.ots.reason}`,
+                },
+              ]
+            : []),
           ...baselineBroadcastDataDetails.filter(
             (detail) => !f1OnlyDataLabels.has(detail.label),
           ),
@@ -3476,24 +3961,69 @@ export default function App() {
           value: `Verified ${source.sourceDate}`,
         })),
         {
+          label: 'Article 5 entrant gate',
+          source: 'OFF' as const,
+          value:
+            suspendedSuperFormulaDrivers.length === 0
+              ? 'All current entrants eligible / official register only'
+              : `${suspendedSuperFormulaDrivers.map((driver) => driver.code).join(', ')} excluded: next-event suspension pending in official register`,
+        },
+        {
           label: 'Category format',
-          source: 'FIA' as const,
+          source: 'OFF' as const,
           value: categorySessionFormatLabel,
         },
         {
-          label: 'Tire package',
-          source: 'OFF' as const,
-          value: `${seriesPackage.rules.tireSupplier} / ${Object.entries(
-            seriesPackage.rules.tires.standardAllocation,
-          )
-            .filter(([, count]) => count > 0)
-            .map(([compound, count]) => `${compound}${count}`)
-            .join(' ')}`,
+          label: 'Race-distance operation',
+          source:
+            superFormulaEventOperations?.raceDistance.availability ===
+            'verified-event-override'
+              ? ('OFF' as const)
+              : ('UNAVAILABLE' as const),
+          value:
+            superFormulaEventOperations?.raceDistance.availability ===
+            'verified-event-override'
+              ? `${superFormulaEventOperations.raceDistance.value.laps} laps / ${superFormulaEventOperations.raceDistance.provenance.sourceId}`
+              : `EVENT DOCUMENT REQUIRED — ${
+                  superFormulaEventOperations?.raceDistance.availability ===
+                  'unavailable'
+                    ? superFormulaEventOperations.raceDistance.reason
+                    : 'No exact SUPER FORMULA event race-distance override is loaded.'
+                }`,
         },
         {
-          label: 'Overtake system',
-          source: 'FIA' as const,
-          value: seriesPackage.rules.overtakeSystem.toUpperCase(),
+          label: 'Control tyre package',
+          source: 'OFF' as const,
+          value:
+            selectedCar.runtimeSystems.kind === 'super-formula'
+              ? `${seriesPackage.rules.tireSupplier} / dry max ${selectedCar.runtimeSystems.controlTires.sets.dry.maximumSets} / wet max ${selectedCar.runtimeSystems.controlTires.sets.wet.maximumSets} / physical inputs unavailable`
+              : 'Category runtime unavailable',
+        },
+        {
+          label: 'OTS event rule',
+          source:
+            selectedCar.runtimeSystems.kind === 'super-formula' &&
+            selectedCar.runtimeSystems.ots.availability ===
+              'verified-event-rule'
+              ? ('OFF' as const)
+              : ('UNAVAILABLE' as const),
+          value:
+            selectedCar.runtimeSystems.kind === 'super-formula'
+              ? selectedCar.runtimeSystems.ots.availability ===
+                'verified-event-rule'
+                ? `${selectedCar.runtimeSystems.ots.allocationSeconds}s allocation / activation evaluation pending`
+                : selectedCar.runtimeSystems.ots.reason
+              : 'Category runtime unavailable',
+        },
+        {
+          label: 'Refuelling',
+          source: 'OFF' as const,
+          value:
+            selectedCar.runtimeSystems.kind === 'super-formula'
+              ? selectedCar.runtimeSystems.refuelling.permittedByRegulation
+                ? `permitted / safety ${selectedCar.runtimeSystems.refuelling.safetyGate.status} / rate and duration unavailable`
+                : selectedCar.runtimeSystems.refuelling.reason
+              : 'Category runtime unavailable',
         },
         ...baselineBroadcastDataDetails.filter(
           (detail) => !f1OnlyDataLabels.has(detail.label),
@@ -3561,17 +4091,39 @@ export default function App() {
     ) : (
     <div className="broadcast-data-control">
       <strong>{seriesPackage.label}</strong>
-      <span>Official registry package. OpenF1 is F1-only.</span>
+      <span>
+        {superFormulaRaceDistanceUnavailableReason === null
+          ? 'Official registry package. OpenF1 is F1-only.'
+          : `Race launch unavailable: event document required. ${superFormulaRaceDistanceUnavailableReason}`}
+      </span>
+      {raceOperationNotice ? <span>{raceOperationNotice}</span> : null}
       <button onClick={() => setIsDataManagerOpen(true)} type="button">
         Manage series data
       </button>
     </div>
   )
-  const broadcastTireLabels: Record<TireCompound, string> = {
-    ...seriesPackage.rules.tires.dryLabels,
-    I: 'Intermediate',
-    W: 'Wet',
-  }
+  const broadcastTireLabels: Record<TireCompound, string> =
+    selectedCar.runtimeSystems.kind === 'super-formula'
+      ? {
+          H: 'Not applicable — SUPER FORMULA control tyres',
+          I: 'Not applicable — SUPER FORMULA control tyres',
+          M: 'Not applicable — SUPER FORMULA control tyres',
+          S: 'Not applicable — SUPER FORMULA control tyres',
+          W: 'Not applicable — SUPER FORMULA control tyres',
+        }
+      : f1SeriesRules
+        ? {
+            ...f1SeriesRules.tires.dryLabels,
+            I: 'Intermediate',
+            W: 'Wet',
+          }
+        : {
+            H: 'Unavailable',
+            I: 'Unavailable',
+            M: 'Unavailable',
+            S: 'Unavailable',
+            W: 'Unavailable',
+          }
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
@@ -3651,7 +4203,6 @@ export default function App() {
         seriesLabel={seriesPackage.label}
         seriesOptions={seriesPackages.map(({ id, label }) => ({ id, label }))}
         tireLabels={broadcastTireLabels}
-        overtakeSystem={seriesPackage.rules.overtakeSystem}
         timingRows={timingRows}
         track={raceConfig.track}
         trackScene={
@@ -3678,13 +4229,15 @@ export default function App() {
             />
           </Suspense>
         }
-        weekendStages={weekendStages}
+        weekendStages={selectableWeekendStages}
       />
 
       {applicationMode === 'championship' ? (
         <SetupPanel
         calendarEvents={seriesPackage.calendar}
-        componentReplacementDisabled={!isPaused}
+        componentReplacementDisabled={
+          !isPaused || weekendContext.seriesId !== 'f1-custom'
+        }
         drivers={drivers}
         gridSource={gridSource}
         gridReferenceLabel={
@@ -3718,6 +4271,7 @@ export default function App() {
         selectedEventId={selectedEventId}
         selectedTeamId={selectedTeamId}
         selectedTrackId={selectedTrackId}
+        selectedRuntimeSystems={selectedCar.runtimeSystems}
         selectedWeekendStage={selectedWeekendStage}
         sessionFormatLabel={categorySessionFormatLabel}
         teams={teams}

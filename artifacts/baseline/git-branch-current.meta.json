@@ -1,0 +1,7 @@
+﻿{
+    "command":  "git branch --show-current",
+    "startedAtUtc":  "2026-08-08T09:37:14.1040496Z",
+    "endedAtUtc":  "2026-08-08T09:37:14.2149404Z",
+    "exitCode":  0,
+    "logFile":  "git-branch-current.log"
+}

@@ -1,0 +1,8 @@
+﻿{
+    "command":  "npm run validate:montecarlo",
+    "startedAtUtc":  "2026-08-08T11:12:23.0987150Z",
+    "endedAtUtc":  "2026-08-08T11:12:42.7939131Z",
+    "exitCode":  1,
+    "status":  "completed",
+    "logFile":  "validate-montecarlo.log"
+}

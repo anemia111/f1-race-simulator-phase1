@@ -1,0 +1,603 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T02:12:27.828Z",
+  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
+  "command": "npm run validate:f1-current-generation",
+  "sourceCutoffDate": "2026-08-08",
+  "relatedArtifacts": [
+    "artifacts/f1-current-generation-physics-summary.json",
+    "artifacts/active-aero-zone-audit.json",
+    "artifacts/energy-balance-validation/summary.json",
+    "artifacts/regulation-authority-audit.json",
+    "artifacts/source-manifest.json",
+    "artifacts/superclip-validation/summary.json"
+  ],
+  "verdict": "PASS",
+  "calibrationPolicy": {
+    "fitPerformed": false,
+    "trackSpecificMultiplierCount": 0
+  },
+  "authority": {
+    "operational": {
+      "approvedAt": "2026-08-03",
+      "issue": "10",
+      "label": "FIA 2026 F1 Operational Regulations Issue 10",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_10_-_2026-08-05.pdf"
+    },
+    "sporting": {
+      "approvedAt": "2026-08-03",
+      "issue": "08",
+      "label": "FIA 2026 F1 Sporting Regulations Issue 08",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf"
+    },
+    "technical": {
+      "approvedAt": "2026-08-03",
+      "issue": "20",
+      "label": "FIA 2026 F1 Technical Regulations Issue 20",
+      "publishedAt": "2026-08-05",
+      "url": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf"
+    }
+  },
+  "vehicleEra": {
+    "aeroSystemId": "f1-2026-active-aero",
+    "availability": "runtime",
+    "effectiveFrom": "2026-01-01",
+    "eraId": "f1-2026-current",
+    "powerUnitSystemId": "f1-2026-hybrid",
+    "regulationSetId": "fia-f1-2026-b08-c20-f10",
+    "regulationSourceIds": [
+      "fia-f1-2026-sporting-b08",
+      "fia-f1-2026-technical-c20",
+      "fia-f1-2026-operational-f10"
+    ],
+    "seriesId": "f1-custom",
+    "tyreFamilyId": "pirelli-f1-2026",
+    "vehiclePhysicsId": "f1-2026-current-vehicle"
+  },
+  "chassis": {
+    "wheelbaseM": 3.4,
+    "maximumWheelbaseM": 3.4,
+    "massCompositionProbeInput": {
+      "heatHazardAddedMassKg": 5,
+      "nominalTyreMassKg": 1,
+      "purpose": "unit-arithmetic-probe-not-a-physical-observation",
+      "weekendStage": "qualifying"
+    },
+    "massCompositionProbe": {
+      "heatHazardAddedMassKg": 5,
+      "minimumMassKg": 732,
+      "nominalTyreMassKg": 1,
+      "regulationBaseMassKg": 726,
+      "seriesId": "f1-custom",
+      "sourceId": "fia-f1-2026-technical-c20",
+      "status": "resolved",
+      "weekendStage": "qualifying"
+    },
+    "missingNominalTyreMass": {
+      "heatHazardAddedMassKg": 5,
+      "minimumMassKg": null,
+      "nominalTyreMassKg": null,
+      "reason": "nominal-tyre-mass-unavailable",
+      "regulationBaseMassKg": 726,
+      "seriesId": "f1-custom",
+      "sourceId": "fia-f1-2026-technical-c20",
+      "status": "unavailable",
+      "weekendStage": "qualifying"
+    }
+  },
+  "energy": {
+    "absolutePowerLimitKw": 350,
+    "powerBoundaries": [
+      {
+        "normal": 255,
+        "overtake": 350,
+        "powerLimited": 250,
+        "speedKph": 309,
+        "observed": {
+          "normal": 255,
+          "overtake": 350,
+          "powerLimited": 250
+        }
+      },
+      {
+        "normal": 250,
+        "overtake": 350,
+        "powerLimited": 250,
+        "speedKph": 310,
+        "observed": {
+          "normal": 250,
+          "overtake": 350,
+          "powerLimited": 250
+        }
+      },
+      {
+        "normal": 105,
+        "overtake": 320,
+        "powerLimited": 105,
+        "speedKph": 339,
+        "observed": {
+          "normal": 105,
+          "overtake": 320,
+          "powerLimited": 105
+        }
+      },
+      {
+        "normal": 100,
+        "overtake": 300,
+        "powerLimited": 100,
+        "speedKph": 340,
+        "observed": {
+          "normal": 100,
+          "overtake": 300,
+          "powerLimited": 100
+        }
+      },
+      {
+        "normal": 0.02,
+        "overtake": 200.02,
+        "powerLimited": 0.02,
+        "speedKph": 344.999,
+        "observed": {
+          "normal": 0.019999999999527063,
+          "overtake": 200.01999999999953,
+          "powerLimited": 0.019999999999527063
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 200,
+        "powerLimited": 0,
+        "speedKph": 345,
+        "observed": {
+          "normal": 0,
+          "overtake": 200,
+          "powerLimited": 0
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 0.02,
+        "powerLimited": 0,
+        "speedKph": 354.999,
+        "observed": {
+          "normal": 0,
+          "overtake": 0.019999999999527063,
+          "powerLimited": 0
+        }
+      },
+      {
+        "normal": 0,
+        "overtake": 0,
+        "powerLimited": 0,
+        "speedKph": 355,
+        "observed": {
+          "normal": 0,
+          "overtake": 0,
+          "powerLimited": 0
+        }
+      }
+    ],
+    "qualifyingRechargeFloorMj": 4,
+    "technicalDefaultRechargeLimitMj": 8.5,
+    "contextualRechargeRequiresVerifiedEventInput": true,
+    "socWindowMj": 4,
+    "lowGripCurve": {
+      "availability": "unavailable",
+      "public": false,
+      "document": "FIA-F1-DOC-111",
+      "permittedPowerCurve": null,
+      "note": "Competition-specific low-grip ERS curves are not included in the public regulation PDF."
+    }
+  },
+  "activeAero": {
+    "runtimeIntegration": {
+      "continuousStatePersistedInRaceSnapshot": true,
+      "decomposedFrontRearForceMapActive": true,
+      "legacyAggregateDragScalarPresent": false,
+      "liveTransitionProbePassed": true,
+      "status": "phase-3-integrated"
+    },
+    "maximumTransitionSeconds": 0.4,
+    "transitionStarted": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "straight",
+      "commandAtSeconds": 10,
+      "failureState": "operational",
+      "front": "transition-to-straight",
+      "frontStraightFraction": 0,
+      "rear": "transition-to-straight",
+      "rearStraightFraction": 0,
+      "transition": {
+        "durationSeconds": 0.4,
+        "elapsedSeconds": 0,
+        "fromCommand": "corner",
+        "frontStartStraightFraction": 0,
+        "rearStartStraightFraction": 0,
+        "toCommand": "straight"
+      },
+      "transitionProgress": 0
+    },
+    "transitionCompleted": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "straight",
+      "commandAtSeconds": 10,
+      "failureState": "operational",
+      "front": "straight",
+      "frontStraightFraction": 1,
+      "rear": "straight",
+      "rearStraightFraction": 1,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "outsideZone": {
+      "activationZoneId": null,
+      "command": "corner",
+      "commandAtSeconds": 10.6,
+      "failureState": "operational",
+      "front": "corner",
+      "frontStraightFraction": 0,
+      "rear": "corner",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "failure": {
+      "activationZoneId": null,
+      "command": "corner",
+      "commandAtSeconds": 12,
+      "failureState": "failed-corner-safe",
+      "front": "failed-corner-safe",
+      "frontStraightFraction": 0,
+      "rear": "failed-corner-safe",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "lowGripPartial": {
+      "activationZoneId": "regulatory-gate-zone",
+      "command": "partial-straight",
+      "commandAtSeconds": 13,
+      "failureState": "operational",
+      "front": "straight",
+      "frontStraightFraction": 1,
+      "rear": "corner",
+      "rearStraightFraction": 0,
+      "transition": null,
+      "transitionProgress": 1
+    },
+    "forceMap": {
+      "evaluation": {
+        "airDensityKgM3": 1.225,
+        "airSpeedMps": 80,
+        "purpose": "structural-decomposition-probe-not-calibration"
+      },
+      "corner": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.43999999999999995,
+        "aeroBalanceShift": -5.551115123125783e-17,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 1.0412533333333336,
+        "effectiveDragAreaM2": 1.03452,
+        "frontDownforceN": 8979.768746666668,
+        "frontDragN": 1703.233728,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1.2246467991473532e-16,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 11428.796586666671,
+        "rearDragN": 2352.0846720000004,
+        "structuralInput": {
+          "frontStraightFraction": 0,
+          "rearStraightFraction": 0,
+          "transitionProgress": 1
+        },
+        "totalDownforceN": 20408.56533333334,
+        "totalDragN": 4055.3184,
+        "transitionTransientDownforceLossN": 0,
+        "transitionTransientDragN": 7.44949904712505e-15
+      },
+      "transition": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.4183066337893274,
+        "aeroBalanceShift": -0.021693366210672582,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.9236575030482989,
+        "effectiveDragAreaM2": 0.91409722079808,
+        "frontDownforceN": 7572.892393138031,
+        "frontDragN": 1574.5469256211968,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10530.794666608626,
+        "rearDragN": 2008.714179907277,
+        "structuralInput": {
+          "frontStraightFraction": 0.5,
+          "rearStraightFraction": 0.5,
+          "transitionProgress": 0.5
+        },
+        "totalDownforceN": 18103.68705974666,
+        "totalDragN": 3583.2611055284738,
+        "transitionTransientDownforceLossN": 369.4630012193199,
+        "transitionTransientDragN": 60.829776
+      },
+      "straight": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.3915357073432424,
+        "aeroBalanceShift": -0.04846429265675761,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.8437619790101335,
+        "effectiveDragAreaM2": 0.76263884159616,
+        "frontDownforceN": 6475.1136883089075,
+        "frontDragN": 1394.7631114023936,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 1.2246467991473532e-16,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10062.62110028971,
+        "rearDragN": 1594.7811476545542,
+        "structuralInput": {
+          "frontStraightFraction": 1,
+          "rearStraightFraction": 1,
+          "transitionProgress": 1
+        },
+        "totalDownforceN": 16537.734788598616,
+        "totalDragN": 2989.544259056948,
+        "transitionTransientDownforceLossN": 0,
+        "transitionTransientDragN": 7.44949904712505e-15
+      }
+    },
+    "liveRuntimeProbe": {
+      "car": {
+        "activeAeroMode": "corner",
+        "activeAeroState": {
+          "activationZoneId": "runtime-gate-zone",
+          "command": "straight",
+          "commandAtSeconds": 10,
+          "failureState": "operational",
+          "front": "transition-to-straight",
+          "frontStraightFraction": 0.25,
+          "rear": "transition-to-straight",
+          "rearStraightFraction": 0.25,
+          "transition": {
+            "durationSeconds": 0.4,
+            "elapsedSeconds": 0.1,
+            "fromCommand": "corner",
+            "frontStartStraightFraction": 0,
+            "rearStartStraightFraction": 0,
+            "toCommand": "straight"
+          },
+          "transitionProgress": 0.25
+        },
+        "driverId": "lando_norris"
+      },
+      "force": {
+        "activeAeroAvailable": true,
+        "aeroBalanceFrontFraction": 0.4296932322745205,
+        "aeroBalanceShift": -0.010306767725479504,
+        "assumptions": {
+          "frontDownforceShare": 0.44,
+          "frontDragShare": 0.42,
+          "frontStraightDownforceRetention": 0.72,
+          "frontStraightDragRetention": 0.82,
+          "frontWakeExponent": 1.2,
+          "pitchBalanceShiftMaximum": 0.025,
+          "pitchDownforceLossMaximum": 0.05,
+          "pitchReferenceDegrees": 3,
+          "rearStraightDownforceRetention": 0.88,
+          "rearStraightDragRetention": 0.68,
+          "rearWakeExponent": 0.8,
+          "rideHeightDownforceLossMaximum": 0.08,
+          "rideHeightDragPenaltyMaximum": 0.025,
+          "rideHeightReferenceMm": 28,
+          "rideHeightSensitivityRangeMm": 18,
+          "transitionDownforceLossFraction": 0.02,
+          "transitionDragPenaltyFraction": 0.015,
+          "yawDownforceLossMaximum": 0.1,
+          "yawDragPenaltyMaximum": 0.04,
+          "yawReferenceDegrees": 8
+        },
+        "effectiveDownforceMultiplier": 0.9778531862732098,
+        "effectiveDragAreaM2": 0.9775224520081366,
+        "frontDownforceN": 8235.467167473618,
+        "frontDragN": 1644.181595635815,
+        "modifiers": {
+          "frontWakeMultiplier": 1,
+          "pitchBalanceShift": 0,
+          "pitchDownforceMultiplier": 1,
+          "rearWakeMultiplier": 1,
+          "rideHeightDownforceMultiplier": 1,
+          "rideHeightDragMultiplier": 1,
+          "transitionEnvelope": 0.7071067811865475,
+          "yawDownforceMultiplier": 1,
+          "yawDragMultiplier": 1
+        },
+        "provenance": {
+          "assumptionSetId": "f1-2026-decomposed-active-aero-prior-v1",
+          "classification": "category-level-prior-only",
+          "confidence": "low",
+          "methodVersion": "decomposed-active-aero-force-v1",
+          "publicCoefficientRange": null,
+          "sourceIds": [
+            "fia-f1-2026-technical-c20",
+            "fia-f1-2026-active-aero-overview",
+            "fia-f1-2026-australia-post-race-transcript",
+            "dimastrogiovanni-reina-burzoni-2019-active-drag",
+            "diba-barari-esmailzadeh-2014-active-aero-handling",
+            "buscariolo-et-al-2019-imperial-front-wing"
+          ],
+          "statement": "Qualitative mechanisms are source-backed; all quantitative coefficients are conservative bounded category priors.",
+          "validationStatus": "prior-only"
+        },
+        "rearDownforceN": 10930.455283481298,
+        "rearDragN": 2187.7064162360807,
+        "structuralInput": {
+          "frontStraightFraction": 0.25,
+          "rearStraightFraction": 0.25,
+          "transitionProgress": 0.25
+        },
+        "totalDownforceN": 19165.922450954917,
+        "totalDragN": 3831.8880118718957,
+        "transitionTransientDownforceLossN": 274.9352461947433,
+        "transitionTransientDragN": 43.013147107658696
+      },
+      "passed": true
+    },
+    "overtakeStateIsSeparateInput": true
+  },
+  "standingStart": {
+    "belowThreshold": {
+      "positiveTorqueAllowed": false,
+      "reason": "below-release-speed",
+      "releaseLatched": false
+    },
+    "atThreshold": {
+      "positiveTorqueAllowed": true,
+      "reason": "release-speed-reached",
+      "releaseLatched": true
+    },
+    "secuSafetyException": {
+      "positiveTorqueAllowed": true,
+      "reason": "secu-safety-exception",
+      "releaseLatched": false
+    }
+  },
+  "invariantFailures": []
+}

@@ -8,7 +8,7 @@
 
 ## User Intent
 
-Build a PC-first F1/F2/F3/SUPER FORMULA observer, timing, and race-control
+Build a PC-first F1/SUPER FORMULA observer, timing, and race-control
 simulator. It should feel factual and operational rather than like an arcade
 driving game.
 
@@ -32,9 +32,10 @@ driving game.
 - `src/data/f1Performance.csv` is the canonical F1 11-team/30-driver source on
   a 0-100 scale (22 fielded seats, two per team; the rest are `reserve` rows).
   Cadillac is present, and Ferrari `NAK` retains car number 31.
-- `src/data/motorsportSeries2026.json` is the versioned F2/F3/SF field,
-  calendar, tire, points, and qualifying source. The validated relational pool
-  contains 110 unique people; do not apply category subtraction at runtime.
+- `src/data/motorsportSeries2026.json` contains only executable F1/SF series
+  packages. `src/data/historicalDriverPool2026.json` retains all 52 former
+  F2/F3 identities as provenance-only history. The validated relational pool
+  contains 110 unique people and 111 provenance records.
 - MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
   corners. Its sector boundaries remain labelled derived until the FIA event
   circuit map is published, and it intentionally has no fabricated OpenF1
@@ -102,8 +103,7 @@ driving game.
 - F1 FIA 2026 tire allocations:
   - Standard: `H2/M3/S8/I5/W2`
   - Sprint: `H2/M4/S6/I6/W2`
-- F2 uses Prime/Option (`H3/S2`), F3 uses four sets of one dry specification,
-  and SUPER FORMULA uses one Yokohama dry specification. Category labels and
+- SUPER FORMULA uses one Yokohama dry specification. Category labels and
   inventory are defined by the series registry, not inferred from F1.
 - Cars stay centered on one racing line. Battle outcomes are evaluated once
   per 1/12-lap segment and use actual mapped DRS-zone/sector position without
@@ -227,7 +227,7 @@ driving game.
 - Free Mode is `ApplicationMode = 'free'`, not a `SeriesId`. Championship mode
   remains the owner of points, calendar progress, OpenF1 enrichment, and
   category-specific saved configuration.
-- The builder supports F1/F2/F3/SUPER FORMULA, the deduplicated F1 plus SF
+- The builder supports F1/SUPER FORMULA, the deduplicated F1 plus SF
   physical-track union, Practice/Qualifying/Race, 1-40 entrants, weather,
   distance/time, seed, manual/random/qualifying grids, all 110 pool drivers,
   repeated source vehicles, and optional equal cars.
@@ -283,7 +283,8 @@ driving game.
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
 - `src/data/f1Performance.csv`: canonical F1 11-team/30-driver source values.
-- `src/data/motorsportSeries2026.json`: F2/F3/SF data and category rules.
+- `src/data/motorsportSeries2026.json`: executable F1/SF category rules and SF
+  field; `historicalDriverPool2026.json`: former F2/F3 pool provenance.
 - `src/series/seriesRegistry.ts`: validated packages, pool, and assignments.
 - `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
 - `src/data/f1PitCrewCalibration.ts`: source-backed F1 pit-crew calibration.
@@ -343,7 +344,7 @@ npm run benchmark
   and close-button dismissal, the in-panel car selector moving the app-wide
   selection, the lap log's measured lap and sector columns, an untouched track
   map, the `N/A` race-only rows in FP1 and qualifying, the panel opening in
-  Free Mode, and `N/A` F1-only systems in F2/F3/SF. `npm run playtest` previews
+  Free Mode, and `N/A` F1-only systems in SF. `npm run playtest` previews
   the existing `dist`, so run `npm run build` first after any UI or CSS change
 - Monte Carlo: 6 acceptance groups passed across 10,000 matched-condition
   production-model samples

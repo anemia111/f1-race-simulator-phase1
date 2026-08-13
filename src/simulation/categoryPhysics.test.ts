@@ -12,6 +12,9 @@ import { idealSetupForTrack } from './engineering'
 import {
   categoryHasHybridEnergyStore,
   categoryPhysicsFor,
+  resolveF1MinimumMass,
+  resolveMinimumVehicleMass,
+  resolveOperationalVehicleMass,
 } from './categoryPhysics'
 import { createInitialRace } from './race'
 import { calculateCarTelemetry } from './telemetry'
@@ -19,6 +22,9 @@ import {
   progressForProfileSpeed,
   speedForProfileTravelKph,
 } from './trackDynamics'
+
+/** Algebra fixture only; it is not an FIA C4.7 Nominal Tyre Mass observation. */
+const TEST_FIXTURE_NOMINAL_TYRE_MASS_KG = 40
 
 type CategoryLapTrace = {
   lapTimeSeconds: number
@@ -48,11 +54,7 @@ function traceQualifyingLap(options: {
   const snapshot = createInitialRace({
     drivers: [driver],
     overtakeSystem:
-      seriesId === 'super-formula'
-        ? 'ots'
-        : seriesId === 'f1-custom'
-          ? 'active-aero'
-          : 'drs',
+      seriesId === 'super-formula' ? 'ots' : 'active-aero',
     seed: `category-lap:${seriesId}:${track.id}`,
     seriesId,
     teams: [team],
@@ -135,14 +137,177 @@ function traceQualifyingLap(options: {
   )
 }
 
+describe('2026 minimum-mass authority', () => {
+  it('uses the 3400 mm F1 wheelbase maximum', () => {
+    expect(categoryPhysicsFor('f1-custom').wheelbaseM).toBe(3.4)
+    expect(categoryPhysicsFor('f1-custom').wheelbaseM).toBeLessThanOrEqual(3.4)
+  })
+
+  it('uses 726 kg plus the named tyre input only in SQ and qualifying', () => {
+    const nominalTyreMassFixtureKg = TEST_FIXTURE_NOMINAL_TYRE_MASS_KG
+
+    for (const weekendStage of ['sprintQualifying', 'qualifying'] as const) {
+      expect(
+        resolveF1MinimumMass({
+          nominalTyreMassKg: nominalTyreMassFixtureKg,
+          weekendStage,
+        }),
+      ).toMatchObject({
+        minimumMassKg: 726 + nominalTyreMassFixtureKg,
+        nominalTyreMassKg: nominalTyreMassFixtureKg,
+        regulationBaseMassKg: 726,
+        status: 'resolved',
+      })
+    }
+  })
+
+  it('uses 724 kg plus the named tyre input in every other session', () => {
+    const nominalTyreMassFixtureKg = TEST_FIXTURE_NOMINAL_TYRE_MASS_KG
+
+    for (const weekendStage of [
+      'fp1',
+      'fp2',
+      'fp3',
+      'sprint',
+      'qualifying2',
+      'race',
+      'race2',
+    ] as const) {
+      expect(
+        resolveF1MinimumMass({
+          nominalTyreMassKg: nominalTyreMassFixtureKg,
+          weekendStage,
+        }),
+      ).toMatchObject({
+        minimumMassKg: 724 + nominalTyreMassFixtureKg,
+        regulationBaseMassKg: 724,
+        status: 'resolved',
+      })
+    }
+  })
+
+  it('adds heat-hazard mass explicitly after base and tyre mass', () => {
+    expect(
+      resolveF1MinimumMass({
+        heatHazardAddedMassKg: 5,
+        nominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+        weekendStage: 'race',
+      }),
+    ).toMatchObject({
+      heatHazardAddedMassKg: 5,
+      minimumMassKg: 769,
+      regulationBaseMassKg: 724,
+      status: 'resolved',
+    })
+  })
+
+  it('returns unavailable rather than deriving a nominal tyre mass', () => {
+    expect(
+      resolveF1MinimumMass({
+        heatHazardAddedMassKg: 2,
+        nominalTyreMassKg: null,
+        weekendStage: 'qualifying',
+      }),
+    ).toEqual({
+      heatHazardAddedMassKg: 2,
+      minimumMassKg: null,
+      nominalTyreMassKg: null,
+      reason: 'nominal-tyre-mass-unavailable',
+      regulationBaseMassKg: 726,
+      seriesId: 'f1-custom',
+      sourceId: 'fia-f1-2026-technical-c20',
+      status: 'unavailable',
+      weekendStage: 'qualifying',
+    })
+  })
+
+  it('requires the whole-kilogram C4.7 input instead of accepting a guess', () => {
+    expect(() =>
+      resolveF1MinimumMass({
+        nominalTyreMassKg: 40.5,
+        weekendStage: 'race',
+      }),
+    ).toThrow(/C4\.7 whole-kilogram value/)
+  })
+
+  it('keeps the fixed Super Formula mass rule intact', () => {
+    expect(
+      resolveMinimumVehicleMass({
+        seriesId: 'super-formula',
+        weekendStage: 'race',
+      }),
+    ).toMatchObject({
+      heatHazardAddedMassKg: 0,
+      minimumMassKg: 670,
+      regulationBaseMassKg: 670,
+      seriesId: 'super-formula',
+      status: 'resolved',
+    })
+  })
+
+  it('uses a typed non-regulatory fallback and adds heat mass once', () => {
+    expect(
+      resolveOperationalVehicleMass({
+        f1NominalTyreMassKg: null,
+        heatHazardAddedMassKg: 5,
+        physics: categoryPhysicsFor('f1-custom'),
+        weekendStage: 'qualifying',
+      }),
+    ).toMatchObject({
+      basis: 'non-regulatory-simulation-reference',
+      minimumMassResolution: {
+        heatHazardAddedMassKg: 5,
+        minimumMassKg: null,
+        reason: 'nominal-tyre-mass-unavailable',
+        regulationBaseMassKg: 726,
+      },
+      operationalMassKg: 773,
+      referenceMassKg: 768,
+      status: 'resolved-non-regulatory-simulation-reference',
+    })
+    expect(
+      'minimumMassKg' in categoryPhysicsFor('f1-custom'),
+    ).toBe(false)
+  })
+
+  it('switches to the session minimum when a C4.7 input arrives', () => {
+    const qualifying = resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+      heatHazardAddedMassKg: 5,
+      physics: categoryPhysicsFor('f1-custom'),
+      weekendStage: 'qualifying',
+    })
+    const race = resolveOperationalVehicleMass({
+      f1NominalTyreMassKg: TEST_FIXTURE_NOMINAL_TYRE_MASS_KG,
+      heatHazardAddedMassKg: 5,
+      physics: categoryPhysicsFor('f1-custom'),
+      weekendStage: 'race',
+    })
+
+    expect(qualifying).toMatchObject({
+      basis: 'regulatory-minimum',
+      operationalMassKg: 771,
+      status: 'resolved-regulatory-minimum',
+    })
+    expect(race).toMatchObject({
+      basis: 'regulatory-minimum',
+      operationalMassKg: 769,
+      status: 'resolved-regulatory-minimum',
+    })
+    expect(qualifying.operationalMassKg - race.operationalMassKg).toBe(2)
+  })
+})
+
 describe('category-specific physical models', () => {
   it('uses distinct published vehicle fundamentals', () => {
     const f1 = categoryPhysicsFor('f1-custom')
-    const f2 = categoryPhysicsFor('f2')
-    const f3 = categoryPhysicsFor('f3')
     const superFormula = categoryPhysicsFor('super-formula')
 
-    expect(f1.minimumMassKg).toBe(768)
+    expect(f1.minimumMassRule).toMatchObject({
+      kind: 'f1-2026-session-base-plus-nominal-tyre-mass',
+      otherSessionBaseKg: 724,
+      qualifyingBaseKg: 726,
+    })
     expect(f1.hybridDeploymentPowerLimitKw).toBe(350)
     expect(f1.gearCount).toBe(8)
     expect(f1.topGearDesignSpeedKph).toBe(402)
@@ -150,19 +315,12 @@ describe('category-specific physical models', () => {
     expect(f1.drivetrainEfficiency).toBeLessThan(1)
     expect(categoryHasHybridEnergyStore(f1)).toBe(true)
 
-    expect(f2.minimumMassKg).toBe(795)
-    expect(f2.combustionPowerKw).toBeCloseTo(456.3, 1)
-    expect(f2.gearCount).toBe(6)
-    expect(categoryHasHybridEnergyStore(f2)).toBe(false)
-
-    expect(f3.minimumMassKg).toBe(699)
-    expect(f3.combustionPowerKw).toBeCloseTo(279.4, 1)
-    expect(f3.gearCount).toBe(6)
-    expect(categoryHasHybridEnergyStore(f3)).toBe(false)
-
-    expect(superFormula.minimumMassKg).toBe(670)
+    expect(superFormula.minimumMassRule).toMatchObject({
+      kind: 'fixed-minimum-mass',
+      massKg: 670,
+    })
     expect(superFormula.combustionPowerKw).toBe(405)
-    expect(superFormula.overtakeBoostPowerKw).toBe(37)
+    expect(superFormula.overtakeBoostPowerKw).toBeNull()
     expect(categoryHasHybridEnergyStore(superFormula)).toBe(false)
   })
 
@@ -197,7 +355,10 @@ describe('category-specific physical models', () => {
         (left.performanceSource?.overall ?? 0) -
         (right.performanceSource?.overall ?? 0),
     )[0]
-    const traceFor = (seriesId: 'f1-custom' | 'f2', team: Team) =>
+    const traceFor = (
+      seriesId: 'f1-custom' | 'super-formula',
+      team: Team,
+    ) =>
       traceQualifyingLap({
         driver: {
           ...referenceDriver,
@@ -216,7 +377,10 @@ describe('category-specific physical models', () => {
         overall: 100,
       },
     })
-    const sameMachineWithF2Hardware = traceFor('f2', slowestF1Team)
+    const sameMachineWithSfHardware = traceFor(
+      'super-formula',
+      slowestF1Team,
+    )
 
     expect(relabelledF1.lapTimeSeconds).toBeCloseTo(
       slowestF1.lapTimeSeconds,
@@ -228,7 +392,7 @@ describe('category-specific physical models', () => {
     )
     expect(
       Math.abs(
-        sameMachineWithF2Hardware.lapTimeSeconds -
+        sameMachineWithSfHardware.lapTimeSeconds -
           slowestF1.lapTimeSeconds,
       ),
     ).toBeGreaterThan(0.5)
@@ -237,20 +401,12 @@ describe('category-specific physical models', () => {
   it('does not let baseLapTime force representative category laps', () => {
     const representativeTracks = {
       f1: tracks.find((track) => track.id === 'suzuka-approx')!,
-      f2: seriesPackageById
-        .get('f2')!
-        .tracks.find((track) => track.id === 'monza-approx')!,
-      f3: seriesPackageById
-        .get('f3')!
-        .tracks.find((track) => track.id === 'monza-approx')!,
       superFormula: seriesPackageById
         .get('super-formula')!
         .tracks.find((track) => track.id === 'fuji-sf')!,
     }
     const cases = [
       ['f1-custom', representativeTracks.f1],
-      ['f2', representativeTracks.f2],
-      ['f3', representativeTracks.f3],
       ['super-formula', representativeTracks.superFormula],
     ] as const
 
@@ -282,12 +438,7 @@ describe('category-specific physical models', () => {
   })
 
   it('finishes every native circuit with finite category-bounded motion', () => {
-    for (const seriesId of [
-      'f1-custom',
-      'f2',
-      'f3',
-      'super-formula',
-    ] as const) {
+    for (const seriesId of ['f1-custom', 'super-formula'] as const) {
       const series = seriesPackageById.get(seriesId)!
       const entrant = fastestEntrantFor(seriesId)
 
@@ -309,42 +460,11 @@ describe('category-specific physical models', () => {
     }
   }, 30_000)
 
-  it('keeps F2 ahead of F3 on their shared circuits', () => {
-    for (const trackId of ['albert-park-approx', 'barcelona-approx']) {
-      const f2Track = seriesPackageById
-        .get('f2')!
-        .tracks.find((candidate) => candidate.id === trackId)!
-      const f3Track = seriesPackageById
-        .get('f3')!
-        .tracks.find((candidate) => candidate.id === trackId)!
-      const f2 = traceQualifyingLap({
-        ...fastestEntrantFor('f2'),
-        seriesId: 'f2',
-        track: f2Track,
-      })
-      const f3 = traceQualifyingLap({
-        ...fastestEntrantFor('f3'),
-        seriesId: 'f3',
-        track: f3Track,
-      })
-
-      expect(f2.lapTimeSeconds).toBeLessThan(f3.lapTimeSeconds)
-    }
-  })
-
   it('reaches each category top-gear design region without overspeed', () => {
     const cases = [
       {
         seriesId: 'f1-custom',
         trackId: 'las-vegas-approx',
-      },
-      {
-        seriesId: 'f2',
-        trackId: 'monza-approx',
-      },
-      {
-        seriesId: 'f3',
-        trackId: 'monza-approx',
       },
       {
         seriesId: 'super-formula',

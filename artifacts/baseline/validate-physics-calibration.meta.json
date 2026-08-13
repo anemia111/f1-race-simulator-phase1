@@ -1,0 +1,11 @@
+﻿{
+    "command":  "npm run validate:physics-calibration",
+    "startedAtUtc":  "2026-08-08T10:12:14.3925713Z",
+    "endedAtUtc":  "2026-08-08T10:12:19.2378103Z",
+    "exitCode":  0,
+    "status":  "completed",
+    "logFile":  "validate-physics-calibration.log",
+    "rawLogStoredLocally":  true,
+    "rawLogCommitted":  false,
+    "publicOmissionReason":  "The raw validator output contains per-circuit holdout values. Public artifacts retain aggregate metrics only until the Phase 17 holdout gate."
+}

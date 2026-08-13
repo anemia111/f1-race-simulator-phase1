@@ -25,6 +25,7 @@ async function loadRuntime() {
       physicsLap,
       trackData,
       paceData,
+      puEventData,
       regulationData,
     ] = await Promise.all([
         server.ssrLoadModule('/src/simulation/physicsCalibration.ts'),
@@ -32,6 +33,7 @@ async function loadRuntime() {
         server.ssrLoadModule('/src/simulation/physicalLap.ts'),
         server.ssrLoadModule('/src/data/tracks.ts'),
         server.ssrLoadModule('/src/data/paceCalibration.ts'),
+        server.ssrLoadModule('/src/data/fiaPuEventInputs2026.ts'),
         server.ssrLoadModule('/src/simulation/regulations.ts'),
       ])
 
@@ -40,6 +42,7 @@ async function loadRuntime() {
       categories,
       paceData,
       physicsLap,
+      puEventData,
       regulationData,
       server,
       trackData,
@@ -69,22 +72,32 @@ try {
   const {
     buildPhysicsValidationReport,
     f1QualifyingLapObservations,
-  f1QualifyingSpeedObservations,
+    f1QualifyingSpeedObservations,
     summarizePaceCalibrationEvidence,
   } = runtime.calibration
-  const { categoryPhysicsFor } = runtime.categories
+  const { categoryPhysicsFor, resolveOperationalVehicleMass } =
+    runtime.categories
   const { simulatePhysicalLap } = runtime.physicsLap
   const { tracks } = runtime.trackData
   const {
     f1PaceCalibration2026,
     superFormulaPaceCalibration2026,
   } = runtime.paceData
+  const { fiaPuEventInputs2026 } = runtime.puEventData
   const { FIA_2026_REGULATION_PROFILE } = runtime.regulationData
   const trackById = new Map(tracks.map((track) => [track.id, track]))
+  const f1PuEventInputByEventId = new Map(
+    fiaPuEventInputs2026.map((input) => [input.eventId, input]),
+  )
   const observations = f1QualifyingLapObservations(
     f1PaceCalibration2026,
   )
   const f1Physics = categoryPhysicsFor('f1-custom')
+  const f1ReferenceMass = resolveOperationalVehicleMass({
+    f1NominalTyreMassKg: null,
+    physics: f1Physics,
+    weekendStage: 'qualifying',
+  })
   const predictions = observations.map((observation) => {
     const track = trackById.get(observation.trackId)
 
@@ -94,13 +107,16 @@ try {
 
     return {
       predictedLapSeconds: simulatePhysicalLap(track, {
+        // Calibration observations identify a circuit, not an FIA competition.
+        // Event-scoped PU instructions must never be borrowed by track ID.
+        fiaPuEventInput: null,
         physics: f1Physics,
       }).lapTimeSeconds,
       trackId: observation.trackId,
     }
   })
   const commonCategoryTrackIds = ['suzuka-approx']
-  const categoryIds = ['f1-custom', 'super-formula', 'f2', 'f3']
+  const categoryIds = ['f1-custom', 'super-formula']
   const categoryPredictions = categoryIds.flatMap((categoryId) =>
     commonCategoryTrackIds.map((trackId) => {
       const track = trackById.get(trackId)
@@ -125,20 +141,35 @@ try {
     throw new Error('Suzuka geometry is required for physics diagnostics')
   }
 
-  const baseline = simulatePhysicalLap(suzuka, { physics: f1Physics })
+  // This diagnostic deliberately names the 2026 Japanese GP event. It is the
+  // only place in this report where that event-scoped PU document is eligible.
+  const suzukaPuEventInput = f1PuEventInputByEventId.get('f1-03') ?? null
+  const baseline = simulatePhysicalLap(suzuka, {
+    eventId: 'f1-03',
+    fiaPuEventInput: suzukaPuEventInput,
+    physics: f1Physics,
+  })
   const fuelHeavy = simulatePhysicalLap(suzuka, {
-    massKg: f1Physics.minimumMassKg + 80,
+    eventId: 'f1-03',
+    fiaPuEventInput: suzukaPuEventInput,
+    massKg: f1ReferenceMass.operationalMassKg + 80,
     physics: f1Physics,
   })
   const wet = simulatePhysicalLap(suzuka, {
+    eventId: 'f1-03',
+    fiaPuEventInput: suzukaPuEventInput,
     gripMultiplier: 0.7,
     physics: f1Physics,
   })
   const noDeployment = simulatePhysicalLap(suzuka, {
     deploymentPowerKw: 0,
+    eventId: 'f1-03',
+    fiaPuEventInput: suzukaPuEventInput,
     physics: f1Physics,
   })
   const lowerGripTyre = simulatePhysicalLap(suzuka, {
+    eventId: 'f1-03',
+    fiaPuEventInput: suzukaPuEventInput,
     gripMultiplier: 0.92,
     physics: f1Physics,
   })
@@ -149,7 +180,12 @@ try {
       throw new Error(`Missing track geometry for ${observation.trackId}`)
     }
 
-    return simulatePhysicalLap(track, { physics: f1Physics })
+    return simulatePhysicalLap(track, {
+      // Observed-track comparisons are circuit-level calibration evidence and
+      // therefore use the documented no-event reference policy.
+      fiaPuEventInput: null,
+      physics: f1Physics,
+    })
   })
   // Compare each circuit's modeled peak with its own observed peak. A single
   // field-wide mean would let a circuit that is far too fast be cancelled by one
@@ -176,24 +212,10 @@ try {
     })
     .sort((left, right) => Math.abs(right.errorKph) - Math.abs(left.errorKph))
 
-  // The reference lap spends a regulation allowance, so measuring the bill is
-  // what shows whether the allocation actually respects it.
-  //
-  // Two different bounds apply and the report carries both, because which one
-  // binds depends on what kind of lap is being described. The recharge limit
-  // is what a lap may recover as it runs, so it bounds a lap repeated in a
-  // steady state. A single clear qualifying lap also arrives with the usable
-  // state-of-charge window already filled from the out lap and empties it, so
-  // its bound is the sum. The reference lap is that single clear lap, and the
-  // observations it is compared against - official Q3 times and qualifying
-  // telemetry peaks - are single clear laps too, so the sum is the bound that
-  // applies to it. The recharge limit stays in the report because a lap over
-  // it is a lap the car could not repeat.
-  const qualifyingLimitMj =
-    FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj
-  const attackLapAllowanceMj =
-    qualifyingLimitMj +
-    FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj
+  // Each physical reference lap reports both the event/policy CU-K recharge
+  // input and the mechanical deployment allowance after battery, inverter and
+  // motor losses. They are different measurement boundaries and must never be
+  // added or compared as if both were stored or shaft energy.
   // A lap that plans to spend the whole allowance lands on the limit, and the
   // segment-wise integral that measures it carries a joule or so of rounding.
   // Counting those as over the limit would report a rounding error as a
@@ -203,17 +225,32 @@ try {
   // both bounds.
   const ENERGY_BUDGET_RESOLUTION_MJ = 0.001
   const energyComparisons = observations
-    .map((observation, index) => ({
-      trackId: observation.trackId,
-      modelMj: physicalAcrossObservedTracks[index].deploymentEnergyMj,
-      ratioOfAllowance:
-        physicalAcrossObservedTracks[index].deploymentEnergyMj /
-        attackLapAllowanceMj,
-      ratioOfLimit:
-        physicalAcrossObservedTracks[index].deploymentEnergyMj /
-        qualifyingLimitMj,
-    }))
-    .sort((left, right) => right.ratioOfLimit - left.ratioOfLimit)
+    .map((observation, index) => {
+      const lap = physicalAcrossObservedTracks[index]
+      const mechanicalAllowanceMj = lap.referenceDeploymentEnergyBudgetMj
+      const rechargeAtCuKBusMj = lap.referenceRechargeAtCuKBusMJ
+
+      if (mechanicalAllowanceMj === null || rechargeAtCuKBusMj === null) {
+        throw new Error(
+          `Missing F1 reference energy boundary for ${observation.trackId}`,
+        )
+      }
+
+      return {
+        trackId: observation.trackId,
+        modelMechanicalMj: lap.deploymentEnergyMj,
+        mechanicalAllowanceMj,
+        ratioOfMechanicalAllowance:
+          lap.deploymentEnergyMj / mechanicalAllowanceMj,
+        rechargeAtCuKBusMj,
+        rechargeResolution: lap.referenceRechargeResolution,
+        rechargeSourceId: lap.referenceRechargeSourceId,
+      }
+    })
+    .sort(
+      (left, right) =>
+        right.ratioOfMechanicalAllowance - left.ratioOfMechanicalAllowance,
+    )
 
   const report = buildPhysicsValidationReport({
     categoryPredictions,
@@ -232,36 +269,33 @@ try {
       },
       'deployment-energy-budget': {
         basis:
-          'MGU-K energy each reference lap spends, against the single-clear-lap allowance (qualifying recharge limit plus the usable state-of-charge window) in FIA_2026_REGULATION_PROFILE (article C5.2.7-C5.2.12). The recharge limit on its own is reported alongside, as the bound on a lap repeated in a steady state.',
+          'MGU-K mechanical energy spent by each reference lap against its event-aware mechanical attack-lap allowance. The source CU-K recharge input is reported separately and is converted through the neutral battery/inverter/motor chain; it is never added directly to the stored SOC window.',
         modelValue: {
           perCircuit: energyComparisons,
-          meanMj: average(energyComparisons.map((entry) => entry.modelMj)),
-          maximumMj: Math.max(
-            ...energyComparisons.map((entry) => entry.modelMj),
+          meanMechanicalMj: average(
+            energyComparisons.map((entry) => entry.modelMechanicalMj),
           ),
-          meanRatioOfAllowance: average(
-            energyComparisons.map((entry) => entry.ratioOfAllowance),
+          maximumMechanicalMj: Math.max(
+            ...energyComparisons.map((entry) => entry.modelMechanicalMj),
           ),
-          meanRatioOfLimit: average(
-            energyComparisons.map((entry) => entry.ratioOfLimit),
+          meanRatioOfMechanicalAllowance: average(
+            energyComparisons.map(
+              (entry) => entry.ratioOfMechanicalAllowance,
+            ),
           ),
           circuitsOverAllowance: energyComparisons.filter(
             (entry) =>
-              entry.modelMj >
-              attackLapAllowanceMj + ENERGY_BUDGET_RESOLUTION_MJ,
-          ).length,
-          circuitsOverRepeatableLimit: energyComparisons.filter(
-            (entry) =>
-              entry.modelMj > qualifyingLimitMj + ENERGY_BUDGET_RESOLUTION_MJ,
+              entry.modelMechanicalMj >
+              entry.mechanicalAllowanceMj + ENERGY_BUDGET_RESOLUTION_MJ,
           ).length,
         },
         observedValue: {
-          attackLapAllowanceMj,
-          qualifyingRechargeLimitMj:
-            FIA_2026_REGULATION_PROFILE.energy.qualifyingRechargeLimitMj,
+          defaultReferenceRechargePolicyAtCuKBusMj:
+            FIA_2026_REGULATION_PROFILE.energy.referenceAttackRechargePolicyMj,
           usableStateOfChargeWindowMj:
             FIA_2026_REGULATION_PROFILE.energy.usableStateOfChargeWindowMj,
-          raceLimitMj: FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
+          technicalDefaultRechargeLimitAtCuKBusMj:
+            FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj,
           article: FIA_2026_REGULATION_PROFILE.energy.article,
         },
         sampleCount: energyComparisons.length,

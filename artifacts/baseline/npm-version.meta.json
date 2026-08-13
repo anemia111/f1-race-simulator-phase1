@@ -1,0 +1,7 @@
+﻿{
+    "command":  "npm --version",
+    "startedAtUtc":  "2026-08-08T09:37:14.5228368Z",
+    "endedAtUtc":  "2026-08-08T09:37:15.7038388Z",
+    "exitCode":  0,
+    "logFile":  "npm-version.log"
+}

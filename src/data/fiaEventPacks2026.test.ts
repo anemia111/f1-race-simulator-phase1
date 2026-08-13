@@ -19,5 +19,14 @@ describe('2026 FIA event packs', () => {
     expect(fiaEventPackFor('suzuka-approx')?.documents.circuitMapUrl).toContain(
       '2026_japanese_grand_prix',
     )
+    expect(
+      fiaEventPackFor('suzuka-approx')?.documents.powerUnitInformationUrl,
+    ).toContain('power_unit_information')
+    expect(fiaEventPackFor('suzuka-approx')?.normalizedPowerUnitInput).toBe(
+      true,
+    )
+    expect(fiaEventPackFor('monaco-approx')?.normalizedPowerUnitInput).toBe(
+      false,
+    )
   })
 })

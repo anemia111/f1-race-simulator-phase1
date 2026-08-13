@@ -1,5 +1,7 @@
 export type OfficialTrackAnchor = {
   offsetMeters: number
+  /** Zero-based occurrence for layouts whose published corner labels repeat. */
+  occurrence?: number
   reference: 'apex' | 'entry' | 'exit'
   turn: number
 }
@@ -31,6 +33,18 @@ const at = (
   reference: OfficialTrackAnchor['reference'],
   offsetMeters = 0,
 ): OfficialTrackAnchor => ({ offsetMeters, reference, turn })
+
+const atOccurrence = (
+  turn: number,
+  occurrence: number,
+  reference: OfficialTrackAnchor['reference'],
+  offsetMeters = 0,
+): OfficialTrackAnchor => ({
+  occurrence,
+  offsetMeters,
+  reference,
+  turn,
+})
 
 /**
  * Published FIA 2026 event-map geometry. Future events deliberately remain
@@ -174,6 +188,42 @@ export const officialTrackOperations2026: Readonly<
       { lowGrip: after(5, 115), normal: after(5, 55) },
       { lowGrip: null, normal: after(7, 155) },
       { lowGrip: after(14, 125), normal: after(14, 65) },
+    ],
+  },
+  'spa-approx': {
+    centerlineLengthKm: 7.004,
+    overtake: {
+      activation: after(19, 130),
+      detection: at(19, 'entry'),
+    },
+    sectorLengthsKm: [2.254, 2.82, 1.93],
+    sourceUrl:
+      'https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+    straightMode: [
+      { lowGrip: after(19, 240), normal: after(19, 190) },
+      { lowGrip: after(1, 195), normal: after(1, 140) },
+      { lowGrip: after(4, 360), normal: after(4, 60) },
+      { lowGrip: after(15, 190), normal: after(15, 140) },
+      { lowGrip: after(17, 110), normal: after(17, 80) },
+    ],
+  },
+  'hungaroring-approx': {
+    centerlineLengthKm: 4.381,
+    overtake: {
+      activation: at(14, 'exit', -30),
+      detection: at(14, 'entry'),
+    },
+    sectorLengthsKm: [1.736, 1.542, 1.103],
+    sourceUrl:
+      'https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+    straightMode: [
+      { lowGrip: after(14, 100), normal: after(14, 40) },
+      {
+        lowGrip: atOccurrence(1, 1, 'entry', 100),
+        normal: atOccurrence(1, 1, 'entry', 30),
+      },
+      { lowGrip: after(3, 80), normal: after(3, 50) },
+      { lowGrip: after(11, 90), normal: after(11, 60) },
     ],
   },
 }

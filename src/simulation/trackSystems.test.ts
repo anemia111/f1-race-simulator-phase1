@@ -3,7 +3,6 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import {
   activeAeroModeFor,
-  ersDeploymentPowerKw,
   overtakeStatusFor,
   updateOvertakeEligibilityAfterTravel,
 } from './activeAero'
@@ -452,10 +451,16 @@ describe('track-dependent systems', () => {
     })
     const activationDistance =
       eligibility!.activationLap + line.activationProgress
+    if (baseCar.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime for active-aero eligibility')
+    }
     const readyCar = {
       ...baseCar,
       gapToAhead: 1.6,
-      overtakeEligibility: eligibility,
+      runtimeSystems: {
+        ...baseCar.runtimeSystems,
+        overtakeEligibility: eligibility,
+      },
       progress: line.activationProgress - 0.001,
       totalDistance: activationDistance - 0.001,
     }
@@ -520,13 +525,19 @@ describe('track-dependent systems', () => {
       eligibility!.activationLap + line.activationProgress
 
     expect(eligibility?.eligible).toBe(false)
+    if (baseCar.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime for active-aero eligibility')
+    }
     expect(
       overtakeStatusFor({
         batteryPercent: 80,
         car: {
           ...baseCar,
           gapToAhead: 0.2,
-          overtakeEligibility: eligibility,
+          runtimeSystems: {
+            ...baseCar.runtimeSystems,
+            overtakeEligibility: eligibility,
+          },
           progress: line.activationProgress + 0.01,
           totalDistance: activationDistance + 0.01,
         },
@@ -536,77 +547,6 @@ describe('track-dependent systems', () => {
         track,
       }),
     ).toBe('disabled')
-  })
-
-  it('uses the post-Miami FIA 2026 ERS-K zone limits', () => {
-    const standardAt289 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 289,
-    })
-    const standardAt290 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 290,
-    })
-    const standardAt291 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 291,
-    })
-    const standardAt340 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'available',
-      speedKph: 340,
-    })
-    const overtakeAt340 = ersDeploymentPowerKw({
-      ersMode: 'deploy',
-      overtakeStatus: 'active',
-      speedKph: 340,
-    })
-
-    expect(standardAt289).toBe(250)
-    expect(standardAt290).toBe(250)
-    expect(standardAt291).toBe(250)
-    expect(standardAt340).toBe(250)
-    expect(overtakeAt340).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'deploy',
-        overtakeStatus: 'available',
-        speedKph: 345,
-      }),
-    ).toBe(250)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'deploy',
-        overtakeStatus: 'active',
-        speedKph: 355,
-      }),
-    ).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        curve: 'specified-sector',
-        ersMode: 'deploy',
-        overtakeStatus: 'available',
-        speedKph: 280,
-      }),
-    ).toBe(350)
-    expect(
-      ersDeploymentPowerKw({
-        curve: 'low-grip-estimate',
-        ersMode: 'deploy',
-        overtakeStatus: 'disabled',
-        speedKph: 290,
-      }),
-    ).toBe(250)
-    expect(
-      ersDeploymentPowerKw({
-        ersMode: 'harvest',
-        overtakeStatus: 'active',
-        speedKph: 320,
-      }),
-    ).toBe(0)
   })
 
   it('uses the physical racing-line reference in the sharpest corner', () => {
