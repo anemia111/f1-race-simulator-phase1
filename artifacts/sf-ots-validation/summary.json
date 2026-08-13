@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T05:53:02.225Z",
+  "sourceCommit": "b29745e02ea6b5d2e21d559f75ffc0a8be9db9d5",
+  "sourceCutoffDate": "2026-08-08",
+  "command": "npm run validate:sf-ots",
+  "verdict": "PASS",
+  "scope": [
+    "src/simulation/superFormulaOperational.ts",
+    "src/simulation/runtimeSystems.ts"
+  ],
+  "policy": {
+    "eventConditionEvaluatorSupplied": false,
+    "verifiedEventPackMayExposeValues": true,
+    "verifiedEventPackMayActivateWithoutEvaluator": false,
+    "missingOrMalformedPackUsesNumericFallback": false
+  },
+  "deterministicTrace": {
+    "repeatedFixedInputOutputIdentical": true,
+    "sha256": "ab19b854cff7cc91ace22242404800c1cde13941710da434ee91ed1f25645a6e"
+  },
+  "scenarios": [
+    {
+      "id": "no-event-pack",
+      "resolver": {
+        "activationConditions": null,
+        "active": false,
+        "allocationSeconds": null,
+        "availability": "unavailable",
+        "boostPowerKw": null,
+        "cooldownSeconds": null,
+        "eventPackStatus": "missing",
+        "provenance": {
+          "article": "Article 24.3.8",
+          "authority": "binding-base-regulation",
+          "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+          "publishedAt": "2026-01-23",
+          "sourceId": "jaf-sf-2026-unified-regulations",
+          "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "unavailable"
+        }
+      },
+      "runtime": {
+        "activationConditions": null,
+        "active": false,
+        "allocationSeconds": null,
+        "availability": "unavailable",
+        "boostPowerKw": null,
+        "cooldownSeconds": null,
+        "eventPackStatus": "missing",
+        "provenance": {
+          "article": "Article 24.3.8",
+          "authority": "binding-base-regulation",
+          "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+          "publishedAt": "2026-01-23",
+          "sourceId": "jaf-sf-2026-unified-regulations",
+          "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "unavailable"
+        }
+      }
+    },
+    {
+      "id": "malformed-event-pack",
+      "resolver": {
+        "activationConditions": null,
+        "active": false,
+        "allocationSeconds": null,
+        "availability": "unavailable",
+        "boostPowerKw": null,
+        "cooldownSeconds": null,
+        "eventPackStatus": "invalid",
+        "provenance": {
+          "article": "Article 24.3.8",
+          "authority": "binding-base-regulation",
+          "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+          "publishedAt": "2026-01-23",
+          "sourceId": "jaf-sf-2026-unified-regulations",
+          "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "unavailable"
+        }
+      },
+      "runtime": {
+        "activationConditions": null,
+        "active": false,
+        "allocationSeconds": null,
+        "availability": "unavailable",
+        "boostPowerKw": null,
+        "cooldownSeconds": null,
+        "eventPackStatus": "invalid",
+        "provenance": {
+          "article": "Article 24.3.8",
+          "authority": "binding-base-regulation",
+          "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+          "publishedAt": "2026-01-23",
+          "sourceId": "jaf-sf-2026-unified-regulations",
+          "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "unavailable"
+        }
+      }
+    },
+    {
+      "id": "fully-provenanced-pack-without-condition-evaluator",
+      "resolver": {
+        "activationConditions": "The event bulletin defines the OTS activation conditions for this event.",
+        "active": false,
+        "allocationSeconds": 95,
+        "availability": "verified-event-rule",
+        "boostPowerKw": 20,
+        "cooldownSeconds": 45,
+        "eventPackStatus": "accepted",
+        "provenance": {
+          "authority": "official-notice",
+          "checksum": "sf-ots-validation-event-notice-sha256",
+          "documentId": "2026-sf-ots-validation-event-notice",
+          "publishedAt": "2026-08-11",
+          "url": "https://example.invalid/sf-ots-validation-event-notice"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "requires-event-condition-evaluation"
+        }
+      },
+      "runtime": {
+        "activationConditions": "The event bulletin defines the OTS activation conditions for this event.",
+        "active": false,
+        "allocationSeconds": 95,
+        "availability": "verified-event-rule",
+        "boostPowerKw": 20,
+        "cooldownSeconds": 45,
+        "eventPackStatus": "accepted",
+        "provenance": {
+          "authority": "official-notice",
+          "checksum": "sf-ots-validation-event-notice-sha256",
+          "documentId": "2026-sf-ots-validation-event-notice",
+          "publishedAt": "2026-08-11",
+          "url": "https://example.invalid/sf-ots-validation-event-notice"
+        },
+        "runtimeEligibility": {
+          "canActivate": false,
+          "status": "requires-event-condition-evaluation"
+        }
+      }
+    }
+  ],
+  "invariantFailures": []
+}

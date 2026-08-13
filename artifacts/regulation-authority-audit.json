@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "cutoffDate": "2026-08-08",
-  "sourceCommit": "6275f4f1d04be43053a496cbf6072dcd2e7644df",
+  "sourceCommit": "b29745e02ea6b5d2e21d559f75ffc0a8be9db9d5",
   "series": {
     "f1-custom": {
       "runtimeEra": "f1-2026-current",
@@ -60,10 +60,19 @@
         "yokohama-sf-2026-overview",
         "yokohama-sf-supply-2030-release"
       ],
-      "requiredRuntimeCorrections": [
+      "runtimeGateArtifact": "artifacts/sf-ots-validation/summary.json",
+      "implementedRuntimeCorrections": [
         "Article 21 tyre-change worker count must be six.",
         "Race-finish timing must include Bulletin 003-2026 interpretation.",
-        "Machine and tyre supplier pages are explanatory inputs, not regulations."
+        "Machine and tyre supplier pages are explanatory inputs, not regulations.",
+        "Super Formula uses an isolated runtime payload with no F1 ERS, active-aero, component, or tyre-family state.",
+        "Article 5 suspension eligibility is retained only in an official-adjudication ledger; FIA penalty mappings are unavailable.",
+        "Article 23 control-tyre inventory is a dry/wet allocation of six per driver.",
+        "Article 24 engine allocation is a two-engine entrant lifecycle ledger.",
+        "Article 24.3.8 OTS fails closed unless exact event-pack activation, power, and cooldown conditions are supplied.",
+        "Article 25 refuelling safety and numerical inputs remain unavailable without official event inputs.",
+        "Article 26.9 pit-lane speed limit is 60 km/h.",
+        "Super Formula race distance is available only from a verified event-specific input."
       ]
     }
   },
@@ -75,5 +84,5 @@
     "eventScopeRequiredForEventDocuments": true
   },
   "runtimeGateArtifact": "artifacts/f1-current-generation-gate.json",
-  "status": "phase-4-f1-energy-runtime-and-event-recharge-gates-implemented"
+  "status": "phase-5-super-formula-first-class-runtime-boundary-implemented"
 }
