@@ -33,15 +33,19 @@ function runScenario(label: string, trackId: string): RaceSnapshot {
 }
 
 function finiteCarState(car: CarSnapshot) {
+  if (car.runtimeSystems.kind !== 'f1') {
+    return false
+  }
+
   return [
     car.totalDistance,
     car.progress,
     car.speedKph,
     car.fuelLoadKg,
-    car.ersBatteryPercent,
-    car.tireAgeLaps,
-    car.tireWearPercent,
-    car.tireTemperatureC,
+    car.runtimeSystems.ersBatteryPercent,
+    car.runtimeSystems.tires.tireAgeLaps,
+    car.runtimeSystems.tires.tireWearPercent,
+    car.runtimeSystems.tires.tireTemperatureC,
     car.brakeTemperatureC,
     car.gapToLeader,
     car.gapToAhead,
@@ -65,10 +69,14 @@ describe('multi-circuit race stability', () => {
           expect(finiteCarState(car), `${label}:${car.code}`).toBe(true)
           expect(car.progress, `${label}:${car.code}:progress`).toBeGreaterThanOrEqual(0)
           expect(car.progress, `${label}:${car.code}:progress`).toBeLessThanOrEqual(1)
-          expect(car.ersBatteryPercent, `${label}:${car.code}:battery`).toBeGreaterThanOrEqual(0)
-          expect(car.ersBatteryPercent, `${label}:${car.code}:battery`).toBeLessThanOrEqual(100)
-          expect(car.tireWearPercent, `${label}:${car.code}:wear`).toBeGreaterThanOrEqual(0)
-          expect(car.tireWearPercent, `${label}:${car.code}:wear`).toBeLessThanOrEqual(100)
+          expect(car.runtimeSystems.kind, `${label}:${car.code}:runtime`).toBe('f1')
+          if (car.runtimeSystems.kind !== 'f1') {
+            throw new Error(`Expected F1 runtime for ${car.code}`)
+          }
+          expect(car.runtimeSystems.ersBatteryPercent, `${label}:${car.code}:battery`).toBeGreaterThanOrEqual(0)
+          expect(car.runtimeSystems.ersBatteryPercent, `${label}:${car.code}:battery`).toBeLessThanOrEqual(100)
+          expect(car.runtimeSystems.tires.tireWearPercent, `${label}:${car.code}:wear`).toBeGreaterThanOrEqual(0)
+          expect(car.runtimeSystems.tires.tireWearPercent, `${label}:${car.code}:wear`).toBeLessThanOrEqual(100)
           expect(car.fuelLoadKg, `${label}:${car.code}:fuel`).toBeGreaterThanOrEqual(0)
         }
       }

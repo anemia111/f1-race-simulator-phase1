@@ -7,6 +7,13 @@ const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
 // The 2026 F1 baseline includes Cadillac: eleven teams and twenty-two cars.
 const EXPECTED_FIELD_SIZE = 22
 const MINI_SECTORS_PER_DRIVER = 24
+// This Node harness cannot import the TypeScript persistence module directly.
+// Keep these aligned with src/persistence.ts so the Free Mode isolation check
+// observes the live runtime-boundary persistence, rather than a retired key.
+const CHAMPIONSHIP_WEEKEND_STORAGE_KEY =
+  'race-sim-weekend-v4-runtime-boundary'
+const CHAMPIONSHIP_SEASON_STORAGE_KEY =
+  'race-sim-season-v4-runtime-boundary:f1-custom'
 const artifactDirectory = resolve(
   process.env.QA_ARTIFACT_DIR?.trim() || join(tmpdir(), 'f1-simulator-qa'),
 )
@@ -819,7 +826,10 @@ async function inspectSeriesModes(browser) {
   )
   const results = {}
 
-  for (const [seriesId, expectedCars] of [['super-formula', 24]]) {
+  for (const [seriesId, expectedCars] of [
+    ['f1-custom', 22],
+    ['super-formula', 24],
+  ]) {
     await seriesSelector.selectOption(seriesId)
     await page.waitForFunction(
       (count) => document.querySelectorAll('.leaderboard-rows li').length === count,
@@ -831,7 +841,8 @@ async function inspectSeriesModes(browser) {
       timingTitle: await page.locator('.broadcast-leaderboard .broadcast-panel-header').innerText(),
     }
 
-    // F1-only systems must read N/A rather than a fabricated value here.
+    // Capture category-specific system rows from every pit-wall tab. F1 must
+    // report its live systems; SUPER FORMULA must not inherit them at all.
     const seriesPitWallButton = page.getByTitle(/^Open the pit wall/u)
     if (await seriesPitWallButton.isEnabled()) {
       await seriesPitWallButton.click()
@@ -839,6 +850,17 @@ async function inspectSeriesModes(browser) {
       results[seriesId].pitWallOverview = await page
         .locator('#pit-wall-tabpanel .pit-wall-metric')
         .allInnerTexts()
+      const pitWallTabs = page.locator('.pit-wall-tabs button')
+      const metricRows = []
+      for (let index = 0; index < (await pitWallTabs.count()); index += 1) {
+        await pitWallTabs.nth(index).click()
+        metricRows.push(
+          ...(await page
+            .locator('#pit-wall-tabpanel .pit-wall-metric')
+            .allInnerTexts()),
+        )
+      }
+      results[seriesId].pitWallMetrics = metricRows
       await page.getByLabel('Close pit wall').click()
     } else {
       results[seriesId].pitWallOverview = null
@@ -902,19 +924,25 @@ async function inspectFreeMode(browser) {
   const championshipEventBeforeFree = await page
     .locator('.broadcast-brand strong')
     .innerText()
-  await page.waitForFunction(() => {
-    const raw = localStorage.getItem('race-sim-weekend-v3-multi-series')
+  await page.waitForFunction((weekendStorageKey) => {
+    const raw = localStorage.getItem(weekendStorageKey)
     if (!raw) return false
     try {
       return JSON.parse(raw).eventId === 'f1-16'
     } catch {
       return false
     }
-  })
-  const championshipStorageBeforeFree = await page.evaluate(() => ({
-    season: localStorage.getItem('f1-sim-season-v3:f1-custom'),
-    weekend: localStorage.getItem('race-sim-weekend-v3-multi-series'),
-  }))
+  }, CHAMPIONSHIP_WEEKEND_STORAGE_KEY)
+  const championshipStorageBeforeFree = await page.evaluate(
+    ({ seasonStorageKey, weekendStorageKey }) => ({
+      season: localStorage.getItem(seasonStorageKey),
+      weekend: localStorage.getItem(weekendStorageKey),
+    }),
+    {
+      seasonStorageKey: CHAMPIONSHIP_SEASON_STORAGE_KEY,
+      weekendStorageKey: CHAMPIONSHIP_WEEKEND_STORAGE_KEY,
+    },
+  )
 
   await page.getByRole('button', { exact: true, name: 'FREE' }).click()
   await page.waitForSelector('.free-mode-builder')
@@ -1059,10 +1087,16 @@ async function inspectFreeMode(browser) {
     undefined,
     { timeout: 30_000 },
   )
-  const championshipStorageAfterFree = await page.evaluate(() => ({
-    season: localStorage.getItem('f1-sim-season-v3:f1-custom'),
-    weekend: localStorage.getItem('race-sim-weekend-v3-multi-series'),
-  }))
+  const championshipStorageAfterFree = await page.evaluate(
+    ({ seasonStorageKey, weekendStorageKey }) => ({
+      season: localStorage.getItem(seasonStorageKey),
+      weekend: localStorage.getItem(weekendStorageKey),
+    }),
+    {
+      seasonStorageKey: CHAMPIONSHIP_SEASON_STORAGE_KEY,
+      weekendStorageKey: CHAMPIONSHIP_WEEKEND_STORAGE_KEY,
+    },
+  )
   const championshipStorageUnchanged =
     championshipStorageBeforeFree.weekend ===
       championshipStorageAfterFree.weekend &&
@@ -1282,7 +1316,7 @@ try {
     if (failures.length > 0) throw new Error(`${result.name} failed:\n- ${failures.join('\n- ')}`)
   }
 
-  const expectedCars = { 'super-formula': 24 }
+  const expectedCars = { 'f1-custom': 22, 'super-formula': 24 }
   const seriesFailures = []
   if (seriesModes.seriesOptions.join(',') !== 'f1-custom,super-formula') {
     seriesFailures.push(`series selector is incomplete: ${seriesModes.seriesOptions.join(', ')}`)
@@ -1292,18 +1326,55 @@ try {
     if (result.cars !== carCount) seriesFailures.push(`${seriesId} rendered ${result.cars}/${carCount} cars`)
     if (!/Leaderboard/iu.test(result.timingTitle)) seriesFailures.push(`${seriesId} leaderboard title is stale: ${result.timingTitle}`)
 
-    // SUPER FORMULA has neither a hybrid Energy Store nor 2026 active aero, so
-    // the pit wall must say so instead of printing an invented number.
     if (result.pitWallOverview === null) {
       seriesFailures.push(`${seriesId} pit wall could not be opened`)
-    } else {
+      continue
+    }
+
+    if (seriesId === 'f1-custom') {
       for (const label of ['ERS / battery', 'Active aero']) {
         const row = result.pitWallOverview.find((text) => text.includes(label))
 
         if (!row) {
-          seriesFailures.push(`${seriesId} pit wall is missing the ${label} row`)
-        } else if (!row.includes('N/A')) {
-          seriesFailures.push(`${seriesId} pit wall reports an F1-only system as a value: ${row.replace(/\s+/gu, ' ')}`)
+          seriesFailures.push(`F1 pit wall is missing the ${label} row`)
+        } else if (row.includes('N/A')) {
+          seriesFailures.push(`F1 pit wall reports ${label} as unavailable: ${row.replace(/\s+/gu, ' ')}`)
+        }
+      }
+    } else {
+      // SUPER FORMULA must omit F1-only systems entirely: a compatibility N/A
+      // row would still present an invented F1 system in the category UI.
+      const f1OnlyMetric = result.pitWallMetrics.find((text) =>
+        /ERS\s*\/\s*battery|\bSOC\b|Active aero|MGU-K/iu.test(text),
+      )
+      if (f1OnlyMetric) {
+        seriesFailures.push(`SUPER FORMULA pit wall renders an F1-only metric: ${f1OnlyMetric.replace(/\s+/gu, ' ')}`)
+      }
+
+      const expectedSuperFormulaMetrics = [
+        {
+          label: 'Control tyre allocation',
+          required: ['dry 6 / wet 6', 'JAF'],
+        },
+        {
+          label: 'Engine allocation',
+          required: ['1/2 per entrant', 'JAF'],
+        },
+        {
+          label: 'OTS',
+          required: ['N/A'],
+        },
+        {
+          label: 'Refuelling safety',
+          required: ['BLOCKED', 'JAF'],
+        },
+      ]
+      for (const expectedMetric of expectedSuperFormulaMetrics) {
+        const row = result.pitWallOverview.find((text) =>
+          text.includes(expectedMetric.label),
+        )
+        if (!row || !expectedMetric.required.every((value) => row.includes(value))) {
+          seriesFailures.push(`SUPER FORMULA pit wall has no sourced ${expectedMetric.label} state: ${row?.replace(/\s+/gu, ' ') ?? 'missing'}`)
         }
       }
     }

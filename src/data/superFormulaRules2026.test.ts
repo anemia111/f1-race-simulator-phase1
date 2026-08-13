@@ -94,4 +94,33 @@ describe('2026 SUPER FORMULA operational rule package', () => {
       expect(rule.provenance.article).toBe('Article 24.3.8')
     }
   })
+
+  it('preserves the Article 5 penalty-point clock, escalation, and clearing transition', () => {
+    expect(superFormulaOperationalRules2026.penaltyPoints).toMatchObject({
+      suspension: {
+        availability: 'verified',
+        provenance: {
+          article: 'Article 5',
+          sourceId: 'jaf-sf-2026-unified-regulations',
+        },
+        value: {
+          clearsRelevantTallyWhen: 'suspension-is-lifted',
+          kind: 'next-event-suspension',
+          thresholdPoints: {
+            afterFirstServedSuspension: 4,
+            afterSubsequentServedSuspension: 2,
+            initial: 6,
+          },
+        },
+      },
+      validity: {
+        availability: 'verified',
+        provenance: {
+          article: 'Article 5',
+          sourceId: 'jaf-sf-2026-unified-regulations',
+        },
+        value: { continuousMonths: 12 },
+      },
+    })
+  })
 })

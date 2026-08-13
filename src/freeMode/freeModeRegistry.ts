@@ -12,6 +12,7 @@ import type {
   SeriesQualifyingSegmentRule,
   SeriesRules,
 } from '../series/types'
+import { isF1SeriesRules } from '../series/types'
 import { runSeriesQualifying } from '../simulation/qualifying'
 import { createSeededRandom, normalizeSimulationSeed } from '../simulation/random'
 import { startingGridDistance } from '../simulation/startingGrid'
@@ -216,6 +217,13 @@ export function suggestFreeModeRaceLaps(
   series: SeriesPackage,
   track: TrackDefinition,
 ): number {
+  if (!isF1SeriesRules(series.rules)) {
+    // Free Mode has no exact SUPER FORMULA event operation selected. Keep a
+    // neutral editable starting value instead of borrowing a calendar entry,
+    // track lap count, or the retired 0.55 category multiplier.
+    return 10
+  }
+
   const calendarEvent = series.calendar.find((event) => event.trackId === track.id)
 
   if (calendarEvent?.raceLaps) {
@@ -574,15 +582,29 @@ export function buildFreeModeRaceConfig(
     configuration.sessionKind,
     configuration.practiceStage,
   )
-  const tireAllocation = { ...rules.tires.standardAllocation }
+  const f1Rules = isF1SeriesRules(rules)
+  const tireAllocation = f1Rules
+    ? { ...rules.tires.standardAllocation }
+    : undefined
+  const weekendContext = f1Rules
+    ? createWeekendContext(
+        drivers,
+        false,
+        weatherResolved.track,
+        tireAllocation,
+        'f1-custom',
+      )
+    : createWeekendContext(
+        drivers,
+        false,
+        weatherResolved.track,
+        undefined,
+        'super-formula',
+      )
   const config: RaceConfig = {
     categoryRaceFormat: rules.race,
     drivers,
-    featureRaceMandatoryPitStop: rules.featureRaceMandatoryPitStop,
-    featureRaceTwoDryCompounds: rules.featureRaceTwoDryCompounds,
-    overtakeActivation: rules.overtakeActivation,
     overtakeSystem: rules.overtakeSystem,
-    qualifyingDryCompound: rules.tires.qualifyingDryCompound,
     seed: weatherResolved.seed,
     seriesId: series.id,
     vehicleEraId: series.vehicleEraId,
@@ -593,16 +615,19 @@ export function buildFreeModeRaceConfig(
     sessionRaceLapsOverride:
       configuration.sessionKind === 'race' ? configuration.raceLaps : null,
     teams,
-    tireAllocation,
     tireSupplier: rules.tireSupplier,
     track: weatherResolved.track,
-    weekendContext: createWeekendContext(
-      drivers,
-      false,
-      weatherResolved.track,
-      tireAllocation,
-    ),
+    weekendContext,
     weekendStage,
+    ...(f1Rules
+      ? {
+          featureRaceMandatoryPitStop: rules.featureRaceMandatoryPitStop,
+          featureRaceTwoDryCompounds: rules.featureRaceTwoDryCompounds,
+          overtakeActivation: rules.overtakeActivation,
+          qualifyingDryCompound: rules.tires.qualifyingDryCompound,
+          tireAllocation,
+        }
+      : {}),
   }
 
   if (configuration.sessionKind === 'qualifying') {
@@ -648,6 +673,7 @@ export function buildFreeModeRuntime(
       rules.qualifying.format === 'single-session'
         ? `SIM single session · ${configuration.entrants.length} cars`
         : `SIM ${rules.qualifying.format} · ${segmentFlow}`,
+    raceLapsProvenance: 'user-selected',
     raceConfig,
     rules,
     sourceTeams: series.teams.map(cloneTeam),

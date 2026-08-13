@@ -14,12 +14,21 @@ describe('category runtime systems', () => {
     expect(runtime).toMatchObject({
       controlTires: {
         sets: {
-          dry: { maximumSets: 6 },
+          dry: { maximumSets: 6, remainingSets: 5, usedSets: 1 },
           wet: { maximumSets: 6 },
         },
       },
       engineLedger: { engine: { maximumPerEntrantPerSeason: 2, used: 1 } },
       kind: 'super-formula',
+      liveTires: {
+        activeSurface: 'dry',
+        kind: 'super-formula-live-control-tire',
+        physicalModel: {
+          availability: 'unavailable',
+          simulatorPolicy: 'do-not-apply-physical-tire-coefficients',
+          value: null,
+        },
+      },
       ots: {
         allocationSeconds: null,
         availability: 'unavailable',
@@ -30,12 +39,27 @@ describe('category runtime systems', () => {
         safetyGate: { status: 'blocked' },
         transferRateKgPerSecond: { availability: 'unavailable', value: null },
       },
+      refuellingTask: {
+        canExecute: false,
+        eventPackStatus: 'missing',
+        kind: 'super-formula-refuelling-task',
+        numericalTask: {
+          availability: 'unavailable',
+          fuelMassGainKg: null,
+          serviceDurationSeconds: null,
+          transferRateKgPerSecond: null,
+        },
+        status: 'blocked-by-safety',
+      },
     })
     expect(runtime).not.toHaveProperty('energyStore')
     expect(runtime).not.toHaveProperty('activeAeroState')
     expect(runtime).not.toHaveProperty('components')
     expect(runtime).not.toHaveProperty('ersBatteryPercent')
     expect(runtime).not.toHaveProperty('superClippingIntensity')
+    expect(runtime.liveTires).not.toHaveProperty('compound')
+    expect(runtime.liveTires).not.toHaveProperty('wearPercent')
+    expect(runtime.refuellingTask.canExecute).toBe(false)
     expect(isSuperFormulaRuntimeSystems(runtime)).toBe(true)
     expect(isF1RuntimeSystems(runtime)).toBe(false)
   })

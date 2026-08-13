@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import type { DriverPoolRecord } from '../series/driverPool'
 import type { DriverAssignmentRecord } from '../series/types'
+import { isF1SeriesRules } from '../series/types'
+import {
+  resolveSuperFormulaEventOperations,
+  seriesPackageById,
+} from '../series/seriesRegistry'
 import type { Driver } from '../types'
 import {
   activeRuntimeAssignments,
   driverDirectorySearchText,
   runtimeSeatAssignmentFor,
+  seriesEventOperationLabel,
   seriesLabels,
+  superFormulaControlTyreSummary,
   swapDriversBetweenRuntimeSeats,
 } from './SeriesDataManager'
 
@@ -84,6 +91,31 @@ describe('Series Data Manager pool boundaries', () => {
       'f1-custom': 'F1',
       'super-formula': 'SF',
     })
+  })
+
+  it('keeps SUPER FORMULA tyre and event operations source-bound in the rule UI', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    if (isF1SeriesRules(superFormula.rules)) {
+      throw new Error('Expected SUPER FORMULA rules')
+    }
+    const baseOperations = resolveSuperFormulaEventOperations(
+      superFormula,
+      'sf-06',
+    )!
+    const replacementOperations = resolveSuperFormulaEventOperations(
+      superFormula,
+      'sf-03-replacement',
+    )!
+
+    expect(superFormulaControlTyreSummary(superFormula.rules)).toContain(
+      'Yokohama Dry max 6',
+    )
+    expect(seriesEventOperationLabel(baseOperations.raceDistance)).toMatch(
+      /^UNAVAILABLE \/ /,
+    )
+    expect(seriesEventOperationLabel(replacementOperations.raceDistance)).toBe(
+      'VERIFIED EVENT OVERRIDE / jaf-sf-2026-substitute-round-3-web056',
+    )
   })
 
   it('searches historical F2/F3 provenance without making it an affiliation', () => {

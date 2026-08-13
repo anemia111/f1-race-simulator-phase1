@@ -15,6 +15,7 @@ import {
   createEntrantsFromCategoryGrid,
   freeModeStageFor,
   freeModeTrackOptions,
+  suggestFreeModeRaceLaps,
 } from './freeModeRegistry'
 import {
   FREE_MODE_MAX_CARS,
@@ -172,6 +173,23 @@ describe('Free Mode registry and validation', () => {
     expect(f1.track.baseLapTime).toBeLessThan(superFormula.track.baseLapTime)
   })
 
+  it('keeps SUPER FORMULA Free Mode laps user-selected rather than inferring a calendar distance', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const fuji = superFormula.tracks.find((track) => track.id === 'fuji-sf')!
+    const configuration = configurationFor('super-formula', 'fuji-sf', 10)
+    configuration.raceLaps = 17
+
+    expect(suggestFreeModeRaceLaps(superFormula, fuji)).toBe(10)
+
+    const runtime = buildFreeModeRuntime(configuration, context())
+    expect(runtime.raceLapsProvenance).toBe('user-selected')
+    expect(runtime.raceConfig.sessionRaceLapsOverride).toBe(17)
+    expect(runtime.raceConfig).not.toHaveProperty('featureRaceMandatoryPitStop')
+    expect(runtime.raceConfig).not.toHaveProperty('overtakeActivation')
+    expect(runtime.raceConfig).not.toHaveProperty('qualifyingDryCompound')
+    expect(runtime.raceConfig).not.toHaveProperty('tireAllocation')
+  })
+
   it('loads only F1 and Super Formula machinery plus the 110-driver pool', () => {
     expect([...seriesById.keys()]).toEqual([
       'f1-custom',
@@ -317,6 +335,7 @@ describe('Free Mode RaceConfig generation', () => {
       expect(config.overtakeSystem).toBe(overtakeSystem)
       expect(config.track.id).toBe(trackId)
       expect(config.track.freeModeProvenance).toBeDefined()
+      expect(config.weekendContext?.seriesId).toBe(categoryId)
       expect(createInitialRace(config).cars).toHaveLength(10)
     },
   )

@@ -19,6 +19,7 @@ import {
   overtakeIncrementalDcEnergyUsedMj,
 } from './telemetry'
 import { trackDynamicsAt } from './trackDynamics'
+import type { F1RuntimeSystems } from './runtimeSystems'
 
 const team = initialTeams[0]
 const driver = initialDrivers.find((candidate) => candidate.teamId === team.id)!
@@ -58,16 +59,25 @@ const lowSocIntent: F1EnergyIntent = {
   qualifyingSpendBias: 0.1,
 }
 
+function requireF1Runtime(car: CarSnapshot): F1RuntimeSystems {
+  if (car.runtimeSystems.kind !== 'f1') {
+    throw new Error('This superclipping fixture requires an F1 runtime')
+  }
+
+  return car.runtimeSystems
+}
+
 function carWithEnergyState(
   car: CarSnapshot,
   stateOfCharge: number,
   rechargedAtCuKBusThisLapMj: number,
   removedThisLapMj: number,
 ): CarSnapshot {
+  const runtimeSystems = requireF1Runtime(car)
   const currentEnergyMJ =
-    car.energyStore.minimumUsableEnergyMJ +
-    car.energyStore.usableEnergyMJ * stateOfCharge
-  const rechargeLimit = car.energyStore.rechargeRule.limit
+    runtimeSystems.energyStore.minimumUsableEnergyMJ +
+    runtimeSystems.energyStore.usableEnergyMJ * stateOfCharge
+  const rechargeLimit = runtimeSystems.energyStore.rechargeRule.limit
   const remainingMJ =
     rechargeLimit.kind === 'finite'
       ? Math.max(
@@ -80,24 +90,27 @@ function carWithEnergyState(
 
   return {
     ...car,
-    energyDeployedThisLapMj: removedThisLapMj,
-    energyHarvestedThisLapMj: rechargedAtCuKBusThisLapMj,
-    ersBatteryPercent: Math.round(stateOfCharge * 100),
-    energyStore: {
-      ...car.energyStore,
-      currentEnergyMJ,
-      deployedAtCuKBusThisLapMJ: removedThisLapMj * 0.97,
-      energyRemovedThisLapMJ: removedThisLapMj,
-      lapStartEnergyMJ:
-        currentEnergyMJ - storedEnergyThisLapMj + removedThisLapMj,
-      rechargedAtCuKBusThisLapMJ: rechargedAtCuKBusThisLapMj,
-      rechargeRule: {
-        ...car.energyStore.rechargeRule,
-        remainingMJ,
-        usedMJ: rechargedAtCuKBusThisLapMj,
+    runtimeSystems: {
+      ...runtimeSystems,
+      energyDeployedThisLapMj: removedThisLapMj,
+      energyHarvestedThisLapMj: rechargedAtCuKBusThisLapMj,
+      ersBatteryPercent: Math.round(stateOfCharge * 100),
+      energyStore: {
+        ...runtimeSystems.energyStore,
+        currentEnergyMJ,
+        deployedAtCuKBusThisLapMJ: removedThisLapMj * 0.97,
+        energyRemovedThisLapMJ: removedThisLapMj,
+        lapStartEnergyMJ:
+          currentEnergyMJ - storedEnergyThisLapMj + removedThisLapMj,
+        rechargedAtCuKBusThisLapMJ: rechargedAtCuKBusThisLapMj,
+        rechargeRule: {
+          ...runtimeSystems.energyStore.rechargeRule,
+          remainingMJ,
+          usedMJ: rechargedAtCuKBusThisLapMj,
+        },
+        stateOfCharge,
+        storedEnergyThisLapMJ: storedEnergyThisLapMj,
       },
-      stateOfCharge,
-      storedEnergyThisLapMJ: storedEnergyThisLapMj,
     },
   }
 }
@@ -561,28 +574,39 @@ describe('super clipping physical integration', () => {
       weather: 'clear',
     })
 
+    const telemetryRuntime = telemetry.runtimeSystems
+    const healthyTelemetryRuntime = healthyTelemetry.runtimeSystems
+    const carRuntime = requireF1Runtime(car)
+
+    if (
+      telemetryRuntime.kind !== 'f1' ||
+      healthyTelemetryRuntime.kind !== 'f1'
+    ) {
+      throw new Error('Expected F1 runtime telemetry')
+    }
+
     expect(telemetry.throttlePercent).toBeGreaterThanOrEqual(95)
-    expect(telemetry.energyStore.operatingMode).toBe(
+    expect(telemetryRuntime.energyStore.operatingMode).toBe(
       'full-throttle-superclip',
     )
-    expect(telemetry.superClippingIntensity).toBeGreaterThan(0)
-    expect(telemetry.superClippingRegenPowerKw).toBeGreaterThan(0)
-    expect(telemetry.energyHarvestedThisLapMj).toBeGreaterThan(
-      car.energyStore.rechargedAtCuKBusThisLapMJ,
+    expect(telemetryRuntime.superClippingIntensity).toBeGreaterThan(0)
+    expect(telemetryRuntime.superClippingRegenPowerKw).toBeGreaterThan(0)
+    expect(telemetryRuntime.energyHarvestedThisLapMj).toBeGreaterThan(
+      carRuntime.energyStore.rechargedAtCuKBusThisLapMJ,
     )
-    expect(telemetry.superClippingRecoveredThisLapMj).toBeGreaterThan(
-      car.superClippingRecoveredThisLapMj,
+    expect(telemetryRuntime.superClippingRecoveredThisLapMj).toBeGreaterThan(
+      carRuntime.superClippingRecoveredThisLapMj,
     )
     expect(
-      telemetry.superClippingRecoveredThisLapMj -
-        car.superClippingRecoveredThisLapMj,
+      telemetryRuntime.superClippingRecoveredThisLapMj -
+        carRuntime.superClippingRecoveredThisLapMj,
     ).toBeCloseTo(
-      telemetry.energyStore.rechargedAtCuKBusThisLapMJ -
-        car.energyStore.rechargedAtCuKBusThisLapMJ,
+      telemetryRuntime.energyStore.rechargedAtCuKBusThisLapMJ -
+        carRuntime.energyStore.rechargedAtCuKBusThisLapMJ,
       10,
     )
-    expect(telemetry.superClippingRegenPowerKw).toBeCloseTo(
-      telemetry.energyStore.actualRecoveryPowerKw,
+    expect(telemetryRuntime.superClippingRegenPowerKw).toBeCloseTo(
+      telemetryRuntime.energyStore.actualRecoveryPowerKw,
       10,
     )
     expect(telemetry.speedKph).toBeLessThan(healthyTelemetry.speedKph)

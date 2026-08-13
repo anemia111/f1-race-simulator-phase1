@@ -46,52 +46,65 @@ export function advanceRetiredCarMotion(
   const gear = speedKph <= 0.5 ? 1 : clamp(Math.ceil(speedKph / 45), 1, 8)
   const rpm =
     speedKph <= 0.5 ? 0 : Math.round(clamp(3000 + speedKph * 20, 3000, 11000))
+  const runtimeSystems =
+    car.runtimeSystems.kind === 'f1'
+      ? (() => {
+          const energyStore = {
+            ...car.runtimeSystems.energyStore,
+            chargeDcPowerKw: 0,
+            dischargeDcPowerKw: 0,
+            storedChargePowerKw: 0,
+            storedDischargePowerKw: 0,
+            requestedDeploymentDcPowerKw: 0,
+            actualDeploymentDcPowerKw: 0,
+            actualDeploymentPowerKw: 0,
+            actualRecoveryPowerKw: 0,
+            deploymentRequest: 0,
+            frictionBrakePowerKw: 0,
+            motorMechanicalPowerKw: 0,
+            batteryLossPowerKw: 0,
+            inverterLossPowerKw: 0,
+            motorLossPowerKw: 0,
+            operatingMode: 'inactive' as const,
+            recoveryTorqueNm: 0,
+            requestedBrakePowerKw: 0,
+            requestedRecoveryPowerKw: 0,
+          }
+
+          return {
+            ...car.runtimeSystems,
+            activeAeroMode: 'corner' as const,
+            activeAeroState: createInitialActiveAeroState(),
+            energyStore,
+            energyDeployedThisLapMj:
+              energyStore.deployedAtCuKBusThisLapMJ,
+            energyHarvestedThisLapMj:
+              energyStore.rechargedAtCuKBusThisLapMJ,
+            ersBatteryPercent: Math.round(energyStore.stateOfCharge * 100),
+            ersMode: 'harvest' as const,
+            ersPowerKw: 0,
+            overtakeEligibility: null,
+            superClippingDurationSeconds: 0,
+            superClippingIntensity: 0,
+            superClippingRegenPowerKw: 0,
+            superClippingStartedAtProgress: null,
+            superClippingStartedAtSeconds: null,
+          }
+        })()
+      : car.runtimeSystems
 
   return {
     ...car,
-    activeAeroMode: 'corner',
-    activeAeroState: createInitialActiveAeroState(),
     battleDeltaSecondsRemaining: 0,
     battlePhase: 'resolved',
     brakePercent,
-    energyStore: {
-      ...car.energyStore,
-      chargeDcPowerKw: 0,
-      dischargeDcPowerKw: 0,
-      storedChargePowerKw: 0,
-      storedDischargePowerKw: 0,
-      requestedDeploymentDcPowerKw: 0,
-      actualDeploymentDcPowerKw: 0,
-      actualDeploymentPowerKw: 0,
-      actualRecoveryPowerKw: 0,
-      deploymentRequest: 0,
-      frictionBrakePowerKw: 0,
-      motorMechanicalPowerKw: 0,
-      batteryLossPowerKw: 0,
-      inverterLossPowerKw: 0,
-      motorLossPowerKw: 0,
-      operatingMode: 'inactive',
-      recoveryTorqueNm: 0,
-      requestedBrakePowerKw: 0,
-      requestedRecoveryPowerKw: 0,
-    },
-    energyDeployedThisLapMj: car.energyStore.deployedAtCuKBusThisLapMJ,
-    energyHarvestedThisLapMj: car.energyStore.rechargedAtCuKBusThisLapMJ,
-    ersBatteryPercent: Math.round(car.energyStore.stateOfCharge * 100),
-    ersMode: 'harvest',
-    ersPowerKw: 0,
     gear,
     lap,
-    overtakeEligibility: null,
     overtakeStatus: 'disabled',
     progress: clamp(totalDistance - lap, 0, 1),
     rpm,
+    runtimeSystems,
     speedKph,
-    superClippingDurationSeconds: 0,
-    superClippingIntensity: 0,
-    superClippingRegenPowerKw: 0,
-    superClippingStartedAtProgress: null,
-    superClippingStartedAtSeconds: null,
     throttlePercent: 0,
     totalDistance,
   }

@@ -13,6 +13,7 @@ export function PitWallRaceControl({
   raceControlLog,
   snapshot,
 }: PitWallTabProps) {
+  const isF1Runtime = car.runtimeSystems.kind === 'f1'
   const [filter, setFilter] = useState<PitWallRaceControlFilter>('all')
   const entries = useMemo(
     () =>
@@ -72,12 +73,21 @@ export function PitWallRaceControl({
           tone={car.trackLimitWarnings > 0 ? 'watch' : 'good'}
           value={`${car.trackLimitWarnings} warning${car.trackLimitWarnings === 1 ? '' : 's'}`}
         />
-        <PitWallMetric
-          label={`${car.code} penalty points`}
-          source="SIM"
-          tone={car.penaltyPoints > 0 ? 'watch' : 'good'}
-          value={String(car.penaltyPoints)}
-        />
+        {isF1Runtime ? (
+          <PitWallMetric
+            label={`${car.code} FIA penalty points`}
+            source="SIM"
+            tone={car.penaltyPoints > 0 ? 'watch' : 'good'}
+            value={String(car.penaltyPoints)}
+          />
+        ) : (
+          <PitWallMetric
+            label={`${car.code} event penalties`}
+            source="SIM"
+            tone={car.penalties.length > 0 ? 'watch' : 'good'}
+            value={String(car.penalties.length)}
+          />
+        )}
       </PitWallGroup>
 
       <div className="pit-wall-message-log">

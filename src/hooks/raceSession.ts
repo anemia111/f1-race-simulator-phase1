@@ -1,4 +1,5 @@
 import type {
+  CarSnapshot,
   EnergyStoreState,
   RaceConfig,
   RaceSnapshot,
@@ -15,16 +16,29 @@ import {
   FIA_2026_REGULATION_PROFILE,
   resolveF1RechargeRule,
 } from '../simulation/regulations'
+import {
+  createSuperFormulaRuntimeSystems,
+} from '../simulation/runtimeSystems'
+import {
+  validateSuperFormulaControlTireInventory,
+} from '../simulation/superFormulaControlTires2026'
+import {
+  validateSuperFormula2026EngineLedger,
+} from '../simulation/superFormulaEngineLedger'
+import {
+  validateSuperFormulaLiveTireState,
+} from '../simulation/superFormulaLiveTires'
 
-export const RACE_CHECKPOINT_STORAGE_KEY = 'f1-sim-race-checkpoint-v1'
+export const RACE_CHECKPOINT_STORAGE_KEY = 'race-sim-race-checkpoint-v2-runtime-boundary'
 export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
 /**
  * Bump whenever persisted physics/timing state can no longer be continued
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.08.09.1'
-const RACE_CHECKPOINT_VERSION = 1
+export const RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
+const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set(['2026.08.09.1'])
+const RACE_CHECKPOINT_VERSION = 2
 const MAX_CHECKPOINT_LENGTH = 4_500_000
 /**
  * Persistence only rejects clearly corrupt lateral state. The live lateral
@@ -135,6 +149,116 @@ const RECHARGE_RULE_KEYS = new Set([
   'remainingMJ',
 ])
 const RECHARGE_LIMIT_KEYS = new Set(['kind', 'maxCuKBusRechargeMj'])
+const F1_TIRE_COMPOUNDS = new Set(['S', 'M', 'H', 'I', 'W'])
+const F1_TIRE_PERFORMANCE_STATES = new Set([
+  'cold',
+  'optimal',
+  'graining',
+  'overheating',
+  'degraded',
+])
+const F1_TIRE_RUNTIME_KEYS = new Set([
+  'compoundsUsed',
+  'pendingTire',
+  'tire',
+  'tireAgeLaps',
+  'tireCarcassTemperatureC',
+  'tireGrainingPercent',
+  'tireOverheatingPercent',
+  'tirePerformanceState',
+  'tireSetsRemaining',
+  'tireTemperatureC',
+  'tireThermalStressPercent',
+  'tireWearPercent',
+])
+const F1_RUNTIME_KEYS = new Set([
+  'activeAeroMode',
+  'activeAeroState',
+  'components',
+  'energyDeployedThisLapMj',
+  'energyHarvestedThisLapMj',
+  'energyLapStartedBehindSafetyCar',
+  'energyLapStartedInLowGripConditions',
+  'energyStore',
+  'ersBatteryPercent',
+  'ersMode',
+  'ersPowerKw',
+  'kind',
+  'overtakeEligibility',
+  'overtakeEnergyRemainingMj',
+  'overtakeRechargeAllowanceActiveThisLap',
+  'standingStartMguKReleaseLatched',
+  'superClippingDurationSeconds',
+  'superClippingIntensity',
+  'superClippingRecoveredThisLapMj',
+  'superClippingRegenPowerKw',
+  'superClippingStartedAtProgress',
+  'superClippingStartedAtSeconds',
+  'tires',
+])
+const SUPER_FORMULA_RUNTIME_KEYS = new Set([
+  'controlTires',
+  'engineLedger',
+  'gearbox',
+  'kind',
+  'liveTires',
+  'ots',
+  'refuelling',
+  'refuellingTask',
+])
+const SUPER_FORMULA_LIVE_TIRE_KEYS = new Set([
+  'activeSurface',
+  'fitment',
+  'kind',
+  'lapsOnCurrentSet',
+  'physicalModel',
+])
+const SUPER_FORMULA_LIVE_TIRE_FITMENT_KEYS = new Set([
+  'inventorySetCounted',
+  'selectionProvenance',
+  'sequence',
+  'surface',
+])
+const SUPER_FORMULA_LIVE_TIRE_POLICY_KEYS = new Set([
+  'authority',
+  'id',
+  'rationale',
+])
+const SUPER_FORMULA_LIVE_TIRE_PHYSICAL_MODEL_KEYS = new Set([
+  'availability',
+  'simulatorPolicy',
+  'sourceInput',
+  'value',
+])
+const SUPER_FORMULA_UNAVAILABLE_INPUT_KEYS = new Set([
+  'availability',
+  'provenance',
+  'reason',
+  'value',
+])
+const SUPER_FORMULA_RULE_PROVENANCE_KEYS = new Set([
+  'article',
+  'authority',
+  'checksum',
+  'publishedAt',
+  'sourceId',
+  'url',
+])
+const F1_ROOT_RUNTIME_FIELDS = new Set(
+  [
+    ...[...F1_RUNTIME_KEYS].filter((field) => field !== 'kind'),
+    ...F1_TIRE_RUNTIME_KEYS,
+  ],
+)
+const F1_COMPONENT_KEYS = new Set([
+  'ice',
+  'turbo',
+  'exhaust',
+  'energyStore',
+  'controlElectronics',
+  'mguK',
+  'gearbox',
+])
 
 type StorageAdapter = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>
 
@@ -495,26 +619,124 @@ function isCompatibleEnergyStoreState(
   )
 }
 
-function isCompatibleCarSnapshot(
-  value: unknown,
-  expectedDriverIds: Set<string>,
-  expectedTeamsByDriverId: Map<string, Team>,
-  config: RaceConfig,
-) {
-  if (!isRecord(value) || !expectedDriverIds.has(String(value.driverId))) {
+function isCompatibleF1Components(value: unknown) {
+  if (!isRecord(value) || !hasExactKeys(value, F1_COMPONENT_KEYS)) {
     return false
   }
 
-  const expectedTeam = expectedTeamsByDriverId.get(String(value.driverId))
+  return [...F1_COMPONENT_KEYS].every((key) => {
+    const component = value[key]
+
+    return (
+      isRecord(component) &&
+      hasExactKeys(
+        component,
+        new Set(['allocationLimit', 'allocationUsed', 'conditionPercent']),
+      ) &&
+      isFiniteInRange(component.conditionPercent, 0, 100) &&
+      Number.isSafeInteger(component.allocationUsed) &&
+      Number(component.allocationUsed) >= 1 &&
+      Number(component.allocationUsed) <= 99 &&
+      (component.allocationLimit === null ||
+        (Number.isSafeInteger(component.allocationLimit) &&
+          Number(component.allocationLimit) >= 1 &&
+          Number(component.allocationLimit) <= 99))
+    )
+  })
+}
+
+function isNonNegativeSafeInteger(value: unknown) {
+  return (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+  )
+}
+
+/**
+ * The Pirelli model is intentionally validated only inside the F1 runtime
+ * branch.  This keeps persisted SF snapshots unable to smuggle an F1 tyre
+ * family in through a root compatibility alias.
+ */
+function isCompatibleF1RuntimeTires(value: unknown) {
+  if (!isRecord(value) || !hasExactKeys(value, F1_TIRE_RUNTIME_KEYS)) {
+    return false
+  }
+
+  const tire = value.tire
+  const compoundsUsed = value.compoundsUsed
+  const pendingTire = value.pendingTire
+  const tireSetsRemaining = value.tireSetsRemaining
+
+  return (
+    typeof tire === 'string' &&
+    F1_TIRE_COMPOUNDS.has(tire) &&
+    Array.isArray(compoundsUsed) &&
+    compoundsUsed.every(
+      (compound) =>
+        typeof compound === 'string' && F1_TIRE_COMPOUNDS.has(compound),
+    ) &&
+    new Set(compoundsUsed).size === compoundsUsed.length &&
+    compoundsUsed.includes(tire) &&
+    (pendingTire === null ||
+      (typeof pendingTire === 'string' && F1_TIRE_COMPOUNDS.has(pendingTire))) &&
+    isNonNegativeSafeInteger(value.tireAgeLaps) &&
+    isFiniteInRange(value.tireCarcassTemperatureC, -100, 500) &&
+    isFiniteInRange(value.tireTemperatureC, -100, 500) &&
+    isFiniteInRange(value.tireGrainingPercent, 0, 100) &&
+    isFiniteInRange(value.tireOverheatingPercent, 0, 100) &&
+    isFiniteInRange(value.tireThermalStressPercent, 0, 100) &&
+    isFiniteInRange(value.tireWearPercent, 0, 100) &&
+    typeof value.tirePerformanceState === 'string' &&
+    F1_TIRE_PERFORMANCE_STATES.has(value.tirePerformanceState) &&
+    isRecord(tireSetsRemaining) &&
+    Object.entries(tireSetsRemaining).every(
+      ([compound, remaining]) =>
+        F1_TIRE_COMPOUNDS.has(compound) && isNonNegativeSafeInteger(remaining),
+    )
+  )
+}
+
+function isCompatibleOvertakeEligibility(
+  value: unknown,
+  config: RaceConfig,
+) {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      hasExactKeys(value, OVERTAKE_ELIGIBILITY_KEYS) &&
+      Number.isSafeInteger(value.activationLap) &&
+      Number(value.activationLap) >= 0 &&
+      Number.isSafeInteger(value.controlLineIndex) &&
+      Number(value.controlLineIndex) >= 0 &&
+      Number(value.controlLineIndex) <
+        (config.track.overtakeControlLines?.length ?? 0) &&
+      isFiniteInRange(value.detectedGapSeconds, 0, 1_000) &&
+      typeof value.eligible === 'boolean')
+  )
+}
+
+function isCompatibleF1RuntimeSystems(
+  value: unknown,
+  team: Team,
+  config: RaceConfig,
+  timedRunPhase: unknown,
+  overtakeStatus: unknown,
+) {
   if (
-    !expectedTeam ||
-    value.teamId !== expectedTeam.id ||
-    typeof value.overtakeRechargeAllowanceActiveThisLap !== 'boolean' ||
+    !isRecord(value) ||
+    !hasExactKeys(value, F1_RUNTIME_KEYS) ||
+    value.kind !== 'f1' ||
+    !isActiveAeroState(value.activeAeroState) ||
+    value.activeAeroMode !== activeAeroDisplayModeForState(value.activeAeroState) ||
+    !isCompatibleF1Components(value.components) ||
+    !isCompatibleF1RuntimeTires(value.tires) ||
     typeof value.energyLapStartedBehindSafetyCar !== 'boolean' ||
     typeof value.energyLapStartedInLowGripConditions !== 'boolean' ||
-    !TIMED_RUN_PHASES.includes(
-      value.timedRunPhase as (typeof TIMED_RUN_PHASES)[number],
-    )
+    typeof value.overtakeRechargeAllowanceActiveThisLap !== 'boolean' ||
+    typeof value.standingStartMguKReleaseLatched !== 'boolean' ||
+    (value.ersMode !== 'harvest' &&
+      value.ersMode !== 'balanced' &&
+      value.ersMode !== 'deploy') ||
+    !isCompatibleOvertakeEligibility(value.overtakeEligibility, config)
   ) {
     return false
   }
@@ -523,30 +745,18 @@ function isCompatibleCarSnapshot(
     behindSafetyCar: value.energyLapStartedBehindSafetyCar,
     lowGripConditions: value.energyLapStartedInLowGripConditions,
     overtakeAtLapStart: value.overtakeRechargeAllowanceActiveThisLap,
-    timedRunPhase: value.timedRunPhase as (typeof TIMED_RUN_PHASES)[number],
+    timedRunPhase: timedRunPhase as (typeof TIMED_RUN_PHASES)[number],
   })
   const energyStore = isRecord(value.energyStore) ? value.energyStore : null
-  const overtakeEligibility = value.overtakeEligibility
-  const hasCompatibleOvertakeEligibility =
-    overtakeEligibility === null ||
-    (isRecord(overtakeEligibility) &&
-      hasExactKeys(overtakeEligibility, OVERTAKE_ELIGIBILITY_KEYS) &&
-      Number.isSafeInteger(overtakeEligibility.activationLap) &&
-      Number(overtakeEligibility.activationLap) >= 0 &&
-      Number.isSafeInteger(overtakeEligibility.controlLineIndex) &&
-      Number(overtakeEligibility.controlLineIndex) >= 0 &&
-      Number(overtakeEligibility.controlLineIndex) <
-        (config.track.overtakeControlLines?.length ?? 0) &&
-      isFiniteInRange(overtakeEligibility.detectedGapSeconds, 0, 1_000) &&
-      typeof overtakeEligibility.eligible === 'boolean')
   const isRaceDistanceStage = ['sprint', 'race', 'race2'].includes(
     config.weekendStage ?? 'race',
   )
   const hasCompatibleOvertakeAuthorization =
     config.overtakeSystem === 'ots' ||
     !isRaceDistanceStage ||
-    value.overtakeStatus === 'disabled' ||
-    (isRecord(overtakeEligibility) && overtakeEligibility.eligible === true)
+    overtakeStatus === 'disabled' ||
+    (isRecord(value.overtakeEligibility) &&
+      value.overtakeEligibility.eligible === true)
   const superclipActive =
     isFiniteNumber(value.superClippingIntensity) &&
     isFiniteNumber(value.superClippingRegenPowerKw) &&
@@ -554,11 +764,7 @@ function isCompatibleCarSnapshot(
       value.superClippingRegenPowerKw > ENERGY_EPSILON)
   const hasCompatibleSuperclipEpisode = superclipActive
     ? isFiniteInRange(value.superClippingIntensity, 0, 1) &&
-      isFiniteInRange(
-        value.superClippingRegenPowerKw,
-        0,
-        MAX_PERSISTED_POWER_KW,
-      ) &&
+      isFiniteInRange(value.superClippingRegenPowerKw, 0, MAX_PERSISTED_POWER_KW) &&
       isFiniteInRange(
         value.superClippingStartedAtSeconds,
         0,
@@ -582,6 +788,248 @@ function isCompatibleCarSnapshot(
       value.superClippingRegenPowerKw === 0
 
   return (
+    isCompatibleEnergyStoreState(
+      value.energyStore,
+      team,
+      authoritativeRechargeRules,
+    ) &&
+    isRecord(value.energyStore) &&
+    isFiniteInRange(value.ersPowerKw, 0, MAX_PERSISTED_POWER_KW) &&
+    approximatelyEqual(
+      value.ersPowerKw,
+      Number(value.energyStore.actualDeploymentPowerKw),
+    ) &&
+    isFiniteNumber(value.ersBatteryPercent) &&
+    approximatelyEqual(
+      value.ersBatteryPercent,
+      Math.round(Number(value.energyStore.stateOfCharge) * 100),
+    ) &&
+    isFiniteNumber(value.energyHarvestedThisLapMj) &&
+    approximatelyEqual(
+      value.energyHarvestedThisLapMj,
+      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
+    ) &&
+    isFiniteNumber(value.energyDeployedThisLapMj) &&
+    approximatelyEqual(
+      value.energyDeployedThisLapMj,
+      Number(value.energyStore.deployedAtCuKBusThisLapMJ),
+    ) &&
+    isFiniteInRange(
+      value.overtakeEnergyRemainingMj,
+      0,
+      FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj,
+    ) &&
+    isFiniteInRange(
+      value.superClippingRecoveredThisLapMj,
+      0,
+      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
+    ) &&
+    hasCompatibleOvertakeAuthorization &&
+    hasCompatibleSuperclipEpisode
+  )
+}
+
+function sameStructuredValue(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) {
+    return true
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((entry, index) => sameStructuredValue(entry, right[index]))
+    )
+  }
+  if (!isRecord(left) || !isRecord(right)) {
+    return false
+  }
+
+  const leftKeys = Object.keys(left).sort()
+  const rightKeys = Object.keys(right).sort()
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key, index) =>
+        key === rightKeys[index] && sameStructuredValue(left[key], right[key]),
+    )
+  )
+}
+
+/**
+ * SF persisted tyre state is a small discriminated payload.  Exact key checks
+ * complement the domain validator so an otherwise valid dry/wet inventory
+ * cannot carry an extra F1 tyre alias or fabricated physical coefficient.
+ */
+function isCompatibleSuperFormulaLiveTires(
+  controlTires: unknown,
+  liveTires: unknown,
+) {
+  if (
+    !isRecord(liveTires) ||
+    !hasExactKeys(liveTires, SUPER_FORMULA_LIVE_TIRE_KEYS) ||
+    !isRecord(liveTires.fitment) ||
+    !hasExactKeys(
+      liveTires.fitment,
+      SUPER_FORMULA_LIVE_TIRE_FITMENT_KEYS,
+    ) ||
+    !isRecord(liveTires.fitment.selectionProvenance) ||
+    !hasExactKeys(
+      liveTires.fitment.selectionProvenance,
+      SUPER_FORMULA_LIVE_TIRE_POLICY_KEYS,
+    ) ||
+    !isRecord(liveTires.physicalModel) ||
+    !hasExactKeys(
+      liveTires.physicalModel,
+      SUPER_FORMULA_LIVE_TIRE_PHYSICAL_MODEL_KEYS,
+    ) ||
+    !isRecord(liveTires.physicalModel.sourceInput) ||
+    !hasExactKeys(
+      liveTires.physicalModel.sourceInput,
+      SUPER_FORMULA_UNAVAILABLE_INPUT_KEYS,
+    ) ||
+    !isRecord(liveTires.physicalModel.sourceInput.provenance) ||
+    !hasExactKeys(
+      liveTires.physicalModel.sourceInput.provenance,
+      SUPER_FORMULA_RULE_PROVENANCE_KEYS,
+    )
+  ) {
+    return false
+  }
+
+  return validateSuperFormulaLiveTireState({ controlTires, liveTires }).valid
+}
+
+function isCompatibleSuperFormulaRuntimeSystems(
+  value: unknown,
+  teamId: string,
+) {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, SUPER_FORMULA_RUNTIME_KEYS) ||
+    value.kind !== 'super-formula' ||
+    !validateSuperFormulaControlTireInventory(value.controlTires).valid ||
+    !isCompatibleSuperFormulaLiveTires(value.controlTires, value.liveTires)
+  ) {
+    return false
+  }
+
+  const engine = validateSuperFormula2026EngineLedger(value.engineLedger)
+  if (
+    !engine.valid ||
+    engine.ledger.entrantId !== teamId ||
+    !isRecord(value.gearbox) ||
+    !hasExactKeys(
+      value.gearbox,
+      new Set(['availability', 'conditionPercent', 'reason']),
+    ) ||
+    value.gearbox.availability !== 'unavailable' ||
+    value.gearbox.conditionPercent !== null ||
+    typeof value.gearbox.reason !== 'string' ||
+    value.gearbox.reason.length === 0
+  ) {
+    return false
+  }
+
+  const expected = createSuperFormulaRuntimeSystems({
+    entrantId: engine.ledger.entrantId,
+    engineLedger: engine.ledger,
+    tireInventory: value.controlTires as ReturnType<
+      typeof createSuperFormulaRuntimeSystems
+    >['controlTires'],
+  })
+
+  return (
+    sameStructuredValue(value.gearbox, expected.gearbox) &&
+    sameStructuredValue(value.ots, expected.ots) &&
+    sameStructuredValue(value.refuelling, expected.refuelling) &&
+    sameStructuredValue(value.refuellingTask, expected.refuellingTask)
+  )
+}
+
+function hasF1RuntimeFieldsAtCarRoot(value: Record<string, unknown>) {
+  return [...F1_ROOT_RUNTIME_FIELDS].some((field) => Object.hasOwn(value, field))
+}
+
+/**
+ * SUPER FORMULA race snapshots retain an observation-only steward status, but
+ * never carry the F1/FIA automatic penalty counters or penalty records. Its
+ * Article 5 record lives in the separate official season ledger instead.
+ */
+function hasNoSuperFormulaFiaPenaltyState(value: Record<string, unknown>) {
+  return (
+    value.penaltyPoints === 0 &&
+    value.penaltySeconds === 0 &&
+    value.penaltyLaps === 0 &&
+    value.servedPenaltySeconds === 0 &&
+    Array.isArray(value.penalties) &&
+    value.penalties.length === 0
+  )
+}
+
+/**
+ * SF checkpoints are fail-closed even when a forged F1 field is hidden below
+ * a nominal SF domain object. This deliberately scans only the SF runtime
+ * payload; generic car fields such as tyre wear remain category-neutral.
+ */
+function hasNestedF1RuntimeFields(
+  value: unknown,
+  visited = new Set<object>(),
+): boolean {
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  if (visited.has(value)) {
+    return false
+  }
+  visited.add(value)
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasNestedF1RuntimeFields(entry, visited))
+  }
+
+  return Object.entries(value as Record<string, unknown>).some(
+    ([key, nested]) =>
+      F1_ROOT_RUNTIME_FIELDS.has(key) ||
+      hasNestedF1RuntimeFields(nested, visited),
+  )
+}
+
+function isCompatibleCarSnapshot(
+  value: unknown,
+  expectedDriverIds: Set<string>,
+  expectedTeamsByDriverId: Map<string, Team>,
+  config: RaceConfig,
+) {
+  if (!isRecord(value) || !expectedDriverIds.has(String(value.driverId))) {
+    return false
+  }
+
+  const expectedTeam = expectedTeamsByDriverId.get(String(value.driverId))
+  if (
+    !expectedTeam ||
+    value.teamId !== expectedTeam.id ||
+    !TIMED_RUN_PHASES.includes(
+      value.timedRunPhase as (typeof TIMED_RUN_PHASES)[number],
+    ) ||
+    hasF1RuntimeFieldsAtCarRoot(value)
+  ) {
+    return false
+  }
+
+  const seriesId = config.seriesId ?? 'f1-custom'
+  const hasCompatibleRuntime =
+    seriesId === 'f1-custom'
+      ? isCompatibleF1RuntimeSystems(
+          value.runtimeSystems,
+          expectedTeam,
+          config,
+          value.timedRunPhase,
+          value.overtakeStatus,
+        )
+      : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id)
+
+  return (
     typeof value.code === 'string' &&
     typeof value.status === 'string' &&
     carStatuses.has(value.status) &&
@@ -594,13 +1042,6 @@ function isCompatibleCarSnapshot(
     isFiniteNumber(value.speedKph) &&
     typeof value.overtakeStatus === 'string' &&
     OVERTAKE_STATUSES.has(value.overtakeStatus) &&
-    hasCompatibleOvertakeEligibility &&
-    hasCompatibleOvertakeAuthorization &&
-    isFiniteInRange(
-      value.overtakeEnergyRemainingMj,
-      0,
-      FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj,
-    ) &&
     isOptionalFiniteWithin(
       value.lateralOffsetM,
       MAX_PERSISTED_LATERAL_OFFSET_M,
@@ -619,76 +1060,140 @@ function isCompatibleCarSnapshot(
     ) &&
     isOptionalUnitInterval(value.turboSpoolFraction) &&
     isOptionalUnitInterval(value.clutchEngagementFraction) &&
-    (value.activeAeroState === undefined ||
-      isActiveAeroState(value.activeAeroState)) &&
-    isFiniteInRange(value.ersBatteryPercent, 0, 100) &&
     isFiniteNumber(value.fuelLoadKg) &&
-    isFiniteNumber(value.tireWearPercent) &&
     typeof value.passedDoubleYellowThisLap === 'boolean' &&
     isNullableFiniteTuple(value.currentLapSectorTimes, 3) &&
     isNullableFiniteTuple(value.currentLapMiniSectorTimes, 24) &&
     Array.isArray(value.lapHistory) &&
     Array.isArray(value.penalties) &&
-    isCompatibleEnergyStoreState(
-      value.energyStore,
-      expectedTeam,
-      authoritativeRechargeRules,
-    ) &&
-    isRecord(value.energyStore) &&
-    isFiniteInRange(value.ersPowerKw, 0, MAX_PERSISTED_POWER_KW) &&
-    approximatelyEqual(
-      value.ersPowerKw,
-      Number(value.energyStore.actualDeploymentPowerKw),
-    ) &&
-    approximatelyEqual(
-      value.ersBatteryPercent,
-      Math.round(Number(value.energyStore.stateOfCharge) * 100),
-    ) &&
-    isFiniteNumber(value.energyHarvestedThisLapMj) &&
-    approximatelyEqual(
-      value.energyHarvestedThisLapMj,
-      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
-    ) &&
-    isFiniteNumber(value.energyDeployedThisLapMj) &&
-    approximatelyEqual(
-      value.energyDeployedThisLapMj,
-      Number(value.energyStore.deployedAtCuKBusThisLapMJ),
-    ) &&
-    isFiniteInRange(
-      value.superClippingRecoveredThisLapMj,
-      0,
-      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
-    ) &&
-    hasCompatibleSuperclipEpisode &&
-    isRecord(value.components) &&
-    isRecord(value.tireSetsRemaining)
+    (seriesId !== 'super-formula' ||
+      (!hasNestedF1RuntimeFields(value.runtimeSystems) &&
+        hasNoSuperFormulaFiaPenaltyState(value))) &&
+    hasCompatibleRuntime
   )
 }
 
-function migrateRaceSnapshot(
-  value: unknown,
-  config: RaceConfig,
-): RaceSnapshot {
-  const snapshot = value as unknown as RaceSnapshot
+const LEGACY_F1_REQUIRED_RUNTIME_FIELDS = new Set(
+  [...F1_RUNTIME_KEYS].filter(
+    (field) =>
+      field !== 'activeAeroMode' &&
+      field !== 'activeAeroState' &&
+      field !== 'kind' &&
+      field !== 'tires',
+  ),
+)
+
+function legacyF1TiresFor(
+  value: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (isRecord(value.tires)) {
+    return value.tires
+  }
+
+  if (
+    [...F1_TIRE_RUNTIME_KEYS].some((field) => !Object.hasOwn(value, field))
+  ) {
+    return null
+  }
+
+  return Object.fromEntries(
+    [...F1_TIRE_RUNTIME_KEYS].map((field) => [field, value[field]]),
+  )
+}
+
+function migrateLegacyF1CarRuntime(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value) || !isRecord(value.components)) {
+    return null
+  }
+  if (
+    [...LEGACY_F1_REQUIRED_RUNTIME_FIELDS].some(
+      (field) => !Object.hasOwn(value, field),
+    )
+  ) {
+    return null
+  }
+
+  const tires = legacyF1TiresFor(value)
+  if (!tires) {
+    return null
+  }
+
+  const activeAeroState = isActiveAeroState(value.activeAeroState)
+    ? value.activeAeroState
+    : createInitialActiveAeroState()
+  const runtimeSystems = {
+    activeAeroMode: activeAeroDisplayModeForState(activeAeroState),
+    activeAeroState,
+    components: value.components,
+    energyDeployedThisLapMj: value.energyDeployedThisLapMj,
+    energyHarvestedThisLapMj: value.energyHarvestedThisLapMj,
+    energyLapStartedBehindSafetyCar: value.energyLapStartedBehindSafetyCar,
+    energyLapStartedInLowGripConditions: value.energyLapStartedInLowGripConditions,
+    energyStore: value.energyStore,
+    ersBatteryPercent: value.ersBatteryPercent,
+    ersMode: value.ersMode,
+    ersPowerKw: value.ersPowerKw,
+    kind: 'f1',
+    overtakeEligibility: value.overtakeEligibility,
+    overtakeEnergyRemainingMj: value.overtakeEnergyRemainingMj,
+    overtakeRechargeAllowanceActiveThisLap:
+      value.overtakeRechargeAllowanceActiveThisLap,
+    standingStartMguKReleaseLatched: value.standingStartMguKReleaseLatched,
+    superClippingDurationSeconds: value.superClippingDurationSeconds,
+    superClippingIntensity: value.superClippingIntensity,
+    superClippingRecoveredThisLapMj: value.superClippingRecoveredThisLapMj,
+    superClippingRegenPowerKw: value.superClippingRegenPowerKw,
+    superClippingStartedAtProgress: value.superClippingStartedAtProgress,
+    superClippingStartedAtSeconds: value.superClippingStartedAtSeconds,
+    tires,
+  }
+  const migrated = Object.fromEntries(
+    Object.entries(value).filter(
+      ([field]) => !F1_ROOT_RUNTIME_FIELDS.has(field),
+    ),
+  )
+
+  return { ...migrated, runtimeSystems }
+}
+
+function migrateLegacyF1RaceSnapshot(value: unknown): RaceSnapshot | null {
+  if (!isRecord(value) || !Array.isArray(value.cars)) {
+    return null
+  }
+
+  const cars = value.cars.map(migrateLegacyF1CarRuntime)
+  if (cars.some((car) => car === null)) {
+    return null
+  }
 
   return {
-    ...snapshot,
-    cars: snapshot.cars.map((car) => {
-      const persisted = car as CarSnapshotWithLegacyLateralState
+    ...value,
+    cars,
+  } as unknown as RaceSnapshot
+}
+
+function migrateRaceSnapshot(value: RaceSnapshot): RaceSnapshot {
+  return {
+    ...value,
+    cars: value.cars.map((car) => {
+      const persisted = car as CarSnapshot &
+        Partial<
+          Pick<
+            CarSnapshot,
+            | 'desiredLateralOffsetM'
+            | 'lateralOffsetM'
+            | 'lateralVelocityMps'
+            | 'trackLateralOffset'
+          >
+        >
       const lateralOffsetM =
         persisted.lateralOffsetM ?? persisted.trackLateralOffset ?? 0
       const lateralVelocityMps = persisted.lateralVelocityMps ?? 0
       const desiredLateralOffsetM =
         persisted.desiredLateralOffsetM ?? lateralOffsetM
-      const activeAeroState =
-        (config.seriesId ?? 'f1-custom') === 'f1-custom'
-          ? (persisted.activeAeroState ?? createInitialActiveAeroState())
-          : createInitialActiveAeroState()
 
       return {
         ...car,
-        activeAeroMode: activeAeroDisplayModeForState(activeAeroState),
-        activeAeroState,
         desiredLateralOffsetM,
         lateralOffsetM,
         lateralVelocityMps,
@@ -697,23 +1202,6 @@ function migrateRaceSnapshot(
     }),
   }
 }
-
-type CarSnapshotWithLegacyLateralState = Omit<
-  RaceSnapshot['cars'][number],
-  | 'desiredLateralOffsetM'
-  | 'lateralOffsetM'
-  | 'lateralVelocityMps'
-  | 'trackLateralOffset'
-> &
-  Partial<
-    Pick<
-      RaceSnapshot['cars'][number],
-      | 'desiredLateralOffsetM'
-      | 'lateralOffsetM'
-      | 'lateralVelocityMps'
-      | 'trackLateralOffset'
-    >
-  >
 
 function isCompatibleRaceSnapshot(value: unknown, config: RaceConfig) {
   if (!isRecord(value)) {
@@ -739,7 +1227,8 @@ function isCompatibleRaceSnapshot(value: unknown, config: RaceConfig) {
 
   if (
     expectedTeamsByDriverId.size !== expectedDriverIds.size ||
-    typeof value.lowGripConditions !== 'boolean' ||
+    (value.lowGripConditions !== null &&
+      typeof value.lowGripConditions !== 'boolean') ||
     typeof value.formationBehindSafetyCar !== 'boolean' ||
     typeof value.flag !== 'string' ||
     !FLAG_STATES.has(value.flag) ||
@@ -786,6 +1275,8 @@ function isCompatibleRaceSnapshot(value: unknown, config: RaceConfig) {
     isFiniteTuple(value.dryingLineBySector, 3) &&
     Array.isArray(value.events) &&
     Array.isArray(value.stewardCases) &&
+    ((config.seriesId ?? 'f1-custom') !== 'super-formula' ||
+      value.stewardCases.length === 0) &&
     Array.isArray(value.timedParticipantDriverIds) &&
     isNullableFiniteNumber(value.timedYellowProgress)
   )
@@ -837,18 +1328,38 @@ export function parseRaceCheckpoint(
 
     if (
       !isRecord(parsed) ||
-      parsed.version !== RACE_CHECKPOINT_VERSION ||
-      parsed.modelVersion !== RACE_SIMULATION_MODEL_VERSION ||
       parsed.sessionKey !== sessionKey ||
       !isFiniteNumber(parsed.savedAt) ||
       parsed.savedAt > now + 60_000 ||
-      now - parsed.savedAt > RACE_CHECKPOINT_MAX_AGE_MS ||
-      !isCompatibleRaceSnapshot(parsed.snapshot, config)
+      now - parsed.savedAt > RACE_CHECKPOINT_MAX_AGE_MS
     ) {
       return null
     }
 
-    return migrateRaceSnapshot(parsed.snapshot, config)
+    if (
+      parsed.version === RACE_CHECKPOINT_VERSION &&
+      parsed.modelVersion === RACE_SIMULATION_MODEL_VERSION &&
+      isCompatibleRaceSnapshot(parsed.snapshot, config)
+    ) {
+      return migrateRaceSnapshot(parsed.snapshot as RaceSnapshot)
+    }
+
+    const isF1 = (config.seriesId ?? 'f1-custom') === 'f1-custom'
+    const acceptsLegacyModel =
+      parsed.modelVersion === RACE_SIMULATION_MODEL_VERSION ||
+      (typeof parsed.modelVersion === 'string' &&
+        LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS.has(parsed.modelVersion))
+
+    if (!isF1 || parsed.version !== 1 || !acceptsLegacyModel) {
+      return null
+    }
+
+    const migratedLegacy = migrateLegacyF1RaceSnapshot(parsed.snapshot)
+    if (!migratedLegacy || !isCompatibleRaceSnapshot(migratedLegacy, config)) {
+      return null
+    }
+
+    return migrateRaceSnapshot(migratedLegacy)
   } catch {
     return null
   }

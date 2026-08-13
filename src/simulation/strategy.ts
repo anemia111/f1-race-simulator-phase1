@@ -28,6 +28,7 @@ import {
   type TireTrackCondition,
 } from './tires'
 import type { WeatherForecast } from './weather'
+import type { F1RuntimeTireState } from './runtimeSystems'
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -78,6 +79,21 @@ export type PitControlPhase = 'green' | 'safety-car' | 'vsc' | 'red-flag'
 export type RedFlagTireDecision = {
   compound: TireCompound
   reason: 'weather' | 'wear' | 'strategic-reset'
+}
+
+/**
+ * F1's Pirelli compound model is deliberately reached through the F1 runtime
+ * branch.  A SUPER FORMULA snapshot has no compatible compound family, so it
+ * returns `null` instead of receiving a made-up S/M/H/I/W value.
+ */
+type F1TireRuntimeCarrier = Pick<CarSnapshot, 'runtimeSystems'>
+
+function f1TiresFor(
+  car: F1TireRuntimeCarrier,
+): F1RuntimeTireState | null {
+  return car.runtimeSystems.kind === 'f1'
+    ? car.runtimeSystems.tires
+    : null
 }
 
 export function overtakeDifficultyForTrack(track: TrackDefinition) {
@@ -382,14 +398,7 @@ function observedStopTarget(options: {
 
 export function decideRedFlagTireChange(options: {
   availableCompounds?: Partial<Record<TireCompound, number>>
-  car: Pick<
-    CarSnapshot,
-    | 'compoundsUsed'
-    | 'tire'
-    | 'tireAgeLaps'
-    | 'tireThermalStressPercent'
-    | 'tireWearPercent'
-  >
+  car: F1TireRuntimeCarrier
   driver: Driver
   lap: number
   mandatoryTwoDryCompounds?: boolean
@@ -413,16 +422,25 @@ export function decideRedFlagTireChange(options: {
     trackGrip,
     weather,
   } = options
+  const tires = f1TiresFor(car)
+
+  // The red-flag Pirelli choice is not an SF control-tyre rule.  Do not turn
+  // its dry/wet inventory into an S/M/H/I/W selection while event tyre rules
+  // are unavailable.
+  if (!tires) {
+    return null
+  }
+
   const remainingLaps = Math.max(0, raceLaps - lap)
-  const usedDryCompounds = new Set(car.compoundsUsed.filter(isDryCompound))
+  const usedDryCompounds = new Set(tires.compoundsUsed.filter(isDryCompound))
   const mustFitSecondDryCompound =
     mandatoryTwoDryCompounds &&
-    !car.compoundsUsed.some((compound) => !isDryCompound(compound)) &&
+    !tires.compoundsUsed.some((compound) => !isDryCompound(compound)) &&
     usedDryCompounds.size < 2 &&
     remainingLaps <= 14
   const preferred = chooseCompound(
     remainingLaps,
-    mustFitSecondDryCompound ? car.tire : null,
+    mustFitSecondDryCompound ? tires.tire : null,
     hashChance(`${seed}:red-flag-compound:${driver.id}:${lap}`),
     weather,
     trackGrip,
@@ -442,22 +460,22 @@ export function decideRedFlagTireChange(options: {
   }
 
   const weatherMismatch = !compoundMatchesWeather(
-    car.tire,
+    tires.tire,
     weather,
     trackGrip,
     trackCondition,
   )
   const effectiveWear = Math.min(
     100,
-    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
   )
   const cliff = effectiveCliffLaps(
-    car.tire,
+    tires.tire,
     driverPerformanceAbility(driver, 'tireManagement'),
     tireNomination,
   )
   const recentlyFitted =
-    car.tireAgeLaps < 3 && effectiveWear < 18 && !weatherMismatch
+    tires.tireAgeLaps < 3 && effectiveWear < 18 && !weatherMismatch
 
   if (recentlyFitted && !mustFitSecondDryCompound) {
     return null
@@ -470,7 +488,7 @@ export function decideRedFlagTireChange(options: {
   const changeScore =
     (weatherMismatch ? 20 : 0) +
     effectiveWear * 0.075 +
-    (car.tireAgeLaps / Math.max(1, cliff)) * 4.2 +
+    (tires.tireAgeLaps / Math.max(1, cliff)) * 4.2 +
     (mustFitSecondDryCompound ? 4 : 0) +
     strategyAggression * 1.6 -
     setScarcity * 1.8
@@ -500,12 +518,8 @@ export function decidePitStop(options: {
   driver: Driver
   car: Pick<
     CarSnapshot,
-    | 'tire'
-    | 'tireAgeLaps'
-    | 'tireWearPercent'
-    | 'tireThermalStressPercent'
+    | 'runtimeSystems'
     | 'brakeTemperatureC'
-    | 'compoundsUsed'
     | 'damage'
     | 'pitStops'
   > & { brakeOverheatSeconds?: number }
@@ -578,6 +592,15 @@ export function decidePitStop(options: {
     trackCondition,
     observedCalibration,
   } = options
+  const tires = f1TiresFor(car)
+
+  // F1 strategy calls have no category-neutral Pirelli substitute.  SUPER
+  // FORMULA refuelling and control-tyre decisions are resolved by their own
+  // sourced runtime domains, not by this fallback.
+  if (!tires) {
+    return null
+  }
+
   const controlPhase = normalizedPitControlPhase({
     controlPhase: requestedControlPhase,
     underSafetyCar: legacyUnderSafetyCar,
@@ -591,12 +614,12 @@ export function decidePitStop(options: {
   }
 
   const cliff = effectiveCliffLaps(
-    car.tire,
+    tires.tire,
     driverPerformanceAbility(driver, 'tireManagement'),
     tireNomination,
   )
   const observedStintLaps =
-    observedCalibration?.medianStintLapsByCompound[car.tire]
+    observedCalibration?.medianStintLapsByCompound[tires.tire]
   const observedWeight = Math.min(
     0.55,
     (observedCalibration?.strategySampleCount ?? 0) / 30,
@@ -607,22 +630,24 @@ export function decidePitStop(options: {
       : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
   const effectiveWearPercent = Math.min(
     100,
-    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
   )
   const targetStops = observedStopTarget({
     calibration: observedCalibration,
     driver,
     seed,
   })
-  const age = car.tireAgeLaps
-  const usedDryCompounds = [...usedDistinct(car.compoundsUsed)].filter(isDryCompound)
-  const wetRaceExemption = car.compoundsUsed.some((compound) => !isDryCompound(compound))
+  const age = tires.tireAgeLaps
+  const usedDryCompounds = [...usedDistinct(tires.compoundsUsed)].filter(isDryCompound)
+  const wetRaceExemption = tires.compoundsUsed.some(
+    (compound) => !isDryCompound(compound),
+  )
   const needsSecondCompound =
     mandatoryTwoDryCompounds &&
     !wetRaceExemption &&
     usedDryCompounds.length < 2
   const compoundRoll = hashChance(`${seed}:compound:${driver.id}:${lap}`)
-  const avoid = needsSecondCompound ? car.tire : null
+  const avoid = needsSecondCompound ? tires.tire : null
   // What the surface itself is asking for right now, independent of any
   // forecast. This is the authority on wet versus dry.
   const measuredCategory = trackCondition
@@ -700,8 +725,8 @@ export function decidePitStop(options: {
   // the water drifts across the crossover; only pick a fresh compound on the
   // exact preference.
   const weatherMismatch = trackCondition
-    ? !compoundStillViable(car.tire, trackCondition)
-    : !compoundMatchesWeather(car.tire, weather, trackGrip, trackCondition)
+    ? !compoundStillViable(tires.tire, trackCondition)
+    : !compoundMatchesWeather(tires.tire, weather, trackGrip, trackCondition)
   const preferredTrackCategory = trackCondition
     ? preferredTireCategoryFor(trackCondition)
     : weather === 'heavy-rain' || trackGrip < 0.74
@@ -710,8 +735,8 @@ export function decidePitStop(options: {
         ? 'I'
         : 'M'
   const criticalWeatherMismatch =
-    (preferredTrackCategory === 'W' && isDryCompound(car.tire)) ||
-    (preferredTrackCategory === 'M' && car.tire === 'W')
+    (preferredTrackCategory === 'W' && isDryCompound(tires.tire)) ||
+    (preferredTrackCategory === 'M' && tires.tire === 'W')
   const repairServiceAllowed = controlPhase !== 'vsc'
 
   // Damage repair takes priority.
@@ -855,7 +880,7 @@ export function decidePitStop(options: {
   if (
     forecastIsActionable &&
     underSafetyCar &&
-    !compoundMatchesWeather(car.tire, strategicWeather, strategicGrip) &&
+    !compoundMatchesWeather(tires.tire, strategicWeather, strategicGrip) &&
     age >= strategicCliff * 0.35
   ) {
     return { compound, reason: 'forecast' }
@@ -996,13 +1021,9 @@ export function strategyOutlookFor(options: {
   driver: Driver
   car: Pick<
     CarSnapshot,
-    | 'tire'
-    | 'tireAgeLaps'
-    | 'tireWearPercent'
-    | 'tireThermalStressPercent'
+    | 'runtimeSystems'
     | 'brakeTemperatureC'
     | 'damage'
-    | 'tireSetsRemaining'
   > & { brakeOverheatSeconds?: number }
   lap: number
   raceLaps: number
@@ -1021,7 +1042,7 @@ export function strategyOutlookFor(options: {
     'medianStintLapsByCompound' | 'strategySampleCount'
   >
   trackCondition?: TireTrackCondition
-}): StrategyOutlook {
+}): StrategyOutlook | null {
   const {
     car,
     driver,
@@ -1040,13 +1061,21 @@ export function strategyOutlookFor(options: {
     observedCalibration,
     trackCondition,
   } = options
+  const tires = f1TiresFor(car)
+
+  // The UI must show SF control-tyre information from the SF runtime rather
+  // than styling a Pirelli recommendation as a universal strategy outlook.
+  if (!tires) {
+    return null
+  }
+
   const cliff = effectiveCliffLaps(
-    car.tire,
+    tires.tire,
     driverPerformanceAbility(driver, 'tireManagement'),
     tireNomination,
   )
   const observedStintLaps =
-    observedCalibration?.medianStintLapsByCompound[car.tire]
+    observedCalibration?.medianStintLapsByCompound[tires.tire]
   const observedWeight = Math.min(
     0.55,
     (observedCalibration?.strategySampleCount ?? 0) / 30,
@@ -1057,21 +1086,21 @@ export function strategyOutlookFor(options: {
       : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
   const effectiveWearPercent = Math.min(
     100,
-    car.tireWearPercent + (car.tireThermalStressPercent ?? 0),
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
   )
   const remaining = Math.max(0, raceLaps - lap)
   const compound = chooseCompound(
     remaining,
     // The two-compound rule is dry-only; in changing weather, retaining the
     // correct wet compound is a valid and often preferred prediction.
-    weather === 'clear' ? car.tire : null,
+    weather === 'clear' ? tires.tire : null,
     hashChance(`${seed}:outlook:${driver.id}:${lap}`),
     weather,
     trackGrip,
     trackCondition,
   )
   const weatherMismatch = !compoundMatchesWeather(
-    car.tire,
+    tires.tire,
     weather,
     trackGrip,
     trackCondition,
@@ -1080,11 +1109,11 @@ export function strategyOutlookFor(options: {
     raceLaps,
     Math.max(
       lap,
-      lap + Math.max(0, Math.ceil(strategicCliff - car.tireAgeLaps)),
+      lap + Math.max(0, Math.ceil(strategicCliff - tires.tireAgeLaps)),
     ),
   )
   const opportunity = estimatePitOpportunity({
-    tireAgeLaps: car.tireAgeLaps,
+    tireAgeLaps: tires.tireAgeLaps,
     tireWearPercent: effectiveWearPercent,
     cliffLaps: strategicCliff,
     remainingLaps: remaining,
@@ -1095,7 +1124,7 @@ export function strategyOutlookFor(options: {
     teammateInPit,
     carAheadHasPitted,
     tireLifeRemaining: clamp(
-      1 - car.tireAgeLaps / Math.max(1, strategicCliff),
+      1 - tires.tireAgeLaps / Math.max(1, strategicCliff),
       0,
       1,
     ),
@@ -1103,7 +1132,7 @@ export function strategyOutlookFor(options: {
   const confidence: StrategyOutlook['confidence'] =
     weatherMismatch || underSafetyCar || effectiveWearPercent >= 82
       ? 'high'
-      : car.tireAgeLaps >= strategicCliff - 4
+      : tires.tireAgeLaps >= strategicCliff - 4
         ? 'medium'
         : 'low'
   const shared = {
@@ -1136,7 +1165,7 @@ export function strategyOutlookFor(options: {
     }
   }
 
-  if (underSafetyCar && car.tireAgeLaps >= strategicCliff * 0.38) {
+  if (underSafetyCar && tires.tireAgeLaps >= strategicCliff * 0.38) {
     return {
       compound,
       estimatedStopLap: lap,
@@ -1146,7 +1175,7 @@ export function strategyOutlookFor(options: {
     }
   }
 
-  if (car.tireAgeLaps >= strategicCliff - 3) {
+  if (tires.tireAgeLaps >= strategicCliff - 3) {
     return {
       compound,
       estimatedStopLap,

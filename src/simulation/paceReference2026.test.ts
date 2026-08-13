@@ -244,7 +244,6 @@ describe('2026 pace references', () => {
     )!
     const sfConfig = {
       drivers: sf.drivers,
-      qualifyingDryCompound: sf.rules.tires.qualifyingDryCompound,
       seed: 'pace-reproducibility-sf',
       seriesId: 'super-formula' as const,
       teams: sf.teams,

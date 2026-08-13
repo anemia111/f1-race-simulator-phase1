@@ -161,6 +161,26 @@ export const superFormulaOperationalRules2026 = {
       'Article 24.3.8',
     ),
   },
+  penaltyPoints: {
+    suspension: verified(
+      {
+        clearsRelevantTallyWhen: 'suspension-is-lifted',
+        kind: 'next-event-suspension',
+        thresholdPoints: {
+          afterFirstServedSuspension: 4,
+          afterSubsequentServedSuspension: 2,
+          initial: 6,
+        },
+      },
+      'Article 5',
+    ),
+    validity: verified(
+      {
+        continuousMonths: 12,
+      },
+      'Article 5',
+    ),
+  },
   pitLane: {
     speedLimitKph: verified(60, 'Article 26.9'),
   },

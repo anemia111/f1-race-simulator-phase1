@@ -6,7 +6,6 @@ import { seriesPackageById } from '../series/seriesRegistry'
 import { runSeriesQualifying } from './qualifying'
 
 const q1Segment = (): TimedSessionSegmentPlan => ({
-  compound: 'S',
   declaredWet: false,
   endsAtSeconds: 18 * 60,
   name: 'Q1',
@@ -14,6 +13,10 @@ const q1Segment = (): TimedSessionSegmentPlan => ({
   startsAtSeconds: 0,
   suspensionEndsAtSeconds: null,
   suspensionStartsAtSeconds: null,
+  tire: {
+    compound: 'S',
+    kind: 'f1-pirelli-session-tire',
+  },
 })
 
 describe('qualifying release strategy', () => {
@@ -81,11 +84,9 @@ describe('SUPER FORMULA grouped qualifying', () => {
     const results = runSeriesQualifying(
       {
         drivers: sf.drivers,
-        qualifyingDryCompound: sf.rules.tires.qualifyingDryCompound,
         seed: 'sf-grouped-advance',
         seriesId: sf.id,
         teams: sf.teams,
-        tireAllocation: sf.rules.tires.standardAllocation,
         track: { ...sf.tracks[0], rainProbability: 0 },
         weekendStage: 'qualifying',
       },

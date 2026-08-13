@@ -83,6 +83,12 @@ export function updateOvertakeEligibilityAfterTravel(options: {
     lowGripConditions,
   } = options
 
+  // FIA Overtake eligibility belongs exclusively to the F1 runtime branch.
+  // SUPER FORMULA carries an independently sourced OTS policy instead.
+  if (car.runtimeSystems.kind !== 'f1') {
+    return null
+  }
+
   if (
     car.status !== 'running' ||
     phase ||
@@ -108,7 +114,7 @@ export function updateOvertakeEligibilityAfterTravel(options: {
     .at(-1)
 
   if (!crossed) {
-    return car.overtakeEligibility
+    return car.runtimeSystems.overtakeEligibility
   }
 
   const detectedGapSeconds = Math.max(0, car.gapToAhead)
@@ -619,6 +625,11 @@ export function overtakeStatusFor(options: {
     sessionType = 'race-distance',
     track,
   } = options
+
+  if (car.runtimeSystems.kind !== 'f1') {
+    return 'disabled'
+  }
+
   const controlLines = track.overtakeControlLines ?? []
   const activeLineIndex = controlLines.findIndex((line) =>
     progressIsInZone(
@@ -646,7 +657,7 @@ export function overtakeStatusFor(options: {
     return activeLine ? 'active' : 'available'
   }
 
-  const eligibility = car.overtakeEligibility
+  const eligibility = car.runtimeSystems.overtakeEligibility
 
   if (raceLap < 1 || !eligibility?.eligible) {
     return 'disabled'

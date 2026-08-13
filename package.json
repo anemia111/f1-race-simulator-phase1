@@ -14,6 +14,7 @@
     "validate:active-aero-zones": "node scripts/generate-active-aero-zone-audit.mjs --enforce",
     "validate:energy-balance": "node scripts/generate-energy-balance-validation.mjs --enforce",
     "validate:superclip": "node scripts/generate-superclip-validation.mjs --enforce",
+    "validate:sf-ots": "node scripts/generate-sf-ots-validation.mjs --enforce",
     "validate:physics-calibration": "node scripts/validate-physics-calibration.mjs",
     "validate:speed-trap": "node scripts/validate-speed-trap.mjs --enforce",
     "validate:f1-support-circuits": "node scripts/validate-f1-support-circuits.mjs --enforce",

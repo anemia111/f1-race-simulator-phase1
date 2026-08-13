@@ -807,7 +807,10 @@ describe('multi-axis vehicle dynamics', () => {
       track,
     }
     const common = {
-      compound: 'S' as const,
+      tire: {
+        compound: 'S' as const,
+        kind: 'f1-pirelli-session-tire' as const,
+      },
       config,
       fuelLoadKg: 6,
       setup: {

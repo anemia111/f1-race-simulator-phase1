@@ -483,9 +483,18 @@ export function sessionDistanceLapsFor(
 }
 
 export function compliesWithGrandPrixTireRule(
-  car: Pick<CarSnapshot, 'compoundsUsed'>,
+  car: Pick<CarSnapshot, 'runtimeSystems'>,
 ) {
-  const usedWetWeatherTire = car.compoundsUsed.some(
+  // This is FIA Grand Prix-specific.  A SUPER FORMULA control-tyre runtime
+  // has neither Pirelli compound identifiers nor this mandatory-two-dry rule,
+  // so it is explicitly outside the check rather than evaluated through a
+  // fabricated F1 allocation.
+  if (car.runtimeSystems.kind !== 'f1') {
+    return true
+  }
+
+  const compoundsUsed = car.runtimeSystems.tires.compoundsUsed
+  const usedWetWeatherTire = compoundsUsed.some(
     (compound) => !isDryCompound(compound),
   )
 
@@ -493,7 +502,7 @@ export function compliesWithGrandPrixTireRule(
     return true
   }
 
-  return new Set(car.compoundsUsed.filter(isDryCompound)).size >= 2
+  return new Set(compoundsUsed.filter(isDryCompound)).size >= 2
 }
 
 export type MguKPowerCurve =

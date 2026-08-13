@@ -14,6 +14,7 @@ import { tireConditionFor } from '../simulation/tires'
 import { PitWallLapLog } from './pitWall/PitWallLapLog'
 import { PitWallOverview } from './pitWall/PitWallOverview'
 import { PitWallRaceControl } from './pitWall/PitWallRaceControl'
+import { PitWallSourceTag } from './pitWall/PitWallShared'
 import { PitWallStrategy } from './pitWall/PitWallStrategy'
 import { PitWallSystems } from './pitWall/PitWallSystems'
 import { PitWallWeather } from './pitWall/PitWallWeather'
@@ -74,6 +75,90 @@ const tabContent: Record<
   weather: PitWallWeather,
 }
 
+type PitWallTabPaneProps = PitWallTabProps & {
+  activeTab: PitWallTabId
+}
+
+type RuntimePitWallTabPaneProps = Omit<
+  PitWallTabPaneProps,
+  'strategy' | 'tireCondition'
+>
+
+function PitWallTabPane({
+  activeTab,
+  ...tabProps
+}: PitWallTabPaneProps) {
+  const ActiveTab = tabContent[activeTab]
+
+  return (
+    <div
+      aria-labelledby={`pit-wall-tab-${activeTab}`}
+      className="pit-wall-body"
+      id="pit-wall-tabpanel"
+      role="tabpanel"
+      tabIndex={0}
+    >
+      <ActiveTab {...tabProps} />
+    </div>
+  )
+}
+
+/**
+ * This child is mounted only for the F1 runtime branch. Keeping the F1
+ * strategy hook here ensures SUPER FORMULA never executes the Pirelli/
+ * mandatory-stop planner merely to discard its result in the UI.
+ */
+function F1PitWallTabPane({
+  car,
+  driver,
+  snapshot,
+  track,
+  ...props
+}: RuntimePitWallTabPaneProps) {
+  const f1Tires =
+    car.runtimeSystems.kind === 'f1' ? car.runtimeSystems.tires : null
+  const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
+  const tireCondition = useMemo(
+    () =>
+      f1Tires
+        ? tireConditionFor(
+            f1Tires.tire,
+            f1Tires.tireAgeLaps,
+            driverAbilityValue(driver, 'tireManagement'),
+            f1Tires.tireTemperatureC,
+            f1Tires.tireWearPercent,
+            track.tireNomination,
+          )
+        : null,
+    [
+      f1Tires,
+      driver,
+      track.tireNomination,
+    ],
+  )
+
+  return (
+    <PitWallTabPane
+      {...props}
+      car={car}
+      driver={driver}
+      snapshot={snapshot}
+      strategy={strategy}
+      tireCondition={tireCondition}
+      track={track}
+    />
+  )
+}
+
+/**
+ * SUPER FORMULA gets explicit absence, never a zero-filled F1 strategy or
+ * tyre payload. Individual tabs narrow `car.runtimeSystems` before reading
+ * either F1-only input.
+ */
+function SuperFormulaPitWallTabPane(props: RuntimePitWallTabPaneProps) {
+  return <PitWallTabPane {...props} strategy={null} tireCondition={null} />
+}
+
 /**
  * Race-engineering overlay for the selected car. It renders only state the
  * simulator already holds; the strategy call and tyre condition are taken from
@@ -118,31 +203,17 @@ export function PitWallPanel({
     closeButtonRef.current?.focus()
   }, [])
 
+  const isF1Runtime = car.runtimeSystems.kind === 'f1'
   const capabilities = useMemo(
-    () => pitWallCapabilitiesFor({ overtakeSystem, seriesId }),
-    [overtakeSystem, seriesId],
+    () =>
+      pitWallCapabilitiesFor({
+        overtakeSystem,
+        runtimeSystems: car.runtimeSystems,
+        seriesId,
+      }),
+    [car.runtimeSystems, overtakeSystem, seriesId],
   )
   const session = useMemo(() => pitWallSessionFor(stage), [stage])
-  const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
-  const tireCondition = useMemo(
-    () =>
-      tireConditionFor(
-        car.tire,
-        car.tireAgeLaps,
-        driverAbilityValue(driver, 'tireManagement'),
-        car.tireTemperatureC,
-        car.tireWearPercent,
-        track.tireNomination,
-      ),
-    [
-      car.tire,
-      car.tireAgeLaps,
-      car.tireTemperatureC,
-      car.tireWearPercent,
-      driver,
-      track.tireNomination,
-    ],
-  )
   // Ordered by classification so the selector walks the field the same way
   // the timing tower it covers does.
   const runningOrder = useMemo(
@@ -160,9 +231,11 @@ export function PitWallPanel({
     selectedIndex >= 0 && selectedIndex + 1 < runningOrder.length
       ? runningOrder[selectedIndex + 1]
       : null
-  const boxCommands = useMemo(() => pitWallBoxCommands(car), [car])
+  const boxCommands = useMemo(
+    () => (isF1Runtime ? pitWallBoxCommands(car) : []),
+    [car, isF1Runtime],
+  )
   const paceDisabledReason = pitWallPaceCommandDisabledReason(car)
-  const ActiveTab = tabContent[activeTab]
 
   return (
     <section
@@ -245,14 +318,9 @@ export function PitWallPanel({
         ))}
       </div>
 
-      <div
-        aria-labelledby={`pit-wall-tab-${activeTab}`}
-        className="pit-wall-body"
-        id="pit-wall-tabpanel"
-        role="tabpanel"
-        tabIndex={0}
-      >
-        <ActiveTab
+      {isF1Runtime ? (
+        <F1PitWallTabPane
+          activeTab={activeTab}
           capabilities={capabilities}
           car={car}
           driver={driver}
@@ -261,34 +329,59 @@ export function PitWallPanel({
           raceControlLog={raceControlLog}
           session={session}
           snapshot={snapshot}
-          strategy={strategy}
           telemetryIsOpenF1={telemetryIsOpenF1}
           timing={timing}
           timingIsOpenF1={timingIsOpenF1}
-          tireCondition={tireCondition}
           tireLabels={tireLabels}
           track={track}
         />
-      </div>
+      ) : (
+        <SuperFormulaPitWallTabPane
+          activeTab={activeTab}
+          capabilities={capabilities}
+          car={car}
+          driver={driver}
+          environment={environment}
+          openF1Mode={openF1Mode}
+          raceControlLog={raceControlLog}
+          session={session}
+          snapshot={snapshot}
+          telemetryIsOpenF1={telemetryIsOpenF1}
+          timing={timing}
+          timingIsOpenF1={timingIsOpenF1}
+          tireLabels={tireLabels}
+          track={track}
+        />
+      )}
 
       <footer className="pit-wall-commands">
         <div aria-label="Pit stop instruction" role="group">
-          {boxCommands.map((command) => (
-            <button
-              className="pit-wall-box-command"
-              disabled={command.disabled}
-              key={command.compound}
-              onClick={() => onRequestPitStop(car.driverId, command.compound)}
-              title={
-                command.disabledReason ??
-                `Box ${car.code} for ${tireLabels[command.compound]} at the next safe lap crossing (${command.setsRemaining} set${command.setsRemaining === 1 ? '' : 's'} left)`
-              }
-              type="button"
+          {isF1Runtime ? (
+            boxCommands.map((command) => (
+              <button
+                className="pit-wall-box-command"
+                disabled={command.disabled}
+                key={command.compound}
+                onClick={() => onRequestPitStop(car.driverId, command.compound)}
+                title={
+                  command.disabledReason ??
+                  `Box ${car.code} for ${tireLabels[command.compound]} at the next safe lap crossing (${command.setsRemaining} set${command.setsRemaining === 1 ? '' : 's'} left)`
+                }
+                type="button"
+              >
+                BOX {command.compound}
+                <small>{command.setsRemaining}</small>
+              </button>
+            ))
+          ) : (
+            <span
+              className="pit-wall-empty"
+              title="No verified SUPER FORMULA control-tyre selection or pit-stop command model is available"
             >
-              BOX {command.compound}
-              <small>{command.setsRemaining}</small>
-            </button>
-          ))}
+              CONTROL-TYRE BOX COMMAND UNAVAILABLE{' '}
+              <PitWallSourceTag source="UNAVAILABLE" />
+            </span>
+          )}
         </div>
         <div aria-label="Driver pace instruction" role="group">
           {paceModes.map((mode) => (

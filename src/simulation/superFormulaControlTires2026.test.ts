@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createSuperFormulaControlTireInventory,
-  useSuperFormulaControlTireSets,
+  consumeSuperFormulaControlTireSets,
   validateSuperFormulaControlTireInventory,
 } from './superFormulaControlTires2026'
 
@@ -66,7 +66,7 @@ describe('2026 SUPER FORMULA control-tyre inventory', () => {
       allocatedSets: { dry: 4, wet: 2 },
       usedSets: { dry: 1 },
     })
-    const next = useSuperFormulaControlTireSets({
+    const next = consumeSuperFormulaControlTireSets({
       inventory: initial,
       setCount: 2,
       surface: 'dry',

@@ -5,6 +5,7 @@ import {
   assignDriverToFreeModeSeat,
   driverHistorySearchTerms,
   freeModeCategoryLabels,
+  freeModeRaceLapsProvenanceLabel,
   matchesDriverSearch,
 } from './FreeModeBuilder'
 
@@ -67,6 +68,10 @@ describe('Free Mode driver-pool UI boundaries', () => {
       'f1-custom': 'F1',
       'super-formula': 'SUPER FORMULA',
     })
+  })
+
+  it('labels editable Free Mode race distance as a user choice', () => {
+    expect(freeModeRaceLapsProvenanceLabel).toBe('user-selected')
   })
 
   it('finds F2/F3 metadata as history rather than a runtime category', () => {

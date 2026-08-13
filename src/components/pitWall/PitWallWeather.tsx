@@ -23,6 +23,8 @@ export function PitWallWeather({
   const environmentSource: PitWallSource =
     environment.source === 'simulation' ? 'SIM' : 'OBS'
   const neutralised = snapshot.flag === 'sc' || snapshot.flag === 'vsc'
+  const f1WeatherDeclarationsUnavailable = snapshot.heatIndexC === null
+  const heatIndexLabel = snapshot.heatIndexC?.toFixed(1) ?? 'unavailable'
 
   return (
     <div className="pit-wall-columns">
@@ -78,23 +80,53 @@ export function PitWallWeather({
         <PitWallMetric
           label="Low grip declared"
           source="SIM"
-          title="Simulated Race Director declaration modelled on Sporting Regulations B1.5.12"
+          title={
+            f1WeatherDeclarationsUnavailable
+              ? 'FIA B1.5.12 declaration model is unavailable for this category.'
+              : 'Simulated Race Director declaration modelled on Sporting Regulations B1.5.12'
+          }
           tone={snapshot.lowGripConditions ? 'watch' : 'good'}
-          value={snapshot.lowGripConditions ? 'DECLARED' : 'NO'}
+          value={
+            f1WeatherDeclarationsUnavailable
+              ? 'UNAVAILABLE'
+              : snapshot.lowGripConditions
+                ? 'DECLARED'
+                : 'NO'
+          }
         />
         <PitWallMetric
           label="Heat hazard"
           source="SIM"
-          title={`Simulated declaration modelled on Sporting Regulations B1.5.10; heat index ${snapshot.heatIndexC.toFixed(1)}C`}
+          title={
+            f1WeatherDeclarationsUnavailable
+              ? 'FIA B1.5.10 declaration and C4.6 mass model are unavailable for this category.'
+              : `Simulated declaration modelled on Sporting Regulations B1.5.10; heat index ${heatIndexLabel}C`
+          }
           tone={snapshot.heatHazardDeclared ? 'watch' : 'good'}
-          value={snapshot.heatHazardDeclared ? 'DECLARED' : 'NO'}
+          value={
+            f1WeatherDeclarationsUnavailable
+              ? 'UNAVAILABLE'
+              : snapshot.heatHazardDeclared
+                ? 'DECLARED'
+                : 'NO'
+          }
         />
         <PitWallMetric
           label="Rain hazard"
           source="SIM"
-          title="Simulated declaration modelled on Sporting Regulations B1.5.11"
+          title={
+            f1WeatherDeclarationsUnavailable
+              ? 'FIA B1.5.11 declaration model is unavailable for this category.'
+              : 'Simulated declaration modelled on Sporting Regulations B1.5.11'
+          }
           tone={snapshot.rainHazardDeclared ? 'watch' : 'good'}
-          value={snapshot.rainHazardDeclared ? 'DECLARED' : 'NO'}
+          value={
+            f1WeatherDeclarationsUnavailable
+              ? 'UNAVAILABLE'
+              : snapshot.rainHazardDeclared
+                ? 'DECLARED'
+                : 'NO'
+          }
         />
       </PitWallGroup>
 

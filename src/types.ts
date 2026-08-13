@@ -3,6 +3,13 @@ import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
 } from './series/seriesIds'
+import type { RuntimeSystems } from './simulation/runtimeSystems'
+import type {
+  SuperFormulaControlTireInventory,
+  SuperFormulaControlTireSurface,
+  SuperFormulaControlTireUnavailableInput,
+} from './simulation/superFormulaControlTires2026'
+import type { SuperFormula2026EngineLedger } from './simulation/superFormulaEngineLedger'
 
 export type CameraMode = 'overview' | 'chase' | 'orbit'
 export type SpeedMultiplier = 1 | 5 | 20 | 60
@@ -360,14 +367,23 @@ export type PenaltyRecord = {
   kind: PenaltyKind
   reason: string
   seconds: number
-  /** FIA penalty points applied to the driver's twelve-month tally. */
+  /**
+   * F1-only FIA point value retained with an event penalty. SUPER FORMULA
+   * event penalties always store zero here; Article 5 uses its own
+   * official-adjudication season ledger.
+   */
   penaltyPoints: number
   served: boolean
   mustServeByLap?: number | null
   servedAtSeconds?: number | null
 }
 
-/** Structured evidence retained while the stewards consider an incident. */
+/**
+ * FIA/ISC automatic-decision evidence retained while F1 stewards consider an
+ * incident. SUPER FORMULA does not create this record from simulated driving:
+ * it records an observation and requires an explicit official decision for
+ * its separate Article 5 ledger.
+ */
 export type StewardCase = {
   id: string
   openedAtSeconds: number
@@ -958,8 +974,33 @@ export type RaceConfig = {
   timedSessionPlan?: TimedSessionPlan
 }
 
-export type TimedSessionSegmentPlan = {
+/** Pirelli-specific timed-session selection. Never use for SUPER FORMULA. */
+export type F1PirelliSessionTire = {
   compound: TireCompound
+  kind: 'f1-pirelli-session-tire'
+}
+
+/**
+ * Published SF rules establish dry/wet control-set limits but no physical
+ * coefficient model. Timed-session simulation must retain that absence rather
+ * than importing an F1 compound multiplier as a convenience default.
+ */
+export type SuperFormulaControlSessionTire = {
+  kind: 'super-formula-control-session-tire'
+  physicalModel: {
+    availability: 'unavailable'
+    simulatorPolicy: 'do-not-apply-physical-tire-coefficients'
+    sourceInput: SuperFormulaControlTireUnavailableInput
+    value: null
+  }
+  surface: SuperFormulaControlTireSurface
+}
+
+export type TimedSessionTire =
+  | F1PirelliSessionTire
+  | SuperFormulaControlSessionTire
+
+export type TimedSessionSegmentPlan = {
   /** True when race control treats the segment as wet for run planning. */
   declaredWet?: boolean
   /** Human-readable label when multiple windows share one classification key. */
@@ -979,6 +1020,8 @@ export type TimedSessionSegmentPlan = {
   startsAtSeconds: number
   suspensionEndsAtSeconds: number | null
   suspensionStartsAtSeconds: number | null
+  /** Category-owned session tyre declaration; never a generic compound alias. */
+  tire: TimedSessionTire
 }
 
 export type TimedSessionPlan = {
@@ -986,16 +1029,14 @@ export type TimedSessionPlan = {
   totalDurationSeconds: number
 }
 
-export type WeekendContext = {
+/** State shared by every race-weekend lifecycle, independent of car category. */
+export type WeekendContextBase = {
   completed: WeekendStage[]
   gridByStage: Partial<Record<'sprint' | 'race' | 'race2', string[]>>
   setupBonusByDriver: Record<string, number>
   setupByDriver: Record<string, CarSetup>
   setupConfidenceByDriver: Record<string, number>
   parcFermeLockedByDriver: Record<string, boolean>
-  componentConditionByDriver: Record<string, CarComponents>
-  tireSetsByDriver: Record<string, Partial<Record<TireCompound, number>>>
-  tireSetInventoryByDriver: Record<string, TireSet[]>
   gridPenaltyByDriver: Record<string, number>
   /** Parc ferme or sporting decision requiring a start from the pit lane. */
   pitLaneStartByDriver: Record<string, boolean>
@@ -1005,6 +1046,28 @@ export type WeekendContext = {
   >
   notes: string[]
 }
+
+/** F1-only weekend lifecycle state. Never use this shape for SUPER FORMULA. */
+export type F1WeekendContext = WeekendContextBase & {
+  seriesId: 'f1-custom'
+  componentConditionByDriver: Record<string, CarComponents>
+  tireSetInventoryByDriver: Record<string, TireSet[]>
+  tireSetsByDriver: Record<string, Partial<Record<TireCompound, number>>>
+}
+
+/**
+ * SUPER FORMULA 2026 lifecycle state. The published tyre rule supports only
+ * dry/wet control-set inventories, and Article 24 owns engine allocation.
+ * There is intentionally no F1 component or Pirelli compound compatibility
+ * field on this branch.
+ */
+export type SuperFormulaWeekendContext = WeekendContextBase & {
+  seriesId: 'super-formula'
+  controlTireInventoryByDriver: Record<string, SuperFormulaControlTireInventory>
+  engineLedgerByEntrant: Record<string, SuperFormula2026EngineLedger>
+}
+
+export type WeekendContext = F1WeekendContext | SuperFormulaWeekendContext
 
 export type WeekendState = {
   stage: WeekendStage
@@ -1032,6 +1095,22 @@ export type MiniSectorState =
   | 'pit'
   | 'stopped'
 
+export type F1LapTireRun = {
+  ageLaps: number
+  compound: TireCompound
+  kind: 'f1-pirelli'
+}
+
+export type SuperFormulaLapTireRun = {
+  /** No temperature/wear coefficient is represented without a verified input. */
+  kind: 'super-formula-control-tire'
+  lapsOnCurrentSet: number
+  physicalModelAvailability: 'unavailable'
+  surface: SuperFormulaControlTireSurface
+}
+
+export type LapTireRun = F1LapTireRun | SuperFormulaLapTireRun
+
 /** Immutable record written only when a car crosses the timing line. */
 export type LapRecord = {
   lap: number
@@ -1045,8 +1124,7 @@ export type LapRecord = {
    * knockout session starts from a clean sheet. Absent for race laps.
    */
   segment?: string
-  tire: TireCompound
-  tireAgeLaps: number
+  tireRun: LapTireRun
   weather: WeatherState
   trackGrip: number
   position: number
@@ -1200,70 +1278,16 @@ export type CarSnapshot = {
   turboSpoolFraction?: number
   /** Driveline clutch connection carried between ticks, 0=open and 1=locked. */
   clutchEngagementFraction?: number
-  /** 2026 front/rear driver-adjustable bodywork state. */
-  activeAeroMode: ActiveAeroMode
-  /**
-   * Continuous 2026 active-aero truth. Optional only for checkpoint migration;
-   * new snapshots initialize it for every category.
-   */
-  activeAeroState?: ActiveAeroState
-  /** 2026 electrical Overtake availability, separate from active aero. */
+  /** Generic category-level overtake display state (F1 Overtake or SF OTS). */
   overtakeStatus: OvertakeStatus
-  /** Detection-line result held until the corresponding activation zone. */
-  overtakeEligibility: OvertakeEligibility | null
-  /** Additional electrical energy available to 2026 Overtake this lap. */
-  overtakeEnergyRemainingMj: number
-  /** B7.2 recharge allowance latched from Overtake state at the lap-start line. */
-  overtakeRechargeAllowanceActiveThisLap: boolean
-  /** Low-grip condition latched at the Line for the current recharge ledger. */
-  energyLapStartedInLowGripConditions: boolean
-  /** Safety-car control latched at the Line for the current recharge ledger. */
-  energyLapStartedBehindSafetyCar: boolean
-  /** Super Formula OTS allocation; absent for F1 active-aero weekends. */
-  otsRemainingSeconds?: number
   /**
-   * Race time until which OTS may not be reactivated after a use. Super Formula
-   * enforces a per-circuit lockout (about 120 s at Fuji/Motegi, 110 s at SUGO,
-   * 100 s at Suzuka/Autopolis) so the allocation cannot be spent in one burst.
+   * Category-owned physical and regulatory state. F1-only aero/ERS/component
+   * truth is nested in the F1 branch; SUPER FORMULA has a separate no-ERS
+   * runtime shape and cannot receive zero-valued F1 compatibility aliases.
    */
-  otsCooldownUntilSeconds?: number
-  /** Derived compatibility display: CU-K HV DC-bus recharge this lap. */
-  energyHarvestedThisLapMj: number
-  /** Derived compatibility display: CU-K HV DC-bus deployment this lap. */
-  energyDeployedThisLapMj: number
-  ersMode: ErsMode
-  /** Estimated instantaneous MGU-K deployment, never OpenF1-observed. */
-  ersPowerKw: number
-  /** Conserved Energy Store, electrical machine, and thermal state. */
-  energyStore: EnergyStoreState
-  ersBatteryPercent: number
-  /** Continuous 0..1 high-speed energy-recovery severity. */
-  superClippingIntensity: number
-  /** Actual mechanical generator power at the MGU-K shaft during superclip. */
-  superClippingRegenPowerKw: number
-  /** CU-K HV DC-bus recharge attributable to superclip on this lap. */
-  superClippingRecoveredThisLapMj: number
-  /** Simulation clock at the start of the current clipping episode. */
-  superClippingStartedAtSeconds: number | null
-  /** Track progress at the start of the current clipping episode. */
-  superClippingStartedAtProgress: number | null
-  /** Elapsed duration of the current clipping episode. */
-  superClippingDurationSeconds: number
+  runtimeSystems: RuntimeSystems
   /** Remaining fuel mass. This is consumed continuously from travelled distance. */
   fuelLoadKg: number
-  /** Surface tread temperature used for immediate grip and wear. */
-  tireTemperatureC: number
-  /** Slower-moving internal tyre temperature used for thermal history. */
-  tireCarcassTemperatureC: number
-  /** Temporary cold-surface performance loss, 0..100. */
-  tireGrainingPercent: number
-  /** Temporary heat saturation, 0..100. */
-  tireOverheatingPercent: number
-  tirePerformanceState: TirePerformanceState
-  /** Accumulated stint wear independent from integer lap age. */
-  tireWearPercent: number
-  /** Permanent performance loss accumulated while outside the thermal window. */
-  tireThermalStressPercent?: number
   brakeTemperatureC: number
   /** Time spent continuously above the brake system's safe thermal range. */
   brakeOverheatSeconds: number
@@ -1298,9 +1322,6 @@ export type CarSnapshot = {
   processedLap: number
   /** Last 12-part track segment that evaluated a wheel-to-wheel battle. */
   processedBattleSegment: number
-  /** Current tire compound (changes at pit stops). */
-  tire: TireCompound
-  tireAgeLaps: number
   pitStops: number
   pitPhase: PitPhase
   pitServiceKind: PitServiceKind
@@ -1311,17 +1332,14 @@ export type CarSnapshot = {
   pitUntilSeconds: number | null
   /** While back on track: simulation time until pit-exit visual blending ends. */
   pitExitUntilSeconds: number | null
-  /** Compound that will be fitted when the active stop completes. */
-  pendingTire: TireCompound | null
-  /** Distinct dry compounds used so far (two-compound rule). */
-  compoundsUsed: TireCompound[]
-  /** Remaining weekend tire sets available to this car's strategy. */
-  tireSetsRemaining: Partial<Record<TireCompound, number>>
   /** 0..1 accumulated car damage; adds lap time until repaired at a stop. */
   damage: number
   /** Accumulated time penalties, applied to classification. */
   penaltySeconds: number
-  /** Penalty points imposed during this competition. */
+  /**
+   * F1/FIA event-local point counter. It is never the SUPER FORMULA Article 5
+   * legal tally, and SUPER FORMULA runtime keeps this counter at zero.
+   */
   penaltyPoints: number
   /** Classification laps removed by the stewards. */
   penaltyLaps: number
@@ -1358,13 +1376,7 @@ export type CarSnapshot = {
   timedTrafficYield: boolean
   startsFromPitLane: boolean
   lowPowerStartDetected: boolean
-  /**
-   * Latched once an F1 car reaches the C5.2.12 standing-start MGU-K release
-   * speed. Optional only for checkpoints written before the 2026-era gate.
-   */
-  standingStartMguKReleaseLatched?: boolean
   warningLightsUntilSeconds: number | null
-  components: CarComponents
 }
 
 export type RaceSnapshot = {
@@ -1381,7 +1393,10 @@ export type RaceSnapshot = {
   formationLapsCompleted: number
   /** Race Director has ordered formation laps behind the Safety Car. */
   formationBehindSafetyCar: boolean
-  /** Full wet tyres are compulsory for the current SC start/resumption. */
+  /**
+   * F1 severe-weather tyre mandate for the current SC start/resumption.
+   * Non-F1 category runtimes always retain this as false.
+   */
   wetWeatherTyresMandatory: boolean
   raceStartedAtSeconds: number | null
   restartProcedure: RestartProcedure
@@ -1408,16 +1423,16 @@ export type RaceSnapshot = {
   weather: WeatherState
   weatherLabel: string
   weatherForecastLabel: string
-  /** B1.5.10 declaration for the active Sprint or Race session. */
-  heatHazardDeclared: boolean
-  /** Current simulated Heat Index used for the declaration audit. */
-  heatIndexC: number
-  /** C4.6 session mass increase: 5kg declared TTCS, 2kg other sessions. */
-  heatHazardMassIncreaseKg: number
-  /** Sporting B1.5.11 declaration, held for the relevant session once made. */
-  rainHazardDeclared: boolean
-  /** Sporting B1.5.12 Race Director grip declaration. */
-  lowGripConditions: boolean
+  /** FIA B1.5.10 declaration for the active F1 Sprint or Race; unavailable outside F1. */
+  heatHazardDeclared: boolean | null
+  /** FIA declaration heat index; unavailable outside F1. */
+  heatIndexC: number | null
+  /** FIA C4.6 session mass increase; unavailable outside F1. */
+  heatHazardMassIncreaseKg: number | null
+  /** FIA B1.5.11 declaration, held for the relevant F1 session; unavailable outside F1. */
+  rainHazardDeclared: boolean | null
+  /** FIA B1.5.12 Race Director grip declaration; unavailable outside F1. */
+  lowGripConditions: boolean | null
   trackGrip: number
   /** Stateful surface water depth in millimetres for sectors 1..3. */
   surfaceWaterMmBySector: [number, number, number]

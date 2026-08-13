@@ -105,10 +105,25 @@
           "trackId": "fuji-sf",
           "raceCount": 1,
           "featurePoints": [12, 9, 7, 6, 5, 4, 3, 2, 1],
-          "featureRaceMandatoryPitStop": false,
           "gridSourceTrackId": "autopolis-sf",
-          "raceLaps": 25,
-          "raceTimeLimitSeconds": 3000,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 25,
+                "timeLimitSeconds": 3000,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "binding-calendar-notice",
+                "checksum": null,
+                "effectiveFrom": "2026-07-15",
+                "publishedAt": "2026-07-15",
+                "sourceId": "jaf-sf-2026-substitute-round-3-web056",
+                "url": "https://motorsports.jaf.or.jp/regulations/announcement/notice/2026/20260715_01"
+              }
+            }
+          },
           "weekendStages": ["race"]
         },
         { "id": "sf-06", "round": 6, "trackId": "fuji-sf", "raceCount": 1 },
@@ -121,11 +136,50 @@
       ],
       "rules": {
         "championshipTeamScoring": "best-two",
-        "featureRaceMandatoryPitStop": true,
-        "featureRaceTwoDryCompounds": false,
         "freePracticeDurationSeconds": 3600,
-        "overtakeActivation": "immediate",
         "overtakeSystem": "ots",
+        "eventOperations": {
+          "mandatoryPitStop": {
+            "availability": "unavailable",
+            "value": null,
+            "reason": "The bundled JAF base regulation does not publish a generic SUPER FORMULA mandatory-pit-stop default; use a verified event operation.",
+            "provenance": {
+              "authority": "binding-base-regulation",
+              "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+              "effectiveFrom": "2026-01-01",
+              "publishedAt": "2026-01-23",
+              "sourceId": "jaf-sf-2026-unified-regulations",
+              "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+            }
+          },
+          "ots": {
+            "availability": "unavailable",
+            "value": null,
+            "reason": "Article 24.3.8 delegates SUPER FORMULA OTS operation to an event special regulation or official notice; no exact event pack is bundled.",
+            "provenance": {
+              "article": "Article 24.3.8",
+              "authority": "binding-base-regulation",
+              "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+              "effectiveFrom": "2026-01-01",
+              "publishedAt": "2026-01-23",
+              "sourceId": "jaf-sf-2026-unified-regulations",
+              "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+            }
+          },
+          "raceDistance": {
+            "availability": "unavailable",
+            "value": null,
+            "reason": "The bundled JAF base regulation does not publish a generic SUPER FORMULA race-distance default; use a verified event operation.",
+            "provenance": {
+              "authority": "binding-base-regulation",
+              "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+              "effectiveFrom": "2026-01-01",
+              "publishedAt": "2026-01-23",
+              "sourceId": "jaf-sf-2026-unified-regulations",
+              "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+            }
+          }
+        },
         "points": {
           "fastestLap": null,
           "feature": [20, 15, 11, 8, 6, 5, 4, 3, 2, 1],
@@ -152,16 +206,38 @@
             { "name": "Q2", "durationSeconds": 420, "advanceCount": null }
           ]
         },
-        "raceDistanceRatio": 0.55,
         "raceLabel": "RACE",
         "sprintGridReverseCount": 0,
         "supportsOpenF1": false,
         "tireSupplier": "Yokohama",
         "tires": {
-          "dryLabels": { "H": "Not supplied", "M": "Yokohama Dry", "S": "Not supplied" },
-          "qualifyingDryCompound": "M",
-          "standardAllocation": { "H": 0, "I": 2, "M": 6, "S": 0, "W": 2 },
-          "sprintAllocation": null
+          "kind": "yokohama-control-tyres-2026",
+          "dry": {
+            "label": "Yokohama Dry",
+            "maxSetsPerCarPerRace": 6,
+            "provenance": {
+              "article": "Article 23.2",
+              "authority": "binding-base-regulation",
+              "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+              "effectiveFrom": "2026-01-01",
+              "publishedAt": "2026-01-23",
+              "sourceId": "jaf-sf-2026-unified-regulations",
+              "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+            }
+          },
+          "wet": {
+            "label": "Yokohama Wet",
+            "maxSetsPerCarPerRace": 6,
+            "provenance": {
+              "article": "Article 23.4",
+              "authority": "binding-base-regulation",
+              "checksum": "9e5eb324f2f4c8660d9b716cbf35a1874247fc6baa8706ae2b2539630ae2369a",
+              "effectiveFrom": "2026-01-01",
+              "publishedAt": "2026-01-23",
+              "sourceId": "jaf-sf-2026-unified-regulations",
+              "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf"
+            }
+          }
         },
         "vehicleBaseRating": 88,
         "weekendStages": ["fp1", "qualifying", "race"]
@@ -169,7 +245,8 @@
       "sources": [
         { "label": "SUPER FORMULA 2026 teams", "sourceDate": "2026-07-19", "url": "https://superformula.net/sf3/team_taxonomy/2026/" },
         { "label": "SUPER FORMULA 2026 Seita Nonaka profile", "sourceDate": "2026-07-29", "url": "https://superformula.net/sf3/driver/25046/" },
-        { "label": "JAF 2026 SUPER FORMULA unified regulations", "sourceDate": "2026-06-10", "url": "https://motorsports.jaf.or.jp/regulations/information/internal" }
+        { "label": "JAF 2026 SUPER FORMULA unified regulations", "sourceDate": "2026-01-23", "url": "https://motorsports.jaf.or.jp/-/media/1/3375/3379/3400/3462/3466/3492/2026_touitsu_kisoku_superformula_20260101.pdf" },
+        { "label": "JAF Substitute Round 3 notice No.2026-WEB056", "sourceDate": "2026-07-15", "url": "https://motorsports.jaf.or.jp/regulations/announcement/notice/2026/20260715_01" }
       ],
       "teams": [
         { "id": "sf-mugen", "name": "TEAM MUGEN AUTOBACS", "color": "#e31b23", "operations": 91, "drivers": [

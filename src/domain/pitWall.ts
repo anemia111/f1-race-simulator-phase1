@@ -11,6 +11,10 @@ import {
   isQualifyingStage,
   isRaceDistanceSession,
 } from '../simulation/sessionRules'
+import {
+  tireDisplayForLapRecord,
+  type LapTireDisplay,
+} from '../simulation/classification'
 import type { SeriesId } from '../series/types'
 import type {
   CarComponents,
@@ -56,6 +60,10 @@ export type PitWallSource =
   | 'OFF'
   | 'CAL'
   | 'FIA'
+  /** Japanese Automobile Federation source-backed SUPER FORMULA rule. */
+  | 'JAF'
+  /** Verified event special regulation or official notice. */
+  | 'EVENT'
   | 'UNAVAILABLE'
 
 /**
@@ -189,8 +197,14 @@ export type PitWallCapabilities = {
 export function pitWallCapabilitiesFor(options: {
   seriesId: SeriesId
   overtakeSystem: 'active-aero' | 'ots'
+  /** Prefer the live runtime branch when one is available. */
+  runtimeSystems?: CarSnapshot['runtimeSystems']
 }): PitWallCapabilities {
-  const { overtakeSystem, seriesId } = options
+  const { overtakeSystem, runtimeSystems, seriesId } = options
+
+  if (runtimeSystems) {
+    return pitWallCapabilitiesForRuntime(runtimeSystems)
+  }
 
   return {
     activeAero: overtakeSystem === 'active-aero',
@@ -204,6 +218,34 @@ export function pitWallCapabilitiesFor(options: {
       overtakeSystem === 'active-aero'
         ? 'Overtake'
         : 'OTS',
+  }
+}
+
+/**
+ * Live category truth is authoritative over registry metadata. In particular,
+ * a SUPER FORMULA base rule with no verified event OTS pack must not be
+ * presented as an enabled allocation merely because the category supports OTS
+ * in principle.
+ */
+export function pitWallCapabilitiesForRuntime(
+  runtimeSystems: CarSnapshot['runtimeSystems'],
+): PitWallCapabilities {
+  if (runtimeSystems.kind === 'f1') {
+    return {
+      activeAero: true,
+      hybridErs: true,
+      ots: false,
+      overtakeLabel: 'ACTIVE AERO',
+      overtakeStatusLabel: 'Overtake',
+    }
+  }
+
+  return {
+    activeAero: false,
+    hybridErs: false,
+    ots: runtimeSystems.ots.availability === 'verified-event-rule',
+    overtakeLabel: 'OTS',
+    overtakeStatusLabel: 'OTS',
   }
 }
 
@@ -265,8 +307,8 @@ export type PitWallLapLogRow = {
   /** Q1/Q2/Q3 or SQ1-3 for a timed session; absent on a race lap. */
   segment: string | null
   sectors: [number, number, number]
-  tire: TireCompound
-  tireAgeLaps: number
+  /** Discriminated F1 Pirelli or SF control-tyre presentation payload. */
+  tireDisplay: LapTireDisplay
 }
 
 /** A split is only comparable once it has actually been measured. */
@@ -318,8 +360,7 @@ export function pitWallLapLog(laps: LapRecord[]): PitWallLapLogRow[] {
       position: lap.position,
       sectors: lap.sectors,
       segment: lap.segment ?? null,
-      tire: lap.tire,
-      tireAgeLaps: lap.tireAgeLaps,
+      tireDisplay: tireDisplayForLapRecord(lap),
     }))
 }
 
@@ -340,12 +381,20 @@ export type PitWallBoxCommand = {
  * a compound the car still has a set of.
  */
 export function pitWallBoxCommands(
-  car: Pick<CarSnapshot, 'status' | 'tireSetsRemaining'>,
+  car: Pick<CarSnapshot, 'runtimeSystems' | 'status'>,
 ): PitWallBoxCommand[] {
+  // A SUPER FORMULA control-tyre operation has no sourced selection command
+  // yet. Returning no F1 compound calls is safer than presenting disabled
+  // S/M/H/I/W controls as if they were meaningful to that category.
+  if (car.runtimeSystems.kind !== 'f1') {
+    return []
+  }
+
   const carIsRunning = car.status === 'running'
+  const tireSetsRemaining = car.runtimeSystems.tires.tireSetsRemaining
 
   return pitWallBoxCompounds.map((compound) => {
-    const setsRemaining = car.tireSetsRemaining[compound] ?? 0
+    const setsRemaining = tireSetsRemaining[compound] ?? 0
     const disabledReason = !carIsRunning
       ? `The car is not running (${car.status}), so no box call can be sent`
       : setsRemaining <= 0

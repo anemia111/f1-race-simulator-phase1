@@ -8,9 +8,11 @@ import {
 import {
   driverAssignments2026,
   driverPool2026,
+  resolveSuperFormulaEventOperations,
   seriesPackageById,
   seriesPackages,
   seriesRegistryAudit,
+  validateSeriesPackage,
 } from './seriesRegistry'
 
 function provenanceCount(pool: readonly DriverPoolRecord[]) {
@@ -45,6 +47,82 @@ describe('Phase 1 series registry boundary', () => {
     for (const series of seriesPackages) {
       expect(series.rules).not.toHaveProperty('baseLapTimeMultiplier')
     }
+  })
+
+  it('keeps SUPER FORMULA base operations fail-closed and tyres outside the F1 family', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const rules = superFormula.rules
+
+    expect(rules).toMatchObject({
+      eventOperations: {
+        mandatoryPitStop: { availability: 'unavailable', value: null },
+        ots: { availability: 'unavailable', value: null },
+        raceDistance: { availability: 'unavailable', value: null },
+      },
+      overtakeSystem: 'ots',
+      tireSupplier: 'Yokohama',
+      tires: {
+        dry: { label: 'Yokohama Dry', maxSetsPerCarPerRace: 6 },
+        kind: 'yokohama-control-tyres-2026',
+        wet: { label: 'Yokohama Wet', maxSetsPerCarPerRace: 6 },
+      },
+    })
+    expect(rules).not.toHaveProperty('featureRaceMandatoryPitStop')
+    expect(rules).not.toHaveProperty('featureRaceTwoDryCompounds')
+    expect(rules).not.toHaveProperty('overtakeActivation')
+    expect(rules).not.toHaveProperty('raceDistanceRatio')
+    expect(rules.tires).not.toHaveProperty('dryLabels')
+    expect(rules.tires).not.toHaveProperty('qualifyingDryCompound')
+    expect(rules.tires).not.toHaveProperty('standardAllocation')
+    expect(rules.tires).not.toHaveProperty('sprintAllocation')
+    expect(superFormula.tracks.every((track) => track.raceLaps === undefined)).toBe(
+      true,
+    )
+  })
+
+  it('keeps the substitute Round 3 distance as an exact event override only', () => {
+    const superFormula = seriesPackageById.get('super-formula')!
+    const replacement = resolveSuperFormulaEventOperations(
+      superFormula,
+      'sf-03-replacement',
+    )!
+    const unrelated = resolveSuperFormulaEventOperations(
+      superFormula,
+      'sf-06',
+    )!
+
+    expect(replacement.raceDistance).toMatchObject({
+      availability: 'verified-event-override',
+      provenance: {
+        sourceId: 'jaf-sf-2026-substitute-round-3-web056',
+      },
+      value: {
+        laps: 25,
+        overallTimeLimitSeconds: null,
+        timeLimitSeconds: 3000,
+      },
+    })
+    expect(replacement.mandatoryPitStop).toMatchObject({
+      availability: 'unavailable',
+      value: null,
+    })
+    expect(unrelated.raceDistance).toMatchObject({
+      availability: 'unavailable',
+      value: null,
+    })
+  })
+
+  it('rejects a legacy SUPER FORMULA generic operation if one is injected', () => {
+    const superFormula = structuredClone(
+      seriesPackageById.get('super-formula')!,
+    ) as typeof seriesPackages[number] & {
+      rules: Record<string, unknown>
+    }
+    superFormula.rules.raceDistanceRatio = 0.55
+
+    expect(() => validateSeriesPackage(superFormula as never)).toThrow(
+      /must not carry F1 generic race-operation defaults/,
+    )
   })
 
   it('builds the canonical 110-identity, 111-provenance pool', () => {

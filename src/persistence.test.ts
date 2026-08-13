@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from './data/grid2026'
 import { tracks } from './data/tracks'
+import { seriesPackageById } from './series/seriesRegistry'
 import {
   parsePersistedDriverRatings,
   parsePersistedSeason,
@@ -10,7 +11,13 @@ import {
 } from './persistence'
 import { MAX_SIMULATION_SEED_LENGTH } from './simulation/random'
 import { createInitialRace } from './simulation/race'
-import { createSeasonState, recordSeasonRound } from './simulation/season'
+import {
+  createSeasonState,
+  recordOfficialSuperFormulaPenaltyPointAdjudication,
+  recordSeasonRound,
+  superFormulaNextEventEligibility,
+} from './simulation/season'
+import { createWeekendContext } from './simulation/weekend'
 
 describe('V2 persistence migration', () => {
   it('round-trips the explicit 30-skill driver profile', () => {
@@ -59,20 +66,25 @@ describe('V2 persistence migration', () => {
       },
     })
     const restored = parsePersistedWeekend(raw, tracks, initialDrivers)
+    const context = restored?.weekendContext
 
-    expect(restored?.version).toBe(3)
+    if (!context || context.seriesId !== 'f1-custom') {
+      throw new Error('Expected a migrated F1 weekend context.')
+    }
+
+    expect(restored?.version).toBe(4)
     expect(restored?.seriesId).toBe('f1-custom')
-    expect(restored?.weekendContext.completed).toEqual(['fp1'])
+    expect(context.completed).toEqual(['fp1'])
     expect(
-      restored?.weekendContext.componentConditionByDriver[driverId].ice
+      context.componentConditionByDriver[driverId].ice
         .conditionPercent,
     ).toBe(63)
     expect(
-      restored?.weekendContext.componentConditionByDriver[driverId].exhaust
+      context.componentConditionByDriver[driverId].exhaust
         .allocationLimit,
     ).toBe(4)
     expect(
-      restored?.weekendContext.tireSetInventoryByDriver[driverId].find(
+      context.tireSetInventoryByDriver[driverId].find(
         (set) => set.compound === 'H',
       )?.family,
     ).toBe(track.tireNomination?.H)
@@ -142,9 +154,11 @@ describe('V2 persistence migration', () => {
       driverResults: {},
       garage: {
         componentsByDriver: {},
+        kind: 'f1',
         pendingGridPenaltyByDriver: {},
       },
       resultArchive: [],
+      seriesId: 'f1-custom',
       teamPoints: {},
       teamResults: {},
     })
@@ -299,8 +313,13 @@ describe('V2 persistence migration', () => {
       tracks,
       initialDrivers,
     )
+    const context = restored?.weekendContext
 
-    expect(restored?.weekendContext.setupByDriver[driverId]).toEqual({
+    if (!context || context.seriesId !== 'f1-custom') {
+      throw new Error('Expected a migrated F1 weekend context.')
+    }
+
+    expect(context.setupByDriver[driverId]).toEqual({
       brakeBiasPercent: 60,
       coolingPercent: 25,
       differentialPercent: 75,
@@ -308,12 +327,12 @@ describe('V2 persistence migration', () => {
       rearWing: 1,
       rideHeightMm: 45,
     })
-    expect(restored?.weekendContext.setupBonusByDriver[driverId]).toBe(0.35)
-    expect(restored?.weekendContext.setupConfidenceByDriver[driverId]).toBe(0)
-    expect(restored?.weekendContext.gridPenaltyByDriver[driverId]).toBe(
+    expect(context.setupBonusByDriver[driverId]).toBe(0.35)
+    expect(context.setupConfidenceByDriver[driverId]).toBe(0)
+    expect(context.gridPenaltyByDriver[driverId]).toBe(
       initialDrivers.length,
     )
-    expect(restored?.weekendContext.tireSetInventoryByDriver[driverId][0]).toMatchObject({
+    expect(context.tireSetInventoryByDriver[driverId][0]).toMatchObject({
       heatCycles: 20,
       laps: 1_000,
     })
@@ -338,5 +357,171 @@ describe('V2 persistence migration', () => {
     expect(restored?.seed).toHaveLength(MAX_SIMULATION_SEED_LENGTH)
     expect(restored?.seed.startsWith('seed')).toBe(true)
     expect(restored?.weekendContext.notes[0]).toHaveLength(240)
+  })
+
+  it('does not migrate F1 lifecycle state into a SUPER FORMULA save', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const restoredWeekend = parsePersistedWeekend(
+      JSON.stringify({
+        gridSource: 'brief',
+        seed: 'sf-runtime-boundary',
+        seriesId: 'super-formula',
+        stage: 'race',
+        trackId: series.tracks[0].id,
+        version: 4,
+        weekendContext: {
+          componentConditionByDriver: { copied: {} },
+          seriesId: 'super-formula',
+          tireSetsByDriver: { copied: { S: 6 } },
+        },
+      }),
+      series.tracks,
+      series.drivers,
+      'super-formula',
+    )
+    const restoredSeason = parsePersistedSeason(
+      JSON.stringify({
+        completedRounds: [],
+        driverPoints: {},
+        garage: {
+          componentsByDriver: { copied: {} },
+          kind: 'super-formula',
+          pendingGridPenaltyByDriver: { copied: 10 },
+        },
+        seriesId: 'super-formula',
+        teamPoints: {},
+      }),
+      'super-formula',
+    )
+
+    if (
+      !restoredWeekend ||
+      restoredWeekend.weekendContext.seriesId !== 'super-formula'
+    ) {
+      throw new Error('Expected a source-backed SUPER FORMULA weekend context.')
+    }
+
+    expect(restoredWeekend.weekendContext).not.toHaveProperty(
+      'componentConditionByDriver',
+    )
+    expect(restoredWeekend.weekendContext).not.toHaveProperty('tireSetsByDriver')
+    expect(restoredSeason.garage).toMatchObject({ kind: 'super-formula' })
+    expect(restoredSeason.garage).not.toHaveProperty('componentsByDriver')
+  })
+
+  it('round-trips only the sourced SUPER FORMULA lifecycle payload', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const weekendContext = createWeekendContext(
+      series.drivers,
+      series.tracks[0].isSprintWeekend,
+      series.tracks[0],
+      undefined,
+      'super-formula',
+    )
+    const season = createSeasonState(series.drivers, 'super-formula')
+    const restoredWeekend = parsePersistedWeekend(
+      JSON.stringify({
+        gridSource: 'brief',
+        seed: 'sf-source-backed-save',
+        seriesId: 'super-formula',
+        stage: 'race',
+        trackId: series.tracks[0].id,
+        version: 4,
+        weekendContext,
+      }),
+      series.tracks,
+      series.drivers,
+      'super-formula',
+    )
+    const restoredSeason = parsePersistedSeason(
+      JSON.stringify(season),
+      'super-formula',
+    )
+
+    if (
+      !restoredWeekend ||
+      restoredWeekend.weekendContext.seriesId !== 'super-formula'
+    ) {
+      throw new Error('Expected a restored SUPER FORMULA weekend context.')
+    }
+
+    const firstDriver = series.drivers[0]
+    expect(
+      restoredWeekend.weekendContext.controlTireInventoryByDriver[
+        firstDriver.id
+      ],
+    ).toMatchObject({
+      sets: { dry: { maximumSets: 6 }, wet: { maximumSets: 6 } },
+    })
+    expect(
+      restoredWeekend.weekendContext.engineLedgerByEntrant[firstDriver.teamId],
+    ).toMatchObject({ engine: { maximumPerEntrantPerSeason: 2, used: 1 } })
+    expect(restoredSeason.garage).toMatchObject({ kind: 'super-formula' })
+    expect(restoredSeason.garage).not.toHaveProperty('componentsByDriver')
+  })
+
+  it('round-trips only explicit SUPER FORMULA Article 5 official ledgers', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const driver = series.drivers[0]
+    const adjudicated = recordOfficialSuperFormulaPenaltyPointAdjudication(
+      createSeasonState(series.drivers, 'super-formula'),
+      {
+        assessedOn: '2026-08-01',
+        driverId: driver.id,
+        officialDecisionId: 'official-save-article-5-1',
+        points: 6,
+      },
+    )
+    const restored = parsePersistedSeason(
+      JSON.stringify(adjudicated.season),
+      'super-formula',
+    )
+
+    expect(restored.discipline).toMatchObject({
+      kind: 'super-formula-article-5',
+      penaltyLedgerByDriver: {
+        [driver.id]: {
+          kind: 'super-formula-2026-penalty-point-ledger',
+          pointEntries: [
+            expect.objectContaining({ id: 'official-save-article-5-1' }),
+          ],
+        },
+      },
+    })
+    expect(superFormulaNextEventEligibility(restored, driver.id)).toMatchObject({
+      status: 'next-event-suspension-pending',
+    })
+
+    const corrupted = JSON.parse(JSON.stringify(adjudicated.season)) as {
+      discipline: unknown
+    }
+    corrupted.discipline = {
+      kind: 'f1',
+      penaltyPointsByDriver: { [driver.id]: 6 },
+    }
+    const repaired = parsePersistedSeason(
+      JSON.stringify(corrupted),
+      'super-formula',
+    )
+
+    expect(repaired.discipline).toEqual({
+      kind: 'super-formula-article-5',
+      penaltyLedgerByDriver: {},
+    })
   })
 })

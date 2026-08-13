@@ -26,15 +26,23 @@ import type {
   DriverAssignmentRecord,
   DriverPoolRecord,
   SeriesCalendarEvent,
+  SeriesEventOperation,
   SeriesId,
   SeriesPackage,
   SeriesRules,
+  SuperFormulaEventOperations,
+  SuperFormulaSeriesRules,
 } from '../series/types'
+import { isF1SeriesRules } from '../series/types'
 import {
   isExecutableSeriesId,
   type DriverSourceSeriesId,
 } from '../series/seriesIds'
-import { seatedDriverFrom, validateSeriesPackage } from '../series/seriesRegistry'
+import {
+  resolveSuperFormulaEventOperations,
+  seatedDriverFrom,
+  validateSeriesPackage,
+} from '../series/seriesRegistry'
 import type {
   Driver,
   MachinePerformanceProfile,
@@ -211,6 +219,64 @@ function fieldMean(team: Team) {
       machineKeys.length) *
       100,
   )
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function superFormulaControlTyreSummary(
+  rules: SuperFormulaSeriesRules,
+) {
+  return `${rules.tireSupplier} / ${rules.tires.dry.label} max ${rules.tires.dry.maxSetsPerCarPerRace} / ${rules.tires.wet.label} max ${rules.tires.wet.maxSetsPerCarPerRace}`
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function seriesEventOperationLabel<Value>(
+  operation: SeriesEventOperation<Value>,
+) {
+  return operation.availability === 'verified-event-override'
+    ? `VERIFIED EVENT OVERRIDE / ${operation.provenance.sourceId}`
+    : `UNAVAILABLE / ${operation.reason}`
+}
+
+function superFormulaRaceDistanceLabel(
+  operation: SuperFormulaEventOperations['raceDistance'],
+) {
+  if (operation.availability !== 'verified-event-override') {
+    return seriesEventOperationLabel(operation)
+  }
+
+  const limits = [
+    operation.value.timeLimitSeconds === null
+      ? null
+      : `${Math.round(operation.value.timeLimitSeconds / 60)}m max`,
+    operation.value.overallTimeLimitSeconds === null
+      ? null
+      : `${Math.round(operation.value.overallTimeLimitSeconds / 60)}m overall`,
+  ].filter((value): value is string => value !== null)
+
+  return [
+    `${operation.value.laps} laps`,
+    ...limits,
+    seriesEventOperationLabel(operation),
+  ].join(' / ')
+}
+
+function superFormulaEventOperationSummary(
+  operations: SuperFormulaEventOperations,
+) {
+  const raceDistance =
+    operations.raceDistance.availability === 'verified-event-override'
+      ? `race ${operations.raceDistance.value.laps} laps VERIFIED`
+      : 'race UNAVAILABLE'
+  const mandatoryPitStop =
+    operations.mandatoryPitStop.availability === 'verified-event-override'
+      ? `pit ${operations.mandatoryPitStop.value ? 'REQUIRED' : 'NOT REQUIRED'} VERIFIED`
+      : 'pit UNAVAILABLE'
+  const ots =
+    operations.ots.availability === 'verified-event-override'
+      ? 'OTS VERIFIED'
+      : 'OTS UNAVAILABLE'
+
+  return [raceDistance, mandatoryPitStop, ots].join(' / ')
 }
 
 // oxlint-disable-next-line react/only-export-components
@@ -565,6 +631,13 @@ export function SeriesDataManager({
   const selectedRuleEvent =
     series.calendar.find((event) => event.id === selectedRuleEventId) ??
     series.calendar[0]
+  const f1Rules = isF1SeriesRules(series.rules) ? series.rules : null
+  const superFormulaRules = isF1SeriesRules(series.rules)
+    ? null
+    : series.rules
+  const superFormulaEventOperations = f1Rules
+    ? null
+    : resolveSuperFormulaEventOperations(series, selectedRuleEvent?.id)
   const activeFilteredIds = new Set(
     filteredDirectory
       .filter((driver) => driver.currentDriver !== null)
@@ -1121,22 +1194,35 @@ export function SeriesDataManager({
               <span>Cars</span><strong>{series.carCount}</strong>
               <span>Teams</span><strong>{series.teamCount}</strong>
               <span>Qualifying</span><strong>{series.rules.qualifying.format} / {series.rules.qualifying.segments.map((segment) => `${segment.name} ${Math.round(segment.durationSeconds / 60)}m`).join(' / ')}</strong>
-              <span>Overtake</span><strong>{series.rules.overtakeSystem.toUpperCase()} / {series.rules.overtakeActivation}</strong>
+              <span>Overtake</span><strong>{f1Rules ? `${f1Rules.overtakeSystem.toUpperCase()} / ${f1Rules.overtakeActivation}` : `OTS / ${superFormulaEventOperations ? seriesEventOperationLabel(superFormulaEventOperations.ots) : 'UNAVAILABLE'}`}</strong>
               <span>Feature points</span><strong>{series.rules.points.feature.join('-')}</strong>
               <span>Sprint points</span><strong>{series.rules.points.sprint.join('-') || 'N/A'}</strong>
               <span>Qualifying points</span><strong>{series.rules.points.qualifying.join('-') || 'N/A'}</strong>
-              <span>Tyres</span><strong>{series.rules.tireSupplier} / {Object.entries(series.rules.tires.standardAllocation).map(([compound, count]) => `${compound}${count}`).join(' ')}</strong>
-              <span>Mandatory stop</span><strong>{series.rules.featureRaceMandatoryPitStop ? 'YES' : 'NO'}</strong>
+              <span>Tyres</span><strong>{f1Rules ? `${f1Rules.tireSupplier} / ${Object.entries(f1Rules.tires.standardAllocation).map(([compound, count]) => `${compound}${count}`).join(' ')}` : superFormulaRules ? superFormulaControlTyreSummary(superFormulaRules) : 'UNAVAILABLE'}</strong>
+              <span>Mandatory stop</span><strong>{f1Rules ? (f1Rules.featureRaceMandatoryPitStop ? 'YES' : 'NO') : (superFormulaEventOperations ? seriesEventOperationLabel(superFormulaEventOperations.mandatoryPitStop) : 'UNAVAILABLE')}</strong>
             </div>
             <div className="rule-editor-controls">
               <label><span>Practice minutes</span><input max={240} min={1} onChange={(event) => updateRules({ ...series.rules, freePracticeDurationSeconds: Number(event.target.value) * 60 }, 'Practice duration updated')} type="number" value={Math.round(series.rules.freePracticeDurationSeconds / 60)} /></label>
               <label><span>Qualifying break minutes</span><input max={60} min={0} onChange={(event) => updateRules({ ...series.rules, qualifying: { ...series.rules.qualifying, breakSeconds: Number(event.target.value) * 60 } }, 'Qualifying break updated')} type="number" value={Math.round(series.rules.qualifying.breakSeconds / 60)} /></label>
-              <label className="rule-checkbox"><input checked={series.rules.featureRaceMandatoryPitStop} onChange={(event) => updateRules({ ...series.rules, featureRaceMandatoryPitStop: event.target.checked }, 'Mandatory stop rule updated')} type="checkbox" /><span>Mandatory feature stop</span></label>
-              <label className="rule-checkbox"><input checked={series.rules.featureRaceTwoDryCompounds} onChange={(event) => updateRules({ ...series.rules, featureRaceTwoDryCompounds: event.target.checked }, 'Two-compound rule updated')} type="checkbox" /><span>Two dry compounds</span></label>
+              {f1Rules ? <>
+                <label className="rule-checkbox"><input checked={f1Rules.featureRaceMandatoryPitStop} onChange={(event) => updateRules({ ...f1Rules, featureRaceMandatoryPitStop: event.target.checked }, 'Mandatory stop rule updated')} type="checkbox" /><span>Mandatory feature stop</span></label>
+                <label className="rule-checkbox"><input checked={f1Rules.featureRaceTwoDryCompounds} onChange={(event) => updateRules({ ...f1Rules, featureRaceTwoDryCompounds: event.target.checked }, 'Two-compound rule updated')} type="checkbox" /><span>Two dry compounds</span></label>
+                <label><span>Active aero activation</span><select onChange={(event) => updateRules({ ...f1Rules, overtakeActivation: event.target.value as typeof f1Rules.overtakeActivation }, 'Active aero activation updated')} value={f1Rules.overtakeActivation}><option value="first-detection">First detection</option><option value="after-one-lap">After one lap</option><option value="immediate">Immediate</option></select></label>
+                <label><span>Qualifying dry tyre</span><select onChange={(event) => updateRules({ ...f1Rules, tires: { ...f1Rules.tires, qualifyingDryCompound: event.target.value as typeof f1Rules.tires.qualifyingDryCompound } }, 'Qualifying dry tyre updated')} value={f1Rules.tires.qualifyingDryCompound}>{(['H', 'M', 'S'] as const).map((compound) => <option key={compound} value={compound}>{f1Rules.tires.dryLabels[compound]}</option>)}</select></label>
+              </> : <div className="rule-operation-readonly">
+                <span>SUPER FORMULA control tyres</span><strong>{superFormulaRules ? superFormulaControlTyreSummary(superFormulaRules) : 'UNAVAILABLE'}</strong>
+                <small>Source-bound control tyre limits; F1 compound allocations are not applicable.</small>
+                <span>Event operations</span><strong>{superFormulaEventOperations ? [
+                  `Race distance: ${superFormulaRaceDistanceLabel(superFormulaEventOperations.raceDistance)}`,
+                  `Mandatory stop: ${seriesEventOperationLabel(superFormulaEventOperations.mandatoryPitStop)}`,
+                  `OTS: ${seriesEventOperationLabel(superFormulaEventOperations.ots)}`,
+                ].join(' / ') : 'UNAVAILABLE'}</strong>
+                <small>Only provenance-bearing event overrides can change these operational values.</small>
+              </div>}
               <label><span>Team scoring</span><select onChange={(event) => updateRules({ ...series.rules, championshipTeamScoring: event.target.value as SeriesRules['championshipTeamScoring'] }, 'Team scoring updated')} value={series.rules.championshipTeamScoring}><option value="all-cars">All cars</option><option value="best-two">Best two</option></select></label>
-              {tireCompounds.map((compound) => (
-                <label key={compound}><span>{compound} tyre sets</span><input max={30} min={0} onChange={(event) => updateRules({ ...series.rules, tires: { ...series.rules.tires, standardAllocation: { ...series.rules.tires.standardAllocation, [compound]: Number(event.target.value) } } }, `${compound} tyre allocation updated`)} type="number" value={series.rules.tires.standardAllocation[compound]} /></label>
-              ))}
+              {f1Rules ? tireCompounds.map((compound) => (
+                <label key={compound}><span>{compound} tyre sets</span><input max={30} min={0} onChange={(event) => updateRules({ ...f1Rules, tires: { ...f1Rules.tires, standardAllocation: { ...f1Rules.tires.standardAllocation, [compound]: Number(event.target.value) } } }, `${compound} tyre allocation updated`)} type="number" value={f1Rules.tires.standardAllocation[compound]} /></label>
+              )) : null}
               <RulePointsInput label="Feature points" onCommit={(feature) => updateRules({ ...series.rules, points: { ...series.rules.points, feature } }, 'Feature points updated')} values={series.rules.points.feature} />
               <RulePointsInput label="Sprint points" onCommit={(sprint) => updateRules({ ...series.rules, points: { ...series.rules.points, sprint } }, 'Sprint points updated')} values={series.rules.points.sprint} />
               <RulePointsInput label="Qualifying points" onCommit={(qualifying) => updateRules({ ...series.rules, points: { ...series.rules.points, qualifying } }, 'Qualifying points updated')} values={series.rules.points.qualifying} />
@@ -1161,10 +1247,17 @@ export function SeriesDataManager({
               <div className="event-rule-editor">
                 <header><span>EVENT OVERRIDE</span><strong>R{selectedRuleEvent.round} {selectedRuleEvent.id}</strong><small>{selectedRuleEvent.trackId}</small></header>
                 <label><span>Race count</span><input max={3} min={1} onChange={(event) => updateCalendarEvent({ raceCount: Number(event.target.value) }, `${selectedRuleEvent.id} race count updated`)} type="number" value={selectedRuleEvent.raceCount} /></label>
-                <label><span>Race laps</span><input min={1} onChange={(event) => updateCalendarEvent({ raceLaps: event.target.value === '' ? undefined : Number(event.target.value) }, `${selectedRuleEvent.id} lap override updated`)} placeholder="AUTO" type="number" value={selectedRuleEvent.raceLaps ?? ''} /></label>
-                <label><span>Time limit min</span><input min={1} onChange={(event) => updateCalendarEvent({ raceTimeLimitSeconds: event.target.value === '' ? undefined : Number(event.target.value) * 60 }, `${selectedRuleEvent.id} time limit updated`)} placeholder="SERIES" type="number" value={selectedRuleEvent.raceTimeLimitSeconds === undefined ? '' : selectedRuleEvent.raceTimeLimitSeconds / 60} /></label>
-                <label><span>Overall limit min</span><input min={1} onChange={(event) => updateCalendarEvent({ raceOverallTimeLimitSeconds: event.target.value === '' ? undefined : Number(event.target.value) * 60 }, `${selectedRuleEvent.id} overall limit updated`)} placeholder="SERIES" type="number" value={selectedRuleEvent.raceOverallTimeLimitSeconds === undefined ? '' : selectedRuleEvent.raceOverallTimeLimitSeconds / 60} /></label>
-                <label><span>Mandatory stop</span><select onChange={(event) => updateCalendarEvent({ featureRaceMandatoryPitStop: event.target.value === 'inherit' ? undefined : event.target.value === 'yes' }, `${selectedRuleEvent.id} pit rule updated`)} value={selectedRuleEvent.featureRaceMandatoryPitStop === undefined ? 'inherit' : selectedRuleEvent.featureRaceMandatoryPitStop ? 'yes' : 'no'}><option value="inherit">Series rule</option><option value="yes">Required</option><option value="no">Not required</option></select></label>
+                {f1Rules ? <>
+                  <label><span>Race laps</span><input min={1} onChange={(event) => updateCalendarEvent({ raceLaps: event.target.value === '' ? undefined : Number(event.target.value) }, `${selectedRuleEvent.id} lap override updated`)} placeholder="AUTO" type="number" value={selectedRuleEvent.raceLaps ?? ''} /></label>
+                  <label><span>Time limit min</span><input min={1} onChange={(event) => updateCalendarEvent({ raceTimeLimitSeconds: event.target.value === '' ? undefined : Number(event.target.value) * 60 }, `${selectedRuleEvent.id} time limit updated`)} placeholder="SERIES" type="number" value={selectedRuleEvent.raceTimeLimitSeconds === undefined ? '' : selectedRuleEvent.raceTimeLimitSeconds / 60} /></label>
+                  <label><span>Overall limit min</span><input min={1} onChange={(event) => updateCalendarEvent({ raceOverallTimeLimitSeconds: event.target.value === '' ? undefined : Number(event.target.value) * 60 }, `${selectedRuleEvent.id} overall limit updated`)} placeholder="SERIES" type="number" value={selectedRuleEvent.raceOverallTimeLimitSeconds === undefined ? '' : selectedRuleEvent.raceOverallTimeLimitSeconds / 60} /></label>
+                  <label><span>Mandatory stop</span><select onChange={(event) => updateCalendarEvent({ featureRaceMandatoryPitStop: event.target.value === 'inherit' ? undefined : event.target.value === 'yes' }, `${selectedRuleEvent.id} pit rule updated`)} value={selectedRuleEvent.featureRaceMandatoryPitStop === undefined ? 'inherit' : selectedRuleEvent.featureRaceMandatoryPitStop ? 'yes' : 'no'}><option value="inherit">Series rule</option><option value="yes">Required</option><option value="no">Not required</option></select></label>
+                </> : <div className="event-operation-readonly">
+                  <span>Race distance</span><strong>{superFormulaEventOperations ? superFormulaRaceDistanceLabel(superFormulaEventOperations.raceDistance) : 'UNAVAILABLE'}</strong>
+                  <span>Mandatory stop</span><strong>{superFormulaEventOperations ? seriesEventOperationLabel(superFormulaEventOperations.mandatoryPitStop) : 'UNAVAILABLE'}</strong>
+                  <span>OTS</span><strong>{superFormulaEventOperations ? seriesEventOperationLabel(superFormulaEventOperations.ots) : 'UNAVAILABLE'}</strong>
+                  <small>SUPER FORMULA operational values are sourced event records, not editable F1-compatible overrides.</small>
+                </div>}
                 <label><span>Points source</span><select onChange={(event) => updateCalendarEvent({ featurePoints: event.target.value === 'series' ? undefined : [...series.rules.points.feature] }, `${selectedRuleEvent.id} points source updated`)} value={selectedRuleEvent.featurePoints ? 'event' : 'series'}><option value="series">Series table</option><option value="event">Event override</option></select></label>
                 <label className="rule-checkbox"><input checked={selectedRuleEvent.cancelled ?? false} onChange={(event) => updateCalendarEvent({ cancelled: event.target.checked || undefined }, `${selectedRuleEvent.id} cancellation updated`)} type="checkbox" /><span>Cancelled / no points</span></label>
                 {selectedRuleEvent.featurePoints ? <RulePointsInput label="Event points" onCommit={(featurePoints) => updateCalendarEvent({ featurePoints }, `${selectedRuleEvent.id} points updated`)} values={selectedRuleEvent.featurePoints} /> : null}
@@ -1178,9 +1271,15 @@ export function SeriesDataManager({
                   <span>{[
                     event.weekendStages ? event.weekendStages.join('/') : null,
                     event.qualifying ? `${event.qualifying.format}:${event.qualifying.segments.map((segment) => segment.name).join('/')}` : null,
-                    event.raceLaps ? `${event.raceLaps} laps` : null,
+                    f1Rules
+                      ? (event.raceLaps ? `${event.raceLaps} laps` : null)
+                      : superFormulaEventOperationSummary(
+                          resolveSuperFormulaEventOperations(series, event.id)!,
+                        ),
                     event.featurePoints ? `${event.featurePoints.join('-')} pts` : null,
-                    event.featureRaceMandatoryPitStop === false ? 'no mandatory stop' : null,
+                    f1Rules && event.featureRaceMandatoryPitStop === false
+                      ? 'no mandatory stop'
+                      : null,
                     event.gridSourceTrackId ? `grid:${event.gridSourceTrackId}` : null,
                   ].filter(Boolean).join(' / ') || 'standard'}</span>
                 </div>

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { seriesPackageById } from '../series/seriesRegistry'
 import type { SeriesPackage } from '../series/types'
-import type { Driver, Team, WeatherState } from '../types'
+import type { Driver, Team, TimedSessionTire, WeatherState } from '../types'
 import { baselineSetupForTrack } from './engineering'
 import { incidentForLap } from './incidents'
 import {
+  superFormulaControlSessionTireForWeather,
   timedSessionDriverExecutionLossSeconds,
   timedSessionPhysicalLapSeconds,
 } from './qualifying'
@@ -39,14 +40,23 @@ function mean(values: number[]) {
 
 function conditionForWeather(weather: WeatherState) {
   return {
-    compound:
-      weather === 'heavy-rain'
-        ? ('W' as const)
-        : weather === 'light-rain'
-          ? ('I' as const)
-          : ('S' as const),
+    tire: f1SessionTireForWeather(weather),
     trackGrip:
       weather === 'heavy-rain' ? 0.62 : weather === 'light-rain' ? 0.82 : 1,
+  }
+}
+
+function f1SessionTireForWeather(
+  weather: WeatherState,
+): Extract<TimedSessionTire, { kind: 'f1-pirelli-session-tire' }> {
+  return {
+    compound:
+      weather === 'heavy-rain'
+        ? 'W'
+        : weather === 'light-rain'
+          ? 'I'
+          : 'S',
+    kind: 'f1-pirelli-session-tire',
   }
 }
 
@@ -175,11 +185,11 @@ describe('10,000-run statistical acceptance', () => {
       track,
     }
     const common = {
-      compound: superFormula.rules.tires.qualifyingDryCompound,
       config,
       fuelLoadKg: 8,
       setup: baselineSetupForTrack(track),
       trackGrip: 1,
+      tire: superFormulaControlSessionTireForWeather('clear'),
       weather: 'clear' as const,
       weekendStage: 'qualifying' as const,
     }

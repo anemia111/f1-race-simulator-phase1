@@ -27,6 +27,24 @@ const formatLapTime = (seconds: number | null | undefined) => {
   return `${minutes}:${remainder}`
 }
 
+/**
+ * The live classification deliberately formats tyre state from the category
+ * branch. In particular, an SF car cannot be shown with an F1 compound or
+ * F1 temperature/wear values that its runtime does not own.
+ */
+// oxlint-disable-next-line react/only-export-components -- directly unit-tested display boundary
+export function qualifyingRuntimeTireSummaryFor(
+  runtimeSystems: RaceSnapshot['cars'][number]['runtimeSystems'],
+) {
+  if (runtimeSystems.kind === 'f1') {
+    return `${runtimeSystems.tires.tire} / ${runtimeSystems.tires.tireAgeLaps}L`
+  }
+
+  const { liveTires } = runtimeSystems
+
+  return `${liveTires.activeSurface.toUpperCase()} CONTROL / ${liveTires.lapsOnCurrentSet}L / PHYSICAL MODEL ${liveTires.physicalModel.availability.toUpperCase()}`
+}
+
 const releaseStrategyLabels = {
   'bank-lap': 'BANK',
   'traffic-gap': 'GAP',
@@ -229,52 +247,58 @@ export function QualifyingClassificationPanel({
         <span>STATUS</span>
       </div>
       <ol>
-        {snapshot.cars.map((car, index) => (
-          <Fragment key={car.driverId}>
-            <li className="qualifying-result-row">
-              <span
-                className="result-position"
-                style={{ backgroundColor: car.teamColor }}
-              >
-                {index + 1}
-              </span>
-              <div className="result-driver">
-                <strong>{car.code}</strong>
-                <span>{car.driverName}</span>
-              </div>
-              {segments.map((segment) => (
-                <strong
-                  className={
-                    typeof car.timedSegmentBestSeconds[segment.name] ===
-                    'number'
-                      ? 'qualifying-time'
-                      : 'qualifying-time qualifying-time-pending'
-                  }
-                  key={segment.name}
+        {snapshot.cars.map((car, index) => {
+          const tireSummary = qualifyingRuntimeTireSummaryFor(car.runtimeSystems)
+
+          return (
+            <Fragment key={car.driverId}>
+              <li className="qualifying-result-row">
+                <span
+                  className="result-position"
+                  style={{ backgroundColor: car.teamColor }}
                 >
-                  {formatLapTime(car.timedSegmentBestSeconds[segment.name])}
-                </strong>
-              ))}
-              <b className="qualifying-status">
-                {statusFor(index, car.driverId)}
-              </b>
-            </li>
-            {segments.slice(0, -1).map((segment, segmentIndex) =>
-              segment.advanceCount !== null &&
-              index + 1 === segment.advanceCount ? (
-                <li
-                  className="qualifying-cut-marker"
-                  key={`${segment.name}-cut`}
-                >
-                  <span>
-                    {segments[segmentIndex + 1].name} CUT - TOP{' '}
-                    {segment.advanceCount}
+                  {index + 1}
+                </span>
+                <div className="result-driver">
+                  <strong>{car.code}</strong>
+                  <span title={tireSummary}>
+                    {car.driverName} / {tireSummary}
                   </span>
-                </li>
-              ) : null,
-            )}
-          </Fragment>
-        ))}
+                </div>
+                {segments.map((segment) => (
+                  <strong
+                    className={
+                      typeof car.timedSegmentBestSeconds[segment.name] ===
+                      'number'
+                        ? 'qualifying-time'
+                        : 'qualifying-time qualifying-time-pending'
+                    }
+                    key={segment.name}
+                  >
+                    {formatLapTime(car.timedSegmentBestSeconds[segment.name])}
+                  </strong>
+                ))}
+                <b className="qualifying-status">
+                  {statusFor(index, car.driverId)}
+                </b>
+              </li>
+              {segments.slice(0, -1).map((segment, segmentIndex) =>
+                segment.advanceCount !== null &&
+                index + 1 === segment.advanceCount ? (
+                  <li
+                    className="qualifying-cut-marker"
+                    key={`${segment.name}-cut`}
+                  >
+                    <span>
+                      {segments[segmentIndex + 1].name} CUT - TOP{' '}
+                      {segment.advanceCount}
+                    </span>
+                  </li>
+                ) : null,
+              )}
+            </Fragment>
+          )
+        })}
       </ol>
       <footer>
         <Flag aria-hidden="true" size={13} />

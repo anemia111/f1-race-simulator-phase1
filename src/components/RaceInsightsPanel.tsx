@@ -5,9 +5,11 @@ import { formatLapTime } from '../domain/timingFormat'
 import {
   completedSeasonEventCount,
   rankSeasonEntries,
+  superFormulaNextEventEligibility,
   type SeasonState,
 } from '../simulation/season'
 import { weakestComponent } from '../simulation/components'
+import { tireDisplayForLapRecord } from '../simulation/classification'
 import { tireConditionFor } from '../simulation/tires'
 import { driverAbilityValue } from '../simulation/driverAbility'
 import type {
@@ -15,6 +17,7 @@ import type {
   Driver,
   RacePaceMode,
   RaceSnapshot,
+  TireCompound,
   TrackDefinition,
   WeekendContext,
 } from '../types'
@@ -30,7 +33,7 @@ type RaceInsightsPanelProps = {
   track: TrackDefinition
   weekendContext: WeekendContext
   season: SeasonState
-  onRequestPitStop: (driverId: string, compound: CarSnapshot['tire']) => void
+  onRequestPitStop: (driverId: string, compound: TireCompound) => void
   onSetDriverPaceMode: (driverId: string, mode: RacePaceMode) => void
 }
 
@@ -51,7 +54,23 @@ export function RaceInsightsPanel({
   onRequestPitStop,
   onSetDriverPaceMode,
 }: RaceInsightsPanelProps) {
-  const [requestedCompound, setRequestedCompound] = useState<CarSnapshot['tire']>(car.tire)
+  const f1Runtime =
+    car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
+  const f1Tires = f1Runtime?.tires ?? null
+  const superFormulaRuntime =
+    car.runtimeSystems.kind === 'super-formula'
+      ? car.runtimeSystems
+      : null
+  const superFormulaArticle5Eligibility = useMemo(
+    () =>
+      superFormulaRuntime !== null && season.seriesId === 'super-formula'
+        ? superFormulaNextEventEligibility(season, car.driverId)
+        : null,
+    [car.driverId, season, superFormulaRuntime],
+  )
+  const [requestedCompound, setRequestedCompound] = useState<TireCompound>(
+    () => f1Tires?.tire ?? 'M',
+  )
   const qualifyingClassificationStatus =
     car.qualifyingClassificationStatus ?? 'classified'
   const qualifyingClassificationLabel =
@@ -67,20 +86,26 @@ export function RaceInsightsPanel({
   const tireManagement = driverAbilityValue(driver, 'tireManagement')
   const tireCondition = useMemo(
     () =>
-      tireConditionFor(
-        car.tire,
-        car.tireAgeLaps,
-        tireManagement,
-        car.tireTemperatureC,
-        car.tireWearPercent,
-        track.tireNomination,
-      ),
-    [car.tire, car.tireAgeLaps, car.tireTemperatureC, car.tireWearPercent, tireManagement, track.tireNomination],
+      f1Tires
+        ? tireConditionFor(
+            f1Tires.tire,
+            f1Tires.tireAgeLaps,
+            tireManagement,
+            f1Tires.tireTemperatureC,
+            f1Tires.tireWearPercent,
+            track.tireNomination,
+          )
+        : null,
+    [f1Tires, tireManagement, track.tireNomination],
   )
   const strategy = usePitStrategyOutlook({ car, driver, snapshot, track })
+  const f1StrategyView =
+    f1Runtime !== null && strategy !== null
+      ? { strategy, tires: f1Runtime.tires }
+      : null
   const weakestComponentEntry = useMemo(
-    () => weakestComponent(car.components),
-    [car.components],
+    () => (f1Runtime ? weakestComponent(f1Runtime.components) : null),
+    [f1Runtime],
   )
   const recentLaps = useMemo(() => car.lapHistory.slice(-8).reverse(), [car.lapHistory])
   const relevantEvents = useMemo(
@@ -140,22 +165,44 @@ export function RaceInsightsPanel({
       </header>
 
       <div className="insight-source-grid">
-        <span>Timing</span><strong className={timingIsOpenF1 ? 'flag-clear' : 'flag-yellow'}>{timingIsOpenF1 ? 'OpenF1' : 'SIM record'}</strong>
-        <span>Telemetry</span><strong className={telemetryIsOpenF1 ? 'flag-clear' : 'flag-yellow'}>{telemetryIsOpenF1 ? 'OpenF1' : 'SIM model'}</strong>
-        <span>Race engine</span><strong>SIM</strong>
-        <span>OpenF1 layer</span><strong>{openF1Mode}</strong>
+        {f1Runtime && strategy !== null ? (
+          <>
+            <span>Timing</span><strong className={timingIsOpenF1 ? 'flag-clear' : 'flag-yellow'}>{timingIsOpenF1 ? 'OpenF1' : 'SIM record'}</strong>
+            <span>Telemetry</span><strong className={telemetryIsOpenF1 ? 'flag-clear' : 'flag-yellow'}>{telemetryIsOpenF1 ? 'OpenF1' : 'SIM model'}</strong>
+            <span>Race engine</span><strong>SIM</strong>
+            <span>OpenF1 layer</span><strong>{openF1Mode}</strong>
+          </>
+        ) : (
+          <>
+            <span>Timing</span><strong>SIM record</strong>
+            <span>Telemetry</span><strong>SIM model</strong>
+            <span>Race engine</span><strong>SIM</strong>
+            <span>Category rules</span><strong>JAF source package</strong>
+          </>
+        )}
         <span>Layout</span><strong className={track.layoutSource?.detail === 'real' ? 'flag-clear' : 'flag-yellow'}>{track.layoutSource?.detail === 'real' ? 'Real' : 'Fallback'}</strong>
       </div>
 
       <section className="insight-section">
         <h2><Gauge aria-hidden="true" size={13} /> Tyres & surface</h2>
-        <div className="insight-grid">
-          <span>Compound</span><strong>{car.tire} / {car.tireAgeLaps} laps</strong>
-          <span>Life</span><strong>{tireCondition.lifeRemainingPercent}% / {tireCondition.wearState}</strong>
-          <span>Temperature</span><strong>{Math.round(car.tireTemperatureC)}C / {tireCondition.operatingState}</strong>
-          <span>Life / brakes</span><strong>{tireCondition.lifeRemainingPercent}% / {Math.round(car.brakeTemperatureC)}C</strong>
-          <span>Surface</span><strong>{compactWeather(snapshot.weather)} / {Math.round(snapshot.trackGrip * 100)}% grip</strong>
-        </div>
+        {f1Runtime && tireCondition ? (
+          <div className="insight-grid">
+            <span>Compound</span><strong>{f1Runtime.tires.tire} / {f1Runtime.tires.tireAgeLaps} laps</strong>
+            <span>Life</span><strong>{tireCondition.lifeRemainingPercent}% / {tireCondition.wearState}</strong>
+            <span>Temperature</span><strong>{Math.round(f1Runtime.tires.tireTemperatureC)}C / {tireCondition.operatingState}</strong>
+            <span>Life / brakes</span><strong>{tireCondition.lifeRemainingPercent}% / {Math.round(car.brakeTemperatureC)}C</strong>
+            <span>Surface</span><strong>{compactWeather(snapshot.weather)} / {Math.round(snapshot.trackGrip * 100)}% grip</strong>
+          </div>
+        ) : superFormulaRuntime ? (
+          <div className="insight-grid">
+            <span>Control tyres</span><strong>dry {superFormulaRuntime.controlTires.sets.dry.maximumSets} / wet {superFormulaRuntime.controlTires.sets.wet.maximumSets} maximum sets</strong>
+            <span>Fitted control tyre</span><strong>{superFormulaRuntime.liveTires.activeSurface.toUpperCase()} / {superFormulaRuntime.liveTires.lapsOnCurrentSet} laps</strong>
+            <span>Dry inventory</span><strong>{superFormulaRuntime.controlTires.sets.dry.remainingSets} remaining / {superFormulaRuntime.controlTires.sets.dry.usedSets} used</strong>
+            <span>Wet inventory</span><strong>{superFormulaRuntime.controlTires.sets.wet.remainingSets} remaining / {superFormulaRuntime.controlTires.sets.wet.usedSets} used</strong>
+            <span>Physical tyre model</span><strong>UNAVAILABLE / no verified coefficients</strong>
+            <span>Surface</span><strong>{compactWeather(snapshot.weather)} / {Math.round(snapshot.trackGrip * 100)}% grip</strong>
+          </div>
+        ) : null}
       </section>
 
       <section className="insight-section">
@@ -170,37 +217,53 @@ export function RaceInsightsPanel({
 
       <section className="insight-section">
         <h2><Route aria-hidden="true" size={13} /> Strategy outlook</h2>
-        <div className="insight-grid">
-          <span>Call</span><strong className={`strategy-${strategy.outlook.urgency}`}>{strategy.outlook.urgency.toUpperCase()} / {strategy.outlook.reason}</strong>
-          <span>Next stop</span><strong>Lap {strategy.outlook.estimatedStopLap}</strong>
-          <span>Next tyre</span><strong>{strategy.outlook.compound}</strong>
-          <span>Gap ahead</span><strong>{car.gapToAheadLabel}</strong>
-          <span>Rejoin</span><strong>P{strategy.projectedRejoinPosition} / {strategy.pitLaneLossSeconds.toFixed(1)}s</strong>
-          <span>Stop now delta</span><strong className={strategy.outlook.expectedNetGainSeconds >= 0 ? 'flag-clear' : 'flag-yellow'}>{strategy.outlook.expectedNetGainSeconds >= 0 ? '+' : ''}{strategy.outlook.expectedNetGainSeconds.toFixed(1)}s / {strategy.outlook.confidence}</strong>
-          <span>Effective loss</span><strong>{strategy.outlook.estimatedPitLossSeconds.toFixed(1)}s</strong>
-          <span>Pit lane / exit</span><strong className={snapshot.pitLaneOpen && snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? (snapshot.pitExitOpen ? 'OPEN' : 'EXIT RED') : 'CLOSED'}</strong>
-        </div>
-        <div className="manual-strategy">
-          <select
-            aria-label="requested pit compound"
-            onChange={(event) => setRequestedCompound(event.target.value as CarSnapshot['tire'])}
-            value={requestedCompound}
-          >
-            {(['S', 'M', 'H', 'I', 'W'] as const).map((compound) => (
-              <option disabled={(car.tireSetsRemaining[compound] ?? 0) <= 0} key={compound} value={compound}>
-                {compound} ({car.tireSetsRemaining[compound] ?? 0})
-              </option>
-            ))}
-          </select>
-          <button
-            disabled={car.status !== 'running' || (car.tireSetsRemaining[requestedCompound] ?? 0) <= 0}
-            onClick={() => onRequestPitStop(car.driverId, requestedCompound)}
-            title="Request a pit stop at the next safe lap crossing"
-            type="button"
-          >
-            Box {requestedCompound}
-          </button>
-        </div>
+        {f1StrategyView !== null ? (
+          <>
+            <div className="insight-grid">
+              <span>Call</span><strong className={`strategy-${f1StrategyView.strategy.outlook.urgency}`}>{f1StrategyView.strategy.outlook.urgency.toUpperCase()} / {f1StrategyView.strategy.outlook.reason}</strong>
+              <span>Next stop</span><strong>Lap {f1StrategyView.strategy.outlook.estimatedStopLap}</strong>
+              <span>Next tyre</span><strong>{f1StrategyView.strategy.outlook.compound}</strong>
+              <span>Gap ahead</span><strong>{car.gapToAheadLabel}</strong>
+              <span>Rejoin</span><strong>P{f1StrategyView.strategy.projectedRejoinPosition} / {f1StrategyView.strategy.pitLaneLossSeconds.toFixed(1)}s</strong>
+              <span>Stop now delta</span><strong className={f1StrategyView.strategy.outlook.expectedNetGainSeconds >= 0 ? 'flag-clear' : 'flag-yellow'}>{f1StrategyView.strategy.outlook.expectedNetGainSeconds >= 0 ? '+' : ''}{f1StrategyView.strategy.outlook.expectedNetGainSeconds.toFixed(1)}s / {f1StrategyView.strategy.outlook.confidence}</strong>
+              <span>Effective loss</span><strong>{f1StrategyView.strategy.outlook.estimatedPitLossSeconds.toFixed(1)}s</strong>
+              <span>Pit lane / exit</span><strong className={snapshot.pitLaneOpen && snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? (snapshot.pitExitOpen ? 'OPEN' : 'EXIT RED') : 'CLOSED'}</strong>
+            </div>
+            <div className="manual-strategy">
+              <select
+                aria-label="requested pit compound"
+                onChange={(event) => setRequestedCompound(event.target.value as TireCompound)}
+                value={requestedCompound}
+              >
+                {(['S', 'M', 'H', 'I', 'W'] as const).map((compound) => (
+                  <option disabled={(f1StrategyView.tires.tireSetsRemaining[compound] ?? 0) <= 0} key={compound} value={compound}>
+                    {compound} ({f1StrategyView.tires.tireSetsRemaining[compound] ?? 0})
+                  </option>
+                ))}
+              </select>
+              <button
+                disabled={car.status !== 'running' || (f1StrategyView.tires.tireSetsRemaining[requestedCompound] ?? 0) <= 0}
+                onClick={() => onRequestPitStop(car.driverId, requestedCompound)}
+                title="Request a pit stop at the next safe lap crossing"
+                type="button"
+              >
+                Box {requestedCompound}
+              </button>
+            </div>
+          </>
+        ) : f1Runtime ? (
+          <p>F1 strategy model is unavailable for this runtime state.</p>
+        ) : superFormulaRuntime ? (
+          <div className="insight-grid">
+            <span>Pit lane / exit</span><strong className={snapshot.pitLaneOpen && snapshot.pitExitOpen ? 'flag-clear' : 'flag-red'}>{snapshot.pitLaneOpen ? (snapshot.pitExitOpen ? 'OPEN' : 'EXIT RED') : 'CLOSED'}</strong>
+            <span>Refuelling</span><strong>{superFormulaRuntime.refuelling.permittedByRegulation ? 'PERMITTED BY BASE RULE' : 'UNAVAILABLE'}</strong>
+            <span>Safety gate</span><strong>{superFormulaRuntime.refuelling.safetyGate.status.toUpperCase()}</strong>
+            <span>Fuel transfer rate</span><strong>UNAVAILABLE</strong>
+            <span>Service duration</span><strong>UNAVAILABLE</strong>
+            <span>Fitted control tyre</span><strong>{superFormulaRuntime.liveTires.activeSurface.toUpperCase()} / {superFormulaRuntime.liveTires.lapsOnCurrentSet} laps</strong>
+            <span>Tyre-change command</span><strong>UNAVAILABLE — no verified event selection rule</strong>
+          </div>
+        ) : null}
         <div className="pace-mode-row" aria-label="driver pace mode">
           {(['push', 'standard', 'save', 'defend'] as const).map((mode) => (
             <button
@@ -218,21 +281,34 @@ export function RaceInsightsPanel({
 
       <section className="insight-section">
         <h2><Gauge aria-hidden="true" size={13} /> Car systems</h2>
-        <div className="insight-grid">
-          <span>Active aero</span><strong>{car.activeAeroMode}</strong>
-          <span>Overtake</span><strong>{car.overtakeStatus}</strong>
-          <span>Battery</span><strong>{Math.round(car.ersBatteryPercent)}% / {car.ersMode}</strong>
-          <span>MGU-K output</span><strong>{car.ersPowerKw} kW / SIM model</strong>
-          <span>Detection result</span><strong>{car.overtakeEligibility ? `${car.overtakeEligibility.eligible ? 'IN GAP' : 'OUT OF GAP'} ${car.overtakeEligibility.detectedGapSeconds.toFixed(3)}s / Z${car.overtakeEligibility.controlLineIndex + 1}` : 'NO SAMPLE'}</strong>
-          <span>Overtake energy</span><strong>{car.overtakeEnergyRemainingMj.toFixed(2)} MJ / 0.50</strong>
-          <span>Harvested</span><strong>{car.energyHarvestedThisLapMj.toFixed(2)} MJ / lap</strong>
-          <span>Deployed</span><strong>{car.energyDeployedThisLapMj.toFixed(2)} MJ / lap</strong>
-          <span>Super clipping</span><strong className={car.superClippingIntensity >= 0.63 ? 'flag-yellow' : undefined}>{car.superClippingIntensity < 0.04 ? 'OFF' : `${Math.round(car.superClippingIntensity * 100)}% / ${car.superClippingDurationSeconds.toFixed(1)}s`}</strong>
-          <span>Clip recovery</span><strong>{Math.round(car.superClippingRegenPowerKw)} kW / {car.superClippingRecoveredThisLapMj.toFixed(2)} MJ</strong>
-          <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
-          <span>Weakest component</span><strong>{weakestComponentEntry ? `${weakestComponentEntry[0]} ${Math.round(weakestComponentEntry[1].conditionPercent)}%` : '-'}</strong>
-          <span>Battle state</span><strong>{car.battlePhase}</strong>
-        </div>
+        {f1Runtime ? (
+          <div className="insight-grid">
+            <span>Active aero</span><strong>{f1Runtime.activeAeroMode}</strong>
+            <span>Overtake</span><strong>{car.overtakeStatus}</strong>
+            <span>Battery</span><strong>{Math.round(f1Runtime.ersBatteryPercent)}% / {f1Runtime.ersMode}</strong>
+            <span>MGU-K output</span><strong>{f1Runtime.ersPowerKw} kW / SIM model</strong>
+            <span>Detection result</span><strong>{f1Runtime.overtakeEligibility ? `${f1Runtime.overtakeEligibility.eligible ? 'IN GAP' : 'OUT OF GAP'} ${f1Runtime.overtakeEligibility.detectedGapSeconds.toFixed(3)}s / Z${f1Runtime.overtakeEligibility.controlLineIndex + 1}` : 'NO SAMPLE'}</strong>
+            <span>Overtake energy</span><strong>{f1Runtime.overtakeEnergyRemainingMj.toFixed(2)} MJ / 0.50</strong>
+            <span>Harvested</span><strong>{f1Runtime.energyHarvestedThisLapMj.toFixed(2)} MJ / lap</strong>
+            <span>Deployed</span><strong>{f1Runtime.energyDeployedThisLapMj.toFixed(2)} MJ / lap</strong>
+            <span>Super clipping</span><strong className={f1Runtime.superClippingIntensity >= 0.63 ? 'flag-yellow' : undefined}>{f1Runtime.superClippingIntensity < 0.04 ? 'OFF' : `${Math.round(f1Runtime.superClippingIntensity * 100)}% / ${f1Runtime.superClippingDurationSeconds.toFixed(1)}s`}</strong>
+            <span>Clip recovery</span><strong>{Math.round(f1Runtime.superClippingRegenPowerKw)} kW / {f1Runtime.superClippingRecoveredThisLapMj.toFixed(2)} MJ</strong>
+            <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
+            <span>Weakest component</span><strong>{weakestComponentEntry ? `${weakestComponentEntry[0]} ${Math.round(weakestComponentEntry[1].conditionPercent)}%` : '-'}</strong>
+            <span>Battle state</span><strong>{car.battlePhase}</strong>
+          </div>
+        ) : superFormulaRuntime ? (
+          <div className="insight-grid">
+            <span>Engine allocation</span><strong>{superFormulaRuntime.engineLedger.engine.used}/{superFormulaRuntime.engineLedger.engine.maximumPerEntrantPerSeason} per entrant / season</strong>
+            <span>Gearbox</span><strong>UNAVAILABLE — {superFormulaRuntime.gearbox.reason}</strong>
+            <span>OTS</span><strong>{superFormulaRuntime.ots.availability === 'verified-event-rule' ? `EVENT RULE / ${superFormulaRuntime.ots.allocationSeconds}s allocation` : `UNAVAILABLE — ${superFormulaRuntime.ots.reason}`}</strong>
+            <span>Refuelling</span><strong>{superFormulaRuntime.refuelling.permittedByRegulation ? `PERMITTED / ${superFormulaRuntime.refuelling.safetyGate.status.toUpperCase()}` : 'UNAVAILABLE'}</strong>
+            <span>Fuel flow / service time</span><strong>UNAVAILABLE</strong>
+            <span>Control tyre coefficients</span><strong>UNAVAILABLE</strong>
+            <span>VSC delta</span><strong className={car.vscDeltaSeconds < 0 ? 'flag-red' : 'flag-clear'}>{car.vscDeltaSeconds >= 0 ? '+' : ''}{car.vscDeltaSeconds.toFixed(2)}s</strong>
+            <span>Battle state</span><strong>{car.battlePhase}</strong>
+          </div>
+        ) : null}
       </section>
 
       <section className="insight-section insight-lap-section">
@@ -241,14 +317,24 @@ export function RaceInsightsPanel({
           <p>Awaiting the first completed lap.</p>
         ) : (
           <ol className="lap-history">
-            {recentLaps.map((lap) => (
-              <li key={lap.lap}>
-                <span>L{lap.lap}</span>
-                <strong>{formatLapTime(lap.lapTimeSeconds)}</strong>
-                <span>{lap.sectors.map((sector) => sector.toFixed(3)).join(' / ')}</span>
-                <span>{lap.tire}{lap.tireAgeLaps}{lap.pitStop ? ' PIT' : ''}</span>
-              </li>
-            ))}
+            {recentLaps.map((lap) => {
+              const tireDisplay = tireDisplayForLapRecord(lap)
+
+              return (
+                <li key={lap.lap}>
+                  <span>L{lap.lap}</span>
+                  <strong>{formatLapTime(lap.lapTimeSeconds)}</strong>
+                  <span>{lap.sectors.map((sector) => sector.toFixed(3)).join(' / ')}</span>
+                  <span>
+                    {tireDisplay.label}
+                    {tireDisplay.kind === 'super-formula-control-tire'
+                      ? ' / MODEL --'
+                      : ''}
+                    {lap.pitStop ? ' PIT' : ''}
+                  </span>
+                </li>
+              )
+            })}
           </ol>
         )}
         {fastestSectors ? (
@@ -270,7 +356,11 @@ export function RaceInsightsPanel({
       <section className="insight-section">
         <h2><Route aria-hidden="true" size={13} /> Track profile</h2>
         <div className="insight-grid">
-          <span>Active aero</span><strong>{track.aeroActivationZones?.length ?? 0} / {track.aeroActivationZones?.[0]?.source ?? 'unavailable'}</strong>
+          {f1Runtime ? (
+            <><span>Active aero</span><strong>{track.aeroActivationZones?.length ?? 0} / {track.aeroActivationZones?.[0]?.source ?? 'unavailable'}</strong></>
+          ) : (
+            <><span>OTS event rule</span><strong>{superFormulaRuntime?.ots.availability === 'verified-event-rule' ? 'CONFIGURED / activation pending' : 'UNAVAILABLE'}</strong></>
+          )}
           <span>Corners</span><strong>{track.corners?.length ?? 0}</strong>
           <span>Pit boxes</span><strong>{track.pitLane?.boxCount ?? 0} / model</strong>
           <span>Safety lines</span><strong>{track.safetyCarLines ? 'Derived' : 'Unavailable'}</strong>
@@ -281,7 +371,16 @@ export function RaceInsightsPanel({
         <h2><Flag aria-hidden="true" size={13} /> Classification & weekend</h2>
         <div className="insight-grid">
           <span>Grid change</span><strong>{car.gridPosition - car.position > 0 ? '+' : ''}{car.gridPosition - car.position}</strong>
-          <span>Penalties</span><strong>{car.penaltyLaps > 0 ? `${car.penaltyLaps}L + ` : ''}{car.penaltySeconds + car.servedPenaltySeconds}s / {car.penaltyPoints} PP / {car.trackLimitWarnings} TL</strong>
+          {f1Runtime ? (
+            <>
+              <span>Penalties</span><strong>{car.penaltyLaps > 0 ? `${car.penaltyLaps}L + ` : ''}{car.penaltySeconds + car.servedPenaltySeconds}s / {car.penaltyPoints} FIA PP / {car.trackLimitWarnings} TL</strong>
+            </>
+          ) : (
+            <>
+              <span>Competition penalties</span><strong>{car.penaltyLaps > 0 ? `${car.penaltyLaps}L + ` : ''}{car.penaltySeconds + car.servedPenaltySeconds}s / {car.trackLimitWarnings} TL</strong>
+              <span>Article 5 next event</span><strong className={superFormulaArticle5Eligibility?.status === 'next-event-suspension-pending' ? 'flag-red' : 'flag-clear'}>{superFormulaArticle5Eligibility?.status === 'next-event-suspension-pending' ? 'SUSPENSION PENDING / OFFICIAL RECORD' : 'ELIGIBLE / OFFICIAL REGISTER ONLY'}</strong>
+            </>
+          )}
           <span>Deleted laps</span><strong>{car.deletedLapCount} / {car.impedingWarnings} impeding</strong>
           <span>Q1 classification</span><strong className={qualifyingClassificationStatus !== 'classified' && !car.stewardsGrantedStart ? 'flag-red' : 'flag-clear'}>{qualifyingClassificationLabel}</strong>
           <span>Race events</span><strong>{relevantEvents.length}</strong>

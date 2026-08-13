@@ -4,7 +4,8 @@ import { effectiveMachineReliability } from './machinePerformance'
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-export function createCarComponents(): CarComponents {
+/** Creates the FIA F1 B8.2 component pool; it is never an SF lifecycle model. */
+export function createF1CarComponents(): CarComponents {
   return {
     // FIA 2026 Sporting Regulations B8.2: base allowance plus the 2026 extra unit.
     ice: { conditionPercent: 100, allocationUsed: 1, allocationLimit: 4 },
@@ -24,10 +25,10 @@ export const componentAllocationSource = {
   url: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf',
 } as const
 
-export function normalizeCarComponents(
+export function normalizeF1CarComponents(
   components?: Partial<CarComponents> | null,
 ): CarComponents {
-  const defaults = createCarComponents()
+  const defaults = createF1CarComponents()
   const finiteOr = (value: unknown, fallback: number) =>
     typeof value === 'number' && Number.isFinite(value) ? value : fallback
 
@@ -60,7 +61,7 @@ export function replaceCarComponent(
   components: CarComponents,
   key: keyof CarComponents,
 ) {
-  const normalized = normalizeCarComponents(components)
+  const normalized = normalizeF1CarComponents(components)
   const previous = normalized[key]
   const allocationUsed = previous.allocationUsed + 1
   const overAllocation =
@@ -89,7 +90,7 @@ export function advanceComponentWear(options: {
   team: Team
 }) {
   const { deltaLaps, engineStress, team } = options
-  const components = normalizeCarComponents(options.components)
+  const components = normalizeF1CarComponents(options.components)
   const reliabilityFactor =
     1.22 - effectiveMachineReliability(team.machine.reliability) * 0.42
   const wear = (rate: number) =>
@@ -114,7 +115,7 @@ export function advanceComponentWear(options: {
 }
 
 export function componentPacePenaltySeconds(components: CarComponents) {
-  const normalized = normalizeCarComponents(components)
+  const normalized = normalizeF1CarComponents(components)
   const powerCondition = Math.min(
     normalized.ice.conditionPercent,
     normalized.turbo.conditionPercent,
@@ -131,10 +132,16 @@ export function componentPacePenaltySeconds(components: CarComponents) {
 }
 
 export function weakestComponent(components: CarComponents) {
-  return (Object.entries(normalizeCarComponents(components)) as Array<
+  return (Object.entries(normalizeF1CarComponents(components)) as Array<
     [keyof CarComponents, CarComponents[keyof CarComponents]]
   >).sort(
     (left, right) =>
       left[1].conditionPercent - right[1].conditionPercent,
   )[0]
 }
+
+/** @deprecated Use `createF1CarComponents` to make the category explicit. */
+export const createCarComponents = createF1CarComponents
+
+/** @deprecated Use `normalizeF1CarComponents` to make the category explicit. */
+export const normalizeCarComponents = normalizeF1CarComponents

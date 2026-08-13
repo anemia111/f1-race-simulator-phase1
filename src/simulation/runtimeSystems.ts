@@ -5,15 +5,26 @@ import type {
   EnergyStoreState,
   ErsMode,
   OvertakeEligibility,
+  TireCompound,
+  TirePerformanceState,
 } from '../types'
 import {
   createSuperFormulaControlTireInventory,
   type SuperFormulaControlTireInventory,
+  type SuperFormulaControlTireSurface,
 } from './superFormulaControlTires2026'
 import {
   createSuperFormula2026EngineLedger,
   type SuperFormula2026EngineLedger,
 } from './superFormulaEngineLedger'
+import {
+  createSuperFormulaLiveTireRuntime,
+  type SuperFormulaLiveTireState,
+} from './superFormulaLiveTires'
+import {
+  resolveSuperFormulaRefuellingTask,
+  type SuperFormulaRefuellingTaskResolution,
+} from './superFormulaRefuelling'
 import {
   resolveSuperFormulaOperational,
   type SuperFormulaEventOtsPack,
@@ -21,6 +32,26 @@ import {
   type SuperFormulaRefuellingResolution,
   type SuperFormulaRefuellingSafetyEvidence,
 } from './superFormulaOperational'
+
+/**
+ * F1-only Pirelli tyre runtime. All prior live F1 tyre fields are grouped
+ * here so a SUPER FORMULA snapshot cannot carry a compound family, Pirelli
+ * allocation, or coefficient-based thermal/wear state as dormant aliases.
+ */
+export type F1RuntimeTireState = {
+  readonly compoundsUsed: TireCompound[]
+  readonly pendingTire: TireCompound | null
+  readonly tire: TireCompound
+  readonly tireAgeLaps: number
+  readonly tireCarcassTemperatureC: number
+  readonly tireGrainingPercent: number
+  readonly tireOverheatingPercent: number
+  readonly tirePerformanceState: TirePerformanceState
+  readonly tireSetsRemaining: Partial<Record<TireCompound, number>>
+  readonly tireTemperatureC: number
+  readonly tireThermalStressPercent: number
+  readonly tireWearPercent: number
+}
 
 /**
  * F1-only runtime truth. These fields deliberately retain their established
@@ -50,6 +81,7 @@ export type F1RuntimeSystems = {
   readonly superClippingRegenPowerKw: number
   readonly superClippingStartedAtProgress: number | null
   readonly superClippingStartedAtSeconds: number | null
+  readonly tires: F1RuntimeTireState
 }
 
 /**
@@ -74,8 +106,18 @@ export type SuperFormulaRuntimeSystems = {
   readonly engineLedger: SuperFormula2026EngineLedger
   readonly gearbox: SuperFormulaGearboxRuntime
   readonly kind: 'super-formula'
+  /**
+   * Dry/wet fitted control-tyre state with source-bound set accounting. It
+   * deliberately has no F1 compound or coefficient-based tyre model.
+   */
+  readonly liveTires: SuperFormulaLiveTireState
   readonly ots: SuperFormulaOtsResolution
   readonly refuelling: SuperFormulaRefuellingResolution
+  /**
+   * Numerical refuelling execution is unavailable unless both Article 25
+   * safety evidence and a provenance-labelled event pack are present.
+   */
+  readonly refuellingTask: SuperFormulaRefuellingTaskResolution
 }
 
 export type RuntimeSystems = F1RuntimeSystems | SuperFormulaRuntimeSystems
@@ -84,6 +126,9 @@ export type CreateSuperFormulaRuntimeSystemsOptions = {
   readonly engineLedger?: SuperFormula2026EngineLedger
   readonly entrantId: string
   readonly eventOtsPack?: SuperFormulaEventOtsPack | null
+  readonly initialTireSurface?: SuperFormulaControlTireSurface
+  /** External event input is parsed fail-closed by the task resolver. */
+  readonly refuellingEventPack?: unknown
   readonly refuellingSafetyEvidence?: SuperFormulaRefuellingSafetyEvidence | null
   readonly tireInventory?: SuperFormulaControlTireInventory
 }
@@ -108,14 +153,22 @@ export function isSuperFormulaRuntimeSystems(
 export function createSuperFormulaRuntimeSystems(
   options: CreateSuperFormulaRuntimeSystemsOptions,
 ): SuperFormulaRuntimeSystems {
+  const liveTireRuntime = createSuperFormulaLiveTireRuntime({
+    initialSurface: options.initialTireSurface,
+    inventory:
+      options.tireInventory ?? createSuperFormulaControlTireInventory(),
+  })
   const operational = resolveSuperFormulaOperational({
     eventOtsPack: options.eventOtsPack ?? undefined,
     refuellingSafetyEvidence: options.refuellingSafetyEvidence,
   })
+  const refuellingTask = resolveSuperFormulaRefuellingTask({
+    eventPack: options.refuellingEventPack,
+    safetyEvidence: options.refuellingSafetyEvidence,
+  })
 
   return {
-    controlTires:
-      options.tireInventory ?? createSuperFormulaControlTireInventory(),
+    controlTires: liveTireRuntime.controlTires,
     engineLedger:
       options.engineLedger ??
       createSuperFormula2026EngineLedger({ entrantId: options.entrantId }),
@@ -126,7 +179,9 @@ export function createSuperFormulaRuntimeSystems(
         'No verified 2026 SUPER FORMULA gearbox allocation or wear rule is bundled.',
     },
     kind: 'super-formula',
+    liveTires: liveTireRuntime.liveTires,
     ots: operational.ots,
-    refuelling: operational.refuelling,
+    refuelling: refuellingTask.regulation,
+    refuellingTask,
   }
 }

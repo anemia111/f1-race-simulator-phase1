@@ -85,14 +85,18 @@ function addQualifyingUsage(
   results: QualifyingResult[],
 ) {
   for (const result of results) {
-    if (!dryCompounds.has(result.compound)) {
+    if (result.tire.kind !== 'f1-pirelli-session-tire') {
+      continue
+    }
+    const compound = result.tire.compound
+    if (!dryCompounds.has(compound)) {
       continue
     }
 
     const current = usage.get(result.driverId) ?? emptyInventory()
-    const compound = result.compound as keyof DrySetInventory
+    const dryCompound = compound as keyof DrySetInventory
 
-    current[compound] += result.setsUsed
+    current[dryCompound] += result.setsUsed
     usage.set(result.driverId, current)
   }
 }

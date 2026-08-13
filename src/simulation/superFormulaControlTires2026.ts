@@ -449,7 +449,7 @@ export function validateSuperFormulaControlTireInventory(
  * Returns a new inventory after consuming physical sets. The source-bound
  * maximum and all unavailable inputs are retained unchanged.
  */
-export function useSuperFormulaControlTireSets(options: {
+export function consumeSuperFormulaControlTireSets(options: {
   readonly inventory: SuperFormulaControlTireInventory
   readonly setCount?: number
   readonly surface: SuperFormulaControlTireSurface

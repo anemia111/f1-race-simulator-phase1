@@ -35,7 +35,11 @@ describe('retired car motion', () => {
     expect(car.speedKph).toBe(0)
     expect(car.throttlePercent).toBe(0)
     expect(car.rpm).toBe(0)
-    expect(car.energyStore.actualDeploymentPowerKw).toBe(0)
+    expect(car.runtimeSystems.kind).toBe('f1')
+    if (car.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected an F1 runtime payload')
+    }
+    expect(car.runtimeSystems.energyStore.actualDeploymentPowerKw).toBe(0)
     expect(car.totalDistance).toBeGreaterThan(initial.totalDistance)
     expect(car.totalDistance - initial.totalDistance).toBeLessThan(0.025)
   })
@@ -58,33 +62,40 @@ describe('retired car motion', () => {
 
   it('preserves CU-K lap ledgers while zeroing retired-car power flow', () => {
     const base = retiredCar('power unit failure')
-    const rechargeLimit = base.energyStore.rechargeRule.limit
+    expect(base.runtimeSystems.kind).toBe('f1')
+    if (base.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected an F1 runtime payload')
+    }
+    const rechargeLimit = base.runtimeSystems.energyStore.rechargeRule.limit
     const initial: CarSnapshot = {
       ...base,
-      energyDeployedThisLapMj: 99,
-      energyHarvestedThisLapMj: 99,
-      ersBatteryPercent: 0,
-      energyStore: {
-        ...base.energyStore,
-        actualDeploymentDcPowerKw: 300,
-        actualDeploymentPowerKw: 275,
-        actualRecoveryPowerKw: 40,
-        chargeDcPowerKw: 35,
-        deployedAtCuKBusThisLapMJ: 1.1,
-        dischargeDcPowerKw: 300,
-        rechargedAtCuKBusThisLapMJ: 2.2,
-        rechargeRule: {
-          ...base.energyStore.rechargeRule,
-          remainingMJ:
-            rechargeLimit.kind === 'finite'
-              ? rechargeLimit.maxCuKBusRechargeMj - 2.2
-              : null,
-          usedMJ: 2.2,
+      runtimeSystems: {
+        ...base.runtimeSystems,
+        energyDeployedThisLapMj: 99,
+        energyHarvestedThisLapMj: 99,
+        ersBatteryPercent: 0,
+        energyStore: {
+          ...base.runtimeSystems.energyStore,
+          actualDeploymentDcPowerKw: 300,
+          actualDeploymentPowerKw: 275,
+          actualRecoveryPowerKw: 40,
+          chargeDcPowerKw: 35,
+          deployedAtCuKBusThisLapMJ: 1.1,
+          dischargeDcPowerKw: 300,
+          rechargedAtCuKBusThisLapMJ: 2.2,
+          rechargeRule: {
+            ...base.runtimeSystems.energyStore.rechargeRule,
+            remainingMJ:
+              rechargeLimit.kind === 'finite'
+                ? rechargeLimit.maxCuKBusRechargeMj - 2.2
+                : null,
+            usedMJ: 2.2,
+          },
+          requestedDeploymentDcPowerKw: 310,
+          requestedRecoveryPowerKw: 45,
+          storedChargePowerKw: 32,
+          storedDischargePowerKw: 315,
         },
-        requestedDeploymentDcPowerKw: 310,
-        requestedRecoveryPowerKw: 45,
-        storedChargePowerKw: 32,
-        storedDischargePowerKw: 315,
       },
     }
     const retired = advanceRetiredCarMotion(initial, {
@@ -93,7 +104,11 @@ describe('retired car motion', () => {
       trackLengthKm: tracks[0].lengthKm,
     })
 
-    expect(retired.energyStore).toMatchObject({
+    expect(retired.runtimeSystems.kind).toBe('f1')
+    if (retired.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected an F1 runtime payload')
+    }
+    expect(retired.runtimeSystems.energyStore).toMatchObject({
       actualDeploymentDcPowerKw: 0,
       actualDeploymentPowerKw: 0,
       actualRecoveryPowerKw: 0,
@@ -107,10 +122,10 @@ describe('retired car motion', () => {
       storedChargePowerKw: 0,
       storedDischargePowerKw: 0,
     })
-    expect(retired.energyHarvestedThisLapMj).toBe(2.2)
-    expect(retired.energyDeployedThisLapMj).toBe(1.1)
-    expect(retired.ersBatteryPercent).toBe(
-      Math.round(retired.energyStore.stateOfCharge * 100),
+    expect(retired.runtimeSystems.energyHarvestedThisLapMj).toBe(2.2)
+    expect(retired.runtimeSystems.energyDeployedThisLapMj).toBe(1.1)
+    expect(retired.runtimeSystems.ersBatteryPercent).toBe(
+      Math.round(retired.runtimeSystems.energyStore.stateOfCharge * 100),
     )
   })
 })

@@ -63,6 +63,12 @@ export const freeModeCategoryLabels: Record<SeriesId, string> = {
   'super-formula': 'SUPER FORMULA',
 }
 
+// Free Mode deliberately does not promote its editable lap count into an
+// official series or circuit distance. Keep the provenance visible wherever
+// the setting is presented to an operator.
+// oxlint-disable-next-line react/only-export-components
+export const freeModeRaceLapsProvenanceLabel = 'user-selected' as const
+
 const historySeriesLabels = {
   'f1-custom': 'F1 history',
   f2: 'F2 history',
@@ -792,7 +798,7 @@ export function FreeModeBuilder({
           </label>
           {configuration.sessionKind === 'race' ? (
             <label>
-              <span>Race laps</span>
+              <span>Race laps ({freeModeRaceLapsProvenanceLabel})</span>
               <input
                 max={999}
                 min={1}
@@ -805,6 +811,10 @@ export function FreeModeBuilder({
                 type="number"
                 value={configuration.raceLaps}
               />
+              <small>
+                Free Mode operator choice; it is not a calendar or track
+                distance.
+              </small>
             </label>
           ) : null}
           {configuration.sessionKind === 'practice' ? (

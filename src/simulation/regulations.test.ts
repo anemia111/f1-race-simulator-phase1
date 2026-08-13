@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
 import { sourceRegistry } from '../data/sourceRegistry'
 import { tracks } from '../data/tracks'
-import type { FiaPuEventInput } from '../types'
+import type { CarSnapshot, FiaPuEventInput, TireCompound } from '../types'
 import {
   FIA_2026_REGULATION_PROFILE,
   compliesWithGrandPrixTireRule,
@@ -17,6 +17,17 @@ import {
 
 describe('2026 session regulations', () => {
   const silverstone = tracks.find((track) => track.id === 'silverstone-approx')!
+  const f1TireRuleCar = (compoundsUsed: TireCompound[]) => ({
+    runtimeSystems: {
+      kind: 'f1',
+      tires: { compoundsUsed },
+    } as CarSnapshot['runtimeSystems'],
+  })
+  const superFormulaTireRuleCar = {
+    runtimeSystems: {
+      kind: 'super-formula',
+    } as CarSnapshot['runtimeSystems'],
+  }
 
   it('uses the least full-lap Sprint distance above 100 km', () => {
     expect(sprintLapsFor(silverstone)).toBe(17)
@@ -25,9 +36,13 @@ describe('2026 session regulations', () => {
   })
 
   it('requires two dry specifications unless wet-weather tyres were used', () => {
-    expect(compliesWithGrandPrixTireRule({ compoundsUsed: ['M'] })).toBe(false)
-    expect(compliesWithGrandPrixTireRule({ compoundsUsed: ['M', 'H'] })).toBe(true)
-    expect(compliesWithGrandPrixTireRule({ compoundsUsed: ['S', 'I'] })).toBe(true)
+    expect(compliesWithGrandPrixTireRule(f1TireRuleCar(['M']))).toBe(false)
+    expect(compliesWithGrandPrixTireRule(f1TireRuleCar(['M', 'H']))).toBe(true)
+    expect(compliesWithGrandPrixTireRule(f1TireRuleCar(['S', 'I']))).toBe(true)
+  })
+
+  it('skips the FIA two-dry-compound check for SUPER FORMULA', () => {
+    expect(compliesWithGrandPrixTireRule(superFormulaTireRuleCar)).toBe(true)
   })
 
   it('pins the frozen Sporting B08 and Operational F10 authorities', () => {

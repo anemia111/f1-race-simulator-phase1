@@ -451,10 +451,16 @@ describe('track-dependent systems', () => {
     })
     const activationDistance =
       eligibility!.activationLap + line.activationProgress
+    if (baseCar.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime for active-aero eligibility')
+    }
     const readyCar = {
       ...baseCar,
       gapToAhead: 1.6,
-      overtakeEligibility: eligibility,
+      runtimeSystems: {
+        ...baseCar.runtimeSystems,
+        overtakeEligibility: eligibility,
+      },
       progress: line.activationProgress - 0.001,
       totalDistance: activationDistance - 0.001,
     }
@@ -519,13 +525,19 @@ describe('track-dependent systems', () => {
       eligibility!.activationLap + line.activationProgress
 
     expect(eligibility?.eligible).toBe(false)
+    if (baseCar.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime for active-aero eligibility')
+    }
     expect(
       overtakeStatusFor({
         batteryPercent: 80,
         car: {
           ...baseCar,
           gapToAhead: 0.2,
-          overtakeEligibility: eligibility,
+          runtimeSystems: {
+            ...baseCar.runtimeSystems,
+            overtakeEligibility: eligibility,
+          },
           progress: line.activationProgress + 0.01,
           totalDistance: activationDistance + 0.01,
         },

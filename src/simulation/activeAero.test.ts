@@ -380,6 +380,10 @@ describe('2026 F1 active-aero State of Deployment', () => {
     })
 
     expect(telemetry.overtakeStatus).toBe('disabled')
-    expect(telemetry.ersPowerKw).toBe(0)
+    expect(telemetry.runtimeSystems.kind).toBe('f1')
+    if (telemetry.runtimeSystems.kind !== 'f1') {
+      throw new Error('Expected F1 runtime telemetry')
+    }
+    expect(telemetry.runtimeSystems.ersPowerKw).toBe(0)
   })
 })

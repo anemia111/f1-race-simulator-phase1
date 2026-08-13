@@ -26,12 +26,20 @@ import type {
   TrackDefinition,
 } from '../types'
 import type {
+  F1TireRules,
+  SeriesEventOperation,
   SeriesCalendarEvent,
   SeriesId,
   SeriesPackage,
+  SeriesRuleProvenance,
   SeriesRules,
   SeriesSource,
+  SuperFormulaEventOperations,
+  SuperFormulaOtsEventOperation,
+  SuperFormulaRaceDistanceOperation,
+  SuperFormulaSeriesRules,
 } from './types'
+import { isF1SeriesRules, isSuperFormulaSeriesRules } from './types'
 import {
   HISTORICAL_DRIVER_POOL_METHOD_VERSION,
   historicalDriverPool2026,
@@ -515,8 +523,20 @@ function tracksFor(definition: RawSeries) {
         referenceSeries === null
           ? undefined
           : paceReference2026For(referenceSeries, trackId)
+      const {
+        raceLaps: sourceRaceLaps,
+        raceLapsSource: sourceRaceLapsSource,
+        ...trackWithoutRaceDistance
+      } = track
+      const f1Rules = isF1SeriesRules(definition.rules)
+        ? definition.rules
+        : null
+
+      // A SUPER FORMULA circuit can host several events with different
+      // operation papers. Do not manufacture a category-wide lap count from
+      // a track record or copy a one-off event to every use of that circuit.
       return {
-        ...track,
+        ...trackWithoutRaceDistance,
         baseLapTime: simulationBaseLapTimeForPaceReference(
           paceReference2026,
           track.baseLapTime,
@@ -525,12 +545,17 @@ function tracksFor(definition: RawSeries) {
           baseLapTimeSourceForPaceReference(paceReference2026),
         isSprintWeekend: Boolean(event?.sprint),
         paceReference2026,
-        raceLaps: Math.max(
-          12,
-          Math.round((track.raceLaps ?? 50) * definition.rules.raceDistanceRatio),
-        ),
-        raceLapsSource:
-          definition.id === 'f1-custom' ? track.raceLapsSource : 'estimated',
+        ...(f1Rules
+          ? {
+              raceLaps: Math.max(
+                12,
+                Math.round(
+                  (sourceRaceLaps ?? 50) * f1Rules.raceDistanceRatio,
+                ),
+              ),
+              raceLapsSource: sourceRaceLapsSource,
+            }
+          : {}),
       }
     },
   )
@@ -550,16 +575,16 @@ const validWeekendStages = new Set([
 ])
 
 function validateTireAllocation(
-  pkg: SeriesPackage,
+  packageId: SeriesPackage['id'],
   label: string,
-  allocation: SeriesRules['tires']['standardAllocation'],
+  allocation: F1TireRules['standardAllocation'],
 ) {
   for (const compound of tireCompounds) {
     const count = allocation[compound]
 
     if (!Number.isInteger(count) || count < 0) {
       throw new Error(
-        `${DATA_FILE}: ${pkg.id} ${label} allocation has invalid ${compound} count ${count}`,
+        `${DATA_FILE}: ${packageId} ${label} allocation has invalid ${compound} count ${count}`,
       )
     }
   }
@@ -602,11 +627,176 @@ function validateQualifyingStructure(
   }
 }
 
+function validateRuleProvenance(
+  provenance: SeriesRuleProvenance,
+  label: string,
+) {
+  if (
+    !provenance.sourceId ||
+    !provenance.url ||
+    !provenance.publishedAt ||
+    (provenance.checksum !== null && !provenance.checksum) ||
+    (provenance.effectiveFrom !== null && !provenance.effectiveFrom)
+  ) {
+    throw new Error(`${DATA_FILE}: ${label} has incomplete provenance`)
+  }
+}
+
+function validateEventOperation<Value>(
+  operation: SeriesEventOperation<Value>,
+  label: string,
+  isValidValue: (value: Value) => boolean,
+) {
+  validateRuleProvenance(operation.provenance, label)
+
+  if (operation.availability === 'unavailable') {
+    if (operation.value !== null || !operation.reason.trim()) {
+      throw new Error(`${DATA_FILE}: ${label} must fail closed with a reason`)
+    }
+    return
+  }
+
+  if (!isValidValue(operation.value)) {
+    throw new Error(`${DATA_FILE}: ${label} has an invalid event override`)
+  }
+}
+
+function isValidRaceDistanceOperation(
+  value: SuperFormulaRaceDistanceOperation,
+) {
+  return (
+    Number.isInteger(value.laps) &&
+    value.laps > 0 &&
+    [value.timeLimitSeconds, value.overallTimeLimitSeconds].every(
+      (limit) => limit === null || (Number.isFinite(limit) && limit > 0),
+    ) &&
+    (value.timeLimitSeconds === null ||
+      value.overallTimeLimitSeconds === null ||
+      value.overallTimeLimitSeconds >= value.timeLimitSeconds)
+  )
+}
+
+function isValidOtsOperation(value: SuperFormulaOtsEventOperation) {
+  return (
+    value.activationConditions.trim().length > 0 &&
+    Number.isFinite(value.allocationSeconds) &&
+    value.allocationSeconds > 0 &&
+    Number.isFinite(value.boostPowerKw) &&
+    value.boostPowerKw >= 0 &&
+    Number.isFinite(value.cooldownSeconds) &&
+    value.cooldownSeconds >= 0
+  )
+}
+
+function validateSuperFormulaEventOperations(
+  operations: Partial<SuperFormulaEventOperations>,
+  label: string,
+) {
+  if (operations.mandatoryPitStop) {
+    validateEventOperation(
+      operations.mandatoryPitStop,
+      `${label} mandatory-pit-stop`,
+      (value) => typeof value === 'boolean',
+    )
+  }
+  if (operations.ots) {
+    validateEventOperation(operations.ots, `${label} OTS`, isValidOtsOperation)
+  }
+  if (operations.raceDistance) {
+    validateEventOperation(
+      operations.raceDistance,
+      `${label} race-distance`,
+      isValidRaceDistanceOperation,
+    )
+  }
+}
+
+function validateSuperFormulaRules(rules: SuperFormulaSeriesRules) {
+  const legacyFields = [
+    'featureRaceMandatoryPitStop',
+    'featureRaceTwoDryCompounds',
+    'overtakeActivation',
+    'raceDistanceRatio',
+  ]
+
+  if (legacyFields.some((field) => field in rules)) {
+    throw new Error(
+      `${DATA_FILE}: SUPER FORMULA must not carry F1 generic race-operation defaults`,
+    )
+  }
+
+  const tires = rules.tires
+  if (
+    tires.kind !== 'yokohama-control-tyres-2026' ||
+    !Number.isInteger(tires.dry.maxSetsPerCarPerRace) ||
+    tires.dry.maxSetsPerCarPerRace < 1 ||
+    !Number.isInteger(tires.wet.maxSetsPerCarPerRace) ||
+    tires.wet.maxSetsPerCarPerRace < 1
+  ) {
+    throw new Error(`${DATA_FILE}: SUPER FORMULA has invalid control-tyre rules`)
+  }
+
+  validateRuleProvenance(tires.dry.provenance, 'SUPER FORMULA dry tyres')
+  validateRuleProvenance(tires.wet.provenance, 'SUPER FORMULA wet tyres')
+  validateSuperFormulaEventOperations(rules.eventOperations, 'SUPER FORMULA base')
+
+  if (
+    rules.eventOperations.mandatoryPitStop.availability !== 'unavailable' ||
+    rules.eventOperations.ots.availability !== 'unavailable' ||
+    rules.eventOperations.raceDistance.availability !== 'unavailable'
+  ) {
+    throw new Error(
+      `${DATA_FILE}: SUPER FORMULA base rules must not masquerade as event operations`,
+    )
+  }
+}
+
+/**
+ * Resolves a SUPER FORMULA event only by replacing a fail-closed base entry
+ * with an exact event override.  A track match is deliberately insufficient.
+ */
+export function resolveSuperFormulaEventOperations(
+  pkg: SeriesPackage,
+  eventId: string | null | undefined,
+): SuperFormulaEventOperations | null {
+  if (!isSuperFormulaSeriesRules(pkg.rules)) {
+    return null
+  }
+
+  const event =
+    eventId === null || eventId === undefined
+      ? undefined
+      : pkg.calendar.find((candidate) => candidate.id === eventId)
+
+  return {
+    ...pkg.rules.eventOperations,
+    ...(event?.eventOperations ?? {}),
+  }
+}
+
 export function validateSeriesPackage(pkg: SeriesPackage) {
   if (pkg.teams.length !== pkg.teamCount || pkg.drivers.length !== pkg.carCount) {
     throw new Error(
       `${DATA_FILE}: ${pkg.id} expected ${pkg.teamCount} teams/${pkg.carCount} cars; received ${pkg.teams.length}/${pkg.drivers.length}`,
     )
+  }
+
+  const f1RuleSurface = isF1SeriesRules(pkg.rules) ? pkg.rules : null
+  const f1Rules = f1RuleSurface !== null
+  if (
+    (pkg.id === 'f1-custom' && !f1Rules) ||
+    (pkg.id === 'super-formula' && !isSuperFormulaSeriesRules(pkg.rules))
+  ) {
+    throw new Error(`${DATA_FILE}: ${pkg.id} has a mismatched rule surface`)
+  }
+
+  if (isSuperFormulaSeriesRules(pkg.rules)) {
+    validateSuperFormulaRules(pkg.rules)
+    if (pkg.tracks.some((track) => track.raceLaps !== undefined)) {
+      throw new Error(
+        `${DATA_FILE}: SUPER FORMULA tracks must not carry a generic race-distance default`,
+      )
+    }
   }
 
   const driverIds = new Set(pkg.drivers.map((driver) => driver.id))
@@ -684,6 +874,26 @@ export function validateSeriesPackage(pkg: SeriesPackage) {
           event.raceOverallTimeLimitSeconds <= 0))
     ) {
       throw new Error(`${DATA_FILE}: ${pkg.id} has invalid calendar event ${event.id}`)
+    }
+
+    if (!f1Rules) {
+      const legacyOperationFields = [
+        'featureRaceMandatoryPitStop',
+        'raceLaps',
+        'raceOverallTimeLimitSeconds',
+        'raceTimeLimitSeconds',
+      ]
+      if (legacyOperationFields.some((field) => field in event)) {
+        throw new Error(
+          `${DATA_FILE}: SUPER FORMULA event ${event.id} must use provenance-bearing eventOperations`,
+        )
+      }
+      if (event.eventOperations) {
+        validateSuperFormulaEventOperations(
+          event.eventOperations,
+          `SUPER FORMULA event ${event.id}`,
+        )
+      }
     }
 
     if (event.weekendStages) {
@@ -812,29 +1022,42 @@ export function validateSeriesPackage(pkg: SeriesPackage) {
     throw new Error(`${DATA_FILE}: ${pkg.id} has an invalid fastest-lap rule`)
   }
 
-  validateTireAllocation(pkg, 'standard', pkg.rules.tires.standardAllocation)
-  if (pkg.rules.tires.sprintAllocation) {
-    validateTireAllocation(pkg, 'sprint', pkg.rules.tires.sprintAllocation)
-  }
-
-  if (
-    pkg.rules.tires.standardAllocation[
-      pkg.rules.tires.qualifyingDryCompound
-    ] < 1
-  ) {
-    throw new Error(
-      `${DATA_FILE}: ${pkg.id} qualifying compound is not in its tire allocation`,
+  if (f1RuleSurface) {
+    validateTireAllocation(
+      pkg.id,
+      'standard',
+      f1RuleSurface.tires.standardAllocation,
     )
-  }
+    if (f1RuleSurface.tires.sprintAllocation) {
+      validateTireAllocation(
+        pkg.id,
+        'sprint',
+        f1RuleSurface.tires.sprintAllocation,
+      )
+    }
 
-  const suppliedDrySpecifications = (['H', 'M', 'S'] as const).filter(
-    (compound) => pkg.rules.tires.standardAllocation[compound] > 0,
-  ).length
+    if (
+      f1RuleSurface.tires.standardAllocation[
+        f1RuleSurface.tires.qualifyingDryCompound
+      ] < 1
+    ) {
+      throw new Error(
+        `${DATA_FILE}: ${pkg.id} qualifying compound is not in its tire allocation`,
+      )
+    }
 
-  if (pkg.rules.featureRaceTwoDryCompounds && suppliedDrySpecifications < 2) {
-    throw new Error(
-      `${DATA_FILE}: ${pkg.id} requires two dry specifications but supplies ${suppliedDrySpecifications}`,
-    )
+    const suppliedDrySpecifications = (['H', 'M', 'S'] as const).filter(
+      (compound) => f1RuleSurface.tires.standardAllocation[compound] > 0,
+    ).length
+
+    if (
+      f1RuleSurface.featureRaceTwoDryCompounds &&
+      suppliedDrySpecifications < 2
+    ) {
+      throw new Error(
+        `${DATA_FILE}: ${pkg.id} requires two dry specifications but supplies ${suppliedDrySpecifications}`,
+      )
+    }
   }
 }
 

@@ -30,6 +30,7 @@ import {
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
 import type {
+  CarSnapshot,
   CarComponents,
   Driver,
   CarSetup,
@@ -37,6 +38,7 @@ import type {
   GridSource,
   MachineTunableStat,
   Team,
+  TimedSessionTire,
   TrackDefinition,
   WeekendStage,
   WeekendContext,
@@ -78,6 +80,8 @@ type SetupPanelProps = {
   selectedEventId: string
   selectedTeamId: string
   selectedTrackId: string
+  /** Category-owned state for the selected car; never a compatibility shim. */
+  selectedRuntimeSystems: CarSnapshot['runtimeSystems']
   gridSource: GridSource
   gridReferenceLabel: string | null
   knockoutQualifying: KnockoutQualifying
@@ -87,7 +91,8 @@ type SetupPanelProps = {
   selectedWeekendStage: WeekendStage
   sessionFormatLabel: string
   teams: Team[]
-  weekendTirePlan: WeekendTirePlan
+  /** F1-only planning is unavailable for the SUPER FORMULA runtime. */
+  weekendTirePlan: WeekendTirePlan | null
   weekendContext: WeekendContext
   tracks: TrackDefinition[]
 }
@@ -202,6 +207,20 @@ function formatClock(seconds: number) {
 }
 
 /**
+ * Timed-session tyre state belongs to the category. F1 may expose its
+ * Pirelli compound, while SUPER FORMULA only exposes the selected dry/wet
+ * control surface and its deliberately unavailable physical model.
+ */
+// oxlint-disable-next-line react/only-export-components -- directly unit-tested display boundary
+export function timedSessionTireSummaryFor(tire: TimedSessionTire) {
+  if (tire.kind === 'f1-pirelli-session-tire') {
+    return tire.compound
+  }
+
+  return `${tire.surface.toUpperCase()} CONTROL / PHYSICAL MODEL ${tire.physicalModel.availability.toUpperCase()}`
+}
+
+/**
  * Upper bound for this driver's ability sliders.
  *
  * The published scale for everyone, except for a driver whose source data
@@ -245,6 +264,7 @@ export function SetupPanel({
   selectedEventId,
   selectedTeamId,
   selectedTrackId,
+  selectedRuntimeSystems,
   gridSource,
   gridReferenceLabel,
   knockoutQualifying,
@@ -272,9 +292,18 @@ export function SetupPanel({
     selectedDriver,
   )
   const setupFeedbackRating = Math.round(driverSetupFeedback(selectedDriver) * 100)
-  const selectedComponents = normalizeCarComponents(
-    weekendContext.componentConditionByDriver[selectedDriver.id],
-  )
+  const hasF1ComponentPool =
+    weekendContext.seriesId === 'f1-custom' &&
+    selectedRuntimeSystems.kind === 'f1'
+  const selectedComponents = hasF1ComponentPool
+    ? normalizeCarComponents(
+        weekendContext.componentConditionByDriver[selectedDriver.id],
+      )
+    : null
+  const superFormulaRuntime =
+    selectedRuntimeSystems.kind === 'super-formula'
+      ? selectedRuntimeSystems
+      : null
   const parcFermeLocked =
     weekendContext.parcFermeLockedByDriver[selectedDriver.id] ?? false
 
@@ -395,29 +424,39 @@ export function SetupPanel({
               aria-label={`${selectedWeekendStage.toUpperCase()} run programmes`}
               className="practice-program-strip"
             >
-              {practiceResults[0]?.programs.map((program, index) => (
-                <span
-                  key={`${program.kind}-${index}`}
-                  title={`${program.label}: ${program.workItems.join(', ')}`}
-                >
-                  <b>{program.shortLabel}</b>
-                  <small>
-                    {program.compound} / {program.targetFlyingLaps}L
-                  </small>
-                </span>
-              ))}
+              {practiceResults[0]?.programs.map((program, index) => {
+                const tireSummary = timedSessionTireSummaryFor(program.tire)
+
+                return (
+                  <span
+                    key={`${program.kind}-${index}`}
+                    title={`${program.label}: ${program.workItems.join(', ')}`}
+                  >
+                    <b>{program.shortLabel}</b>
+                    <small>
+                      {tireSummary} / {program.targetFlyingLaps}L
+                    </small>
+                  </span>
+                )
+              })}
             </div>
             <ol className="qualifying-preview" aria-label="practice setup top five">
-              {practiceResults.slice(0, 5).map((result) => (
+            {practiceResults.slice(0, 5).map((result) => {
+              const runTireSummary = result.runTires
+                .map(timedSessionTireSummaryFor)
+                .join(', ')
+
+              return (
                 <li key={result.driverId}>
                   <span>{result.position}</span>
                   <strong>{result.code}</strong>
                   <small>
                     {result.setupScore}/100 | {result.lapsCompleted} laps |{' '}
-                    {Math.round(result.setupConfidence * 100)}%
+                    {Math.round(result.setupConfidence * 100)}% | {runTireSummary}
                   </small>
                 </li>
-              ))}
+              )
+            })}
             </ol>
           </div>
         ) : null}
@@ -442,23 +481,56 @@ export function SetupPanel({
         </div>
         <div className="session-preview">
           <div className="section-title compact-title">
-            <span>Tire plan</span>
-            <small>sets / start</small>
+            <span>
+              {selectedRuntimeSystems.kind === 'f1'
+                ? 'Tire plan'
+                : 'Control tyre state'}
+            </span>
+            <small>
+              {selectedRuntimeSystems.kind === 'f1'
+                ? 'sets / start'
+                : 'dry / wet / fitted'}
+            </small>
           </div>
-          <ol className="qualifying-preview" aria-label="weekend tire plan">
-            {weekendTirePlan.driverPlans.slice(0, 5).map((plan) => (
-              <li key={plan.driverId}>
-                <span>{plan.raceStartCompound}</span>
-                <strong>{plan.code}</strong>
+          {selectedRuntimeSystems.kind === 'f1' ? (
+            weekendTirePlan ? (
+              <ol className="qualifying-preview" aria-label="weekend tire plan">
+                {weekendTirePlan.driverPlans.slice(0, 5).map((plan) => (
+                  <li key={plan.driverId}>
+                    <span>{plan.raceStartCompound}</span>
+                    <strong>{plan.code}</strong>
+                    <small>
+                      {selectedTrack.tireNomination?.H ?? 'C?'}-
+                      {selectedTrack.tireNomination?.M ?? 'C?'}-
+                      {selectedTrack.tireNomination?.S ?? 'C?'} | left S{plan.remaining.S} M{plan.remaining.M} H{plan.remaining.H} |
+                      sprint {plan.sprintStartCompound}
+                    </small>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="empty-state">F1 tyre plan unavailable.</p>
+            )
+          ) : (
+            <ol
+              className="qualifying-preview"
+              aria-label="SUPER FORMULA control tyre state"
+            >
+              <li>
+                <span>{selectedRuntimeSystems.liveTires.activeSurface.toUpperCase()}</span>
+                <strong>CONTROL</strong>
                 <small>
-                  {selectedTrack.tireNomination?.H ?? 'C?'}-
-                  {selectedTrack.tireNomination?.M ?? 'C?'}-
-                  {selectedTrack.tireNomination?.S ?? 'C?'} | left S{plan.remaining.S} M{plan.remaining.M} H{plan.remaining.H} |
-                  sprint {plan.sprintStartCompound}
+                  dry {selectedRuntimeSystems.controlTires.sets.dry.remainingSets}/
+                  {selectedRuntimeSystems.controlTires.sets.dry.allocatedSets} | wet{' '}
+                  {selectedRuntimeSystems.controlTires.sets.wet.remainingSets}/
+                  {selectedRuntimeSystems.controlTires.sets.wet.allocatedSets} |
+                  fitted {selectedRuntimeSystems.liveTires.activeSurface}{' '}
+                  {selectedRuntimeSystems.liveTires.lapsOnCurrentSet}L | physical
+                  model {selectedRuntimeSystems.liveTires.physicalModel.availability}
                 </small>
               </li>
-            ))}
-          </ol>
+            </ol>
+          )}
         </div>
         {selectedWeekendStage === 'qualifying' ||
         selectedWeekendStage === 'qualifying2' ||
@@ -480,6 +552,8 @@ export function SetupPanel({
                   <strong>{segment.name}</strong>
                   {Math.round(segment.sessionDurationSeconds / 60)}m / out{' '}
                   {segment.eliminatedDriverIds.length}
+                  {' / '}
+                  {timedSessionTireSummaryFor(segment.tire)}
                   {segment.suspensionSeconds > 0
                     ? ` / red +${Math.round(segment.suspensionSeconds / 60)}m`
                     : ''}
@@ -492,7 +566,8 @@ export function SetupPanel({
                   <span>{result.position}</span>
                   <strong>{result.code}</strong>
                   <small>
-                    {result.compound} pit {formatClock(result.pitExitAtSeconds)} | out{' '}
+                    {timedSessionTireSummaryFor(result.tire)} pit{' '}
+                    {formatClock(result.pitExitAtSeconds)} | out{' '}
                     {formatTime(result.outLapTimeSeconds)} / push{' '}
                     {formatTime(result.lapTimeSeconds)}
                     {' | '}
@@ -549,64 +624,124 @@ export function SetupPanel({
         ))}
       </div>
 
-      <div className="setup-section">
-        <div className="section-title">
-          <span>Power unit pool</span>
-          <a
-            href={componentAllocationSource.url}
-            rel="noreferrer"
-            target="_blank"
-            title={componentAllocationSource.label}
-          >
-            FIA B8.2
-          </a>
-        </div>
-        <div className="component-list">
-          {componentRows.map(({ key, label }) => {
-            const component = selectedComponents[key]
-            const limitLabel =
-              component.allocationLimit === null
-                ? 'SIM'
-                : `${component.allocationUsed}/${component.allocationLimit}`
+      {hasF1ComponentPool && selectedComponents ? (
+        <div className="setup-section">
+          <div className="section-title">
+            <span>Power unit pool</span>
+            <a
+              href={componentAllocationSource.url}
+              rel="noreferrer"
+              target="_blank"
+              title={componentAllocationSource.label}
+            >
+              FIA B8.2
+            </a>
+          </div>
+          <div className="component-list">
+            {componentRows.map(({ key, label }) => {
+              const component = selectedComponents[key]
+              const limitLabel =
+                component.allocationLimit === null
+                  ? 'SIM'
+                  : `${component.allocationUsed}/${component.allocationLimit}`
 
-            return (
-              <div className="component-row" key={key}>
-                <span>{label}</span>
-                <div className="component-condition">
-                  <i
-                    style={{ width: `${Math.round(component.conditionPercent)}%` }}
-                  />
+              return (
+                <div className="component-row" key={key}>
+                  <span>{label}</span>
+                  <div className="component-condition">
+                    <i
+                      style={{ width: `${Math.round(component.conditionPercent)}%` }}
+                    />
+                  </div>
+                  <strong>{Math.round(component.conditionPercent)}%</strong>
+                  <small>{limitLabel}</small>
+                  <button
+                    aria-label={`replace ${label}`}
+                    className="plain-icon-button"
+                    disabled={componentReplacementDisabled}
+                    onClick={() => onComponentReplace(selectedDriver.id, key)}
+                    title={`Replace ${label}`}
+                    type="button"
+                  >
+                    <Wrench aria-hidden="true" size={14} />
+                  </button>
                 </div>
-                <strong>{Math.round(component.conditionPercent)}%</strong>
-                <small>{limitLabel}</small>
-                <button
-                  aria-label={`replace ${label}`}
-                  className="plain-icon-button"
-                  disabled={componentReplacementDisabled}
-                  onClick={() => onComponentReplace(selectedDriver.id, key)}
-                  title={`Replace ${label}`}
-                  type="button"
-                >
-                  <Wrench aria-hidden="true" size={14} />
-                </button>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+          <small>
+            Grid penalty {weekendContext.gridPenaltyByDriver[selectedDriver.id] ?? 0}
+          </small>
+          <label className="binary-setting">
+            <input
+              checked={weekendContext.pitLaneStartByDriver[selectedDriver.id] ?? false}
+              onChange={(event) =>
+                onPitLaneStartChange(selectedDriver.id, event.target.checked)
+              }
+              type="checkbox"
+            />
+            <span>Pit-lane start</span>
+          </label>
         </div>
-        <small>
-          Grid penalty {weekendContext.gridPenaltyByDriver[selectedDriver.id] ?? 0}
-        </small>
-        <label className="binary-setting">
-          <input
-            checked={weekendContext.pitLaneStartByDriver[selectedDriver.id] ?? false}
-            onChange={(event) =>
-              onPitLaneStartChange(selectedDriver.id, event.target.checked)
-            }
-            type="checkbox"
-          />
-          <span>Pit-lane start</span>
-        </label>
-      </div>
+      ) : superFormulaRuntime ? (
+        <div className="setup-section" data-category-runtime="super-formula">
+          <div className="section-title">
+            <span>SUPER FORMULA runtime</span>
+            <small>2026 source-bound state</small>
+          </div>
+          <div className="component-list">
+            <div className="component-row">
+              <span>Engine allocation</span>
+              <strong>
+                {superFormulaRuntime.engineLedger.engine.used}/
+                {superFormulaRuntime.engineLedger.engine.maximumPerEntrantPerSeason}
+              </strong>
+              <small>per entrant / season</small>
+            </div>
+            <div className="component-row">
+              <span>Gearbox model</span>
+              <strong>UNAVAILABLE</strong>
+              <small>{superFormulaRuntime.gearbox.reason}</small>
+            </div>
+            <div className="component-row">
+              <span>Control tyres</span>
+              <strong>
+                dry {superFormulaRuntime.controlTires.sets.dry.remainingSets}/
+                {superFormulaRuntime.controlTires.sets.dry.allocatedSets} · wet{' '}
+                {superFormulaRuntime.controlTires.sets.wet.remainingSets}/
+                {superFormulaRuntime.controlTires.sets.wet.allocatedSets}
+              </strong>
+              <small>published dry/wet set limits only</small>
+            </div>
+            <div className="component-row">
+              <span>OTS</span>
+              <strong>
+                {superFormulaRuntime.ots.availability === 'verified-event-rule'
+                  ? 'EVENT RULE LOADED'
+                  : 'UNAVAILABLE'}
+              </strong>
+              <small>
+                {superFormulaRuntime.ots.availability === 'verified-event-rule'
+                  ? 'Activation conditions still require runtime evaluation'
+                  : superFormulaRuntime.ots.reason}
+              </small>
+            </div>
+            <div className="component-row">
+              <span>Refuelling</span>
+              <strong>
+                {superFormulaRuntime.refuelling.permittedByRegulation
+                  ? superFormulaRuntime.refuelling.safetyGate.status === 'ready'
+                    ? 'SAFETY READY'
+                    : 'SAFETY BLOCKED'
+                  : 'UNAVAILABLE'}
+              </strong>
+              <small>
+                Flow rate and service duration remain unavailable without a verified input.
+              </small>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="setup-section">
         <div className="section-title">

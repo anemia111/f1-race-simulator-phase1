@@ -3,6 +3,7 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { fiaSuzukaPuEventInput2026 } from '../data/fiaPuEventInputs2026'
 import { tracks } from '../data/tracks'
 import { FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY } from '../freeMode/freeModePersistence'
+import { seriesPackageById } from '../series/seriesRegistry'
 import { advanceRace, createInitialRace } from '../simulation/race'
 import { createInitialActiveAeroState } from '../simulation/activeAero'
 import type { RaceConfig, RaceSnapshot } from '../types'
@@ -35,7 +36,9 @@ function memoryStorage() {
 }
 
 type MutableCheckpoint = {
+  modelVersion?: unknown
   snapshot: { cars: Array<Record<string, unknown>> }
+  version?: unknown
 }
 
 function mutableCheckpoint(now: number): MutableCheckpoint {
@@ -45,11 +48,47 @@ function mutableCheckpoint(now: number): MutableCheckpoint {
 }
 
 function mutableEnergyStore(checkpoint: MutableCheckpoint) {
-  return checkpoint.snapshot.cars[0].energyStore as Record<string, unknown>
+  const runtimeSystems = mutableF1Runtime(checkpoint)
+
+  return runtimeSystems.energyStore as Record<string, unknown>
+}
+
+function mutableF1Runtime(
+  checkpoint: MutableCheckpoint,
+  carIndex = 0,
+) {
+  const runtimeSystems = checkpoint.snapshot.cars[carIndex]
+    .runtimeSystems as Record<string, unknown>
+
+  if (runtimeSystems.kind !== 'f1') {
+    throw new Error('Expected an F1 runtime payload.')
+  }
+
+  return runtimeSystems
 }
 
 function mutableRechargeRule(checkpoint: MutableCheckpoint) {
   return mutableEnergyStore(checkpoint).rechargeRule as Record<string, unknown>
+}
+
+function f1Runtime(car: RaceSnapshot['cars'][number]) {
+  if (car.runtimeSystems.kind !== 'f1') {
+    throw new Error('Expected an F1 runtime payload.')
+  }
+
+  return car.runtimeSystems
+}
+
+function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
+  checkpoint.version = 1
+  checkpoint.modelVersion = '2026.08.09.1'
+
+  for (const car of checkpoint.snapshot.cars) {
+    const runtimeSystems = car.runtimeSystems as Record<string, unknown>
+    delete car.runtimeSystems
+    Object.assign(car, runtimeSystems)
+    delete car.kind
+  }
 }
 
 describe('race session continuity', () => {
@@ -80,14 +119,16 @@ describe('race session continuity', () => {
 
     expect(restored?.elapsedSeconds).toBe(123)
     expect(restored?.cars).toHaveLength(initialDrivers.length)
-    expect(restored?.cars[0].activeAeroState).toEqual(
-      snapshot.cars[0].activeAeroState,
+    expect(f1Runtime(restored!.cars[0]).activeAeroState).toEqual(
+      f1Runtime(snapshot.cars[0]).activeAeroState,
     )
-    expect(restored?.cars[0].overtakeRechargeAllowanceActiveThisLap).toBe(
-      snapshot.cars[0].overtakeRechargeAllowanceActiveThisLap,
+    expect(
+      f1Runtime(restored!.cars[0]).overtakeRechargeAllowanceActiveThisLap,
+    ).toBe(
+      f1Runtime(snapshot.cars[0]).overtakeRechargeAllowanceActiveThisLap,
     )
-    expect(restored?.cars[0].energyStore.rechargeRule).toEqual(
-      snapshot.cars[0].energyStore.rechargeRule,
+    expect(f1Runtime(restored!.cars[0]).energyStore.rechargeRule).toEqual(
+      f1Runtime(snapshot.cars[0]).energyStore.rechargeRule,
     )
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
   })
@@ -108,12 +149,123 @@ describe('race session continuity', () => {
       now,
     )
 
-    expect(restored?.cars[0].energyStore.rechargeRule).toMatchObject({
+    expect(f1Runtime(restored!.cars[0]).energyStore.rechargeRule).toMatchObject({
       limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
       resolution: 'verified-event',
       ruleId: 'suzuka-race-overtake-inactive',
       sourceId: fiaSuzukaPuEventInput2026.source.sourceId,
     })
+  })
+
+  it('round-trips a strict SUPER FORMULA v2 checkpoint and rejects F1 runtime payloads', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const sfConfig: RaceConfig = {
+      drivers: series.drivers,
+      overtakeSystem: series.rules.overtakeSystem,
+      seed: 'sf-checkpoint-boundary',
+      seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
+      teams: series.teams,
+      track: series.tracks[0],
+      weekendStage: 'race',
+    }
+    const now = 1_800_000_000_000
+    const raw = serializeRaceCheckpoint(
+      'sf-session',
+      createInitialRace(sfConfig),
+      now,
+    )!
+    const restored = parseRaceCheckpoint(raw, 'sf-session', sfConfig, now)
+    const f1Injected = JSON.parse(raw) as MutableCheckpoint
+    const nestedF1Injected = JSON.parse(raw) as MutableCheckpoint
+    const liveTireInjected = JSON.parse(raw) as MutableCheckpoint
+    const refuellingTaskInjected = JSON.parse(raw) as MutableCheckpoint
+    const fiaPenaltyInjected = JSON.parse(raw) as MutableCheckpoint
+    const legacy = JSON.parse(raw) as MutableCheckpoint
+    const nestedRuntime = nestedF1Injected.snapshot.cars[0]
+      .runtimeSystems as Record<string, unknown>
+    const nestedControlTires = nestedRuntime.controlTires as Record<
+      string,
+      unknown
+    >
+    const liveTireRuntime = liveTireInjected.snapshot.cars[0]
+      .runtimeSystems as Record<string, unknown>
+    const refuellingTaskRuntime = refuellingTaskInjected.snapshot.cars[0]
+      .runtimeSystems as Record<string, unknown>
+    const liveTires = liveTireRuntime.liveTires as Record<string, unknown>
+    const refuellingTask = refuellingTaskRuntime.refuellingTask as Record<
+      string,
+      unknown
+    >
+
+    f1Injected.snapshot.cars[0].energyStore = {}
+    nestedRuntime.controlTires = {
+      ...nestedControlTires,
+      energyStore: {},
+    }
+    liveTireRuntime.liveTires = {
+      ...liveTires,
+      tire: 'M',
+    }
+    refuellingTask.canExecute = true
+    Object.assign(fiaPenaltyInjected.snapshot.cars[0], {
+      penalties: [{ kind: 'time', penaltyPoints: 1, seconds: 5 }],
+      penaltyLaps: 1,
+      penaltyPoints: 1,
+      penaltySeconds: 5,
+      servedPenaltySeconds: 2,
+    })
+    const fiaPenaltySnapshot = fiaPenaltyInjected.snapshot as unknown as Record<
+      string,
+      unknown
+    >
+    fiaPenaltySnapshot.stewardCases = [{ id: 'fia-isc-case' }]
+    legacy.version = 1
+
+    expect(restored?.cars[0].runtimeSystems.kind).toBe('super-formula')
+    expect(restored?.cars[0].runtimeSystems).toMatchObject({
+      kind: 'super-formula',
+      refuellingTask: { canExecute: false },
+    })
+    expect(parseRaceCheckpoint(JSON.stringify(f1Injected), 'sf-session', sfConfig, now)).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(nestedF1Injected),
+        'sf-session',
+        sfConfig,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(liveTireInjected),
+        'sf-session',
+        sfConfig,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(refuellingTaskInjected),
+        'sf-session',
+        sfConfig,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(fiaPenaltyInjected),
+        'sf-session',
+        sfConfig,
+        now,
+      ),
+    ).toBeNull()
+    expect(parseRaceCheckpoint(JSON.stringify(legacy), 'sf-session', sfConfig, now)).toBeNull()
   })
 
   it('migrates legacy checkpoints without drivetrain, lateral, or active-aero state', () => {
@@ -125,6 +277,7 @@ describe('race session continuity', () => {
         now,
       )!,
     ) as { snapshot: { cars: Array<Record<string, unknown>> } }
+    convertCheckpointToLegacyF1(checkpoint)
 
     for (const [index, car] of checkpoint.snapshot.cars.entries()) {
       delete car.turboSpoolFraction
@@ -155,6 +308,8 @@ describe('race session continuity', () => {
       lateralOffsetM: 2.25,
       lateralVelocityMps: 0,
       trackLateralOffset: 2.25,
+    })
+    expect(f1Runtime(restored!.cars[0])).toMatchObject({
       activeAeroMode: 'corner',
       activeAeroState: createInitialActiveAeroState(),
     })
@@ -239,7 +394,7 @@ describe('race session continuity', () => {
     const withoutLapStartLatch = JSON.parse(valid) as {
       snapshot: { cars: Array<Record<string, unknown>> }
     }
-    delete withoutLapStartLatch.snapshot.cars[0]
+    delete mutableF1Runtime(withoutLapStartLatch)
       .overtakeRechargeAllowanceActiveThisLap
 
     expect(
@@ -251,10 +406,8 @@ describe('race session continuity', () => {
       ),
     ).toBeNull()
 
-    const withoutRechargeRule = JSON.parse(valid) as {
-      snapshot: { cars: Array<{ energyStore: Record<string, unknown> }> }
-    }
-    delete withoutRechargeRule.snapshot.cars[0].energyStore.rechargeRule
+    const withoutRechargeRule = JSON.parse(valid) as MutableCheckpoint
+    delete mutableEnergyStore(withoutRechargeRule).rechargeRule
 
     expect(
       parseRaceCheckpoint(
@@ -371,18 +524,14 @@ describe('race session continuity', () => {
     ).toBeNull()
 
     const contextProvenUnlimited = mutableCheckpoint(now)
-    const contextualSnapshot = contextProvenUnlimited.snapshot as Record<
-      string,
-      unknown
-    > & { cars: Array<Record<string, unknown>> }
     // The field can straddle the Line after a control transition. Car zero
     // started its current energy lap under low-grip SC control; every other car
     // still carries the ordinary finite rule. The current global state has
     // already returned to normal, so only the persisted per-car latch is valid.
-    const unlimitedCar = contextualSnapshot.cars[0]
-    unlimitedCar.energyLapStartedBehindSafetyCar = true
-    unlimitedCar.energyLapStartedInLowGripConditions = true
-    const energyStore = unlimitedCar.energyStore as Record<string, unknown>
+    const unlimitedRuntime = mutableF1Runtime(contextProvenUnlimited)
+    unlimitedRuntime.energyLapStartedBehindSafetyCar = true
+    unlimitedRuntime.energyLapStartedInLowGripConditions = true
+    const energyStore = unlimitedRuntime.energyStore as Record<string, unknown>
     energyStore.rechargeRule = {
       additionalAllowanceMJ: 0,
       baseLimitMJ: null,
@@ -404,7 +553,7 @@ describe('race session continuity', () => {
       ),
     ).not.toBeNull()
 
-    unlimitedCar.energyLapStartedBehindSafetyCar = false
+    unlimitedRuntime.energyLapStartedBehindSafetyCar = false
     expect(
       parseRaceCheckpoint(
         JSON.stringify(contextProvenUnlimited),
@@ -497,19 +646,19 @@ describe('race session continuity', () => {
         mutableEnergyStore(checkpoint).conversionLossThisLapMJ = 1
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].ersBatteryPercent = 50
+        mutableF1Runtime(checkpoint).ersBatteryPercent = 50
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].energyHarvestedThisLapMj = 0.5
+        mutableF1Runtime(checkpoint).energyHarvestedThisLapMj = 0.5
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].overtakeEnergyRemainingMj = 0.500001
+        mutableF1Runtime(checkpoint).overtakeEnergyRemainingMj = 0.500001
       },
       (checkpoint) => {
         checkpoint.snapshot.cars[0].overtakeStatus = 'active'
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].overtakeEligibility = {
+        mutableF1Runtime(checkpoint).overtakeEligibility = {
           activationLap: 1,
           controlLineIndex: 999,
           detectedGapSeconds: 0.8,
@@ -517,22 +666,22 @@ describe('race session continuity', () => {
         }
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].ersPowerKw = 1
+        mutableF1Runtime(checkpoint).ersPowerKw = 1
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].superClippingIntensity = 1.01
+        mutableF1Runtime(checkpoint).superClippingIntensity = 1.01
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].superClippingRegenPowerKw = 1
+        mutableF1Runtime(checkpoint).superClippingRegenPowerKw = 1
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].superClippingRecoveredThisLapMj = 0.01
+        mutableF1Runtime(checkpoint).superClippingRecoveredThisLapMj = 0.01
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].superClippingStartedAtSeconds = 0
+        mutableF1Runtime(checkpoint).superClippingStartedAtSeconds = 0
       },
       (checkpoint) => {
-        checkpoint.snapshot.cars[0].superClippingDurationSeconds = -1
+        mutableF1Runtime(checkpoint).superClippingDurationSeconds = -1
       },
     ]
 
@@ -560,7 +709,7 @@ describe('race session continuity', () => {
         now,
       )!,
     ) as { snapshot: { cars: Array<Record<string, unknown>> } }
-    checkpoint.snapshot.cars[0].activeAeroState = {
+    mutableF1Runtime(checkpoint).activeAeroState = {
       ...createInitialActiveAeroState(),
       frontStraightFraction: 0.5,
     }
@@ -684,7 +833,7 @@ describe('race session continuity', () => {
     }
 
     snapshot = advanceRace(snapshot, 0.1, activeConfig)
-    expect(snapshot.cars[0].activeAeroState?.transition).not.toBeNull()
+    expect(f1Runtime(snapshot.cars[0]).activeAeroState.transition).not.toBeNull()
 
     const restored = parseRaceCheckpoint(
       serializeRaceCheckpoint('session-a', snapshot, now),
@@ -692,17 +841,17 @@ describe('race session continuity', () => {
       activeConfig,
       now,
     )
-    expect(restored?.cars[0].activeAeroState).toEqual(
-      snapshot.cars[0].activeAeroState,
+    expect(f1Runtime(restored!.cars[0]).activeAeroState).toEqual(
+      f1Runtime(snapshot.cars[0]).activeAeroState,
     )
 
     const uninterrupted = advanceRace(snapshot, 0.1, activeConfig)
     const replayed = advanceRace(restored!, 0.1, activeConfig)
     const aeroProjection = (race: typeof uninterrupted) =>
-      race.cars.map(({ activeAeroMode, activeAeroState, driverId }) => ({
-        activeAeroMode,
-        activeAeroState,
-        driverId,
+      race.cars.map((car) => ({
+        activeAeroMode: f1Runtime(car).activeAeroMode,
+        activeAeroState: f1Runtime(car).activeAeroState,
+        driverId: car.driverId,
       }))
 
     expect(aeroProjection(replayed)).toEqual(aeroProjection(uninterrupted))
@@ -726,8 +875,19 @@ describe('race session continuity', () => {
           pitStop: index === 19,
           position: car.position,
           sectors: [30, 30, 30] as [number, number, number],
-          tire: car.tire,
-          tireAgeLaps: index % 20,
+          tireRun:
+            car.runtimeSystems.kind === 'f1'
+              ? {
+                  ageLaps: index % 20,
+                  compound: car.runtimeSystems.tires.tire,
+                  kind: 'f1-pirelli' as const,
+                }
+              : {
+                  kind: 'super-formula-control-tire' as const,
+                  lapsOnCurrentSet: index % 20,
+                  physicalModelAvailability: 'unavailable' as const,
+                  surface: car.runtimeSystems.liveTires.activeSurface,
+                },
           trackGrip: 0.96,
           weather: 'clear' as const,
         })),

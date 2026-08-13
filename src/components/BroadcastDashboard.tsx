@@ -33,9 +33,11 @@ import type {
   RaceSnapshot,
   SectorTimingStatus,
   SpeedMultiplier,
+  TireCompound,
   TrackDefinition,
   WeekendStage,
 } from '../types'
+import type { LapTireDisplay } from '../simulation/classification'
 import type { SeriesId } from '../series/types'
 import type { ApplicationMode } from '../freeMode/types'
 
@@ -65,7 +67,8 @@ const practiceProgramLabels: Record<
 
 export type BroadcastTimingRow = {
   aeroOvertakeLabel: string
-  batteryPercent: number
+  /** F1-only Energy Store SOC; null for a SUPER FORMULA runtime. */
+  batteryPercent: number | null
   brakePercent: number
   car: CarSnapshot
   displayGapToLeaderLabel: string
@@ -86,10 +89,13 @@ export type BroadcastTimingRow = {
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
-  tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation'
-  tireLifePercent: number
-  tirePaceDeltaSeconds: number
-  tireTemperatureC: number
+  /** Discriminated F1 Pirelli or SUPER FORMULA control-tyre display state. */
+  tireDisplay: LapTireDisplay
+  tireModelSource: 'openf1-calibrated' | 'pirelli' | 'simulation' | 'unavailable'
+  /** F1 physical model only; unavailable for SUPER FORMULA. */
+  tireLifePercent: number | null
+  tirePaceDeltaSeconds: number | null
+  tireTemperatureC: number | null
 }
 
 export type BroadcastRaceControlEntry = {
@@ -142,8 +148,7 @@ type BroadcastDashboardProps = {
   seriesId: SeriesId
   seriesLabel: string
   seriesOptions: Array<{ id: SeriesId; label: string }>
-  tireLabels: Record<CarSnapshot['tire'], string>
-  overtakeSystem: 'active-aero' | 'ots'
+  tireLabels: Record<TireCompound, string>
   timingRows: BroadcastTimingRow[]
   track: TrackDefinition
   trackScene: ReactNode
@@ -199,7 +204,7 @@ const dashboardViews: Array<{
   { Icon: Database, id: 'data', label: 'Data' },
 ]
 
-const defaultTireLabels: Record<CarSnapshot['tire'], string> = {
+const defaultTireLabels: Record<TireCompound, string> = {
   H: 'Hard',
   I: 'Intermediate',
   M: 'Medium',
@@ -207,7 +212,7 @@ const defaultTireLabels: Record<CarSnapshot['tire'], string> = {
   W: 'Wet',
 }
 
-const tireColors: Record<CarSnapshot['tire'], string> = {
+const tireColors: Record<TireCompound, string> = {
   H: '#eef2f5',
   I: '#35d66f',
   M: '#ffd21f',
@@ -321,15 +326,81 @@ function TireUsage({
   labels,
 }: {
   cars: CarSnapshot[]
-  labels: Record<CarSnapshot['tire'], string>
+  labels: Record<TireCompound, string>
 }) {
+  const primaryRuntime = cars[0]?.runtimeSystems
   const usage = useMemo(() => {
-    const counts = new Map<CarSnapshot['tire'], number>()
+    const counts = new Map<TireCompound, number>()
 
-    cars.forEach((car) => counts.set(car.tire, (counts.get(car.tire) ?? 0) + 1))
+    cars.forEach((car) => {
+      if (car.runtimeSystems.kind !== 'f1') {
+        return
+      }
+
+      const compound = car.runtimeSystems.tires.tire
+      counts.set(compound, (counts.get(compound) ?? 0) + 1)
+    })
 
     return Array.from(counts.entries()).sort((left, right) => right[1] - left[1])
   }, [cars])
+  const controlSurfaceUsage = useMemo(() => {
+    const counts = new Map<'dry' | 'wet', number>()
+
+    cars.forEach((car) => {
+      if (car.runtimeSystems.kind !== 'super-formula') {
+        return
+      }
+
+      const surface = car.runtimeSystems.liveTires.activeSurface
+      counts.set(surface, (counts.get(surface) ?? 0) + 1)
+    })
+
+    return counts
+  }, [cars])
+  if (primaryRuntime?.kind === 'super-formula') {
+    return (
+      <div
+        aria-label="SUPER FORMULA control tyre allocation"
+        className="tyre-usage-content"
+      >
+        <div className="tyre-usage-legend">
+          <div>
+            <span>DRY</span>
+            <span>control sets</span>
+            <strong>
+              {primaryRuntime.controlTires.sets.dry.remainingSets}/
+              {primaryRuntime.controlTires.sets.dry.allocatedSets}
+            </strong>
+            <small>max {primaryRuntime.controlTires.sets.dry.maximumSets}</small>
+          </div>
+          <div>
+            <span>WET</span>
+            <span>control sets</span>
+            <strong>
+              {primaryRuntime.controlTires.sets.wet.remainingSets}/
+              {primaryRuntime.controlTires.sets.wet.allocatedSets}
+            </strong>
+            <small>max {primaryRuntime.controlTires.sets.wet.maximumSets}</small>
+          </div>
+          <div>
+            <span>MODEL</span>
+            <span>physical coefficients</span>
+            <strong>N/A</strong>
+            <small>unavailable</small>
+          </div>
+          {(['dry', 'wet'] as const).map((surface) => (
+            <div key={surface}>
+              <span>{surface.toUpperCase()}</span>
+              <span>fitted control tyres</span>
+              <strong>{controlSurfaceUsage.get(surface) ?? 0}</strong>
+              <small>cars on {surface}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const total = Math.max(1, cars.length)
   let offset = 0
 
@@ -379,18 +450,16 @@ function LeftLeaderboard({
   onModeChange,
   rows,
   selectedDriverId,
-  seriesId,
   showCarNumbers,
   stage,
   title,
 }: {
-  labels: Record<CarSnapshot['tire'], string>
+  labels: Record<TireCompound, string>
   mode: 'live' | 'gap'
   onFocusDriver: (driverId: string) => void
   onModeChange: (mode: 'live' | 'gap') => void
   rows: BroadcastTimingRow[]
   selectedDriverId: string
-  seriesId: SeriesId
   showCarNumbers: boolean
   stage: WeekendStage
   title: string
@@ -420,9 +489,9 @@ function LeftLeaderboard({
         <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span>
         <span title="Completed pit stops">ST</span><span title="Compounds used">USED</span><span>SPD</span>
         <span>
-          {seriesId === 'f1-custom'
+          {rows[0]?.car.runtimeSystems.kind === 'f1'
             ? 'ERS'
-            : seriesId === 'super-formula'
+            : rows[0]?.car.runtimeSystems.kind === 'super-formula'
               ? 'OTS'
               : '-'}
         </span>
@@ -434,7 +503,10 @@ function LeftLeaderboard({
       >
         {rows.map((row) => {
           const status = terminalLabel(row.car)
-          const tireLife = clamp(Math.round(row.tireLifePercent), 0, 100)
+          const tireLife =
+            row.tireLifePercent === null
+              ? null
+              : clamp(Math.round(row.tireLifePercent), 0, 100)
           const practiceProgram = row.car.practiceProgram
             ? practiceProgramLabels[row.car.practiceProgram]
             : null
@@ -478,13 +550,23 @@ function LeftLeaderboard({
                     <small>{compactSource(row.source)}</small>
                   )}
                 </span>
-                <span
-                  aria-label={`${labels[row.car.tire]} tyre, ${tireLife}% life remaining`}
-                  className={`broadcast-tire leaderboard-tire-life tire-${row.car.tire}`}
-                  title={`${labels[row.car.tire]} tyre: ${tireLife}% life remaining`}
-                >
-                  {tireLife}
-                </span>
+                {row.tireDisplay.kind === 'f1-pirelli' ? (
+                  <span
+                    aria-label={`${labels[row.tireDisplay.compound]} tyre, ${tireLife ?? '--'}% life remaining`}
+                    className={`broadcast-tire leaderboard-tire-life tire-${row.tireDisplay.compound}`}
+                    title={`${labels[row.tireDisplay.compound]} tyre: ${tireLife ?? '--'}% life remaining`}
+                  >
+                    {tireLife ?? '--'}
+                  </span>
+                ) : (
+                  <span
+                    aria-label={`SUPER FORMULA ${row.tireDisplay.surface} control tyre, ${row.tireDisplay.lapsOnCurrentSet} laps on set; physical model unavailable`}
+                    className="broadcast-tire leaderboard-tire-life"
+                    title={`${row.tireDisplay.surface.toUpperCase()} control tyre / ${row.tireDisplay.lapsOnCurrentSet} laps; physical model unavailable`}
+                  >
+                    {row.tireDisplay.surface.toUpperCase()}
+                  </span>
+                )}
                 <span className={status ? 'status-value' : undefined}>
                   {status ?? (mode === 'gap' ? row.displayGapToLeaderLabel : row.displayIntervalLabel)}
                 </span>
@@ -509,30 +591,39 @@ function LeftLeaderboard({
                 >
                   {row.car.pitStops}
                 </span>
-                <span
-                  aria-label={`Compounds used: ${row.car.compoundsUsed.map((compound) => labels[compound]).join(', ') || 'none yet'}`}
-                  className="leaderboard-compounds"
-                  title={`Tyre sets used: ${row.car.compoundsUsed.map((compound) => labels[compound]).join(' > ') || 'none yet'}`}
-                >
-                  {row.car.compoundsUsed.map((compound, index) => (
-                    <i className={`tire-${compound}`} key={`${compound}-${index}`} />
-                  ))}
-                </span>
-                <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
-                {seriesId === 'f1-custom' ? (
+                {row.car.runtimeSystems.kind === 'f1' ? (
                   <span
-                    title={`ERS SOC ${row.batteryPercent}% / ${row.car.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.energyStore.actualRecoveryPowerKw)} kW`}
+                    aria-label={`Compounds used: ${row.car.runtimeSystems.tires.compoundsUsed.map((compound) => labels[compound]).join(', ') || 'none yet'}`}
+                    className="leaderboard-compounds"
+                    title={`Tyre sets used: ${row.car.runtimeSystems.tires.compoundsUsed.map((compound) => labels[compound]).join(' > ') || 'none yet'}`}
                   >
-                    {row.batteryPercent}%
-                  </span>
-                ) : seriesId === 'super-formula' ? (
-                  <span
-                    title={`OTS allocation remaining ${Math.ceil(row.car.otsRemainingSeconds ?? 0)} seconds`}
-                  >
-                    {Math.ceil(row.car.otsRemainingSeconds ?? 0)}s
+                    {row.car.runtimeSystems.tires.compoundsUsed.map((compound, index) => (
+                      <i className={`tire-${compound}`} key={`${compound}-${index}`} />
+                    ))}
                   </span>
                 ) : (
-                  <span title="No hybrid Energy Store in this category">-</span>
+                  <span
+                    className="leaderboard-compounds"
+                    title={`Fitted ${row.car.runtimeSystems.liveTires.activeSurface} control tyre / ${row.car.runtimeSystems.liveTires.lapsOnCurrentSet} laps; inventory: dry ${row.car.runtimeSystems.controlTires.sets.dry.remainingSets}/${row.car.runtimeSystems.controlTires.sets.dry.allocatedSets}; wet ${row.car.runtimeSystems.controlTires.sets.wet.remainingSets}/${row.car.runtimeSystems.controlTires.sets.wet.allocatedSets}; physical model unavailable`}
+                  >
+                    {row.car.runtimeSystems.liveTires.activeSurface.toUpperCase()} CTRL
+                  </span>
+                )}
+                <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
+                {row.car.runtimeSystems.kind === 'f1' ? (
+                  <span
+                    title={`ERS SOC ${row.batteryPercent ?? '--'}% / ${row.car.runtimeSystems.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.runtimeSystems.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.runtimeSystems.energyStore.actualRecoveryPowerKw)} kW`}
+                  >
+                    {row.batteryPercent ?? '--'}%
+                  </span>
+                ) : row.car.runtimeSystems.ots.availability === 'verified-event-rule' ? (
+                  <span
+                    title={`Event OTS allocation ${row.car.runtimeSystems.ots.allocationSeconds} seconds; activation condition evaluation is pending`}
+                  >
+                    CONFIG
+                  </span>
+                ) : (
+                  <span title={row.car.runtimeSystems.ots.reason}>N/A</span>
                 )}
               </button>
             </li>
@@ -599,7 +690,6 @@ export function BroadcastDashboard({
   seriesLabel,
   seriesOptions,
   tireLabels = defaultTireLabels,
-  overtakeSystem,
   timingRows,
   track,
   trackScene,
@@ -626,9 +716,15 @@ export function BroadcastDashboard({
   )
   const trackTitle = `${eventName.replace(/\s+20\d{2}$/u, '')} 2026`
   const overtakeLabel =
-    overtakeSystem === 'active-aero'
-      ? 'ACTIVE AERO'
-      : 'OTS'
+    selectedCar.runtimeSystems.kind === 'f1' ? 'ACTIVE AERO' : 'OTS'
+  const trackOvertakeStatus =
+    selectedCar.runtimeSystems.kind === 'f1'
+      ? track.activeAeroUnavailable
+        ? `${overtakeLabel} N/A`
+        : `${track.aeroActivationZones?.length ?? 0} ${overtakeLabel} ZONES`
+      : selectedCar.runtimeSystems.ots.availability === 'verified-event-rule'
+        ? 'OTS EVENT RULE / CONDITION PENDING'
+        : 'OTS UNAVAILABLE'
   const activeSectorFlagIndex = snapshot.sectorFlags.findIndex(
     (flag) => flag !== 'clear',
   )
@@ -781,7 +877,6 @@ export function BroadcastDashboard({
             onModeChange={setLeaderboardMode}
             rows={timingRows}
             selectedDriverId={selectedCar.driverId}
-            seriesId={seriesId}
             showCarNumbers={applicationMode === 'free'}
             stage={stage}
             title={
@@ -803,7 +898,7 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-track-panel">
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
-              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${overtakeSystem === 'ots' ? 'OTS ENABLED' : track.activeAeroUnavailable ? `${overtakeLabel} N/A` : `${track.aeroActivationZones?.length ?? 0} ${overtakeLabel} ZONES`}`}
+              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${trackOvertakeStatus}`}
               title={`Track Map - ${track.name}`}
             />
             <div className="broadcast-track-stage">
@@ -812,7 +907,21 @@ export function BroadcastDashboard({
               <StartSignal snapshot={snapshot} />
               <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={layoutSourceTag(track)} /></div>
               <div className="track-map-legend">
-                {(Object.keys(tireLabels) as CarSnapshot['tire'][]).filter((compound) => !tireLabels[compound].startsWith('Not ')).map((compound) => <span key={compound}><i className={`broadcast-tire tire-${compound}`}>{compound}</i>{tireLabels[compound]}</span>)}
+                {selectedCar.runtimeSystems.kind === 'f1' ? (
+                  (Object.keys(tireLabels) as TireCompound[])
+                    .filter((compound) => !tireLabels[compound].startsWith('Not '))
+                    .map((compound) => (
+                      <span key={compound}>
+                        <i className={`broadcast-tire tire-${compound}`}>{compound}</i>
+                        {tireLabels[compound]}
+                      </span>
+                    ))
+                ) : (
+                  <span title="Published dry/wet set maxima; control-tyre subdivision and physical coefficients are unavailable">
+                    <i className="broadcast-tire">CTRL</i>
+                    Yokohama control tyres / dry-wet state only
+                  </span>
+                )}
               </div>
             </div>
           </section>

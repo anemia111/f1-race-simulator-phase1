@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type {
+  CarSnapshot,
   RaceConfig,
   TrackDefinition,
   TimedSegmentAttemptStatus,
   TimedSessionPlan,
+  TireCompound,
 } from '../types'
 import { advanceRace, createInitialRace } from './race'
 import { phaseOneConfig } from '../data/phaseOne'
 import { seriesPackageById } from '../series/seriesRegistry'
+import { isF1SeriesRules } from '../series/types'
 import {
   qualifyingCutSizes,
   runKnockoutQualifying,
@@ -25,41 +28,59 @@ import {
   trackDynamicsAt,
 } from './trackDynamics'
 import { categoryPhysicsFor } from './categoryPhysics'
+import type { F1RuntimeSystems } from './runtimeSystems'
+
+const f1SessionTire = (compound: TireCompound) => ({
+  compound,
+  kind: 'f1-pirelli-session-tire' as const,
+})
+
+function requireF1Runtime(car: CarSnapshot): F1RuntimeSystems {
+  if (car.runtimeSystems.kind !== 'f1') {
+    throw new Error('This timed-session fixture requires an F1 runtime')
+  }
+
+  return car.runtimeSystems
+}
 
 function measureLiveF1QualifyingPace(
   track: TrackDefinition,
   simulationStepSeconds = 3,
 ) {
   const f1 = seriesPackageById.get('f1-custom')!
+  if (!isF1SeriesRules(f1.rules)) {
+    throw new Error('Expected the F1 package to expose F1 rules')
+  }
+  const f1Rules = f1.rules
   const qualifying = runSeriesQualifying(
     {
       drivers: f1.drivers,
-      qualifyingDryCompound: f1.rules.tires.qualifyingDryCompound,
+      qualifyingDryCompound: f1Rules.tires.qualifyingDryCompound,
       seed: `live-qualifying-pace:${track.id}`,
       seriesId: f1.id,
       teams: f1.teams,
-      tireAllocation: f1.rules.tires.standardAllocation,
+      tireAllocation: f1Rules.tires.standardAllocation,
       track: { ...track, rainProbability: 0 },
       weekendStage: 'qualifying',
     },
     f1.rules,
   )
   const config: RaceConfig = {
-    categoryRaceFormat: f1.rules.race,
+    categoryRaceFormat: f1Rules.race,
     drivers: f1.drivers,
-    overtakeActivation: f1.rules.overtakeActivation,
-    overtakeSystem: f1.rules.overtakeSystem,
-    qualifyingDryCompound: f1.rules.tires.qualifyingDryCompound,
+    overtakeActivation: f1Rules.overtakeActivation,
+    overtakeSystem: f1Rules.overtakeSystem,
+    qualifyingDryCompound: f1Rules.tires.qualifyingDryCompound,
     seed: `live-qualifying-pace:${track.id}`,
     seriesId: f1.id,
     teams: f1.teams,
     timedSessionPlan: buildTimedSessionPlan(
       qualifying,
-      f1.rules.qualifying.breakSeconds,
-      f1.rules.qualifying.format,
+      f1Rules.qualifying.breakSeconds,
+      f1Rules.qualifying.format,
     ),
-    tireAllocation: f1.rules.tires.standardAllocation,
-    tireSupplier: f1.rules.tireSupplier,
+    tireAllocation: f1Rules.tires.standardAllocation,
+    tireSupplier: f1Rules.tireSupplier,
     track: { ...track, rainProbability: 0 },
     weekendStage: 'qualifying',
   }
@@ -113,6 +134,10 @@ describe('timed session plan', () => {
       'Q3',
     ])
     expect(plan.segments[0].participantDriverIds).toHaveLength(phaseOneConfig.drivers.length)
+    expect(plan.segments[0].tire).toEqual({
+      compound: phaseOneConfig.qualifyingDryCompound ?? 'S',
+      kind: 'f1-pirelli-session-tire',
+    })
     expect(plan.segments[1].startsAtSeconds - plan.segments[0].endsAtSeconds).toBe(420)
     expect(timedSessionStateAt(plan, plan.segments[0].endsAtSeconds + 10).segment).toBeNull()
   })
@@ -122,10 +147,9 @@ describe('timed session plan', () => {
     const qualifying = runSeriesQualifying(
       {
         drivers: series.drivers,
-        qualifyingDryCompound: series.rules.tires.qualifyingDryCompound,
         seed: 'sf-grouped-live-plan',
         teams: series.teams,
-        tireAllocation: series.rules.tires.standardAllocation,
+        seriesId: series.id,
         track: series.tracks[0],
         weekendStage: 'qualifying',
       },
@@ -164,6 +188,26 @@ describe('timed session plan', () => {
       plan.segments[2].promotionGroups?.map((group) => group.advanceCount),
     ).toEqual([6, 6])
     expect(plan.segments[2].participantDriverIds).toHaveLength(12)
+    expect(
+      plan.segments.every(
+        (segment) => segment.tire.kind === 'super-formula-control-session-tire',
+      ),
+    ).toBe(true)
+    for (const segment of plan.segments) {
+      if (segment.tire.kind !== 'super-formula-control-session-tire') {
+        throw new Error('Expected a SUPER FORMULA control-session tyre')
+      }
+
+      expect('compound' in segment.tire).toBe(false)
+      expect(segment.tire.surface === 'dry' || segment.tire.surface === 'wet').toBe(
+        true,
+      )
+      expect(segment.tire.physicalModel).toMatchObject({
+        availability: 'unavailable',
+        simulatorPolicy: 'do-not-apply-physical-tire-coefficients',
+        value: null,
+      })
+    }
   })
 
   it('opens the second qualifying group for its assigned cars, not group A leaders', () => {
@@ -172,7 +216,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           id: 'Q1-A',
           name: 'Q1',
@@ -183,7 +227,7 @@ describe('timed session plan', () => {
           suspensionStartsAtSeconds: null,
         },
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 20,
           id: 'Q1-B',
           name: 'Q1',
@@ -228,7 +272,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'M',
+          tire: f1SessionTire('M'),
           declaredWet: false,
           endsAtSeconds: 1_080,
           name: 'Q1',
@@ -256,12 +300,13 @@ describe('timed session plan', () => {
     let sawAttackDeployment = false
     let sawPreparationHarvest = false
 
-    expect(snapshot.cars[0].tire).toBe('S')
+    expect(requireF1Runtime(snapshot.cars[0]).tires.tire).toBe('S')
     expect(snapshot.lowGripConditions).toBe(false)
 
     for (let elapsed = 0; elapsed < 650; elapsed += 1) {
       snapshot = advanceRace(snapshot, 1, config)
       const car = snapshot.cars[0]
+      const runtimeSystems = requireF1Runtime(car)
 
       if (car.timedRunPhase) {
         phases.add(car.timedRunPhase)
@@ -269,16 +314,17 @@ describe('timed session plan', () => {
 
       if (car.timedRunPhase === 'out-lap') {
         maximumOutLapSpeedKph = Math.max(maximumOutLapSpeedKph, car.speedKph)
-        sawPreparationHarvest ||= car.ersMode === 'harvest'
+        sawPreparationHarvest ||= runtimeSystems.ersMode === 'harvest'
       }
 
       if (car.timedRunPhase === 'attack-lap') {
         minimumAttackBatteryPercent = Math.min(
           minimumAttackBatteryPercent,
-          car.ersBatteryPercent,
+          runtimeSystems.ersBatteryPercent,
         )
         maximumAttackSpeedKph = Math.max(maximumAttackSpeedKph, car.speedKph)
-        sawAttackDeployment ||= car.ersMode === 'deploy' && car.ersPowerKw > 0
+        sawAttackDeployment ||=
+          runtimeSystems.ersMode === 'deploy' && runtimeSystems.ersPowerKw > 0
       }
 
       if (car.timedRunsCompleted === 1 && car.status === 'pit') {
@@ -293,7 +339,7 @@ describe('timed session plan', () => {
     )
     expect(completedCar.timedRunsCompleted).toBe(1)
     expect(completedCar.status).toBe('pit')
-    expect(completedCar.tire).toBe('S')
+    expect(requireF1Runtime(completedCar).tires.tire).toBe('S')
     expect(sawPreparationHarvest).toBe(true)
     expect(sawAttackDeployment).toBe(true)
     expect(minimumAttackBatteryPercent).toBeLessThanOrEqual(28)
@@ -322,6 +368,7 @@ describe('timed session plan', () => {
       for (let step = 0; step < 4_000; step += 1) {
         snapshot = advanceRace(snapshot, 0.25, config)
         const car = snapshot.cars[0]
+        const runtimeSystems = requireF1Runtime(car)
 
         if (
           car.timedRunPhase === 'out-lap' &&
@@ -331,7 +378,7 @@ describe('timed session plan', () => {
           exceededPreparationThrottle ||= car.throttlePercent > 82
           exceededPreparationSpeed ||= car.speedKph > 175
           sawQualifyingDeployment ||=
-            car.ersMode === 'deploy' && car.ersPowerKw > 0
+            runtimeSystems.ersMode === 'deploy' && runtimeSystems.ersPowerKw > 0
           expect(car.lapStartedAtSeconds).toBeNull()
         }
 
@@ -388,7 +435,7 @@ describe('timed session plan', () => {
     expect(observedLongRun.timedRunLapsCompleted).toBeGreaterThanOrEqual(2)
     expect(observedLongRun.timedRunPhase).toBe('attack-lap')
     expect(observedLongRun.timedRunsCompleted).toBe(1)
-    expect(['H', 'M']).toContain(observedLongRun.tire)
+    expect(['H', 'M']).toContain(requireF1Runtime(observedLongRun).tires.tire)
     expect(observedLongRun.racePaceMode).toBe('standard')
   })
 
@@ -456,7 +503,7 @@ describe('timed session plan', () => {
     )!
 
     expect(preparationCar.throttlePercent).toBeLessThanOrEqual(38)
-    expect(preparationCar.ersMode).toBe('harvest')
+    expect(requireF1Runtime(preparationCar).ersMode).toBe('harvest')
     expect(attackCar.throttlePercent).toBeGreaterThan(38)
   })
 
@@ -545,7 +592,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 420,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -613,7 +660,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -622,7 +669,7 @@ describe('timed session plan', () => {
           suspensionStartsAtSeconds: null,
         },
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 40,
           name: 'Q2',
           participantDriverIds: initialDrivers
@@ -678,7 +725,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -687,7 +734,7 @@ describe('timed session plan', () => {
           suspensionStartsAtSeconds: null,
         },
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 40,
           name: 'Q2',
           // Fewer places than valid Q1 runners, so the cut has something to do.
@@ -738,7 +785,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -801,7 +848,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 120,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -846,7 +893,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -855,7 +902,7 @@ describe('timed session plan', () => {
           suspensionStartsAtSeconds: null,
         },
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 50,
           name: 'Q2',
           participantDriverIds: q2Drivers.map((driver) => driver.id),
@@ -914,7 +961,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 120,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -955,7 +1002,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),
@@ -1003,7 +1050,7 @@ describe('timed session plan', () => {
     const plan: TimedSessionPlan = {
       segments: [
         {
-          compound: 'S',
+          tire: f1SessionTire('S'),
           endsAtSeconds: 10,
           name: 'Q1',
           participantDriverIds: initialDrivers.map((driver) => driver.id),

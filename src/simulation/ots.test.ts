@@ -13,10 +13,10 @@ describe('Super Formula OTS', () => {
     const driver = series.drivers.find((candidate) => candidate.teamId === team.id)!
     const snapshot = createInitialRace({
       drivers: series.drivers,
-      overtakeActivation: series.rules.overtakeActivation,
       overtakeSystem: 'ots',
       seed: 'sf-ots-test',
       seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
       teams: series.teams,
       track,
       weekendStage: 'race',
@@ -28,9 +28,7 @@ describe('Super Formula OTS', () => {
     const baseCar = {
       ...snapshot.cars.find((car) => car.driverId === driver.id)!,
       battlePhase: 'attacking' as const,
-      ersBatteryPercent: 100,
       gapToAhead: 1.1,
-      otsRemainingSeconds: 200,
       position: 2,
       progress: straightProgress,
       racePaceMode: 'push' as const,
@@ -56,9 +54,10 @@ describe('Super Formula OTS', () => {
     const active = calculateCarTelemetry({ ...common, car: baseCar })
 
     expect(active.overtakeStatus).toBe('disabled')
-    expect(active.otsRemainingSeconds).toBeUndefined()
-    expect(active.otsCooldownUntilSeconds).toBeUndefined()
-    expect(active.activeAeroMode).toBe('corner')
+    expect(active.runtimeSystems.kind).toBe('super-formula')
+    expect(active).not.toHaveProperty('otsRemainingSeconds')
+    expect(active).not.toHaveProperty('otsCooldownUntilSeconds')
+    expect(active).not.toHaveProperty('activeAeroMode')
   })
 
   it('does not retain a historic OTS value during low-grip control', () => {
@@ -71,12 +70,13 @@ describe('Super Formula OTS', () => {
         drivers: series.drivers,
         overtakeSystem: 'ots' as const,
         seed: 'sf-ots-low-grip',
+        seriesId: 'super-formula',
         teams: series.teams,
         track,
+        sessionRaceLapsOverride: 25,
       }).cars[0],
       battlePhase: 'attacking' as const,
       gapToAhead: 0.8,
-      otsRemainingSeconds: 73,
       progress: 0.5,
       racePaceMode: 'push' as const,
       speedKph: 250,
@@ -100,7 +100,8 @@ describe('Super Formula OTS', () => {
     })
 
     expect(result.overtakeStatus).toBe('disabled')
-    expect(result.otsRemainingSeconds).toBeUndefined()
-    expect(result.otsCooldownUntilSeconds).toBeUndefined()
+    expect(result.runtimeSystems.kind).toBe('super-formula')
+    expect(result).not.toHaveProperty('otsRemainingSeconds')
+    expect(result).not.toHaveProperty('otsCooldownUntilSeconds')
   })
 })
