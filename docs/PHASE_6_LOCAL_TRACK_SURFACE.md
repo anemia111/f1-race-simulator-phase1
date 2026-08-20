@@ -96,11 +96,27 @@ Service-brake hardware now has a temperature-dependent capacity resolver. Its
 bounded policy capacity is intersected with the requested brake force and the
 tyre longitudinal envelope in the vehicle solver, so cold or overheated brake
 hardware cannot be hidden by a later force calculation. The normal operating
-window remains neutral for compatibility. The same temperature-limited ceiling
-also bounds the Energy Store's braking-recovery and friction-brake prediction,
-so it cannot credit unavailable brake torque before the live force solve. The
-policy intentionally makes no claim about team-specific disc, pad, duct, or
-cooling data.
+window remains neutral for compatibility. The live F1 braking path no longer
+asks the Energy Store to predict brake work from a nominal deceleration. It
+first previews the same tyre-ellipse, hardware-temperature, lateral-demand and
+release-modulated force solve used by the vehicle, and sends the resulting
+contact-patch work as equal-duration internal-slice energies. The Energy Store
+caps recovery in each slice against both that mechanical work and its existing
+machine, battery, thermal, SOC and lap-recharge limits. Accepted braking energy
+is returned slice-by-slice and becomes a local friction/recovery split in the
+final force solve; it cannot continue after the service brake releases or be
+smeared across a coarse public frame. Frame-integrated service work therefore
+closes as friction work plus accepted braking-recovery work, and brake thermal
+feedback consumes the final friction work rather than a nominal-power proxy.
+
+Non-braking lift/coast and super-clipping keep their existing standalone
+generator path, and callers that do not supply the exact profile retain the
+legacy compatibility calculation. SUPER FORMULA still has no F1 Energy Store;
+its service-brake work is entirely frictional. The policy intentionally makes
+no claim about team-specific disc, pad, duct, or cooling data. Because this
+changes deterministic ERS and brake-temperature continuation, checkpoint model
+`2026.08.20.2` rejects the preceding `2026.08.20.1` force model rather than
+silently mixing histories.
 
 ## Physical-track contract follow-up
 

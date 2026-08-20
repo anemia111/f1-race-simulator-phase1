@@ -61,7 +61,9 @@ import {
   fuelMassEffects,
   integrateVehicleLongitudinalStep,
   liveCorneringSpeedLimitKph,
+  previewServiceBrakeMechanicalBudget,
   towDragReductionFor,
+  type LongitudinalStepInput,
 } from './vehicleDynamics'
 
 const clamp = (value: number, min: number, max: number) =>
@@ -158,6 +160,8 @@ function ersModeFor(options: {
 
 type CalculatedTelemetry = {
   brakePercent: number
+  /** Frame-averaged contact-patch work dissipated by service-brake friction. */
+  frictionServiceBrakePowerKw: number
   gear: number
   rpm: number
   /** Category-owned F1 or SUPER FORMULA state after this force step. */
@@ -812,6 +816,51 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
     turboSpoolFraction: car.turboSpoolFraction,
   })
+  const towDragReduction = phase || car.gapToAhead <= 0
+    ? 0
+    : towDragReductionFor({
+        dynamics,
+        gapSeconds: car.gapToAhead,
+        lateralSeparationM,
+        team,
+      })
+  const brakeReleaseSpeedKph =
+    pitLaneSpeedLimitKph ??
+    (brakePercent > 3
+      ? Math.min(targetSpeedKph, brakingTargetSpeedKph) * 0.98
+      : undefined)
+  const longitudinalInputWithoutEnergy: LongitudinalStepInput = {
+    activeAeroMode,
+    activeAeroState,
+    airDensityKgM3: ambientAirDensityKgM3,
+    baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
+    brakePercent,
+    brakeTemperatureC: car.brakeTemperatureC,
+    brakeReleaseSpeedKph,
+    categoryPhysics,
+    currentSpeedKph: car.speedKph,
+    deltaSeconds,
+    dirtyAirDownforceMultiplier: dirtyAirDownforce,
+    dynamics,
+    ersPowerKw: 0,
+    extraCombustionPowerKw,
+    fuelLoadKg: car.fuelLoadKg,
+    gripMultiplier: utilisedGrip,
+    headwindMps,
+    regenerativeResistancePowerKw: 0,
+    requestedBrakeDecelerationMps2:
+      (brakePercent / 100) *
+      categoryPhysics.maximumBrakeDecelerationMps2,
+    setup,
+    team,
+    throttlePercent,
+    towDragReduction,
+    turboSpoolFraction: car.turboSpoolFraction,
+    clutchEngagementFraction: car.clutchEngagementFraction,
+  }
+  const brakeMechanicalBudget = hasHybridEnergyStore && brakePercent > 0
+    ? previewServiceBrakeMechanicalBudget(longitudinalInputWithoutEnergy)
+    : null
   const qualifyingRecoveryRequestScale = isQualifyingAttack
     ? batteryPercentAtFrameStart < 18
       ? 0.82
@@ -825,6 +874,8 @@ export function calculateCarTelemetry(options: {
           allowLiftCoastRecovery:
             energyIntent.liftCoastPreference > 0.08,
           ambientTemperatureC: airTemperatureC,
+          brakeMechanicalEnergyProfileMJ:
+            brakeMechanicalBudget?.mechanicalEnergyProfileMJ,
           brakePercent,
           brakeDecelerationLimitMps2: brakeRecoveryDecelerationLimitMps2,
           combustionWheelPowerKw,
@@ -877,48 +928,35 @@ export function calculateCarTelemetry(options: {
     (f1Runtime?.overtakeEnergyRemainingMj ?? 0) - overtakeEnergyUsedMj,
   )
   const ersBatteryPercent = Math.round((energyStore?.stateOfCharge ?? 0) * 100)
-  const towDragReduction = phase || car.gapToAhead <= 0
-    ? 0
-    : towDragReductionFor({
-        dynamics,
-        gapSeconds: car.gapToAhead,
-        lateralSeparationM,
-        team,
-      })
+  const serviceBrakeRegenerativeFractionProfile = brakeMechanicalBudget
+    ? brakeMechanicalBudget.mechanicalEnergyProfileMJ.map(
+        (serviceBrakeEnergyMJ, index) =>
+          serviceBrakeEnergyMJ > 1e-12
+            ? clamp(
+                (energyStep?.audit
+                  .acceptedBrakeRecoveryMechanicalEnergyProfileMJ[index] ??
+                  0) / serviceBrakeEnergyMJ,
+                0,
+                1,
+              )
+            : 0,
+      )
+    : undefined
+  const standaloneRecoveryPowerKw = energyStep
+    ? energyStep.actualRecoverySourcePowerKw.liftCoast +
+      energyStep.actualRecoverySourcePowerKw.superclip
+    : 0
   const longitudinalStep = integrateVehicleLongitudinalStep({
-    activeAeroMode,
-    activeAeroState,
-    airDensityKgM3: ambientAirDensityKgM3,
-    baseVehicleMassKg: operationalVehicleMass.operationalMassKg,
-    brakePercent,
-    brakeTemperatureC: car.brakeTemperatureC,
-    brakeReleaseSpeedKph:
-      pitLaneSpeedLimitKph ??
-      (brakePercent > 3
-        ? Math.min(targetSpeedKph, brakingTargetSpeedKph) * 0.98
-        : undefined),
-    categoryPhysics,
-    currentSpeedKph: car.speedKph,
-    deltaSeconds,
-    dirtyAirDownforceMultiplier: dirtyAirDownforce,
-    dynamics,
+    ...longitudinalInputWithoutEnergy,
     ersPowerKw,
-    extraCombustionPowerKw,
-    fuelLoadKg: car.fuelLoadKg,
-    gripMultiplier: utilisedGrip,
-    headwindMps,
-    regenerativeResistancePowerKw:
-      energyStep?.regenerativeResistancePowerKw ?? 0,
-    requestedBrakeDecelerationMps2:
-      (brakePercent / 100) *
-      categoryPhysics.maximumBrakeDecelerationMps2,
-    setup,
-    team,
-    throttlePercent,
-    towDragReduction,
-    turboSpoolFraction: car.turboSpoolFraction,
-    clutchEngagementFraction: car.clutchEngagementFraction,
+    regenerativeResistancePowerKw: standaloneRecoveryPowerKw,
+    serviceBrakeRegenerativeFractionProfile,
   })
+  const frictionServiceBrakePowerKw =
+    deltaSeconds > 0
+      ? (longitudinalStep.frictionBrakeMechanicalEnergyMJ * 1000) /
+        deltaSeconds
+      : 0
   // The timing tower, map movement, and lap clock all consume this integrated
   // result. The profile only controls pedals; it never overwrites road speed.
   const powerUnitStopped =
@@ -1016,6 +1054,7 @@ export function calculateCarTelemetry(options: {
 
   return {
     brakePercent,
+    frictionServiceBrakePowerKw,
     gear,
     rpm,
     runtimeSystems,

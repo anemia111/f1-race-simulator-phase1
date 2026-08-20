@@ -80,11 +80,22 @@ export type EnergyDeploymentRequestOptions = {
 export type AdvanceEnergyStoreOptions = {
   allowLiftCoastRecovery?: boolean
   ambientTemperatureC: number
+  /**
+   * Exact service-brake work for each equal-duration vehicle-solver slice.
+   * The supplied length owns the slice cadence and takes precedence over the
+   * scalar compatibility budget below.
+   */
+  brakeMechanicalEnergyProfileMJ?: readonly number[]
+  /**
+   * Exact service-brake work at the contact patch over this public call.
+   * Retained for direct-call compatibility when no slice profile is supplied.
+   */
+  brakeMechanicalEnergyBudgetMJ?: number
   brakePercent: number
   /**
    * Physical service-brake deceleration ceiling supplied by the live vehicle
-   * solver's inputs. This keeps braking recovery from being credited against
-   * more torque than cold or overheated hardware can actually accept.
+   * solver's inputs. This bounds the legacy predictor when no exact contact-
+   * patch work budget is available.
    */
   brakeDecelerationLimitMps2?: number
   /** Positive ICE contribution at the wheels, used only to classify superclip. */
@@ -118,6 +129,10 @@ export type EnergyFlowAudit = {
   deltaSeconds: number
   initialStoredEnergyMJ: number
   finalStoredEnergyMJ: number
+  requestedBrakeMechanicalEnergyMJ: number
+  frictionBrakeMechanicalEnergyMJ: number
+  acceptedBrakeRecoveryMechanicalEnergyMJ: number
+  acceptedBrakeRecoveryMechanicalEnergyProfileMJ: readonly number[]
   requestedRecoveryMechanicalEnergyMJ: number
   recoveredMechanicalEnergyMJ: number
   requestedSuperclipMechanicalEnergyMJ: number
@@ -920,6 +935,8 @@ function advanceEnergyStoreSubstep(
   state: EnergyStoreState,
   deltaSeconds: number,
   speedKph: number,
+  exactBrakeMechanicalPowerBudgetKw: number | null,
+  exactBrakingOwnsGenerator: boolean,
 ): EnergyStoreSubstep {
   const parameters = energySystemParametersFor(options.team)
   const speedMps = Math.max(0, speedKph) / 3.6
@@ -928,10 +945,9 @@ function advanceEnergyStoreSubstep(
   const wetStability =
     tireRecoveryStability(options.tire, options.surfaceWaterMm) *
     (0.82 + clamp(options.driverWetSkill, 0, 1) * 0.18)
-  // The legacy 5.1 g prediction remains the compatibility upper bound, but
-  // telemetry can now supply the same temperature-limited service-brake
-  // ceiling that constrains the live longitudinal force solve. Energy is
-  // therefore never credited from unavailable brake hardware.
+  // The legacy 5.1 g prediction remains only for callers without an exact
+  // contact-patch work budget. Its optional hardware ceiling keeps that
+  // compatibility path from crediting unavailable service-brake torque.
   const nominalMaximumDecelerationMps2 = 5.1 * 9.81 * grip
   const maximumDecelerationMps2 = Math.min(
     nominalMaximumDecelerationMps2,
@@ -956,17 +972,21 @@ function advanceEnergyStoreSubstep(
   )
   const aerodynamicLossShare = clamp(0.08 + (speedKph / 420) * 0.24, 0.08, 0.34)
   const requestedBrakePowerKw =
-    deltaSeconds > 0 ? (kineticEnergyDeltaMJ * 1000) / deltaSeconds : 0
+    exactBrakeMechanicalPowerBudgetKw ??
+    (deltaSeconds > 0 ? (kineticEnergyDeltaMJ * 1000) / deltaSeconds : 0)
   const recoveryRequestScale = clamp(options.recoveryRequestScale ?? 1, 0, 1.25)
   const brakeRecoveryRequestKw =
     requestedBrakePowerKw *
-    (1 - aerodynamicLossShare) *
+    (exactBrakeMechanicalPowerBudgetKw === null
+      ? 1 - aerodynamicLossShare
+      : 1) *
     0.56 *
     wetStability *
     (0.82 + clamp(options.driverErsManagement, 0, 1) * 0.18) *
     (0.84 + parameters.regenBlendingQuality * 0.16) *
     recoveryRequestScale
   const liftRecoveryRequestKw =
+    !exactBrakingOwnsGenerator &&
     options.allowLiftCoastRecovery !== false &&
     brakeRequest < 0.04 &&
     options.throttlePercent < 46 &&
@@ -991,7 +1011,9 @@ function advanceEnergyStoreSubstep(
   // Without high throttle and positive ICE wheel power it is ineligible; any
   // independent braking/lift request remains attributable to its own source.
   const superclipGeneratorRequestKw =
-    options.throttlePercent >= 95 && combustionWheelPowerKw > 0.001
+    exactBrakingOwnsGenerator
+      ? 0
+      : options.throttlePercent >= 95 && combustionWheelPowerKw > 0.001
       ? rawSuperclipGeneratorRequestKw
       : 0
   const requestedRecoveryPowerKw =
@@ -1036,6 +1058,9 @@ function advanceEnergyStoreSubstep(
     0,
     Math.min(
       requestedRecoveryPowerKw,
+      exactBrakingOwnsGenerator
+        ? (exactBrakeMechanicalPowerBudgetKw ?? 0)
+        : Number.POSITIVE_INFINITY,
       parameters.maximumRecoveryMechanicalPowerKw,
       batteryChargeDcPowerLimitKw / Math.max(0.01, recoveryDcEfficiency),
       ledgerLimitedMechanicalPowerKw,
@@ -1084,7 +1109,9 @@ function advanceEnergyStoreSubstep(
   )
   // A single MGU-K cannot be a motor and generator in the same substep.
   const requestedDeploymentDcPowerKw =
-    brakeRequest >= 0.04 || actualRecoveryPowerKw > 0.001
+    exactBrakingOwnsGenerator ||
+    brakeRequest >= 0.04 ||
+    actualRecoveryPowerKw > 0.001
       ? 0
       : maximumDeploymentDcPowerKw * clamp(options.deploymentRequest, 0, 1)
   const availableStoredEnergyMJ = Math.max(
@@ -1274,7 +1301,10 @@ function advanceEnergyStoreSubstep(
       requestedBrakePowerKw,
       frictionBrakePowerKw: Math.max(
         0,
-        requestedBrakePowerKw - actualRecoveryPowerKw,
+        requestedBrakePowerKw -
+          (exactBrakeMechanicalPowerBudgetKw === null
+            ? actualRecoveryPowerKw
+            : actualBrakeRecoveryPowerKw),
       ),
       recoveryTorqueNm:
         speedMps > 0.5
@@ -1339,6 +1369,10 @@ function emptyEnergyFlowAudit(storedEnergyMJ: number): EnergyFlowAudit {
     deltaSeconds: 0,
     initialStoredEnergyMJ: storedEnergyMJ,
     finalStoredEnergyMJ: storedEnergyMJ,
+    requestedBrakeMechanicalEnergyMJ: 0,
+    frictionBrakeMechanicalEnergyMJ: 0,
+    acceptedBrakeRecoveryMechanicalEnergyMJ: 0,
+    acceptedBrakeRecoveryMechanicalEnergyProfileMJ: [],
     requestedRecoveryMechanicalEnergyMJ: 0,
     recoveredMechanicalEnergyMJ: 0,
     requestedSuperclipMechanicalEnergyMJ: 0,
@@ -1387,6 +1421,39 @@ export function advanceEnergyStore(
 
   let remainingSeconds = totalSeconds
   let localSpeedKph = Math.max(0, options.speedKph)
+  const suppliedBrakeMechanicalEnergyProfileMJ =
+    options.brakeMechanicalEnergyProfileMJ
+  const exactBrakeMechanicalEnergyProfileMJ =
+    suppliedBrakeMechanicalEnergyProfileMJ === undefined
+      ? null
+      : Array.isArray(suppliedBrakeMechanicalEnergyProfileMJ) &&
+          suppliedBrakeMechanicalEnergyProfileMJ.length > 0
+        ? Array.from(suppliedBrakeMechanicalEnergyProfileMJ, (energyMJ) =>
+            Math.max(0, finite(energyMJ)),
+          )
+        : [0]
+  const exactBrakeMechanicalEnergyBudgetMJ =
+    exactBrakeMechanicalEnergyProfileMJ !== null ||
+    options.brakeMechanicalEnergyBudgetMJ === undefined
+      ? null
+      : Math.max(0, finite(options.brakeMechanicalEnergyBudgetMJ))
+  const exactBrakeMechanicalPowerBudgetKw =
+    exactBrakeMechanicalEnergyBudgetMJ === null
+      ? null
+      : (exactBrakeMechanicalEnergyBudgetMJ * 1000) / totalSeconds
+  const exactProfileSliceSeconds =
+    exactBrakeMechanicalEnergyProfileMJ === null
+      ? null
+      : totalSeconds / exactBrakeMechanicalEnergyProfileMJ.length
+  const exactBrakingOwnsGenerator =
+    exactBrakeMechanicalEnergyProfileMJ !== null &&
+    exactProfileSliceSeconds !== null
+      ? exactBrakeMechanicalEnergyProfileMJ.some(
+          (energyMJ) =>
+            (energyMJ * 1000) / exactProfileSliceSeconds > 1e-9,
+        )
+      : exactBrakeMechanicalPowerBudgetKw !== null &&
+        exactBrakeMechanicalPowerBudgetKw > 1e-9
   const initialStoredEnergyMJ = state.currentEnergyMJ
   const initialRequestedRecoveryMJ =
     state.requestedRecoveryMechanicalEnergyThisLapMJ
@@ -1412,17 +1479,29 @@ export function advanceEnergyStore(
   let requestedSuperclipMechanicalEnergyMJ = 0
   let recoveredSuperclipMechanicalEnergyMJ = 0
   let superclipRechargedAtCuKBusMJ = 0
+  let exactProfileIndex = 0
+  const acceptedBrakeRecoveryMechanicalEnergyProfileMJ: number[] = []
 
-  while (remainingSeconds > 0.000001) {
-    const stepSeconds = Math.min(
-      ENERGY_INTEGRATION_STEP_SECONDS,
-      remainingSeconds,
-    )
+  while (
+    exactBrakeMechanicalEnergyProfileMJ === null
+      ? remainingSeconds > 0.000001
+      : exactProfileIndex < exactBrakeMechanicalEnergyProfileMJ.length
+  ) {
+    const stepSeconds =
+      exactProfileSliceSeconds ??
+      Math.min(ENERGY_INTEGRATION_STEP_SECONDS, remainingSeconds)
+    const exactBrakeMechanicalPowerKw =
+      exactBrakeMechanicalEnergyProfileMJ === null
+        ? exactBrakeMechanicalPowerBudgetKw
+        : (exactBrakeMechanicalEnergyProfileMJ[exactProfileIndex] * 1000) /
+          stepSeconds
     const substep = advanceEnergyStoreSubstep(
       options,
       state,
       stepSeconds,
       localSpeedKph,
+      exactBrakeMechanicalPowerKw,
+      exactBrakingOwnsGenerator,
     )
     state = substep.state
     requestedDeploymentIntegral +=
@@ -1433,6 +1512,11 @@ export function advanceEnergyStore(
     recoveryTorqueIntegral += state.recoveryTorqueNm * stepSeconds
     actualBrakeRecoveryIntegral +=
       substep.actualBrakeRecoveryPowerKw * stepSeconds
+    if (exactBrakeMechanicalEnergyProfileMJ !== null) {
+      acceptedBrakeRecoveryMechanicalEnergyProfileMJ.push(
+        (substep.actualBrakeRecoveryPowerKw * stepSeconds) / 1000,
+      )
+    }
     actualLiftRecoveryIntegral +=
       substep.actualLiftRecoveryPowerKw * stepSeconds
     actualSuperclipGeneratorIntegral +=
@@ -1443,16 +1527,32 @@ export function advanceEnergyStore(
       substep.recoveredSuperclipMechanicalEnergyMJ
     superclipRechargedAtCuKBusMJ +=
       substep.superclipRechargedAtCuKBusMJ
-    const decelerationMps2 =
-      5.1 *
-      9.81 *
-      clamp(options.gripMultiplier, 0.25, 1.15) *
-      clamp(options.brakePercent / 100, 0, 1)
-    localSpeedKph = Math.max(
-      0,
-      localSpeedKph - decelerationMps2 * stepSeconds * 3.6,
-    )
+    if (exactBrakeMechanicalPowerKw === null) {
+      const decelerationMps2 =
+        5.1 *
+        9.81 *
+        clamp(options.gripMultiplier, 0.25, 1.15) *
+        clamp(options.brakePercent / 100, 0, 1)
+      localSpeedKph = Math.max(
+        0,
+        localSpeedKph - decelerationMps2 * stepSeconds * 3.6,
+      )
+    } else {
+      const localSpeedMps = localSpeedKph / 3.6
+      const substepBrakeEnergyJ =
+        exactBrakeMechanicalPowerKw * stepSeconds * 1000
+      localSpeedKph =
+        Math.sqrt(
+          Math.max(
+            0,
+            localSpeedMps ** 2 -
+              (2 * substepBrakeEnergyJ) /
+                Math.max(500, options.vehicleMassKg),
+          ),
+        ) * 3.6
+    }
     remainingSeconds -= stepSeconds
+    exactProfileIndex += 1
   }
 
   const requestedRecoveryMechanicalEnergyMJ =
@@ -1485,6 +1585,10 @@ export function advanceEnergyStore(
     actualBrakeRecoveryIntegral / totalSeconds
   const actualLiftRecoveryPowerKw =
     actualLiftRecoveryIntegral / totalSeconds
+  const requestedBrakeMechanicalEnergyMJ = requestedBrakeIntegral / 1000
+  const frictionBrakeMechanicalEnergyMJ = frictionBrakeIntegral / 1000
+  const acceptedBrakeRecoveryMechanicalEnergyMJ =
+    actualBrakeRecoveryIntegral / 1000
   const operatingMode = operatingModeFor({
     actualBrakeRecoveryPowerKw,
     actualDeploymentDcPowerKw: averageDeploymentDcPowerKw,
@@ -1536,6 +1640,10 @@ export function advanceEnergyStore(
     deltaSeconds: totalSeconds,
     initialStoredEnergyMJ,
     finalStoredEnergyMJ: state.currentEnergyMJ,
+    requestedBrakeMechanicalEnergyMJ,
+    frictionBrakeMechanicalEnergyMJ,
+    acceptedBrakeRecoveryMechanicalEnergyMJ,
+    acceptedBrakeRecoveryMechanicalEnergyProfileMJ,
     requestedRecoveryMechanicalEnergyMJ,
     recoveredMechanicalEnergyMJ,
     requestedSuperclipMechanicalEnergyMJ,

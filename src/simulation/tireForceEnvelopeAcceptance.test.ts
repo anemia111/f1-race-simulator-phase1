@@ -276,7 +276,7 @@ describe('Phase 6 F1 tyre-force acceptance', () => {
     )
   })
 
-  it('routes live brake temperature into the F1 recovery and friction-heat ledger', () => {
+  it('closes the live F1 recovery and friction ledger against contact-patch brake work', () => {
     const operatingWindow = f1BrakeHardwareTelemetry(620)
     const overheated = f1BrakeHardwareTelemetry(1_150)
 
@@ -291,21 +291,21 @@ describe('Phase 6 F1 tyre-force acceptance', () => {
       throw new Error('Expected F1 Energy Store telemetry.')
     }
 
-    expect(
-      overheated.runtimeSystems.energyStore.requestedBrakePowerKw,
-    ).toBeLessThan(
-      operatingWindow.runtimeSystems.energyStore.requestedBrakePowerKw,
-    )
-    expect(
-      overheated.runtimeSystems.energyStore.frictionBrakePowerKw,
-    ).toBeLessThan(
-      operatingWindow.runtimeSystems.energyStore.frictionBrakePowerKw,
-    )
-    expect(
-      overheated.runtimeSystems.energyStore.actualRecoveryPowerKw,
-    ).toBeLessThanOrEqual(
-      operatingWindow.runtimeSystems.energyStore.actualRecoveryPowerKw,
-    )
+    for (const telemetry of [operatingWindow, overheated]) {
+      if (telemetry.runtimeSystems.kind !== 'f1') {
+        throw new Error('Expected F1 Energy Store telemetry.')
+      }
+      const store = telemetry.runtimeSystems.energyStore
+
+      expect(store.requestedBrakePowerKw).toBeGreaterThan(0)
+      expect(store.actualRecoveryPowerKw).toBeGreaterThanOrEqual(0)
+      expect(store.actualRecoveryPowerKw).toBeLessThanOrEqual(
+        store.requestedBrakePowerKw,
+      )
+      expect(
+        store.frictionBrakePowerKw + store.actualRecoveryPowerKw,
+      ).toBeCloseTo(store.requestedBrakePowerKw, 8)
+    }
   })
 
   it('does not couple an F1 tyre envelope into SUPER FORMULA runtime state', () => {
