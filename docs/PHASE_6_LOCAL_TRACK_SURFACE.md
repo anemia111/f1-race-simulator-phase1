@@ -19,24 +19,40 @@ two lanes per cell:
 
 Every cell has bounded bonded rubber, loose-rubber/marble proxy, water-film
 depth, drying maturity, surface temperature, and a static base-friction input.
-The state has a strict serializable form and rejects malformed persisted input.
+The state has a serializable form; the checkpoint parser validates that form
+strictly and rejects malformed or normalizable persisted input.
 `trackSurfaceAt` resolves the car's normalized progress and lateral offset to
 a cell and lane. A grid slot remains on the racing line; the off-line lane
 starts only outside the bounded lateral threshold.
 
-The arrays use `Float64Array` during this compatibility stage. That preserves
-the exact numeric values carried by the existing three-sector checkpoint
-fields while the runtime has two representations. A later checkpoint migration
-may choose a compact persisted representation only together with an explicit
-schema/version change.
+The live representation uses `Float64Array`; `RaceSnapshot.trackSurface`
+stores its strict plain-array serialization. It is the single persisted
+simulation authority. The historic three-sector fields remain projections for
+existing UI and session-rule consumers, so they can be removed only after
+those consumers have a direct two-lane API.
 
 ## Compatibility and force coupling
 
-The pre-existing sector water, drying-line, and rubber fields remain the
-checkpoint authority. On every simulation step, `advanceRace` deterministically
-materializes the local state from those fields. The racing-line values therefore
-reproduce the old inputs; the off-line lane gets only a bounded,
-`simulator-policy` loose-rubber proxy until local observations exist.
+`advanceRace` restores the canonical two-lane state at the start of a tick and
+projects its racing-line sectors into the established water and rubber update
+functions. Those functions run exactly once. Their result is then projected
+back into a fresh canonical state, from which the compatibility sector fields
+are regenerated. The racing-line values therefore retain the established
+inputs; the off-line lane gets only a bounded, `simulator-policy`
+loose-rubber proxy until local observations exist.
+
+Checkpoint schema v3 requires a well-formed canonical surface and normalizes
+all compatibility sectors from it on restore. Schema v2 checkpoints are
+deterministically hydrated once from their then-authoritative three-sector
+values, active track sector marks, and source-labelled surface profile. A
+malformed v3 canonical state is rejected rather than silently rebuilt from
+stale compatibility fields.
+
+The source-labelled static profile is selected when the race is created and is
+saved with that race's canonical state. Updating an external configuration
+cannot alter an already-running race; v3 restoration verifies that the saved
+static profile, cell grid, defaults, and base-friction array match the active
+track definition before allowing continuation.
 
 The race loop resolves the local surface once for each running car and composes
 it as follows:
@@ -124,7 +140,7 @@ and confidence metadata.
 ## Explicitly not yet operational
 
 - Per-track roughness and drainage inputs;
-- direct cell ownership/persistence across race ticks;
+- source-backed cell-by-cell water, rubber, temperature, or debris evolution;
 - source-backed physical width, elevation, grade, banking, kerb, or runoff
   geometry;
 - tyre relaxation/transient response, source-backed compound force
@@ -133,13 +149,16 @@ and confidence metadata.
   for those coefficients and does not reuse F1/Pirelli values.
 
 `advanceTrackSurfaceCell` is a bounded, deterministic pure update used to test
-water balance and future ownership migration. It is intentionally not presented
-as a sourced circuit-drainage model and is not yet the live checkpoint state.
+water balance and future cell-evolution work. It is intentionally not presented
+as a sourced circuit-drainage model and is not called by the live race loop;
+calling it alongside the established sector updates would double-count water
+and rubber changes.
 
 ## Verification
 
 Focused tests cover neutral/default behavior, wrap-around cell resolution,
-lane selection, legacy-sector reconstruction, bounded rain/drainage response,
-serialization rejection, provenance fail-closed behavior, local-force
-monotonicity, and a race-loop profile integration. Existing water/rubber and
-full race regression suites remain part of the release gate.
+lane selection, legacy-sector reconstruction, canonical serialize/deserialize
+round trips, bounded rain/drainage response, provenance fail-closed behavior,
+v2 checkpoint hydration, v3 corruption rejection, compatibility projection,
+local-force monotonicity, and a race-loop profile integration. Existing
+water/rubber and full race regression suites remain part of the release gate.

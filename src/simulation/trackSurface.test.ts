@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   advanceTrackSurfaceCell,
+  applyLegacyTrackSurfaceSectorsToState,
   createTrackSurfaceState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
@@ -63,6 +64,65 @@ describe('local track surface', () => {
     expect(third.dryness).toBeCloseTo(0.1, 5)
     expect(third.waterFilmMm).toBeCloseTo(2.4, 5)
     expect(legacySectorStateForTrackSurface(state).rubberLevelBySector[1]).toBeCloseTo(0.6, 5)
+  })
+
+  it('projects one legacy update into a fresh canonical state without changing its grid', () => {
+    const canonical = createTrackSurfaceState({
+      cellCount: 96,
+      initialSurfaceTemperatureC: 37,
+      profile: {
+        baseFriction: 0.98,
+        source: 'simulator-policy',
+        sourceLabel: 'Test-only canonical profile',
+      },
+      sectorMarks: [0, 1 / 3, 2 / 3],
+    })
+    canonical.marbles.fill(0.9)
+    canonical.surfaceTemperatureC[0] = 41
+    const before = serializeTrackSurfaceState(canonical)
+    const legacy = {
+      dryingLineBySector: [1, 0.5, 0.25] as [number, number, number],
+      rubberLevelBySector: [0.25, 0.5, 0.75] as [number, number, number],
+      // A later compatibility value cannot change a persisted state grid.
+      sectorMarks: [0, 0.5, 0.75],
+      surfaceWaterMmBySector: [0.125, 0.5, 1] as [number, number, number],
+    }
+
+    const updated = applyLegacyTrackSurfaceSectorsToState(canonical, legacy)
+    const restored = deserializeTrackSurfaceState(
+      serializeTrackSurfaceState(updated),
+    )
+
+    expect(updated).not.toBe(canonical)
+    expect(serializeTrackSurfaceState(canonical)).toEqual(before)
+    expect(updated.baseFriction).not.toBe(canonical.baseFriction)
+    expect(updated.defaults).not.toBe(canonical.defaults)
+    expect(updated.profile).not.toBe(canonical.profile)
+    expect(updated.sectorMarks).toEqual([0, 1 / 3, 2 / 3])
+    expect(updated.surfaceTemperatureC).toEqual(canonical.surfaceTemperatureC)
+    expect(legacySectorStateForTrackSurface(updated)).toEqual({
+      dryingLineBySector: [1, 0.5, 0.25],
+      rubberLevelBySector: [0.25, 0.5, 0.75],
+      surfaceWaterMmBySector: [0.125, 0.5, 1],
+    })
+    expect(trackSurfaceAt(updated, { lane: 'racing-line', progress: 0.5 }))
+      .toMatchObject({
+        bondedRubber: 0.5,
+        dryness: 0.5,
+        marbles: 0,
+        waterFilmMm: 0.5,
+      })
+    const offLine = trackSurfaceAt(updated, { lane: 'off-line', progress: 0.5 })
+    expect(offLine.bondedRubber).toBeCloseTo(0.5 * 0.58, 12)
+    expect(offLine.marbles).toBeCloseTo(0.5 * 0.24, 12)
+    expect(offLine.waterFilmMm).toBeCloseTo(0.5 + (1 - 0.5) * 0.14, 12)
+    expect(offLine.dryness).toBeCloseTo(0.5 * 0.82, 12)
+    expect(restored && serializeTrackSurfaceState(restored)).toEqual(
+      serializeTrackSurfaceState(updated),
+    )
+    expect(restored && legacySectorStateForTrackSurface(restored)).toEqual(
+      legacySectorStateForTrackSurface(updated),
+    )
   })
 
   it('labels off-line loose rubber without multiplying legacy water or rubber', () => {

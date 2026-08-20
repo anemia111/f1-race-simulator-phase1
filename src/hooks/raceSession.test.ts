@@ -37,7 +37,10 @@ function memoryStorage() {
 
 type MutableCheckpoint = {
   modelVersion?: unknown
-  snapshot: { cars: Array<Record<string, unknown>> }
+  snapshot: {
+    cars: Array<Record<string, unknown>>
+    trackSurface?: unknown
+  }
   version?: unknown
 }
 
@@ -82,6 +85,7 @@ function f1Runtime(car: RaceSnapshot['cars'][number]) {
 function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
   checkpoint.version = 1
   checkpoint.modelVersion = '2026.08.09.1'
+  delete checkpoint.snapshot.trackSurface
 
   for (const car of checkpoint.snapshot.cars) {
     const runtimeSystems = car.runtimeSystems as Record<string, unknown>
@@ -89,6 +93,12 @@ function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
     Object.assign(car, runtimeSystems)
     delete car.kind
   }
+}
+
+function convertCheckpointToV2(checkpoint: MutableCheckpoint) {
+  checkpoint.version = 2
+  checkpoint.modelVersion = '2026.08.11.3'
+  delete checkpoint.snapshot.trackSurface
 }
 
 describe('race session continuity', () => {
@@ -131,6 +141,7 @@ describe('race session continuity', () => {
       f1Runtime(snapshot.cars[0]).energyStore.rechargeRule,
     )
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
+    expect(JSON.parse(raw!).version).toBe(3)
   })
 
   it('round-trips an event-authorized recharge rule from the supplied FIA input', () => {
@@ -157,7 +168,7 @@ describe('race session continuity', () => {
     })
   })
 
-  it('round-trips a strict SUPER FORMULA v2 checkpoint and rejects F1 runtime payloads', () => {
+  it('round-trips a strict SUPER FORMULA v3 checkpoint and rejects F1 runtime payloads', () => {
     const series = seriesPackageById.get('super-formula')
 
     if (!series) {
@@ -266,6 +277,242 @@ describe('race session continuity', () => {
       ),
     ).toBeNull()
     expect(parseRaceCheckpoint(JSON.stringify(legacy), 'sf-session', sfConfig, now)).toBeNull()
+  })
+
+  it('hydrates v2 F1 and SUPER FORMULA surface checkpoints deterministically', () => {
+    const series = seriesPackageById.get('super-formula')
+
+    if (!series) {
+      throw new Error('Missing SUPER FORMULA series package.')
+    }
+
+    const sfConfig: RaceConfig = {
+      drivers: series.drivers,
+      overtakeSystem: series.rules.overtakeSystem,
+      seed: 'sf-v2-surface-migration',
+      seriesId: 'super-formula',
+      sessionRaceLapsOverride: 25,
+      teams: series.teams,
+      track: series.tracks[0],
+      weekendStage: 'race',
+    }
+    const now = 1_800_000_000_000
+
+    for (const [sessionKey, checkpointConfig] of [
+      ['f1-v2-surface', config],
+      ['sf-v2-surface', sfConfig],
+    ] as const) {
+      const snapshot = advanceRace(
+        createInitialRace(checkpointConfig),
+        2,
+        checkpointConfig,
+      )
+      const checkpoint = JSON.parse(
+        serializeRaceCheckpoint(sessionKey, snapshot, now)!,
+      ) as MutableCheckpoint
+      convertCheckpointToV2(checkpoint)
+
+      const restored = parseRaceCheckpoint(
+        JSON.stringify(checkpoint),
+        sessionKey,
+        checkpointConfig,
+        now,
+      )
+
+      expect(restored).not.toBeNull()
+      // v2 carried only aggregate sector values, so the newly hydrated lane
+      // arrays can differ by last-bit rounding from a pre-v3 transient array.
+      // Once migrated and saved as v3, however, continuation is byte-stable.
+      const v3Raw = serializeRaceCheckpoint(sessionKey, restored!, now)
+      const reloaded = parseRaceCheckpoint(
+        v3Raw,
+        sessionKey,
+        checkpointConfig,
+        now,
+      )
+
+      expect(v3Raw).not.toBeNull()
+      expect(reloaded).toEqual(restored)
+
+      const uninterrupted = advanceRace(restored!, 0.25, checkpointConfig)
+      const replayed = advanceRace(reloaded!, 0.25, checkpointConfig)
+
+      expect(replayed).toEqual(uninterrupted)
+    }
+  })
+
+  it('requires a well-formed v3 canonical surface and projects compatibility fields from it', () => {
+    const now = 1_800_000_000_000
+    const snapshot = createInitialRace(config)
+    const raw = serializeRaceCheckpoint('session-a', snapshot, now)!
+    const normalizedCheckpoint = JSON.parse(raw) as MutableCheckpoint
+    const normalizedSnapshot = normalizedCheckpoint.snapshot as Record<
+      string,
+      unknown
+    >
+
+    normalizedSnapshot.rubberLevelBySector = [1, 1, 1]
+    normalizedSnapshot.surfaceWaterMmBySector = [6, 6, 6]
+    normalizedSnapshot.dryingLineBySector = [0, 0, 0]
+    normalizedSnapshot.trackEvolutionLevel = 1
+
+    const normalized = parseRaceCheckpoint(
+      JSON.stringify(normalizedCheckpoint),
+      'session-a',
+      config,
+      now,
+    )
+
+    expect(normalized?.trackSurface).toEqual(snapshot.trackSurface)
+    expect(normalized?.rubberLevelBySector).toEqual(snapshot.rubberLevelBySector)
+    expect(normalized?.surfaceWaterMmBySector).toEqual(
+      snapshot.surfaceWaterMmBySector,
+    )
+    expect(normalized?.dryingLineBySector).toEqual(snapshot.dryingLineBySector)
+    expect(normalized?.trackEvolutionLevel).toBe(snapshot.trackEvolutionLevel)
+
+    const dynamicCheckpoint = JSON.parse(raw) as MutableCheckpoint
+    const dynamicSurface = dynamicCheckpoint.snapshot.trackSurface as Record<
+      string,
+      unknown
+    >
+    const waterFilmMm = [...(dynamicSurface.waterFilmMm as number[])]
+    const bondedRubber = [...(dynamicSurface.bondedRubber as number[])]
+    waterFilmMm[0] = 0.25
+    bondedRubber[0] = 0.5
+    dynamicSurface.waterFilmMm = waterFilmMm
+    dynamicSurface.bondedRubber = bondedRubber
+
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(dynamicCheckpoint),
+        'session-a',
+        config,
+        now,
+      ),
+    ).not.toBeNull()
+
+    const profiledConfig: RaceConfig = {
+      ...config,
+      track: {
+        ...config.track,
+        surfaceProfile: {
+          baseFriction: 0.99,
+          source: 'simulator-policy',
+          sourceLabel: 'Checkpoint profile validation fixture',
+        },
+      },
+    }
+    const profiledSnapshot = createInitialRace(profiledConfig)
+
+    expect(
+      parseRaceCheckpoint(
+        serializeRaceCheckpoint('profiled', profiledSnapshot, now),
+        'profiled',
+        profiledConfig,
+        now,
+      ),
+    ).not.toBeNull()
+
+    const corruptions: Array<(checkpoint: MutableCheckpoint) => void> = [
+      (checkpoint) => {
+        delete checkpoint.snapshot.trackSurface
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        trackSurface.version = 2
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        delete trackSurface.waterFilmMm
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        const waterFilmMm = [...(trackSurface.waterFilmMm as number[])]
+        waterFilmMm[0] = 999
+        trackSurface.waterFilmMm = waterFilmMm
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        const bondedRubber = [...(trackSurface.bondedRubber as number[])]
+        bondedRubber[0] = -1
+        trackSurface.bondedRubber = bondedRubber
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        const baseFriction = [...(trackSurface.baseFriction as number[])]
+        baseFriction[0] = baseFriction[0] === 1 ? 0.99 : 1
+        trackSurface.baseFriction = baseFriction
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        trackSurface.defaults = {
+          ...(trackSurface.defaults as Record<string, unknown>),
+          baseFriction: 999,
+        }
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        trackSurface.defaults = {
+          ...(trackSurface.defaults as Record<string, unknown>),
+          source: 'forged-checkpoint-source',
+        }
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        trackSurface.sectorMarks = [0, 0.25, 0.75]
+      },
+      (checkpoint) => {
+        const trackSurface = checkpoint.snapshot.trackSurface as Record<
+          string,
+          unknown
+        >
+        trackSurface.profile = {
+          baseFriction: 0.99,
+          source: 'simulator-policy',
+          sourceLabel: 'FORGED CHECKPOINT PROFILE',
+          sourceUrl: null,
+        }
+      },
+    ]
+
+    for (const corrupt of corruptions) {
+      const checkpoint = JSON.parse(raw) as MutableCheckpoint
+      corrupt(checkpoint)
+
+      expect(
+        parseRaceCheckpoint(
+          JSON.stringify(checkpoint),
+          'session-a',
+          config,
+          now,
+        ),
+      ).toBeNull()
+    }
   })
 
   it('migrates legacy checkpoints without drivetrain, lateral, or active-aero state', () => {

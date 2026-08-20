@@ -4,10 +4,9 @@ import type { TrackSurfaceProfile } from '../types'
  * Local, deterministic road-surface state.
  *
  * This module deliberately separates the compact physical surface substrate
- * from the legacy three-sector race snapshot.  The latter remains the
- * compatibility and checkpoint authority during the migration; callers can
- * materialise this typed-array state from it without claiming that either
- * lane was measured from OpenF1 location samples.
+ * from the legacy three-sector compatibility adapter. Callers can materialise
+ * or update this typed-array state from that adapter without claiming that
+ * either lane was measured from OpenF1 location samples.
  */
 
 export const TRACK_SURFACE_STATE_VERSION = 1 as const
@@ -379,7 +378,11 @@ export function serializeTrackSurfaceState(
   }
 }
 
-/** Returns null rather than accepting a malformed persisted surface state. */
+/**
+ * Structural reader for local callers. It rejects invalid shape/non-finite
+ * values and normalizes bounded policy inputs; checkpoint restoration adds a
+ * stricter raw-JSON authority check before calling this helper.
+ */
 export function deserializeTrackSurfaceState(
   value: unknown,
 ): TrackSurfaceState | null {
@@ -599,9 +602,41 @@ export function createTrackSurfaceStateFromLegacySectors(
     sectorMarks: legacy.sectorMarks,
   })
 
-  for (let cellIndex = 0; cellIndex < state.cellCount; cellIndex += 1) {
-    const progress = (cellIndex + 0.5) / state.cellCount
-    const sector = sectorIndexForProgress(progress, state.sectorMarks)
+  return applyLegacyTrackSurfaceSectorsToState(state, legacy)
+}
+
+/**
+ * Replaces dynamic lane values with the current three-sector compatibility
+ * values and returns a fresh canonical state. This is deliberately a direct
+ * projection, not a local surface simulation step: callers must run the
+ * legacy water/rubber update once, then call this helper once to reflect its
+ * result into the canonical two-lane state.
+ *
+ * The state's cell topology, source-labelled base-friction profile, defaults,
+ * sector marks, and temperatures remain canonical. In particular, a
+ * `legacy.sectorMarks` value is ignored here; it is only used when initially
+ * creating a state so a persisted state cannot silently change its grid.
+ */
+export function applyLegacyTrackSurfaceSectorsToState(
+  state: TrackSurfaceState,
+  legacy: LegacyTrackSurfaceSectors,
+): TrackSurfaceState {
+  const nextState: TrackSurfaceState = {
+    ...state,
+    baseFriction: new Float64Array(state.baseFriction),
+    bondedRubber: new Float64Array(state.bondedRubber),
+    defaults: { ...state.defaults },
+    dryness: new Float64Array(state.dryness),
+    marbles: new Float64Array(state.marbles),
+    profile: cloneTrackSurfaceProfile(state.profile),
+    sectorMarks: [...state.sectorMarks] as [number, number, number],
+    surfaceTemperatureC: new Float64Array(state.surfaceTemperatureC),
+    waterFilmMm: new Float64Array(state.waterFilmMm),
+  }
+
+  for (let cellIndex = 0; cellIndex < nextState.cellCount; cellIndex += 1) {
+    const progress = (cellIndex + 0.5) / nextState.cellCount
+    const sector = sectorIndexForProgress(progress, nextState.sectorMarks)
     const rubber = clamp(finiteOr(legacy.rubberLevelBySector[sector], 0), 0, 1)
     const water = clamp(
       finiteOr(legacy.surfaceWaterMmBySector[sector], 0),
@@ -616,22 +651,23 @@ export function createTrackSurfaceStateFromLegacySectors(
     const racingIndex = flatIndex(cellIndex, 'racing-line')
     const offLineIndex = flatIndex(cellIndex, 'off-line')
 
-    state.bondedRubber[racingIndex] = rubber
-    state.waterFilmMm[racingIndex] = water
-    state.dryness[racingIndex] = dryingLine
-    state.bondedRubber[offLineIndex] = rubber * 0.58
+    nextState.bondedRubber[racingIndex] = rubber
+    nextState.marbles[racingIndex] = 0
+    nextState.waterFilmMm[racingIndex] = water
+    nextState.dryness[racingIndex] = dryingLine
+    nextState.bondedRubber[offLineIndex] = rubber * 0.58
     // The loose-rubber proxy is deliberately small and globally bounded. It
     // is an internal lane-policy input until local surface observations exist.
-    state.marbles[offLineIndex] = rubber * 0.24
-    state.waterFilmMm[offLineIndex] = clamp(
+    nextState.marbles[offLineIndex] = rubber * 0.24
+    nextState.waterFilmMm[offLineIndex] = clamp(
       water + (1 - dryingLine) * 0.14,
       0,
       6,
     )
-    state.dryness[offLineIndex] = clamp(dryingLine * 0.82, 0, 1)
+    nextState.dryness[offLineIndex] = clamp(dryingLine * 0.82, 0, 1)
   }
 
-  return state
+  return nextState
 }
 
 /** Legacy UI/checkpoint fields reconstructed from the racing-line lane. */
