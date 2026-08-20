@@ -114,6 +114,20 @@ export type LongitudinalStepInput = {
   gripMultiplier: number
   headwindMps?: number
   regenerativeResistancePowerKw?: number
+  /**
+   * Accepted share of the local service-brake work recovered by the MGU-K.
+   * When present, this is applied after tyre, hardware and release limits;
+   * `regenerativeResistancePowerKw` then represents standalone lift/superclip
+   * resistance only. Omit it to retain the legacy blended-power behavior.
+   * @deprecated Prefer the slice-aligned fraction profile.
+   */
+  serviceBrakeRegenerativeFraction?: number
+  /**
+   * Accepted service-brake recovery fraction for each equal-duration internal
+   * force slice. This takes precedence over the scalar compatibility input;
+   * missing or invalid entries resolve to zero and extra entries are ignored.
+   */
+  serviceBrakeRegenerativeFractionProfile?: readonly number[]
   /** Desired live deceleration. When present, brake pressure is solved against
    * the current tyre/brake capacity instead of treating a hardware-maximum
    * percentage as a tyre-capacity percentage. */
@@ -143,14 +157,35 @@ export type LongitudinalStepResult = {
   /** Wheel drive power after subtracting generator resistance. */
   netPowerUnitWheelPowerKw: number
   regenerativeResistanceForceN: number
+  /** Frame-integrated MGU-K work replacing service-brake friction. */
+  brakingRegenerativeMechanicalEnergyMJ: number
+  /** Frame-integrated service-brake work dissipated as friction. */
+  frictionBrakeMechanicalEnergyMJ: number
   rollingResistanceForceN: number
   rpm: number
   speedKph: number
+  /** Total frame-integrated service-brake contact-patch work. */
+  serviceBrakeMechanicalEnergyMJ: number
   tractionLimitN: number
   turboSpoolFraction: number
   /** Positive ICE + MGU-K wheel power before generator resistance. */
   wheelDrivePowerKw: number
 }
+
+/**
+ * Contact-patch work available to the service brakes during one public frame.
+ * This is a mechanical budget before any regenerative split or conversion
+ * loss is applied by the Energy Store.
+ */
+export type ServiceBrakeMechanicalBudget = Readonly<{
+  averageMechanicalPowerKw: number
+  brakingRegenerativeMechanicalEnergyMJ: number
+  brakingRegenerativeMechanicalEnergyProfileMJ: readonly number[]
+  frictionBrakeMechanicalEnergyMJ: number
+  frictionBrakeMechanicalEnergyProfileMJ: readonly number[]
+  mechanicalEnergyMJ: number
+  mechanicalEnergyProfileMJ: readonly number[]
+}>
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
 const liveCorneringLimitCache = new Map<string, number>()
@@ -1169,9 +1204,9 @@ function defaultGearSelection(options: {
  * Gear and RPM in the result come from the same drivetrain evaluation that
  * produced force, so telemetry cannot drift onto a separate display model.
  */
-export function integrateVehicleLongitudinalStep(
+function integrateVehicleLongitudinalStepWithBudget(
   input: LongitudinalStepInput,
-): LongitudinalStepResult {
+) {
   const categoryPhysics =
     input.categoryPhysics ?? categoryPhysicsFor(undefined)
   const baseVehicleMassKg =
@@ -1265,6 +1300,26 @@ export function integrateVehicleLongitudinalStep(
     Math.max(1, Math.ceil(elapsedSeconds / 0.1)),
   )
   const stepSeconds = elapsedSeconds / integrationSteps
+  const serviceBrakeRegenerativeFractionForSlice = (sliceIndex: number) => {
+    if (input.serviceBrakeRegenerativeFractionProfile !== undefined) {
+      return clamp(
+        finiteOr(
+          input.serviceBrakeRegenerativeFractionProfile[sliceIndex],
+          0,
+        ),
+        0,
+        1,
+      )
+    }
+    if (input.serviceBrakeRegenerativeFraction !== undefined) {
+      return clamp(
+        finiteOr(input.serviceBrakeRegenerativeFraction, 0),
+        0,
+        1,
+      )
+    }
+    return undefined
+  }
   let nextMps = Math.max(0, finiteOr(input.currentSpeedKph, 0) / 3.6)
   let turboSpoolFraction = clamp(
     finiteOr(input.turboSpoolFraction ?? 1, 1),
@@ -1281,6 +1336,9 @@ export function integrateVehicleLongitudinalStep(
   let lastDriveForceN = 0
   let lastRegenerativeResistanceForceN = 0
   let lastTractionLimitN = 0
+  const serviceBrakeMechanicalEnergyProfileMJ: number[] = []
+  const brakingRegenerativeMechanicalEnergyProfileMJ: number[] = []
+  const frictionBrakeMechanicalEnergyProfileMJ: number[] = []
   let lastSelection: GearSelection = defaultGearSelection({
     clutchEngagementFraction,
     combustionPowerKw,
@@ -1299,6 +1357,7 @@ export function integrateVehicleLongitudinalStep(
     speedMps: number,
     selection: GearSelection,
     initialAccelerationGuessMps2: number,
+    serviceBrakeRegenerativeFraction: number | undefined,
   ) => {
     const speedKph = speedMps * 3.6
     const requestedDriveForceN =
@@ -1344,8 +1403,11 @@ export function integrateVehicleLongitudinalStep(
           )
     let accelerationMps2 = initialAccelerationGuessMps2
     let brakeForceN = 0
+    let brakingRegenerativeForceN = 0
     let driveForceN = 0
+    let frictionBrakeForceN = 0
     let regenerativeResistanceForceN = 0
+    let serviceBrakeForceN = 0
     let tractionLimitN = 0
 
     for (let forcePass = 0; forcePass < 4; forcePass += 1) {
@@ -1380,6 +1442,7 @@ export function integrateVehicleLongitudinalStep(
                 finiteOr(input.requestedBrakeDecelerationMps2, 0),
               ) * massKg,
             ) * brakeModulation
+      serviceBrakeForceN = requestedServiceBrakeForceN
       // Regeneration is a dissipative torque, so P/v is valid here. The
       // low-speed denominator and tyre cap prevent a singular braking force.
       const requestedRegenerativeForceN =
@@ -1389,19 +1452,50 @@ export function integrateVehicleLongitudinalStep(
         ) *
           1000) /
         Math.max(8, speedMps)
-      regenerativeResistanceForceN = Math.min(
-        requestedRegenerativeForceN,
-        requestedServiceBrakeForceN > 0
-          ? requestedServiceBrakeForceN
-          : serviceBrakeCapacityN,
-      )
-      // Under normal braking regeneration replaces part of the friction-brake
-      // request. With the service brake released it remains a standalone
-      // harvesting torque (for lift-and-coast/super-clipping operation).
-      brakeForceN =
-        requestedServiceBrakeForceN > 0
-          ? requestedServiceBrakeForceN
-          : regenerativeResistanceForceN
+      if (serviceBrakeRegenerativeFraction === undefined) {
+        // Legacy behavior: generic generator power replaces part of the
+        // service request, or becomes standalone resistance when it is absent.
+        regenerativeResistanceForceN = Math.min(
+          requestedRegenerativeForceN,
+          requestedServiceBrakeForceN > 0
+            ? requestedServiceBrakeForceN
+            : serviceBrakeCapacityN,
+        )
+        brakingRegenerativeForceN =
+          requestedServiceBrakeForceN > 0
+            ? regenerativeResistanceForceN
+            : 0
+        frictionBrakeForceN = Math.max(
+          0,
+          requestedServiceBrakeForceN - brakingRegenerativeForceN,
+        )
+        // Under normal braking regeneration replaces part of the friction
+        // request. With the service brake released it remains a standalone
+        // harvesting torque (for legacy lift/superclip call compatibility).
+        brakeForceN =
+          requestedServiceBrakeForceN > 0
+            ? requestedServiceBrakeForceN
+            : regenerativeResistanceForceN
+      } else {
+        // The accepted brake-recovery share is tied to this exact local
+        // release-modulated service force. Generic generator power is now a
+        // distinct lift/superclip source and can use only remaining capacity.
+        brakingRegenerativeForceN =
+          requestedServiceBrakeForceN *
+          serviceBrakeRegenerativeFraction
+        frictionBrakeForceN = Math.max(
+          0,
+          requestedServiceBrakeForceN - brakingRegenerativeForceN,
+        )
+        const standaloneRegenerativeForceN = Math.min(
+          requestedRegenerativeForceN,
+          Math.max(0, serviceBrakeCapacityN - requestedServiceBrakeForceN),
+        )
+        regenerativeResistanceForceN =
+          brakingRegenerativeForceN + standaloneRegenerativeForceN
+        brakeForceN =
+          requestedServiceBrakeForceN + standaloneRegenerativeForceN
+      }
       accelerationMps2 =
         (driveForceN -
           brakeForceN -
@@ -1414,12 +1508,29 @@ export function integrateVehicleLongitudinalStep(
     return {
       accelerationMps2: finiteOr(accelerationMps2, 0),
       brakeForceN,
+      brakingRegenerativeForceN,
       dragForceN,
       driveForceN,
+      frictionBrakeForceN,
       regenerativeResistanceForceN,
+      serviceBrakeForceN,
       tractionLimitN,
     }
   }
+
+  const mechanicalEnergyMJForForceAndDistance = (
+    forceN: number,
+    travelledDistanceM: number,
+  ) =>
+    Math.max(
+      0,
+      finiteOr(
+        (Math.max(0, finiteOr(forceN, 0)) *
+          Math.max(0, finiteOr(travelledDistanceM, 0))) /
+          1_000_000,
+        0,
+      ),
+    )
 
   for (let step = 0; step < integrationSteps; step += 1) {
     const preliminarySelection = defaultGearSelection({
@@ -1458,6 +1569,7 @@ export function integrateVehicleLongitudinalStep(
       nextMps,
       lastSelection,
       lastAccelerationMps2,
+      serviceBrakeRegenerativeFractionForSlice(step),
     )
 
     lastAccelerationMps2 = forces.accelerationMps2
@@ -1467,7 +1579,51 @@ export function integrateVehicleLongitudinalStep(
     lastRegenerativeResistanceForceN =
       forces.regenerativeResistanceForceN
     lastTractionLimitN = forces.tractionLimitN
-    nextMps = Math.max(0, nextMps + lastAccelerationMps2 * stepSeconds)
+    const startSpeedMps = nextMps
+    const unconstrainedEndSpeedMps =
+      startSpeedMps + lastAccelerationMps2 * stepSeconds
+    const endSpeedMps = Math.max(0, unconstrainedEndSpeedMps)
+    let travelledDistanceM: number
+
+    if (
+      lastAccelerationMps2 < 0 &&
+      unconstrainedEndSpeedMps < 0 &&
+      startSpeedMps > 0
+    ) {
+      const timeToStopSeconds = Math.min(
+        stepSeconds,
+        startSpeedMps / -lastAccelerationMps2,
+      )
+      travelledDistanceM =
+        startSpeedMps * timeToStopSeconds +
+        0.5 * lastAccelerationMps2 * timeToStopSeconds ** 2
+    } else {
+      travelledDistanceM =
+        ((startSpeedMps + endSpeedMps) * stepSeconds) / 2
+    }
+    const finiteTravelledDistanceM = Math.max(
+      0,
+      finiteOr(travelledDistanceM, 0),
+    )
+    serviceBrakeMechanicalEnergyProfileMJ.push(
+      mechanicalEnergyMJForForceAndDistance(
+        forces.serviceBrakeForceN,
+        finiteTravelledDistanceM,
+      ),
+    )
+    brakingRegenerativeMechanicalEnergyProfileMJ.push(
+      mechanicalEnergyMJForForceAndDistance(
+        forces.brakingRegenerativeForceN,
+        finiteTravelledDistanceM,
+      ),
+    )
+    frictionBrakeMechanicalEnergyProfileMJ.push(
+      mechanicalEnergyMJForForceAndDistance(
+        forces.frictionBrakeForceN,
+        finiteTravelledDistanceM,
+      ),
+    )
+    nextMps = endSpeedMps
   }
 
   // State advances exactly once per substep. Re-evaluate the drivetrain and
@@ -1486,6 +1642,7 @@ export function integrateVehicleLongitudinalStep(
     nextMps,
     lastSelection,
     lastAccelerationMps2,
+    serviceBrakeRegenerativeFractionForSlice(integrationSteps - 1),
   )
   lastAccelerationMps2 = finalForces.accelerationMps2
   lastBrakeForceN = finalForces.brakeForceN
@@ -1504,11 +1661,42 @@ export function integrateVehicleLongitudinalStep(
     0,
     (lastRegenerativeResistanceForceN * nextMps) / 1000,
   )
+  const serviceBrakeMechanicalEnergyMJ = Math.max(
+    0,
+    finiteOr(
+      serviceBrakeMechanicalEnergyProfileMJ.reduce(
+        (total, energyMJ) => total + energyMJ,
+        0,
+      ),
+      0,
+    ),
+  )
+  const brakingRegenerativeMechanicalEnergyMJ = Math.max(
+    0,
+    finiteOr(
+      brakingRegenerativeMechanicalEnergyProfileMJ.reduce(
+        (total, energyMJ) => total + energyMJ,
+        0,
+      ),
+      0,
+    ),
+  )
+  const frictionBrakeMechanicalEnergyMJ = Math.max(
+    0,
+    finiteOr(
+      frictionBrakeMechanicalEnergyProfileMJ.reduce(
+        (total, energyMJ) => total + energyMJ,
+        0,
+      ),
+      0,
+    ),
+  )
 
-  return {
+  const result: LongitudinalStepResult = {
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
     brakeHardwareCapacityMultiplier: brakeHardwareCapacity.capacityMultiplier,
     brakeForceN: Math.max(0, finiteOr(lastBrakeForceN, 0)),
+    brakingRegenerativeMechanicalEnergyMJ,
     clutchEngagementFraction: clamp(
       finiteOr(clutchEngagementFraction, 0),
       0,
@@ -1516,6 +1704,7 @@ export function integrateVehicleLongitudinalStep(
     ),
     dragForceN: Math.max(0, finiteOr(lastDragForceN, 0)),
     driveForceN: Math.max(0, finiteOr(lastDriveForceN, 0)),
+    frictionBrakeMechanicalEnergyMJ,
     gear: lastSelection.gear,
     generatorMechanicalPowerKw,
     gradeForceN: finiteOr(gradeForceN, 0),
@@ -1530,11 +1719,59 @@ export function integrateVehicleLongitudinalStep(
       finiteOr(rollingResistanceForceN, 0),
     ),
     rpm: Math.max(0, finiteOr(lastSelection.rpm, 0)),
+    serviceBrakeMechanicalEnergyMJ,
     speedKph,
     tractionLimitN: Math.max(0, finiteOr(lastTractionLimitN, 0)),
     turboSpoolFraction: clamp(finiteOr(turboSpoolFraction, 0), 0, 1),
     wheelDrivePowerKw,
   }
+
+  const averageMechanicalPowerKw =
+    elapsedSeconds > 0
+      ? Math.max(
+          0,
+          finiteOr(
+            (serviceBrakeMechanicalEnergyMJ * 1000) / elapsedSeconds,
+            0,
+          ),
+        )
+      : 0
+
+  return {
+    result,
+    serviceBrakeMechanicalBudget: {
+      averageMechanicalPowerKw,
+      brakingRegenerativeMechanicalEnergyMJ,
+      brakingRegenerativeMechanicalEnergyProfileMJ,
+      frictionBrakeMechanicalEnergyMJ,
+      frictionBrakeMechanicalEnergyProfileMJ,
+      mechanicalEnergyMJ: serviceBrakeMechanicalEnergyMJ,
+      mechanicalEnergyProfileMJ: serviceBrakeMechanicalEnergyProfileMJ,
+    } satisfies ServiceBrakeMechanicalBudget,
+  }
+}
+
+export function integrateVehicleLongitudinalStep(
+  input: LongitudinalStepInput,
+): LongitudinalStepResult {
+  return integrateVehicleLongitudinalStepWithBudget(input).result
+}
+
+/**
+ * Previews the frame-integrated service-brake work using the exact live tyre,
+ * hardware, geometry, release-modulation and internal-slice force solve.
+ * Regeneration is forced to zero so the returned budget is the total service
+ * demand available for the later friction/regenerative split.
+ */
+export function previewServiceBrakeMechanicalBudget(
+  input: LongitudinalStepInput,
+): ServiceBrakeMechanicalBudget {
+  return integrateVehicleLongitudinalStepWithBudget({
+    ...input,
+    regenerativeResistancePowerKw: 0,
+    serviceBrakeRegenerativeFraction: 0,
+    serviceBrakeRegenerativeFractionProfile: [],
+  }).serviceBrakeMechanicalBudget
 }
 
 /** Backward-compatible scalar wrapper for callers that only consume speed. */

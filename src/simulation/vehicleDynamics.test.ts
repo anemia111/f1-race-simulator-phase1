@@ -28,6 +28,7 @@ import {
   integrateVehicleSpeedKph,
   liveCorneringSpeedLimitKph,
   machinePaceRating,
+  previewServiceBrakeMechanicalBudget,
   vehicleDownforceMultiplier,
   vehicleDragAreaM2,
   vehicleTyreGripMultiplierForTeam,
@@ -601,6 +602,332 @@ describe('multi-axis vehicle dynamics', () => {
     )
   })
 
+  it('integrates a temperature-limited service-brake mechanical budget over the frame', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 100,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 360,
+      deltaSeconds: 0.4,
+      dynamics: {
+        roadGradeFraction: 0,
+        straightness: 1,
+      },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const operatingWindow = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakeTemperatureC: 620,
+    })
+    const cold = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakeTemperatureC: 120,
+    })
+    const overheated = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakeTemperatureC: 1_150,
+    })
+
+    expect(operatingWindow.mechanicalEnergyMJ).toBeGreaterThan(
+      cold.mechanicalEnergyMJ,
+    )
+    expect(operatingWindow.mechanicalEnergyMJ).toBeGreaterThan(
+      overheated.mechanicalEnergyMJ,
+    )
+    expect(operatingWindow.averageMechanicalPowerKw).toBeCloseTo(
+      (operatingWindow.mechanicalEnergyMJ * 1000) / common.deltaSeconds,
+      10,
+    )
+  })
+
+  it('applies release modulation and lateral tyre demand to the brake budget', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      aeroYawDegrees: 0,
+      airDensityKgM3: 1.225,
+      brakePercent: 100,
+      brakeTemperatureC: 620,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 310,
+      deltaSeconds: 0.3,
+      dynamics: {
+        roadGradeFraction: 0,
+        straightness: 1,
+      },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const unrestrictedRelease = previewServiceBrakeMechanicalBudget(common)
+    const releasing = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakeReleaseSpeedKph: 300,
+    })
+    const lateralDemand = previewServiceBrakeMechanicalBudget({
+      ...common,
+      currentSpeedKph: 200,
+      dynamics: {
+        effectiveCornerRadiusM: 95,
+        roadGradeFraction: 0,
+        straightness: 1,
+      },
+    })
+    const sameSpeedStraight = previewServiceBrakeMechanicalBudget({
+      ...common,
+      currentSpeedKph: 200,
+    })
+
+    expect(releasing.mechanicalEnergyMJ).toBeGreaterThan(0)
+    expect(releasing.mechanicalEnergyMJ).toBeLessThan(
+      unrestrictedRelease.mechanicalEnergyMJ,
+    )
+    expect(lateralDemand.mechanicalEnergyMJ).toBeLessThan(
+      sameSpeedStraight.mechanicalEnergyMJ,
+    )
+  })
+
+  it('bounds the preview at a stop and returns finite zero budgets for empty or invalid frames', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 100,
+      brakeTemperatureC: 620,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 12,
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const stopped = previewServiceBrakeMechanicalBudget({
+      ...common,
+      deltaSeconds: 2,
+      regenerativeResistancePowerKw: 350,
+    })
+    const longerStoppedFrame = previewServiceBrakeMechanicalBudget({
+      ...common,
+      deltaSeconds: 4,
+      regenerativeResistancePowerKw: 0,
+    })
+    const zeroFrame = previewServiceBrakeMechanicalBudget({
+      ...common,
+      deltaSeconds: 0,
+    })
+    const invalidFrame = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakePercent: Number.POSITIVE_INFINITY,
+      currentSpeedKph: Number.POSITIVE_INFINITY,
+      deltaSeconds: Number.POSITIVE_INFINITY,
+    })
+    const cappedLongFrame = previewServiceBrakeMechanicalBudget({
+      ...common,
+      brakePercent: 0,
+      deltaSeconds: 30,
+    })
+    const initialKineticEnergyMJ =
+      (0.5 * (768 + common.fuelLoadKg) * (common.currentSpeedKph / 3.6) ** 2) /
+      1_000_000
+
+    expect(stopped.mechanicalEnergyMJ).toBeGreaterThan(0)
+    expect(stopped.mechanicalEnergyMJ).toBeLessThanOrEqual(
+      initialKineticEnergyMJ,
+    )
+    expect(longerStoppedFrame.mechanicalEnergyMJ).toBeCloseTo(
+      stopped.mechanicalEnergyMJ,
+      10,
+    )
+    expect(zeroFrame).toEqual({
+      averageMechanicalPowerKw: 0,
+      brakingRegenerativeMechanicalEnergyMJ: 0,
+      brakingRegenerativeMechanicalEnergyProfileMJ: [0],
+      frictionBrakeMechanicalEnergyMJ: 0,
+      frictionBrakeMechanicalEnergyProfileMJ: [0],
+      mechanicalEnergyMJ: 0,
+      mechanicalEnergyProfileMJ: [0],
+    })
+    expect(Number.isFinite(invalidFrame.averageMechanicalPowerKw)).toBe(true)
+    expect(Number.isFinite(invalidFrame.mechanicalEnergyMJ)).toBe(true)
+    expect(invalidFrame).toEqual(zeroFrame)
+    expect(cappedLongFrame.mechanicalEnergyProfileMJ).toHaveLength(240)
+    expect(cappedLongFrame.mechanicalEnergyMJ).toBe(0)
+  })
+
+  it('splits local service-brake work without changing its force or trajectory', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 82,
+      brakeReleaseSpeedKph: 185,
+      brakeTemperatureC: 620,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 240,
+      deltaSeconds: 0.5,
+      dynamics: {
+        effectiveCornerRadiusM: 150,
+        roadGradeFraction: 0,
+        straightness: 0.45,
+      },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      regenerativeResistancePowerKw: 0,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const preview = previewServiceBrakeMechanicalBudget(common)
+    const frictionOnly = integrateVehicleLongitudinalStep({
+      ...common,
+      serviceBrakeRegenerativeFraction: 0,
+    })
+    const blended = integrateVehicleLongitudinalStep({
+      ...common,
+      serviceBrakeRegenerativeFraction: 0.4,
+    })
+    const shortProfileTakesPrecedence = integrateVehicleLongitudinalStep({
+      ...common,
+      serviceBrakeRegenerativeFraction: 0.9,
+      serviceBrakeRegenerativeFractionProfile: [0.25],
+    })
+
+    expect(blended.speedKph).toBe(frictionOnly.speedKph)
+    expect(blended.brakeForceN).toBe(frictionOnly.brakeForceN)
+    expect(blended.serviceBrakeMechanicalEnergyMJ).toBeCloseTo(
+      preview.mechanicalEnergyMJ,
+      12,
+    )
+    expect(blended.brakingRegenerativeMechanicalEnergyMJ).toBeCloseTo(
+      blended.serviceBrakeMechanicalEnergyMJ * 0.4,
+      12,
+    )
+    expect(blended.frictionBrakeMechanicalEnergyMJ).toBeCloseTo(
+      blended.serviceBrakeMechanicalEnergyMJ * 0.6,
+      12,
+    )
+    expect(
+      blended.brakingRegenerativeMechanicalEnergyMJ +
+        blended.frictionBrakeMechanicalEnergyMJ,
+    ).toBeCloseTo(blended.serviceBrakeMechanicalEnergyMJ, 12)
+    expect(
+      shortProfileTakesPrecedence.brakingRegenerativeMechanicalEnergyMJ,
+    ).toBeCloseTo(preview.mechanicalEnergyProfileMJ[0] * 0.25, 12)
+    expect(
+      shortProfileTakesPrecedence.brakingRegenerativeMechanicalEnergyMJ +
+        shortProfileTakesPrecedence.frictionBrakeMechanicalEnergyMJ,
+    ).toBeCloseTo(
+      shortProfileTakesPrecedence.serviceBrakeMechanicalEnergyMJ,
+      12,
+    )
+  })
+
+  it('aligns recovery fractions to equal internal slices and released zero-work slices', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakePercent: 100,
+      brakeReleaseSpeedKph: 200,
+      brakeTemperatureC: 620,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 204,
+      deltaSeconds: 0.5,
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      headwindMps: 80,
+      regenerativeResistancePowerKw: 0,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const preview = previewServiceBrakeMechanicalBudget(common)
+    const final = integrateVehicleLongitudinalStep({
+      ...common,
+      serviceBrakeRegenerativeFractionProfile: [0.25, 1, 1, 1, 1],
+    })
+
+    expect(preview.mechanicalEnergyProfileMJ).toHaveLength(5)
+    expect(preview.mechanicalEnergyProfileMJ[0]).toBeGreaterThan(0)
+    expect(preview.mechanicalEnergyProfileMJ.slice(1)).toEqual([0, 0, 0, 0])
+    expect(
+      preview.mechanicalEnergyProfileMJ.reduce(
+        (total, energyMJ) => total + energyMJ,
+        0,
+      ),
+    ).toBe(preview.mechanicalEnergyMJ)
+    expect(final.serviceBrakeMechanicalEnergyMJ).toBe(
+      preview.mechanicalEnergyMJ,
+    )
+    expect(final.brakingRegenerativeMechanicalEnergyMJ).toBeCloseTo(
+      preview.mechanicalEnergyProfileMJ[0] * 0.25,
+      12,
+    )
+    expect(
+      final.brakingRegenerativeMechanicalEnergyMJ +
+        final.frictionBrakeMechanicalEnergyMJ,
+    ).toBeCloseTo(final.serviceBrakeMechanicalEnergyMJ, 12)
+  })
+
+  it('stops brake recovery with release while preserving legacy standalone generation', () => {
+    const common = {
+      activeAeroMode: 'corner' as const,
+      airDensityKgM3: 1.225,
+      brakeTemperatureC: 620,
+      clutchEngagementFraction: 1,
+      currentSpeedKph: 180,
+      deltaSeconds: 0.2,
+      dynamics: { roadGradeFraction: 0, straightness: 1 },
+      ersPowerKw: 0,
+      fuelLoadKg: 35,
+      gripMultiplier: 1,
+      team: initialTeams[0],
+      throttlePercent: 0,
+      turboSpoolFraction: 1,
+    }
+    const releasedBrakeRecovery = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 100,
+      brakeReleaseSpeedKph: 200,
+      regenerativeResistancePowerKw: 0,
+      serviceBrakeRegenerativeFraction: 0.75,
+    })
+    const legacyStandalone = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      regenerativeResistancePowerKw: 120,
+    })
+    const explicitLegacyStandalone = integrateVehicleLongitudinalStep({
+      ...common,
+      brakePercent: 0,
+      regenerativeResistancePowerKw: 120,
+      serviceBrakeRegenerativeFraction: undefined,
+      serviceBrakeRegenerativeFractionProfile: undefined,
+    })
+
+    expect(releasedBrakeRecovery.serviceBrakeMechanicalEnergyMJ).toBe(0)
+    expect(
+      releasedBrakeRecovery.brakingRegenerativeMechanicalEnergyMJ,
+    ).toBe(0)
+    expect(releasedBrakeRecovery.regenerativeResistanceForceN).toBe(0)
+    expect(releasedBrakeRecovery.generatorMechanicalPowerKw).toBe(0)
+    expect(explicitLegacyStandalone).toEqual(legacyStandalone)
+    expect(legacyStandalone.regenerativeResistanceForceN).toBeGreaterThan(0)
+    expect(legacyStandalone.generatorMechanicalPowerKw).toBeCloseTo(120, 10)
+    expect(legacyStandalone.serviceBrakeMechanicalEnergyMJ).toBe(0)
+  })
+
   it('uses wet grip and dirty-air downforce as tyre-force inputs', () => {
     const common = {
       activeAeroMode: 'corner' as const,
@@ -782,7 +1109,13 @@ describe('multi-axis vehicle dynamics', () => {
     })
 
     for (const value of Object.values(result)) {
-      expect(Number.isFinite(value)).toBe(true)
+      if (Array.isArray(value)) {
+        for (const energyMJ of value) {
+          expect(Number.isFinite(energyMJ)).toBe(true)
+        }
+      } else {
+        expect(Number.isFinite(value)).toBe(true)
+      }
     }
     expect(result.speedKph).toBeGreaterThanOrEqual(0)
     expect(result.driveForceN).toBeGreaterThanOrEqual(0)

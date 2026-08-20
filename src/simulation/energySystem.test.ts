@@ -140,6 +140,28 @@ function expectAuditToClose(result: EnergyStoreStep) {
   expect(result.state.lastStepBalanceErrorMJ).toBeLessThan(1e-9);
 }
 
+function expectExactBrakeAuditToClose(result: EnergyStoreStep) {
+  const { audit } = result;
+  expect(audit.acceptedBrakeRecoveryMechanicalEnergyMJ).toBeLessThanOrEqual(
+    audit.requestedBrakeMechanicalEnergyMJ + 1e-12,
+  );
+  expect(audit.requestedBrakeMechanicalEnergyMJ).toBeCloseTo(
+    audit.frictionBrakeMechanicalEnergyMJ +
+      audit.acceptedBrakeRecoveryMechanicalEnergyMJ,
+    10,
+  );
+  expect(result.state.frictionBrakePowerKw).toBeCloseTo(
+    (audit.frictionBrakeMechanicalEnergyMJ * 1000) / audit.deltaSeconds,
+    10,
+  );
+  expect(result.actualRecoverySourcePowerKw.braking).toBeCloseTo(
+    (audit.acceptedBrakeRecoveryMechanicalEnergyMJ * 1000) /
+      audit.deltaSeconds,
+    10,
+  );
+  expectAuditToClose(result);
+}
+
 describe('Phase 4 Energy Store truth and C5.2.8 DC power', () => {
   const curves: MguKPowerCurve[] = [
     'normal',
@@ -422,6 +444,188 @@ describe('Phase 4 ERS-K operating modes', () => {
     );
     expectAuditToClose(normal);
     expectAuditToClose(overheated);
+  });
+
+  it('uses an exact contact-patch brake-work budget without the legacy 5.1 g or aero prediction', () => {
+    const exactBudgetMJ = 0.18;
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      brakeDecelerationLimitMps2: 0,
+      brakeMechanicalEnergyBudgetMJ: exactBudgetMJ,
+      brakePercent: 100,
+      deltaSeconds: 1.2,
+      gripMultiplier: 0.25,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+    const sameBudgetAtDifferentLegacyInputs = step(
+      createInitialEnergyStore(team, 0.3),
+      {
+        brakeDecelerationLimitMps2: 49.05,
+        brakeMechanicalEnergyBudgetMJ: exactBudgetMJ,
+        brakePercent: 100,
+        deltaSeconds: 1.2,
+        gripMultiplier: 1.15,
+        speedKph: 180,
+        throttlePercent: 0,
+      },
+    );
+
+    expect(result.audit.requestedBrakeMechanicalEnergyMJ).toBeCloseTo(
+      exactBudgetMJ,
+      12,
+    );
+    expect(result.state.requestedBrakePowerKw).toBeCloseTo(150, 12);
+    expect(result.state.requestedBrakePowerKw).toBeCloseTo(
+      sameBudgetAtDifferentLegacyInputs.state.requestedBrakePowerKw,
+      12,
+    );
+    expect(result.state.requestedRecoveryPowerKw).toBeCloseTo(
+      sameBudgetAtDifferentLegacyInputs.state.requestedRecoveryPowerKw,
+      12,
+    );
+    expectExactBrakeAuditToClose(result);
+    expectExactBrakeAuditToClose(sameBudgetAtDifferentLegacyInputs);
+  });
+
+  it('lets positive exact brake work own the generator even below the legacy pedal gate', () => {
+    const result = step(createInitialEnergyStore(team, 0.3), {
+      allowLiftCoastRecovery: true,
+      brakeMechanicalEnergyBudgetMJ: 0.06,
+      brakePercent: 2,
+      combustionWheelPowerKw: 500,
+      deltaSeconds: 0.5,
+      deploymentRequest: 1,
+      speedKph: 280,
+      superclipGeneratorRequestKw: 500,
+      throttlePercent: 100,
+    });
+    const totalAcceptedGeneratorPowerKw =
+      result.actualRecoverySourcePowerKw.braking +
+      result.actualRecoverySourcePowerKw.liftCoast +
+      result.actualRecoverySourcePowerKw.superclip;
+
+    expect(result.audit.requestedBrakeMechanicalEnergyMJ).toBeCloseTo(0.06, 12);
+    expect(result.audit.requestedSuperclipMechanicalEnergyMJ).toBe(0);
+    expect(result.actualRecoverySourcePowerKw.liftCoast).toBe(0);
+    expect(result.actualRecoverySourcePowerKw.superclip).toBe(0);
+    expect(result.state.actualDeploymentDcPowerKw).toBe(0);
+    expect(totalAcceptedGeneratorPowerKw).toBeLessThanOrEqual(
+      result.state.requestedBrakePowerKw + 1e-12,
+    );
+    expectExactBrakeAuditToClose(result);
+  });
+
+  it('caps a short brake event in its actual solver slice instead of smearing power across the frame', () => {
+    const brakeMechanicalEnergyProfileMJ = [0.175, 0, 0, 0, 0] as const;
+    const common = {
+      allowLiftCoastRecovery: true,
+      brakePercent: 2,
+      combustionWheelPowerKw: 500,
+      deltaSeconds: 0.5,
+      deploymentRequest: 1,
+      speedKph: 280,
+      superclipGeneratorRequestKw: 500,
+      throttlePercent: 100,
+    } as const;
+    const profiled = step(createInitialEnergyStore(team, 0.2), {
+      ...common,
+      // The profile is authoritative when both exact contracts are present.
+      brakeMechanicalEnergyBudgetMJ: 9,
+      brakeMechanicalEnergyProfileMJ,
+    });
+    const wholeFrameAverage = step(createInitialEnergyStore(team, 0.2), {
+      ...common,
+      brakeMechanicalEnergyBudgetMJ: 0.175,
+    });
+    const acceptedProfileMJ =
+      profiled.audit.acceptedBrakeRecoveryMechanicalEnergyProfileMJ;
+    const acceptedProfileTotalMJ = acceptedProfileMJ.reduce(
+      (sum, energyMJ) => sum + energyMJ,
+      0,
+    );
+    const sliceSeconds =
+      common.deltaSeconds / brakeMechanicalEnergyProfileMJ.length;
+
+    expect(profiled.audit.requestedBrakeMechanicalEnergyMJ).toBeCloseTo(
+      0.175,
+      12,
+    );
+    expect(acceptedProfileMJ).toHaveLength(5);
+    expect(acceptedProfileMJ[0]).toBeGreaterThan(0);
+    expect(
+      acceptedProfileMJ.every(
+        (energyMJ, index) =>
+          energyMJ <= brakeMechanicalEnergyProfileMJ[index] + 1e-12,
+      ),
+    ).toBe(true);
+    expect(
+      acceptedProfileMJ.slice(1).every((energyMJ) => energyMJ === 0),
+    ).toBe(true);
+    expect((acceptedProfileMJ[0] * 1000) / sliceSeconds).toBeLessThanOrEqual(
+      energySystemParametersFor(team).maximumRecoveryMechanicalPowerKw + 1e-9,
+    );
+    expect(acceptedProfileTotalMJ).toBeCloseTo(
+      profiled.audit.acceptedBrakeRecoveryMechanicalEnergyMJ,
+      12,
+    );
+    expect(
+      profiled.audit.acceptedBrakeRecoveryMechanicalEnergyMJ,
+    ).toBeLessThan(
+      wholeFrameAverage.audit.acceptedBrakeRecoveryMechanicalEnergyMJ,
+    );
+    expect(profiled.actualRecoverySourcePowerKw.liftCoast).toBe(0);
+    expect(profiled.actualRecoverySourcePowerKw.superclip).toBe(0);
+    expect(profiled.state.actualDeploymentDcPowerKw).toBe(0);
+    expectExactBrakeAuditToClose(profiled);
+  });
+
+  it('normalizes a present invalid exact brake budget to zero instead of restoring the legacy predictor', () => {
+    for (const invalidBudgetMJ of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+      const result = step(createInitialEnergyStore(team, 0.3), {
+        brakeMechanicalEnergyBudgetMJ: invalidBudgetMJ,
+        brakePercent: 100,
+        deltaSeconds: 0.5,
+        speedKph: 330,
+        throttlePercent: 0,
+      });
+
+      expect(result.state.requestedBrakePowerKw).toBe(0);
+      expect(result.state.requestedRecoveryPowerKw).toBe(0);
+      expect(result.state.frictionBrakePowerKw).toBe(0);
+      expectExactBrakeAuditToClose(result);
+    }
+
+    const invalidProfile = step(createInitialEnergyStore(team, 0.3), {
+      brakeMechanicalEnergyBudgetMJ: 1,
+      brakeMechanicalEnergyProfileMJ: [
+        Number.NaN,
+        Number.POSITIVE_INFINITY,
+        -1,
+      ],
+      brakePercent: 100,
+      deltaSeconds: 0.5,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+    const emptyProfile = step(createInitialEnergyStore(team, 0.3), {
+      brakeMechanicalEnergyBudgetMJ: 1,
+      brakeMechanicalEnergyProfileMJ: [],
+      brakePercent: 100,
+      deltaSeconds: 0.5,
+      speedKph: 330,
+      throttlePercent: 0,
+    });
+
+    expect(invalidProfile.state.requestedBrakePowerKw).toBe(0);
+    expect(
+      invalidProfile.audit.acceptedBrakeRecoveryMechanicalEnergyProfileMJ,
+    ).toEqual([0, 0, 0]);
+    expect(emptyProfile.state.requestedBrakePowerKw).toBe(0);
+    expect(
+      emptyProfile.audit.acceptedBrakeRecoveryMechanicalEnergyProfileMJ,
+    ).toEqual([0]);
+    expectExactBrakeAuditToClose(invalidProfile);
+    expectExactBrakeAuditToClose(emptyProfile);
   });
 
   it('classifies actual lift-and-coast regeneration', () => {

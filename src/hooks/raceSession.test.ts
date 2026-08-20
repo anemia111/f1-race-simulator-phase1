@@ -1189,6 +1189,17 @@ describe('race session continuity', () => {
       parseRaceCheckpoint(
         JSON.stringify({
           ...current,
+          modelVersion: '2026.08.20.1',
+        }),
+        'session-a',
+        config,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify({
+          ...current,
           modelVersion: '2026.07.26.2',
         }),
         'session-a',

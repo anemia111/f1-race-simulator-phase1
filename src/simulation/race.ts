@@ -5570,6 +5570,7 @@ export function advanceRace(
       displayTelemetry = {
         ...displayTelemetry,
         brakePercent: 0,
+        frictionServiceBrakePowerKw: 0,
         gear: 0,
         overtakeStatus: 'disabled',
         rpm: 0,
@@ -5864,22 +5865,31 @@ export function advanceRace(
       displayTelemetry.runtimeSystems.kind === 'f1'
         ? displayTelemetry.runtimeSystems
         : null
-    const frictionBrakeShare =
-      (displayF1Runtime?.energyStore.requestedBrakePowerKw ?? 0) > 1
+    const meanBrakeSpeedMps =
+      (Math.max(0, car.speedKph) + Math.max(0, displayTelemetry.speedKph)) /
+      7.2
+    const nominalMaximumServiceBrakePowerKw =
+      ((operationalVehicleMass.operationalMassKg + car.fuelLoadKg) *
+        categoryPhysics.maximumBrakeDecelerationMps2 *
+        meanBrakeSpeedMps) /
+      1000
+    const frictionBrakeUtilization =
+      nominalMaximumServiceBrakePowerKw > 1
         ? Math.min(
             1,
-            (displayF1Runtime?.energyStore.frictionBrakePowerKw ?? 0) /
-              (displayF1Runtime?.energyStore.requestedBrakePowerKw ?? 1),
+            Math.max(
+              0,
+              displayTelemetry.frictionServiceBrakePowerKw /
+                nominalMaximumServiceBrakePowerKw,
+            ),
           )
-        : displayTelemetry.brakePercent > 0
-          ? 1
-          : 0
+        : 0
     const brakeTemperatureTargetC = Math.min(
       1180,
       335 +
-        displayTelemetry.brakePercent *
+        frictionBrakeUtilization *
+          100 *
           9.3 *
-          frictionBrakeShare *
           modeBrakeMultiplier[racePaceMode] +
         displayTelemetry.speedKph * 0.28,
     )
@@ -6119,6 +6129,7 @@ export function advanceRace(
     // Keeping it out of this spread ensures all F1 tyre state remains under
     // `runtimeSystems.tires` and SF snapshots never inherit an alias.
     const {
+      frictionServiceBrakePowerKw: _frictionServiceBrakePowerKw,
       tireTemperatureC: _calculatedTireTemperatureC,
       ...snapshotTelemetry
     } = displayTelemetry
