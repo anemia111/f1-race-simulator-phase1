@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  advanceTrackSurface,
   advanceTrackSurfaceCell,
   applyLegacyTrackSurfaceSectorsToState,
   createTrackSurfaceState,
@@ -12,6 +13,35 @@ import {
   trackSurfaceCellForProgress,
   trackSurfaceLaneForLateralOffset,
 } from './trackSurface'
+import type { TrackSurfaceEvolutionFlux } from './trackSurface'
+
+function expectWaterFluxToClose(
+  flux: TrackSurfaceEvolutionFlux['water'],
+  precision = 10,
+) {
+  expect(flux.afterFilmDepthSumMm).toBeCloseTo(
+    flux.beforeFilmDepthSumMm +
+      flux.rainfallFilmDepthSumMm -
+      flux.drainageFilmDepthSumMm -
+      flux.tyreSprayDisplacementFilmDepthSumMm -
+      flux.evaporationFilmDepthSumMm -
+      flux.overflowRemovedFilmDepthSumMm,
+    precision,
+  )
+}
+
+function expectRubberFluxToClose(
+  flux: TrackSurfaceEvolutionFlux['rubber'],
+  precision = 10,
+) {
+  expect(flux.afterCoverageSum).toBeCloseTo(
+    flux.beforeCoverageSum +
+      flux.tyreDepositCoverageSum -
+      flux.washedCoverageSum -
+      flux.removedCoverageSum,
+    precision,
+  )
+}
 
 describe('local track surface', () => {
   it('starts as a neutral, bounded two-lane typed-array substrate', () => {
@@ -205,6 +235,291 @@ describe('local track surface', () => {
     expect(rain.waterFilmMm).toBeGreaterThan(dry.waterFilmMm)
     expect(rain.dryness).toBeLessThan(dry.dryness)
     expect(Object.values(rain).every(Number.isFinite)).toBe(true)
+  })
+
+  it('advances wrapped traversals deterministically without mutating the input', () => {
+    const previous = createTrackSurfaceState({ cellCount: 8 })
+    const before = serializeTrackSurfaceState(previous)
+    const options = {
+      deltaSeconds: 1,
+      previous,
+      rainfallMmH: 0,
+      traversals: [
+        {
+          distanceLaps: 0.1,
+          lane: 'racing-line' as const,
+          startProgress: 0.95,
+        },
+      ],
+    }
+    const first = advanceTrackSurface(options)
+    const repeated = advanceTrackSurface(options)
+
+    expect(serializeTrackSurfaceState(previous)).toEqual(before)
+    expect(serializeTrackSurfaceState(first.state)).toEqual(
+      serializeTrackSurfaceState(repeated.state),
+    )
+    expect(first.flux).toEqual(repeated.flux)
+    expect(first.state.bondedRubber[0]).toBeGreaterThan(0)
+    expect(first.state.bondedRubber[14]).toBeGreaterThan(0)
+    expect(first.state.bondedRubber[2]).toBe(0)
+    expectWaterFluxToClose(first.flux.water)
+    expectRubberFluxToClose(first.flux.rubber)
+  })
+
+  it('preserves identical lane evolution without traffic', () => {
+    const previous = createTrackSurfaceState({
+      cellCount: 6,
+      initialSurfaceTemperatureC: 42,
+    })
+    previous.waterFilmMm.fill(0.5)
+    previous.dryness.fill(0.4)
+
+    const { flux, state } = advanceTrackSurface({
+      deltaSeconds: 2,
+      previous,
+      rainfallMmH: 4,
+      targetSurfaceTemperatureC: 28,
+    })
+
+    for (let cellIndex = 0; cellIndex < state.cellCount; cellIndex += 1) {
+      const racingIndex = cellIndex * 2
+      const offLineIndex = racingIndex + 1
+      expect(state.waterFilmMm[racingIndex]).toBe(
+        state.waterFilmMm[offLineIndex],
+      )
+      expect(state.dryness[racingIndex]).toBe(state.dryness[offLineIndex])
+      expect(state.surfaceTemperatureC[racingIndex]).toBe(
+        state.surfaceTemperatureC[offLineIndex],
+      )
+    }
+    expect(state.surfaceTemperatureC[0]).toBeLessThan(42)
+    expectWaterFluxToClose(flux.water)
+    expectRubberFluxToClose(flux.rubber)
+  })
+
+  it('uses moving local traffic for tyre spray and drying-line recovery', () => {
+    const previous = createTrackSurfaceState({ cellCount: 8 })
+    previous.waterFilmMm.fill(1)
+    previous.dryness.fill(0)
+    const traversals = Array.from({ length: 40 }, () => ({
+      distanceLaps: 0.2,
+      lane: 'racing-line' as const,
+      startProgress: 0.1,
+    }))
+
+    const { flux, state } = advanceTrackSurface({
+      deltaSeconds: 10,
+      previous,
+      rainfallMmH: 0,
+      rubberEvolutionEnabled: false,
+      traversals,
+    })
+    const crossedRacingIndex = 2
+    const pairedOffLineIndex = 3
+
+    expect(flux.water.tyreSprayDisplacementFilmDepthSumMm).toBeGreaterThan(0)
+    expect(state.waterFilmMm[crossedRacingIndex]).toBeLessThan(
+      state.waterFilmMm[pairedOffLineIndex],
+    )
+    expect(state.dryness[crossedRacingIndex]).toBeGreaterThan(
+      state.dryness[pairedOffLineIndex],
+    )
+    expectWaterFluxToClose(flux.water)
+  })
+
+  it('deposits more tyre rubber on a dry substrate than a wet one', () => {
+    const dry = createTrackSurfaceState({ cellCount: 4 })
+    const wet = createTrackSurfaceState({ cellCount: 4 })
+    wet.waterFilmMm.fill(2)
+    wet.dryness.fill(0)
+    const traversals = Array.from({ length: 20 }, () => ({
+      distanceLaps: 1,
+      lane: 'racing-line' as const,
+      startProgress: 0,
+    }))
+    const dryResult = advanceTrackSurface({
+      deltaSeconds: 1,
+      previous: dry,
+      rainfallMmH: 0,
+      traversals,
+    })
+    const wetResult = advanceTrackSurface({
+      deltaSeconds: 1,
+      previous: wet,
+      rainfallMmH: 0,
+      traversals,
+    })
+
+    expect(dryResult.flux.rubber.tyreDepositCoverageSum).toBeGreaterThan(0)
+    expect(dryResult.flux.rubber.tyreDepositCoverageSum).toBeGreaterThan(
+      wetResult.flux.rubber.tyreDepositCoverageSum,
+    )
+    expectRubberFluxToClose(dryResult.flux.rubber)
+    expectRubberFluxToClose(wetResult.flux.rubber)
+  })
+
+  it('washes bounded bonded and loose rubber under standing water and rain', () => {
+    const previous = createTrackSurfaceState({ cellCount: 4 })
+    previous.bondedRubber.fill(0.5)
+    previous.marbles.fill(0.1)
+    previous.waterFilmMm.fill(1)
+
+    const { flux, state } = advanceTrackSurface({
+      deltaSeconds: 5,
+      previous,
+      rainfallMmH: 18,
+    })
+
+    expect(flux.rubber.tyreDepositCoverageSum).toBe(0)
+    expect(flux.rubber.washedCoverageSum).toBeGreaterThan(0)
+    expect(flux.rubber.afterCoverageSum).toBeLessThan(
+      flux.rubber.beforeCoverageSum,
+    )
+    expect(Array.from(state.bondedRubber).every((value) => value >= 0)).toBe(true)
+    expect(Array.from(state.marbles).every((value) => value >= 0)).toBe(true)
+    expectWaterFluxToClose(flux.water)
+    expectRubberFluxToClose(flux.rubber)
+  })
+
+  it('migrates marbles internally and freezes every rubber process on request', () => {
+    const previous = createTrackSurfaceState()
+    previous.marbles[0] = 0.8
+    previous.marbles[1] = 0.1
+    const traversal = {
+      distanceLaps: 1 / 3,
+      lane: 'racing-line' as const,
+      startProgress: 0,
+    }
+    const evolved = advanceTrackSurface({
+      deltaSeconds: 1,
+      previous,
+      rainfallMmH: 0,
+      traversals: [traversal],
+    })
+    const frozen = advanceTrackSurface({
+      deltaSeconds: 1,
+      previous,
+      rainfallMmH: 18,
+      rubberEvolutionEnabled: false,
+      traversals: [traversal],
+    })
+
+    expect(evolved.flux.rubber.marbleMigrationCoverageSum).toBeGreaterThan(0)
+    expect(evolved.state.marbles[1]).toBeGreaterThan(previous.marbles[1])
+    expectRubberFluxToClose(evolved.flux.rubber)
+    expect(frozen.state.bondedRubber).toEqual(previous.bondedRubber)
+    expect(frozen.state.marbles).toEqual(previous.marbles)
+    expect(frozen.flux.rubber.tyreDepositCoverageSum).toBe(0)
+    expect(frozen.flux.rubber.washedCoverageSum).toBe(0)
+    expect(frozen.flux.rubber.marbleMigrationCoverageSum).toBe(0)
+    expect(frozen.flux.rubber.removedCoverageSum).toBe(0)
+    expect(frozen.flux.rubber.afterCoverageSum).toBe(
+      frozen.flux.rubber.beforeCoverageSum,
+    )
+  })
+
+  it('accounts for bounded stock removal instead of hiding clamp losses', () => {
+    const previous = createTrackSurfaceState({ cellCount: 3 })
+    previous.waterFilmMm.fill(6)
+    previous.bondedRubber.fill(0.999)
+    previous.marbles.fill(0.999)
+    const traversals = Array.from({ length: 50 }, () => ({
+      distanceLaps: 1,
+      lane: 'racing-line' as const,
+      startProgress: 0,
+    }))
+    const result = advanceTrackSurface({
+      deltaSeconds: 1,
+      previous,
+      rainfallMmH: 3600,
+      traversals,
+    })
+
+    expect(result.flux.water.overflowRemovedFilmDepthSumMm).toBeGreaterThan(0)
+    expect(result.flux.rubber.removedCoverageSum).toBeGreaterThan(0)
+    expect(Array.from(result.state.waterFilmMm).every(
+      (value) => value >= 0 && value <= 6,
+    )).toBe(true)
+    expect(Array.from(result.state.bondedRubber).every(
+      (value) => value >= 0 && value <= 1,
+    )).toBe(true)
+    expect(Array.from(result.state.marbles).every(
+      (value) => value >= 0 && value <= 1,
+    )).toBe(true)
+    expectWaterFluxToClose(result.flux.water)
+    expectRubberFluxToClose(result.flux.rubber)
+  })
+
+  it('keeps flux ledgers finite for extreme but finite public inputs', () => {
+    const previous = createTrackSurfaceState()
+    previous.waterFilmMm.fill(6)
+    previous.bondedRubber.fill(0.5)
+    previous.marbles.fill(0.5)
+
+    const result = advanceTrackSurface({
+      deltaSeconds: Number.MAX_VALUE,
+      previous,
+      rainfallMmH: Number.MAX_VALUE,
+      traversals: [{
+        distanceLaps: Number.MAX_VALUE,
+        lane: 'racing-line',
+        startProgress: Number.MAX_VALUE,
+      }],
+    })
+
+    expect(Object.values(result.flux.water).every(Number.isFinite)).toBe(true)
+    expect(Object.values(result.flux.rubber).every(Number.isFinite)).toBe(true)
+    // Hundreds of thousands of bounded 50 ms slot updates accumulate only
+    // floating-point summation noise; the relative closure remains <1e-10.
+    expectWaterFluxToClose(result.flux.water, 7)
+    expectRubberFluxToClose(result.flux.rubber, 7)
+  })
+
+  it('matches two 50 ms updates when a coarse frame is internally sliced', () => {
+    const previous = createTrackSurfaceState({
+      cellCount: 8,
+      initialSurfaceTemperatureC: 45,
+    })
+    previous.waterFilmMm.fill(0.4)
+    previous.dryness.fill(0.3)
+    const coarse = advanceTrackSurface({
+      deltaSeconds: 0.1,
+      previous,
+      rainfallMmH: 6,
+      targetSurfaceTemperatureC: 25,
+      traversals: [{
+        distanceLaps: 0.02,
+        lane: 'racing-line',
+        startProgress: 0.2,
+      }],
+    })
+    const first = advanceTrackSurface({
+      deltaSeconds: 0.05,
+      previous,
+      rainfallMmH: 6,
+      targetSurfaceTemperatureC: 25,
+      traversals: [{
+        distanceLaps: 0.01,
+        lane: 'racing-line',
+        startProgress: 0.2,
+      }],
+    })
+    const second = advanceTrackSurface({
+      deltaSeconds: 0.05,
+      previous: first.state,
+      rainfallMmH: 6,
+      targetSurfaceTemperatureC: 25,
+      traversals: [{
+        distanceLaps: 0.01,
+        lane: 'racing-line',
+        startProgress: 0.2 + 0.01,
+      }],
+    })
+
+    expect(serializeTrackSurfaceState(coarse.state)).toEqual(
+      serializeTrackSurfaceState(second.state),
+    )
   })
 
   it('round-trips only a valid serializable state', () => {

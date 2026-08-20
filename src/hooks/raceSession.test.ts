@@ -6,6 +6,11 @@ import { FREE_MODE_RACE_CHECKPOINT_STORAGE_KEY } from '../freeMode/freeModePersi
 import { seriesPackageById } from '../series/seriesRegistry'
 import { advanceRace, createInitialRace } from '../simulation/race'
 import { createInitialActiveAeroState } from '../simulation/activeAero'
+import {
+  deserializeTrackSurfaceState,
+  serializeTrackSurfaceState,
+} from '../simulation/trackSurface'
+import { strictTrackSurfaceStateForTrack } from '../simulation/trackSurfaceValidation'
 import type { RaceConfig, RaceSnapshot } from '../types'
 import {
   RACE_CHECKPOINT_MAX_AGE_MS,
@@ -513,6 +518,54 @@ describe('race session continuity', () => {
         ),
       ).toBeNull()
     }
+  })
+
+  it('continues heterogeneous local-surface evolution identically after v3 replay', () => {
+    const now = 1_800_000_000_000
+    const initial = createInitialRace(config)
+    const surface = deserializeTrackSurfaceState(initial.trackSurface)
+
+    if (!surface) {
+      throw new Error('Expected canonical checkpoint surface')
+    }
+
+    surface.waterFilmMm[0] = 1.1
+    surface.waterFilmMm[1] = 0.2
+    surface.bondedRubber[0] = 0.5
+    surface.bondedRubber[1] = 0.1
+    surface.marbles[1] = 0.18
+    const evolved = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) =>
+          index === 0
+            ? {
+                ...car,
+                offTrackSinceSeconds: null,
+                pitPhase: 'none' as const,
+                speedKph: 210,
+                status: 'running' as const,
+              }
+            : car,
+        ),
+        trackSurface: serializeTrackSurfaceState(surface),
+      },
+      0.25,
+      config,
+    )
+    const restored = parseRaceCheckpoint(
+      serializeRaceCheckpoint('surface-replay', evolved, now),
+      'surface-replay',
+      config,
+      now,
+    )
+
+    expect(restored).not.toBeNull()
+
+    const uninterrupted = advanceRace(evolved, 0.25, config)
+    const replayed = advanceRace(restored!, 0.25, config)
+
+    expect(replayed).toEqual(uninterrupted)
   })
 
   it('migrates legacy checkpoints without drivetrain, lateral, or active-aero state', () => {
@@ -1026,6 +1079,17 @@ describe('race session continuity', () => {
       snapshot.cars.some((car) => car.lapHistory.length >= 2),
     ).toBe(true)
     expect(
+      strictTrackSurfaceStateForTrack(snapshot.trackSurface, config.track),
+    ).not.toBeNull()
+    for (const car of snapshot.cars) {
+      if (
+        car.runtimeSystems.kind === 'f1' &&
+        car.runtimeSystems.superClippingIntensity === 0
+      ) {
+        expect(car.runtimeSystems.superClippingRegenPowerKw).toBe(0)
+      }
+    }
+    expect(
       parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
         ?.elapsedSeconds,
     ).toBe(snapshot.elapsedSeconds)
@@ -1190,6 +1254,17 @@ describe('race session continuity', () => {
         JSON.stringify({
           ...current,
           modelVersion: '2026.08.20.1',
+        }),
+        'session-a',
+        config,
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify({
+          ...current,
+          modelVersion: '2026.08.20.2',
         }),
         'session-a',
         config,

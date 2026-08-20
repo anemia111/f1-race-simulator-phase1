@@ -2,12 +2,12 @@
 
 ## Status and scope
 
-This is the first Phase 6 implementation slice. It introduces a deterministic,
-two-lane local-surface substrate and connects it to the live race force path.
-It does **not** claim that Phase 6 as a whole is complete: source-backed
-elevation/banking, physical-width ingestion, tyre transient/relaxation,
-chassis response, and circuit-scenario validation remain separate follow-up
-slices.
+This Phase 6 implementation introduces a deterministic, two-lane local-surface
+substrate, connects it to the live race force path, and makes that substrate
+the live water/rubber evolution authority. It does **not** claim that Phase 6
+as a whole is complete: source-backed elevation/banking, physical-width
+ingestion, tyre transient/relaxation, chassis response, and measured
+circuit-specific surface parameters remain separate follow-up slices.
 
 ## Runtime model
 
@@ -31,15 +31,39 @@ simulation authority. The historic three-sector fields remain projections for
 existing UI and session-rule consumers, so they can be removed only after
 those consumers have a direct two-lane API.
 
-## Compatibility and force coupling
+## Canonical live evolution
 
 `advanceRace` restores the canonical two-lane state at the start of a tick and
-projects its racing-line sectors into the established water and rubber update
-functions. Those functions run exactly once. Their result is then projected
-back into a fresh canonical state, from which the compatibility sector fields
-are regenerated. The racing-line values therefore retain the established
-inputs; the off-line lane gets only a bounded, `simulator-policy`
-loose-rubber proxy until local observations exist.
+calls `advanceTrackSurface` once. The update integrates bounded 50 ms internal
+surface-policy slices, not a new fixed race tick, up to a 30 s public-frame
+safety bound. Rainfall is added to every
+represented cell/lane; drainage, evaporation, tyre spray, and capacity
+overflow are explicit external sinks. Vehicle traversals deposit rubber,
+displace water, mature the drying line, and move a bounded share of loose
+rubber from the racing line to the off-line lane. Rain washes bonded and loose
+rubber gradually. The former three-sector water and rubber updaters no longer
+run in parallel.
+
+A traversal records normalized start progress, lap-fraction distance, and the
+resolved lane. Only a moving, running car that is on the circuit and outside a
+pit phase contributes tyre work. Formation-lap movement therefore contributes;
+stationary grid/lights cars, garage or pit-lane cars, and off-track cars do not.
+Rain, drainage, evaporation, drying maturity, and temperature continue to
+evolve across every cell even when there is no vehicle traversal.
+
+The update returns water and rubber flux ledgers. Water closes as previous
+stock plus rainfall minus drainage, evaporation, tyre spray, and overflow.
+Rubber closes as previous bonded-plus-loose coverage plus tyre deposit minus
+wash and bounded removal. Marble migration is an internal lane transfer, so it
+does not appear as an external stock source or sink.
+
+## Compatibility, force coupling, and checkpoints
+
+`RaceSnapshot.trackSurface` is the only dynamic surface authority. After the
+canonical update, racing-line values are projected into the historic
+three-sector fields for existing UI and session-rule consumers. Those fields
+are outputs and are never advanced independently or projected back into the
+canonical state.
 
 Checkpoint schema v3 requires a well-formed canonical surface and normalizes
 all compatibility sectors from it on restore. Schema v2 checkpoints are
@@ -68,6 +92,40 @@ existing `gripWithTrackRubber` and telemetry water handling retain that job.
 This prevents a second rain or rubber multiplier from being introduced during
 the migration.
 
+The deterministic continuation model is `2026.08.20.3`. An earlier model is
+rejected rather than resuming with the former sector-level evolution rules.
+
+## Weekend and session carry-over
+
+`WeekendContext.trackSurfaceCarry` stores a deep serialized canonical state
+with its track ID. Completion of a played practice, qualifying, sprint, or race
+session carries that state forward. A synthetic skipped session preserves the
+previous carry instead of fabricating surface work. The first session starts
+fresh from current rain and track temperature.
+
+A carry is restored only for the same track ID and only when its raw shape and
+static contract (profile, sector marks, defaults, cell grid, and base-friction
+array) still match. Otherwise it fails closed to a fresh state. Timed practice,
+qualifying, and sprint-qualifying freeze the carried bonded-rubber and marble
+stocks through `rubberEvolutionEnabled: false` so player time acceleration
+cannot alter rubber between qualifying groups. Water, dryness, and surface
+temperature still evolve. Race and sprint sessions enable rubber evolution.
+
+## Policy units and limitations
+
+The water ledger uses `mm-cell-lane`: the sum of film depths over equal model
+slots. It is proportional to represented inventory, but it is not kilograms,
+litres, or a claim about road area because physical width is unavailable. The
+rubber ledger uses dimensionless `coverage-cell-lane` stock. Coefficients are
+explicit neutral simulator policy; none is fitted per circuit.
+
+There is no slope, camber, catchment, drain-map, spray-return, or runoff
+geometry from which to route water between cells. Tyre-displaced film leaves
+the represented substrate as spray, and only film above the 6 mm slot capacity
+is recorded as overflow. `dryness` is a bounded response state, not a second
+water inventory. Likewise, bonded rubber, marbles, and surface temperature are
+policy proxies rather than measured circuit telemetry.
+
 ## Provenance boundary
 
 `TrackDefinition.surfaceProfile` is optional and requires a non-empty label
@@ -75,8 +133,9 @@ and one of `official`, `observed`, or `simulator-policy`. Its global or
 wrap-aware progress sections can currently supply only `baseFriction`.
 Malformed or unlabelled provenance fails closed to neutral `1.0` friction.
 
-No track in the shipped 2026 data receives a new friction value in this slice.
-Consequently, a normal existing race keeps its prior racing-line result. A
+No track in the shipped 2026 data receives a new static friction value in this
+slice. Consequently, a normal existing race keeps its prior base-friction
+input. A
 test-only policy profile proves the live coupling without presenting an
 invented circuit measurement as source data.
 
@@ -155,8 +214,8 @@ and confidence metadata.
 
 ## Explicitly not yet operational
 
-- Per-track roughness and drainage inputs;
-- source-backed cell-by-cell water, rubber, temperature, or debris evolution;
+- Per-track roughness, drainage, evaporation, catchment, or runoff inputs;
+- measured cell-by-cell water, rubber, temperature, or debris state;
 - source-backed physical width, elevation, grade, banking, kerb, or runoff
   geometry;
 - tyre relaxation/transient response, source-backed compound force
@@ -164,17 +223,22 @@ and confidence metadata.
   source-unavailable
   for those coefficients and does not reuse F1/Pirelli values.
 
-`advanceTrackSurfaceCell` is a bounded, deterministic pure update used to test
-water balance and future cell-evolution work. It is intentionally not presented
-as a sourced circuit-drainage model and is not called by the live race loop;
-calling it alongside the established sector updates would double-count water
-and rubber changes.
+`advanceTrackSurfaceCell` remains a narrow, bounded policy probe. The live race
+uses the whole-state `advanceTrackSurface` flux-accounted update; callers must
+not run the cell probe as a second evolution pass.
 
 ## Verification
 
 Focused tests cover neutral/default behavior, wrap-around cell resolution,
-lane selection, legacy-sector reconstruction, canonical serialize/deserialize
-round trips, bounded rain/drainage response, provenance fail-closed behavior,
-v2 checkpoint hydration, v3 corruption rejection, compatibility projection,
-local-force monotonicity, and a race-loop profile integration. Existing
-water/rubber and full race regression suites remain part of the release gate.
+lane selection, canonical serialize/deserialize round trips, water and rubber
+flux closure, rain wash, local tyre work, traversal ordering, session carry,
+checkpoint rejection, compatibility projection, local-force monotonicity, and
+race-loop integration. `npm run validate:track-surface` also runs a deterministic
+36-case matrix: Monaco, Monza, Singapore, Spa, Suzuka, and Zandvoort crossed
+with green, rubbered, light-rain, heavy-rain, drying, and off-line scenarios.
+The light- and heavy-rain probes use fixed 2 and 10 mm/h policy inputs.
+The circuit names are coverage labels only: the generator uses the public
+domain API, performs no fit or calibration, consults no holdout, and applies no
+track-specific multiplier. Use `--no-report` to run the gate without writing
+`artifacts/track-surface-validation/summary.json`. Existing full race
+regression suites remain part of the release gate.

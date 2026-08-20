@@ -20,14 +20,12 @@ import {
   createSuperFormulaRuntimeSystems,
 } from '../simulation/runtimeSystems'
 import {
-  TRACK_SURFACE_LANES,
-  TRACK_SURFACE_STATE_VERSION,
-  createTrackSurfaceState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
   legacySectorStateForTrackSurface,
   serializeTrackSurfaceState,
 } from '../simulation/trackSurface'
+import { strictTrackSurfaceStateForTrack } from '../simulation/trackSurfaceValidation'
 import { trackEvolutionLevelFor } from '../simulation/trackEvolution'
 import {
   validateSuperFormulaControlTireInventory,
@@ -46,7 +44,7 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.08.20.2'
+export const RACE_SIMULATION_MODEL_VERSION = '2026.08.20.3'
 const LEGACY_V2_RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
 const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',
@@ -273,52 +271,6 @@ const F1_COMPONENT_KEYS = new Set([
   'mguK',
   'gearbox',
 ])
-const TRACK_SURFACE_SNAPSHOT_KEYS = new Set([
-  'baseFriction',
-  'bondedRubber',
-  'cellCount',
-  'defaults',
-  'dryness',
-  'laneCount',
-  'marbles',
-  'profile',
-  'sectorMarks',
-  'surfaceTemperatureC',
-  'version',
-  'waterFilmMm',
-])
-const TRACK_SURFACE_DEFAULT_KEYS = new Set([
-  'baseFriction',
-  'drainageCoefficient',
-  'evaporationCoefficient',
-  'roughness',
-  'source',
-  'sourceLabel',
-])
-const TRACK_SURFACE_PROFILE_KEYS = new Set([
-  'baseFriction',
-  'source',
-  'sourceLabel',
-  'sourceUrl',
-])
-const TRACK_SURFACE_PROFILE_WITH_SECTIONS_KEYS = new Set([
-  ...TRACK_SURFACE_PROFILE_KEYS,
-  'sections',
-])
-const TRACK_SURFACE_PROFILE_SECTION_KEYS = new Set([
-  'baseFriction',
-  'endProgress',
-  'source',
-  'sourceLabel',
-  'sourceUrl',
-  'startProgress',
-])
-const TRACK_SURFACE_PROFILE_SOURCES = new Set([
-  'official',
-  'observed',
-  'simulator-policy',
-])
-
 type StorageAdapter = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>
 
 export type ActiveRaceSession = {
@@ -389,126 +341,6 @@ const isNullableFiniteTuple = (value: unknown, length: number) =>
   Array.isArray(value) &&
   value.length === length &&
   value.every((entry) => isNullableFiniteNumber(entry))
-
-const isExactTrimmedNonEmptyString = (value: unknown) =>
-  typeof value === 'string' && value.length > 0 && value.trim() === value
-
-const isExactFiniteArrayInRange = (
-  value: unknown,
-  expectedLength: number,
-  minimum: number,
-  maximum: number,
-) =>
-  Array.isArray(value) &&
-  value.length === expectedLength &&
-  value.every((entry) => isFiniteInRange(entry, minimum, maximum))
-
-function isStrictTrackSurfaceDefaults(value: unknown) {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, TRACK_SURFACE_DEFAULT_KEYS) &&
-    isFiniteInRange(value.baseFriction, 0.82, 1.05) &&
-    isFiniteInRange(value.drainageCoefficient, 0.2, 3) &&
-    isFiniteInRange(value.evaporationCoefficient, 0.2, 3) &&
-    isFiniteInRange(value.roughness, 0, 1) &&
-    value.source === 'simulator-policy' &&
-    isExactTrimmedNonEmptyString(value.sourceLabel)
-  )
-}
-
-function isStrictTrackSurfaceProfileSection(value: unknown) {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, TRACK_SURFACE_PROFILE_SECTION_KEYS) &&
-    isFiniteInRange(value.baseFriction, 0.82, 1.05) &&
-    isFiniteInRange(value.startProgress, 0, 1 - Number.EPSILON) &&
-    isFiniteInRange(value.endProgress, 0, 1 - Number.EPSILON) &&
-    typeof value.source === 'string' &&
-    TRACK_SURFACE_PROFILE_SOURCES.has(value.source) &&
-    isExactTrimmedNonEmptyString(value.sourceLabel) &&
-    (value.sourceUrl === null || isExactTrimmedNonEmptyString(value.sourceUrl))
-  )
-}
-
-function isStrictTrackSurfaceProfile(value: unknown) {
-  if (value === null) {
-    return true
-  }
-
-  if (!isRecord(value)) {
-    return false
-  }
-
-  const hasSections = Object.hasOwn(value, 'sections')
-  const keys = hasSections
-    ? TRACK_SURFACE_PROFILE_WITH_SECTIONS_KEYS
-    : TRACK_SURFACE_PROFILE_KEYS
-
-  return (
-    hasExactKeys(value, keys) &&
-    isFiniteInRange(value.baseFriction, 0.82, 1.05) &&
-    typeof value.source === 'string' &&
-    TRACK_SURFACE_PROFILE_SOURCES.has(value.source) &&
-    isExactTrimmedNonEmptyString(value.sourceLabel) &&
-    (value.sourceUrl === null || isExactTrimmedNonEmptyString(value.sourceUrl)) &&
-    (!hasSections ||
-      (Array.isArray(value.sections) &&
-        value.sections.length > 0 &&
-        value.sections.every(isStrictTrackSurfaceProfileSection)))
-  )
-}
-
-function isStrictTrackSurfaceSectorMarks(value: unknown) {
-  if (!isExactFiniteArrayInRange(value, 3, 0, 1 - Number.EPSILON)) {
-    return false
-  }
-
-  const marks = value as [number, number, number]
-
-  return (
-    marks[0] <= 1e-6 &&
-    marks[1] - marks[0] >= 1e-5 &&
-    marks[2] - marks[1] >= 1e-5
-  )
-}
-
-/**
- * `deserializeTrackSurfaceState` is intentionally tolerant for local callers.
- * Checkpoints are an authority boundary, so v3 validates the raw JSON before
- * deserializing and refuses values which would otherwise be silently clamped
- * or normalized.
- */
-function isStrictTrackSurfaceSnapshot(value: unknown) {
-  if (!isRecord(value) || !hasExactKeys(value, TRACK_SURFACE_SNAPSHOT_KEYS)) {
-    return false
-  }
-
-  const cellCount = value.cellCount
-  if (
-    !isFiniteNumber(cellCount) ||
-    !Number.isSafeInteger(cellCount) ||
-    cellCount < 3 ||
-    cellCount > 720 ||
-    value.version !== TRACK_SURFACE_STATE_VERSION ||
-    value.laneCount !== TRACK_SURFACE_LANES.length ||
-    !isStrictTrackSurfaceDefaults(value.defaults) ||
-    !isStrictTrackSurfaceProfile(value.profile) ||
-    !isStrictTrackSurfaceSectorMarks(value.sectorMarks)
-  ) {
-    return false
-  }
-
-  const expectedLength = cellCount * TRACK_SURFACE_LANES.length
-
-  return (
-    isExactFiniteArrayInRange(value.baseFriction, expectedLength, 0.82, 1.05) &&
-    isExactFiniteArrayInRange(value.bondedRubber, expectedLength, 0, 1) &&
-    isExactFiniteArrayInRange(value.dryness, expectedLength, 0, 1) &&
-    isExactFiniteArrayInRange(value.marbles, expectedLength, 0, 1) &&
-    isExactFiniteArrayInRange(value.surfaceTemperatureC, expectedLength, -20, 90) &&
-    isExactFiniteArrayInRange(value.waterFilmMm, expectedLength, 0, 6)
-  )
-}
 
 function authoritativeRechargeRulesFor(
   config: RaceConfig,
@@ -1406,53 +1238,6 @@ function hydrateLegacyTrackSurface(
   })
 }
 
-function numberArraysMatch(
-  left: ArrayLike<number>,
-  right: ArrayLike<number>,
-) {
-  return (
-    left.length === right.length &&
-    Array.from(left).every((value, index) => value === right[index])
-  )
-}
-
-/**
- * Static surface inputs affect the live force path, so a valid JSON shape is
- * not enough. Bind them to the active session's track definition while
- * leaving the persisted dynamic lane fields free to continue their own state.
- */
-function hasConfigBoundTrackSurface(value: unknown, config: RaceConfig) {
-  const trackSurface = deserializeTrackSurfaceState(value)
-
-  if (!trackSurface) {
-    return false
-  }
-
-  const expected = createTrackSurfaceState({
-    profile: config.track.surfaceProfile,
-    sectorMarks: config.track.sectorMarks,
-  })
-  const defaultsMatch =
-    trackSurface.defaults.baseFriction === expected.defaults.baseFriction &&
-    trackSurface.defaults.drainageCoefficient ===
-      expected.defaults.drainageCoefficient &&
-    trackSurface.defaults.evaporationCoefficient ===
-      expected.defaults.evaporationCoefficient &&
-    trackSurface.defaults.roughness === expected.defaults.roughness &&
-    trackSurface.defaults.source === expected.defaults.source &&
-    trackSurface.defaults.sourceLabel === expected.defaults.sourceLabel
-
-  return (
-    trackSurface.version === expected.version &&
-    trackSurface.cellCount === expected.cellCount &&
-    trackSurface.laneCount === expected.laneCount &&
-    defaultsMatch &&
-    numberArraysMatch(trackSurface.baseFriction, expected.baseFriction) &&
-    numberArraysMatch(trackSurface.sectorMarks, expected.sectorMarks) &&
-    JSON.stringify(trackSurface.profile) === JSON.stringify(expected.profile)
-  )
-}
-
 function migrateRaceSnapshot(value: RaceSnapshot): RaceSnapshot {
   return {
     ...value,
@@ -1559,8 +1344,8 @@ function isCompatibleRaceSnapshot(
     isFiniteTuple(value.surfaceWaterMmBySector, 3) &&
     isFiniteTuple(value.dryingLineBySector, 3) &&
     (!options.requireTrackSurface ||
-      (isStrictTrackSurfaceSnapshot(value.trackSurface) &&
-        hasConfigBoundTrackSurface(value.trackSurface, config))) &&
+      strictTrackSurfaceStateForTrack(value.trackSurface, config.track) !==
+        null) &&
     Array.isArray(value.events) &&
     Array.isArray(value.stewardCases) &&
     ((config.seriesId ?? 'f1-custom') !== 'super-formula' ||

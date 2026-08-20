@@ -43,6 +43,8 @@ import {
 import {
   validateSuperFormula2026PenaltyPointLedger,
 } from './simulation/superFormulaPenaltyLedger'
+import { serializeTrackSurfaceState } from './simulation/trackSurface'
+import { strictTrackSurfaceStateForTrack } from './simulation/trackSurfaceValidation'
 
 export const WEEKEND_STORAGE_KEY = 'race-sim-weekend-v4-runtime-boundary'
 export const LEGACY_WEEKEND_STORAGE_KEY = 'f1-sim-weekend-v2'
@@ -632,6 +634,23 @@ function normalizeWeekendContext(
   const qualificationStatusByDriver = {
     ...base.qualificationStatusByDriver,
   }
+  const sourceTrackSurfaceCarry = isRecord(source.trackSurfaceCarry)
+    ? source.trackSurfaceCarry
+    : null
+  const carriedTrackSurfaceState =
+    sourceTrackSurfaceCarry !== null &&
+    Object.keys(sourceTrackSurfaceCarry).length === 2 &&
+    Object.hasOwn(sourceTrackSurfaceCarry, 'state') &&
+    Object.hasOwn(sourceTrackSurfaceCarry, 'trackId') &&
+    sourceTrackSurfaceCarry.trackId === track.id
+      ? strictTrackSurfaceStateForTrack(sourceTrackSurfaceCarry.state, track)
+      : null
+  const trackSurfaceCarry = carriedTrackSurfaceState
+    ? {
+        state: serializeTrackSurfaceState(carriedTrackSurfaceState),
+        trackId: track.id,
+      }
+    : null
 
   for (const driver of drivers) {
     const id = driver.id
@@ -705,6 +724,7 @@ function normalizeWeekendContext(
     setupBonusByDriver,
     setupByDriver,
     setupConfidenceByDriver,
+    trackSurfaceCarry,
   }
 
   if (seriesId === 'super-formula') {
