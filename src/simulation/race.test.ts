@@ -69,6 +69,13 @@ import {
   lateralBoundsForTrack,
   MAX_LATERAL_SPEED_MPS,
 } from './lateralDynamics'
+import {
+  applyLegacyTrackSurfaceSectorsToState,
+  deserializeTrackSurfaceState,
+  legacySectorStateForTrackSurface,
+  serializeTrackSurfaceState,
+  trackSurfaceAt,
+} from './trackSurface'
 import { categoryPhysicsFor } from './categoryPhysics'
 import { createInitialActiveAeroState } from './activeAero'
 import { selectGear } from './drivetrain'
@@ -141,6 +148,134 @@ function runThroughStart(
   snapshot = advanceRace(snapshot, 5, config)
   return snapshot
 }
+
+function canonicalTrackSurfaceFor(snapshot: RaceSnapshot) {
+  const trackSurface = deserializeTrackSurfaceState(snapshot.trackSurface)
+
+  if (!trackSurface) {
+    throw new Error('Expected a valid canonical track surface')
+  }
+
+  return trackSurface
+}
+
+function expectTrackSurfaceCompatibilityProjection(snapshot: RaceSnapshot) {
+  const sectors = legacySectorStateForTrackSurface(
+    canonicalTrackSurfaceFor(snapshot),
+  )
+
+  expect(snapshot.surfaceWaterMmBySector).toEqual(
+    sectors.surfaceWaterMmBySector,
+  )
+  expect(snapshot.dryingLineBySector).toEqual(sectors.dryingLineBySector)
+  expect(snapshot.rubberLevelBySector).toEqual(sectors.rubberLevelBySector)
+  expect(snapshot.trackEvolutionLevel).toBe(
+    sectors.rubberLevelBySector.reduce((sum, level) => sum + level, 0) /
+      sectors.rubberLevelBySector.length,
+  )
+}
+
+function withCanonicalTrackSurfaceSectors(
+  snapshot: RaceSnapshot,
+  sectors: {
+    dryingLineBySector: [number, number, number]
+    rubberLevelBySector: [number, number, number]
+    surfaceWaterMmBySector: [number, number, number]
+  },
+): RaceSnapshot {
+  const trackSurface = applyLegacyTrackSurfaceSectorsToState(
+    canonicalTrackSurfaceFor(snapshot),
+    sectors,
+  )
+  const compatibility = legacySectorStateForTrackSurface(trackSurface)
+
+  return {
+    ...snapshot,
+    dryingLineBySector: compatibility.dryingLineBySector,
+    rubberLevelBySector: compatibility.rubberLevelBySector,
+    surfaceWaterMmBySector: compatibility.surfaceWaterMmBySector,
+    trackEvolutionLevel:
+      compatibility.rubberLevelBySector.reduce(
+        (sum, level) => sum + level,
+        0,
+      ) / compatibility.rubberLevelBySector.length,
+    trackSurface: serializeTrackSurfaceState(trackSurface),
+  }
+}
+
+describe('canonical track-surface snapshot authority', () => {
+  it('creates once and projects compatibility sectors through formation and racing ticks', () => {
+    const config: RaceConfig = {
+      ...makeConfig('canonical-surface-lifecycle'),
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const initial = createInitialRace(config)
+    const initialSurfaceJson = JSON.stringify(initial.trackSurface)
+
+    expectTrackSurfaceCompatibilityProjection(initial)
+
+    const formation = advanceRace(initial, 0.5, config)
+    expect(formation.startProcedure).toBe('formation')
+    expectTrackSurfaceCompatibilityProjection(formation)
+    expect(JSON.stringify(initial.trackSurface)).toBe(initialSurfaceJson)
+
+    const racing = advanceRace(runThroughStart(config), 0.5, config)
+    expect(racing.startProcedure).toBe('racing')
+    expectTrackSurfaceCompatibilityProjection(racing)
+  })
+
+  it('uses canonical surface lanes rather than stale three-sector compatibility fields', () => {
+    const config: RaceConfig = {
+      ...makeConfig('canonical-surface-off-line'),
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const initial = createInitialRace(config)
+    const seededSurface = applyLegacyTrackSurfaceSectorsToState(
+      canonicalTrackSurfaceFor(initial),
+      {
+        dryingLineBySector: [1, 1, 1],
+        rubberLevelBySector: [0.6, 0.4, 0.2],
+        surfaceWaterMmBySector: [0, 0, 0],
+      },
+    )
+    const next = advanceRace(
+      {
+        ...initial,
+        // These are deliberately stale compatibility values. The serialized
+        // two-lane state above is the only source for the next tick.
+        dryingLineBySector: [0, 0, 0],
+        rubberLevelBySector: [0, 0, 0],
+        surfaceWaterMmBySector: [4, 4, 4],
+        trackSurface: serializeTrackSurfaceState(seededSurface),
+      },
+      0,
+      config,
+    )
+
+    expectTrackSurfaceCompatibilityProjection(next)
+    next.rubberLevelBySector.forEach((level, sector) => {
+      expect(level).toBeCloseTo([0.6, 0.4, 0.2][sector], 12)
+    })
+    expect(next.surfaceWaterMmBySector).toEqual([0, 0, 0])
+
+    const canonicalSurface = canonicalTrackSurfaceFor(next)
+    const racingLine = trackSurfaceAt(canonicalSurface, {
+      lateralOffsetM: 0,
+      progress: 0.1,
+    })
+    const offLine = trackSurfaceAt(canonicalSurface, {
+      lateralOffsetM: 2,
+      progress: 0.1,
+    })
+
+    expect(offLine.lane).toBe('off-line')
+    expect(offLine.bondedRubber).toBeCloseTo(0.6 * 0.58, 12)
+    expect(offLine.marbles).toBeCloseTo(0.6 * 0.24, 12)
+    expect(offLine.baseGripMultiplier).toBeLessThan(
+      racingLine.baseGripMultiplier,
+    )
+  })
+})
 
 describe('lap-start energy rule authority', () => {
   it('carries only the physically accepted Overtake debit after a Line crossing', () => {
@@ -446,8 +581,15 @@ describe('lap-start energy rule authority', () => {
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
     const beforeLine = withUsedEnergyLedger(initial.cars[0], 1.25)
     const alreadyAfterLine = withUsedEnergyLedger(initial.cars[1], 0.75)
+    const initialSurfaceSectors = legacySectorStateForTrackSurface(
+      canonicalTrackSurfaceFor(initial),
+    )
     const forced: RaceSnapshot = {
-      ...initial,
+      ...withCanonicalTrackSurfaceSectors(initial, {
+        dryingLineBySector: initialSurfaceSectors.dryingLineBySector,
+        rubberLevelBySector: initialSurfaceSectors.rubberLevelBySector,
+        surfaceWaterMmBySector: [3, 3, 3],
+      }),
       flag: 'sc',
       flagLabel: 'SC',
       flagPhase: {
@@ -462,7 +604,6 @@ describe('lap-start energy rule authority', () => {
       },
       lowGripConditions: true,
       sectorFlags: ['sc', 'sc', 'sc'],
-      surfaceWaterMmBySector: [3, 3, 3],
       trackGrip: 0.55,
       weather: 'heavy-rain',
       cars: initial.cars.map((car, index) => {
@@ -546,13 +687,21 @@ describe('lap-start energy rule authority', () => {
         },
       })
     }
-    const soakTrack = (snapshot: RaceSnapshot) => ({
-      ...snapshot,
-      lowGripConditions: true,
-      surfaceWaterMmBySector: [3, 3, 3] as [number, number, number],
-      dryingLineBySector: [0, 0, 0] as [number, number, number],
-      cars: snapshot.cars.map((car) => staleEnergyLedger(car, 1.25)),
-    })
+    const soakTrack = (snapshot: RaceSnapshot): RaceSnapshot => {
+      const currentSectors = legacySectorStateForTrackSurface(
+        canonicalTrackSurfaceFor(snapshot),
+      )
+
+      return {
+        ...withCanonicalTrackSurfaceSectors(snapshot, {
+          dryingLineBySector: [0, 0, 0],
+          rubberLevelBySector: currentSectors.rubberLevelBySector,
+          surfaceWaterMmBySector: [3, 3, 3],
+        }),
+        lowGripConditions: true,
+        cars: snapshot.cars.map((car) => staleEnergyLedger(car, 1.25)),
+      }
+    }
     const initial = createInitialRace(config)
     const grid = advanceRace(
       initial,

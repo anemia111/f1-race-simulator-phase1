@@ -32,7 +32,11 @@ import {
 } from './trackWater'
 import { gripWithTrackRubber } from './trackEvolution'
 import {
+  applyLegacyTrackSurfaceSectorsToState,
   createTrackSurfaceStateFromLegacySectors,
+  deserializeTrackSurfaceState,
+  legacySectorStateForTrackSurface,
+  serializeTrackSurfaceState,
   trackSurfaceAt,
 } from './trackSurface'
 import { categoryPhysicsFor } from './categoryPhysics'
@@ -477,29 +481,6 @@ describe('track-dependent systems', () => {
         trackDynamicsAt(track, right).curvature -
         trackDynamicsAt(track, left).curvature,
     )[0]
-    const initial = createInitialRace(config)
-    const prepared: typeof initial = {
-      ...initial,
-      cars: initial.cars.map((car, index) =>
-        index === 0
-          ? {
-              ...car,
-              progress: sharpestProgress,
-              speedKph: 180,
-              status: 'running' as const,
-              totalDistance: 1 + sharpestProgress,
-            }
-          : { ...car, speedKph: 0, status: 'retired' as const },
-      ),
-      dryingLineBySector: [1, 1, 1] as [number, number, number],
-      formationLapsCompleted: 1,
-      formationLapsPlanned: 0,
-      raceStartedAtSeconds: 0,
-      rubberLevelBySector: [1, 1, 1] as [number, number, number],
-      startProcedure: 'racing' as const,
-      startProcedureRemainingSeconds: 0,
-      surfaceWaterMmBySector: [0, 0, 0] as [number, number, number],
-    }
     const lowerGripConfig = {
       ...config,
       track: {
@@ -522,9 +503,51 @@ describe('track-dependent systems', () => {
         },
       },
     }
-    let baselineSnapshot = prepared
-    let lowerGripSnapshot = prepared
-    let neutralProfileSnapshot = prepared
+    const preparedFor = (
+      initial: ReturnType<typeof createInitialRace>,
+    ): ReturnType<typeof createInitialRace> => {
+      const surface = deserializeTrackSurfaceState(initial.trackSurface)
+
+      if (!surface) {
+        throw new Error('Expected a valid initial canonical surface')
+      }
+
+      const seededSurface = applyLegacyTrackSurfaceSectorsToState(surface, {
+        dryingLineBySector: [1, 1, 1],
+        rubberLevelBySector: [1, 1, 1],
+        surfaceWaterMmBySector: [0, 0, 0],
+      })
+      const sectors = legacySectorStateForTrackSurface(seededSurface)
+
+      return {
+        ...initial,
+        cars: initial.cars.map((car, index) =>
+          index === 0
+            ? {
+                ...car,
+                progress: sharpestProgress,
+                speedKph: 180,
+                status: 'running' as const,
+                totalDistance: 1 + sharpestProgress,
+              }
+            : { ...car, speedKph: 0, status: 'retired' as const },
+        ),
+        dryingLineBySector: sectors.dryingLineBySector,
+        formationLapsCompleted: 1,
+        formationLapsPlanned: 0,
+        raceStartedAtSeconds: 0,
+        rubberLevelBySector: sectors.rubberLevelBySector,
+        startProcedure: 'racing' as const,
+        startProcedureRemainingSeconds: 0,
+        surfaceWaterMmBySector: sectors.surfaceWaterMmBySector,
+        trackSurface: serializeTrackSurfaceState(seededSurface),
+      }
+    }
+    let baselineSnapshot = preparedFor(createInitialRace(config))
+    let lowerGripSnapshot = preparedFor(createInitialRace(lowerGripConfig))
+    let neutralProfileSnapshot = preparedFor(
+      createInitialRace(neutralProfileConfig),
+    )
 
     for (let step = 0; step < 12; step += 1) {
       baselineSnapshot = advanceRace(baselineSnapshot, 2, config)

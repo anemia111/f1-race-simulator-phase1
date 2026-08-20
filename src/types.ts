@@ -4,6 +4,7 @@ import type {
   RuntimeVehicleEraId,
 } from './series/seriesIds'
 import type { RuntimeSystems } from './simulation/runtimeSystems'
+import type { TrackSurfaceStateSnapshot } from './simulation/trackSurface'
 import type {
   SuperFormulaControlTireInventory,
   SuperFormulaControlTireSurface,
@@ -1440,6 +1441,12 @@ export type RaceSnapshot = {
   restartUntilSeconds: number | null
   fuelEffectSeconds: number
   trackEvolutionLevel: number
+  /**
+   * Canonical, serializable two-lane local-surface state. The historic
+   * three-sector values below are compatibility projections for existing UI
+   * and session rules; they must not become a second simulation authority.
+   */
+  trackSurface: TrackSurfaceStateSnapshot
   /** Stateful racing-line rubber for sectors 1..3, 0 (green) to 1 (rubbered). */
   rubberLevelBySector: [number, number, number]
   weather: WeatherState
