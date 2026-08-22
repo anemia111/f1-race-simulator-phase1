@@ -7,6 +7,7 @@ import type {
   TireSet,
   TireSetAllocation,
   TrackDefinition,
+  TrackSurfaceCarry,
   TireCompound,
   WeekendContext,
   WeekendContextBase,
@@ -32,6 +33,10 @@ import {
   isF1RuntimeSystems,
   isSuperFormulaRuntimeSystems,
 } from './runtimeSystems'
+import {
+  deserializeTrackSurfaceState,
+  serializeTrackSurfaceState,
+} from './trackSurface'
 
 const allCompounds: TireCompound[] = ['S', 'M', 'H', 'I', 'W']
 
@@ -79,6 +84,7 @@ export function createWeekendContext(
     setupBonusByDriver: {},
     setupByDriver,
     setupConfidenceByDriver,
+    trackSurfaceCarry: null,
   } satisfies WeekendContextBase
 
   if (seriesId === 'super-formula') {
@@ -279,6 +285,28 @@ function hasMeasuredQualifyingEvidence(cars: CarSnapshot[] | undefined) {
   )
 }
 
+function carriedTrackSurfaceForCompletion(
+  previous: WeekendContext,
+  candidate: TrackSurfaceCarry | undefined,
+): TrackSurfaceCarry | null {
+  if (
+    !candidate ||
+    typeof candidate.trackId !== 'string' ||
+    candidate.trackId.trim().length === 0
+  ) {
+    return previous.trackSurfaceCarry
+  }
+
+  const state = deserializeTrackSurfaceState(candidate.state)
+
+  return state
+    ? {
+        state: serializeTrackSurfaceState(state),
+        trackId: candidate.trackId,
+      }
+    : previous.trackSurfaceCarry
+}
+
 export function completedQualifyingClassification(
   results: QualifyingResult[],
   cars?: CarSnapshot[],
@@ -316,6 +344,7 @@ export function completePracticeSession(
   stage: Extract<WeekendStage, 'fp1' | 'fp2' | 'fp3'>,
   results: PracticeSessionResult[],
   cars?: CarSnapshot[],
+  trackSurfaceCarry?: TrackSurfaceCarry,
 ): WeekendContext {
   if (previous.completed.includes(stage)) {
     return previous
@@ -345,6 +374,10 @@ export function completePracticeSession(
     setupBonusByDriver,
     setupByDriver,
     setupConfidenceByDriver,
+    trackSurfaceCarry: carriedTrackSurfaceForCompletion(
+      previous,
+      trackSurfaceCarry,
+    ),
   }
 
   if (previous.seriesId === 'super-formula') {
@@ -409,6 +442,7 @@ export function completeQualifyingSession(
   segments?: QualifyingSegment[],
   cars?: CarSnapshot[],
   preferMeasuredCars = false,
+  trackSurfaceCarry?: TrackSurfaceCarry,
 ): WeekendContext {
   if (previous.completed.includes(stage)) {
     return previous
@@ -537,6 +571,10 @@ export function completeQualifyingSession(
       `${stage === 'sprintQualifying' ? 'Sprint Shootout' : stage === 'qualifying2' ? 'Qualifying 2' : 'Qualifying'} grid locked`,
     ].slice(-8),
     parcFermeLockedByDriver,
+    trackSurfaceCarry: carriedTrackSurfaceForCompletion(
+      previous,
+      trackSurfaceCarry,
+    ),
   }
 
   if (previous.seriesId === 'super-formula') {
@@ -568,6 +606,7 @@ export function completeRaceSession(
   previous: WeekendContext,
   stage: Extract<WeekendStage, 'sprint' | 'race' | 'race2'>,
   cars?: CarSnapshot[],
+  trackSurfaceCarry?: TrackSurfaceCarry,
 ): WeekendContext {
   if (previous.completed.includes(stage)) {
     return previous
@@ -579,6 +618,10 @@ export function completeRaceSession(
       ...previous.notes,
       `${stage === 'sprint' ? 'Sprint' : stage === 'race2' ? 'Race 2' : 'Race'} classification recorded`,
     ].slice(-8),
+    trackSurfaceCarry: carriedTrackSurfaceForCompletion(
+      previous,
+      trackSurfaceCarry,
+    ),
   }
 
   if (previous.seriesId === 'super-formula') {

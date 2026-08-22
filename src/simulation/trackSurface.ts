@@ -4,9 +4,9 @@ import type { TrackSurfaceProfile } from '../types'
  * Local, deterministic road-surface state.
  *
  * This module deliberately separates the compact physical surface substrate
- * from the legacy three-sector compatibility adapter. Callers can materialise
- * or update this typed-array state from that adapter without claiming that
- * either lane was measured from OpenF1 location samples.
+ * from the legacy three-sector compatibility adapter. Old checkpoints can be
+ * materialised once from that adapter without claiming that either lane was
+ * measured from OpenF1 location samples; live updates remain canonical.
  */
 
 export const TRACK_SURFACE_STATE_VERSION = 1 as const
@@ -78,6 +78,69 @@ export type ResolvedTrackSurface = {
   surfaceTemperatureC: number
   waterFilmMm: number
 }
+
+/**
+ * Forward vehicle travel over the modelled road during one public update.
+ * `distanceLaps` is a fraction of lap length, not a render-space distance.
+ * A zero-distance traversal intentionally performs no tyre work.
+ */
+export type TrackSurfaceTraversal = {
+  distanceLaps: number
+  lane: TrackSurfaceLane
+  startProgress: number
+}
+
+/**
+ * Water inventory audit for one complete update.
+ *
+ * Every value is a sum of film depths over equal model cell/lane slots. The
+ * unit is therefore mm-cell-lane: it is proportional to inventory but is not
+ * kg, litres, or a claim about physical road width. Drainage, tyre spray,
+ * evaporation, and overflow removal are external sinks from this substrate.
+ */
+export type TrackSurfaceWaterFlux = {
+  afterFilmDepthSumMm: number
+  beforeFilmDepthSumMm: number
+  drainageFilmDepthSumMm: number
+  evaporationFilmDepthSumMm: number
+  overflowRemovedFilmDepthSumMm: number
+  rainfallFilmDepthSumMm: number
+  tyreSprayDisplacementFilmDepthSumMm: number
+}
+
+/**
+ * Bonded-plus-loose rubber audit in dimensionless coverage-cell-lane units.
+ * Marble migration is an internal lane transfer and is consequently absent
+ * from the stock identity. `removedCoverageSum` is deliberately neutral about
+ * a physical removal route because runoff geometry is unavailable.
+ */
+export type TrackSurfaceRubberFlux = {
+  afterCoverageSum: number
+  beforeCoverageSum: number
+  marbleMigrationCoverageSum: number
+  removedCoverageSum: number
+  tyreDepositCoverageSum: number
+  washedCoverageSum: number
+}
+
+export type TrackSurfaceEvolutionFlux = {
+  rubber: TrackSurfaceRubberFlux
+  water: TrackSurfaceWaterFlux
+}
+
+export type TrackSurfaceEvolutionResult = {
+  flux: TrackSurfaceEvolutionFlux
+  state: TrackSurfaceState
+}
+
+const TRACK_SURFACE_MAX_DELTA_SECONDS = 30
+const TRACK_SURFACE_EVOLUTION_SLICE_SECONDS = 0.05
+const TRACK_SURFACE_LOOSE_RUBBER_SHARE = 0.24
+// Numerical safety bounds for the public pure API, not circuit or weather
+// calibration claims. Both remain far beyond any value the race runtime can
+// produce during the bounded public update.
+const TRACK_SURFACE_MAX_RAINFALL_MM_H = 3_600
+const TRACK_SURFACE_MAX_TRAVERSAL_DISTANCE_LAPS = 100
 
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value))
@@ -160,6 +223,103 @@ function laneIndex(lane: TrackSurfaceLane) {
 
 function flatIndex(cellIndex: number, lane: TrackSurfaceLane) {
   return cellIndex * TRACK_SURFACE_LANES.length + laneIndex(lane)
+}
+
+function cloneTrackSurfaceState(state: TrackSurfaceState): TrackSurfaceState {
+  return {
+    ...state,
+    baseFriction: new Float64Array(state.baseFriction),
+    bondedRubber: new Float64Array(state.bondedRubber),
+    defaults: { ...state.defaults },
+    dryness: new Float64Array(state.dryness),
+    marbles: new Float64Array(state.marbles),
+    profile: cloneTrackSurfaceProfile(state.profile),
+    sectorMarks: [...state.sectorMarks] as [number, number, number],
+    surfaceTemperatureC: new Float64Array(state.surfaceTemperatureC),
+    waterFilmMm: new Float64Array(state.waterFilmMm),
+  }
+}
+
+function finiteArraySum(values: Float64Array) {
+  let total = 0
+
+  for (const value of values) {
+    total += finiteOr(value, 0)
+  }
+
+  return total
+}
+
+function rubberCoverageSum(state: TrackSurfaceState) {
+  return finiteArraySum(state.bondedRubber) + finiteArraySum(state.marbles)
+}
+
+/**
+ * Adds one moving traversal to cell-local exposure arrays. A complete cell
+ * crossing contributes one vehicle pass. Moving occupancy seconds are split
+ * in proportion to distance inside each cell and sum to `sliceSeconds`.
+ */
+function addTraversalExposure(options: {
+  distanceLaps: number
+  lane: TrackSurfaceLane
+  movingOccupancySeconds: Float64Array
+  passCoverage: Float64Array
+  sliceSeconds: number
+  startProgress: number
+  state: Pick<TrackSurfaceState, 'cellCount'>
+}) {
+  const {
+    lane,
+    movingOccupancySeconds,
+    passCoverage,
+    sliceSeconds,
+    state,
+  } = options
+  const distanceLaps = clamp(
+    finiteOr(options.distanceLaps, 0),
+    0,
+    TRACK_SURFACE_MAX_TRAVERSAL_DISTANCE_LAPS,
+  )
+
+  if (distanceLaps <= 0 || sliceSeconds <= 0) return
+
+  const laneAt = lane === 'off-line' ? 'off-line' : 'racing-line'
+  const fullLaps = Math.floor(distanceLaps)
+  const remainingLaps = distanceLaps - fullLaps
+
+  if (fullLaps > 0) {
+    const occupancySecondsPerCell =
+      sliceSeconds * (fullLaps / state.cellCount) / distanceLaps
+
+    for (let cellIndex = 0; cellIndex < state.cellCount; cellIndex += 1) {
+      const index = flatIndex(cellIndex, laneAt)
+      passCoverage[index] += fullLaps
+      movingOccupancySeconds[index] += occupancySecondsPerCell
+    }
+  }
+
+  if (remainingLaps <= 1e-12) return
+
+  let cellPosition = normalisedProgress(options.startProgress) * state.cellCount
+  let remainingCells = remainingLaps * state.cellCount
+
+  while (remainingCells > 1e-10) {
+    const unwrappedCellIndex = Math.floor(cellPosition + 1e-12)
+    const cellIndex = ((unwrappedCellIndex % state.cellCount) + state.cellCount) %
+      state.cellCount
+    const distanceToBoundary = Math.max(
+      1e-12,
+      unwrappedCellIndex + 1 - cellPosition,
+    )
+    const overlapCells = Math.min(remainingCells, distanceToBoundary)
+    const index = flatIndex(cellIndex, laneAt)
+
+    passCoverage[index] += overlapCells
+    movingOccupancySeconds[index] +=
+      sliceSeconds * (overlapCells / state.cellCount) / distanceLaps
+    cellPosition += overlapCells
+    remainingCells -= overlapCells
+  }
 }
 
 function progressIsInSection(
@@ -487,9 +647,9 @@ export function trackSurfaceAt(
   const marbles = clamp(state.marbles[index] ?? 0, 0, 1)
 
   return {
-    // Water and bonded rubber intentionally do not appear here: legacy water
-    // and rubber force composition remains the authority in the first adapter
-    // slice, so callers cannot accidentally count them twice.
+    // Water and bonded rubber intentionally do not appear here. Their
+    // dedicated grip composition consumes these canonical fields separately,
+    // so callers cannot accidentally count them twice.
     baseGripMultiplier: clamp(
       (state.baseFriction[index] ?? state.defaults.baseFriction) *
         (1 - marbles * 0.04),
@@ -519,9 +679,9 @@ export function trackSurfaceBaseGripMultiplierAt(
 }
 
 /**
- * One bounded local update for future direct cell ownership. It is deliberately
- * independent of circuit-specific fitting and preserves a non-negative water
- * balance under arbitrary input.
+ * One bounded compatibility probe for an isolated cell. The live race uses
+ * the flux-accounted whole-state update below; this helper is deliberately
+ * independent of circuit-specific fitting and must not run as a second pass.
  */
 export function advanceTrackSurfaceCell(options: {
   ambientTemperatureC?: number
@@ -538,9 +698,17 @@ export function advanceTrackSurfaceCell(options: {
   'bondedRubber' | 'dryness' | 'marbles' | 'surfaceTemperatureC' | 'waterFilmMm'
 > {
   const defaults = defaultsFor(options.defaults)
-  const deltaSeconds = clamp(finiteOr(options.deltaSeconds, 0), 0, 30)
-  const rainfallMm = Math.max(0, finiteOr(options.rainfallMmH, 0)) *
-    (deltaSeconds / 3600)
+  const deltaSeconds = clamp(
+    finiteOr(options.deltaSeconds, 0),
+    0,
+    TRACK_SURFACE_MAX_DELTA_SECONDS,
+  )
+  const rainfallMmH = clamp(
+    finiteOr(options.rainfallMmH, 0),
+    0,
+    TRACK_SURFACE_MAX_RAINFALL_MM_H,
+  )
+  const rainfallMm = rainfallMmH * (deltaSeconds / 3600)
   const previousWaterMm = clamp(finiteOr(options.waterFilmMm, 0), 0, 6)
   const drainageMm =
     deltaSeconds *
@@ -565,7 +733,7 @@ export function advanceTrackSurfaceCell(options: {
     0,
     6,
   )
-  const dryness = clamp(1 - waterFilmMm / 2.8 - Math.max(0, options.rainfallMmH) / 18, 0, 1)
+  const dryness = clamp(1 - waterFilmMm / 2.8 - rainfallMmH / 18, 0, 1)
   const surfaceTemperatureC = clamp(
     previousTemperatureC +
       (ambientTemperatureC - previousTemperatureC) *
@@ -581,6 +749,290 @@ export function advanceTrackSurfaceCell(options: {
     surfaceTemperatureC,
     waterFilmMm,
   }
+}
+
+/**
+ * Advances the canonical cell/lane substrate without consulting render
+ * geometry or inferred circuit properties. Public updates are integrated in
+ * this surface-evolution policy's bounded 50 ms slices, up to the existing
+ * 30 s safety bound, so coarse callers follow one deterministic local sequence.
+ *
+ * `rubberEvolutionEnabled: false` freezes bonded rubber and marbles together,
+ * including wash and migration. This retains the established timed-session
+ * fairness policy while water, drying maturity, and temperature keep moving.
+ */
+export function advanceTrackSurface(options: {
+  ambientTemperatureC?: number
+  deltaSeconds: number
+  previous: TrackSurfaceState
+  rainfallMmH: number
+  rubberEvolutionEnabled?: boolean
+  targetSurfaceTemperatureC?: number
+  traversals?: readonly TrackSurfaceTraversal[]
+}): TrackSurfaceEvolutionResult {
+  const rawDeltaSeconds = Math.max(0, finiteOr(options.deltaSeconds, 0))
+  const deltaSeconds = clamp(
+    rawDeltaSeconds,
+    0,
+    TRACK_SURFACE_MAX_DELTA_SECONDS,
+  )
+  const appliedTravelFraction = rawDeltaSeconds > 0
+    ? deltaSeconds / rawDeltaSeconds
+    : 0
+  const rainfallMmH = clamp(
+    finiteOr(options.rainfallMmH, 0),
+    0,
+    TRACK_SURFACE_MAX_RAINFALL_MM_H,
+  )
+  const ambientTemperatureC = clamp(
+    finiteOr(options.ambientTemperatureC, 25),
+    -20,
+    90,
+  )
+  const targetSurfaceTemperatureC = clamp(
+    finiteOr(options.targetSurfaceTemperatureC, ambientTemperatureC),
+    -20,
+    90,
+  )
+  const rubberEvolutionEnabled = options.rubberEvolutionEnabled !== false
+  const state = cloneTrackSurfaceState(options.previous)
+  const waterBefore = finiteArraySum(state.waterFilmMm)
+  const rubberBefore = rubberCoverageSum(state)
+  const flux: TrackSurfaceEvolutionFlux = {
+    rubber: {
+      afterCoverageSum: rubberBefore,
+      beforeCoverageSum: rubberBefore,
+      marbleMigrationCoverageSum: 0,
+      removedCoverageSum: 0,
+      tyreDepositCoverageSum: 0,
+      washedCoverageSum: 0,
+    },
+    water: {
+      afterFilmDepthSumMm: waterBefore,
+      beforeFilmDepthSumMm: waterBefore,
+      drainageFilmDepthSumMm: 0,
+      evaporationFilmDepthSumMm: 0,
+      overflowRemovedFilmDepthSumMm: 0,
+      rainfallFilmDepthSumMm: 0,
+      tyreSprayDisplacementFilmDepthSumMm: 0,
+    },
+  }
+
+  if (deltaSeconds <= 0) {
+    return { flux, state }
+  }
+
+  const sliceCount = Math.max(
+    1,
+    Math.ceil(deltaSeconds / TRACK_SURFACE_EVOLUTION_SLICE_SECONDS),
+  )
+  const sliceSeconds = deltaSeconds / sliceCount
+  const traversals = options.traversals ?? []
+
+  for (let sliceIndex = 0; sliceIndex < sliceCount; sliceIndex += 1) {
+    const passCoverage = new Float64Array(state.waterFilmMm.length)
+    const movingOccupancySeconds = new Float64Array(state.waterFilmMm.length)
+    const sliceProgress = sliceIndex / sliceCount
+
+    for (const traversal of traversals) {
+      const totalDistanceLaps =
+        clamp(
+          finiteOr(traversal.distanceLaps, 0),
+          0,
+          TRACK_SURFACE_MAX_TRAVERSAL_DISTANCE_LAPS,
+        ) * appliedTravelFraction
+      const sliceDistanceLaps = totalDistanceLaps / sliceCount
+
+      addTraversalExposure({
+        distanceLaps: sliceDistanceLaps,
+        lane: traversal.lane,
+        movingOccupancySeconds,
+        passCoverage,
+        sliceSeconds,
+        startProgress:
+          normalisedProgress(traversal.startProgress) +
+          totalDistanceLaps * sliceProgress,
+        state,
+      })
+    }
+
+    const rainfallMm = rainfallMmH * (sliceSeconds / 3600)
+
+    for (let index = 0; index < state.waterFilmMm.length; index += 1) {
+      const previousWaterMm = clamp(
+        finiteOr(state.waterFilmMm[index], 0),
+        0,
+        6,
+      )
+      let availableWaterMm = previousWaterMm + rainfallMm
+      const drainageRequestMm =
+        sliceSeconds *
+        (0.00022 + previousWaterMm * 0.00028) *
+        state.defaults.drainageCoefficient
+      const drainageMm = Math.min(
+        availableWaterMm,
+        Math.max(0, drainageRequestMm),
+      )
+      availableWaterMm -= drainageMm
+
+      // Displaced film leaves the represented cell/lane as tyre spray. The
+      // model has no physical width with which to convert this depth to mass.
+      const tyreSprayRequestMm =
+        movingOccupancySeconds[index] *
+        Math.min(0.000035, previousWaterMm * 0.000012)
+      const tyreSprayDisplacementMm = Math.min(
+        availableWaterMm,
+        Math.max(0, tyreSprayRequestMm),
+      )
+      availableWaterMm -= tyreSprayDisplacementMm
+
+      const previousTemperatureC = clamp(
+        finiteOr(state.surfaceTemperatureC[index], targetSurfaceTemperatureC),
+        -20,
+        90,
+      )
+      const evaporationRequestMm =
+        sliceSeconds *
+        Math.max(0, previousTemperatureC - targetSurfaceTemperatureC) *
+        0.00001 *
+        state.defaults.evaporationCoefficient
+      const evaporationMm = Math.min(
+        availableWaterMm,
+        Math.max(0, evaporationRequestMm),
+      )
+      availableWaterMm -= evaporationMm
+
+      // Without sourced slope/camber there is no directional cell transfer.
+      // Only stock beyond the represented 6 mm film capacity is removed.
+      const overflowRemovedMm = Math.max(0, availableWaterMm - 6)
+      const waterFilmMm = availableWaterMm - overflowRemovedMm
+      const previousDryness = clamp(
+        finiteOr(state.dryness[index], 1),
+        0,
+        1,
+      )
+      const targetDryness = clamp(
+        1 - waterFilmMm / 2.8 - rainfallMmH / 18,
+        0,
+        1,
+      )
+      const dryingResponse =
+        targetDryness < previousDryness
+          ? sliceSeconds / 150
+          : sliceSeconds / 900 + movingOccupancySeconds[index] / 18_000
+
+      state.waterFilmMm[index] = waterFilmMm
+      state.dryness[index] = clamp(
+        previousDryness +
+          (targetDryness - previousDryness) * clamp(dryingResponse, 0, 1),
+        0,
+        1,
+      )
+      state.surfaceTemperatureC[index] = clamp(
+        previousTemperatureC +
+          (targetSurfaceTemperatureC - previousTemperatureC) *
+            clamp(sliceSeconds * 0.015, 0, 1),
+        -20,
+        90,
+      )
+
+      flux.water.rainfallFilmDepthSumMm += rainfallMm
+      flux.water.drainageFilmDepthSumMm += drainageMm
+      flux.water.tyreSprayDisplacementFilmDepthSumMm +=
+        tyreSprayDisplacementMm
+      flux.water.evaporationFilmDepthSumMm += evaporationMm
+      flux.water.overflowRemovedFilmDepthSumMm += overflowRemovedMm
+    }
+
+    if (!rubberEvolutionEnabled) continue
+
+    for (let index = 0; index < state.bondedRubber.length; index += 1) {
+      const previousBondedRubber = clamp(
+        finiteOr(state.bondedRubber[index], 0),
+        0,
+        1,
+      )
+      const previousMarbles = clamp(
+        finiteOr(state.marbles[index], 0),
+        0,
+        1,
+      )
+      const waterFilmMm = state.waterFilmMm[index]
+      const dryFraction = clamp(
+        1 - waterFilmMm / 1.4 - rainfallMmH / 22,
+        0,
+        1,
+      )
+      const tyreDepositCoverage =
+        passCoverage[index] *
+        0.0025 *
+        dryFraction *
+        (1 - previousBondedRubber * 0.68)
+      let bondedRubber =
+        previousBondedRubber +
+        tyreDepositCoverage * (1 - TRACK_SURFACE_LOOSE_RUBBER_SHARE)
+      let marbles =
+        previousMarbles +
+        tyreDepositCoverage * TRACK_SURFACE_LOOSE_RUBBER_SHARE
+      const coverageBeforeWash = bondedRubber + marbles
+      const washRequestCoverage =
+        rainfallMm * (0.055 + waterFilmMm * 0.025) +
+        waterFilmMm * sliceSeconds * 0.00016
+      const washedCoverage = Math.min(
+        coverageBeforeWash,
+        Math.max(0, washRequestCoverage),
+      )
+
+      if (coverageBeforeWash > 0 && washedCoverage > 0) {
+        const remainingFraction =
+          (coverageBeforeWash - washedCoverage) / coverageBeforeWash
+        bondedRubber *= remainingFraction
+        marbles *= remainingFraction
+      }
+
+      const removedCoverage =
+        Math.max(0, bondedRubber - 1) + Math.max(0, marbles - 1)
+      state.bondedRubber[index] = clamp(bondedRubber, 0, 1)
+      state.marbles[index] = clamp(marbles, 0, 1)
+      flux.rubber.tyreDepositCoverageSum += tyreDepositCoverage
+      flux.rubber.washedCoverageSum += washedCoverage
+      flux.rubber.removedCoverageSum += removedCoverage
+    }
+
+    for (let cellIndex = 0; cellIndex < state.cellCount; cellIndex += 1) {
+      const racingIndex = flatIndex(cellIndex, 'racing-line')
+      const offLineIndex = flatIndex(cellIndex, 'off-line')
+      const migrationFraction = clamp(
+        passCoverage[racingIndex] * TRACK_SURFACE_LOOSE_RUBBER_SHARE,
+        0,
+        1,
+      )
+      const migrationRequest = state.marbles[racingIndex] * migrationFraction
+      const acceptedMigration = Math.min(
+        migrationRequest,
+        Math.max(0, 1 - state.marbles[offLineIndex]),
+      )
+      const removedCoverage = migrationRequest - acceptedMigration
+
+      state.marbles[racingIndex] = clamp(
+        state.marbles[racingIndex] - migrationRequest,
+        0,
+        1,
+      )
+      state.marbles[offLineIndex] = clamp(
+        state.marbles[offLineIndex] + acceptedMigration,
+        0,
+        1,
+      )
+      flux.rubber.marbleMigrationCoverageSum += acceptedMigration
+      flux.rubber.removedCoverageSum += removedCoverage
+    }
+  }
+
+  flux.water.afterFilmDepthSumMm = finiteArraySum(state.waterFilmMm)
+  flux.rubber.afterCoverageSum = rubberCoverageSum(state)
+
+  return { flux, state }
 }
 
 /**
@@ -606,11 +1058,10 @@ export function createTrackSurfaceStateFromLegacySectors(
 }
 
 /**
- * Replaces dynamic lane values with the current three-sector compatibility
- * values and returns a fresh canonical state. This is deliberately a direct
- * projection, not a local surface simulation step: callers must run the
- * legacy water/rubber update once, then call this helper once to reflect its
- * result into the canonical two-lane state.
+ * Replaces dynamic lane values with historic three-sector compatibility
+ * values and returns a fresh canonical state. This is a one-time migration
+ * adapter for legacy checkpoints and focused fixtures, not a live simulation
+ * step. The race loop must evolve the canonical state directly.
  *
  * The state's cell topology, source-labelled base-friction profile, defaults,
  * sector marks, and temperatures remain canonical. In particular, a
@@ -621,18 +1072,7 @@ export function applyLegacyTrackSurfaceSectorsToState(
   state: TrackSurfaceState,
   legacy: LegacyTrackSurfaceSectors,
 ): TrackSurfaceState {
-  const nextState: TrackSurfaceState = {
-    ...state,
-    baseFriction: new Float64Array(state.baseFriction),
-    bondedRubber: new Float64Array(state.bondedRubber),
-    defaults: { ...state.defaults },
-    dryness: new Float64Array(state.dryness),
-    marbles: new Float64Array(state.marbles),
-    profile: cloneTrackSurfaceProfile(state.profile),
-    sectorMarks: [...state.sectorMarks] as [number, number, number],
-    surfaceTemperatureC: new Float64Array(state.surfaceTemperatureC),
-    waterFilmMm: new Float64Array(state.waterFilmMm),
-  }
+  const nextState = cloneTrackSurfaceState(state)
 
   for (let cellIndex = 0; cellIndex < nextState.cellCount; cellIndex += 1) {
     const progress = (cellIndex + 0.5) / nextState.cellCount

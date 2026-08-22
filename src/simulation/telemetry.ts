@@ -1044,8 +1044,12 @@ export function calculateCarTelemetry(options: {
           superClippingIntensity: actualSuperClipping
             ? superClipping.intensity
             : 0,
-          superClippingRegenPowerKw:
-            energyStep?.actualRecoverySourcePowerKw.superclip ?? 0,
+          // The energy allocator can leave a sub-watt floating-point residue
+          // on an inactive source. Keep the public episode field semantic:
+          // inactive super-clipping has exactly zero recovery power.
+          superClippingRegenPowerKw: actualSuperClipping
+            ? (energyStep?.actualRecoverySourcePowerKw.superclip ?? 0)
+            : 0,
           superClippingRecoveredThisLapMj,
           superClippingStartedAtProgress,
           superClippingStartedAtSeconds,

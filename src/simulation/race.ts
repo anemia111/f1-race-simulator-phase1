@@ -159,23 +159,23 @@ import {
   shouldDeclareRainHazard,
 } from './regulations'
 import {
-  advanceTrackWater,
   createTrackWaterState,
 } from './trackWater'
 import {
-  advanceTrackRubber,
   createTrackRubberState,
   gripWithTrackRubber,
   trackEvolutionLevelFor,
 } from './trackEvolution'
 import {
-  applyLegacyTrackSurfaceSectorsToState,
+  advanceTrackSurface,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
   legacySectorStateForTrackSurface,
   serializeTrackSurfaceState,
   trackSurfaceAt,
+  trackSurfaceLaneForLateralOffset,
 } from './trackSurface'
+import { strictTrackSurfaceStateForTrack } from './trackSurfaceValidation'
 import {
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
@@ -2081,17 +2081,28 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
   const initialRubber = createTrackRubberState()
   // Establish the serialized two-lane surface once. Its three-sector values
   // below are compatibility projections for established session rules and UI.
-  const initialTrackSurface = createTrackSurfaceStateFromLegacySectors(
-    {
-      dryingLineBySector: initialWater.dryingLineBySector,
-      rubberLevelBySector: initialRubber.rubberLevelBySector,
-      sectorMarks: config.track.sectorMarks,
-      surfaceWaterMmBySector: initialWater.surfaceWaterMmBySector,
-    },
-    {
-      profile: config.track.surfaceProfile,
-    },
-  )
+  const carriedTrackSurface = config.weekendContext?.trackSurfaceCarry
+  const restoredTrackSurface =
+    carriedTrackSurface?.trackId === config.track.id
+      ? strictTrackSurfaceStateForTrack(
+          carriedTrackSurface.state,
+          config.track,
+        )
+      : null
+  const initialTrackSurface =
+    restoredTrackSurface ??
+    createTrackSurfaceStateFromLegacySectors(
+      {
+        dryingLineBySector: initialWater.dryingLineBySector,
+        rubberLevelBySector: initialRubber.rubberLevelBySector,
+        sectorMarks: config.track.sectorMarks,
+        surfaceWaterMmBySector: initialWater.surfaceWaterMmBySector,
+      },
+      {
+        initialSurfaceTemperatureC: currentTemperatures.trackTemperatureC,
+        profile: config.track.surfaceProfile,
+      },
+    )
   const initialSurfaceSectors = legacySectorStateForTrackSurface(
     initialTrackSurface,
   )
@@ -2125,7 +2136,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       })
     : false
   const formationBehindSafetyCar =
-    isRaceDistance && (weather === 'heavy-rain' || trackGrip < 0.7)
+    isRaceDistance &&
+    (weather === 'heavy-rain' || trackGrip < 0.7 || lowGripConditions)
   const wetWeatherTyresMandatory =
     f1WeatherRules &&
     formationBehindSafetyCar &&
@@ -2341,7 +2353,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
             entrantId: team.id,
             engineLedger:
               superFormulaWeekendContext?.engineLedgerByEntrant[team.id],
-            initialTireSurface: weather === 'clear' ? 'dry' : 'wet',
+            initialTireSurface:
+              initialRainIntensityMmH > 0 || averageInitialSurfaceWaterMm > 0
+                ? 'wet'
+                : 'dry',
             tireInventory:
               superFormulaWeekendContext?.controlTireInventoryByDriver[
                 driver.id
@@ -2647,8 +2662,23 @@ export function skipFormationLap(
     0.001,
     gridStartsAt - snapshot.elapsedSeconds,
   )
+  let skippedSnapshot = snapshot
+  let remainingSeconds = secondsToGrid
 
-  return advanceRace(snapshot, secondsToGrid, config)
+  while (
+    remainingSeconds > 0 &&
+    skippedSnapshot.sessionStatus !== 'finished' &&
+    skippedSnapshot.startProcedure === 'formation'
+  ) {
+    const stepSeconds = Math.min(
+      MAX_REALTIME_STEP_SECONDS,
+      remainingSeconds,
+    )
+    skippedSnapshot = advanceRace(skippedSnapshot, stepSeconds, config)
+    remainingSeconds -= stepSeconds
+  }
+
+  return skippedSnapshot
 }
 
 export function advanceRace(
@@ -2726,47 +2756,37 @@ export function advanceRace(
     throw new Error('Race snapshot has an invalid canonical track surface.')
   }
 
-  const previousSurfaceSectors = legacySectorStateForTrackSurface(
-    previousTrackSurface,
-  )
-  const trackWater = advanceTrackWater({
-    cars: snapshot.cars,
-    deltaSeconds,
-    previous: {
-      dryingLineBySector: previousSurfaceSectors.dryingLineBySector,
-      surfaceWaterMmBySector: previousSurfaceSectors.surfaceWaterMmBySector,
-    },
-    rainIntensityMmH,
-    track: config.track,
+  const trackSurfaceTraversals = snapshot.cars.flatMap((car) => {
+    if (
+      car.status !== 'running' ||
+      car.pitPhase !== 'none' ||
+      (car.offTrackSinceSeconds ?? null) !== null ||
+      !Number.isFinite(car.speedKph) ||
+      car.speedKph <= 0
+    ) {
+      return []
+    }
+
+    return [{
+      distanceLaps:
+        (Math.max(0, car.speedKph) * (Math.max(0, deltaSeconds) / 3600)) /
+        config.track.lengthKm,
+      lane: trackSurfaceLaneForLateralOffset(car.lateralOffsetM),
+      startProgress: car.progress,
+    }]
   })
-  // The racing line rubbers in over a race, but a timed session is held at the
-  // level it started with. Qualifying is run in groups and segments, and a
-  // track that keeps gaining grip hands every later group a free advantage:
-  // SUPER FORMULA's Q1 group B would beat group A on the running order alone.
-  // Freezing the surface for the session makes every group run the same track.
-  const previousRubber = {
-    rubberLevelBySector: previousSurfaceSectors.rubberLevelBySector,
-  }
-  const trackRubber = isTimedLapSession(requestedWeekendStage)
-    ? previousRubber
-    : advanceTrackRubber({
-        cars: snapshot.cars,
-        deltaSeconds,
-        previous: previousRubber,
-        rainIntensityMmH,
-        surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
-        track: config.track,
-      })
-  // Legacy water/rubber policy runs exactly once per tick, then its result is
-  // projected into the canonical local-surface state for live force lookup.
-  const trackSurface = applyLegacyTrackSurfaceSectorsToState(
-    previousTrackSurface,
-    {
-      dryingLineBySector: trackWater.dryingLineBySector,
-      rubberLevelBySector: trackRubber.rubberLevelBySector,
-      surfaceWaterMmBySector: trackWater.surfaceWaterMmBySector,
-    },
-  )
+  // The local two-lane substrate is the only dynamic authority. Timed
+  // sessions retain their incoming rubber/marbles for group fairness, while
+  // water, drying maturity, and temperature continue to respond to weather.
+  const trackSurface = advanceTrackSurface({
+    ambientTemperatureC: airTemperatureC,
+    deltaSeconds,
+    previous: previousTrackSurface,
+    rainfallMmH: rainIntensityMmH,
+    rubberEvolutionEnabled: !isTimedLapSession(requestedWeekendStage),
+    targetSurfaceTemperatureC: trackTemperatureC,
+    traversals: trackSurfaceTraversals,
+  }).state
   const trackSurfaceSectors = legacySectorStateForTrackSurface(trackSurface)
   const serializedTrackSurface = serializeTrackSurfaceState(trackSurface)
   const weekendStage = requestedWeekendStage
@@ -2818,8 +2838,10 @@ export function advanceRace(
     elapsedSeconds,
   )
   const averageSurfaceWaterMm =
-    trackWater.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) /
-    trackWater.surfaceWaterMmBySector.length
+    trackSurfaceSectors.surfaceWaterMmBySector.reduce(
+      (sum, value) => sum + value,
+      0,
+    ) / trackSurfaceSectors.surfaceWaterMmBySector.length
   const isQualifyingPeriod =
     weekendStage === 'qualifying' || weekendStage === 'sprintQualifying'
   const mayReturnToNormal =
@@ -4005,16 +4027,16 @@ export function advanceRace(
               weather,
               {
                 dryingLine:
-                  trackWater.dryingLineBySector.reduce(
+                  trackSurfaceSectors.dryingLineBySector.reduce(
                     (sum, value) => sum + value,
                     0,
-                  ) / trackWater.dryingLineBySector.length,
+                  ) / trackSurfaceSectors.dryingLineBySector.length,
                 rainIntensityMmH,
                 surfaceWaterMm:
-                  trackWater.surfaceWaterMmBySector.reduce(
+                  trackSurfaceSectors.surfaceWaterMmBySector.reduce(
                     (sum, value) => sum + value,
                     0,
-                  ) / trackWater.surfaceWaterMmBySector.length,
+                  ) / trackSurfaceSectors.surfaceWaterMmBySector.length,
               },
               {
                 driverId: driver.id,
@@ -4097,7 +4119,11 @@ export function advanceRace(
                 liveTires: sfRuntime.liveTires,
               },
               surface:
-                segment.declaredWet || weather !== 'clear' ? 'wet' : 'dry',
+                segment.declaredWet ||
+                rainIntensityMmH > 0 ||
+                averageSurfaceWaterMm > 0
+                  ? 'wet'
+                  : 'dry',
             })
 
             return {
@@ -4167,14 +4193,16 @@ export function advanceRace(
   if (redFlagRestart) {
     const redFlagTrackCondition: TireTrackCondition = {
       dryingLine:
-        trackWater.dryingLineBySector.reduce((sum, value) => sum + value, 0) /
-        trackWater.dryingLineBySector.length,
-      rainIntensityMmH,
-      surfaceWaterMm:
-        trackWater.surfaceWaterMmBySector.reduce(
+        trackSurfaceSectors.dryingLineBySector.reduce(
           (sum, value) => sum + value,
           0,
-        ) / trackWater.surfaceWaterMmBySector.length,
+        ) / trackSurfaceSectors.dryingLineBySector.length,
+      rainIntensityMmH,
+      surfaceWaterMm:
+        trackSurfaceSectors.surfaceWaterMmBySector.reduce(
+          (sum, value) => sum + value,
+          0,
+        ) / trackSurfaceSectors.surfaceWaterMmBySector.length,
     }
     const strategicallyPreparedCars = snapshot.cars.map((car) => {
       const driver = drivers.get(car.driverId)
@@ -4848,10 +4876,10 @@ export function advanceRace(
           speedKph,
           state: f1Runtime.energyStore,
           surfaceWaterMm:
-            previousSurfaceSectors.surfaceWaterMmBySector.reduce(
+            trackSurfaceSectors.surfaceWaterMmBySector.reduce(
               (sum, water) => sum + water,
               0,
-            ) / previousSurfaceSectors.surfaceWaterMmBySector.length,
+            ) / trackSurfaceSectors.surfaceWaterMmBySector.length,
           team,
           throttlePercent,
           tire: f1Runtime.tires.tire,
@@ -4957,7 +4985,10 @@ export function advanceRace(
                   controlTires: superFormulaRuntime.controlTires,
                   liveTires: superFormulaRuntime.liveTires,
                 },
-                surface: weather === 'clear' ? 'dry' : 'wet',
+                surface:
+                  rainIntensityMmH > 0 || averageSurfaceWaterMm > 0
+                    ? 'wet'
+                    : 'dry',
               })
             : null
         const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13

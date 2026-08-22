@@ -36,6 +36,7 @@ import {
   runPracticeSession,
   runQualifying,
   runSprintShootoutQualifying,
+  superFormulaControlSessionTireForWeather,
 } from './qualifying'
 import {
   advanceRace,
@@ -274,6 +275,193 @@ describe('canonical track-surface snapshot authority', () => {
     expect(offLine.baseGripMultiplier).toBeLessThan(
       racingLine.baseGripMultiplier,
     )
+  })
+
+  it('preserves cell and lane heterogeneity through zero and live ticks', () => {
+    const config: RaceConfig = {
+      ...makeConfig('canonical-surface-local-evolution'),
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const initial = createInitialRace(config)
+    const local = canonicalTrackSurfaceFor(initial)
+    local.waterFilmMm[0] = 1.2
+    local.waterFilmMm[1] = 0.25
+    local.waterFilmMm[2] = 0.1
+    local.bondedRubber[0] = 0.55
+    local.bondedRubber[1] = 0.15
+    local.marbles[1] = 0.2
+    const seeded = {
+      ...initial,
+      trackSurface: serializeTrackSurfaceState(local),
+    }
+    const zero = advanceRace(seeded, 0, config)
+
+    expect(zero.trackSurface).toEqual(seeded.trackSurface)
+    expectTrackSurfaceCompatibilityProjection(zero)
+
+    const live = advanceRace(zero, 0.25, config)
+    const evolved = canonicalTrackSurfaceFor(live)
+
+    expect(evolved.waterFilmMm[0]).toBeGreaterThan(evolved.waterFilmMm[2])
+    expect(evolved.waterFilmMm[1]).not.toBe(evolved.waterFilmMm[0])
+    expect(evolved.bondedRubber[0]).toBeGreaterThan(
+      evolved.bondedRubber[1],
+    )
+    expectTrackSurfaceCompatibilityProjection(live)
+  })
+
+  it('restores only an exact same-track completed-session surface', () => {
+    const base = makeConfig('canonical-surface-weekend-carry')
+    const config: RaceConfig = {
+      ...base,
+      track: { ...base.track, rainProbability: 0 },
+    }
+    const firstSession = createInitialRace(config)
+    const carriedState = {
+      ...firstSession.trackSurface,
+      bondedRubber: firstSession.trackSurface.bondedRubber.map(
+        (value, index) => (index === 0 ? 0.48 : value),
+      ),
+      surfaceTemperatureC: firstSession.trackSurface.surfaceTemperatureC.map(
+        (value, index) => (index === 0 ? 41 : value),
+      ),
+      waterFilmMm: firstSession.trackSurface.waterFilmMm.map((value, index) =>
+        index === 0 ? 0.9 : value,
+      ),
+    }
+    const weekendContext = {
+      ...createWeekendContext(
+        config.drivers,
+        config.track.isSprintWeekend,
+        config.track,
+      ),
+      trackSurfaceCarry: {
+        state: carriedState,
+        trackId: config.track.id,
+      },
+    }
+    const restored = createInitialRace({
+      ...config,
+      weekendContext,
+      weekendStage: 'qualifying',
+    })
+
+    expect(restored.trackSurface).toEqual(carriedState)
+    expectTrackSurfaceCompatibilityProjection(restored)
+
+    const wrongTrack = createInitialRace({
+      ...config,
+      weekendContext: {
+        ...weekendContext,
+        trackSurfaceCarry: {
+          ...weekendContext.trackSurfaceCarry,
+          trackId: 'different-track',
+        },
+      },
+      weekendStage: 'qualifying',
+    })
+
+    expect(wrongTrack.trackSurface).not.toEqual(carriedState)
+    expect(canonicalTrackSurfaceFor(wrongTrack).bondedRubber[0]).toBe(0)
+  })
+
+  it('counts only moving on-track traversals, excluding pit and excursion cars', () => {
+    const config: RaceConfig = {
+      ...makeConfig('canonical-surface-traversal-filter'),
+      track: { ...tracks[0], rainProbability: 0 },
+    }
+    const initial = createInitialRace(config)
+    const stationaryCars = initial.cars.map((car, index) => ({
+      ...car,
+      lateralOffsetM: 0,
+      offTrackSinceSeconds: null,
+      pitPhase: 'none' as const,
+      progress: index / initial.cars.length,
+      speedKph: 0,
+      status: 'running' as const,
+    }))
+    const stationary = advanceRace(
+      { ...initial, cars: stationaryCars },
+      0.25,
+      config,
+    )
+    const excluded = advanceRace(
+      {
+        ...initial,
+        cars: stationaryCars.map((car, index) =>
+          index === 0
+            ? { ...car, speedKph: 220, status: 'pit' as const }
+            : index === 1
+              ? { ...car, pitPhase: 'exit' as const, speedKph: 220 }
+              : index === 2
+                ? { ...car, offTrackSinceSeconds: 0, speedKph: 220 }
+                : car,
+        ),
+      },
+      0.25,
+      config,
+    )
+    const moving = advanceRace(
+      {
+        ...initial,
+        cars: stationaryCars.map((car, index) =>
+          index === 0 ? { ...car, speedKph: 220 } : car,
+        ),
+      },
+      0.25,
+      config,
+    )
+    const stationarySurface = canonicalTrackSurfaceFor(stationary)
+    const excludedSurface = canonicalTrackSurfaceFor(excluded)
+    const movingSurface = canonicalTrackSurfaceFor(moving)
+    const totalCoverage = (values: Float64Array) =>
+      values.reduce((sum, value) => sum + value, 0)
+
+    expect(excludedSurface.bondedRubber).toEqual(
+      stationarySurface.bondedRubber,
+    )
+    expect(excludedSurface.marbles).toEqual(stationarySurface.marbles)
+    expect(totalCoverage(movingSurface.bondedRubber)).toBeGreaterThan(
+      totalCoverage(stationarySurface.bondedRubber),
+    )
+  })
+
+  it('freezes incoming rubber and marbles throughout a timed-session tick', () => {
+    const config: RaceConfig = {
+      ...makeConfig('canonical-surface-timed-freeze'),
+      track: { ...tracks[0], rainProbability: 0 },
+      weekendStage: 'qualifying',
+    }
+    const initial = createInitialRace(config)
+    const seeded = canonicalTrackSurfaceFor(initial)
+    seeded.bondedRubber[0] = 0.42
+    seeded.marbles[0] = 0.16
+    seeded.bondedRubber[1] = 0.21
+    seeded.marbles[1] = 0.09
+    const before = serializeTrackSurfaceState(seeded)
+    const next = advanceRace(
+      {
+        ...initial,
+        cars: initial.cars.map((car, index) =>
+          index === 0
+            ? {
+                ...car,
+                offTrackSinceSeconds: null,
+                pitPhase: 'none' as const,
+                speedKph: 220,
+                status: 'running' as const,
+              }
+            : car,
+        ),
+        trackSurface: before,
+      },
+      0.25,
+      config,
+    )
+    const after = canonicalTrackSurfaceFor(next)
+
+    expect(Array.from(after.bondedRubber)).toEqual(before.bondedRubber)
+    expect(Array.from(after.marbles)).toEqual(before.marbles)
   })
 })
 
@@ -1177,9 +1365,32 @@ describe('starting grid', () => {
     const initial = createInitialRace(config)
     const partiallyCompleted = advanceRace(initial, 12, config)
     const skipped = skipFormationLap(partiallyCompleted, config)
+    const gridStartsAt =
+      partiallyCompleted.formationLapDurationSeconds *
+      partiallyCompleted.formationLapsPlanned
+    let manual = partiallyCompleted
+    let remainingSeconds = Math.max(
+      0.001,
+      gridStartsAt - partiallyCompleted.elapsedSeconds,
+    )
+    while (
+      remainingSeconds > 0 &&
+      manual.sessionStatus !== 'finished' &&
+      manual.startProcedure === 'formation'
+    ) {
+      const stepSeconds = Math.min(3, remainingSeconds)
+      manual = advanceRace(manual, stepSeconds, config)
+      remainingSeconds -= stepSeconds
+    }
 
     expect(partiallyCompleted.startProcedure).toBe('formation')
     expect(skipped.startProcedure).toBe('grid')
+    expect(skipped.trackSurface).toEqual(manual.trackSurface)
+    expect(skipped.surfaceWaterMmBySector).toEqual(
+      manual.surfaceWaterMmBySector,
+    )
+    expect(skipped.rubberLevelBySector).toEqual(manual.rubberLevelBySector)
+    expect(skipped.dryingLineBySector).toEqual(manual.dryingLineBySector)
     expect(skipped.formationLapsCompleted).toBe(skipped.formationLapsPlanned)
     expect(skipped.raceStartedAtSeconds).toBeNull()
     expect(skipped.cars.every((car) => car.lapHistory.length === 0)).toBe(true)
@@ -2806,6 +3017,58 @@ describe('start procedure and persisted weekend', () => {
     expect(context.completed).toContain('qualifying')
     expect(context.setupBonusByDriver[practice[0].driverId]).toBeGreaterThan(0)
     expect(grid?.[0].id).toBe(qualifying[0].driverId)
+  })
+
+  it('deep-copies one category-neutral surface carry across weekend stages', () => {
+    const config = makeConfig('weekend-surface-carry')
+    const practice = runPracticeSession(config, 'fp1')
+    const initial = createInitialRace(config)
+    const playedSurface = {
+      ...initial.trackSurface,
+      waterFilmMm: initial.trackSurface.waterFilmMm.map((value, index) =>
+        index === 0 ? 1.25 : value,
+      ),
+    }
+    const sourceCarry = {
+      state: playedSurface,
+      trackId: config.track.id,
+    }
+    const afterPractice = completePracticeSession(
+      createWeekendContext(
+        config.drivers,
+        config.track.isSprintWeekend,
+        config.track,
+      ),
+      'fp1',
+      practice,
+      initial.cars,
+      sourceCarry,
+    )
+
+    expect(afterPractice.trackSurfaceCarry).toEqual(sourceCarry)
+    expect(afterPractice.trackSurfaceCarry).not.toBe(sourceCarry)
+    expect(afterPractice.trackSurfaceCarry?.state).not.toBe(sourceCarry.state)
+
+    sourceCarry.state.waterFilmMm[0] = 5
+    expect(afterPractice.trackSurfaceCarry?.state.waterFilmMm[0]).toBe(1.25)
+
+    const qualifying = runQualifying(config)
+    const afterSyntheticQualifying = completeQualifyingSession(
+      afterPractice,
+      'qualifying',
+      qualifying,
+    )
+    const afterRace = completeRaceSession(
+      afterSyntheticQualifying,
+      'race',
+    )
+
+    expect(afterSyntheticQualifying.trackSurfaceCarry).toBe(
+      afterPractice.trackSurfaceCarry,
+    )
+    expect(afterRace.trackSurfaceCarry).toBe(
+      afterPractice.trackSurfaceCarry,
+    )
   })
 
   it('uses the measured qualifying order and tyre inventory as the completed result', () => {
@@ -4776,6 +5039,168 @@ describe('SUPER FORMULA race-distance authority', () => {
     expect(
       createInitialRace({ ...baseConfig, sessionRaceLapsOverride: 25 }).raceLaps,
     ).toBe(25)
+  })
+
+  it('treats carried standing water as wet under clear weather at session start and a pit tire fit', () => {
+    const track = { ...series.tracks[0], rainProbability: 0 }
+    const baseWeekend = createWeekendContext(
+      series.drivers,
+      track.isSprintWeekend,
+      track,
+      undefined,
+      'super-formula',
+    )
+    const fresh = createInitialRace({
+      ...baseConfig,
+      track,
+      weekendContext: baseWeekend,
+      weekendStage: 'qualifying',
+    })
+    const carriedState = {
+      ...fresh.trackSurface,
+      dryness: fresh.trackSurface.dryness.map(() => 0),
+      waterFilmMm: fresh.trackSurface.waterFilmMm.map(() => 2),
+    }
+    const weekendContext = {
+      ...baseWeekend,
+      trackSurfaceCarry: { state: carriedState, trackId: track.id },
+    }
+    const config: RaceConfig = {
+      ...baseConfig,
+      track,
+      weekendContext,
+      sessionRaceLapsOverride: 25,
+    }
+    const initial = createInitialRace(config)
+    const initialRuntime = initial.cars[0]!.runtimeSystems
+
+    expect(initial.weather).toBe('clear')
+    expect(initial.surfaceWaterMmBySector.every((water) => water > 0)).toBe(
+      true,
+    )
+    if (initialRuntime.kind !== 'super-formula') {
+      throw new Error('Expected SUPER FORMULA runtime')
+    }
+    expect(initialRuntime.liveTires.activeSurface).toBe('wet')
+
+    const released = advanceRace(
+      {
+        ...initial,
+        elapsedLabel: '00:00:10',
+        elapsedSeconds: 10,
+        raceStartedAtSeconds: 0,
+        startProcedure: 'racing',
+        cars: initial.cars.map((car, index) =>
+          index === 0
+            ? {
+                ...car,
+                pitLaneProgress: track.pitLane?.exitProgress ?? 0.13,
+                pitPhase: 'box' as const,
+                pitServiceKind: 'tire-stop' as const,
+                pitStartedAtSeconds: 9,
+                pitUntilSeconds: 10,
+                status: 'pit' as const,
+              }
+            : car,
+        ),
+      },
+      0.1,
+      config,
+    )
+    const releasedRuntime = released.cars[0]!.runtimeSystems
+
+    if (releasedRuntime.kind !== 'super-formula') {
+      throw new Error('Expected SUPER FORMULA runtime')
+    }
+    expect(releasedRuntime.liveTires.activeSurface).toBe('wet')
+    expect(releasedRuntime.liveTires.fitment.sequence).toBe(
+      initialRuntime.liveTires.fitment.sequence + 1,
+    )
+  })
+
+  it('fits wet control tires at a clear timed-segment transition when carried canonical water remains', () => {
+    const track = { ...series.tracks[0], rainProbability: 0 }
+    const baseWeekend = createWeekendContext(
+      series.drivers,
+      track.isSprintWeekend,
+      track,
+      undefined,
+      'super-formula',
+    )
+    const fresh = createInitialRace({
+      ...baseConfig,
+      track,
+      weekendContext: baseWeekend,
+      weekendStage: 'qualifying',
+    })
+    const carriedState = {
+      ...fresh.trackSurface,
+      dryness: fresh.trackSurface.dryness.map(() => 0),
+      waterFilmMm: fresh.trackSurface.waterFilmMm.map(() => 2),
+    }
+    const config: RaceConfig = {
+      ...baseConfig,
+      track,
+      weekendContext: {
+        ...baseWeekend,
+        trackSurfaceCarry: { state: carriedState, trackId: track.id },
+      },
+      timedSessionPlan: {
+        segments: [
+          {
+            declaredWet: false,
+            endsAtSeconds: 2,
+            id: 'Q1-A',
+            name: 'Q1-A',
+            participantDriverIds: series.drivers.map((driver) => driver.id),
+            startsAtSeconds: 0,
+            suspensionEndsAtSeconds: null,
+            suspensionStartsAtSeconds: null,
+            tire: superFormulaControlSessionTireForWeather('clear'),
+          },
+          {
+            declaredWet: false,
+            endsAtSeconds: 300,
+            id: 'Q1-B',
+            name: 'Q1-B',
+            participantDriverIds: series.drivers.map((driver) => driver.id),
+            selectFromPrevious: false,
+            startsAtSeconds: 2,
+            suspensionEndsAtSeconds: null,
+            suspensionStartsAtSeconds: null,
+            tire: superFormulaControlSessionTireForWeather('clear'),
+          },
+        ],
+        totalDurationSeconds: 300,
+      },
+      weekendStage: 'qualifying',
+    }
+    const initial = createInitialRace(config)
+    const initialRuntime = initial.cars[0]!.runtimeSystems
+    const transitioned = advanceRace(
+      { ...initial, elapsedLabel: '00:00:01', elapsedSeconds: 1.9 },
+      0.2,
+      config,
+    )
+    const transitionedRuntime = transitioned.cars[0]!.runtimeSystems
+
+    expect(initial.weather).toBe('clear')
+    expect(transitioned.weather).toBe('clear')
+    expect(transitioned.timedSegmentId).toBe('Q1-B')
+    expect(transitioned.surfaceWaterMmBySector.some((water) => water > 0)).toBe(
+      true,
+    )
+    if (
+      initialRuntime.kind !== 'super-formula' ||
+      transitionedRuntime.kind !== 'super-formula'
+    ) {
+      throw new Error('Expected SUPER FORMULA runtime')
+    }
+    expect(initialRuntime.liveTires.activeSurface).toBe('wet')
+    expect(transitionedRuntime.liveTires.activeSurface).toBe('wet')
+    expect(transitionedRuntime.liveTires.fitment.sequence).toBe(
+      initialRuntime.liveTires.fitment.sequence + 1,
+    )
   })
 
   it('seeds a later SF session from the prior control-tyre and entrant-engine lifecycle', () => {

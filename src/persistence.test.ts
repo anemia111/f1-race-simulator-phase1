@@ -90,6 +90,70 @@ describe('V2 persistence migration', () => {
     ).toBe(track.tireNomination?.H)
   })
 
+  it('restores only an exact same-track canonical weekend surface carry', () => {
+    const track = tracks[0]
+    const context = createWeekendContext(
+      initialDrivers,
+      track.isSprintWeekend,
+      track,
+    )
+    const initial = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'persisted-weekend-surface',
+      teams: initialTeams,
+      track,
+    })
+    const state = {
+      ...initial.trackSurface,
+      bondedRubber: initial.trackSurface.bondedRubber.map((value, index) =>
+        index === 3 ? 0.45 : value,
+      ),
+    }
+    const persisted = {
+      eventId: 'surface-carry-event',
+      gridSource: 'brief',
+      seed: 'persisted-weekend-surface',
+      seriesId: 'f1-custom',
+      stage: 'qualifying',
+      trackId: track.id,
+      version: 4,
+      weekendContext: {
+        ...context,
+        trackSurfaceCarry: { state, trackId: track.id },
+      },
+    }
+    const restored = parsePersistedWeekend(
+      JSON.stringify(persisted),
+      tracks,
+      initialDrivers,
+    )
+
+    expect(restored?.weekendContext.trackSurfaceCarry).toEqual({
+      state,
+      trackId: track.id,
+    })
+
+    const crossTrack = structuredClone(persisted)
+    crossTrack.weekendContext.trackSurfaceCarry.trackId = tracks[1].id
+    expect(
+      parsePersistedWeekend(
+        JSON.stringify(crossTrack),
+        tracks,
+        initialDrivers,
+      )?.weekendContext.trackSurfaceCarry,
+    ).toBeNull()
+
+    const corrupt = structuredClone(persisted)
+    corrupt.weekendContext.trackSurfaceCarry.state.waterFilmMm[0] = 999
+    expect(
+      parsePersistedWeekend(
+        JSON.stringify(corrupt),
+        tracks,
+        initialDrivers,
+      )?.weekendContext.trackSurfaceCarry,
+    ).toBeNull()
+  })
+
   it('rejects an explicit removed series instead of silently loading F1', () => {
     const track = tracks[0]
     const restored = parsePersistedWeekend(

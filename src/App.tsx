@@ -98,6 +98,7 @@ import {
 } from './services/openF1Performance'
 import { buildSynchronizedCarData } from './services/openF1Sync'
 import { buildOpenF1TimelineFrame } from './services/openF1Timeline'
+import { sessionCompletionDestinationFor } from './sessionCompletionScope'
 import { buildWeekendTirePlan } from './simulation/weekendTires'
 import {
   applySeasonGarageToWeekend,
@@ -2218,7 +2219,10 @@ export default function App() {
     }
 
     setWeekendContext((current) =>
-      completeRaceSession(current, selectedWeekendStage, snapshot.cars),
+      completeRaceSession(current, selectedWeekendStage, snapshot.cars, {
+        state: snapshot.trackSurface,
+        trackId: raceConfig.track.id,
+      }),
     )
     setSeason((current) =>
       recordSeasonRound(current, {
@@ -2252,14 +2256,52 @@ export default function App() {
     snapshot.greenFlagLaps,
     snapshot.raceLaps,
     snapshot.sessionStatus,
+    snapshot.trackSurface,
     snapshotIsCurrent,
     drivers,
+    raceConfig.track.id,
     seriesPackage.rules.championshipTeamScoring,
     seriesPackage.rules.points.fastestLap,
     seriesPackage.rules.points.feature,
     seriesPackage.rules.points.reduced,
     seriesPackage.rules.points.sprint,
     teams,
+  ])
+
+  // A played practice session carries its exact road state into the rest of
+  // the weekend. Deterministically skipped sessions still use the aggregate
+  // setup result path below and deliberately do not invent surface evolution.
+  useEffect(() => {
+    if (
+      applicationMode !== 'championship' ||
+      !snapshotIsCurrent ||
+      snapshot.sessionStatus !== 'finished' ||
+      !isPracticeStage(selectedWeekendStage)
+    ) {
+      return
+    }
+
+    setWeekendContext((current) =>
+      completePracticeSession(
+        current,
+        selectedWeekendStage,
+        practiceResults,
+        snapshot.cars,
+        {
+          state: snapshot.trackSurface,
+          trackId: raceConfig.track.id,
+        },
+      ),
+    )
+  }, [
+    applicationMode,
+    practiceResults,
+    raceConfig.track.id,
+    selectedWeekendStage,
+    snapshot.cars,
+    snapshot.sessionStatus,
+    snapshot.trackSurface,
+    snapshotIsCurrent,
   ])
 
   useEffect(() => {
@@ -2282,18 +2324,26 @@ export default function App() {
       snapshot.cars,
       true,
     )
+    const completionDestination =
+      sessionCompletionDestinationFor(applicationMode)
 
-    setWeekendContext((current) =>
-      completeQualifyingSession(
-        current,
-        selectedWeekendStage,
-        knockout.classification,
-        knockout.segments,
-        snapshot.cars,
-        true,
-      ),
-    )
-    if (applicationMode === 'free' && activeFreeModeRuntime) {
+    if (completionDestination === 'championship-weekend') {
+      setWeekendContext((current) =>
+        completeQualifyingSession(
+          current,
+          selectedWeekendStage,
+          knockout.classification,
+          knockout.segments,
+          snapshot.cars,
+          true,
+          {
+            state: snapshot.trackSurface,
+            trackId: raceConfig.track.id,
+          },
+        ),
+      )
+    }
+    if (completionDestination === 'free-mode' && activeFreeModeRuntime) {
       setFreeModeStoredState((current) => ({
         ...current,
         configuration: activeFreeModeRuntime.configuration,
@@ -2324,9 +2374,11 @@ export default function App() {
   }, [
     activeFreeModeRuntime,
     applicationMode,
+    raceConfig.track.id,
     selectedWeekendStage,
     snapshot.cars,
     snapshot.sessionStatus,
+    snapshot.trackSurface,
     snapshotIsCurrent,
     selectedEventId,
     seriesPackage.rules.championshipTeamScoring,

@@ -1052,6 +1052,16 @@ export type TimedSessionPlan = {
   totalDurationSeconds: number
 }
 
+/**
+ * Category-neutral road state carried only within the same physical weekend.
+ * The explicit track identity prevents two tracks with coincidentally equal
+ * static surface inputs from accepting each other's dynamic state.
+ */
+export type TrackSurfaceCarry = {
+  state: TrackSurfaceStateSnapshot
+  trackId: string
+}
+
 /** State shared by every race-weekend lifecycle, independent of car category. */
 export type WeekendContextBase = {
   completed: WeekendStage[]
@@ -1067,6 +1077,8 @@ export type WeekendContextBase = {
     string,
     'qualified' | 'exempt' | 'not-qualified'
   >
+  /** Last completed session's canonical surface, or null before one exists. */
+  trackSurfaceCarry: TrackSurfaceCarry | null
   notes: string[]
 }
 

@@ -1,0 +1,1295 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-20T14:23:38.714Z",
+  "sourceCommit": "3775ebaac5715ad40db311b85e59fa621affa971",
+  "sourceCutoffDate": "2026-08-08",
+  "command": "npm run validate:track-surface",
+  "verdict": "PASS",
+  "scope": [
+    "src/simulation/trackSurface.ts"
+  ],
+  "calibrationPolicy": {
+    "fitPerformed": false,
+    "holdoutConsulted": false,
+    "trackSpecificMultiplierCount": 0
+  },
+  "policyBoundary": {
+    "circuitNamesAreCoverageLabelsOnly": true,
+    "physicalRoadWidthAvailable": false,
+    "rubberInventoryUnit": "dimensionless-coverage-cell-lane",
+    "sourceLabel": "simulator-policy",
+    "waterInventoryUnit": "mm-cell-lane"
+  },
+  "matrix": {
+    "scenarioCount": 36,
+    "scenarios": [
+      "green",
+      "rubbered",
+      "light-rain",
+      "heavy-rain",
+      "drying",
+      "off-line"
+    ],
+    "tracks": [
+      {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      }
+    ]
+  },
+  "tolerances": {
+    "metamorphic": 1e-11,
+    "rubberClosure": 1e-9,
+    "waterClosure": 1e-9
+  },
+  "determinism": {
+    "traceSha256": "2f417b32ba84010f0bdb1f3cf74640708ce630bc1f3dda4d4c2f257c69d07467"
+  },
+  "scenarioResults": [
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "monaco-approx",
+        "name": "Monaco"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "monza-approx",
+        "name": "Monza"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "singapore-approx",
+        "name": "Singapore"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "spa-approx",
+        "name": "Spa"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "suzuka-approx",
+        "name": "Suzuka"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "green",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00009808744903450246,
+        "racingLine": 0.000389656423739556
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 1.7763568394002505e-15,
+      "rubberFlux": {
+        "afterCoverageSum": 3.6462073142628038,
+        "beforeCoverageSum": 3.599999999999996,
+        "marbleMigrationCoverageSum": 0.01728802557373611,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04620731426280598,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "rubbered",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00008196997855280941,
+        "racingLine": 0.00022848466696157033
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 4.263256414560601e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 77.78941149273288,
+        "beforeCoverageSum": 77.75999999999989,
+        "marbleMigrationCoverageSum": 0.10004726752166684,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.029411492732946538,
+        "washedCoverageSum": 0
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 0,
+        "beforeFilmDepthSumMm": 0,
+        "drainageFilmDepthSumMm": 0,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "light-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.00032440814383666305,
+        "racingLine": -0.0003723045785052337
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 70.1277217693706,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11655928290091307,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.02609865228048011,
+        "washedCoverageSum": 0.09837688290988049
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.050093593832571e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 22.082343585075154,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.45354222158780694,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0.9599999999994261,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0003849811662041482
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "heavy-rain",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0012050671185979411,
+        "racingLine": -0.001954424686827605
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": 2.842170943040401e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 69.8846684848593,
+        "beforeCoverageSum": 70.20000000000002,
+        "marbleMigrationCoverageSum": 0.11623194631958472,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.014109147960904653,
+        "washedCoverageSum": 0.3294406631016537
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 1.6342482922482304e-12,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 25.91588824072544,
+        "beforeFilmDepthSumMm": 21.599999999999984,
+        "drainageFilmDepthSumMm": 0.4599593698242599,
+        "evaporationFilmDepthSumMm": 0.02372921217065113,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 4.799999999998145,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.00042317727941338333
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "drying",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": -0.0015164932569587952,
+        "racingLine": -0.0025004886884170685
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -6.394884621840902e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 47.45262556698063,
+        "beforeCoverageSum": 47.88000000000006,
+        "marbleMigrationCoverageSum": 0.08274099695716886,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.00007731125774177171,
+        "washedCoverageSum": 0.42745174427710614
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 4.263256414560601e-13,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 222.06758981647346,
+        "beforeFilmDepthSumMm": 223.2,
+        "drainageFilmDepthSumMm": 1.1282164062274942,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.004193777299467729
+      }
+    },
+    {
+      "track": {
+        "id": "zandvoort-approx",
+        "name": "Zandvoort"
+      },
+      "scenario": "off-line",
+      "deterministicRepeat": true,
+      "laneRubberDelta": {
+        "offLine": 0.00037911613386278076,
+        "racingLine": -0.0000469177673697585
+      },
+      "maximumTraversalOrderDifference": 0,
+      "roundTripIdentical": true,
+      "rubberClosureResidual": -2.1316282072803006e-14,
+      "rubberFlux": {
+        "afterCoverageSum": 56.18573976536865,
+        "beforeCoverageSum": 56.16000000000004,
+        "marbleMigrationCoverageSum": 0,
+        "removedCoverageSum": 0,
+        "tyreDepositCoverageSum": 0.04055425574681127,
+        "washedCoverageSum": 0.014814490378175862
+      },
+      "stationaryTraversalMaximumDifference": 0,
+      "waterClosureResidual": 0,
+      "waterFlux": {
+        "afterFilmDepthSumMm": 7.513682731599144,
+        "beforeFilmDepthSumMm": 7.92000000000001,
+        "drainageFilmDepthSumMm": 0.4060910466035693,
+        "evaporationFilmDepthSumMm": 0,
+        "overflowRemovedFilmDepthSumMm": 0,
+        "rainfallFilmDepthSumMm": 0,
+        "tyreSprayDisplacementFilmDepthSumMm": 0.0002262217972967666
+      }
+    }
+  ],
+  "invariantFailures": []
+}
