@@ -959,6 +959,13 @@ export type TrackDefinition = {
   }
 }
 
+/**
+ * Selects the driver-decision seam without changing the physical controller.
+ * `legacy-direct` is the rollback path for the behavior-neutral category
+ * adapter introduced in Phase 7.
+ */
+export type DriverDecisionPath = 'legacy-direct' | 'category-agent-v1'
+
 export type RaceConfig = {
   track: TrackDefinition
   teams: Team[]
@@ -969,6 +976,8 @@ export type RaceConfig = {
   /** Category identity keeps checkpoints and category-specific assists isolated. */
   seriesId?: ExecutableSeriesId
   vehicleEraId?: RuntimeVehicleEraId
+  /** Omission selects the behavior-neutral category agent adapter. */
+  driverDecisionPath?: DriverDecisionPath
   overtakeSystem?: 'active-aero' | 'ots'
   overtakeActivation?: 'first-detection' | 'after-one-lap' | 'immediate'
   tireSupplier?: 'Pirelli' | 'Yokohama'

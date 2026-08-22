@@ -29,9 +29,10 @@ import {
   driverSkillBlend,
 } from './driverAbility'
 import {
-  decideDriverBehavior,
   type DriverDecision,
+  type DriverDecisionContext,
 } from './driverDecision'
+import { decideDriverBehaviorForPath } from './categoryDriverAgent'
 import { effectiveMachineRating } from './machinePerformance'
 import { baselineSetupForTrack } from './engineering'
 import {
@@ -4640,7 +4641,7 @@ export function advanceRace(
     const defendIntensity = Number.isFinite(gapBehindSeconds)
       ? clamp01(1 - gapBehindSeconds / 1.6)
       : 0
-    const decision = decideDriverBehavior({
+    const decisionContext: DriverDecisionContext = {
       seed: config.seed,
       driver,
       lap: Math.max(0, Math.floor(car.totalDistance)),
@@ -4724,6 +4725,12 @@ export function advanceRace(
               ),
             }
           : undefined,
+    }
+    const decision = decideDriverBehaviorForPath({
+      context: decisionContext,
+      path: config.driverDecisionPath,
+      seriesId: config.seriesId,
+      vehicleEraId: config.vehicleEraId,
     })
 
     driverDecisionById.set(car.driverId, decision)
