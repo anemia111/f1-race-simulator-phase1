@@ -154,7 +154,7 @@ const unavailableGripModel = {
   evidenceObservationIds: [],
   kind: 'grip',
   modelId: null,
-  reason: 'No learned category model is available in Phase 7.0.',
+  reason: 'No learned category model is available in Phase 7.1.',
   revision: 0,
 } as const
 
@@ -173,10 +173,14 @@ function agentInputFor(
       source: 'physics-sensor' as const,
       sourceId: `test-sensor:${suffix}`,
     },
+    reading: {
+      kind: 'scalar' as const,
+      uncertainty: { kind: 'exact' as const },
+      value: 0.25,
+    },
     scope: 'self' as const,
     seriesId: category.seriesId,
-    signalId: `test-signal:${suffix}`,
-    uncertainty: 'direct' as const,
+    signalId: 'lap-progress' as const,
     vehicleEraId: category.vehicleEraId,
   })) as DriverObservation[]
   const common = {

@@ -159,55 +159,190 @@ export type DriverObservationProvenance = {
   readonly sourceId: string
 }
 
+export type DriverObservationUnavailableReason =
+  | 'not-observed'
+  | 'sensor-unavailable'
+  | 'source-unavailable'
+
+export type DriverObservationExactUncertainty = {
+  readonly kind: 'exact'
+}
+
+export type DriverObservationBoundedIntervalUncertainty = {
+  readonly kind: 'bounded-interval'
+  readonly minimum: number
+  readonly maximum: number
+}
+
+export type DriverObservationConfidenceUncertainty = {
+  readonly kind: 'confidence'
+  readonly confidence: number
+}
+
+export type DriverScalarObservationReading = {
+  readonly kind: 'scalar'
+  readonly value: number
+  readonly uncertainty:
+    | DriverObservationExactUncertainty
+    | DriverObservationBoundedIntervalUncertainty
+}
+
+export type DriverBooleanObservationReading = {
+  readonly kind: 'boolean'
+  readonly value: boolean
+  readonly uncertainty:
+    | DriverObservationExactUncertainty
+    | DriverObservationConfidenceUncertainty
+}
+
+export type DriverStateObservationReading<State extends string> = {
+  readonly kind: 'state'
+  readonly value: State
+  readonly uncertainty:
+    | DriverObservationExactUncertainty
+    | DriverObservationConfidenceUncertainty
+}
+
+export type DriverUnavailableObservationReading = {
+  readonly kind: 'unavailable'
+  readonly reason: DriverObservationUnavailableReason
+}
+
+type ScalarOrUnavailableReading =
+  | DriverScalarObservationReading
+  | DriverUnavailableObservationReading
+
+type BooleanOrUnavailableReading =
+  | DriverBooleanObservationReading
+  | DriverUnavailableObservationReading
+
+type StateOrUnavailableReading<State extends string> =
+  | DriverStateObservationReading<State>
+  | DriverUnavailableObservationReading
+
+export type DriverRaceControlFlagState =
+  | 'clear'
+  | 'yellow'
+  | 'double-yellow'
+  | 'vsc'
+  | 'sc'
+  | 'red'
+
+export type DriverElectricalOvertakeState =
+  | 'disabled'
+  | 'available'
+  | 'active'
+
+export type DriverSfOtsState =
+  | 'disabled'
+  | 'available'
+  | 'active'
+
 type ObservationEnvelope<
   Series extends ExecutableSeriesId,
   Era extends RuntimeVehicleEraId,
   Scope extends string,
+  Signal extends string,
+  Reading,
 > = {
   readonly observationId: DriverObservationId
   readonly driverId: string
   readonly seriesId: Series
   readonly vehicleEraId: Era
-  /** Stable metadata only; exact WorldTruth values stay outside this seam. */
   readonly scope: Scope
-  readonly signalId: string
-  readonly subjectId?: string
+  readonly signalId: Signal
+  readonly subjectId?: never
   readonly observedAtTick: number
   readonly availableAtTick: number
   readonly provenance: DriverObservationProvenance
-  readonly uncertainty: 'direct' | 'derived' | 'unknown' | 'unavailable'
+  /** A bounded perception, never a writable physical outcome. */
+  readonly reading: Reading
 }
 
-type CommonObservationScope =
-  | 'self'
-  | 'track'
-  | 'traffic'
-  | 'race-control'
-  | 'team'
+type TrafficObservationEnvelope<
+  Series extends ExecutableSeriesId,
+  Era extends RuntimeVehicleEraId,
+  Signal extends string,
+  Reading,
+> = Omit<
+  ObservationEnvelope<Series, Era, 'traffic', Signal, Reading>,
+  'subjectId'
+> & {
+  readonly subjectId: string
+}
+
+type CommonDriverObservation<
+  Series extends ExecutableSeriesId,
+  Era extends RuntimeVehicleEraId,
+> =
+  | ObservationEnvelope<
+      Series,
+      Era,
+      'self',
+      'lap-progress' | 'lateral-offset-m',
+      ScalarOrUnavailableReading
+    >
+  | ObservationEnvelope<
+      Series,
+      Era,
+      'track',
+      'reference-line-offset-m' | 'track-half-width-m',
+      ScalarOrUnavailableReading
+    >
+  | TrafficObservationEnvelope<
+      Series,
+      Era,
+      'gap-seconds' | 'lateral-separation-m',
+      ScalarOrUnavailableReading
+    >
+  | ObservationEnvelope<
+      Series,
+      Era,
+      'race-control',
+      'flag-state',
+      StateOrUnavailableReading<DriverRaceControlFlagState>
+    >
+  | ObservationEnvelope<
+      Series,
+      Era,
+      'team',
+      'pit-instruction',
+      BooleanOrUnavailableReading
+    >
 
 export type F1DriverObservation =
+  | CommonDriverObservation<'f1-custom', 'f1-2026-current'>
   | ObservationEnvelope<
       'f1-custom',
       'f1-2026-current',
-      CommonObservationScope
+      'f1-system',
+      'straight-mode' | 'corner-mode',
+      BooleanOrUnavailableReading
     >
-  | (ObservationEnvelope<
+  | ObservationEnvelope<
       'f1-custom',
       'f1-2026-current',
-      'f1-system'
-    > & {
-      readonly signalId:
-        | 'straight-mode'
-        | 'corner-mode'
-        | 'energy-store'
-        | 'electrical-overtake'
-    })
+      'f1-system',
+      'energy-store',
+      ScalarOrUnavailableReading
+    >
+  | ObservationEnvelope<
+      'f1-custom',
+      'f1-2026-current',
+      'f1-system',
+      'electrical-overtake',
+      StateOrUnavailableReading<DriverElectricalOvertakeState>
+    >
 
 export type SFDriverObservation =
-  | ObservationEnvelope<'super-formula', 'sf-2026', CommonObservationScope>
-  | (ObservationEnvelope<'super-formula', 'sf-2026', 'sf-system'> & {
-      readonly signalId: 'ots'
-    })
+  | CommonDriverObservation<'super-formula', 'sf-2026'>
+  | ObservationEnvelope<
+      'super-formula',
+      'sf-2026',
+      'sf-system',
+      'ots',
+      StateOrUnavailableReading<DriverSfOtsState>
+    >
 
 export type DriverObservation = F1DriverObservation | SFDriverObservation
 
@@ -372,6 +507,44 @@ export const DRIVER_AGENT_FORBIDDEN_OUTCOME_FIELDS = [
 const forbiddenFields = new Set<string>(
   DRIVER_AGENT_FORBIDDEN_OUTCOME_FIELDS,
 )
+
+export const DRIVER_OBSERVATION_SCALAR_BOUNDS = Object.freeze({
+  'self/lap-progress': Object.freeze([0, 1] as const),
+  'self/lateral-offset-m': Object.freeze([-20, 20] as const),
+  'track/reference-line-offset-m': Object.freeze([-20, 20] as const),
+  'track/track-half-width-m': Object.freeze([1.5, 20] as const),
+  'traffic/gap-seconds': Object.freeze([0, 28] as const),
+  'traffic/lateral-separation-m': Object.freeze([-40, 40] as const),
+  'f1-system/energy-store': Object.freeze([0, 1] as const),
+} satisfies Readonly<Record<string, readonly [number, number]>>)
+
+const DRIVER_OBSERVATION_UNAVAILABLE_REASONS = [
+  'not-observed',
+  'sensor-unavailable',
+  'source-unavailable',
+] as const satisfies readonly DriverObservationUnavailableReason[]
+
+const DRIVER_RACE_CONTROL_FLAG_STATES = [
+  'clear',
+  'yellow',
+  'double-yellow',
+  'vsc',
+  'sc',
+  'red',
+] as const satisfies readonly DriverRaceControlFlagState[]
+
+const DRIVER_ELECTRICAL_OVERTAKE_STATES = [
+  'disabled',
+  'available',
+  'active',
+] as const satisfies readonly DriverElectricalOvertakeState[]
+
+const DRIVER_SF_OTS_STATES = [
+  'disabled',
+  'available',
+  'active',
+] as const satisfies readonly DriverSfOtsState[]
+
 const DRIVER_SKILL_BOUNDS = {
   adaptability: [DRIVER_ABILITY_INTERNAL_MIN, DRIVER_ABILITY_INTERNAL_MAX],
   brakingSkill: [DRIVER_ABILITY_INTERNAL_MIN, DRIVER_ABILITY_INTERNAL_MAX],
@@ -508,6 +681,141 @@ function requireUniqueIds(values: readonly string[], label: string) {
   return ids
 }
 
+function validateUnavailableObservationReading(
+  value: Record<string, unknown>,
+  label: string,
+) {
+  requireExactRequiredKeys(value, label, ['kind', 'reason'])
+  requireOneOf(
+    value.reason,
+    `${label} reason`,
+    DRIVER_OBSERVATION_UNAVAILABLE_REASONS,
+  )
+}
+
+function validateExactUncertainty(value: unknown, label: string) {
+  requireExactRequiredKeys(value, label, ['kind'])
+  if (value.kind !== 'exact') {
+    throw new Error(`${label} kind must be exact`)
+  }
+}
+
+function validateScalarObservationReading(
+  value: unknown,
+  label: string,
+  bounds: readonly [number, number],
+) {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`)
+  if (value.kind === 'unavailable') {
+    validateUnavailableObservationReading(value, label)
+    return
+  }
+  requireExactRequiredKeys(value, label, ['kind', 'value', 'uncertainty'])
+  if (value.kind !== 'scalar') {
+    throw new Error(`${label} kind must be scalar or unavailable`)
+  }
+  const [minimum, maximum] = bounds
+  if (
+    !Number.isFinite(value.value) ||
+    (value.value as number) < minimum ||
+    (value.value as number) > maximum
+  ) {
+    throw new Error(
+      `${label} value must be finite and between ${minimum} and ${maximum}`,
+    )
+  }
+  if (!isRecord(value.uncertainty)) {
+    throw new Error(`${label} uncertainty must be an object`)
+  }
+  if (value.uncertainty.kind === 'exact') {
+    validateExactUncertainty(value.uncertainty, `${label} uncertainty`)
+    return
+  }
+  requireExactRequiredKeys(value.uncertainty, `${label} uncertainty`, [
+    'kind',
+    'minimum',
+    'maximum',
+  ])
+  if (value.uncertainty.kind !== 'bounded-interval') {
+    throw new Error(
+      `${label} uncertainty kind must be exact or bounded-interval`,
+    )
+  }
+  const intervalMinimum = value.uncertainty.minimum
+  const intervalMaximum = value.uncertainty.maximum
+  if (
+    !Number.isFinite(intervalMinimum) ||
+    !Number.isFinite(intervalMaximum) ||
+    (intervalMinimum as number) < minimum ||
+    (intervalMaximum as number) > maximum ||
+    (intervalMinimum as number) > (value.value as number) ||
+    (intervalMaximum as number) < (value.value as number)
+  ) {
+    throw new Error(
+      `${label} bounded interval must be finite, enclose its value, and remain between ${minimum} and ${maximum}`,
+    )
+  }
+}
+
+function validateCategoricalObservationUncertainty(
+  value: unknown,
+  label: string,
+) {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`)
+  if (value.kind === 'exact') {
+    validateExactUncertainty(value, label)
+    return
+  }
+  requireExactRequiredKeys(value, label, ['kind', 'confidence'])
+  if (value.kind !== 'confidence') {
+    throw new Error(`${label} kind must be exact or confidence`)
+  }
+  if (
+    !Number.isFinite(value.confidence) ||
+    (value.confidence as number) < 0 ||
+    (value.confidence as number) > 1
+  ) {
+    throw new Error(`${label} confidence must be finite and between 0 and 1`)
+  }
+}
+
+function validateBooleanObservationReading(value: unknown, label: string) {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`)
+  if (value.kind === 'unavailable') {
+    validateUnavailableObservationReading(value, label)
+    return
+  }
+  requireExactRequiredKeys(value, label, ['kind', 'value', 'uncertainty'])
+  if (value.kind !== 'boolean' || typeof value.value !== 'boolean') {
+    throw new Error(`${label} must contain a boolean value or be unavailable`)
+  }
+  validateCategoricalObservationUncertainty(
+    value.uncertainty,
+    `${label} uncertainty`,
+  )
+}
+
+function validateStateObservationReading<const State extends string>(
+  value: unknown,
+  label: string,
+  allowedStates: readonly State[],
+) {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`)
+  if (value.kind === 'unavailable') {
+    validateUnavailableObservationReading(value, label)
+    return
+  }
+  requireExactRequiredKeys(value, label, ['kind', 'value', 'uncertainty'])
+  if (value.kind !== 'state') {
+    throw new Error(`${label} kind must be state or unavailable`)
+  }
+  requireOneOf(value.value, `${label} value`, allowedStates)
+  validateCategoricalObservationUncertainty(
+    value.uncertainty,
+    `${label} uncertainty`,
+  )
+}
+
 function assertSerializable(
   value: unknown,
   label: string,
@@ -631,7 +939,7 @@ function validateLearnedModelReference(
 }
 
 function validatePolicy(value: unknown): 'f1' | 'super-formula' {
-  requireExactKeys(value, 'driver policy', [
+  requireExactRequiredKeys(value, 'driver policy', [
     'kind',
     'seriesId',
     'vehicleEraId',
@@ -679,6 +987,14 @@ function validatePolicy(value: unknown): 'f1' | 'super-formula' {
     return 'super-formula'
   }
   throw new Error('driver policy kind is not supported')
+}
+
+/** Validates a policy before a diagnostic producer reads any of its fields. */
+export function validateSeriesDrivingPolicy(
+  value: unknown,
+): asserts value is SeriesDrivingPolicy {
+  assertSerializable(value, 'driver policy')
+  validatePolicy(value)
 }
 
 function validateCategoryExperience(
@@ -965,25 +1281,33 @@ function validateDriverDecisionRecordRuntime(
 
   const inputObservationIds = new Set<string>()
   for (const observation of input.observations as readonly DriverObservation[]) {
-    requireExactKeys(observation, 'driver observation', [
+    if (!isRecord(observation)) {
+      throw new Error('driver observation must be an object')
+    }
+    const observationKeys = [
       'observationId',
       'driverId',
       'seriesId',
       'vehicleEraId',
       'scope',
       'signalId',
-      'subjectId',
       'observedAtTick',
       'availableAtTick',
       'provenance',
-      'uncertainty',
-    ])
+      'reading',
+      ...(observation.scope === 'traffic' ? ['subjectId'] : []),
+    ]
+    requireExactRequiredKeys(
+      observation,
+      'driver observation',
+      observationKeys,
+    )
     requireString(observation.observationId, 'observation id')
     requireString(observation.signalId, 'observation signal id')
-    if (observation.subjectId !== undefined) {
+    if (observation.scope === 'traffic') {
       requireString(observation.subjectId, 'observation subject id')
     }
-    requireExactKeys(observation.provenance, 'observation provenance', [
+    requireExactRequiredKeys(observation.provenance, 'observation provenance', [
       'source',
       'sourceId',
     ])
@@ -995,12 +1319,6 @@ function validateDriverDecisionRecordRuntime(
       'category-system',
     ])
     requireString(observation.provenance.sourceId, 'observation source id')
-    requireOneOf(observation.uncertainty, 'observation uncertainty', [
-      'direct',
-      'derived',
-      'unknown',
-      'unavailable',
-    ])
     requireTick(observation.observedAtTick, 'observation tick')
     requireTick(observation.availableAtTick, 'observation availability tick')
     if (
@@ -1016,29 +1334,114 @@ function validateDriverDecisionRecordRuntime(
     ) {
       throw new Error('driver observation crosses category')
     }
-    requireOneOf(
-      observation.scope,
-      'driver observation scope',
-      f1
-        ? ['self', 'track', 'traffic', 'race-control', 'team', 'f1-system']
-        : ['self', 'track', 'traffic', 'race-control', 'team', 'sf-system'],
-    )
-    if (
-      observation.scope === 'f1-system' &&
-      ![
-        'straight-mode',
-        'corner-mode',
-        'energy-store',
-        'electrical-overtake',
-      ].includes(observation.signalId)
-    ) {
-      throw new Error('F1 system observation signal is not supported')
-    }
-    if (
-      observation.scope === 'sf-system' &&
-      observation.signalId !== 'ots'
-    ) {
-      throw new Error('SUPER FORMULA system observation signal is not supported')
+    switch (observation.scope) {
+      case 'self':
+        requireOneOf(observation.signalId, 'self observation signal', [
+          'lap-progress',
+          'lateral-offset-m',
+        ])
+        validateScalarObservationReading(
+          observation.reading,
+          'self observation reading',
+          DRIVER_OBSERVATION_SCALAR_BOUNDS[
+            `self/${observation.signalId}` as
+              | 'self/lap-progress'
+              | 'self/lateral-offset-m'
+          ],
+        )
+        break
+      case 'track':
+        requireOneOf(observation.signalId, 'track observation signal', [
+          'reference-line-offset-m',
+          'track-half-width-m',
+        ])
+        validateScalarObservationReading(
+          observation.reading,
+          'track observation reading',
+          DRIVER_OBSERVATION_SCALAR_BOUNDS[
+            `track/${observation.signalId}` as
+              | 'track/reference-line-offset-m'
+              | 'track/track-half-width-m'
+          ],
+        )
+        break
+      case 'traffic':
+        requireOneOf(observation.signalId, 'traffic observation signal', [
+          'gap-seconds',
+          'lateral-separation-m',
+        ])
+        validateScalarObservationReading(
+          observation.reading,
+          'traffic observation reading',
+          DRIVER_OBSERVATION_SCALAR_BOUNDS[
+            `traffic/${observation.signalId}` as
+              | 'traffic/gap-seconds'
+              | 'traffic/lateral-separation-m'
+          ],
+        )
+        break
+      case 'race-control':
+        if (observation.signalId !== 'flag-state') {
+          throw new Error('race-control observation signal is not supported')
+        }
+        validateStateObservationReading(
+          observation.reading,
+          'race-control observation reading',
+          DRIVER_RACE_CONTROL_FLAG_STATES,
+        )
+        break
+      case 'team':
+        if (observation.signalId !== 'pit-instruction') {
+          throw new Error('team observation signal is not supported')
+        }
+        validateBooleanObservationReading(
+          observation.reading,
+          'team observation reading',
+        )
+        break
+      case 'f1-system':
+        if (!f1) {
+          throw new Error('driver observation crosses category')
+        }
+        if (
+          observation.signalId === 'straight-mode' ||
+          observation.signalId === 'corner-mode'
+        ) {
+          validateBooleanObservationReading(
+            observation.reading,
+            'F1 system observation reading',
+          )
+        } else if (observation.signalId === 'energy-store') {
+          validateScalarObservationReading(
+            observation.reading,
+            'F1 system observation reading',
+            DRIVER_OBSERVATION_SCALAR_BOUNDS['f1-system/energy-store'],
+          )
+        } else if (observation.signalId === 'electrical-overtake') {
+          validateStateObservationReading(
+            observation.reading,
+            'F1 system observation reading',
+            DRIVER_ELECTRICAL_OVERTAKE_STATES,
+          )
+        } else {
+          throw new Error('F1 system observation signal is not supported')
+        }
+        break
+      case 'sf-system':
+        if (f1) {
+          throw new Error('driver observation crosses category')
+        }
+        if (observation.signalId !== 'ots') {
+          throw new Error('SUPER FORMULA system observation signal is not supported')
+        }
+        validateStateObservationReading(
+          observation.reading,
+          'SUPER FORMULA system observation reading',
+          DRIVER_SF_OTS_STATES,
+        )
+        break
+      default:
+        throw new Error('driver observation scope is not supported')
     }
     if (inputObservationIds.has(observation.observationId)) {
       throw new Error(`duplicate observation ${observation.observationId}`)

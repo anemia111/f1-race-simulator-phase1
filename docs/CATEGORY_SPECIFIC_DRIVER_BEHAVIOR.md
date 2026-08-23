@@ -3,13 +3,15 @@
 ## Status and purpose
 
 This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0. The batch adds typed category policy metadata and a
-reversible race adapter, but delegates to the existing generic driver decision
+introduced by Phase 7.0 and extended by Phase 7.1. Phase 7.1 adds closed,
+value-bearing observation readings and an immediate diagnostic projector, but
+the live race still delegates to the existing generic driver decision
 unchanged. It does **not** claim that either category policy is behaviorally
-operational or that Phase 7 is complete.
+operational, that perception is complete, or that Phase 7 is complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
-adapter is in `src/simulation/categoryDriverAgent.ts`; and the race integration
+adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
+is in `src/simulation/driverPerception.ts`; and the race integration
 point is in `src/simulation/race.ts`.
 
 ## Identity, policy, and experience are separate
@@ -48,8 +50,9 @@ adapter preserves the existing shared driver decision exactly.
   may describe the SUPER FORMULA OTS domain. It cannot expose F1 ERS, SOC,
   active-aero, Overtake, or DRS requests.
 
-Both policy branches are metadata-only in Phase 7.0 and delegate to the same
-legacy decision.
+Both policy branches remain behaviorally inert in Phase 7.1 and delegate to the
+same legacy decision. Value-bearing diagnostics do not make either policy
+operational.
 
 The selected branch comes from the executable `seriesId`. It is not inferred
 from the driver, track, tyre, or generic overtake configuration. This matters in
@@ -86,10 +89,13 @@ must not be confused with an operational category Driver Agent:
   carrying F1 ERS, SOC, or active-aero truth.
 
 Phase 7.0 wraps the generic race decision at its existing immutable,
-pre-advance evaluation point. The adapter's category/era check cannot alter the
-delegated `DriverDecision`, and the hot path allocates no decision record.
+pre-advance evaluation point. Phase 7.1 can project immediate diagnostics from
+that immutable `DriverDecisionContext`, but does not invoke the projector from
+the live race hot path. The adapter's category/era check cannot alter the
+delegated `DriverDecision`, and the hot path allocates no observation inbox or
+decision record.
 
-## Phase 7.0 behavior and rollback
+## Phase 7.1 behavior and rollback
 
 `RaceConfig.driverDecisionPath` in `src/types.ts` selects the race path:
 
@@ -106,10 +112,11 @@ series/vehicle-era pair is supported. An invalid pair is intentionally rejected
 by `category-agent-v1` while `legacy-direct` skips category validation.
 
 The race-path adapter does not add a random draw, rewrite the seed, create a
-category pace factor, or allocate a decision record. A `DriverDecisionRecord`
-schema exists for auditability, and an explicit pure diagnostic evaluation may
-construct one without touching race state. A legacy utility is recorded as not
-evaluated rather than assigned an invented score. Runtime production on the
+category pace factor, allocate observations, or allocate a decision record. An
+explicit pure diagnostic projection may create immediate observations, and an
+explicit pure diagnostic evaluation may construct a `DriverDecisionRecord`,
+without touching race state. A legacy utility is recorded as not evaluated
+rather than assigned an invented score. Runtime observation production on the
 race hot path, retention, checkpoint storage, and replay comparison remain
 later work.
 
@@ -121,8 +128,37 @@ qualifying policy coverage.
 
 Category policy must consume a driver observation, not unrestricted simulation
 truth. `DriverObservationFor` establishes a provenance- and uncertainty-aware
-signal boundary. Phase 7.0 carries signal metadata only and does not claim that
-a complete value-bearing perception model exists.
+signal boundary. Phase 7.1 adds a closed set of value-bearing reading kinds;
+it does not expose an open payload or claim that a complete perception model
+exists.
+
+The contract validator owns every reading bound and the allowed correlation
+between executable category, observation scope, `signalId`, and reading kind.
+A value within its numeric range is rejected when it is attached to an
+unrelated signal. Every accepted observation must also satisfy:
+
+```text
+observedAtTick <= availableAtTick <= decisionTime.tick
+```
+
+The immediate diagnostic projector derives selected exact readings from the
+immutable, pre-advance `DriverDecisionContext`. For this compatibility
+projection, observation, availability, and decision ticks are equal. The
+result is ephemeral: it is not retained in a live inbox, copied into a race
+snapshot, or consumed to change the delegated decision.
+
+Exact immediate readings are diagnostic compatibility evidence, not a model
+of sensing delay, noise, limited attention, or stale information. A bounded
+inbox with delayed/noisy delivery and operational consumption remains future
+work.
+
+F1 and SUPER FORMULA system readings remain mutually isolated. In particular,
+F1 observations cannot carry SUPER FORMULA OTS readings, and SUPER FORMULA
+observations cannot carry F1 energy, SOC, Overtake, or active-aero readings.
+When an authoritative SUPER FORMULA OTS source is unavailable, the contract
+allows an explicit system producer to emit an unavailable reading rather than
+invent a budget or substitute an F1 system value. The Phase 7.1 immediate
+projector emits no F1 or SUPER FORMULA system observation.
 
 Future category behavior must receive bounded causal signals through that
 contract. It must not read future random results, opponent internal plans,
@@ -141,11 +177,12 @@ policy cannot directly write:
 
 ## Determinism and category metadata
 
-Category metadata must be deterministic and observationally inert during Phase
-7.0. The adapter uses the same decision context and the same seed as the legacy
-path. Canonicalization removes incidental ordering from contract collections;
-it does not add a seed namespace or convert unavailable observations into
-invented values.
+Category metadata and immediate diagnostics must be deterministic and
+behaviorally inert during Phase 7.1. The adapter uses the same decision context
+and the same seed as the legacy path. The projector is opt-in, pure, and uses no
+random draw. Canonicalization removes incidental ordering from contract
+collections; it does not add a seed namespace or convert unavailable
+observations into invented values.
 
 Any later record producer must use simulation identifiers and simulation time,
 never wall-clock time, global counters, renderer timing, worker scheduling, or
@@ -153,9 +190,10 @@ callback order. Record creation, sorting, retention, or omission must not change
 the returned decision.
 
 Changing only the category policy branch in a contract-level parity case may
-change category metadata, but it must not change the delegated decision in
-Phase 7.0. Later operational policy versions may intentionally diverge only
-after category-specific behavior and acceptance coverage are added explicitly.
+change category metadata and the legal diagnostic reading set, but it must not
+change the delegated decision in Phase 7.1. Later operational policy versions
+may intentionally diverge only after category-specific behavior and acceptance
+coverage are added explicitly.
 
 ## Required future F1 behavior
 
@@ -200,6 +238,7 @@ agent must not gain a SUPER FORMULA OTS decision.
 
 Both category policies still require shared agent capabilities:
 
+- a bounded delayed/noisy observation inbox and operational perception policy;
 - strategic goal, tactical intent, and low-level control layers;
 - finite memory and opponent beliefs;
 - risk budget and team-order response;
@@ -211,5 +250,5 @@ Both category policies still require shared agent capabilities:
   effects removed.
 
 Until those items and category acceptance cases are implemented, the phrase
-"category-specific Driver Agent" refers to the Phase 7.0 contract boundary,
-not to completed category-specific driving behavior.
+"category-specific Driver Agent" refers to the Phase 7.1 contract boundary and
+diagnostic projection, not to completed category-specific driving behavior.
