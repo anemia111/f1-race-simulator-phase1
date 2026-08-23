@@ -1,20 +1,23 @@
 # Driver Agent model
 
-## Status and Phase 7.0 boundary
+## Status and Phase 7.1 boundary
 
-Phase 7.0 establishes a typed Driver Agent boundary and a reversible runtime
-seam. It is deliberately behavior-neutral. It does **not** complete Phase 7,
-activate an F1- or SUPER FORMULA-specific driving policy, add learned category
-experience, or claim that the current generic driver logic is a complete
-agent.
+Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
+seam. Phase 7.1 extends that boundary with closed, value-bearing observation
+readings and an immediate diagnostic projector. Both slices are deliberately
+behavior-neutral. They do **not** complete Phase 7, activate an F1- or SUPER
+FORMULA-specific driving policy, add learned category experience, or claim that
+the current generic driver logic is a complete agent or perception model.
 
-The batch has three relevant implementation boundaries:
+The batch has four relevant implementation boundaries:
 
 - `src/simulation/driverAgentContract.ts` defines the portable agent contract,
-  category policy types, observation metadata, requests, and decision-record
-  schema;
+  category policy types, closed observation readings, requests, validation,
+  and the decision-record schema;
 - `src/simulation/categoryDriverAgent.ts` adapts that contract to the existing
-  driver decision without changing the returned `DriverDecision`; and
+  driver decision without changing the returned `DriverDecision`;
+- `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
+  projection without joining the live race path; and
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the one
   pre-advance race decision seam.
 
@@ -23,6 +26,10 @@ The behavior delegated by the adapter remains
 `src/simulation/runtimeSystems.ts`, and existing F1 energy scheduling intent
 remains in `src/simulation/driverEnergyIntent.ts`. Phase 7.0 does not transfer
 physical or regulatory authority out of those modules.
+
+Phase 7.1 does not call the diagnostic projector from the live race hot path.
+It therefore adds no per-car hot-path observation allocation, random draw,
+policy evaluation, retained inbox, or behavior change.
 
 ## Runtime flow
 
@@ -35,6 +42,13 @@ immutable pre-advance race frame
              -> delegate unchanged to decideDriverBehavior
         -> return the same DriverDecision without allocating a record
   -> existing race, telemetry, and physical integration
+
+opt-in diagnostic path
+  immutable pre-advance DriverDecisionContext
+    -> immediate observation projector
+       -> closed exact readings
+       -> contract validation
+       -> ephemeral diagnostic result only
 ```
 
 The adapter is a migration seam, not a second decision authority. During this
@@ -42,6 +56,11 @@ batch, identical seed, driver, and context inputs with a supported executable
 series/vehicle-era pair must produce an exactly equal `DriverDecision` through
 both paths. An invalid pair fails closed on `category-agent-v1`; the explicit
 rollback path deliberately skips that category check.
+
+The diagnostic path projects from the same immutable
+`DriverDecisionContext` used before any car advances. It does not receive a
+mutable `RaceSnapshot`, duplicate snapshot truth into retained agent state, or
+feed its readings back into `decideDriverBehavior` in this slice.
 
 ## Contract model
 
@@ -81,18 +100,42 @@ era of the selected series. An explicitly mismatched pair is rejected on the
 category-agent path. These defaults are a migration rule, not category
 inference from physical or driver data.
 
-### Observation metadata
+### Observation metadata and closed readings
 
-`DriverObservationFor` defines what an agent can be told. In Phase 7.0 its
-signals describe identity, provenance, availability, and uncertainty; they do
-not duplicate live numerical WorldTruth into a second state owner. This makes
-the observation boundary inspectable without pretending that a complete
-perception model already exists.
+`DriverObservationFor` defines what an agent can be told. Phase 7.1 adds a
+closed set of value-bearing readings to the existing identity, provenance,
+availability, and uncertainty envelope. A reading is not an open payload into
+which arbitrary snapshot fields can be copied. Its legal kind and value bounds
+are owned by the contract validator.
 
-Operational policies will require later, explicitly bounded observation values
-with causal timing and uncertainty. They must be added through this contract,
-not by handing an agent an unrestricted `RaceSnapshot`, category runtime truth,
-future random result, opponent internal state, or final outcome.
+Validation also owns the correlation between category, observation scope,
+`signalId`, and reading kind. A numerically valid reading is still invalid when
+it is attached to the wrong scope or signal. F1-only system signals cannot be
+projected into a SUPER FORMULA observation, and SUPER FORMULA OTS cannot be
+projected into an F1 observation.
+
+Observation timing must satisfy:
+
+```text
+observedAtTick <= availableAtTick <= decisionTime.tick
+```
+
+The Phase 7.1 projector produces immediate compatibility diagnostics, so its
+exact readings use the same observation, availability, and decision tick.
+They are ephemeral projections of selected legacy context fields, not a second
+owner of simulation truth and not evidence that the driver has a complete
+perception model.
+
+SUPER FORMULA OTS may legitimately be source-unavailable. The contract lets an
+explicit system-observation producer preserve that as an unavailable reading
+without inventing an OTS budget, duration, power, or opponent estimate. The
+Phase 7.1 immediate projector emits no category-system observation at all.
+
+Operational policies still require a bounded inbox with delayed and noisy
+readings, causal delivery, retention limits, and explicit consumption rules.
+Those later inputs must remain inside this contract rather than handing an
+agent an unrestricted `RaceSnapshot`, category runtime truth, future random
+result, opponent internal state, or final outcome.
 
 ### Requests and records
 
@@ -128,9 +171,10 @@ work.
 `canonicalizeDriverAgentTickInput` removes incidental collection order.
 `validateDriverDecisionRecord` is the opt-in diagnostic validator for a record
 and its replay input. It checks category alignment, causal observation timing,
-references, requests, constraints, utility status, and forbidden outcome
-fields. Canonicalization must not normalize an invalid category combination
-into a valid one or change a seed.
+scope/signal/reading correlation, reading bounds, references, requests,
+constraints, utility status, and forbidden outcome fields. Canonicalization
+must not normalize an invalid category combination or reading into a valid one,
+or change a seed.
 
 ## Authority contract
 
@@ -155,20 +199,20 @@ car through another car.
 ## Observability and causal separation
 
 The live race constructs driver intent from one immutable physical field before
-any car advances. Phase 7.0 preserves that evaluation point. The adapter must
+any car advances. Phase 7.1 preserves that evaluation point. The adapter must
 not move a decision after one car has already been updated, because that would
 make traversal order observable to later drivers.
 
 The contract separates three things that must not be conflated:
 
 1. simulation truth owned by the physical and regulatory runtime;
-2. observation metadata and, later, bounded causal signals available to a
-   driver; and
+2. ephemeral diagnostic observations and, later, a bounded causal inbox
+   available to a driver; and
 3. requests emitted by the driver for downstream authorities to evaluate.
 
-The current compatibility context still predates a complete perception model.
-Phase 7.0 exposes the boundary but does not claim that every existing cue has
-already been converted to a source-labelled, uncertain driver observation.
+The immediate projector covers selected compatibility cues only. Phase 7.1
+does not claim that every existing cue has been converted, that exact readings
+model sensing error, or that a driver policy consumes those readings.
 
 ## Determinism
 
@@ -179,18 +223,21 @@ creation and canonicalization are pure operations; when a later runtime producer
 uses them, it must not use wall-clock time, global counters, mutable random
 state, callback order, renderer state, or log retention as an input.
 
-For Phase 7.0, the required invariants are:
+For Phase 7.0 and Phase 7.1, the required invariants are:
 
 - for a supported series/vehicle-era pair, the direct and adapter paths return
   exactly equal `DriverDecision` objects;
 - the adapter does not allocate or retain a record while producing that live
   decision;
+- the immediate projector is opt-in and pure, consumes no random draw, and is
+  not invoked by the live race path;
 - contract canonicalization orders IDs and record collections by stable keys;
   and
 - the same seed and canonical contract input produce the same canonical data.
 
-This is a determinism foundation, not a completed save/replay feature. Decision
-records are not yet part of checkpoint state or a persisted replay contract.
+This is a determinism foundation, not a completed save/replay feature.
+Projected observations and decision records are not yet part of checkpoint
+state, a retained driver inbox, or a persisted replay contract.
 
 ## Rollback
 
@@ -216,7 +263,8 @@ not an implicit user of the adapter.
 
 Phase 7 is not complete until later slices provide and verify at least:
 
-- bounded value-bearing driver perception with causal latency and uncertainty;
+- a delayed/noisy bounded observation inbox with causal delivery, retention,
+  uncertainty, and operational policy consumption;
 - strategic goals, tactical intent, and low-level controls as distinct layers;
 - finite memory, opponent beliefs, risk budget, team-order response, and grip
   exploration;
@@ -231,6 +279,7 @@ Phase 7 is not complete until later slices provide and verify at least:
   effects; and
 - cross-category and rule-aware behavior acceptance coverage.
 
-Until those items are implemented, `category-agent-v1` names the new contract
-and adapter path only. It must not be presented as operational category-specific
-Driver AI.
+Until those items are implemented, `category-agent-v1` names the contract and
+behavior-neutral adapter path, while Phase 7.1 adds only an opt-in diagnostic
+projection. Neither must be presented as operational category-specific Driver
+AI.

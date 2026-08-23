@@ -22,6 +22,9 @@ import {
 type F1Policy = typeof F1_2026_DRIVING_POLICY
 type F1Input = DriverAgentTickInput<F1Policy>
 type F1Record = DriverDecisionRecord<F1Policy>
+type F1Observation = F1Input['observations'][number]
+type F1SelfObservation = Extract<F1Observation, { scope: 'self' }>
+type F1TrafficObservation = Extract<F1Observation, { scope: 'traffic' }>
 type SfPolicy = typeof SF_2026_DRIVING_POLICY
 type SfInput = DriverAgentTickInput<SfPolicy>
 type SfRecord = DriverDecisionRecord<SfPolicy>
@@ -30,24 +33,55 @@ const driver = initialDrivers[0]
 
 function observation(
   observationId: string,
+  scope: 'self',
+): F1SelfObservation
+function observation(
+  observationId: string,
+  scope: 'traffic',
+): F1TrafficObservation
+function observation(
+  observationId: string,
   scope: 'self' | 'traffic',
-): F1Input['observations'][number] {
-  return {
+): F1Observation {
+  const common = {
     availableAtTick: 10,
     driverId: driver.id,
     observationId,
     observedAtTick: 9,
     provenance: {
-      source: 'physics-sensor',
+      source: 'physics-sensor' as const,
       sourceId: `sensor:${observationId}`,
     },
-    scope,
-    seriesId: 'f1-custom',
-    signalId: scope === 'traffic' ? 'nearest-ahead' : 'self-state',
-    ...(scope === 'traffic' ? { subjectId: 'other-driver' } : {}),
-    uncertainty: 'direct',
-    vehicleEraId: 'f1-2026-current',
+    seriesId: 'f1-custom' as const,
+    vehicleEraId: 'f1-2026-current' as const,
   }
+
+  return scope === 'traffic'
+    ? {
+        ...common,
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 1.2,
+            minimum: 0.8,
+          },
+          value: 1,
+        },
+        scope,
+        signalId: 'gap-seconds',
+        subjectId: 'other-driver',
+      }
+    : {
+        ...common,
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 0.25,
+        },
+        scope,
+        signalId: 'lap-progress',
+      }
 }
 
 function f1Input(): F1Input {
@@ -145,6 +179,84 @@ function f1Record(input: F1Input): F1Record {
       },
       {
         candidateId: 'candidate-a',
+        status: 'legacy-not-evaluated',
+        value: null,
+      },
+    ],
+    vehicleEraId: input.policy.vehicleEraId,
+  }
+}
+
+function sfInput(): SfInput {
+  const input = f1Input()
+
+  return {
+    decisionTime: input.decisionTime,
+    driverId: input.driverId,
+    experience: {
+      confidence: 0,
+      driverId: input.driverId,
+      learnedGripModel: input.experience.learnedGripModel,
+      mileageKm: 0,
+      seriesId: 'super-formula',
+      vehicleEraId: 'sf-2026',
+    },
+    identity: input.identity,
+    observations: [
+      {
+        availableAtTick: 10,
+        driverId: input.driverId,
+        observationId: 'sf-ots-observation',
+        observedAtTick: 10,
+        provenance: {
+          source: 'category-system',
+          sourceId: 'super-formula-event-source',
+        },
+        reading: {
+          kind: 'unavailable',
+          reason: 'source-unavailable',
+        },
+        scope: 'sf-system',
+        seriesId: 'super-formula',
+        signalId: 'ots',
+        vehicleEraId: 'sf-2026',
+      },
+    ],
+    policy: SF_2026_DRIVING_POLICY,
+    seed: input.seed,
+  }
+}
+
+function sfRecord(input: SfInput): SfRecord {
+  return {
+    candidates: [
+      {
+        candidateId: 'sf-candidate',
+        requests: [
+          {
+            channel: 'intention',
+            intention: 'follow-reference-line',
+            requestId: 'sf-request',
+          },
+        ],
+      },
+    ],
+    constraints: [],
+    decisionId: 'sf-decision',
+    decisionTime: input.decisionTime,
+    driverId: input.driverId,
+    observationIds: ['sf-ots-observation'],
+    policyKind: input.policy.kind,
+    reason: {
+      code: 'deterministic-fallback',
+      referenceIds: ['sf-candidate'],
+    },
+    seed: input.seed,
+    selectedCandidateId: 'sf-candidate',
+    seriesId: input.policy.seriesId,
+    utilities: [
+      {
+        candidateId: 'sf-candidate',
         status: 'legacy-not-evaluated',
         value: null,
       },
@@ -263,6 +375,45 @@ describe('driver agent category contract', () => {
     }
     void compileOnlyCrossCategoryCalls
 
+    const sfOtsObservation = {
+      ...observation('compile-sf-ots', 'self'),
+      reading: {
+        kind: 'unavailable',
+        reason: 'source-unavailable',
+      },
+      scope: 'sf-system',
+      signalId: 'ots',
+    } as const
+    // @ts-expect-error An F1 input cannot contain a SUPER FORMULA OTS reading.
+    const invalidF1Observation: F1Input['observations'][number] = sfOtsObservation
+    const f1EnergyObservation = {
+      ...observation('compile-f1-energy', 'self'),
+      reading: {
+        kind: 'scalar',
+        uncertainty: { kind: 'exact' },
+        value: 0.5,
+      },
+      scope: 'f1-system',
+      signalId: 'energy-store',
+    } as const
+    // @ts-expect-error A SUPER FORMULA input cannot contain an F1 Energy Store reading.
+    const invalidSfObservation: SfInput['observations'][number] = f1EnergyObservation
+    const trafficWithoutSubject = {
+      ...observation('compile-traffic-no-subject', 'self'),
+      scope: 'traffic',
+      signalId: 'gap-seconds',
+    } as const
+    // @ts-expect-error Traffic readings require a subject id.
+    const invalidTrafficObservation: F1Input['observations'][number] =
+      trafficWithoutSubject
+    const selfWithSubject = {
+      ...observation('compile-self-with-subject', 'traffic'),
+      scope: 'self',
+      signalId: 'lap-progress',
+    } as const
+    // @ts-expect-error Non-traffic readings cannot carry a subject id.
+    const invalidSelfObservation: F1Input['observations'][number] = selfWithSubject
+
     expect(invalidF1Policy.capabilities).toHaveProperty('ots')
     expect(invalidSfPolicy.capabilities).toHaveProperty('energyStore')
     expect(invalidF1Experience).toHaveProperty('learnedOtsModel')
@@ -271,6 +422,10 @@ describe('driver agent category contract', () => {
     expect(invalidSfTactic).toHaveProperty('tactic', 'energy')
     expect(invalidNonFreshF1Policy.capabilities).toHaveProperty('otsAttack')
     expect(invalidNonFreshSfPolicy.capabilities).toHaveProperty('cornerMode')
+    expect(invalidF1Observation).toHaveProperty('signalId', 'ots')
+    expect(invalidSfObservation).toHaveProperty('signalId', 'energy-store')
+    expect(invalidTrafficObservation).not.toHaveProperty('subjectId')
+    expect(invalidSelfObservation).toHaveProperty('subjectId')
   })
 
   it('resolves only the matching 2026 series and vehicle-era policy', () => {
@@ -303,7 +458,7 @@ describe('driver agent category contract', () => {
     ])
   })
 
-  it('rejects non-finite and future observations', () => {
+  it('rejects non-finite, future, and causally reversed observations', () => {
     const input = f1Input()
     const record = f1Record(input)
     const nonFinite = {
@@ -316,12 +471,328 @@ describe('driver agent category contract', () => {
         index === 0 ? { ...entry, availableAtTick: 11 } : entry,
       ),
     }
+    const causallyReversed = {
+      ...input,
+      observations: input.observations.map((entry, index) =>
+        index === 0 ? { ...entry, observedAtTick: 11 } : entry,
+      ),
+    }
 
     expect(() =>
       validateDriverDecisionRecord(record, nonFinite),
     ).toThrow(/finite/)
     expect(() => validateDriverDecisionRecord(record, future)).toThrow(
       /future tick/,
+    )
+    expect(() =>
+      validateDriverDecisionRecord(record, causallyReversed),
+    ).toThrow(/future tick/)
+  })
+
+  it('accepts every closed value-bearing reading family at its bounds', () => {
+    const input = f1Input()
+    const record = f1Record(input)
+    const base = observation('supported-reading', 'self')
+    const supported = [
+      {
+        ...base,
+        observationId: 'self-lateral',
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: -20,
+        },
+        signalId: 'lateral-offset-m',
+      },
+      {
+        ...base,
+        observationId: 'track-reference',
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 20,
+            minimum: -20,
+          },
+          value: 0,
+        },
+        scope: 'track',
+        signalId: 'reference-line-offset-m',
+      },
+      {
+        ...base,
+        observationId: 'track-half-width',
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 20,
+        },
+        scope: 'track',
+        signalId: 'track-half-width-m',
+      },
+      {
+        ...base,
+        observationId: 'traffic-gap',
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 28,
+        },
+        scope: 'traffic',
+        signalId: 'gap-seconds',
+        subjectId: 'traffic-a',
+      },
+      {
+        ...base,
+        observationId: 'traffic-lateral',
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 40,
+            minimum: -40,
+          },
+          value: 0,
+        },
+        scope: 'traffic',
+        signalId: 'lateral-separation-m',
+        subjectId: 'traffic-b',
+      },
+      {
+        ...base,
+        observationId: 'race-control-flag',
+        reading: {
+          kind: 'state',
+          uncertainty: { confidence: 0.75, kind: 'confidence' },
+          value: 'double-yellow',
+        },
+        scope: 'race-control',
+        signalId: 'flag-state',
+      },
+      {
+        ...base,
+        observationId: 'team-pit',
+        reading: {
+          kind: 'boolean',
+          uncertainty: { confidence: 0, kind: 'confidence' },
+          value: false,
+        },
+        scope: 'team',
+        signalId: 'pit-instruction',
+      },
+      {
+        ...base,
+        observationId: 'f1-straight-mode',
+        reading: {
+          kind: 'boolean',
+          uncertainty: { kind: 'exact' },
+          value: true,
+        },
+        scope: 'f1-system',
+        signalId: 'straight-mode',
+      },
+      {
+        ...base,
+        observationId: 'f1-corner-mode-unavailable',
+        reading: {
+          kind: 'unavailable',
+          reason: 'sensor-unavailable',
+        },
+        scope: 'f1-system',
+        signalId: 'corner-mode',
+      },
+      {
+        ...base,
+        observationId: 'f1-energy-store',
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 1,
+            minimum: 0,
+          },
+          value: 1,
+        },
+        scope: 'f1-system',
+        signalId: 'energy-store',
+      },
+      {
+        ...base,
+        observationId: 'f1-electrical-overtake',
+        reading: {
+          kind: 'state',
+          uncertainty: { confidence: 1, kind: 'confidence' },
+          value: 'available',
+        },
+        scope: 'f1-system',
+        signalId: 'electrical-overtake',
+      },
+    ] as const satisfies readonly F1Input['observations'][number][]
+
+    expect(() =>
+      validateDriverDecisionRecord(record, {
+        ...input,
+        observations: [...input.observations, ...supported],
+      }),
+    ).not.toThrow()
+
+    const superFormulaInput = sfInput()
+    expect(() =>
+      validateDriverDecisionRecord(sfRecord(superFormulaInput), superFormulaInput),
+    ).not.toThrow()
+  })
+
+  it('rejects malformed, unbounded, and mis-correlated readings', () => {
+    const input = f1Input()
+    const record = f1Record(input)
+    const base = observation('invalid-reading', 'self')
+    const expectInvalid = (entry: unknown, error: RegExp) => {
+      expect(() =>
+        validateDriverDecisionRecord(record, {
+          ...input,
+          observations: [...input.observations, entry] as F1Input['observations'],
+        }),
+      ).toThrow(error)
+    }
+
+    expectInvalid(
+      {
+        ...base,
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 1.001,
+        },
+      },
+      /between 0 and 1/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 0.7,
+            minimum: 0.6,
+          },
+          value: 0.5,
+        },
+      },
+      /bounded interval must.*enclose/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        reading: {
+          kind: 'scalar',
+          uncertainty: {
+            kind: 'bounded-interval',
+            maximum: 0.5,
+            minimum: -0.1,
+          },
+          value: 0.25,
+        },
+      },
+      /bounded interval must.*remain between 0 and 1/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: Number.NaN,
+        },
+      },
+      /must be finite/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'invalid-confidence',
+        reading: {
+          kind: 'boolean',
+          uncertainty: { confidence: 1.01, kind: 'confidence' },
+          value: true,
+        },
+        scope: 'team',
+        signalId: 'pit-instruction',
+      },
+      /confidence must be finite and between 0 and 1/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'invalid-unavailable-reason',
+        reading: { kind: 'unavailable', reason: 'engineer-guessed' },
+      },
+      /reason is not supported/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'caller-domain',
+        reading: {
+          domain: [0, 1],
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 0.5,
+        },
+      },
+      /contains unsupported field domain/,
+    )
+    const legacyMetadataOnly = {
+      availableAtTick: base.availableAtTick,
+      driverId: base.driverId,
+      observationId: 'legacy-metadata-only',
+      observedAtTick: base.observedAtTick,
+      provenance: base.provenance,
+      scope: base.scope,
+      seriesId: base.seriesId,
+      signalId: base.signalId,
+      uncertainty: 'direct',
+      vehicleEraId: base.vehicleEraId,
+    }
+    expectInvalid(legacyMetadataOnly, /unsupported field uncertainty/)
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'unknown-common-signal',
+        signalId: 'speed-kph',
+      },
+      /self observation signal is not supported/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'traffic-without-subject',
+        scope: 'traffic',
+        signalId: 'gap-seconds',
+      },
+      /missing required field subjectId/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'self-with-subject',
+        subjectId: 'other-driver',
+      },
+      /contains unsupported field subjectId/,
+    )
+    expectInvalid(
+      {
+        ...base,
+        observationId: 'wrong-reading-kind',
+        reading: {
+          kind: 'scalar',
+          uncertainty: { kind: 'exact' },
+          value: 1,
+        },
+        scope: 'team',
+        signalId: 'pit-instruction',
+      },
+      /boolean value or be unavailable/,
     )
   })
 
@@ -332,7 +803,11 @@ describe('driver agent category contract', () => {
       ...input,
       observations: [
         {
-          ...input.observations[0],
+          ...input.observations[1],
+          reading: {
+            kind: 'unavailable',
+            reason: 'source-unavailable',
+          },
           scope: 'sf-system',
           seriesId: 'super-formula',
           signalId: 'ots',
@@ -350,6 +825,22 @@ describe('driver agent category contract', () => {
         },
       },
     } as unknown as F1Input
+    const superFormulaInput = sfInput()
+    const crossF1SystemObservation = {
+      ...superFormulaInput,
+      observations: [
+        {
+          ...superFormulaInput.observations[0],
+          reading: {
+            kind: 'scalar',
+            uncertainty: { kind: 'exact' },
+            value: 0.5,
+          },
+          scope: 'f1-system',
+          signalId: 'energy-store',
+        },
+      ],
+    } as unknown as SfInput
 
     expect(() =>
       validateDriverDecisionRecord(record, crossObservation),
@@ -357,6 +848,12 @@ describe('driver agent category contract', () => {
     expect(() =>
       validateDriverDecisionRecord(record, crossCapability),
     ).toThrow(/capabilities contains unsupported field otsAttack/)
+    expect(() =>
+      validateDriverDecisionRecord(
+        sfRecord(superFormulaInput),
+        crossF1SystemObservation,
+      ),
+    ).toThrow(/crosses category/)
   })
 
   it('rejects invented policies, capabilities, and category-system signals', () => {
@@ -414,7 +911,7 @@ describe('driver agent category contract', () => {
       ...input,
       observations: [
         {
-          ...input.observations[0],
+          ...input.observations[1],
           scope: 'f1-system',
           signalId: 'ots',
         },
