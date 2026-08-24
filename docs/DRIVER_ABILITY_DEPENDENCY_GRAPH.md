@@ -229,10 +229,6 @@ validation values for tuning.
 - the returned `DriverDecision.nominalLateralOffsetM` and `errorRisk` fields have
   no downstream production reader. Their local values already contribute to
   other decision calculations before return.
-- `qualifyingSetupPenaltySeconds` is an exported helper with no production
-  caller. Its internal `setupCompletenessPercent` input also has an independent
-  `SetupPanel` UI consumer, but no connected timed-session consumer.
-
 These are inventory findings, not authorization to wire a value into pace or
 delete saved state. Each change needs its own migration, replay, and acceptance
 scope.
@@ -261,6 +257,12 @@ end-of-straight value still contributes to `superclipAcceptance`; qualifying
 phase still changes consumed intent outputs. No coefficient, formula feeding a
 consumer, seed/hash input, random evaluation, SOC/energy authority, or saved
 state changes. This return-shape cleanup does not resolve DA-03.
+
+The fourth behavior-neutral cleanup removes the uncalled
+`qualifyingSetupPenaltySeconds` export and its private constant. The separate
+`setupCompletenessPercent` helper and its `SetupPanel` consumer remain intact;
+no timed-session setup penalty is added or changed. Runtime values, seeds, random
+evaluations, persisted setup state, and results remain unchanged.
 
 ## Invariants
 

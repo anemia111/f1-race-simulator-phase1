@@ -19,7 +19,7 @@ composite SUPER FORMULA OTS driver-use predicate through the same switch. Phase
 qualifying, Sprint Qualifying, and practice through the reversible adapter.
 Phase 7.8A documents the current driver-ability dependency graph and unresolved
 compound effects without changing production behavior. The first Phase 7.8B
-cleanups remove one unused helper, correct a track-limit parameter label, and
+cleanups remove two unused helpers, correct a track-limit parameter label, and
 narrow redundant decision and energy-intent return surfaces without changing a
 consumed calculation. These slices do not claim that perception or Phase 7 is
 complete.
@@ -227,14 +227,15 @@ wet-execution, tyre, and practice effects unresolved for Phase 7.8B or later;
 this slice changes no coefficient, seed, random draw, runtime field, or saved
 state.
 
-The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` export,
-rename only the track-limit helper's positional parameter to match the supplied
-race-awareness ability, and remove the redundant returned
-`DriverDecision.decisionWindow` property while retaining the local window used
-by `absoluteDecisionWindow`. The exported legacy tuning key, values, formulas,
-argument order, seed/hash inputs, random evaluations, cadence, and
-production-consumed decision values remain unchanged. This does not choose a
-new track-limit skill owner or resolve the DA-12 duplicate-effect review.
+The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` and
+`qualifyingSetupPenaltySeconds` exports, rename only the track-limit helper's
+positional parameter to match the supplied race-awareness ability, and remove
+the redundant returned `DriverDecision.decisionWindow` property while retaining
+the local window used by `absoluteDecisionWindow`.
+`setupCompletenessPercent` and its UI consumer remain. The exported legacy
+tuning key, consumed values and formulas, argument order, seed/hash inputs,
+random evaluations, cadence, and results remain unchanged. This does not choose
+a new track-limit skill owner or resolve the DA-12 duplicate-effect review.
 
 The next cleanup removes the terminal returned `qualifyingSpendBias` field and
 calculation from `F1EnergyIntent`, plus only the redundant returned
