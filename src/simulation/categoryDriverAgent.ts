@@ -3,6 +3,7 @@ import type {
   RuntimeVehicleEraId,
 } from '../series/seriesIds'
 import type { Driver, DriverDecisionPath, F1EnergyIntent } from '../types'
+import { activeAeroModeFor } from './activeAero'
 import {
   decideDriverBehavior,
   type DriverDecision,
@@ -112,6 +113,40 @@ export function f1EnergyIntentForPath(
   }
 
   return f1EnergyIntentFor(input.options)
+}
+
+export type F1ActiveAeroModePathInput = {
+  options: Parameters<typeof activeAeroModeFor>[0]
+  path?: DriverDecisionPath
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+}
+
+/**
+ * Ownership-only adapter for the existing pure F1 mode request. The active
+ * aero subsystem still owns legality, transitions, failures, and wing state.
+ */
+export function f1ActiveAeroModeForPath(
+  input: F1ActiveAeroModePathInput,
+): ReturnType<typeof activeAeroModeFor> {
+  if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
+    const policy = resolveCategoryDrivingPolicy(
+      input.seriesId,
+      input.vehicleEraId,
+    )
+
+    if (
+      policy.kind !== 'f1-2026-driving-policy' ||
+      policy.capabilities.straightMode !== 'requestable' ||
+      policy.capabilities.cornerMode !== 'requestable'
+    ) {
+      throw new Error(
+        `F1 active-aero intent requires an F1 Straight/Corner policy, received ${policy.seriesId}/${policy.vehicleEraId}`,
+      )
+    }
+  }
+
+  return activeAeroModeFor(input.options)
 }
 
 /**

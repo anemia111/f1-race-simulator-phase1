@@ -3,13 +3,14 @@
 ## Status and purpose
 
 This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0 and extended through Phase 7.2. Phase 7.1 adds closed,
+introduced by Phase 7.0 and extended through Phase 7.3. Phase 7.1 adds closed,
 value-bearing observation readings and an immediate diagnostic projector.
 Phase 7.2 moves dispatch ownership of the existing pure F1 energy intent behind
 the category-agent switch, while the live race still produces exactly the same
-generic decision and energy intent. It does **not** claim that either category
-policy is behaviorally operational, that perception is complete, or that Phase
-7 is complete.
+generic decision and energy intent. Phase 7.3 routes the unchanged F1
+Straight/Corner selector through the same switch. It does **not** claim that
+either category policy is behaviorally operational, that perception is
+complete, or that Phase 7 is complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
@@ -52,7 +53,7 @@ adapter preserves the existing shared driver decision exactly.
   may describe the SUPER FORMULA OTS domain. It cannot expose F1 ERS, SOC,
   active-aero, Overtake, or DRS requests.
 
-Both policy branches remain behaviorally inert in Phase 7.2 and delegate to the
+Both policy branches remain behaviorally inert in Phase 7.3 and delegate to the
 same legacy decision. The F1 branch now validates ownership before dispatching
 the unchanged energy scheduler; it does not replace that scheduler with an
 observation-consuming policy. Value-bearing diagnostics do not make either
@@ -101,15 +102,16 @@ alter the delegated `DriverDecision` or energy-intent result, and the hot path
 adds no observation inbox/projector, decision record, event/log entry, retained
 agent state, or random draw.
 
-## Phase 7.2 behavior and rollback
+## Phase 7.3 behavior and rollback
 
 `RaceConfig.driverDecisionPath` in `src/types.ts` selects the race path:
 
 - `category-agent-v1` resolves and checks the executable series/vehicle era,
   then delegates unchanged to `decideDriverBehavior` and, for F1 telemetry,
-  the existing energy scheduler;
+  the existing energy scheduler and active-aero mode selector;
 - `legacy-direct` skips category-policy resolution and delegates from the same
-  wrappers directly to `decideDriverBehavior` and `f1EnergyIntentFor`.
+  wrappers directly to `decideDriverBehavior`, `f1EnergyIntentFor`, and
+  `activeAeroModeFor`.
 
 Once exact parity coverage is satisfied, omission defaults to
 `category-agent-v1`. The explicit `legacy-direct` value is the rollback path.
@@ -133,6 +135,15 @@ state. No coefficient, pace multiplier, RNG input, or time source is added.
 This compatibility adapter still receives the existing read-only Energy Store
 state in its options; it therefore does not satisfy the future requirement for
 an operational policy to consume only bounded causal observations.
+
+For F1 active-aero runtime, both paths call `activeAeroModeFor` with the same
+legacy options and return the same mode. The category path requires both
+Straight and Corner capabilities. SF runtime, preparation laps, and OTS never
+enter this seam. `advanceActiveAeroState` retains all authority over zone and
+Low-Grip legality, State-of-Deployment changes, transitions, failures,
+Corner-safe return, and durable wing state. Electrical Overtake remains outside
+this slice because its driver request is not yet separated from regulatory
+eligibility and power-ledger arbitration.
 
 The race-path adapter does not add a random draw, rewrite the seed, create a
 category pace factor, allocate observations, or allocate a decision record. An
@@ -203,7 +214,7 @@ policy cannot directly write:
 ## Determinism and category metadata
 
 Category metadata and immediate diagnostics must be deterministic and
-behaviorally inert through Phase 7.2. The adapter uses the same decision context
+behaviorally inert through Phase 7.3. The adapter uses the same decision context
 and the same seed as the legacy path. The projector is opt-in, pure, and uses no
 random draw. Canonicalization removes incidental ordering from contract
 collections; it does not add a seed namespace or convert unavailable
@@ -221,9 +232,9 @@ the returned decision.
 
 Changing only the category policy branch in a contract-level parity case may
 change category metadata and the legal diagnostic reading set, but it must not
-change the delegated decision or energy intent in Phase 7.2. Later operational
-policy versions may intentionally diverge only after category-specific behavior
-and acceptance coverage are added explicitly.
+change the delegated decision, energy intent, or active-aero mode in Phase 7.3.
+Later operational policy versions may intentionally diverge only after
+category-specific behavior and acceptance coverage are added explicitly.
 
 ## Required future F1 behavior
 
@@ -281,5 +292,6 @@ Both category policies still require shared agent capabilities:
 
 Until those items and category acceptance cases are implemented, the phrase
 "category-specific Driver Agent" refers to the contract boundary, Phase 7.1
-diagnostic projection, and Phase 7.2 ownership-only F1 energy dispatch, not to
-completed category-specific driving behavior.
+diagnostic projection, Phase 7.2 ownership-only F1 energy dispatch, and Phase
+7.3 ownership-only F1 mode-selector dispatch. It does not mean completed
+category-specific driving behavior.
