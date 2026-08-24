@@ -1,6 +1,6 @@
 # Driver Agent model
 
-## Status and Phase 7.8A boundary
+## Status and Phase 7.8 boundary
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
@@ -13,10 +13,12 @@ always-use-when-permitted Electrical Overtake request explicit and routes only
 that ephemeral compatibility request through the switch. Phase 7.6 routes the
 unchanged composite SUPER FORMULA OTS driver-use predicate through the same
 switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
-decision used by qualifying, Sprint Qualifying, and practice through the same
-switch. Phase 7.8A documents the current driver-ability dependency graph and its
-unresolved compound effects without changing production behavior. All nine
-slices are deliberately behavior-neutral. They do **not** complete Phase 7,
+  decision used by qualifying, Sprint Qualifying, and practice through the same
+  switch. Phase 7.8A documents the current driver-ability dependency graph and its
+  unresolved compound effects without changing production behavior. The initial
+  Phase 7.8B cleanup removes one unused helper and corrects a track-limit
+  parameter label without changing its calculation. All ten slices are
+  deliberately behavior-neutral. They do **not** complete Phase 7,
 activate an observation-consuming F1 or SUPER FORMULA driving policy, add
 learned category experience, or claim that the current generic driver logic is
 a complete agent or perception model.
@@ -52,6 +54,11 @@ Phase 7.8A does not call the diagnostic projector from the live race or offline
 timed-session paths and changes no production source. It therefore adds no
 hot-path observation allocation, random draw, decision record, retained inbox,
 event/log entry, or behavior change.
+
+The initial Phase 7.8B cleanup changes production source only by removing the
+uncalled `driverAbilityDeficit` export and renaming a positional track-limit
+parameter to match the supplied race-awareness ability. It preserves the
+legacy exported tuning key, value, formula, argument order, seed, and hash key.
 
 ## Runtime flow
 
@@ -194,6 +201,11 @@ domains. It also identifies aggregate-only skills, dead sinks, and compound
 effects that still require review. The graph is documentation, not a new
 runtime manifest or a claim that the unexplained duplicate effects are fixed;
 their resolution remains Phase 7.8B or later work.
+
+The first Phase 7.8B cleanup removes a confirmed dead helper and resolves the
+track-limit input-name mismatch recorded by that graph. It does not select a
+new ability owner or resolve DA-12; all duplicate-effect sensitivity and removal
+work remains open.
 
 ## Contract model
 

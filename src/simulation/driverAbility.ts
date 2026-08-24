@@ -237,10 +237,6 @@ export function driverSkillBlend(
     : DRIVER_ABILITY_INTERNAL_MIN
 }
 
-export function driverAbilityDeficit(value: number): number {
-  return Math.max(0, 1 - driverPerformanceValue(value))
-}
-
 /**
  * How far past the published scale a driver's rating sits, as a fraction of
  * the scale. Zero for every rating up to 100, 0.2 at 120.
