@@ -83,6 +83,13 @@ through 120 remain valid and displayed, while only the existing bounded
 coefficients, seeds, random cadence, authority, and saved shape are unchanged;
 no observed or validation target is used to compensate for the removed edge.
 
+DA-08 is then closed with a behavior-neutral executable contract. The existing
+12 decision windows retain local execution losses, while the unchanged
+`lap-execution` hash is sampled once per run and contributes only a bounded
+non-negative whole-run assembly shortfall. A pure helper test fixes its
+symmetry, zero point, and consistency endpoints; no historical spread or grid
+gap is used as an acceptance target.
+
 ## Runtime flow
 
 ```text
@@ -229,7 +236,8 @@ The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
 return surfaces recorded by that graph. They do not select a new ability owner
 or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
-the other duplicate-effect sensitivity and removal work remains open.
+DA-08 is resolved by its two-cadence executable contract. The other
+duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
 
