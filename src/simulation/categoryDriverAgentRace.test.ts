@@ -75,6 +75,11 @@ describe('category driver-agent race seam', () => {
       expect(defaulted).toEqual(category)
 
       if (seriesId === 'f1-custom') {
+        const ersModesBefore = commonStartedSnapshot.cars.map((car) =>
+          car.runtimeSystems.kind === 'f1'
+            ? car.runtimeSystems.ersMode
+            : null,
+        )
         const activeAeroBefore = commonStartedSnapshot.cars.map((car) =>
           car.runtimeSystems.kind === 'f1'
             ? car.runtimeSystems.activeAeroState
@@ -97,7 +102,17 @@ describe('category driver-agent race seam', () => {
             ? car.runtimeSystems.activeAeroState
             : null,
         )
+        const ersModesAfter = category.cars.map((car) =>
+          car.runtimeSystems.kind === 'f1'
+            ? car.runtimeSystems.ersMode
+            : null,
+        )
 
+        expect(
+          ersModesAfter.some(
+            (mode, index) => mode !== null && mode !== ersModesBefore[index],
+          ),
+        ).toBe(true)
         expect(
           activeAeroAfter.some((state, index) => {
             const before = activeAeroBefore[index]
@@ -135,6 +150,7 @@ describe('category driver-agent race seam', () => {
             (car) =>
               car.runtimeSystems.kind === 'super-formula' &&
               !('activeAeroState' in car.runtimeSystems) &&
+              !('ersMode' in car.runtimeSystems) &&
               !('energyStore' in car.runtimeSystems),
           ),
         ).toBe(true)

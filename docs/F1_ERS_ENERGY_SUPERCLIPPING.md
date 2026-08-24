@@ -109,6 +109,12 @@ Phase 7.2 changes only dispatch ownership: `driverEnergyIntent.ts` remains the
 exact pure numerical kernel, while superclipping, deployment requests,
 regulatory gates, and Energy Store integration retain their existing authority.
 
+Phase 7.4 also moves only the baseline requested ERS-mode selector. The same
+pure `f1ErsModeIntentFor` result is returned on the legacy and category paths.
+Telemetry retains standing-start, preparation/yield, superclip, and qualifying
+overrides; all regulatory power, SOC, recharge, and physical owners are
+unchanged. This is not a complete or observation-consuming ERS policy.
+
 ## Sources
 
 - [FIA 2026 Technical Regulations, Issue 20](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf)

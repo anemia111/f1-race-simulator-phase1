@@ -25,7 +25,9 @@ import {
 } from './driverAgentContract'
 import {
   f1EnergyIntentFor,
+  f1ErsModeIntentFor,
   type F1EnergyIntentOptions,
+  type F1ErsModeIntentOptions,
 } from './driverEnergyIntent'
 
 export type { DriverDecisionPath } from '../types'
@@ -147,6 +149,36 @@ export function f1ActiveAeroModeForPath(
   }
 
   return activeAeroModeFor(input.options)
+}
+
+export type F1ErsModeIntentPathInput = {
+  options: F1ErsModeIntentOptions
+  path?: DriverDecisionPath
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+}
+
+/** Ownership-only adapter for the existing pure baseline ERS-mode request. */
+export function f1ErsModeIntentForPath(
+  input: F1ErsModeIntentPathInput,
+): ReturnType<typeof f1ErsModeIntentFor> {
+  if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
+    const policy = resolveCategoryDrivingPolicy(
+      input.seriesId,
+      input.vehicleEraId,
+    )
+
+    if (
+      policy.kind !== 'f1-2026-driving-policy' ||
+      policy.capabilities.energyStore !== 'requestable'
+    ) {
+      throw new Error(
+        `F1 ERS-mode intent requires an F1 energy-store policy, received ${policy.seriesId}/${policy.vehicleEraId}`,
+      )
+    }
+  }
+
+  return f1ErsModeIntentFor(input.options)
 }
 
 /**

@@ -1,8 +1,12 @@
 import type {
+  ActiveFlagPhase,
   BattlePhase,
+  CarSnapshot,
   Driver,
   EnergyStoreState,
+  ErsMode,
   F1EnergyIntent,
+  OvertakeStatus,
   RacePaceMode,
   TimedRunPhase,
 } from '../types'
@@ -20,6 +24,54 @@ export type F1EnergyIntentOptions = {
   straightLengthAheadMeters: number
   straightness: number
   timedRunPhase: TimedRunPhase | null
+}
+
+export type F1ErsModeIntentOptions = {
+  batteryPercent: number
+  brakePercent: number
+  car: Pick<CarSnapshot, 'gapToAhead' | 'status'>
+  fullThrottle: boolean
+  overtakeStatus: OvertakeStatus
+  phase: ActiveFlagPhase | null
+  straightLengthAheadMeters: number
+  straightness: number
+}
+
+/**
+ * Pure baseline ERS-mode request. Telemetry remains the arbiter for standing
+ * starts, preparation/yield, superclipping, qualifying, and physical limits.
+ */
+export function f1ErsModeIntentFor(
+  options: F1ErsModeIntentOptions,
+): ErsMode {
+  const {
+    batteryPercent,
+    brakePercent,
+    car,
+    fullThrottle,
+    overtakeStatus,
+    phase,
+    straightLengthAheadMeters,
+    straightness,
+  } = options
+
+  if (phase || batteryPercent < 14 || brakePercent > 5) {
+    return batteryPercent < 96 ? 'harvest' : 'balanced'
+  }
+
+  if (
+    batteryPercent > 22 &&
+    car.status === 'running' &&
+    (overtakeStatus === 'active' ||
+      car.gapToAhead < 1.4 ||
+      fullThrottle ||
+      straightness > 0.74 ||
+      straightLengthAheadMeters >= 180)
+  ) {
+    return 'deploy'
+  }
+
+  return 'balanced'
 }
 
 /**

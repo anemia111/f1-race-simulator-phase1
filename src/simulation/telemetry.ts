@@ -9,7 +9,6 @@ import type {
   CarSnapshot,
   Driver,
   DriverDecisionPath,
-  ErsMode,
   OvertakeStatus,
   Team,
   TrackDefinition,
@@ -37,6 +36,7 @@ import {
 import {
   f1ActiveAeroModeForPath,
   f1EnergyIntentForPath,
+  f1ErsModeIntentForPath,
 } from './categoryDriverAgent'
 import {
   advanceEnergyStore,
@@ -123,46 +123,6 @@ export function overtakeAllowanceBoundedDcPowerLimitKw(options: {
     declaredLimitKw,
     Math.max(0, options.normalDeploymentDcPowerLimitKw) + allowancePowerKw,
   )
-}
-
-function ersModeFor(options: {
-  batteryPercent: number
-  brakePercent: number
-  car: CarSnapshot
-  fullThrottle: boolean
-  overtakeStatus: OvertakeStatus
-  phase: ActiveFlagPhase | null
-  straightLengthAheadMeters: number
-  straightness: number
-}) {
-  const {
-    batteryPercent,
-    brakePercent,
-    car,
-    fullThrottle,
-    overtakeStatus,
-    phase,
-    straightLengthAheadMeters,
-    straightness,
-  } = options
-
-  if (phase || batteryPercent < 14 || brakePercent > 5) {
-    return batteryPercent < 96 ? ('harvest' satisfies ErsMode) : ('balanced' satisfies ErsMode)
-  }
-
-  if (
-    batteryPercent > 22 &&
-    car.status === 'running' &&
-    (overtakeStatus === 'active' ||
-      car.gapToAhead < 1.4 ||
-      fullThrottle ||
-      straightness > 0.74 ||
-      straightLengthAheadMeters >= 180)
-  ) {
-    return 'deploy' satisfies ErsMode
-  }
-
-  return 'balanced' satisfies ErsMode
 }
 
 type CalculatedTelemetry = {
@@ -724,15 +684,20 @@ export function calculateCarTelemetry(options: {
         requestedGeneratorMechanicalPowerKw: 0,
       }
   const requestedErsMode = hasHybridEnergyStore
-    ? ersModeFor({
-        batteryPercent: batteryPercentAtFrameStart,
-        brakePercent,
-        car,
-        fullThrottle: dynamics.fullThrottle,
-        overtakeStatus,
-        phase,
-        straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
-        straightness: dynamics.straightness,
+    ? f1ErsModeIntentForPath({
+        options: {
+          batteryPercent: batteryPercentAtFrameStart,
+          brakePercent,
+          car,
+          fullThrottle: dynamics.fullThrottle,
+          overtakeStatus,
+          phase,
+          straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
+          straightness: dynamics.straightness,
+        },
+        path: driverDecisionPath,
+        seriesId,
+        vehicleEraId,
       })
     : ('balanced' as const)
   const isQualifyingAttack = timedRunPhase === 'attack-lap'
