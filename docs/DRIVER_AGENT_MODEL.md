@@ -16,9 +16,9 @@ that ephemeral compatibility request through the switch. Phase 7.6 routes the
   decision used by qualifying, Sprint Qualifying, and practice through the same
   switch. Phase 7.8A documents the current driver-ability dependency graph and
   its unresolved compound effects without changing production behavior. The
-  initial Phase 7.8B cleanups remove one unused helper, correct a track-limit
+  initial Phase 7.8B cleanups remove two unused helpers, correct a track-limit
   parameter label, and narrow redundant decision and energy-intent return
-  surfaces without changing a consumed calculation. All twelve slices are
+  surfaces without changing a consumed calculation. All thirteen slices are
   deliberately behavior-neutral. They do **not** complete Phase 7,
 activate an observation-consuming F1 or SUPER FORMULA driving policy, add
 learned category experience, or claim that the current generic driver logic is
@@ -57,12 +57,14 @@ hot-path observation allocation, random draw, decision record, retained inbox,
 event/log entry, or behavior change.
 
 The first Phase 7.8B cleanups change production source only by removing the
-uncalled `driverAbilityDeficit` export, renaming a positional track-limit
-parameter to match the supplied race-awareness ability, and removing the
-redundant returned `DriverDecision.decisionWindow` property. The local window
-still produces `absoluteDecisionWindow`. The cleanups preserve the legacy
-exported tuning key, every value and formula, argument order, seed/hash inputs,
-random evaluations, cadence, and production-consumed decision values.
+uncalled `driverAbilityDeficit` and `qualifyingSetupPenaltySeconds` exports,
+renaming a positional track-limit parameter to match the supplied
+race-awareness ability, and removing the redundant returned
+`DriverDecision.decisionWindow` property. The local window still produces
+`absoluteDecisionWindow`; `setupCompletenessPercent` and its UI consumer remain.
+The cleanups preserve the legacy exported tuning key, every consumed value and
+formula, argument order, seed/hash inputs, random evaluations, cadence, and
+production results.
 
 The next cleanup removes the terminal `F1EnergyIntent.qualifyingSpendBias`
 calculation and returned field and the redundant returned
@@ -213,7 +215,7 @@ effects that still require review. The graph is documentation, not a new
 runtime manifest or a claim that the unexplained duplicate effects are fixed;
 their resolution remains Phase 7.8B or later work.
 
-The first Phase 7.8B cleanups remove a confirmed dead helper, resolve the
+The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
 return surfaces recorded by that graph. They do not select a new ability owner
 or resolve DA-03/DA-12; all duplicate-effect sensitivity and removal work

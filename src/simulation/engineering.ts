@@ -180,22 +180,6 @@ export function setupCompletenessPercent(
   return Math.round(clamp(setupState * 80 + feedback * 20, 0, 100))
 }
 
-// Peak lap time a fully unresolved setup costs in qualifying — a single
-// flat-out lap, so an imperfect balance bites hard. The race already prices
-// setup through setupPaceDeltaSeconds over the stint.
-const QUALIFYING_SETUP_MAX_SECONDS = 1.1
-
-/** Qualifying single-lap penalty from an incomplete setup. */
-export function qualifyingSetupPenaltySeconds(
-  track: TrackDefinition,
-  setup: CarSetup,
-  driver: Driver,
-): number {
-  const completeness = setupCompletenessPercent(track, setup, driver)
-
-  return clamp((1 - completeness / 100) * QUALIFYING_SETUP_MAX_SECONDS, 0, QUALIFYING_SETUP_MAX_SECONDS)
-}
-
 export function practiceSetupRecommendation(options: {
   config: RaceConfig
   driver: Driver
