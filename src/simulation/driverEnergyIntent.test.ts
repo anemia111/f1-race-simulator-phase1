@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
-import type { DriverDecisionPath } from '../types'
-import { f1EnergyIntentForPath } from './categoryDriverAgent'
+import type { ActiveFlagPhase, DriverDecisionPath } from '../types'
+import {
+  f1EnergyIntentForPath,
+  f1ErsModeIntentForPath,
+} from './categoryDriverAgent'
 import { createInitialEnergyStore } from './energySystem'
 import {
   f1EnergyIntentFor,
+  f1ErsModeIntentFor,
   type F1EnergyIntentOptions,
+  type F1ErsModeIntentOptions,
 } from './driverEnergyIntent'
 
 const driver = initialDrivers[0]
@@ -213,5 +218,138 @@ describe('F1 energy-intent category ownership seam', () => {
         vehicleEraId: 'sf-2026',
       }),
     ).toEqual(f1EnergyIntentFor(options))
+  })
+})
+
+const controlledPhase: ActiveFlagPhase = {
+  endMessage: 'Track clear.',
+  endSeconds: 10,
+  flag: 'sc',
+  id: 'ers-mode-path-controlled-phase',
+  sector: 1,
+  startMessage: 'Safety Car deployed.',
+  startSeconds: 0,
+}
+
+function ersModeOptions(
+  overrides: Partial<F1ErsModeIntentOptions> = {},
+): F1ErsModeIntentOptions {
+  return {
+    batteryPercent: 70,
+    brakePercent: 0,
+    car: { gapToAhead: 2, status: 'running' },
+    fullThrottle: false,
+    overtakeStatus: 'available',
+    phase: null,
+    straightLengthAheadMeters: 80,
+    straightness: 0.4,
+    ...overrides,
+  }
+}
+
+describe('F1 baseline ERS-mode category ownership seam', () => {
+  const parityCases = [
+    { expected: 'balanced', label: 'neutral request', overrides: {} },
+    {
+      expected: 'harvest',
+      label: 'low battery',
+      overrides: { batteryPercent: 13 },
+    },
+    {
+      expected: 'harvest',
+      label: 'braking',
+      overrides: { brakePercent: 6 },
+    },
+    {
+      expected: 'balanced',
+      label: 'controlled phase with full battery',
+      overrides: { batteryPercent: 96, phase: controlledPhase },
+    },
+    {
+      expected: 'harvest',
+      label: 'controlled phase with recharge room',
+      overrides: { phase: controlledPhase },
+    },
+    {
+      expected: 'deploy',
+      label: 'active electrical overtake opportunity',
+      overrides: { overtakeStatus: 'active' },
+    },
+    {
+      expected: 'deploy',
+      label: 'straight opportunity',
+      overrides: { straightLengthAheadMeters: 220, straightness: 0.8 },
+    },
+    {
+      expected: 'balanced',
+      label: 'non-running car',
+      overrides: {
+        car: { gapToAhead: 0.5, status: 'retired' },
+        overtakeStatus: 'active',
+      },
+    },
+  ] as const satisfies ReadonlyArray<{
+    expected: ReturnType<typeof f1ErsModeIntentFor>
+    label: string
+    overrides: Partial<F1ErsModeIntentOptions>
+  }>
+
+  for (const testCase of parityCases) {
+    it(`preserves the exact ${testCase.label} on every path`, () => {
+      const options = ersModeOptions(testCase.overrides)
+      const before = structuredClone(options)
+      const direct = f1ErsModeIntentFor(options)
+      const legacy = f1ErsModeIntentForPath({
+        options,
+        path: 'legacy-direct',
+        seriesId: 'super-formula',
+        vehicleEraId: 'sf-2026',
+      })
+      const category = f1ErsModeIntentForPath({
+        options,
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'f1-2026-current',
+      })
+      const defaulted = f1ErsModeIntentForPath({ options })
+
+      expect(direct).toBe(testCase.expected)
+      expect(legacy).toBe(direct)
+      expect(category).toBe(direct)
+      expect(defaulted).toBe(category)
+      expect(options).toEqual(before)
+    })
+  }
+
+  it('rejects SF and invalid paths before reading F1 ERS-mode options', () => {
+    let optionsRead = false
+    const sfInput = {
+      get options(): F1ErsModeIntentOptions {
+        optionsRead = true
+        throw new Error('SF path read F1 ERS-mode options')
+      },
+      path: 'category-agent-v1' as const,
+      seriesId: 'super-formula' as const,
+      vehicleEraId: 'sf-2026' as const,
+    }
+
+    expect(() => f1ErsModeIntentForPath(sfInput)).toThrow(
+      /F1 ERS-mode intent requires an F1 energy-store policy/,
+    )
+    expect(optionsRead).toBe(false)
+    expect(() =>
+      f1ErsModeIntentForPath({
+        options: ersModeOptions(),
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toThrow(/Unsupported driver policy f1-custom\/sf-2026/)
+    expect(() =>
+      f1ErsModeIntentForPath({
+        options: ersModeOptions(),
+        path: 'future-ers-agent' as DriverDecisionPath,
+      }),
+    ).toThrow(/Unsupported driver decision path future-ers-agent/)
   })
 })
