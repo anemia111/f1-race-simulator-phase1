@@ -38,6 +38,7 @@ import {
   f1ElectricalOvertakeIntentForPath,
   f1EnergyIntentForPath,
   f1ErsModeIntentForPath,
+  sfOtsUseRequestedForPath,
 } from './categoryDriverAgent'
 import {
   advanceEnergyStore,
@@ -589,15 +590,25 @@ export function calculateCarTelemetry(options: {
     raceControlOvertakeEnabled &&
     !phase &&
     car.status === 'running'
-  const otsActive =
-    otsAvailable &&
-    brakePercent <= 3 &&
-    throttlePercent >= 88 &&
-    dynamics.straightness >= 0.72 &&
-    (car.gapToAhead > 0 && car.gapToAhead < 2.2 ||
-      car.battlePhase !== 'single-file' ||
-      car.racePaceMode === 'push' ||
-      isFinalLap)
+  // Preserve the legacy short-circuit: the driver-use predicate is not read
+  // until the independent runtime and race-control availability gates pass.
+  const sfOtsUseRequested = otsAvailable
+    ? sfOtsUseRequestedForPath({
+        options: {
+          battlePhase: car.battlePhase,
+          brakePercent,
+          gapToAheadSeconds: car.gapToAhead,
+          isFinalLap,
+          paceMode: car.racePaceMode,
+          straightness: dynamics.straightness,
+          throttlePercent,
+        },
+        path: driverDecisionPath,
+        seriesId,
+        vehicleEraId,
+      })
+    : false
+  const otsActive = otsAvailable && sfOtsUseRequested
   const f1ElectricalOvertakeRequest =
     !isPreparationLap &&
     overtakeSystem !== 'ots' &&
