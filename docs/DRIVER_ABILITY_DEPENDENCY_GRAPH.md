@@ -234,17 +234,23 @@ validation values for tuning.
 - the returned `DriverDecision.decisionWindow`, `nominalLateralOffsetM`, and
   `errorRisk` fields have no downstream production reader. Their local values
   already contribute to other decision calculations before return.
-- `driverAbilityDeficit` is an exported helper with no production caller.
 - `qualifyingSetupPenaltySeconds` is an exported helper with no production
   caller. Its internal `setupCompletenessPercent` input also has an independent
   `SetupPanel` UI consumer, but no connected timed-session consumer.
-- A track-limit helper names one input `consistency` while a production caller
-  supplies `raceAwareness`; the semantic ownership needs review before any
-  behavioral change.
 
 These are inventory findings, not authorization to wire a value into pace or
 delete saved state. Each change needs its own migration, replay, and acceptance
 scope.
+
+### Initial Phase 7.8B cleanup
+
+The first behavior-neutral cleanup removes the unused `driverAbilityDeficit`
+export and renames only the positional track-limit helper parameter to
+`raceAwarenessAbility`, matching its production caller. The exported legacy
+`trackLimitConsistencyWeight` tuning key, its value, the formula, argument
+order, seed, and hash key remain unchanged. This naming correction does not
+decide whether race awareness is the final intended policy input and does not
+resolve DA-12.
 
 ## Invariants
 

@@ -30,7 +30,9 @@ export const phaseThreeTuning = {
   dirtyAirInnerGapSeconds: 0.3,
   slipstreamMaxGainSeconds: 0.35,
   slipstreamRangeSeconds: 1.0,
-  // Track limits: per-lap warning chance scaled by driver consistency.
+  // Track limits: per-lap warning chance scaled by the supplied
+  // race-awareness ability. The legacy tuning key stays stable because this
+  // object is exported; only the helper's misleading parameter label changes.
   trackLimitBaseChance: 0.026,
   trackLimitConsistencyWeight: 0.075,
   // Flag pace multipliers. A single yellow is a meaningful lift, roughly
@@ -181,7 +183,7 @@ export function packFollowingLapTime(options: {
 // --- Track limits ----------------------------------------------------------
 
 function trackLimitChance(
-  consistency: number,
+  raceAwarenessAbility: number,
   context: {
     pressure?: number
     tireWearPercent?: number
@@ -201,7 +203,8 @@ function trackLimitChance(
         : 0
   const chance =
     phaseThreeTuning.trackLimitBaseChance +
-    (1 - clamp01(consistency)) * phaseThreeTuning.trackLimitConsistencyWeight +
+    (1 - clamp01(raceAwarenessAbility)) *
+      phaseThreeTuning.trackLimitConsistencyWeight +
     pressureRisk +
     tireRisk +
     gripRisk +
@@ -214,7 +217,7 @@ function trackLimitChance(
 export function lapHasTrackLimitWarning(
   seed: string,
   driverId: string,
-  consistency: number,
+  raceAwarenessAbility: number,
   lap: number,
   context: {
     pressure?: number
@@ -229,7 +232,7 @@ export function lapHasTrackLimitWarning(
 
   return (
     hashChance(`${seed}:track-limit:${driverId}:${lap}`) <
-    trackLimitChance(consistency, context)
+    trackLimitChance(raceAwarenessAbility, context)
   )
 }
 
@@ -237,13 +240,13 @@ export function lapHasTrackLimitWarning(
 export function trackLimitWarningsUpTo(
   seed: string,
   driverId: string,
-  consistency: number,
+  raceAwarenessAbility: number,
   lap: number,
 ): number {
   let warnings = 0
 
   for (let pastLap = 2; pastLap <= lap; pastLap += 1) {
-    if (lapHasTrackLimitWarning(seed, driverId, consistency, pastLap)) {
+    if (lapHasTrackLimitWarning(seed, driverId, raceAwarenessAbility, pastLap)) {
       warnings += 1
     }
   }
