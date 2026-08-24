@@ -53,10 +53,8 @@ const lowSocIntent: F1EnergyIntent = {
   harvestPreference: 1,
   liftCoastPreference: 0.9,
   superclipAcceptance: 1,
-  endOfStraightHarvestBias: 0.9,
   defendEnergyReserve: 0.2,
   attackEnergyReserve: 0.18,
-  qualifyingSpendBias: 0.1,
 }
 
 function requireF1Runtime(car: CarSnapshot): F1RuntimeSystems {

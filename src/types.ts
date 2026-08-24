@@ -250,10 +250,8 @@ export type F1EnergyIntent = {
   harvestPreference: number
   liftCoastPreference: number
   superclipAcceptance: number
-  endOfStraightHarvestBias: number
   defendEnergyReserve: number
   attackEnergyReserve: number
-  qualifyingSpendBias: number
 }
 
 /** Independent driver skills. The displayed overall is informational only. */

@@ -99,11 +99,16 @@ does not impose the range as a timer or per-track correction.
 ## Driver intent and authority boundary
 
 The driver layer emits `F1EnergyIntent`: unitless scheduling preferences for
-deployment, harvesting, lift/coast, superclip acceptance, end-of-straight
-harvesting, attack/defend reserves, and qualifying spend. It cannot write SOC,
-stored MJ, the C5.2.8 power curve, the 4 MJ window, or event recharge limits.
-The physical and regulatory layers remain the only owners of actual power and
-energy.
+deployment, harvesting, lift/coast, superclip acceptance, and attack/defend
+reserves. It cannot write SOC, stored MJ, the C5.2.8 power curve, the 4 MJ
+window, or event recharge limits. The physical and regulatory layers remain the
+only owners of actual power and energy.
+
+Phase 7.8B removes the unused returned qualifying-spend and
+end-of-straight-harvest fields. Qualifying phase still affects the consumed
+scheduling preferences. The kernel's local end-of-straight harvest bias still
+contributes unchanged to `superclipAcceptance`; only its redundant returned copy
+is removed.
 
 Phase 7.2 changes only dispatch ownership: `driverEnergyIntent.ts` remains the
 exact pure numerical kernel, while superclipping, deployment requests,
