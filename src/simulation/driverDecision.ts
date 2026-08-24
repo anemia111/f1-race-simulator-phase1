@@ -129,7 +129,6 @@ export type DriverDecisionContext = {
 export type DriverDecision = {
   intent: DriverDecisionIntent
   role: DriverDecisionRole
-  decisionWindow: number
   absoluteDecisionWindow: number
   traits: DriverBehaviorTraits
   nominalLateralOffsetM: number
@@ -936,7 +935,6 @@ export function decideDriverBehavior(
   return {
     intent: chosen.intent,
     role: chosen.role,
-    decisionWindow,
     absoluteDecisionWindow,
     traits,
     nominalLateralOffsetM,
