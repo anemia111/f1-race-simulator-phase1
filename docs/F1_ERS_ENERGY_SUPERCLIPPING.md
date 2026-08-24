@@ -105,6 +105,10 @@ stored MJ, the C5.2.8 power curve, the 4 MJ window, or event recharge limits.
 The physical and regulatory layers remain the only owners of actual power and
 energy.
 
+Phase 7.2 changes only dispatch ownership: `driverEnergyIntent.ts` remains the
+exact pure numerical kernel, while superclipping, deployment requests,
+regulatory gates, and Energy Store integration retain their existing authority.
+
 ## Sources
 
 - [FIA 2026 Technical Regulations, Issue 20](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf)

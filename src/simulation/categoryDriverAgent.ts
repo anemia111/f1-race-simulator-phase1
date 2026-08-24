@@ -2,7 +2,7 @@ import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
 } from '../series/seriesIds'
-import type { Driver, DriverDecisionPath } from '../types'
+import type { Driver, DriverDecisionPath, F1EnergyIntent } from '../types'
 import {
   decideDriverBehavior,
   type DriverDecision,
@@ -22,6 +22,10 @@ import {
   type SF_2026_DrivingPolicy,
   type SeriesDrivingPolicy,
 } from './driverAgentContract'
+import {
+  f1EnergyIntentFor,
+  type F1EnergyIntentOptions,
+} from './driverEnergyIntent'
 
 export type { DriverDecisionPath } from '../types'
 
@@ -74,6 +78,40 @@ export function decideDriverBehaviorForPath(
   }
 
   return decideDriverBehavior(input.context)
+}
+
+export type F1EnergyIntentPathInput = {
+  options: F1EnergyIntentOptions
+  path?: DriverDecisionPath
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+}
+
+/**
+ * Ownership-only Phase 7 adapter for the existing pure F1 energy scheduler.
+ * The category path validates the F1 capability boundary; the legacy path is
+ * an exact rollback that calls the same scheduler with the same options.
+ */
+export function f1EnergyIntentForPath(
+  input: F1EnergyIntentPathInput,
+): F1EnergyIntent {
+  if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
+    const policy = resolveCategoryDrivingPolicy(
+      input.seriesId,
+      input.vehicleEraId,
+    )
+
+    if (
+      policy.kind !== 'f1-2026-driving-policy' ||
+      policy.capabilities.energyStore !== 'requestable'
+    ) {
+      throw new Error(
+        `F1 energy intent requires an F1 energy-store policy, received ${policy.seriesId}/${policy.vehicleEraId}`,
+      )
+    }
+  }
+
+  return f1EnergyIntentFor(input.options)
 }
 
 /**

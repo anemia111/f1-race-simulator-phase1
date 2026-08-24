@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
+import type { DriverDecisionPath } from '../types'
+import { f1EnergyIntentForPath } from './categoryDriverAgent'
 import { createInitialEnergyStore } from './energySystem'
-import { f1EnergyIntentFor } from './driverEnergyIntent'
+import {
+  f1EnergyIntentFor,
+  type F1EnergyIntentOptions,
+} from './driverEnergyIntent'
 
 const driver = initialDrivers[0]
 const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
 
-function intent(
-  overrides: Partial<Parameters<typeof f1EnergyIntentFor>[0]> = {},
-) {
-  return f1EnergyIntentFor({
+function intentOptions(
+  overrides: Partial<F1EnergyIntentOptions> = {},
+): F1EnergyIntentOptions {
+  return {
     battlePhase: 'single-file',
     driver,
     isFinalLap: false,
@@ -21,7 +26,11 @@ function intent(
     straightness: 0.9,
     timedRunPhase: null,
     ...overrides,
-  })
+  }
+}
+
+function intent(overrides: Partial<F1EnergyIntentOptions> = {}) {
+  return f1EnergyIntentFor(intentOptions(overrides))
 }
 
 describe('F1 driver energy intent', () => {
@@ -86,5 +95,123 @@ describe('F1 driver energy intent', () => {
     )
     expect(lowState.usableEnergyMJ).toBe(healthyState.usableEnergyMJ)
     expect(lowState.rechargeRule.limit).toEqual(healthyState.rechargeRule.limit)
+  })
+})
+
+describe('F1 energy-intent category ownership seam', () => {
+  const parityCases = [
+    { label: 'single-file standard', overrides: {} },
+    {
+      label: 'attacking push',
+      overrides: { battlePhase: 'attacking', paceMode: 'push' },
+    },
+    {
+      label: 'defending reserve',
+      overrides: { battlePhase: 'defending', paceMode: 'defend' },
+    },
+    {
+      label: 'saving under a controlled phase',
+      overrides: {
+        paceMode: 'save',
+        phaseActive: true,
+        state: createInitialEnergyStore(team, 0.18),
+      },
+    },
+    { label: 'final lap', overrides: { isFinalLap: true, lapProgress: 0.92 } },
+    { label: 'controlled phase', overrides: { phaseActive: true } },
+    {
+      label: 'low SOC',
+      overrides: { state: createInitialEnergyStore(team, 0.12) },
+    },
+    {
+      label: 'high SOC',
+      overrides: { state: createInitialEnergyStore(team, 0.9) },
+    },
+    {
+      label: 'long straight',
+      overrides: {
+        straightLengthAheadMeters: 1_300,
+        straightness: 1,
+      },
+    },
+    {
+      label: 'corner',
+      overrides: { straightLengthAheadMeters: 0, straightness: 0 },
+    },
+    { label: 'attack lap', overrides: { timedRunPhase: 'attack-lap' } },
+    { label: 'out lap', overrides: { timedRunPhase: 'out-lap' } },
+    { label: 'in lap', overrides: { timedRunPhase: 'in-lap' } },
+    { label: 'cooldown', overrides: { timedRunPhase: 'cooldown' } },
+  ] as const satisfies ReadonlyArray<{
+    label: string
+    overrides: Partial<F1EnergyIntentOptions>
+  }>
+
+  for (const testCase of parityCases) {
+    it(`preserves the exact ${testCase.label} output on every supported path`, () => {
+      const options = intentOptions(testCase.overrides)
+      const optionsBefore = structuredClone(options)
+      const direct = f1EnergyIntentFor(options)
+      const legacy = f1EnergyIntentForPath({
+        options,
+        path: 'legacy-direct',
+        seriesId: 'super-formula',
+        vehicleEraId: 'sf-2026',
+      })
+      const category = f1EnergyIntentForPath({
+        options,
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'f1-2026-current',
+      })
+      const defaulted = f1EnergyIntentForPath({ options })
+
+      expect(legacy).toEqual(direct)
+      expect(category).toEqual(direct)
+      expect(defaulted).toEqual(category)
+      expect(options).toEqual(optionsBefore)
+    })
+  }
+
+  it('fails closed before scheduling for unsupported category metadata or paths', () => {
+    const options = intentOptions()
+    let sfOptionsRead = false
+    const sfInput = {
+      get options(): F1EnergyIntentOptions {
+        sfOptionsRead = true
+        throw new Error('SF path read F1 energy scheduler options')
+      },
+      path: 'category-agent-v1' as const,
+      seriesId: 'super-formula' as const,
+      vehicleEraId: 'sf-2026' as const,
+    }
+
+    expect(() => f1EnergyIntentForPath(sfInput)).toThrow(
+      /F1 energy intent requires an F1 energy-store policy/,
+    )
+    expect(sfOptionsRead).toBe(false)
+    expect(() =>
+      f1EnergyIntentForPath({
+        options,
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toThrow(/Unsupported driver policy f1-custom\/sf-2026/)
+    expect(() =>
+      f1EnergyIntentForPath({
+        options,
+        path: 'future-energy-agent' as DriverDecisionPath,
+      }),
+    ).toThrow(/Unsupported driver decision path future-energy-agent/)
+
+    expect(
+      f1EnergyIntentForPath({
+        options,
+        path: 'legacy-direct',
+        seriesId: 'super-formula',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toEqual(f1EnergyIntentFor(options))
   })
 })
