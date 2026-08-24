@@ -110,13 +110,18 @@ Status: complete; commit `29b28de`.
 - Seeded per-driver decisions select reference, attack, defence, tow,
   dirty-air avoidance, emergency and pit lines. Driver skills and style affect
   pedal timing, pressure/opening, line accuracy, attempts, mistakes and contact
-  risk; displayed overall/ACE metadata is not a speed or lap-time input.
+  risk. Overall/ACE metadata can participate in the documented construction,
+  import, migration, duplicate selection and profile-selection paths; after a
+  profile is materialized and selected, it is not reread as a runtime speed or
+  lap-time multiplier.
 - Dirty air and tow depend on physical lateral alignment. Contact requires a
   physical longitudinal/lateral opportunity, and a pass is recorded only when
   integrated positions cross.
 - Qualifying and practice now use physical category/team/setup lap simulations.
-  Driver separation is a non-negative control-execution loss sampled over the
-  same decision windows, with no `baseLapTime`, ACE gain or old seconds stack.
+  Driver separation is a bounded control-execution adjustment sampled over the
+  same decision windows. It can become negative only when an above-100
+  limit-break profile recovers part of the physical reference's transient
+  concession; there is no `baseLapTime`, ACE gain or old seconds stack.
 - A stopped on-track incident is an explicit immobilised state. Followers
   choose a continuous avoidance line under yellow before occupancy permits
   them through. SC/VSC/yellow speed ceilings remain operational controller

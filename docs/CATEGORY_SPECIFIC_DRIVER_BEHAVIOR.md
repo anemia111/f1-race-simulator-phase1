@@ -3,7 +3,7 @@
 ## Status and purpose
 
 This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0 and extended through Phase 7.7. Phase 7.1 adds closed,
+introduced by Phase 7.0 and extended through Phase 7.8A. Phase 7.1 adds closed,
 value-bearing observation readings and an immediate diagnostic projector.
 Phase 7.2 moves dispatch ownership of the existing pure F1 energy intent behind
 the category-agent switch, while the live race still produces exactly the same
@@ -16,7 +16,9 @@ category policy is behaviorally operational. Phase 7.6 routes the unchanged
 composite SUPER FORMULA OTS driver-use predicate through the same switch. Phase
 7.7 routes the unchanged generic timed-session execution decision used by
 qualifying, Sprint Qualifying, and practice through the reversible adapter.
-These slices do not claim that perception or Phase 7 is complete.
+Phase 7.8A documents the current driver-ability dependency graph and unresolved
+compound effects without changing production behavior. These slices do not
+claim that perception or Phase 7 is complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
@@ -60,7 +62,7 @@ adapter preserves the existing shared driver decision exactly.
   may describe the SUPER FORMULA OTS domain. It cannot expose F1 ERS, SOC,
   active-aero, Overtake, or DRS requests.
 
-Both policy branches remain behaviorally inert in Phase 7.7 and delegate to the
+Both policy branches remain behaviorally inert in Phase 7.8A and delegate to the
 same legacy decision. The F1 branch now validates ownership before dispatching
 the unchanged energy, baseline ERS-mode, and active-aero selectors plus the
 Electrical Overtake compatibility request; it does not replace them with an
@@ -113,7 +115,7 @@ alter the delegated `DriverDecision` or energy-intent result, and the hot path
 adds no observation inbox/projector, decision record, event/log entry, retained
 agent state, or random draw.
 
-## Phase 7.7 behavior and rollback
+## Phase 7.8A graph and rollback
 
 `RaceConfig.driverDecisionPath` in `src/types.ts` selects the race and offline
 timed-session generic decision paths:
@@ -210,6 +212,16 @@ not create an observation-consuming timed-session policy. Existing
 `timedRunPhase` and `qualifyingSpendBias` inputs remain compatibility inputs,
 not evidence of a qualifying Driver Agent.
 
+Phase 7.8A records the 30-skill and six-style construction, normalization,
+consumer, authority, and random-cadence graph in
+`docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md`. It distinguishes named production
+reads, aggregate-only limit-break participation, materialized display overall,
+and overall's construction/import/migration/profile-selection ancestry. The
+review register deliberately leaves overlapping battle, incident, energy,
+wet-execution, tyre, and practice effects unresolved for Phase 7.8B or later;
+this slice changes no coefficient, seed, random draw, runtime field, or saved
+state.
+
 ## Observability and authority
 
 Category policy must consume a driver observation, not unrestricted simulation
@@ -264,7 +276,7 @@ policy cannot directly write:
 ## Determinism and category metadata
 
 Category metadata and immediate diagnostics must be deterministic and
-behaviorally inert through Phase 7.7. The adapter uses the same decision context
+behaviorally inert through Phase 7.8A. The adapter uses the same decision context
 and the same seed as the legacy path. The projector is opt-in, pure, and uses no
 random draw. Canonicalization removes incidental ordering from contract
 collections; it does not add a seed namespace or convert unavailable
@@ -345,8 +357,8 @@ Both category policies still require shared agent capabilities:
 - decision-record retention and deterministic replay comparison;
 - audit and migration of any newly found or newly introduced direct
   compatibility calls; and
-- a documented driver-ability dependency graph with unexplained duplicate
-  effects removed.
+- resolution and removal of the unexplained duplicate effects recorded in the
+  Phase 7.8A driver-ability dependency graph in Phase 7.8B or a later slice.
 
 Until those items and category acceptance cases are implemented, the phrase
 "category-specific Driver Agent" refers to the contract boundary, Phase 7.1
@@ -356,5 +368,7 @@ baseline ERS-mode dispatch and Phase 7.5 ownership-only dispatch of the
 explicit legacy Electrical Overtake compatibility request. Phase 7.6 adds only
 ownership-checked dispatch of the unchanged SF OTS use predicate after
 availability passes. Phase 7.7 adds only ownership-checked dispatch of the
-unchanged timed-session execution decision. It does not mean completed
-category-specific driving behavior.
+unchanged timed-session execution decision. Phase 7.8A adds only the audited
+driver-ability dependency graph and does not resolve its review-required
+compound effects. It does not mean completed category-specific driving
+behavior.
