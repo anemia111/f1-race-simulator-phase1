@@ -1,6 +1,6 @@
 # Driver Agent model
 
-## Status and Phase 7.6 boundary
+## Status and Phase 7.7 boundary
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
@@ -12,10 +12,12 @@ ERS-mode request selector. Phase 7.5 makes the legacy runtime's implicit
 always-use-when-permitted Electrical Overtake request explicit and routes only
 that ephemeral compatibility request through the switch. Phase 7.6 routes the
 unchanged composite SUPER FORMULA OTS driver-use predicate through the same
-switch. All seven slices are deliberately behavior-neutral. They do **not**
-complete Phase 7, activate an observation-consuming F1 or SUPER FORMULA
-driving policy, add learned category experience, or claim that the current
-generic driver logic is a complete agent or perception model.
+switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
+decision used by qualifying, Sprint Qualifying, and practice through the same
+switch. All eight slices are deliberately behavior-neutral. They do **not**
+complete Phase 7, activate an observation-consuming F1 or SUPER FORMULA driving
+policy, add learned category experience, or claim that the current generic
+driver logic is a complete agent or perception model.
 
 The batch has four relevant implementation boundaries:
 
@@ -31,7 +33,8 @@ The batch has four relevant implementation boundaries:
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the
   pre-advance race decision seam and passes the same route metadata to
   `src/simulation/telemetry.ts` for F1 energy, active-aero, Electrical
-  Overtake, and SF OTS request dispatch.
+  Overtake, and SF OTS request dispatch, while `src/simulation/qualifying.ts`
+  uses it for the shared offline timed-session execution decision.
 
 The behavior delegated by the adapter remains
 `src/simulation/driverDecision.ts`. Existing category system truth remains in
@@ -40,9 +43,10 @@ calculation remains in `src/simulation/driverEnergyIntent.ts`. Phase 7.2 moves
 only caller ownership: it does not change a coefficient or transfer physical,
 SOC, power-limit, recharge, or regulatory authority out of the existing owners.
 
-Phase 7.6 does not call the diagnostic projector from the live race hot path.
-It therefore adds no per-car hot-path observation allocation, random draw,
-decision record, retained inbox, event/log entry, or behavior change.
+Phase 7.7 does not call the diagnostic projector from the live race or offline
+timed-session paths. It therefore adds no hot-path observation allocation,
+random draw, decision record, retained inbox, event/log entry, or behavior
+change.
 
 ## Runtime flow
 
@@ -55,6 +59,13 @@ immutable pre-advance race frame
              -> delegate unchanged to decideDriverBehavior
         -> return the same DriverDecision without allocating a record
   -> existing race, telemetry, and physical integration
+
+timedSessionDriverExecutionLossSeconds for qualifying / Sprint Qualifying / practice
+  -> each existing decision window uses RaceConfig.driverDecisionPath
+     -> legacy-direct: delegate unchanged to decideDriverBehavior
+     -> category-agent-v1: resolve and check executable series / vehicle era
+          -> delegate unchanged to decideDriverBehavior
+  -> existing execution-loss formula, physics, strategy, traffic, and results
 
 calculateCarTelemetry for a car with an F1 Energy Store
   -> RaceConfig.driverDecisionPath
@@ -163,6 +174,15 @@ therefore cannot activate and remains inactive; Phase 7.6 adds no evaluator,
 allocation, cooldown, power, budget, distinct attack/defend policy, or durable
 request state.
 
+Phase 7.7 replaces the remaining production direct driver-decision call in the
+shared offline timed-session execution-loss path with the existing reversible
+adapter. Every qualifying, Sprint Qualifying, and practice decision window
+receives the identical context, progress, and seed and returns the identical
+`DriverDecision`. The window count, execution-loss formula, physical lap,
+tyres, weather, setup, release plan, traffic, classification, and practice
+programme remain with their existing owners. This is call-site ownership only;
+it does not create an observation-consuming qualifying or practice policy.
+
 ## Contract model
 
 `src/simulation/driverAgentContract.ts` owns the following public concepts.
@@ -192,10 +212,11 @@ capability.
 
 Policy selection follows the executable series identity. It must not be
 inferred from driver provenance, circuit identity, tyre supplier, or a generic
-overtake-system label. Through Phase 7.6 the selected category metadata only
+overtake-system label. Through Phase 7.7 the selected category metadata only
 validates dispatch ownership at the F1 energy, ERS-mode, active-aero, and
-Electrical Overtake request seams and the SF OTS request seam. It does not use
-observations or a new policy algorithm to change driving behavior.
+Electrical Overtake request seams, the SF OTS request seam, and the generic
+timed-session execution seam. It does not use observations or a new policy
+algorithm to change driving behavior.
 
 For compatibility with existing race configurations, an omitted `seriesId`
 resolves to `f1-custom`; an omitted vehicle era resolves to the matching 2026
@@ -326,7 +347,7 @@ creation and canonicalization are pure operations; when a later runtime producer
 uses them, it must not use wall-clock time, global counters, mutable random
 state, callback order, renderer state, or log retention as an input.
 
-Through Phase 7.6, the required invariants are:
+Through Phase 7.7, the required invariants are:
 
 - for a supported series/vehicle-era pair, the direct and adapter paths return
   exactly equal `DriverDecision` objects;
@@ -349,6 +370,9 @@ Through Phase 7.6, the required invariants are:
 - direct, legacy, category, and default SF OTS paths return the same use
   predicate without mutating inputs, while F1 is rejected and unavailable SF
   OTS remains disabled without invoking the selector;
+- legacy, category, and default timed-session paths return exactly equal
+  execution loss for supported F1 and SF metadata, while the category path
+  rejects mismatched metadata and the legacy rollback preserves its result;
 - contract canonicalization orders IDs and record collections by stable keys;
   and
 - the same seed and canonical contract input produce the same canonical data.
@@ -363,10 +387,10 @@ state, a retained driver inbox, or a persisted replay contract.
 migration switch:
 
 - `category-agent-v1` validates category ownership before delegating the
-  generic decision and, for F1 telemetry, the existing energy and active-aero
-  requests plus the baseline ERS-mode and Electrical Overtake compatibility
-  requests and, when downstream availability passes, the existing SF OTS use
-  predicate; and
+  generic race and timed-session decisions and, for F1 telemetry, the existing
+  energy and active-aero requests plus the baseline ERS-mode and Electrical
+  Overtake compatibility requests and, when downstream availability passes,
+  the existing SF OTS use predicate; and
 - `legacy-direct` skips category-policy resolution and delegates from the same
   wrappers directly to `decideDriverBehavior`, `f1EnergyIntentFor`,
   `f1ErsModeIntentFor`, `activeAeroModeFor`, and
@@ -378,14 +402,13 @@ remain available while the adapter is behavior-neutral, so a regression can be
 isolated without changing category physics, seeds, or saved driver ratings.
 Exact decision parity applies to supported series/vehicle-era pairs; invalid
 pairs are intentionally rejected only by the category-agent validation path.
-The same exact parity and rollback rules apply to the F1 energy-intent object;
-no live divergence is allowed in this ownership-only slice.
-
-`src/simulation/qualifying.ts` still calls the legacy driver decision directly.
-It is outside this race-only migration slice and is an explicit remaining gap,
-not an implicit user of the adapter. Existing `timedRunPhase` and
-`qualifyingSpendBias` telemetry inputs continue unchanged as compatibility
-inputs; they are not qualifying-agent migration or coverage.
+The same exact parity and rollback rules apply to the F1 energy-intent object
+and to generic timed-session execution loss; no supported-path divergence is
+allowed in this ownership-only slice. `src/simulation/qualifying.ts` now routes
+the shared qualifying, Sprint Qualifying, and practice execution call through
+the adapter. Existing `timedRunPhase` and `qualifyingSpendBias` inputs continue
+unchanged as compatibility inputs; neither they nor this call-site migration
+constitute an operational qualifying agent.
 
 ## Remaining Phase 7 work
 
@@ -402,7 +425,8 @@ Phase 7 is not complete until later slices provide and verify at least:
 - operational SUPER FORMULA OTS attack/defend, tow, tyre, pit/refuelling,
   start, and rule-aware racecraft policy;
 - decision-record retention, checkpoint/replay integration, and bounded logging;
-- migration of qualifying and any other direct compatibility call sites;
+- audit and migration of any newly found or newly introduced direct
+  compatibility call sites;
 - a driver-ability dependency graph and removal of unexplained duplicate
   effects; and
 - cross-category and rule-aware behavior acceptance coverage.
@@ -415,5 +439,6 @@ active-aero mode selector. Phase 7.4 adds only the unchanged baseline ERS-mode
 selector. Phase 7.5 adds only an explicit representation of the legacy implicit
 Electrical Overtake request; effective status remains downstream. Phase 7.6
 adds only category-owned dispatch of the unchanged SF OTS use predicate after
-downstream availability passes. None is operational category-specific Driver
-AI.
+downstream availability passes. Phase 7.7 adds only ownership-checked dispatch
+of the unchanged timed-session execution decision. None is operational
+category-specific Driver AI.

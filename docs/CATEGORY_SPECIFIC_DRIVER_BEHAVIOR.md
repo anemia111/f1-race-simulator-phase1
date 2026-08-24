@@ -3,7 +3,7 @@
 ## Status and purpose
 
 This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0 and extended through Phase 7.6. Phase 7.1 adds closed,
+introduced by Phase 7.0 and extended through Phase 7.7. Phase 7.1 adds closed,
 value-bearing observation readings and an immediate diagnostic projector.
 Phase 7.2 moves dispatch ownership of the existing pure F1 energy intent behind
 the category-agent switch, while the live race still produces exactly the same
@@ -13,13 +13,16 @@ baseline F1 ERS-mode selector. Phase 7.5 makes the legacy implicit
 always-use-when-permitted F1 Electrical Overtake request explicit and routes
 only that ephemeral compatibility action. It does **not** claim that either
 category policy is behaviorally operational. Phase 7.6 routes the unchanged
-composite SUPER FORMULA OTS driver-use predicate through the same switch. These
-slices do not claim that perception or Phase 7 is complete.
+composite SUPER FORMULA OTS driver-use predicate through the same switch. Phase
+7.7 routes the unchanged generic timed-session execution decision used by
+qualifying, Sprint Qualifying, and practice through the reversible adapter.
+These slices do not claim that perception or Phase 7 is complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
-is in `src/simulation/driverPerception.ts`; and the race integration
-point is in `src/simulation/race.ts`.
+is in `src/simulation/driverPerception.ts`; and the race and offline
+timed-session integration points are in `src/simulation/race.ts` and
+`src/simulation/qualifying.ts`.
 
 ## Identity, policy, and experience are separate
 
@@ -57,7 +60,7 @@ adapter preserves the existing shared driver decision exactly.
   may describe the SUPER FORMULA OTS domain. It cannot expose F1 ERS, SOC,
   active-aero, Overtake, or DRS requests.
 
-Both policy branches remain behaviorally inert in Phase 7.6 and delegate to the
+Both policy branches remain behaviorally inert in Phase 7.7 and delegate to the
 same legacy decision. The F1 branch now validates ownership before dispatching
 the unchanged energy, baseline ERS-mode, and active-aero selectors plus the
 Electrical Overtake compatibility request; it does not replace them with an
@@ -110,15 +113,17 @@ alter the delegated `DriverDecision` or energy-intent result, and the hot path
 adds no observation inbox/projector, decision record, event/log entry, retained
 agent state, or random draw.
 
-## Phase 7.6 behavior and rollback
+## Phase 7.7 behavior and rollback
 
-`RaceConfig.driverDecisionPath` in `src/types.ts` selects the race path:
+`RaceConfig.driverDecisionPath` in `src/types.ts` selects the race and offline
+timed-session generic decision paths:
 
 - `category-agent-v1` resolves and checks the executable series/vehicle era,
   then delegates unchanged to `decideDriverBehavior` and, for F1 telemetry,
   the existing energy scheduler, baseline ERS-mode selector, and active-aero
   mode selector plus the Electrical Overtake compatibility request and, for SF
-  telemetry, the OTS use predicate after downstream availability passes;
+  telemetry, the OTS use predicate after downstream availability passes. The
+  same branch also delegates each existing timed-session execution decision;
 - `legacy-direct` skips category-policy resolution and delegates from the same
   wrappers directly to `decideDriverBehavior`, `f1EnergyIntentFor`,
   `f1ErsModeIntentFor`, `activeAeroModeFor`, and
@@ -187,20 +192,23 @@ activate without its evaluator. This slice adds no allocation, cooldown, power,
 budget, request retention, or distinct attack/defend policy, and F1 never
 enters the SF selector.
 
-The race-path adapter does not add a random draw, rewrite the seed, create a
-category pace factor, allocate observations, or allocate a decision record. An
-explicit pure diagnostic projection may create immediate observations, and an
-explicit pure diagnostic evaluation may construct a `DriverDecisionRecord`,
-without touching race state. A legacy utility is recorded as not evaluated
-rather than assigned an invented score. Runtime observation production on the
-race hot path, retention, checkpoint storage, and replay comparison remain
-later work.
+The race and timed-session adapters do not add a random draw, rewrite the seed,
+create a category pace factor, allocate observations, or allocate a decision
+record. An explicit pure diagnostic projection may create immediate
+observations, and an explicit pure diagnostic evaluation may construct a
+`DriverDecisionRecord`, without touching simulation state. A legacy utility is
+recorded as not evaluated rather than assigned an invented score. Runtime
+observation production, retention, checkpoint storage, and replay comparison
+remain later work.
 
-`src/simulation/qualifying.ts` remains on the direct legacy decision call in
-this batch. Race-path parity therefore does not imply qualifying migration or
-qualifying policy coverage. Existing `timedRunPhase` and
-`qualifyingSpendBias` inputs remain unchanged compatibility inputs, not evidence
-of a qualifying Driver Agent.
+Phase 7.7 routes the generic execution decision shared by qualifying, Sprint
+Qualifying, and practice through the same adapter at every existing decision
+window. Context, progress, seed, execution-loss coefficients, physical lap,
+tyres, weather, setup, release, traffic, classification, and practice programme
+remain unchanged. This closes the known production direct call site, but does
+not create an observation-consuming timed-session policy. Existing
+`timedRunPhase` and `qualifyingSpendBias` inputs remain compatibility inputs,
+not evidence of a qualifying Driver Agent.
 
 ## Observability and authority
 
@@ -256,7 +264,7 @@ policy cannot directly write:
 ## Determinism and category metadata
 
 Category metadata and immediate diagnostics must be deterministic and
-behaviorally inert through Phase 7.6. The adapter uses the same decision context
+behaviorally inert through Phase 7.7. The adapter uses the same decision context
 and the same seed as the legacy path. The projector is opt-in, pure, and uses no
 random draw. Canonicalization removes incidental ordering from contract
 collections; it does not add a seed namespace or convert unavailable
@@ -278,7 +286,9 @@ change the delegated decision, energy intent, ERS-mode request, or active-aero
 mode, and it must preserve the always-armed Electrical Overtake compatibility
 request and downstream effective status in Phase 7.5. For SF OTS it must also
 preserve the exact composite use predicate and every downstream availability,
-status, and sourced-power result in Phase 7.6.
+status, and sourced-power result in Phase 7.6. Timed-session legacy, category,
+and default paths must also preserve the exact execution loss for supported F1
+and SF metadata; only category validation may reject an invalid series/era pair.
 Later operational policy versions may intentionally diverge only after
 category-specific behavior and acceptance coverage are added explicitly.
 
@@ -333,7 +343,8 @@ Both category policies still require shared agent capabilities:
 - grip exploration and a time-based adaptive decision cadence;
 - persistent category experience separated by series and vehicle era;
 - decision-record retention and deterministic replay comparison;
-- qualifying and other remaining compatibility-call migration; and
+- audit and migration of any newly found or newly introduced direct
+  compatibility calls; and
 - a documented driver-ability dependency graph with unexplained duplicate
   effects removed.
 
@@ -344,5 +355,6 @@ diagnostic projection, Phase 7.2 ownership-only F1 energy dispatch, and Phase
 baseline ERS-mode dispatch and Phase 7.5 ownership-only dispatch of the
 explicit legacy Electrical Overtake compatibility request. Phase 7.6 adds only
 ownership-checked dispatch of the unchanged SF OTS use predicate after
-availability passes. It does not mean completed category-specific driving
-behavior.
+availability passes. Phase 7.7 adds only ownership-checked dispatch of the
+unchanged timed-session execution decision. It does not mean completed
+category-specific driving behavior.
