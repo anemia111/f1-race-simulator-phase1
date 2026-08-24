@@ -30,6 +30,10 @@ import {
   type F1EnergyIntentOptions,
   type F1ErsModeIntentOptions,
 } from './driverEnergyIntent'
+import {
+  sfOtsUseRequestedFor,
+  type SfOtsUseRequestOptions,
+} from './driverOtsIntent'
 
 export type { DriverDecisionPath } from '../types'
 
@@ -212,6 +216,40 @@ export function f1ElectricalOvertakeIntentForPath(
   }
 
   return f1ElectricalOvertakeIntentFor()
+}
+
+export type SfOtsUseRequestPathInput = {
+  options: SfOtsUseRequestOptions
+  path?: DriverDecisionPath
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+}
+
+/**
+ * Ownership-only adapter for the existing composite SF OTS use predicate.
+ * Event availability, eligibility, status, and power remain downstream.
+ */
+export function sfOtsUseRequestedForPath(
+  input: SfOtsUseRequestPathInput,
+): boolean {
+  if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
+    const policy = resolveCategoryDrivingPolicy(
+      input.seriesId,
+      input.vehicleEraId,
+    )
+
+    if (
+      policy.kind !== 'sf-2026-driving-policy' ||
+      policy.capabilities.otsAttack !== 'requestable' ||
+      policy.capabilities.otsDefend !== 'requestable'
+    ) {
+      throw new Error(
+        `SF OTS use intent requires a SUPER FORMULA OTS policy, received ${policy.seriesId}/${policy.vehicleEraId}`,
+      )
+    }
+  }
+
+  return sfOtsUseRequestedFor(input.options)
 }
 
 /**

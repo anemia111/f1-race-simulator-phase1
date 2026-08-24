@@ -1,6 +1,6 @@
 # Driver Agent model
 
-## Status and Phase 7.5 boundary
+## Status and Phase 7.6 boundary
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
@@ -10,11 +10,12 @@ category-agent migration switch. Phase 7.3 does the same for the existing pure
 F1 Straight/Corner mode selector. Phase 7.4 moves the existing baseline F1
 ERS-mode request selector. Phase 7.5 makes the legacy runtime's implicit
 always-use-when-permitted Electrical Overtake request explicit and routes only
-that ephemeral compatibility request through the switch. All six slices are
-deliberately behavior-neutral. They do **not** complete Phase 7, activate an
-observation-consuming F1 or SUPER FORMULA driving policy, add learned category
-experience, or claim that the current generic driver logic is a complete agent
-or perception model.
+that ephemeral compatibility request through the switch. Phase 7.6 routes the
+unchanged composite SUPER FORMULA OTS driver-use predicate through the same
+switch. All seven slices are deliberately behavior-neutral. They do **not**
+complete Phase 7, activate an observation-consuming F1 or SUPER FORMULA
+driving policy, add learned category experience, or claim that the current
+generic driver logic is a complete agent or perception model.
 
 The batch has four relevant implementation boundaries:
 
@@ -24,13 +25,13 @@ The batch has four relevant implementation boundaries:
 - `src/simulation/categoryDriverAgent.ts` adapts that contract to the existing
   driver decision, F1 energy-intent and ERS-mode schedulers, F1 active-aero
   mode selector, and the F1 Electrical Overtake compatibility request without
-  changing their results;
+  changing their results, plus the unchanged SF OTS use predicate;
 - `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
   projection without joining the live race path; and
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the
   pre-advance race decision seam and passes the same route metadata to
-  `src/simulation/telemetry.ts` for F1 energy, active-aero, and Electrical
-  Overtake request dispatch.
+  `src/simulation/telemetry.ts` for F1 energy, active-aero, Electrical
+  Overtake, and SF OTS request dispatch.
 
 The behavior delegated by the adapter remains
 `src/simulation/driverDecision.ts`. Existing category system truth remains in
@@ -39,7 +40,7 @@ calculation remains in `src/simulation/driverEnergyIntent.ts`. Phase 7.2 moves
 only caller ownership: it does not change a coefficient or transfer physical,
 SOC, power-limit, recharge, or regulatory authority out of the existing owners.
 
-Phase 7.5 does not call the diagnostic projector from the live race hot path.
+Phase 7.6 does not call the diagnostic projector from the live race hot path.
 It therefore adds no per-car hot-path observation allocation, random draw,
 decision record, retained inbox, event/log entry, or behavior change.
 
@@ -88,6 +89,16 @@ calculateCarTelemetry for F1 Electrical Overtake
         -> f1ElectricalOvertakeIntentFor()
   -> overtakeStatusFor retains every effective-status gate
   -> existing power-curve, allowance, and Energy Store owners
+
+calculateCarTelemetry for SUPER FORMULA OTS after final pedal controls
+  -> existing downstream otsAvailable gate
+     -> unavailable: disabled without invoking the request selector
+     -> available: RaceConfig.driverDecisionPath
+        -> legacy-direct: sfOtsUseRequestedFor(the existing inputs)
+        -> category-agent-v1
+           -> resolve and check SF OTS attack/defend capabilities
+           -> sfOtsUseRequestedFor(the same existing inputs)
+  -> telemetry retains effective status and sourced boost-power authority
 
 opt-in diagnostic path
   immutable pre-advance DriverDecisionContext
@@ -139,6 +150,19 @@ integration remain unchanged. No request ID, record, runtime field, checkpoint,
 or replay state is created, and operational request/hold/release timing remains
 future work.
 
+Phase 7.6 extracts only the existing SF OTS driver-use predicate after final
+brake and throttle controls. Both paths read the same brake, throttle,
+straightness, gap, battle-phase, pace-mode, and final-lap values and return the
+same boolean request. Its thresholds are legacy simulator compatibility inputs,
+not official JAF or event activation conditions. Telemetry preserves the old
+short-circuit: the selector is called only after verified runtime eligibility,
+session, preparation, Race Control, flag, and running-status availability gates
+have passed. Effective status and the provenance-bearing event boost remain
+downstream. The current runtime still has no event-condition evaluator and
+therefore cannot activate and remains inactive; Phase 7.6 adds no evaluator,
+allocation, cooldown, power, budget, distinct attack/defend policy, or durable
+request state.
+
 ## Contract model
 
 `src/simulation/driverAgentContract.ts` owns the following public concepts.
@@ -168,10 +192,10 @@ capability.
 
 Policy selection follows the executable series identity. It must not be
 inferred from driver provenance, circuit identity, tyre supplier, or a generic
-overtake-system label. Phase 7.5 uses the selected F1 metadata only to validate
-dispatch ownership at the existing energy, ERS-mode, active-aero, and
-Electrical Overtake request seams. It does not use observations or a new policy
-algorithm to change driving behavior.
+overtake-system label. Through Phase 7.6 the selected category metadata only
+validates dispatch ownership at the F1 energy, ERS-mode, active-aero, and
+Electrical Overtake request seams and the SF OTS request seam. It does not use
+observations or a new policy algorithm to change driving behavior.
 
 For compatibility with existing race configurations, an omitted `seriesId`
 resolves to `f1-custom`; an omitted vehicle era resolves to the matching 2026
@@ -302,7 +326,7 @@ creation and canonicalization are pure operations; when a later runtime producer
 uses them, it must not use wall-clock time, global counters, mutable random
 state, callback order, renderer state, or log retention as an input.
 
-Through Phase 7.5, the required invariants are:
+Through Phase 7.6, the required invariants are:
 
 - for a supported series/vehicle-era pair, the direct and adapter paths return
   exactly equal `DriverDecision` objects;
@@ -322,6 +346,9 @@ Through Phase 7.5, the required invariants are:
 - the Electrical Overtake paths return the same always-armed compatibility
   request, while the downstream arbiter returns the same effective status and
   a genuine SF runtime never enters the F1 seam;
+- direct, legacy, category, and default SF OTS paths return the same use
+  predicate without mutating inputs, while F1 is rejected and unavailable SF
+  OTS remains disabled without invoking the selector;
 - contract canonicalization orders IDs and record collections by stable keys;
   and
 - the same seed and canonical contract input produce the same canonical data.
@@ -338,11 +365,12 @@ migration switch:
 - `category-agent-v1` validates category ownership before delegating the
   generic decision and, for F1 telemetry, the existing energy and active-aero
   requests plus the baseline ERS-mode and Electrical Overtake compatibility
-  requests; and
+  requests and, when downstream availability passes, the existing SF OTS use
+  predicate; and
 - `legacy-direct` skips category-policy resolution and delegates from the same
   wrappers directly to `decideDriverBehavior`, `f1EnergyIntentFor`,
   `f1ErsModeIntentFor`, `activeAeroModeFor`, and
-  `f1ElectricalOvertakeIntentFor`.
+  `f1ElectricalOvertakeIntentFor`, plus `sfOtsUseRequestedFor` for SF OTS.
 
 After exact parity coverage, an omitted property resolves to
 `category-agent-v1`. Setting `legacy-direct` is the rollback point. Both modes
@@ -385,5 +413,7 @@ projection, and Phase 7.2 adds only ownership-checked dispatch of the unchanged
 F1 energy scheduler. Phase 7.3 adds the same ownership check for the unchanged
 active-aero mode selector. Phase 7.4 adds only the unchanged baseline ERS-mode
 selector. Phase 7.5 adds only an explicit representation of the legacy implicit
-Electrical Overtake request; effective status remains downstream. None is
-operational category-specific Driver AI.
+Electrical Overtake request; effective status remains downstream. Phase 7.6
+adds only category-owned dispatch of the unchanged SF OTS use predicate after
+downstream availability passes. None is operational category-specific Driver
+AI.

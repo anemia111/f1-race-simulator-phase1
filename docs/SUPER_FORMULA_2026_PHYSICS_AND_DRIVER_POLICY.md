@@ -82,6 +82,17 @@ Even a complete accepted pack begins inactive until the race runtime has an
 event-condition evaluation for it.  Missing, malformed, incomplete, or
 unprovenanced input leaves OTS unavailable and inactive.
 
+Phase 7.6 extracts the unchanged simulator-side driver-use predicate into
+`driverOtsIntent.ts` and routes it through the category-agent switch only after
+the existing downstream OTS availability gate passes. The predicate uses the
+same final brake/throttle, straightness, gap, battle-phase, pace-mode, and
+final-lap compatibility inputs. Its thresholds are not official JAF or event
+activation conditions. Event-pack provenance, runtime eligibility,
+preparation/session, Race Control, flag, running status, effective status, and
+sourced boost power remain downstream authorities. Because the event-condition
+evaluator is still unavailable, this slice does not make OTS executable or add
+an allocation, cooldown, boost, budget, or distinct attack/defend policy.
+
 ## Pit lane and engine ledger
 
 - **Pit lane:** Article 26.9 supplies a verified **60 km/h** limit.  The SF
@@ -147,7 +158,8 @@ for race distance or mandatory pit stops.
 
 This implementation does not claim or attempt to provide:
 
-- a generic 2026 SF OTS allocation, boost, cooldown, or activation predicate;
+- a generic 2026 SF OTS allocation, boost, cooldown, or event-rule eligibility/
+  activation predicate;
 - a numeric refuelling duration, rate, or fuel gain without an event document;
 - a generic SF race distance or mandatory pit stop;
 - Yokohama control-tyre physical coefficients, sub-compounds, or a Pirelli-like
