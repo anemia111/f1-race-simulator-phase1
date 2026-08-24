@@ -97,9 +97,9 @@ compact `racePace` source axis, which also constructs other active skills.
 
 | Domain | Owner | Range and purpose | Main consumers |
 | --- | --- | --- | --- |
-| Raw behavior skill | `driverDecision.ts` | Clamped to 0..1 for generic traits; values above 100 do not increase these traits | intent, pedal/line execution, error and contact requests |
-| Performance-normalized skill | `driverAbility.ts` | 0..100 maps to 0.55..1.00; the authored limit-break ceiling can reach 1.09 | physics execution, strategy, incidents, race control |
-| Direct bounded energy blend | `driverEnergyIntent.ts` | Raw skill blend clamped to 0..1 | F1 scheduling preferences only |
+| Raw published-scale skill | `driverDecision.ts` and `driverPublishedAbilityValue` | Clamped to 0..1 per named consumer; values above 100 do not increase generic traits or tyre-condition previews | intent, pedal/line execution, error/contact requests and tyre UI projections |
+| Performance-normalized skill | `driverAbility.ts` | 0..100 maps to 0.55..1.00 and every named path saturates at 100 | physics execution, strategy, incidents, race control |
+| Direct bounded energy blend | `driverEnergyIntent.ts` | Each raw skill is clamped to 0..1 before the weighted blend | F1 scheduling preferences only |
 | Limit-break aggregate | `driverAbility.ts` | Mean excess above 100 across all 30 skills | recovery of part of the timed physical reference's transient concession |
 | Display aggregate | `driverAbility.ts` | Twelve UI groups or configured source overall | setup UI and season history; no runtime lap-time read |
 
@@ -209,7 +209,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-08 | Per-window control plus one run-wide consistency variation | separate cadence / partially justified | Source comments distinguish local execution from whole-lap variation; combined weight remains unreviewed |
 | DA-09 | Decision brake pressure versus telemetry skill fallback | mutually exclusive fallback | Not doubled on the normal live path |
 | DA-10 | Fuel multiplier used by prediction and actual debit | shared read-only calculation | One common multiplier keeps estimates aligned; fuel is debited once |
-| DA-11 | Above-100 all-skill recovery plus named performance paths | sequential compound / review required | Recovery is bounded to the transient concession, but above-100 skills may still affect named normalized paths |
+| DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
 | DA-12 | Generic control/awareness followed by independent qualifying abort/deletion and live timed yellow/track-limit rolls | sequential compound / review required | Continuous control and adjudication events have separate owners, but overlapping awareness sensitivity is unexplained |
 | DA-13 | Live timed sessions inherit race attack/defend/tow/dirty-air cues while formal battle resolution is race-only | ownership overlap / review required | Existing shared generic cues are documented; no timed-session racecraft policy is claimed |
 | DA-14 | One compact axis fans out to multiple final skills that can rejoin the same blend, such as identical expanded `brakingSkill`/`precision` inputs in braking or `overtakingSkill`/`defendingSkill` rejoining their aggregate `racecraft` | construction-time duplicate / review required | The 12-to-30 expansion is explicit, but repeated sensitivity after fan-out has not been justified or calibrated |
@@ -263,6 +263,13 @@ The fourth behavior-neutral cleanup removes the uncalled
 `setupCompletenessPercent` helper and its `SetupPanel` consumer remain intact;
 no timed-session setup penalty is added or changed. Runtime values, seeds, random
 evaluations, persisted setup state, and results remain unchanged.
+
+The fifth cleanup resolves DA-11 by saturating every named raw, performance, and
+direct energy-skill input at the published 100-point ceiling. Authored values up
+to 120 remain visible and validated, but their excess has one runtime owner:
+the existing bounded `driverLimitBreakFraction` recovery of the timed physical
+reference's transient concession. No coefficient is refitted, and the 0..100
+field is unchanged; above-100 named-path behavior intentionally narrows.
 
 ## Invariants
 

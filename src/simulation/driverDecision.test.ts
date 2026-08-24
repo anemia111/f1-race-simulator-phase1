@@ -129,6 +129,12 @@ describe('seeded driver decisions', () => {
     ).toEqual(decideDriverBehavior(contextFor({ driver: aceMetadata })))
   })
 
+  it('saturates generic named behavior at the published ceiling', () => {
+    expect(driverBehaviorTraits(driverAt(1.2))).toEqual(
+      driverBehaviorTraits(driverAt(1)),
+    )
+  })
+
   it('applies flag, pit, emergency, battle, wake, tow, then reference priority', () => {
     const fullContext = contextFor({
       flagState: 'vsc',

@@ -140,8 +140,8 @@ import type {
 } from './types'
 import {
   clampDriverAbility,
-  driverAbilityValue,
   driverConfiguredOverallAbilityPoints,
+  driverPublishedAbilityValue,
 } from './simulation/driverAbility'
 import { normalizeSimulationSeed } from './simulation/random'
 import {
@@ -2816,7 +2816,7 @@ export default function App() {
                 raceConfig.track.observedCalibration
                   ?.tireSampleCountByCompound[f1Tires.tire] ?? 0
               const tireManagement = driver
-                ? driverAbilityValue(driver, 'tireManagement')
+                ? driverPublishedAbilityValue(driver, 'tireManagement')
                 : 0.8
 
               return {

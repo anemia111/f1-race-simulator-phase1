@@ -121,7 +121,9 @@ Status: complete; commit `29b28de`.
   Driver separation is a bounded control-execution adjustment sampled over the
   same decision windows. It can become negative only when an above-100
   limit-break profile recovers part of the physical reference's transient
-  concession; there is no `baseLapTime`, ACE gain or old seconds stack.
+  concession. Named performance and energy-skill paths saturate at 100, so that
+  bounded recovery is the only runtime owner of authored excess; there is no
+  `baseLapTime`, ACE gain or old seconds stack.
 - A stopped on-track incident is an explicit immobilised state. Followers
   choose a continuous avoidance line under yellow before occupancy permits
   them through. SC/VSC/yellow speed ceilings remain operational controller

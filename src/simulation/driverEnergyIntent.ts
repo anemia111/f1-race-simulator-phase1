@@ -109,9 +109,9 @@ export function f1EnergyIntentFor(
     timedRunPhase,
   } = options
   const skill = clamp01(
-    driver.skills.ersManagement * 0.58 +
-      driver.skills.raceAwareness * 0.24 +
-      driver.skills.precision * 0.18,
+    clamp01(driver.skills.ersManagement) * 0.58 +
+      clamp01(driver.skills.raceAwareness) * 0.24 +
+      clamp01(driver.skills.precision) * 0.18,
   )
   const progress = clamp01(lapProgress)
   const straightOpportunity = clamp01(

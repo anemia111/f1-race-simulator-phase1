@@ -61,6 +61,27 @@ describe('F1 driver energy intent', () => {
     expect(first).not.toHaveProperty('qualifyingSpendBias')
   })
 
+  it('saturates each named energy skill at the published ceiling', () => {
+    const atScale = {
+      ...driver,
+      skills: {
+        ...driver.skills,
+        ersManagement: 1,
+        precision: 0.8,
+        raceAwareness: 0.8,
+      },
+    }
+    const limitBreak = {
+      ...atScale,
+      skills: {
+        ...atScale.skills,
+        ersManagement: 1.2,
+      },
+    }
+
+    expect(intent({ driver: limitBreak })).toEqual(intent({ driver: atScale }))
+  })
+
   it('changes scheduling for save, attack, defend, and qualifying contexts', () => {
     const standard = intent()
     const saving = intent({ paceMode: 'save' })
