@@ -13,10 +13,13 @@ import {
   driverAbilityPoints,
   driverAbilityValue,
   driverConfiguredOverallAbilityPoints,
+  driverLimitBreakFraction,
   driverOverallAbility,
   driverOverallAbilityPoints,
   driverPerformanceAbility,
   driverPerformanceValue,
+  driverPublishedAbilityValue,
+  driverSkillBlend,
 } from './driverAbility'
 
 const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
@@ -25,7 +28,7 @@ describe('driver ability scale', () => {
   it('uses the specification-wide 0-100 source and editor scale', () => {
     // The published scale is unchanged. Only the ceiling a rating may be
     // authored past moves, so every driver on the scale normalises exactly as
-    // before and one placed beyond it is not silently clipped back.
+    // before. Authored excess is retained for the dedicated limit-break owner.
     expect(DRIVER_ABILITY_SCALE_MAX).toBe(100)
     expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.2)
     expect(clampDriverAbility(2)).toBe(1.2)
@@ -35,6 +38,35 @@ describe('driver ability scale', () => {
     expect(driverPerformanceValue(0)).toBe(0.55)
     expect(driverPerformanceValue(0.55)).toBeCloseTo(0.7975, 10)
     expect(driverPerformanceValue(1)).toBe(1)
+    expect(driverPerformanceValue(1.2)).toBe(1)
+  })
+
+  it('gives ratings above 100 exactly one runtime owner', () => {
+    const atScale = {
+      ...initialDrivers[0],
+      skills: Object.fromEntries(driverStats.map((stat) => [stat, 1])) as Record<
+        DriverTunableStat,
+        number
+      >,
+    }
+    const limitBreak = {
+      ...atScale,
+      skills: Object.fromEntries(
+        driverStats.map((stat) => [stat, 1.2]),
+      ) as Record<DriverTunableStat, number>,
+    }
+
+    expect(driverPerformanceAbility(limitBreak, 'rawPace')).toBe(
+      driverPerformanceAbility(atScale, 'rawPace'),
+    )
+    expect(driverPublishedAbilityValue(limitBreak, 'tireManagement')).toBe(
+      driverPublishedAbilityValue(atScale, 'tireManagement'),
+    )
+    expect(
+      driverSkillBlend(limitBreak, { rawPace: 0.4, raceAwareness: 0.6 }),
+    ).toBe(driverSkillBlend(atScale, { rawPace: 0.4, raceAwareness: 0.6 }))
+    expect(driverLimitBreakFraction(atScale)).toBe(0)
+    expect(driverLimitBreakFraction(limitBreak)).toBeCloseTo(0.2, 10)
   })
 
   it('keeps every CSV-configured driver within the supported scale', () => {

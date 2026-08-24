@@ -9,7 +9,7 @@ import {
   type PitWallTabId,
 } from '../domain/pitWall'
 import { usePitStrategyOutlook } from '../hooks/usePitStrategyOutlook'
-import { driverAbilityValue } from '../simulation/driverAbility'
+import { driverPublishedAbilityValue } from '../simulation/driverAbility'
 import { tireConditionFor } from '../simulation/tires'
 import { PitWallLapLog } from './pitWall/PitWallLapLog'
 import { PitWallOverview } from './pitWall/PitWallOverview'
@@ -124,7 +124,7 @@ function F1PitWallTabPane({
         ? tireConditionFor(
             f1Tires.tire,
             f1Tires.tireAgeLaps,
-            driverAbilityValue(driver, 'tireManagement'),
+            driverPublishedAbilityValue(driver, 'tireManagement'),
             f1Tires.tireTemperatureC,
             f1Tires.tireWearPercent,
             track.tireNomination,

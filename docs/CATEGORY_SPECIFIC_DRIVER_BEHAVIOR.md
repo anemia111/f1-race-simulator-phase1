@@ -24,6 +24,11 @@ narrow redundant decision and energy-intent return surfaces without changing a
 consumed calculation. These slices do not claim that perception or Phase 7 is
 complete.
 
+The next Phase 7.8B slice intentionally resolves DA-11: every named raw,
+performance, and direct energy-skill input saturates at 100, while the existing bounded
+limit-break aggregate remains the only runtime owner of authored excess up to
+120. It does not refit a coefficient or use an observed/validation target.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -244,6 +249,11 @@ unchanged `superclipAcceptance` formula, and qualifying phase still affects
 consumed intent outputs. The internal surface narrows without changing SOC,
 energy authority, seeds, random evaluations, saved state, or simulation results;
 DA-03 remains unresolved.
+
+DA-11 is resolved separately by saturating every named raw, performance, and
+direct energy-skill input at 100. Values up to 120 remain valid and displayed; only the
+existing `driverLimitBreakFraction` consumes the excess. The normal field,
+coefficients, seeds, random cadence, authority, and saved shape remain unchanged.
 
 ## Observability and authority
 

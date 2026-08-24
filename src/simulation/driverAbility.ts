@@ -141,8 +141,22 @@ export function driverAbilityValue(
   return clampDriverAbility(driver.skills[stat])
 }
 
+/** Named raw-scale consumers saturate at the published 100-point ceiling. */
+export function driverPublishedAbilityValue(
+  driver: Driver,
+  stat: DriverTunableStat,
+): number {
+  return Math.min(
+    DRIVER_ABILITY_SCALE_INTERNAL_MAX,
+    driverAbilityValue(driver, stat),
+  )
+}
+
 export function driverPerformanceValue(value: number): number {
-  const rating = clampDriverAbility(value)
+  const rating = Math.min(
+    DRIVER_ABILITY_SCALE_INTERNAL_MAX,
+    clampDriverAbility(value),
+  )
   const normalized =
     (rating - DRIVER_ABILITY_INTERNAL_MIN) /
     (DRIVER_ABILITY_SCALE_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
@@ -195,23 +209,25 @@ export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
   }
 
   // Bounded by the limit-break ceiling rather than the published scale, so a
-  // rating deliberately placed past 100 is displayed as authored instead of
-  // being shown as 100 while the physics uses the higher figure.
+  // rating deliberately placed past 100 is displayed as authored. Named
+  // performance paths saturate at 100; only driverLimitBreakFraction consumes
+  // the authored excess.
   return Math.round(
     Math.min(DRIVER_ABILITY_LIMIT_BREAK_MAX, Math.max(0, configuredOverall)),
   )
 }
 
 /**
- * Converts the 0-100 source/editor scale into the 0.55-1.00 execution range
- * used by the physics and strategy models. A rating of 100 means ideal
- * execution, not extra grip, power, tire life, or reliability.
+ * Converts the published 0-100 source/editor scale into the 0.55-1.00
+ * execution range used by the physics and strategy models. A rating of 100
+ * means ideal execution; values above 100 remain saturated here and cannot add
+ * grip, power, tire life, reliability, or a second named-path advantage.
  */
 export function driverPerformanceAbility(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  return driverPerformanceValue(driverAbilityValue(driver, stat))
+  return driverPerformanceValue(driverPublishedAbilityValue(driver, stat))
 }
 
 export function driverSkillBlend(
@@ -233,7 +249,10 @@ export function driverSkillBlend(
   }
 
   return totalWeight > 0
-    ? clampDriverAbility(weighted / totalWeight)
+    ? Math.min(
+        DRIVER_PERFORMANCE_INTERNAL_MAX,
+        clampDriverAbility(weighted / totalWeight),
+      )
     : DRIVER_ABILITY_INTERNAL_MIN
 }
 
@@ -250,7 +269,9 @@ export function driverSkillBlend(
  * reference conceded, and nothing more.
  */
 export function driverLimitBreakFraction(driver: Driver): number {
-  const abilities = DRIVER_ABILITY_STATS.map((stat) => driver.skills[stat])
+  const abilities = DRIVER_ABILITY_STATS.map((stat) =>
+    driverAbilityValue(driver, stat),
+  )
   const mean =
     abilities.reduce((total, value) => total + value, 0) / abilities.length
 

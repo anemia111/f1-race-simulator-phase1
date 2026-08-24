@@ -18,8 +18,11 @@ that ephemeral compatibility request through the switch. Phase 7.6 routes the
   its unresolved compound effects without changing production behavior. The
   initial Phase 7.8B cleanups remove two unused helpers, correct a track-limit
   parameter label, and narrow redundant decision and energy-intent return
-  surfaces without changing a consumed calculation. All thirteen slices are
-  deliberately behavior-neutral. They do **not** complete Phase 7,
+  surfaces without changing a consumed calculation. Those first thirteen slices
+  are behavior-neutral. The next Phase 7.8B slice resolves DA-11 by making the
+  existing limit-break aggregate the sole owner of ratings above 100; named
+  paths now saturate at 100 without coefficient refitting. These slices do
+  **not** complete Phase 7,
 activate an observation-consuming F1 or SUPER FORMULA driving policy, add
 learned category experience, or claim that the current generic driver logic is
 a complete agent or perception model.
@@ -72,6 +75,13 @@ calculation and returned field and the redundant returned
 `superclipAcceptance` formula, and qualifying phase still changes consumed
 intent outputs. The internal type/runtime surface narrows without changing SOC,
 energy authority, seeds, random evaluation, saved state, or simulation results.
+
+DA-11 is the first intentional sensitivity correction. Named raw/performance
+paths and the direct F1 energy blend now saturate every input at 100. Authored values
+through 120 remain valid and displayed, while only the existing bounded
+`driverLimitBreakFraction` consumes their excess. The 0..100 field,
+coefficients, seeds, random cadence, authority, and saved shape are unchanged;
+no observed or validation target is used to compensate for the removed edge.
 
 ## Runtime flow
 
@@ -218,8 +228,8 @@ their resolution remains Phase 7.8B or later work.
 The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
 return surfaces recorded by that graph. They do not select a new ability owner
-or resolve DA-03/DA-12; all duplicate-effect sensitivity and removal work
-remains open.
+or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
+the other duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
 

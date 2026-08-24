@@ -11,7 +11,7 @@ import {
 import { weakestComponent } from '../simulation/components'
 import { tireDisplayForLapRecord } from '../simulation/classification'
 import { tireConditionFor } from '../simulation/tires'
-import { driverAbilityValue } from '../simulation/driverAbility'
+import { driverPublishedAbilityValue } from '../simulation/driverAbility'
 import type {
   CarSnapshot,
   Driver,
@@ -83,7 +83,7 @@ export function RaceInsightsPanel({
           ? 'PERMITTED'
           : 'DELETED'
         : 'CLASSIFIED'
-  const tireManagement = driverAbilityValue(driver, 'tireManagement')
+  const tireManagement = driverPublishedAbilityValue(driver, 'tireManagement')
   const tireCondition = useMemo(
     () =>
       f1Tires
