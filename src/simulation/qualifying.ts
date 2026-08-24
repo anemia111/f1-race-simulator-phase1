@@ -26,11 +26,9 @@ import {
   categoryPhysicsFor,
   resolveOperationalVehicleMass,
 } from './categoryPhysics'
+import { decideDriverBehaviorForPath } from './categoryDriverAgent'
 import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
-import {
-  decideDriverBehavior,
-  DRIVER_DECISION_WINDOWS_PER_LAP,
-} from './driverDecision'
+import { DRIVER_DECISION_WINDOWS_PER_LAP } from './driverDecision'
 import { effectiveMachineReliability } from './machinePerformance'
 import {
   simulatePhysicalLap,
@@ -427,14 +425,19 @@ export function timedSessionDriverExecutionLossSeconds(
           Math.floor(progress * plan.points.length),
         )
       ]
-    const decision = decideDriverBehavior({
-      currentLateralOffsetM: 0,
-      driver: options.driver,
-      lap: options.run,
-      physicalReferenceLineOffsetM: point?.referenceLineOffsetM ?? 0,
-      seed: options.seed,
-      trackHalfWidthM,
-      trackProgress: progress,
+    const decision = decideDriverBehaviorForPath({
+      context: {
+        currentLateralOffsetM: 0,
+        driver: options.driver,
+        lap: options.run,
+        physicalReferenceLineOffsetM: point?.referenceLineOffsetM ?? 0,
+        seed: options.seed,
+        trackHalfWidthM,
+        trackProgress: progress,
+      },
+      path: options.config.driverDecisionPath,
+      seriesId: options.config.seriesId,
+      vehicleEraId: options.config.vehicleEraId,
     })
     const cornerDemand = Number.isFinite(point?.effectiveCornerRadiusM)
       ? Math.min(1, 180 / Math.max(18, point!.effectiveCornerRadiusM))

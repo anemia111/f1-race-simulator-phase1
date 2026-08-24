@@ -960,10 +960,10 @@ export type TrackDefinition = {
 }
 
 /**
- * Selects the reversible live Driver Agent ownership seams for the generic
- * race decision plus F1 energy, ERS-mode, active-aero, Electrical Overtake,
- * and SF OTS compatibility requests without changing physical owners.
- * `legacy-direct` is the Phase 7 rollback path.
+ * Selects the reversible Driver Agent ownership seams for generic race and
+ * offline timed-session decisions plus F1 energy, ERS-mode, active-aero,
+ * Electrical Overtake, and SF OTS compatibility requests without changing
+ * physical owners. `legacy-direct` is the Phase 7 rollback path.
  */
 export type DriverDecisionPath = 'legacy-direct' | 'category-agent-v1'
 
