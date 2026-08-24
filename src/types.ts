@@ -960,9 +960,9 @@ export type TrackDefinition = {
 }
 
 /**
- * Selects the driver-decision seam without changing the physical controller.
- * `legacy-direct` is the rollback path for the behavior-neutral category
- * adapter introduced in Phase 7.
+ * Selects the reversible live Driver Agent ownership seams for the generic
+ * race decision and F1 energy scheduling without changing physical owners.
+ * `legacy-direct` is the rollback path for the Phase 7 category adapter.
  */
 export type DriverDecisionPath = 'legacy-direct' | 'category-agent-v1'
 

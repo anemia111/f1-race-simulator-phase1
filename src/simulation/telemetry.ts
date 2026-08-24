@@ -1,9 +1,14 @@
 import type {
+  ExecutableSeriesId,
+  RuntimeVehicleEraId,
+} from '../series/seriesIds'
+import type {
   ActiveAeroState,
   ActiveFlagPhase,
   CarSetup,
   CarSnapshot,
   Driver,
+  DriverDecisionPath,
   ErsMode,
   OvertakeStatus,
   Team,
@@ -30,7 +35,7 @@ import {
   driverBehaviorTraits,
   type DriverDecision,
 } from './driverDecision'
-import { f1EnergyIntentFor } from './driverEnergyIntent'
+import { f1EnergyIntentForPath } from './categoryDriverAgent'
 import {
   advanceEnergyStore,
   energyDeploymentRequestFor,
@@ -182,6 +187,7 @@ export function calculateCarTelemetry(options: {
   deltaSeconds: number
   driver: Driver
   driverDecision?: DriverDecision
+  driverDecisionPath?: DriverDecisionPath
   elapsedSeconds: number
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
@@ -191,6 +197,7 @@ export function calculateCarTelemetry(options: {
   fiaNominalTyreMassKg?: number | null
   raceControlOvertakeEnabled?: boolean
   overtakeSystem?: 'active-aero' | 'ots'
+  seriesId?: ExecutableSeriesId
   /** Pre-resolved by the weekend runtime when available. */
   operationalVehicleMass?: OperationalVehicleMassResolution
   regulatoryMassIncreaseKg?: number
@@ -213,6 +220,7 @@ export function calculateCarTelemetry(options: {
   airTemperatureC?: number
   trackTemperatureC?: number
   weather: WeatherState
+  vehicleEraId?: RuntimeVehicleEraId
   weekendStage?: WeekendStage
 }): CalculatedTelemetry {
   const {
@@ -222,6 +230,7 @@ export function calculateCarTelemetry(options: {
     deltaSeconds,
     driver,
     driverDecision,
+    driverDecisionPath,
     elapsedSeconds,
     phase,
     localFlagPaceScale = 1,
@@ -229,6 +238,7 @@ export function calculateCarTelemetry(options: {
     isFinalLap = false,
     raceControlOvertakeEnabled = true,
     overtakeSystem = 'active-aero',
+    seriesId,
     regulatoryMassIncreaseKg = 0,
     sessionType = 'race-distance',
     raceLap,
@@ -247,6 +257,7 @@ export function calculateCarTelemetry(options: {
     airTemperatureC = 25,
     trackTemperatureC = 30,
     weather,
+    vehicleEraId,
   } = options
   const f1Runtime =
     car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
@@ -642,17 +653,22 @@ export function calculateCarTelemetry(options: {
           })
         : ('disabled' as const)
   const energyIntent = energyStoreAtFrameStart
-    ? f1EnergyIntentFor({
-        battlePhase: car.battlePhase,
-        driver,
-        isFinalLap,
-        lapProgress: car.progress,
-        paceMode: car.racePaceMode,
-        phaseActive: phase !== null,
-        state: energyStoreAtFrameStart,
-        straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
-        straightness: dynamics.straightness,
-        timedRunPhase,
+    ? f1EnergyIntentForPath({
+        options: {
+          battlePhase: car.battlePhase,
+          driver,
+          isFinalLap,
+          lapProgress: car.progress,
+          paceMode: car.racePaceMode,
+          phaseActive: phase !== null,
+          state: energyStoreAtFrameStart,
+          straightLengthAheadMeters: dynamics.straightLengthAheadMeters,
+          straightness: dynamics.straightness,
+          timedRunPhase,
+        },
+        path: driverDecisionPath,
+        seriesId,
+        vehicleEraId,
       })
     : null
   const rechargeRemainingAtCuKBusMj =

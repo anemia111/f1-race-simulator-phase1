@@ -38,6 +38,15 @@ function runThroughStart(config: RaceConfig): RaceSnapshot {
   return advanceRace(snapshot, 5, config)
 }
 
+function advanceFixedTickWindow(
+  snapshot: RaceSnapshot,
+  config: RaceConfig,
+): RaceSnapshot {
+  // Production integration splits this three-second window into six 0.5 s
+  // physics ticks, long enough to exercise deployment and SOC evolution.
+  return advanceRace(snapshot, 3, config)
+}
+
 describe('category driver-agent race seam', () => {
   for (const seriesId of [
     'f1-custom',
@@ -49,12 +58,63 @@ describe('category driver-agent race seam', () => {
       const defaultConfig = configFor(seriesId)
       const commonStartedSnapshot = runThroughStart(legacyConfig)
 
-      const legacy = advanceRace(commonStartedSnapshot, 0.25, legacyConfig)
-      const category = advanceRace(commonStartedSnapshot, 0.25, categoryConfig)
-      const defaulted = advanceRace(commonStartedSnapshot, 0.25, defaultConfig)
+      const legacy = advanceFixedTickWindow(
+        commonStartedSnapshot,
+        legacyConfig,
+      )
+      const category = advanceFixedTickWindow(
+        commonStartedSnapshot,
+        categoryConfig,
+      )
+      const defaulted = advanceFixedTickWindow(
+        commonStartedSnapshot,
+        defaultConfig,
+      )
 
       expect(category).toEqual(legacy)
       expect(defaulted).toEqual(category)
+
+      if (seriesId === 'f1-custom') {
+        const energyBefore = commonStartedSnapshot.cars.map((car) => {
+          expect(car.runtimeSystems.kind).toBe('f1')
+          return car.runtimeSystems.kind === 'f1'
+            ? car.runtimeSystems.energyStore
+            : null
+        })
+        const energyAfter = category.cars.map((car) => {
+          expect(car.runtimeSystems.kind).toBe('f1')
+          return car.runtimeSystems.kind === 'f1'
+            ? car.runtimeSystems.energyStore
+            : null
+        })
+
+        expect(energyAfter).not.toEqual(energyBefore)
+        expect(
+          energyAfter.some(
+            (state, index) =>
+              state !== null &&
+              energyBefore[index] !== null &&
+              state.stateOfCharge !== energyBefore[index]!.stateOfCharge,
+          ),
+        ).toBe(true)
+        expect(
+          energyAfter.some(
+            (state, index) =>
+              state !== null &&
+              energyBefore[index] !== null &&
+              state.deployedAtCuKBusThisLapMJ !==
+                energyBefore[index]!.deployedAtCuKBusThisLapMJ,
+          ),
+        ).toBe(true)
+      } else {
+        expect(
+          category.cars.every(
+            (car) =>
+              car.runtimeSystems.kind === 'super-formula' &&
+              !('energyStore' in car.runtimeSystems),
+          ),
+        ).toBe(true)
+      }
     })
   }
 })

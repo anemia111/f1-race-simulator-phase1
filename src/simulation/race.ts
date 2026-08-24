@@ -5567,6 +5567,7 @@ export function advanceRace(
       deltaSeconds,
       driver,
       driverDecision,
+      driverDecisionPath: config.driverDecisionPath,
       elapsedSeconds,
       phase: localControlPhase,
       localFlagPaceScale,
@@ -5575,6 +5576,7 @@ export function advanceRace(
         isRaceDistance && Math.floor(car.totalDistance) >= raceLaps - 1,
       raceControlOvertakeEnabled: raceControlOvertakeAvailable,
       overtakeSystem: config.overtakeSystem,
+      seriesId: config.seriesId,
       operationalVehicleMass,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
@@ -5596,6 +5598,7 @@ export function advanceRace(
       airTemperatureC,
       trackTemperatureC,
       weather: localWeather,
+      vehicleEraId: config.vehicleEraId,
       weekendStage,
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
