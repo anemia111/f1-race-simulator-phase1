@@ -115,6 +115,16 @@ Telemetry retains standing-start, preparation/yield, superclip, and qualifying
 overrides; all regulatory power, SOC, recharge, and physical owners are
 unchanged. This is not a complete or observation-consuming ERS policy.
 
+Phase 7.5 makes the legacy runtime's implicit always-use-when-permitted
+Electrical Overtake request explicit and routes only that ephemeral action
+through the category-agent switch. The request reads none of the regulatory or
+physical inputs. `overtakeStatusFor` still owns Race Control, Low Grip, SOC,
+remaining allowance, session/lap, detection-latch, and activation-line gates.
+Power-curve selection, incremental allowance debit, lap-start recharge
+latching, SOC/recharge accounting, and Energy Store integration remain
+unchanged. This is compatibility ownership separation, not an operational
+Overtake policy.
+
 ## Sources
 
 - [FIA 2026 Technical Regulations, Issue 20](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf)

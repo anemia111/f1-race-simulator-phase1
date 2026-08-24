@@ -359,6 +359,7 @@ describe('track-dependent systems', () => {
         lowGripConditions: true,
         phase: null,
         raceLap: 4,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('disabled')
@@ -590,6 +591,7 @@ describe('track-dependent systems', () => {
         overtakeEnergyRemainingMj: 0,
         phase: null,
         raceLap: 4,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('disabled')
@@ -636,6 +638,11 @@ describe('track-dependent systems', () => {
       progress: line.activationProgress - 0.001,
       totalDistance: activationDistance - 0.001,
     }
+    const activationCar = {
+      ...readyCar,
+      progress: line.activationProgress + 0.01,
+      totalDistance: activationDistance + 0.01,
+    }
 
     expect(eligibility).toMatchObject({
       controlLineIndex: 0,
@@ -649,23 +656,43 @@ describe('track-dependent systems', () => {
         lowGripConditions: false,
         phase: null,
         raceLap: 4,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('available')
     expect(
       overtakeStatusFor({
         batteryPercent: 80,
-        car: {
-          ...readyCar,
-          progress: line.activationProgress + 0.01,
-          totalDistance: activationDistance + 0.01,
-        },
+        car: activationCar,
         lowGripConditions: false,
         phase: null,
         raceLap: 4,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('active')
+    expect(
+      overtakeStatusFor({
+        batteryPercent: 80,
+        car: activationCar,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 4,
+        requestedAction: 'hold',
+        track,
+      }),
+    ).toBe('available')
+    expect(
+      overtakeStatusFor({
+        batteryPercent: 80,
+        car: activationCar,
+        lowGripConditions: false,
+        phase: null,
+        raceLap: 4,
+        requestedAction: 'release',
+        track,
+      }),
+    ).toBe('available')
   })
 
   it('does not grant Overtake when a car closes up after detection', () => {
@@ -716,6 +743,7 @@ describe('track-dependent systems', () => {
         lowGripConditions: false,
         phase: null,
         raceLap: 3,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('disabled')

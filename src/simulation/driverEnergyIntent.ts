@@ -37,6 +37,20 @@ export type F1ErsModeIntentOptions = {
   straightness: number
 }
 
+export type F1ElectricalOvertakeRequestAction =
+  | 'request'
+  | 'hold'
+  | 'release'
+
+/**
+ * Pure compatibility request for the legacy automatic-use behavior. The live
+ * arbiter still decides whether Electrical Overtake is disabled, available,
+ * or active from regulatory and physical state.
+ */
+export function f1ElectricalOvertakeIntentFor(): F1ElectricalOvertakeRequestAction {
+  return 'request'
+}
+
 /**
  * Pure baseline ERS-mode request. Telemetry remains the arbiter for standing
  * starts, preparation/yield, superclipping, qualifying, and physical limits.

@@ -35,6 +35,7 @@ import {
 } from './driverDecision'
 import {
   f1ActiveAeroModeForPath,
+  f1ElectricalOvertakeIntentForPath,
   f1EnergyIntentForPath,
   f1ErsModeIntentForPath,
 } from './categoryDriverAgent'
@@ -597,6 +598,17 @@ export function calculateCarTelemetry(options: {
       car.battlePhase !== 'single-file' ||
       car.racePaceMode === 'push' ||
       isFinalLap)
+  const f1ElectricalOvertakeRequest =
+    !isPreparationLap &&
+    overtakeSystem !== 'ots' &&
+    f1Runtime &&
+    energyStoreAtFrameStart
+      ? f1ElectricalOvertakeIntentForPath({
+          path: driverDecisionPath,
+          seriesId,
+          vehicleEraId,
+        })
+      : null
   const overtakeStatus = isPreparationLap
     ? ('disabled' as const)
     : overtakeSystem === 'ots'
@@ -605,7 +617,9 @@ export function calculateCarTelemetry(options: {
         : otsAvailable
           ? ('available' as const)
           : ('disabled' as const)
-      : f1Runtime && energyStoreAtFrameStart
+      : f1Runtime &&
+          energyStoreAtFrameStart &&
+          f1ElectricalOvertakeRequest
         ? overtakeStatusFor({
             batteryPercent: batteryPercentAtFrameStart,
             car,
@@ -615,6 +629,7 @@ export function calculateCarTelemetry(options: {
             raceLap,
             overtakeEnergyRemainingMj:
               f1Runtime.overtakeEnergyRemainingMj,
+            requestedAction: f1ElectricalOvertakeRequest,
             sessionType,
             track,
           })
