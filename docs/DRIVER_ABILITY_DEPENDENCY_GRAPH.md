@@ -206,7 +206,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
 | DA-06 | Adaptability in practice score, car-balance derivation and setup feedback | sequential compound / review required | Setup ownership is clear; repeated source-axis influence is not |
 | DA-07 | Execution/awareness skills also influence team qualifying release order | independent outcome / ownership review | Current behavior is recorded without claiming release is a driver-agent decision |
-| DA-08 | Per-window control plus one run-wide consistency variation | separate cadence / partially justified | Source comments distinguish local execution from whole-lap variation; combined weight remains unreviewed |
+| DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
 | DA-09 | Decision brake pressure versus telemetry skill fallback | mutually exclusive fallback | Not doubled on the normal live path |
 | DA-10 | Fuel multiplier used by prediction and actual debit | shared read-only calculation | One common multiplier keeps estimates aligned; fuel is debited once |
 | DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
@@ -270,6 +270,13 @@ to 120 remain visible and validated, but their excess has one runtime owner:
 the existing bounded `driverLimitBreakFraction` recovery of the timed physical
 reference's transient concession. No coefficient is refitted, and the 0..100
 field is unchanged; above-100 named-path behavior intentionally narrows.
+
+The sixth cleanup closes DA-08 without changing a value or hash key. Twelve
+decision windows retain local brake, throttle, line, control, and error losses.
+The separate `lap-execution` draw is named and tested as one non-negative
+whole-run assembly shortfall: opposite draw signs are equivalent, a zero draw
+adds zero, and the existing consistency endpoints bound it. Limit-break recovery
+remains the only route to a negative total adjustment.
 
 ## Invariants
 

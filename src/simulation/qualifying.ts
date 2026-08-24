@@ -378,6 +378,18 @@ type TimedDriverExecutionOptions = TimedPhysicalLapOptions & {
   seed: string
 }
 
+export function timedSessionRunAssemblyShortfallSeconds(options: {
+  consistency: number
+  lapTimeSeconds: number
+  signedDraw: number
+}): number {
+  return (
+    Math.abs(options.signedDraw) *
+    options.lapTimeSeconds *
+    (0.004 + (1 - options.consistency) * 0.012)
+  )
+}
+
 /**
  * Converts low-frequency braking, throttle and line choices into time lost
  * relative to the force-derived lap. It does not read displayed overall
@@ -479,21 +491,12 @@ export function timedSessionDriverExecutionLossSeconds(
         (1 / DRIVER_TRANSIENT_EFFICIENCY - 1)
       : 0
 
-  // How well this particular lap came together, independent of every other
-  // driver's.
-  //
-  // Without it the only run-to-run variation is the session's own grip and
-  // weather, which moves the whole field together and leaves the order
-  // untouched. Measured at Albert Park, each driver's spread across sessions
-  // was 0.62 to 0.85 s and near-identical between them, while adjacent grid
-  // slots were 0.18 s apart: everyone drifted the same way, so nobody swapped.
-  //
-  // A great driver leaves less on the table than a poor one, but nobody nails
-  // it every time, so this never reaches zero. Sampled once per run, not per
-  // window, because it stands for the lap as a whole.
-  // Half the draws tidy the lap up and half spoil it, so the population keeps
-  // its pace while individual runs move around it.
-  const executionQuality =
+  // The 12 windows above own local brake, throttle, line and control execution.
+  // This separate draw owns only the non-negative whole-run assembly shortfall:
+  // it is sampled once per run, folded by magnitude, and cannot improve the
+  // physical reference. Above-100 limit-break recovery remains the only path
+  // that can make the total adjustment negative.
+  const signedAssemblyDraw =
     hashChance(
       `${options.seed}:lap-execution:${options.driver.id}:${options.run}`,
     ) *
@@ -504,20 +507,16 @@ export function timedSessionDriverExecutionLossSeconds(
     precision: 0.28,
     pressureHandling: 0.26,
   })
-  // Sized against the grid it has to move. Adjacent slots at Albert Park sit
-  // 0.18 s apart, so a run has to be worth a couple of tenths before the order
-  // can change at all. This lands a consistent driver near 0.15 s and an
-  // erratic one near 0.35 s, which swaps neighbours without scrambling the
-  // field: pace still decides where a driver belongs, the lap decides whether
-  // they got there.
-  const runVariationSeconds =
-    Math.abs(executionQuality) *
-    plan.lapTimeSeconds *
-    (0.004 + (1 - consistency) * 0.012)
+  const runAssemblyShortfallSeconds =
+    timedSessionRunAssemblyShortfallSeconds({
+      consistency,
+      lapTimeSeconds: plan.lapTimeSeconds,
+      signedDraw: signedAssemblyDraw,
+    })
 
   return Math.max(
     -recoverableSeconds,
-    lossSeconds + runVariationSeconds - recoverableSeconds,
+    lossSeconds + runAssemblyShortfallSeconds - recoverableSeconds,
   )
 }
 

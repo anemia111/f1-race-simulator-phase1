@@ -11,6 +11,7 @@ import { baselineSetupForTrack } from './engineering'
 import {
   superFormulaControlSessionTireForWeather,
   timedSessionDriverExecutionLossSeconds,
+  timedSessionRunAssemblyShortfallSeconds,
 } from './qualifying'
 
 function timedSessionOptionsFor(seriesId: ExecutableSeriesId) {
@@ -60,6 +61,33 @@ function timedSessionOptionsFor(seriesId: ExecutableSeriesId) {
 }
 
 describe('category driver-agent timed-session seam', () => {
+  it('bounds a symmetric once-per-run assembly shortfall', () => {
+    const common = { consistency: 0.8, lapTimeSeconds: 90 }
+
+    expect(
+      timedSessionRunAssemblyShortfallSeconds({ ...common, signedDraw: -0.4 }),
+    ).toBe(
+      timedSessionRunAssemblyShortfallSeconds({ ...common, signedDraw: 0.4 }),
+    )
+    expect(
+      timedSessionRunAssemblyShortfallSeconds({ ...common, signedDraw: 0 }),
+    ).toBe(0)
+    expect(
+      timedSessionRunAssemblyShortfallSeconds({
+        consistency: 1,
+        lapTimeSeconds: 90,
+        signedDraw: 1,
+      }),
+    ).toBeCloseTo(90 * 0.004, 12)
+    expect(
+      timedSessionRunAssemblyShortfallSeconds({
+        consistency: 0,
+        lapTimeSeconds: 90,
+        signedDraw: 1,
+      }),
+    ).toBeCloseTo(90 * 0.016, 12)
+  })
+
   for (const seriesId of [
     'f1-custom',
     'super-formula',

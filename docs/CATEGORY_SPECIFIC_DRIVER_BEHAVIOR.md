@@ -29,6 +29,12 @@ performance, and direct energy-skill input saturates at 100, while the existing 
 limit-break aggregate remains the only runtime owner of authored excess up to
 120. It does not refit a coefficient or use an observed/validation target.
 
+DA-08 is closed without behavior change: the 12 decision windows own local
+execution loss, and the unchanged once-per-run `lap-execution` draw owns only a
+bounded non-negative whole-run assembly shortfall. Pure helper tests fix its
+symmetry, zero point, and consistency endpoints without using historical spread
+or grid gaps as targets.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
