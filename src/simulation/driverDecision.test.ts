@@ -100,6 +100,7 @@ describe('seeded driver decisions', () => {
       contextFor({ lap: 3, trackProgress: 0.999 }),
     )
     expect(atEndOfLap.absoluteDecisionWindow).toBe(3 * 12 + 11)
+    expect(atEndOfLap).not.toHaveProperty('decisionWindow')
   })
 
   it('ignores displayed overall and ACE-like source metadata', () => {

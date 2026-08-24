@@ -3,7 +3,7 @@
 ## Status and purpose
 
 This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0 and extended through the initial Phase 7.8B cleanup.
+introduced by Phase 7.0 and extended through the first Phase 7.8B cleanups.
 Phase 7.1 adds closed,
 value-bearing observation readings and an immediate diagnostic projector.
 Phase 7.2 moves dispatch ownership of the existing pure F1 energy intent behind
@@ -19,9 +19,9 @@ composite SUPER FORMULA OTS driver-use predicate through the same switch. Phase
 qualifying, Sprint Qualifying, and practice through the reversible adapter.
 Phase 7.8A documents the current driver-ability dependency graph and unresolved
 compound effects without changing production behavior. The first Phase 7.8B
-cleanup removes one unused helper and corrects a track-limit parameter label
-without changing its calculation. These slices do not claim that perception or
-Phase 7 is complete.
+cleanups remove one unused helper, correct a track-limit parameter label, and
+remove one redundant decision return field without changing any calculation.
+These slices do not claim that perception or Phase 7 is complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
@@ -225,11 +225,14 @@ wet-execution, tyre, and practice effects unresolved for Phase 7.8B or later;
 this slice changes no coefficient, seed, random draw, runtime field, or saved
 state.
 
-The initial Phase 7.8B cleanup removes the uncalled `driverAbilityDeficit`
-export and renames only the track-limit helper's positional parameter to match
-the supplied race-awareness ability. The exported legacy tuning key, value,
-formula, argument order, seed, and hash remain unchanged. This does not choose
-a new track-limit skill owner or resolve the DA-12 duplicate-effect review.
+The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` export,
+rename only the track-limit helper's positional parameter to match the supplied
+race-awareness ability, and remove the redundant returned
+`DriverDecision.decisionWindow` property while retaining the local window used
+by `absoluteDecisionWindow`. The exported legacy tuning key, values, formulas,
+argument order, seed/hash inputs, random evaluations, cadence, and
+production-consumed decision values remain unchanged. This does not choose a
+new track-limit skill owner or resolve the DA-12 duplicate-effect review.
 
 ## Observability and authority
 

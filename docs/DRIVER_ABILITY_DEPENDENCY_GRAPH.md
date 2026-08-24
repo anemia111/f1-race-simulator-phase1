@@ -231,9 +231,9 @@ validation values for tuning.
 - `racePace`, `tireWarmupSkill`, `dirtyAirManagement`, and `restartSkill` have
   no named normal-scale consumer and are aggregate-only.
 - `DriverDecision.attemptedDefence` is produced but has no production consumer.
-- the returned `DriverDecision.decisionWindow`, `nominalLateralOffsetM`, and
-  `errorRisk` fields have no downstream production reader. Their local values
-  already contribute to other decision calculations before return.
+- the returned `DriverDecision.nominalLateralOffsetM` and `errorRisk` fields have
+  no downstream production reader. Their local values already contribute to
+  other decision calculations before return.
 - `qualifyingSetupPenaltySeconds` is an exported helper with no production
   caller. Its internal `setupCompletenessPercent` input also has an independent
   `SetupPanel` UI consumer, but no connected timed-session consumer.
@@ -242,7 +242,7 @@ These are inventory findings, not authorization to wire a value into pace or
 delete saved state. Each change needs its own migration, replay, and acceptance
 scope.
 
-### Initial Phase 7.8B cleanup
+### Phase 7.8B cleanup log
 
 The first behavior-neutral cleanup removes the unused `driverAbilityDeficit`
 export and renames only the positional track-limit helper parameter to
@@ -251,6 +251,13 @@ export and renames only the positional track-limit helper parameter to
 order, seed, and hash key remain unchanged. This naming correction does not
 decide whether race awareness is the final intended policy input and does not
 resolve DA-12.
+
+The next behavior-neutral cleanup removes only the redundant returned
+`DriverDecision.decisionWindow` field. The local decision-window value remains
+the input to `absoluteDecisionWindow`, so the 12-window cadence, arithmetic,
+seed/hash inputs, random evaluations, and every production-consumed decision
+value remain unchanged. This narrows an internal return surface; it does not
+resolve a duplicate-effect review item.
 
 ## Invariants
 
