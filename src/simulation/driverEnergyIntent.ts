@@ -183,22 +183,13 @@ export function f1EnergyIntentFor(
       (qualifyingAttack ? 0.55 : 0) -
       (phaseActive ? 0.35 : 0),
   )
-  const qualifyingSpendBias = clamp01(
-    qualifyingAttack
-      ? 0.78 + skill * 0.22
-      : preparationLap
-        ? 0.05
-        : 0.2 + skill * 0.12,
-  )
 
   return {
     propulsionAggression,
     harvestPreference,
     liftCoastPreference,
     superclipAcceptance,
-    endOfStraightHarvestBias,
     defendEnergyReserve,
     attackEnergyReserve,
-    qualifyingSpendBias,
   }
 }

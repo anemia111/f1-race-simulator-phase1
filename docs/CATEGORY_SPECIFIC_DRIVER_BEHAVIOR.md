@@ -20,8 +20,9 @@ qualifying, Sprint Qualifying, and practice through the reversible adapter.
 Phase 7.8A documents the current driver-ability dependency graph and unresolved
 compound effects without changing production behavior. The first Phase 7.8B
 cleanups remove one unused helper, correct a track-limit parameter label, and
-remove one redundant decision return field without changing any calculation.
-These slices do not claim that perception or Phase 7 is complete.
+narrow redundant decision and energy-intent return surfaces without changing a
+consumed calculation. These slices do not claim that perception or Phase 7 is
+complete.
 
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
@@ -212,8 +213,9 @@ window. Context, progress, seed, execution-loss coefficients, physical lap,
 tyres, weather, setup, release, traffic, classification, and practice programme
 remain unchanged. This closes the known production direct call site, but does
 not create an observation-consuming timed-session policy. Existing
-`timedRunPhase` and `qualifyingSpendBias` inputs remain compatibility inputs,
-not evidence of a qualifying Driver Agent.
+`timedRunPhase` remains a compatibility input, not evidence of a qualifying
+Driver Agent. Phase 7.8B subsequently removes the unconsumed returned
+`qualifyingSpendBias` field.
 
 Phase 7.8A records the 30-skill and six-style construction, normalization,
 consumer, authority, and random-cadence graph in
@@ -233,6 +235,14 @@ by `absoluteDecisionWindow`. The exported legacy tuning key, values, formulas,
 argument order, seed/hash inputs, random evaluations, cadence, and
 production-consumed decision values remain unchanged. This does not choose a
 new track-limit skill owner or resolve the DA-12 duplicate-effect review.
+
+The next cleanup removes the terminal returned `qualifyingSpendBias` field and
+calculation from `F1EnergyIntent`, plus only the redundant returned
+`endOfStraightHarvestBias` copy. The local end-of-straight value remains in the
+unchanged `superclipAcceptance` formula, and qualifying phase still affects
+consumed intent outputs. The internal surface narrows without changing SOC,
+energy authority, seeds, random evaluations, saved state, or simulation results;
+DA-03 remains unresolved.
 
 ## Observability and authority
 

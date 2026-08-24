@@ -221,11 +221,6 @@ validation values for tuning.
 
 ## Dead and incomplete sinks
 
-- `F1EnergyIntent.qualifyingSpendBias` is produced but has no production
-  consumer.
-- the returned `F1EnergyIntent.endOfStraightHarvestBias` field has no downstream
-  consumer after its local value has already contributed to another intent
-  field.
 - `WeekendContext.setupBonusByDriver` is accumulated/persisted but has no
   production consumer.
 - `racePace`, `tireWarmupSkill`, `dirtyAirManagement`, and `restartSkill` have
@@ -258,6 +253,14 @@ the input to `absoluteDecisionWindow`, so the 12-window cadence, arithmetic,
 seed/hash inputs, random evaluations, and every production-consumed decision
 value remain unchanged. This narrows an internal return surface; it does not
 resolve a duplicate-effect review item.
+
+The third behavior-neutral cleanup removes the terminal
+`F1EnergyIntent.qualifyingSpendBias` calculation and returned field, plus only
+the redundant returned `endOfStraightHarvestBias` field. The local
+end-of-straight value still contributes to `superclipAcceptance`; qualifying
+phase still changes consumed intent outputs. No coefficient, formula feeding a
+consumer, seed/hash input, random evaluation, SOC/energy authority, or saved
+state changes. This return-shape cleanup does not resolve DA-03.
 
 ## Invariants
 

@@ -57,6 +57,8 @@ describe('F1 driver energy intent', () => {
     expect(Object.keys(first).some((key) => /limit|powerKw/iu.test(key))).toBe(
       false,
     )
+    expect(first).not.toHaveProperty('endOfStraightHarvestBias')
+    expect(first).not.toHaveProperty('qualifyingSpendBias')
   })
 
   it('changes scheduling for save, attack, defend, and qualifying contexts', () => {
@@ -78,9 +80,6 @@ describe('F1 driver energy intent', () => {
     )
     expect(defend.defendEnergyReserve).toBeLessThan(
       standard.defendEnergyReserve,
-    )
-    expect(qualifying.qualifyingSpendBias).toBeGreaterThan(
-      outLap.qualifyingSpendBias,
     )
     expect(qualifying.propulsionAggression).toBeGreaterThan(
       outLap.propulsionAggression,

@@ -11,14 +11,14 @@ F1 Straight/Corner mode selector. Phase 7.4 moves the existing baseline F1
 ERS-mode request selector. Phase 7.5 makes the legacy runtime's implicit
 always-use-when-permitted Electrical Overtake request explicit and routes only
 that ephemeral compatibility request through the switch. Phase 7.6 routes the
-unchanged composite SUPER FORMULA OTS driver-use predicate through the same
-switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
+  unchanged composite SUPER FORMULA OTS driver-use predicate through the same
+  switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
   decision used by qualifying, Sprint Qualifying, and practice through the same
-  switch. Phase 7.8A documents the current driver-ability dependency graph and its
-  unresolved compound effects without changing production behavior. The initial
-  Phase 7.8B cleanups remove one unused helper, correct a track-limit parameter
-  label, and remove one redundant decision return field without changing any
-  calculation. All eleven slices are
+  switch. Phase 7.8A documents the current driver-ability dependency graph and
+  its unresolved compound effects without changing production behavior. The
+  initial Phase 7.8B cleanups remove one unused helper, correct a track-limit
+  parameter label, and narrow redundant decision and energy-intent return
+  surfaces without changing a consumed calculation. All twelve slices are
   deliberately behavior-neutral. They do **not** complete Phase 7,
 activate an observation-consuming F1 or SUPER FORMULA driving policy, add
 learned category experience, or claim that the current generic driver logic is
@@ -63,6 +63,13 @@ redundant returned `DriverDecision.decisionWindow` property. The local window
 still produces `absoluteDecisionWindow`. The cleanups preserve the legacy
 exported tuning key, every value and formula, argument order, seed/hash inputs,
 random evaluations, cadence, and production-consumed decision values.
+
+The next cleanup removes the terminal `F1EnergyIntent.qualifyingSpendBias`
+calculation and returned field and the redundant returned
+`endOfStraightHarvestBias` copy. Its local value remains in the unchanged
+`superclipAcceptance` formula, and qualifying phase still changes consumed
+intent outputs. The internal type/runtime surface narrows without changing SOC,
+energy authority, seeds, random evaluation, saved state, or simulation results.
 
 ## Runtime flow
 
@@ -207,9 +214,10 @@ runtime manifest or a claim that the unexplained duplicate effects are fixed;
 their resolution remains Phase 7.8B or later work.
 
 The first Phase 7.8B cleanups remove a confirmed dead helper, resolve the
-track-limit input-name mismatch, and narrow one redundant decision return field
-recorded by that graph. They do not select a new ability owner or resolve DA-12;
-all duplicate-effect sensitivity and removal work remains open.
+track-limit input-name mismatch, and narrow redundant decision and energy-intent
+return surfaces recorded by that graph. They do not select a new ability owner
+or resolve DA-03/DA-12; all duplicate-effect sensitivity and removal work
+remains open.
 
 ## Contract model
 
@@ -438,9 +446,10 @@ The same exact parity and rollback rules apply to the F1 energy-intent object
 and to generic timed-session execution loss; no supported-path divergence is
 allowed in this ownership-only slice. `src/simulation/qualifying.ts` now routes
 the shared qualifying, Sprint Qualifying, and practice execution call through
-the adapter. Existing `timedRunPhase` and `qualifyingSpendBias` inputs continue
-unchanged as compatibility inputs; neither they nor this call-site migration
-constitute an operational qualifying agent.
+the adapter. The existing `timedRunPhase` input continues unchanged as a
+compatibility input; neither it nor this call-site migration constitutes an
+operational qualifying agent. Phase 7.8B subsequently removes the unconsumed
+returned `qualifyingSpendBias` field.
 
 ## Remaining Phase 7 work
 
