@@ -24,6 +24,7 @@ import {
   type SeriesDrivingPolicy,
 } from './driverAgentContract'
 import {
+  f1ElectricalOvertakeIntentFor,
   f1EnergyIntentFor,
   f1ErsModeIntentFor,
   type F1EnergyIntentOptions,
@@ -179,6 +180,38 @@ export function f1ErsModeIntentForPath(
   }
 
   return f1ErsModeIntentFor(input.options)
+}
+
+export type F1ElectricalOvertakeIntentPathInput = {
+  path?: DriverDecisionPath
+  seriesId?: ExecutableSeriesId
+  vehicleEraId?: RuntimeVehicleEraId
+}
+
+/**
+ * Ownership-only adapter for the implicit always-use-when-permitted F1
+ * compatibility request. The downstream arbiter retains every outcome gate.
+ */
+export function f1ElectricalOvertakeIntentForPath(
+  input: F1ElectricalOvertakeIntentPathInput,
+): ReturnType<typeof f1ElectricalOvertakeIntentFor> {
+  if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
+    const policy = resolveCategoryDrivingPolicy(
+      input.seriesId,
+      input.vehicleEraId,
+    )
+
+    if (
+      policy.kind !== 'f1-2026-driving-policy' ||
+      policy.capabilities.electricalOvertake !== 'requestable'
+    ) {
+      throw new Error(
+        `F1 Electrical Overtake intent requires an F1 Electrical Overtake policy, received ${policy.seriesId}/${policy.vehicleEraId}`,
+      )
+    }
+  }
+
+  return f1ElectricalOvertakeIntentFor()
 }
 
 /**

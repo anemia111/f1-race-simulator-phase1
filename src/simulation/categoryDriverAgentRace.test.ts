@@ -144,12 +144,19 @@ describe('category driver-agent race seam', () => {
                 energyBefore[index]!.deployedAtCuKBusThisLapMJ,
           ),
         ).toBe(true)
+        expect(
+          category.cars.every(
+            (car) =>
+              !('electricalOvertakeRequest' in car.runtimeSystems),
+          ),
+        ).toBe(true)
       } else {
         expect(
           category.cars.every(
             (car) =>
               car.runtimeSystems.kind === 'super-formula' &&
               !('activeAeroState' in car.runtimeSystems) &&
+              !('overtakeEligibility' in car.runtimeSystems) &&
               !('ersMode' in car.runtimeSystems) &&
               !('energyStore' in car.runtimeSystems),
           ),

@@ -37,6 +37,14 @@ if (!partialZoneEntry || !disabledZoneEntry) {
 }
 
 const { track, zone } = partialZoneEntry
+const overtakeTrack = tracks.find(
+  (candidate) => (candidate.overtakeControlLines?.length ?? 0) > 0,
+)
+
+if (!overtakeTrack) {
+  throw new Error('Expected a track with an Electrical Overtake control line')
+}
+
 const outsideProgress = Array.from(
   { length: 1_000 },
   (_, index) => index / 1_000,
@@ -194,6 +202,94 @@ describe('F1 active-aero category ownership seam', () => {
 })
 
 describe('2026 F1 active-aero State of Deployment', () => {
+  it('keeps the driver activation request subordinate to the status arbiter', () => {
+    const line = overtakeTrack.overtakeControlLines![0]
+    const car = {
+      ...createInitialRace({
+        drivers: initialDrivers,
+        seed: 'electrical-overtake-request-arbitration',
+        teams: initialTeams,
+        track: overtakeTrack,
+      }).cars[1],
+      progress: line.activationProgress,
+      status: 'running' as const,
+    }
+    const options = {
+      batteryPercent: 80,
+      car,
+      lowGripConditions: false,
+      phase: null,
+      raceLap: 0,
+      requestedAction: 'request' as const,
+      sessionType: 'limited-time' as const,
+      track: overtakeTrack,
+    }
+
+    expect(overtakeStatusFor(options)).toBe('active')
+    expect(
+      overtakeStatusFor({ ...options, requestedAction: 'hold' }),
+    ).toBe('available')
+    expect(
+      overtakeStatusFor({ ...options, requestedAction: 'release' }),
+    ).toBe('available')
+    expect(
+      overtakeStatusFor({
+        ...options,
+        batteryPercent: 24,
+      }),
+    ).toBe('disabled')
+  })
+
+  it('keeps active Electrical Overtake telemetry exactly equal across paths', () => {
+    const line = overtakeTrack.overtakeControlLines![0]
+    const snapshot = createInitialRace({
+      drivers: initialDrivers,
+      seed: 'electrical-overtake-live-path-parity',
+      teams: initialTeams,
+      track: overtakeTrack,
+    })
+    const car = {
+      ...snapshot.cars[1],
+      progress: line.activationProgress,
+      speedKph: 250,
+      status: 'running' as const,
+    }
+    const driver = initialDrivers.find(
+      (candidate) => candidate.id === car.driverId,
+    )!
+    const team = initialTeams.find((candidate) => candidate.id === car.teamId)!
+    const options = {
+      car,
+      deltaSeconds: 0.02,
+      driver,
+      elapsedSeconds: 30,
+      lowGripConditions: false,
+      phase: null,
+      raceLap: 0,
+      seriesId: 'f1-custom' as const,
+      sessionType: 'limited-time' as const,
+      team,
+      track: overtakeTrack,
+      trackGrip: 0.98,
+      vehicleEraId: 'f1-2026-current' as const,
+      weather: 'clear' as const,
+    }
+
+    const legacy = calculateCarTelemetry({
+      ...options,
+      driverDecisionPath: 'legacy-direct',
+    })
+    const category = calculateCarTelemetry({
+      ...options,
+      driverDecisionPath: 'category-agent-v1',
+    })
+    const defaulted = calculateCarTelemetry(options)
+
+    expect(legacy.overtakeStatus).toBe('active')
+    expect(category).toEqual(legacy)
+    expect(defaulted).toEqual(category)
+  })
+
   it('permits state changes only while stationary or inside an Activation Zone', () => {
     expect(
       activeAeroStateOfDeploymentCanChange({
@@ -477,6 +573,7 @@ describe('2026 F1 active-aero State of Deployment', () => {
         overtakeEnergyRemainingMj: 0,
         phase: null,
         raceLap: 4,
+        requestedAction: 'request',
         track,
       }),
     ).toBe('disabled')

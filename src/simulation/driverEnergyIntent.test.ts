@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import type { ActiveFlagPhase, DriverDecisionPath } from '../types'
 import {
+  f1ElectricalOvertakeIntentForPath,
   f1EnergyIntentForPath,
   f1ErsModeIntentForPath,
 } from './categoryDriverAgent'
 import { createInitialEnergyStore } from './energySystem'
 import {
+  f1ElectricalOvertakeIntentFor,
   f1EnergyIntentFor,
   f1ErsModeIntentFor,
   type F1EnergyIntentOptions,
@@ -218,6 +220,52 @@ describe('F1 energy-intent category ownership seam', () => {
         vehicleEraId: 'sf-2026',
       }),
     ).toEqual(f1EnergyIntentFor(options))
+  })
+})
+
+describe('F1 Electrical Overtake compatibility request seam', () => {
+  it('preserves the legacy implicit always-use request on every path', () => {
+    const direct = f1ElectricalOvertakeIntentFor()
+    const legacy = f1ElectricalOvertakeIntentForPath({
+      path: 'legacy-direct',
+      seriesId: 'super-formula',
+      vehicleEraId: 'sf-2026',
+    })
+    const category = f1ElectricalOvertakeIntentForPath({
+      path: 'category-agent-v1',
+      seriesId: 'f1-custom',
+      vehicleEraId: 'f1-2026-current',
+    })
+    const defaulted = f1ElectricalOvertakeIntentForPath({})
+
+    expect(direct).toBe('request')
+    expect(legacy).toBe(direct)
+    expect(category).toBe(direct)
+    expect(defaulted).toBe(category)
+  })
+
+  it('fails closed for SF, mismatched eras, and unknown paths', () => {
+    expect(() =>
+      f1ElectricalOvertakeIntentForPath({
+        path: 'category-agent-v1',
+        seriesId: 'super-formula',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toThrow(
+      /F1 Electrical Overtake intent requires an F1 Electrical Overtake policy/,
+    )
+    expect(() =>
+      f1ElectricalOvertakeIntentForPath({
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toThrow(/Unsupported driver policy f1-custom\/sf-2026/)
+    expect(() =>
+      f1ElectricalOvertakeIntentForPath({
+        path: 'future-overtake-agent' as DriverDecisionPath,
+      }),
+    ).toThrow(/Unsupported driver decision path future-overtake-agent/)
   })
 })
 

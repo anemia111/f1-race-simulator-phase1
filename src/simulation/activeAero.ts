@@ -11,6 +11,7 @@ import type {
   TrackDefinition,
 } from '../types'
 import { FIA_2026_REGULATION_PROFILE } from './regulations'
+import type { F1ElectricalOvertakeRequestAction } from './driverEnergyIntent'
 
 export type {
   ActiveAeroFailureState,
@@ -610,6 +611,8 @@ export function overtakeStatusFor(options: {
   raceControlEnabled?: boolean
   raceLap: number
   overtakeEnergyRemainingMj?: number
+  /** Ephemeral intent only; every effective-status gate remains below. */
+  requestedAction: F1ElectricalOvertakeRequestAction
   sessionType?: 'race-distance' | 'limited-time'
   track: TrackDefinition
 }): OvertakeStatus {
@@ -622,6 +625,7 @@ export function overtakeStatusFor(options: {
     raceLap,
     overtakeEnergyRemainingMj =
       FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj,
+    requestedAction,
     sessionType = 'race-distance',
     track,
   } = options
@@ -654,7 +658,7 @@ export function overtakeStatusFor(options: {
   // In limited-time sessions Overtake is activated whenever enabled. The
   // driver deployment is represented on the straights to avoid full-lap use.
   if (sessionType === 'limited-time') {
-    return activeLine ? 'active' : 'available'
+    return activeLine && requestedAction === 'request' ? 'active' : 'available'
   }
 
   const eligibility = car.runtimeSystems.overtakeEligibility
@@ -669,10 +673,14 @@ export function overtakeStatusFor(options: {
       activeLine.activationProgress,
     )
 
-    return eligibility.controlLineIndex === activeLineIndex &&
-      eligibility.activationLap === activationLap
-      ? 'active'
-      : 'disabled'
+    if (
+      eligibility.controlLineIndex !== activeLineIndex ||
+      eligibility.activationLap !== activationLap
+    ) {
+      return 'disabled'
+    }
+
+    return requestedAction === 'request' ? 'active' : 'available'
   }
 
   const eligibleLine = controlLines[eligibility.controlLineIndex]
