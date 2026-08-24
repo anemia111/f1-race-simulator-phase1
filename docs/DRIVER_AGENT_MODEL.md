@@ -1,6 +1,6 @@
 # Driver Agent model
 
-## Status and Phase 7.7 boundary
+## Status and Phase 7.8A boundary
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
@@ -14,12 +14,14 @@ that ephemeral compatibility request through the switch. Phase 7.6 routes the
 unchanged composite SUPER FORMULA OTS driver-use predicate through the same
 switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
 decision used by qualifying, Sprint Qualifying, and practice through the same
-switch. All eight slices are deliberately behavior-neutral. They do **not**
-complete Phase 7, activate an observation-consuming F1 or SUPER FORMULA driving
-policy, add learned category experience, or claim that the current generic
-driver logic is a complete agent or perception model.
+switch. Phase 7.8A documents the current driver-ability dependency graph and its
+unresolved compound effects without changing production behavior. All nine
+slices are deliberately behavior-neutral. They do **not** complete Phase 7,
+activate an observation-consuming F1 or SUPER FORMULA driving policy, add
+learned category experience, or claim that the current generic driver logic is
+a complete agent or perception model.
 
-The batch has four relevant implementation boundaries:
+The batch has five relevant implementation boundaries:
 
 - `src/simulation/driverAgentContract.ts` defines the portable agent contract,
   category policy types, closed observation readings, requests, validation,
@@ -29,7 +31,10 @@ The batch has four relevant implementation boundaries:
   mode selector, and the F1 Electrical Overtake compatibility request without
   changing their results, plus the unchanged SF OTS use predicate;
 - `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
-  projection without joining the live race path; and
+  projection without joining the live race path;
+- `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md` records source construction,
+  normalization, production consumers, aggregate-only skills, and the unresolved
+  duplicate-effect register; and
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the
   pre-advance race decision seam and passes the same route metadata to
   `src/simulation/telemetry.ts` for F1 energy, active-aero, Electrical
@@ -43,10 +48,10 @@ calculation remains in `src/simulation/driverEnergyIntent.ts`. Phase 7.2 moves
 only caller ownership: it does not change a coefficient or transfer physical,
 SOC, power-limit, recharge, or regulatory authority out of the existing owners.
 
-Phase 7.7 does not call the diagnostic projector from the live race or offline
-timed-session paths. It therefore adds no hot-path observation allocation,
-random draw, decision record, retained inbox, event/log entry, or behavior
-change.
+Phase 7.8A does not call the diagnostic projector from the live race or offline
+timed-session paths and changes no production source. It therefore adds no
+hot-path observation allocation, random draw, decision record, retained inbox,
+event/log entry, or behavior change.
 
 ## Runtime flow
 
@@ -183,6 +188,13 @@ tyres, weather, setup, release plan, traffic, classification, and practice
 programme remain with their existing owners. This is call-site ownership only;
 it does not create an observation-consuming qualifying or practice policy.
 
+Phase 7.8A records the current 30-skill and six-style dependency graph, including
+the separate raw-behavior, performance-normalized, limit-break, and display
+domains. It also identifies aggregate-only skills, dead sinks, and compound
+effects that still require review. The graph is documentation, not a new
+runtime manifest or a claim that the unexplained duplicate effects are fixed;
+their resolution remains Phase 7.8B or later work.
+
 ## Contract model
 
 `src/simulation/driverAgentContract.ts` owns the following public concepts.
@@ -212,7 +224,7 @@ capability.
 
 Policy selection follows the executable series identity. It must not be
 inferred from driver provenance, circuit identity, tyre supplier, or a generic
-overtake-system label. Through Phase 7.7 the selected category metadata only
+overtake-system label. Through Phase 7.8A the selected category metadata only
 validates dispatch ownership at the F1 energy, ERS-mode, active-aero, and
 Electrical Overtake request seams, the SF OTS request seam, and the generic
 timed-session execution seam. It does not use observations or a new policy
@@ -347,7 +359,7 @@ creation and canonicalization are pure operations; when a later runtime producer
 uses them, it must not use wall-clock time, global counters, mutable random
 state, callback order, renderer state, or log retention as an input.
 
-Through Phase 7.7, the required invariants are:
+Through Phase 7.8A, the required invariants are:
 
 - for a supported series/vehicle-era pair, the direct and adapter paths return
   exactly equal `DriverDecision` objects;
@@ -373,6 +385,10 @@ Through Phase 7.7, the required invariants are:
 - legacy, category, and default timed-session paths return exactly equal
   execution loss for supported F1 and SF metadata, while the category path
   rejects mismatched metadata and the legacy rollback preserves its result;
+- materialized overall is not reread as a race/timed-session pace multiplier,
+  while its construction, import/migration, and profile-selection ancestry is
+  explicit; historical source-series provenance remains outside executable
+  category-policy selection;
 - contract canonicalization orders IDs and record collections by stable keys;
   and
 - the same seed and canonical contract input produce the same canonical data.
@@ -427,8 +443,8 @@ Phase 7 is not complete until later slices provide and verify at least:
 - decision-record retention, checkpoint/replay integration, and bounded logging;
 - audit and migration of any newly found or newly introduced direct
   compatibility call sites;
-- a driver-ability dependency graph and removal of unexplained duplicate
-  effects; and
+- resolution and removal of the unexplained duplicate effects recorded in the
+  Phase 7.8A driver-ability graph in Phase 7.8B or a later slice; and
 - cross-category and rule-aware behavior acceptance coverage.
 
 Until those items are implemented, `category-agent-v1` names the contract and
@@ -440,5 +456,6 @@ selector. Phase 7.5 adds only an explicit representation of the legacy implicit
 Electrical Overtake request; effective status remains downstream. Phase 7.6
 adds only category-owned dispatch of the unchanged SF OTS use predicate after
 downstream availability passes. Phase 7.7 adds only ownership-checked dispatch
-of the unchanged timed-session execution decision. None is operational
-category-specific Driver AI.
+of the unchanged timed-session execution decision. Phase 7.8A adds only the
+audited driver-ability dependency graph; it does not resolve its review-required
+compound effects. None is operational category-specific Driver AI.
