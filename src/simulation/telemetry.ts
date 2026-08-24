@@ -18,7 +18,6 @@ import type {
 } from '../types'
 import {
   activeAeroDisplayModeForState,
-  activeAeroModeFor,
   advanceActiveAeroState,
   createInitialActiveAeroState,
   overtakeStatusFor,
@@ -35,7 +34,10 @@ import {
   driverBehaviorTraits,
   type DriverDecision,
 } from './driverDecision'
-import { f1EnergyIntentForPath } from './categoryDriverAgent'
+import {
+  f1ActiveAeroModeForPath,
+  f1EnergyIntentForPath,
+} from './categoryDriverAgent'
 import {
   advanceEnergyStore,
   energyDeploymentRequestFor,
@@ -344,13 +346,18 @@ export function calculateCarTelemetry(options: {
     track,
   })
   const requestedActiveAeroMode =
-    isPreparationLap || overtakeSystem === 'ots'
+    f1Runtime === null || isPreparationLap || overtakeSystem === 'ots'
       ? ('corner' as const)
-      : activeAeroModeFor({
-          car,
-          lowGripConditions,
-          phase,
-          track,
+      : f1ActiveAeroModeForPath({
+          options: {
+            car,
+            lowGripConditions,
+            phase,
+            track,
+          },
+          path: driverDecisionPath,
+          seriesId,
+          vehicleEraId,
         })
   const activeAeroState =
     f1Runtime !== null && overtakeSystem !== 'ots'

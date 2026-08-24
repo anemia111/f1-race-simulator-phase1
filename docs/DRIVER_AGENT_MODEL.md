@@ -1,12 +1,13 @@
 # Driver Agent model
 
-## Status and Phase 7.2 boundary
+## Status and Phase 7.3 boundary
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
 readings and an immediate diagnostic projector. Phase 7.2 moves dispatch
 ownership of the existing pure F1 energy-scheduling intent behind the same
-category-agent migration switch. All three slices are deliberately
+category-agent migration switch. Phase 7.3 does the same for the existing pure
+F1 Straight/Corner mode selector. All four slices are deliberately
 behavior-neutral. They do **not** complete Phase 7, activate an
 observation-consuming F1 or SUPER FORMULA driving policy, add learned category
 experience, or claim that the current generic driver logic is a complete agent
@@ -18,13 +19,13 @@ The batch has four relevant implementation boundaries:
   category policy types, closed observation readings, requests, validation,
   and the decision-record schema;
 - `src/simulation/categoryDriverAgent.ts` adapts that contract to the existing
-  driver decision and F1 energy-intent scheduler without changing either
-  result;
+  driver decision, F1 energy-intent scheduler, and F1 active-aero mode selector
+  without changing their results;
 - `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
   projection without joining the live race path; and
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the
   pre-advance race decision seam and passes the same route metadata to
-  `src/simulation/telemetry.ts` for F1 energy-intent dispatch.
+  `src/simulation/telemetry.ts` for F1 energy and active-aero dispatch.
 
 The behavior delegated by the adapter remains
 `src/simulation/driverDecision.ts`. Existing category system truth remains in
@@ -33,7 +34,7 @@ calculation remains in `src/simulation/driverEnergyIntent.ts`. Phase 7.2 moves
 only caller ownership: it does not change a coefficient or transfer physical,
 SOC, power-limit, recharge, or regulatory authority out of the existing owners.
 
-Phase 7.2 does not call the diagnostic projector from the live race hot path.
+Phase 7.3 does not call the diagnostic projector from the live race hot path.
 It therefore adds no per-car hot-path observation allocation, random draw,
 decision record, retained inbox, event/log entry, or behavior change.
 
@@ -57,6 +58,14 @@ calculateCarTelemetry for a car with an F1 Energy Store
         -> resolve and check F1 policy / energyStore capability
         -> f1EnergyIntentFor(the same existing options)
   -> existing superclip, deployment, regulatory, and Energy Store owners
+
+calculateCarTelemetry for an F1 active-aero runtime
+  -> RaceConfig.driverDecisionPath
+     -> legacy-direct: activeAeroModeFor(the existing options)
+     -> category-agent-v1
+        -> resolve and check F1 Straight/Corner capabilities
+        -> activeAeroModeFor(the same existing options)
+  -> advanceActiveAeroState remains the regulatory and physical owner
 
 opt-in diagnostic path
   immutable pre-advance DriverDecisionContext
@@ -84,6 +93,12 @@ path requires the resolved F1 policy to expose `energyStore: requestable`; an
 SF policy or mismatched era fails closed before the scheduler options are read.
 The rollback path skips that policy check. A genuine SF runtime has no F1
 Energy Store and never enters this seam.
+
+The Phase 7.3 active-aero seam is also ownership-only. Both paths call the same
+mode selector with the same options. SF runtime, preparation-lap forced Corner,
+and OTS remain outside the seam. `advanceActiveAeroState` still owns zone and
+Low-Grip legality, deployment-change permission, continuous transitions,
+failure latching, Corner-safe return, and durable front/rear wing state.
 
 ## Contract model
 
@@ -114,8 +129,8 @@ capability.
 
 Policy selection follows the executable series identity. It must not be
 inferred from driver provenance, circuit identity, tyre supplier, or a generic
-overtake-system label. Phase 7.2 uses the selected F1 metadata only to validate
-dispatch ownership at the existing energy-intent seam. It does not use
+overtake-system label. Phase 7.3 uses the selected F1 metadata only to validate
+dispatch ownership at the existing energy and active-aero seams. It does not use
 observations or a new policy algorithm to change driving behavior.
 
 For compatibility with existing race configurations, an omitted `seriesId`
@@ -247,7 +262,7 @@ creation and canonicalization are pure operations; when a later runtime producer
 uses them, it must not use wall-clock time, global counters, mutable random
 state, callback order, renderer state, or log retention as an input.
 
-Through Phase 7.2, the required invariants are:
+Through Phase 7.3, the required invariants are:
 
 - for a supported series/vehicle-era pair, the direct and adapter paths return
   exactly equal `DriverDecision` objects;
@@ -260,6 +275,8 @@ Through Phase 7.2, the required invariants are:
   Energy Store input;
 - the category energy path rejects SF or mismatched policy metadata before
   scheduling, while a genuine SF race never invokes the F1 scheduler;
+- the direct, category, and default F1 active-aero paths return the same mode,
+  while genuine SF runtime never invokes the selector;
 - contract canonicalization orders IDs and record collections by stable keys;
   and
 - the same seed and canonical contract input produce the same canonical data.
@@ -274,9 +291,11 @@ state, a retained driver inbox, or a persisted replay contract.
 migration switch:
 
 - `category-agent-v1` validates category ownership before delegating the
-  generic decision and, for F1 telemetry, the existing energy intent; and
+  generic decision and, for F1 telemetry, the existing energy and active-aero
+  requests; and
 - `legacy-direct` skips category-policy resolution and delegates from the same
-  wrappers directly to `decideDriverBehavior` and `f1EnergyIntentFor`.
+  wrappers directly to `decideDriverBehavior`, `f1EnergyIntentFor`, and
+  `activeAeroModeFor`.
 
 After exact parity coverage, an omitted property resolves to
 `category-agent-v1`. Setting `legacy-direct` is the rollback point. Both modes
@@ -316,5 +335,5 @@ Phase 7 is not complete until later slices provide and verify at least:
 Until those items are implemented, `category-agent-v1` names the contract and
 behavior-neutral adapter path. Phase 7.1 adds only an opt-in diagnostic
 projection, and Phase 7.2 adds only ownership-checked dispatch of the unchanged
-F1 energy scheduler. Neither must be presented as operational category-specific
-Driver AI.
+F1 energy scheduler. Phase 7.3 adds the same ownership check for the unchanged
+active-aero mode selector. None is operational category-specific Driver AI.

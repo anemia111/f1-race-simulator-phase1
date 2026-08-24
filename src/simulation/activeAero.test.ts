@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
+import type { ActiveFlagPhase, DriverDecisionPath } from '../types'
 import {
   ACTIVE_AERO_TRANSITION_LIMIT_SECONDS,
   activeAeroDisplayModeForState,
+  activeAeroModeFor,
   activeAeroStateOfDeploymentCanChange,
   activeAeroZoneAt,
   advanceActiveAeroState,
   isActiveAeroState,
   overtakeStatusFor,
 } from './activeAero'
+import { f1ActiveAeroModeForPath } from './categoryDriverAgent'
 import { createInitialRace } from './race'
 import { calculateCarTelemetry } from './telemetry'
 
@@ -47,6 +50,147 @@ const movingCarAt = (progress: number) => ({
   progress,
   speedKph: 240,
   status: 'running' as const,
+})
+
+const controlledPhase: ActiveFlagPhase = {
+  endMessage: 'Track clear.',
+  endSeconds: 10,
+  flag: 'sc',
+  id: 'active-aero-path-controlled-phase',
+  sector: 1,
+  startMessage: 'Safety Car deployed.',
+  startSeconds: 0,
+}
+
+type ActiveAeroModeOptions = Parameters<typeof activeAeroModeFor>[0]
+
+describe('F1 active-aero category ownership seam', () => {
+  const parityCases: ReadonlyArray<{
+    expected: ReturnType<typeof activeAeroModeFor>
+    label: string
+    options: ActiveAeroModeOptions
+  }> = [
+    {
+      expected: 'straight',
+      label: 'dry activation zone',
+      options: {
+        car: movingCarAt(zone.start),
+        lowGripConditions: false,
+        phase: null,
+        track,
+      },
+    },
+    {
+      expected: 'corner',
+      label: 'outside activation zone',
+      options: {
+        car: movingCarAt(outsideProgress),
+        lowGripConditions: false,
+        phase: null,
+        track,
+      },
+    },
+    {
+      expected: 'partial-straight',
+      label: 'declared partial low-grip zone',
+      options: {
+        car: movingCarAt(zone.lowGripStart ?? zone.start),
+        lowGripConditions: true,
+        phase: null,
+        track,
+      },
+    },
+    {
+      expected: 'corner',
+      label: 'disabled low-grip zone',
+      options: {
+        car: movingCarAt(disabledZoneEntry.zone.start),
+        lowGripConditions: true,
+        phase: null,
+        track: disabledZoneEntry.track,
+      },
+    },
+    {
+      expected: 'corner',
+      label: 'controlled phase',
+      options: {
+        car: movingCarAt(zone.start),
+        lowGripConditions: false,
+        phase: controlledPhase,
+        track,
+      },
+    },
+    {
+      expected: 'corner',
+      label: 'non-running car',
+      options: {
+        car: { ...movingCarAt(zone.start), status: 'retired' },
+        lowGripConditions: false,
+        phase: null,
+        track,
+      },
+    },
+  ]
+
+  for (const testCase of parityCases) {
+    it(`preserves the exact ${testCase.label} request on every path`, () => {
+      const before = structuredClone(testCase.options)
+      const direct = activeAeroModeFor(testCase.options)
+      const legacy = f1ActiveAeroModeForPath({
+        options: testCase.options,
+        path: 'legacy-direct',
+        seriesId: 'super-formula',
+        vehicleEraId: 'sf-2026',
+      })
+      const category = f1ActiveAeroModeForPath({
+        options: testCase.options,
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'f1-2026-current',
+      })
+      const defaulted = f1ActiveAeroModeForPath({
+        options: testCase.options,
+      })
+
+      expect(direct).toBe(testCase.expected)
+      expect(legacy).toBe(direct)
+      expect(category).toBe(direct)
+      expect(defaulted).toBe(category)
+      expect(testCase.options).toEqual(before)
+    })
+  }
+
+  it('rejects SF and invalid paths before reading F1 mode options', () => {
+    let optionsRead = false
+    const sfInput = {
+      get options(): ActiveAeroModeOptions {
+        optionsRead = true
+        throw new Error('SF path read F1 active-aero options')
+      },
+      path: 'category-agent-v1' as const,
+      seriesId: 'super-formula' as const,
+      vehicleEraId: 'sf-2026' as const,
+    }
+
+    expect(() => f1ActiveAeroModeForPath(sfInput)).toThrow(
+      /F1 active-aero intent requires an F1 Straight\/Corner policy/,
+    )
+    expect(optionsRead).toBe(false)
+    expect(() =>
+      f1ActiveAeroModeForPath({
+        options: parityCases[0].options,
+        path: 'category-agent-v1',
+        seriesId: 'f1-custom',
+        vehicleEraId: 'sf-2026',
+      }),
+    ).toThrow(/Unsupported driver policy f1-custom\/sf-2026/)
+    expect(() =>
+      f1ActiveAeroModeForPath({
+        options: parityCases[0].options,
+        path: 'future-aero-agent' as DriverDecisionPath,
+      }),
+    ).toThrow(/Unsupported driver decision path future-aero-agent/)
+  })
 })
 
 describe('2026 F1 active-aero State of Deployment', () => {

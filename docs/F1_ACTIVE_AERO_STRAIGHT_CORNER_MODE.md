@@ -48,6 +48,13 @@ pit/retirement state or controlled rejoin returns both fractions to the
 Corner-safe state. Straight Mode eligibility never reads the following-car gap;
 Overtake eligibility remains a separate electrical/race-control input.
 
+Phase 7.3 changes only ownership of the compatibility mode-selector dispatch.
+The category path validates the F1 Straight/Corner capabilities before calling
+the same pure `activeAeroModeFor` kernel. `advanceActiveAeroState` remains the
+sole owner of legality, transitions, failures, Corner-safe return, and durable
+wing state; vehicle dynamics remains the owner of force effects. This is not an
+operational observation-consuming Driver Agent policy.
+
 ## Decomposed force model
 
 Let `sf` and `sr` be the front and rear straight fractions in `[0,1]`, `q =
