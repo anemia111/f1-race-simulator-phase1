@@ -4234,6 +4234,35 @@ describe('overtaking', () => {
     expect(overtakeForLap(context)).toEqual(overtakeForLap(context))
   })
 
+  it('does not manufacture a second battle edge from tyre-management skill', () => {
+    const fixture = closeBattleFixture()
+    const common = {
+      ...fixture,
+      seed: 'battle-physical-tyre-owner',
+      lap: 8,
+      gapToAheadSeconds: 0.32,
+      trackGrip: 1,
+      track: tracks[0],
+      trackProgress: 0.5,
+      weather: 'clear' as const,
+    }
+    const withTireManagement = (value: number) => ({
+      ...fixture.attacker,
+      skills: { ...fixture.attacker.skills, tireManagement: value },
+    })
+    const weakest = battleDynamicsFor({
+      ...common,
+      attacker: withTireManagement(0),
+    })
+    const strongest = battleDynamicsFor({
+      ...common,
+      attacker: withTireManagement(1),
+    })
+
+    expect(strongest).toEqual(weakest)
+    expect(strongest).not.toHaveProperty('tirePerformanceEdge')
+  })
+
   it('does nothing when the attacker is outside the passing window', () => {
     const fixture = closeBattleFixture()
 
@@ -4389,7 +4418,7 @@ describe('overtaking', () => {
     expect(closing.speedPerformanceEdge).toBeGreaterThan(0)
   })
 
-  it('uses live tire wear and temperature in close-battle grip', () => {
+  it('leaves live tyre wear and temperature to the physical car state', () => {
     const fixture = closeBattleFixture()
     const baseContext = {
       ...fixture,
@@ -4428,8 +4457,8 @@ describe('overtaking', () => {
       }),
     })
 
-    expect(healthyTires.tirePerformanceEdge).toBeGreaterThan(0)
-    expect(reversedTires.tirePerformanceEdge).toBeLessThan(0)
+    expect(healthyTires).toEqual(reversedTires)
+    expect(healthyTires).not.toHaveProperty('tirePerformanceEdge')
   })
 
   it('evaluates battle segments before a racing lap is complete', () => {
