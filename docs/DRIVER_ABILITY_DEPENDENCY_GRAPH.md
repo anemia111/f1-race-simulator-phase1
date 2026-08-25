@@ -112,7 +112,7 @@ automatically justified.
 
 | Path | Ability inputs | Intermediate signal | Outcome owner and cadence | Status |
 | --- | --- | --- | --- | --- |
-| Live generic decision | pace, control, corner, consistency, awareness, racecraft skills plus all six styles | `DriverBehaviorTraits` and `DriverDecision` | `race.ts` evaluates every simulation advance; decision hashes are namespaced to the current 1/12-lap window, while cues may change between advances | Primary behavior path |
+| Live generic decision | pace, control, corner, consistency, awareness, racecraft skills plus all six styles | `DriverBehaviorTraits` and `DriverDecision` | `race.ts` evaluates every simulation advance; decision hashes are namespaced to the current 1/12-lap window, while cues may change between advances. Attack/defend cues exist only for race-distance sessions | Primary behavior path |
 | Offline timed generic decision | the same skills and styles | `DriverBehaviorTraits` and `DriverDecision` | `qualifying.ts`, exactly 12 existing window evaluations per lap | Primary behavior path |
 | Live grip and pedals | decision tyre-limit, brake and throttle requests | utilized grip and final pedal controls | `telemetry.ts`, every physics tick; physical limits remain downstream | Decision execution |
 | Live line execution | decision line request | reserved target and integrated lateral state | `race.ts` reserves the request and `advanceLateralState` executes/holds it during live advancement | Decision execution |
@@ -211,7 +211,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-10 | Fuel multiplier used by prediction and actual debit | resolved shared value in Phase 7.8B | One cached multiplier feeds both fuel-to-finish prediction and the single actual debit during the same car advancement |
 | DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
 | DA-12 | Generic control/awareness followed by independent qualifying abort/deletion and live timed yellow/track-limit rolls | sequential compound / review required | Continuous control and adjudication events have separate owners, but overlapping awareness sensitivity is unexplained |
-| DA-13 | Live timed sessions inherit race attack/defend/tow/dirty-air cues while formal battle resolution is race-only | ownership overlap / review required | Existing shared generic cues are documented; no timed-session racecraft policy is claimed |
+| DA-13 | Live timed sessions inheriting race attack/defend cues while formal battle resolution is race-only | resolved session boundary in Phase 7.8B | Attack and defend cues are gated to race-distance sessions; timed-session tow, dirty-air avoidance and yield cues remain as traffic-management controls |
 | DA-14 | One compact axis fans out to multiple final skills that can rejoin the same blend, such as identical expanded `brakingSkill`/`precision` inputs in braking or `overtakingSkill`/`defendingSkill` rejoining their aggregate `racecraft` | construction-time duplicate / review required | The 12-to-30 expansion is explicit, but repeated sensitivity after fan-out has not been justified or calibrated |
 
 No `review required` row may be relabelled intentional merely because its
@@ -312,6 +312,14 @@ the one debit. Finally, the unconsumed returned
 their local values continue to feed desired line, error trigger and contact
 risk. Formulas, hashes, random evaluations, cadence, state and consumed results
 remain unchanged.
+
+The eleventh cleanup resolves DA-13 at the caller boundary. Live attack and
+defend cues are supplied only during race-distance sessions, matching the
+race-only formal battle owner. Timed-session tow alignment, dirty-air avoidance,
+blue-flag yield, pit, emergency and flag controls remain available. The helper
+is pure; race cue values, decision hashes, window cadence, downstream battle
+hashes, state and schemas are unchanged. Timed sessions intentionally stop
+selecting race battle intents.
 
 ## Invariants
 
