@@ -131,7 +131,6 @@ export type DriverDecision = {
   role: DriverDecisionRole
   absoluteDecisionWindow: number
   traits: DriverBehaviorTraits
-  nominalLateralOffsetM: number
   desiredLateralOffsetM: number
   lineErrorM: number
   /** Positive means begin braking earlier; negative means later. */
@@ -146,7 +145,6 @@ export type DriverDecision = {
   attemptedDefence: boolean
   controlError: number
   errorTriggered: boolean
-  errorRisk: number
   contactRisk: number
 }
 
@@ -937,7 +935,6 @@ export function decideDriverBehavior(
     role: chosen.role,
     absoluteDecisionWindow,
     traits,
-    nominalLateralOffsetM,
     desiredLateralOffsetM,
     lineErrorM,
     brakeOnsetDeltaSeconds: clamp(
@@ -964,7 +961,6 @@ export function decideDriverBehavior(
     attemptedDefence,
     controlError,
     errorTriggered,
-    errorRisk,
     contactRisk,
   }
 }

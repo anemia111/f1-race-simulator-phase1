@@ -200,15 +200,15 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | ID | Relationship | Classification | Phase 7.8A conclusion |
 | --- | --- | --- | --- |
 | DA-01 | Generic attack/contact request followed by battle attempt/pass/contact skills | sequential compound / review required | Intent and outcome have separate owners, but sensitivity allocation is unexplained |
-| DA-02 | Window-level control/error followed by independent lap incident rolls | sequential compound / review required | Continuous error and discrete incident roles differ, but overlap is not bounded by a shared contract |
+| DA-02 | Window-level control/error followed by independent lap incident rolls | resolved distinct-cadence contract in Phase 7.8B | Generic decisions return bounded continuous controls and no damage/time/retirement/flag outcome; `incidentForLap` accepts no decision, skips lap 1 and owns rare lap-level outcomes under independent deterministic keys |
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
 | DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
 | DA-07 | Driver execution/awareness skills influencing team qualifying release order | resolved team owner in Phase 7.8B | Release order now reads no driver ability: machine qualifying rating, pit-crew speed and the existing deterministic planning hashes remain, without reallocating removed driver weights |
 | DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
-| DA-09 | Decision brake pressure versus telemetry skill fallback | mutually exclusive fallback | Not doubled on the normal live path |
-| DA-10 | Fuel multiplier used by prediction and actual debit | shared read-only calculation | One common multiplier keeps estimates aligned; fuel is debited once |
+| DA-09 | Decision brake pressure versus telemetry skill fallback | resolved mutually exclusive fallback in Phase 7.8B | An explicit decision scale short-circuits the skill blend; the skill path is evaluated only when no decision exists |
+| DA-10 | Fuel multiplier used by prediction and actual debit | resolved shared value in Phase 7.8B | One cached multiplier feeds both fuel-to-finish prediction and the single actual debit during the same car advancement |
 | DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
 | DA-12 | Generic control/awareness followed by independent qualifying abort/deletion and live timed yellow/track-limit rolls | sequential compound / review required | Continuous control and adjudication events have separate owners, but overlapping awareness sensitivity is unexplained |
 | DA-13 | Live timed sessions inherit race attack/defend/tow/dirty-air cues while formal battle resolution is race-only | ownership overlap / review required | Existing shared generic cues are documented; no timed-session racecraft policy is claimed |
@@ -226,9 +226,6 @@ validation values for tuning.
 - `racePace`, `tireWarmupSkill`, `dirtyAirManagement`, and `restartSkill` have
   no named normal-scale consumer and are aggregate-only.
 - `DriverDecision.attemptedDefence` is produced but has no production consumer.
-- the returned `DriverDecision.nominalLateralOffsetM` and `errorRisk` fields have
-  no downstream production reader. Their local values already contribute to
-  other decision calculations before return.
 These are inventory findings, not authorization to wire a value into pace or
 delete saved state. Each change needs its own migration, replay, and acceptance
 scope.
@@ -302,6 +299,19 @@ existing deterministic planning variations remain. Removed driver weights are
 not reassigned. Hash keys, evaluation order/count, schedule shape, traffic-gap
 rules, suspension handling, and cadence remain unchanged; dry and wet release
 orders intentionally become invariant to driver skills.
+
+The tenth cleanup is behavior-neutral. It closes DA-02 with an executable
+cadence/output contract: generic decisions expose continuous controls but no
+damage, time-loss, retirement or flag outcome, while the stateless lap incident
+owner accepts no decision and remains inactive on lap 1. It closes DA-09 by
+making the existing nullish brake fallback lazy and testing that an explicit
+decision short-circuits skill evaluation. It closes DA-10 by caching the
+unchanged fuel-use multiplier once per car advancement for both prediction and
+the one debit. Finally, the unconsumed returned
+`DriverDecision.nominalLateralOffsetM` and `errorRisk` fields are removed while
+their local values continue to feed desired line, error trigger and contact
+risk. Formulas, hashes, random evaluations, cadence, state and consumed results
+remain unchanged.
 
 ## Invariants
 

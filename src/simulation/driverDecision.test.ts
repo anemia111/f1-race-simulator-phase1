@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialDrivers } from '../data/grid2026'
+import { initialDrivers, initialTeams } from '../data/grid2026'
 import type { Driver, DriverSkillProfile } from '../types'
 import {
   DRIVER_DECISION_WINDOWS_PER_LAP,
@@ -8,6 +8,7 @@ import {
   driverDecisionWindow,
   type DriverDecisionContext,
 } from './driverDecision'
+import { incidentForLap } from './incidents'
 
 const baseDriver = initialDrivers[0]
 
@@ -253,8 +254,8 @@ describe('seeded driver decisions', () => {
     let aggressiveNonAttempts = 0
     let cautiousContactRisk = 0
     let aggressiveContactRisk = 0
-    let cautiousErrorRisk = 0
-    let aggressiveErrorRisk = 0
+    let cautiousErrors = 0
+    let aggressiveErrors = 0
 
     for (let sample = 0; sample < 500; sample += 1) {
       const attack = {
@@ -283,8 +284,8 @@ describe('seeded driver decisions', () => {
       aggressiveNonAttempts += Number(!aggressive.attemptedOvertake)
       cautiousContactRisk += cautious.contactRisk
       aggressiveContactRisk += aggressive.contactRisk
-      cautiousErrorRisk += cautious.errorRisk
-      aggressiveErrorRisk += aggressive.errorRisk
+      cautiousErrors += Number(cautious.errorTriggered)
+      aggressiveErrors += Number(aggressive.errorTriggered)
 
       expect(cautious).not.toHaveProperty('speedMultiplier')
       expect(cautious).not.toHaveProperty('lapTimeDeltaSeconds')
@@ -295,7 +296,43 @@ describe('seeded driver decisions', () => {
     expect(aggressiveAttempts).toBeGreaterThan(cautiousAttempts)
     expect(aggressiveNonAttempts).toBeGreaterThan(0)
     expect(aggressiveContactRisk).toBeGreaterThan(cautiousContactRisk)
-    expect(aggressiveErrorRisk).toBeGreaterThan(cautiousErrorRisk)
+    expect(aggressiveErrors).toBeGreaterThan(cautiousErrors)
+  })
+
+  it('keeps window controls separate from lap incident outcomes', () => {
+    const driver = initialDrivers[0]
+    const team = initialTeams.find(
+      (candidate) => candidate.id === driver.teamId,
+    )!
+    const decision = decideDriverBehavior(contextFor({ driver }))
+
+    for (const outcomeField of [
+      'damageDelta',
+      'flagResponse',
+      'retirement',
+      'timeLossSeconds',
+    ]) {
+      expect(decision).not.toHaveProperty(outcomeField)
+    }
+
+    const beforeDecision = incidentForLap(
+      'driver-incident-owner',
+      driver,
+      team,
+      12,
+    )
+    decideDriverBehavior(contextFor({ driver, seed: 'unrelated-window' }))
+    const afterDecision = incidentForLap(
+      'driver-incident-owner',
+      driver,
+      team,
+      12,
+    )
+
+    expect(afterDecision).toEqual(beforeDecision)
+    expect(
+      incidentForLap('driver-incident-owner', driver, team, 1),
+    ).toBeNull()
   })
 
   it('returns finite bounded traits and physical control requests', () => {
@@ -339,7 +376,6 @@ describe('seeded driver decisions', () => {
       }),
     )
     const numericOutputs = [
-      decision.nominalLateralOffsetM,
       decision.desiredLateralOffsetM,
       decision.lineErrorM,
       decision.brakeOnsetDeltaSeconds,
@@ -347,7 +383,6 @@ describe('seeded driver decisions', () => {
       decision.throttleTimingDeltaSeconds,
       decision.throttleOpeningScale,
       decision.controlError,
-      decision.errorRisk,
       decision.contactRisk,
     ]
 
@@ -357,8 +392,6 @@ describe('seeded driver decisions', () => {
     expect(decision.brakePressureScale).toBeLessThanOrEqual(1.1)
     expect(decision.throttleOpeningScale).toBeGreaterThanOrEqual(0)
     expect(decision.throttleOpeningScale).toBeLessThanOrEqual(1)
-    expect(decision.errorRisk).toBeGreaterThanOrEqual(0)
-    expect(decision.errorRisk).toBeLessThanOrEqual(1)
     expect(decision.contactRisk).toBeGreaterThanOrEqual(0)
     expect(decision.contactRisk).toBeLessThanOrEqual(1)
   })

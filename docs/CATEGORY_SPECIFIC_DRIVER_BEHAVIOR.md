@@ -52,6 +52,13 @@ operations. It reads no driver ability; existing machine qualifying rating,
 pit-crew speed, teammate spacing and deterministic planning hashes remain.
 Removed driver weights are not reassigned.
 
+DA-02, DA-09 and DA-10 are closed without changing consumed results. Generic
+window decisions and rare lap incidents have separate outputs and cadence; an
+explicit brake decision lazily excludes the legacy skill fallback; and one
+cached fuel-use value now feeds prediction and the single debit. The unused
+returned nominal-line and error-risk copies are removed, while their local
+values retain every existing calculation.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -294,6 +301,11 @@ DA-07 is closed by removing qualifying pace, pressure, traffic and awareness
 from team pit-release ordering. Existing machine/crew inputs, hashes, traffic
 gaps, and teammate de-stacking remain; dry and wet schedules are tested as
 invariant to all driver skills.
+
+DA-02, DA-09 and DA-10 are closed by executable contracts for distinct
+window/lap outcomes, a mutually exclusive brake fallback, and one shared fuel
+multiplier. Removing the two unconsumed decision return fields does not remove
+their local calculations or alter hashes, cadence, state, or consumed output.
 
 ## Observability and authority
 
