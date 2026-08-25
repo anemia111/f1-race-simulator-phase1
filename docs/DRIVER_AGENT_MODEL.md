@@ -96,6 +96,12 @@ generic decision windows that precede it. Existing rain severities and risk
 bounds are retained without fitting or coefficient redistribution; dry output,
 decision hashes, and cadence are unchanged.
 
+DA-06 then separates setup responsibilities without coefficient replacement.
+`consistency` owns practice programme execution, and final
+`carBalanceAdaptation` owns feedback, completeness, and convergence. The direct
+final-skill `adaptability` reads leave both setup stages; compact-source
+expansion remains a separate DA-14 review.
+
 ## Runtime flow
 
 ```text
@@ -242,8 +248,9 @@ The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
 return surfaces recorded by that graph. They do not select a new ability owner
 or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
-DA-08 is resolved by its two-cadence executable contract, and DA-04 by its
-wet-skill-only rain overlay. The other
+DA-08 is resolved by its two-cadence executable contract, DA-04 by its
+wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
+The other
 duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model

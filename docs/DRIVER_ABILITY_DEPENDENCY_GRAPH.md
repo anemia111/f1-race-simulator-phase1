@@ -128,7 +128,7 @@ automatically justified.
 | Offline timed execution | generic decision plus a wet-skill-only rain overlay and a consistency/precision/pressure assembly overlay | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Resolved owner split |
 | Qualifying release | qualifying pace, pressure, traffic and awareness | release confidence/order | `qualifyingStrategy.ts`, scheduled run planning | Ownership review item |
 | Qualifying permission | qualifying pace | general performance evidence | `race.ts`, no-time/deleted Q1 steward simulation | Rule outcome |
-| Practice/setup | adaptability, consistency and car-balance adaptation | programme score, feedback confidence and setup convergence | `qualifying.ts` and `engineering.ts`, practice-run cadence | Sequential review item |
+| Practice/setup | consistency and car-balance adaptation | programme execution score, feedback confidence and setup convergence | `qualifying.ts` and `engineering.ts`, practice-run cadence | Resolved owner split |
 
 The table records dependencies, not permission for a future agent to write the
 outcome. Physical integration, Energy Store accounting, tyre state, race
@@ -169,7 +169,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `startSkill` | generic reaction and race launch | named |
 | `confidence` | generic tyre-limit, aggression and risk traits | named |
 | `precision` | generic control, F1 energy, timed variation, incidents, battle, brake fallback and tyre temperature | named |
-| `adaptability` | generic traits, practice, setup, battle wet skill, F1 energy and wet recovery | named |
+| `adaptability` | generic traits, battle wet skill, F1 energy and wet recovery | named |
 | `raceAwareness` | generic traits, F1 energy, release/abort, race control, pursuit, VSC, strategy, incidents and battle | named |
 | `carBalanceAdaptation` | generic tyre-limit trait and practice setup feedback | named |
 
@@ -204,7 +204,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
-| DA-06 | Adaptability in practice score, car-balance derivation and setup feedback | sequential compound / review required | Setup ownership is clear; repeated source-axis influence is not |
+| DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
 | DA-07 | Execution/awareness skills also influence team qualifying release order | independent outcome / ownership review | Current behavior is recorded without claiming release is a driver-agent decision |
 | DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
 | DA-09 | Decision brake pressure versus telemetry skill fallback | mutually exclusive fallback | Not doubled on the normal live path |
@@ -285,6 +285,15 @@ only `wetSkill` while preserving the existing clear/light/heavy severities and
 the same 1.00..1.625 risk envelope. Decision-window count, contexts, hashes,
 run-wide draw, return shape, and saved state are unchanged; dry execution is
 exactly unchanged and wet results intentionally lose the duplicate axes.
+
+The eighth cleanup resolves DA-06 without replacing removed weight. Practice
+programme execution now reads `consistency` alone, while final
+`carBalanceAdaptation` alone owns setup feedback, completeness and convergence.
+The direct final-skill `adaptability` reads are removed from both setup stages;
+its compact-source contribution to expanded `carBalanceAdaptation` remains
+explicitly tracked under DA-14. Existing setup hashes, evaluation count,
+cadence, return types, and saved shape remain unchanged. Setup results
+intentionally lose the duplicate final-skill sensitivity.
 
 ## Invariants
 

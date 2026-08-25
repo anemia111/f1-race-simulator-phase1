@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { seriesPackageById } from '../series/seriesRegistry'
 import { isF1SeriesRules } from '../series/types'
-import type { TimedSessionTire } from '../types'
-import { baselineSetupForTrack } from './engineering'
+import type { Driver, TimedSessionTire } from '../types'
+import {
+  baselineSetupForTrack,
+  driverSetupFeedback,
+} from './engineering'
 import {
   runPracticeSession,
   runSeriesQualifying,
@@ -47,6 +50,74 @@ function superFormulaConfig() {
     series,
   }
 }
+
+describe('practice setup ability ownership', () => {
+  it('partitions practice execution and setup feedback owners', () => {
+    const series = seriesPackageById.get('f1-custom')!
+    const driver = series.drivers[0]!
+    const withSkills = (
+      overrides: Partial<Driver['skills']>,
+    ): Driver => ({
+      ...driver,
+      skills: { ...driver.skills, ...overrides },
+    })
+    const lowAdaptability = withSkills({
+      adaptability: 0,
+      carBalanceAdaptation: 0.7,
+    })
+    const highAdaptability = withSkills({
+      adaptability: 1,
+      carBalanceAdaptation: 0.7,
+    })
+
+    expect(driverSetupFeedback(lowAdaptability)).toBe(
+      driverSetupFeedback(highAdaptability),
+    )
+    expect(
+      driverSetupFeedback(withSkills({ carBalanceAdaptation: 1 })),
+    ).toBeGreaterThan(
+      driverSetupFeedback(withSkills({ carBalanceAdaptation: 0 })),
+    )
+
+    const config = {
+      drivers: [lowAdaptability],
+      seed: 'phase7-practice-setup-owner',
+      seriesId: 'f1-custom' as const,
+      teams: series.teams,
+      track: { ...series.tracks[0], rainProbability: 0 },
+      weekendStage: 'fp1' as const,
+    }
+    const lowResult = runPracticeSession(config, 'fp1')[0]!
+    const highResult = runPracticeSession(
+      { ...config, drivers: [highAdaptability] },
+      'fp1',
+    )[0]!
+
+    expect(highResult.setupScore).toBe(lowResult.setupScore)
+    expect(highResult.setupConfidence).toBe(lowResult.setupConfidence)
+    expect(highResult.setupRecommendation).toEqual(
+      lowResult.setupRecommendation,
+    )
+
+    const lowConsistency = runPracticeSession(
+      {
+        ...config,
+        drivers: [withSkills({ consistency: 0 })],
+      },
+      'fp1',
+    )[0]!
+    const highConsistency = runPracticeSession(
+      {
+        ...config,
+        drivers: [withSkills({ consistency: 1 })],
+      },
+      'fp1',
+    )[0]!
+    expect(highConsistency.setupScore).toBeGreaterThan(
+      lowConsistency.setupScore,
+    )
+  })
+})
 
 describe('timed-session tyre boundary', () => {
   it('represents only Yokohama dry/wet control tyres for SUPER FORMULA qualifying', () => {
