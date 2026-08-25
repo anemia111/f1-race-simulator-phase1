@@ -97,7 +97,7 @@ compact `racePace` source axis, which also constructs other active skills.
 
 | Domain | Owner | Range and purpose | Main consumers |
 | --- | --- | --- | --- |
-| Raw published-scale skill | `driverDecision.ts` and `driverPublishedAbilityValue` | Clamped to 0..1 per named consumer; values above 100 do not increase generic traits or tyre-condition previews | intent, pedal/line execution, error/contact requests and tyre UI projections |
+| Raw published-scale skill | `driverDecision.ts` and `driverPublishedAbilityValue` | Clamped to 0..1 per named consumer; values above 100 do not increase generic traits or tyre-condition previews | intent, pedal/line execution, continuous control errors and tyre UI projections |
 | Performance-normalized skill | `driverAbility.ts` | 0..100 maps to 0.55..1.00 and every named path saturates at 100 | physics execution, strategy, incidents, race control |
 | Direct bounded energy blend | `driverEnergyIntent.ts` | Each raw skill is clamped to 0..1 before the weighted blend | F1 scheduling preferences only |
 | Limit-break aggregate | `driverAbility.ts` | Mean excess above 100 across all 30 skills | recovery of part of the timed physical reference's transient concession |
@@ -120,7 +120,7 @@ automatically justified.
 | Tyre state | tyre management, throttle control, precision and wet skill | wear, temperature, cliff and selection signals | `race.ts`, `telemetry.ts`, `strategy.ts`, `weekendTires.ts` | Multi-owner review item |
 | Start | start skill, traction control, pressure handling and awareness | launch quality and start-error risk | `race.ts`, start transition only | Event decision |
 | Race control/compliance | awareness, consistency and pressure handling | VSC compliance, warning/penalty/permission rolls | `race.ts`, at the owning event or sector cadence | Rule outcome |
-| Battle resolution | overtaking, defending, error-control, wet, adaptability and tyre-management skills | attempt, pass, contact and tyre edge | `overtaking.ts`, race-only battle windows | Sequential review item |
+| Battle resolution | overtaking, defending, error-control, wet, adaptability and tyre-management skills | attempt, pass, defend, contact and tyre edge | `overtaking.ts`, race-only battle windows | Formal outcome owner; DA-05 tyre edge pending |
 | Independent incidents | consistency, mistake resistance, pressure, precision, awareness and wet skills | incident probability/disposition | `incidents.ts`, lap incident cadence | Sequential review item |
 | F1 energy scheduling | ERS management, awareness, precision, adaptability, consistency, wet and braking skills | energy intent, deployment request, wet recovery and superclipping response | `driverEnergyIntent.ts`, `telemetry.ts`, `superClipping.ts`; Energy Store owns SOC/power | Sequential review item |
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
@@ -199,7 +199,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 
 | ID | Relationship | Classification | Phase 7.8A conclusion |
 | --- | --- | --- | --- |
-| DA-01 | Generic attack/contact request followed by battle attempt/pass/contact skills | sequential compound / review required | Intent and outcome have separate owners, but sensitivity allocation is unexplained |
+| DA-01 | Generic attack intent followed by formal battle resolution | resolved single stochastic owner in Phase 7.8B | Generic decisions own intent and physical controls only; `overtaking.ts` alone owns attempt, pass/defend, contact and crash rolls, and is called only for attack intent |
 | DA-02 | Window-level control/error followed by independent lap incident rolls | resolved distinct-cadence contract in Phase 7.8B | Generic decisions return bounded continuous controls and no damage/time/retirement/flag outcome; `incidentForLap` accepts no decision, skips lap 1 and owns rare lap-level outcomes under independent deterministic keys |
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
@@ -225,7 +225,6 @@ validation values for tuning.
   production consumer.
 - `racePace`, `tireWarmupSkill`, `dirtyAirManagement`, and `restartSkill` have
   no named normal-scale consumer and are aggregate-only.
-- `DriverDecision.attemptedDefence` is produced but has no production consumer.
 These are inventory findings, not authorization to wire a value into pace or
 delete saved state. Each change needs its own migration, replay, and acceptance
 scope.
@@ -320,6 +319,16 @@ blue-flag yield, pit, emergency and flag controls remain available. The helper
 is pure; race cue values, decision hashes, window cadence, downstream battle
 hashes, state and schemas are unchanged. Timed sessions intentionally stop
 selecting race battle intents.
+
+The twelfth cleanup resolves DA-01 with one stochastic battle owner. Generic
+decisions retain attack/defend intent, lateral placement and pedal/control
+error, but no longer roll or return attempted overtake, attempted defence, or
+contact risk. The race loop invokes `overtaking.ts` only for attack intent, and
+that formal resolver alone owns attempt, pass/defend, contact and crash rolls.
+Its duplicate decision-contact input is removed without reallocating weight.
+The deleted generic hash calls were stateless, so formal hash keys/cadence and
+all unrelated random results remain unchanged; battle outcomes intentionally
+change to the single-owner model.
 
 ## Invariants
 

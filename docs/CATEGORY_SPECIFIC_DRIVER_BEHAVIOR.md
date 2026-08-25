@@ -64,6 +64,11 @@ for race-distance sessions. Timed sessions keep tow alignment, dirty-air
 avoidance, yield, pit, emergency and flag controls, but no longer select
 race-only battle intents.
 
+DA-01 is resolved by leaving battle intent and physical controls in the generic
+decision while making `overtaking.ts` the sole owner of attempt, pass/defend,
+contact and crash rolls. The race loop calls it only for attack intent; removed
+generic attempt/contact weight is not reassigned.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -314,6 +319,10 @@ their local calculations or alter hashes, cadence, state, or consumed output.
 
 DA-13 is closed by a tested session gate around attack/defend cues. The race
 path is unchanged, and the non-battle timed traffic cues remain available.
+
+DA-01 is closed by removing the generic attempted-overtake, attempted-defence
+and contact-risk outputs. Formal battle hashes retain their keys and cadence;
+removed generic hash calls were stateless and cannot shift another stream.
 
 ## Observability and authority
 

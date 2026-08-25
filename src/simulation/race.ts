@@ -619,6 +619,13 @@ export function raceDistanceBattleCue(
   return isRaceDistance ? cue : undefined
 }
 
+/** The generic decision owns intent; the formal battle model owns every roll. */
+export function driverDecisionRequestsFormalBattle(
+  decision: Pick<DriverDecision, 'intent'> | undefined,
+): boolean {
+  return decision?.intent === 'attack'
+}
+
 export function finalTimingLineSplit(options: {
   nextTotalDistance: number
   previousTotalDistance: number
@@ -6362,7 +6369,11 @@ export function advanceRace(
         const defenderCar = physicalAheadById.get(car.driverId) ?? null
         const defender = defenderCar ? drivers.get(defenderCar.driverId) : null
 
-        if (defenderCar && defender) {
+        if (
+          defenderCar &&
+          defender &&
+          driverDecisionRequestsFormalBattle(driverDecision)
+        ) {
           const battleLap = Math.max(1, Math.floor(next.totalDistance))
           const battle = overtakeForLap({
             seed: config.seed,
@@ -6379,8 +6390,6 @@ export function advanceRace(
             longitudinalSeparationM:
               (physicalGapSecondsById.get(car.driverId) ?? car.gapToAhead) *
               Math.max(5, car.speedKph / 3.6),
-            attemptedOvertake: driverDecision?.attemptedOvertake,
-            decisionContactRisk: driverDecision?.contactRisk,
             isOpeningLap: battleLap <= 2,
             inRestartWindow,
             weather: localWeather,
