@@ -246,14 +246,9 @@ describe('seeded driver decisions', () => {
     expect(highError / 500).toBeLessThan(lowError / 500)
   })
 
-  it('uses aggression for attempts and risk without granting guaranteed speed', () => {
+  it('uses aggression for control risk without granting speed', () => {
     const cautiousDriver = driverAt(0.78, 0)
     const aggressiveDriver = driverAt(0.78, 1)
-    let cautiousAttempts = 0
-    let aggressiveAttempts = 0
-    let aggressiveNonAttempts = 0
-    let cautiousContactRisk = 0
-    let aggressiveContactRisk = 0
     let cautiousErrors = 0
     let aggressiveErrors = 0
 
@@ -279,11 +274,6 @@ describe('seeded driver decisions', () => {
         }),
       )
 
-      cautiousAttempts += Number(cautious.attemptedOvertake)
-      aggressiveAttempts += Number(aggressive.attemptedOvertake)
-      aggressiveNonAttempts += Number(!aggressive.attemptedOvertake)
-      cautiousContactRisk += cautious.contactRisk
-      aggressiveContactRisk += aggressive.contactRisk
       cautiousErrors += Number(cautious.errorTriggered)
       aggressiveErrors += Number(aggressive.errorTriggered)
 
@@ -293,9 +283,9 @@ describe('seeded driver decisions', () => {
       expect(aggressive).not.toHaveProperty('lapTimeDeltaSeconds')
     }
 
-    expect(aggressiveAttempts).toBeGreaterThan(cautiousAttempts)
-    expect(aggressiveNonAttempts).toBeGreaterThan(0)
-    expect(aggressiveContactRisk).toBeGreaterThan(cautiousContactRisk)
+    expect(aggressiveDriver.style.brakingAggression).toBeGreaterThan(
+      cautiousDriver.style.brakingAggression,
+    )
     expect(aggressiveErrors).toBeGreaterThan(cautiousErrors)
   })
 
@@ -309,6 +299,9 @@ describe('seeded driver decisions', () => {
     for (const outcomeField of [
       'damageDelta',
       'flagResponse',
+      'attemptedDefence',
+      'attemptedOvertake',
+      'contactRisk',
       'retirement',
       'timeLossSeconds',
     ]) {
@@ -383,7 +376,6 @@ describe('seeded driver decisions', () => {
       decision.throttleTimingDeltaSeconds,
       decision.throttleOpeningScale,
       decision.controlError,
-      decision.contactRisk,
     ]
 
     expect(numericOutputs.every(Number.isFinite)).toBe(true)
@@ -392,7 +384,5 @@ describe('seeded driver decisions', () => {
     expect(decision.brakePressureScale).toBeLessThanOrEqual(1.1)
     expect(decision.throttleOpeningScale).toBeGreaterThanOrEqual(0)
     expect(decision.throttleOpeningScale).toBeLessThanOrEqual(1)
-    expect(decision.contactRisk).toBeGreaterThanOrEqual(0)
-    expect(decision.contactRisk).toBeLessThanOrEqual(1)
   })
 })

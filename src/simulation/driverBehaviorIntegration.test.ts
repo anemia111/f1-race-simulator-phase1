@@ -8,6 +8,7 @@ import { overtakeForLap } from './overtaking'
 import {
   advanceRace,
   createInitialRace,
+  driverDecisionRequestsFormalBattle,
   raceDistanceBattleCue,
 } from './race'
 import {
@@ -50,6 +51,16 @@ describe('driver behaviour integration', () => {
     expect(raceDistanceBattleCue(true, cue)).toBe(cue)
     expect(raceDistanceBattleCue(false, cue)).toBeUndefined()
     expect(raceDistanceBattleCue(true, undefined)).toBeUndefined()
+  })
+
+  it('requests formal battle resolution only from attack intent', () => {
+    expect(
+      driverDecisionRequestsFormalBattle({ intent: 'attack' }),
+    ).toBe(true)
+    expect(
+      driverDecisionRequestsFormalBattle({ intent: 'defend' }),
+    ).toBe(false)
+    expect(driverDecisionRequestsFormalBattle(undefined)).toBe(false)
   })
 
   it('uses the skill brake blend only when no decision control exists', () => {
@@ -183,8 +194,6 @@ describe('driver behaviour integration', () => {
       const result = overtakeForLap({
         attacker,
         attackerCar: { ...attackerCar, status: 'running' },
-        attemptedOvertake: true,
-        decisionContactRisk: 1,
         defender,
         defenderCar: { ...defenderCar, status: 'running' },
         gapToAheadSeconds: 0.4,

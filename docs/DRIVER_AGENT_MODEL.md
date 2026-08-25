@@ -118,6 +118,12 @@ matching the formal battle boundary. Timed sessions retain tow, dirty-air,
 yield, pit, emergency and flag controls. Race hashes/cadence are unchanged;
 timed sessions intentionally stop selecting race battle intents.
 
+DA-01 then gives stochastic battle resolution one owner. Generic decisions
+retain intent and physical controls but no attempted-move or contact-risk
+output. The race loop calls `overtaking.ts` only for attack intent, and that
+module alone owns attempt, pass/defend, contact and crash rolls. Removed weights
+are not reassigned; its deterministic hash keys and cadence remain.
+
 ## Runtime flow
 
 ```text
@@ -268,8 +274,9 @@ DA-08 is resolved by its two-cadence executable contract, DA-04 by its
 wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
 DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
 and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
-DA-13 is resolved by the subsequent race-distance cue gate. The other
-duplicate-effect sensitivity and removal work remains open.
+DA-13 is resolved by the subsequent race-distance cue gate, and DA-01 by the
+formal-battle-owner cleanup. The other duplicate-effect sensitivity and removal
+work remains open.
 
 ## Contract model
 

@@ -59,10 +59,6 @@ export type OvertakeContext = {
   /** Actual centre-to-centre clearances supplied by the live occupancy model. */
   lateralSeparationM?: number
   longitudinalSeparationM?: number
-  /** Low-frequency driver decision; false means no move is committed. */
-  attemptedOvertake?: boolean
-  /** Behavioural contact risk, never a pace or speed multiplier. */
-  decisionContactRisk?: number
   isOpeningLap: boolean
   inRestartWindow: boolean
   weather: WeatherState
@@ -361,7 +357,6 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   if (
     gapToAheadSeconds <= 0 ||
     gapToAheadSeconds > attackWindow ||
-    context.attemptedOvertake === false ||
     attackerCar.status !== 'running' ||
     defenderCar.status !== 'running'
   ) {
@@ -430,8 +425,7 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
             Math.max(0, -skillEdge) * 0.08 +
             (zone === 'corner'
               ? battleIncidentTuning.cornerContactBonus
-              : -battleIncidentTuning.straightContactReduction) +
-            clamp01(context.decisionContactRisk ?? 0) * 0.55) *
+              : -battleIncidentTuning.straightContactReduction)) *
             contactProximity,
           0,
           0.34,

@@ -141,11 +141,8 @@ export type DriverDecision = {
   throttleTimingDeltaSeconds: number
   /** Multiplies throttle opening, never speed, grip, or power. */
   throttleOpeningScale: number
-  attemptedOvertake: boolean
-  attemptedDefence: boolean
   controlError: number
   errorTriggered: boolean
-  contactRisk: number
 }
 
 const clamp = (value: number, minimum: number, maximum: number) =>
@@ -693,36 +690,6 @@ function nominalLineFor(
   }
 }
 
-function battleAttemptProbability(
-  intent: DriverDecisionIntent,
-  intensity: number,
-  traits: DriverBehaviorTraits,
-): number {
-  if (intent === 'attack') {
-    return clamp(
-      0.025 +
-        intensity * (0.2 + traits.overtakeCommitment * 0.42) +
-        traits.aggression * 0.17 +
-        traits.racecraft * 0.08,
-      0,
-      0.94,
-    )
-  }
-
-  if (intent === 'defend') {
-    return clamp(
-      0.04 +
-        intensity * (0.18 + traits.defenceTendency * 0.4) +
-        traits.aggression * 0.12 +
-        traits.awareness * 0.09,
-      0,
-      0.92,
-    )
-  }
-
-  return 0
-}
-
 function nominalControls(intent: DriverDecisionIntent): {
   brakeOnsetDeltaSeconds: number
   brakePressureScale: number
@@ -895,39 +862,6 @@ export function decideDriverBehavior(
     -usableHalfWidthM,
     usableHalfWidthM,
   )
-  const attackIntensity = clamp01(finiteOr(context.attack?.intensity, 0))
-  const defendIntensity = clamp01(finiteOr(context.defend?.intensity, 0))
-  const attemptProbability = battleAttemptProbability(
-    chosen.intent,
-    chosen.intent === 'attack' ? attackIntensity : defendIntensity,
-    traits,
-  )
-  const attemptedOvertake =
-    chosen.intent === 'attack' &&
-    decisionRoll(context, 'attack', chosen.opponentId, 'attempt') <
-      attemptProbability
-  const attemptedDefence =
-    chosen.intent === 'defend' &&
-    decisionRoll(context, 'defend', chosen.opponentId, 'attempt') <
-      attemptProbability
-  const contactRisk =
-    chosen.intent === 'attack' || chosen.intent === 'defend'
-      ? clamp01(
-          0.004 +
-            battleIntensity * 0.018 +
-            traits.aggression * 0.045 +
-            traits.riskTolerance * 0.025 +
-            (1 - traits.awareness) * 0.06 +
-            errorRisk * 0.22,
-        )
-      : chosen.intent === 'emergency-avoidance'
-        ? clamp01(
-            0.008 +
-              battleIntensity * 0.025 +
-              (1 - traits.awareness) * 0.04 +
-              errorRisk * 0.2,
-          )
-        : 0
   const nominalControl = nominalControls(chosen.intent)
 
   return {
@@ -957,10 +891,7 @@ export function decideDriverBehavior(
       0,
       1,
     ),
-    attemptedOvertake,
-    attemptedDefence,
     controlError,
     errorTriggered,
-    contactRisk,
   }
 }
