@@ -74,6 +74,12 @@ Physical wear, temperature, grip, resulting speed/gap/closing opportunity,
 strategy and tyre selection retain their existing owners; no removed term is
 replaced or refitted.
 
+DA-12 is resolved by assigning abort, deletion, caused-yellow and track-limit
+events to adjudication rather than rereading driver awareness after execution.
+Existing event keys/base chances remain; race track limits also retain their
+pressure, tyre-wear, grip and rain context. Removed awareness weight is not
+redistributed.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -333,6 +339,11 @@ removed generic hash calls were stateless and cannot shift another stream.
 DA-05 is closed by removing the direct tyre-management/tire-delta edge from the
 formal battle model. Tests fix its invariance to tyre skill and direct tyre
 state while the physical vehicle remains the source of speed and gap inputs.
+
+DA-12 is closed by pure adjudication helpers and a driver-independent race
+track-limit chance. Decision-window control remains separate; hashes and event
+cadence are retained while outcomes intentionally lose duplicate awareness
+sensitivity.
 
 ## Observability and authority
 

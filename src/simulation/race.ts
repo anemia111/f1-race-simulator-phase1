@@ -191,6 +191,7 @@ import {
   type PracticeProgramPlan,
 } from './practicePrograms'
 import { timedLapLaunchBlend } from './timedLapPreparation'
+import { liveTimedLapAdjudication } from './timedSessionAdjudication'
 import { timedSessionYieldDecision } from './timedSessionTraffic'
 import {
   createSuperFormulaRuntimeSystems,
@@ -6798,27 +6799,14 @@ export function advanceRace(
             ) < 0.18
               ? obstructingCar
               : undefined
-          const causedYellow =
-            hashChance(
-              `${config.seed}:timed-yellow:${segmentKey}:${driver.id}:${completedTimedLap}`,
-            ) <
-            0.01 +
-              Math.max(
-                0,
-                1 - driverPerformanceAbility(driver, 'raceAwareness'),
-              ) *
-                0.012
+          const { causedYellow, trackLimitDeleted } =
+            liveTimedLapAdjudication({
+              completedTimedLap,
+              driverId: driver.id,
+              seed: config.seed,
+              segmentKey,
+            })
           const passedDoubleYellow = next.passedDoubleYellowThisLap
-          const trackLimitDeleted =
-            hashChance(
-              `${config.seed}:timed-track-limit:${segmentKey}:${driver.id}:${completedTimedLap}`,
-            ) <
-            0.018 +
-              Math.max(
-                0,
-                1 - driverPerformanceAbility(driver, 'raceAwareness'),
-              ) *
-                0.09
           const invalidReason = causedYellow
             ? 'Caused double yellow'
             : passedDoubleYellow
@@ -7463,7 +7451,6 @@ export function advanceRace(
         lapHasTrackLimitWarning(
           config.seed,
           driver.id,
-          driverPerformanceAbility(driver, 'raceAwareness'),
           lap,
           {
             pressure: Math.max(0, 1 - next.gapToAhead / 2.5),

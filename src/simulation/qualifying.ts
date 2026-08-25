@@ -36,6 +36,7 @@ import {
   type PhysicalLapResult,
 } from './physicalLap'
 import { hashChance } from './random'
+import { offlineQualifyingRunAdjudication } from './timedSessionAdjudication'
 import {
   buildQualifyingReleaseSchedule,
   type QualifyingReleaseSlot,
@@ -670,7 +671,6 @@ function qualifyingRunsForDriver(
 ): QualifyingRun[] {
   const tire = sessionTireForQualifyingSegment(config, segment, weather)
   const maxRuns = segment === 'Q3' || segment === 'SQ3' ? 2 : 3
-  const awareness = driverPerformanceAbility(driver, 'raceAwareness')
 
   return Array.from({ length: maxRuns }, (_, run) => {
     const rawLapTimeSeconds = qualifyingRunLapTime(
@@ -686,13 +686,7 @@ function qualifyingRunsForDriver(
     )
     const runKey = `${seed}:run-lap:${segment}:${driver.id}:${run}`
     const trafficLossSeconds = 0
-    const aborted =
-      hashChance(`${runKey}:abort`) <
-      0.012 + Math.max(0, 1 - awareness) * 0.035
-    const deleted =
-      !aborted &&
-      hashChance(`${runKey}:track-limit`) <
-        0.008 + Math.max(0, 1 - awareness) * 0.035
+    const { aborted, deleted } = offlineQualifyingRunAdjudication(runKey)
     const lapTimeSeconds = rawLapTimeSeconds + trafficLossSeconds
     // Preparation laps are operationally slower than the same car's physical
     // flying lap. Their schedule is anchored to that lap, never to an observed

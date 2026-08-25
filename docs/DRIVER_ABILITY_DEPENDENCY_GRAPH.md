@@ -126,6 +126,7 @@ automatically justified.
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
 | Pit/tyre strategy | tyre management, overtaking, awareness and traffic management | cliff, undercut and overcut choice | `strategy.ts`, strategy cadence | Strategy outcome |
 | Offline timed execution | generic decision plus a wet-skill-only rain overlay and a consistency/precision/pressure assembly overlay | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Resolved owner split |
+| Timed-session adjudication | none | offline abort/deletion and live timed yellow/deletion outcomes | `timedSessionAdjudication.ts`, once per planned run or completed live timed lap | Rule outcome |
 | Qualifying release | none; machine qualifying rating, pit-crew speed and deterministic team planning own release order | release order | `qualifyingStrategy.ts`, scheduled run planning | Resolved team owner |
 | Qualifying permission | qualifying pace | general performance evidence | `race.ts`, no-time/deleted Q1 steward simulation | Rule outcome |
 | Practice/setup | consistency and car-balance adaptation | programme execution score, feedback confidence and setup convergence | `qualifying.ts` and `engineering.ts`, practice-run cadence | Resolved owner split |
@@ -170,7 +171,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `confidence` | generic tyre-limit, aggression and risk traits | named |
 | `precision` | generic control, F1 energy, timed variation, incidents, battle, brake fallback and tyre temperature | named |
 | `adaptability` | generic traits, battle wet skill, F1 energy and wet recovery | named |
-| `raceAwareness` | generic traits, F1 energy, qualifying abort, race control, pursuit, VSC, strategy, incidents and battle | named |
+| `raceAwareness` | generic traits, F1 energy, race control, pursuit, VSC, strategy, incidents and battle | named |
 | `carBalanceAdaptation` | generic tyre-limit trait and practice setup feedback | named |
 
 The four aggregate-only final skills are not described as unused because a value
@@ -210,7 +211,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-09 | Decision brake pressure versus telemetry skill fallback | resolved mutually exclusive fallback in Phase 7.8B | An explicit decision scale short-circuits the skill blend; the skill path is evaluated only when no decision exists |
 | DA-10 | Fuel multiplier used by prediction and actual debit | resolved shared value in Phase 7.8B | One cached multiplier feeds both fuel-to-finish prediction and the single actual debit during the same car advancement |
 | DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
-| DA-12 | Generic control/awareness followed by independent qualifying abort/deletion and live timed yellow/track-limit rolls | sequential compound / review required | Continuous control and adjudication events have separate owners, but overlapping awareness sensitivity is unexplained |
+| DA-12 | Generic control/awareness followed by qualifying and race adjudication rolls | resolved adjudication owner in Phase 7.8B | Offline abort/deletion and live timed yellow/deletion use fixed base chances only; race track-limit warnings use base plus pressure/tyre/grip/rain context, with no driver ability reread |
 | DA-13 | Live timed sessions inheriting race attack/defend cues while formal battle resolution is race-only | resolved session boundary in Phase 7.8B | Attack and defend cues are gated to race-distance sessions; timed-session tow, dirty-air avoidance and yield cues remain as traffic-management controls |
 | DA-14 | One compact axis fans out to multiple final skills that can rejoin the same blend, such as identical expanded `brakingSkill`/`precision` inputs in braking or `overtakingSkill`/`defendingSkill` rejoining their aggregate `racecraft` | construction-time duplicate / review required | The 12-to-30 expansion is explicit, but repeated sensitivity after fan-out has not been justified or calibrated |
 
@@ -337,6 +338,15 @@ temperature, grip, car speed, gap, closing opportunity, pit/tyre strategy and
 selection remain unchanged in their existing owners. Battle attempt/pass
 outcomes intentionally lose the duplicate surrogate; hashes, cadence, state,
 schemas and non-battle tyre behavior remain unchanged.
+
+The fourteenth cleanup resolves DA-12 by separating execution from
+adjudication. Offline run abort/deletion and live timed yellow/deletion keep
+their existing keys and base chances but no longer reread race awareness. Race
+track-limit warnings retain the existing base, pressure, tyre-wear, grip and
+rain terms, cap, lap-1 exclusion and hash key, while removing the awareness
+term and its now-dead exported tuning key. Removed sensitivity is not
+redistributed. Adjudication outcomes intentionally change; decision control,
+random cadence, schemas and saved state remain unchanged.
 
 ## Invariants
 
