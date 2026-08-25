@@ -150,14 +150,13 @@ export function setupPaceDeltaSeconds(track: TrackDefinition, setup: CarSetup) {
 }
 
 /**
- * How good a driver is at feeding back to the engineers and dialling the car in
- * — a blend of car-balance feel and adaptability. Drives how complete a setup a
- * driver reaches in practice and how much they extract from it in one lap.
+ * How good a driver is at feeding back to the engineers and dialling the car
+ * in. Car-balance adaptation is the single final-skill owner of setup feedback;
+ * broader adaptability remains owned by the generic decision model.
  */
 export function driverSetupFeedback(driver: Driver): number {
   return clamp(
-    driverPerformanceAbility(driver, 'carBalanceAdaptation') * 0.6 +
-      driverPerformanceAbility(driver, 'adaptability') * 0.4,
+    driverPerformanceAbility(driver, 'carBalanceAdaptation'),
     0,
     1,
   )

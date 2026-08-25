@@ -41,6 +41,12 @@ separate timed-session rain overlay reads only `wetSkill`. Dry execution,
 weather severities, the established risk envelope, decision hashes, and cadence
 remain unchanged.
 
+DA-06 is resolved by separating practice programme execution from setup
+feedback: `consistency` alone owns the programme score, and final
+`carBalanceAdaptation` alone owns feedback, completeness, and convergence.
+Removed adaptability weight is not redistributed; setup hashes and cadence are
+unchanged.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -239,11 +245,11 @@ consumer, authority, and random-cadence graph in
 `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md`. It distinguishes named production
 reads, aggregate-only limit-break participation, materialized display overall,
 and overall's construction/import/migration/profile-selection ancestry. The
-review register deliberately leaves overlapping battle, incident, energy,
-tyre, and practice effects unresolved for Phase 7.8B or later; DA-04's timed
-rain overlay is subsequently assigned to `wetSkill` alone. The documentation
-slice itself changes no coefficient, seed, random draw, runtime field, or saved
-state.
+review register deliberately leaves overlapping battle, incident, energy, and
+tyre effects unresolved for Phase 7.8B or later; DA-04's timed rain overlay and
+DA-06's practice/setup path are subsequently assigned single owners. The
+documentation slice itself changes no coefficient, seed, random draw, runtime
+field, or saved state.
 
 The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` and
 `qualifyingSetupPenaltySeconds` exports, rename only the track-limit helper's
@@ -273,6 +279,11 @@ making `wetSkill` the sole ability owner of the timed-session rain overlay.
 Adaptability, braking and throttle control remain active in the generic
 decision; no coefficient is redistributed to compensate for their removal from
 the overlay.
+
+DA-06 is closed by giving programme execution to `consistency` and setup
+feedback/convergence to final `carBalanceAdaptation`. Direct final-skill
+`adaptability` reads are removed from this setup path without redistributing
+their coefficients. Compact-to-expanded construction remains tracked by DA-14.
 
 ## Observability and authority
 

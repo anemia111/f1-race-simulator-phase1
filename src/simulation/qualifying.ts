@@ -1395,7 +1395,6 @@ export function runPracticeSession(
     const machineReliability = effectiveMachineReliability(
       team.machine.reliability,
     )
-    const adaptability = driverPerformanceAbility(driver, 'adaptability')
     const consistency = driverPerformanceAbility(driver, 'consistency')
     const scheduledPrograms = Array.from({ length: 4 }, (_, runIndex) => {
       const plan = practiceProgramFor({
@@ -1512,7 +1511,6 @@ export function runPracticeSession(
           28 +
             lapsCompleted * 1.45 +
             consistency * 13 +
-            adaptability * 5 +
             machineReliability * 14 +
             stageIndex * 5 -
             (weather === 'heavy-rain' ? 8 : weather === 'light-rain' ? 3 : 0) +
