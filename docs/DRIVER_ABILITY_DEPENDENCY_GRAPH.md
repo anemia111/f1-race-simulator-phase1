@@ -125,7 +125,7 @@ automatically justified.
 | F1 energy scheduling | ERS management, awareness, precision, adaptability, consistency, wet and braking skills | energy intent, deployment request, wet recovery and superclipping response | `driverEnergyIntent.ts`, `telemetry.ts`, `superClipping.ts`; Energy Store owns SOC/power | Sequential review item |
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
 | Pit/tyre strategy | tyre management, overtaking, awareness and traffic management | cliff, undercut and overcut choice | `strategy.ts`, strategy cadence | Strategy outcome |
-| Offline timed execution | generic decision plus wet, consistency, precision and pressure overlays | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Sequential review item |
+| Offline timed execution | generic decision plus a wet-skill-only rain overlay and a consistency/precision/pressure assembly overlay | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Resolved owner split |
 | Qualifying release | qualifying pace, pressure, traffic and awareness | release confidence/order | `qualifyingStrategy.ts`, scheduled run planning | Ownership review item |
 | Qualifying permission | qualifying pace | general performance evidence | `race.ts`, no-time/deleted Q1 steward simulation | Rule outcome |
 | Practice/setup | adaptability, consistency and car-balance adaptation | programme score, feedback confidence and setup convergence | `qualifying.ts` and `engineering.ts`, practice-run cadence | Sequential review item |
@@ -145,15 +145,15 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `rawPace` | generic tyre-limit utilisation | named |
 | `qualifyingPace` | qualifying release and no-time/deleted-Q1 permission evidence | named |
 | `racePace` | none for the final skill outside source expansion/display | aggregate-only |
-| `brakingSkill` | generic braking traits, timed wet control, live brake fallback, wet Energy Store recovery | named |
+| `brakingSkill` | generic braking traits, live brake fallback and wet Energy Store recovery | named |
 | `lowSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `mediumSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `highSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `tractionControl` | generic throttle trait and race launch | named |
-| `throttleControl` | generic throttle trait, timed wet control, fuel use and tyre temperature | named |
+| `throttleControl` | generic throttle trait, fuel use and tyre temperature | named |
 | `tireManagement` | generic tyre-limit trait, tyre state, battle tyre edge, tyre/pit strategy and start tyre choice | named |
 | `tireWarmupSkill` | none outside source expansion/display | aggregate-only |
-| `wetSkill` | timed wet control, battle, incidents, start tyre choice and Energy Store recovery | named |
+| `wetSkill` | timed rain overlay, battle, incidents, start tyre choice and Energy Store recovery | named |
 | `intermediateSkill` | light-rain incident risk | named |
 | `overtakingSkill` | generic racecraft/attack, battle, pursuit pace and undercut choice | named |
 | `defendingSkill` | generic racecraft/defence and battle | named |
@@ -169,7 +169,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `startSkill` | generic reaction and race launch | named |
 | `confidence` | generic tyre-limit, aggression and risk traits | named |
 | `precision` | generic control, F1 energy, timed variation, incidents, battle, brake fallback and tyre temperature | named |
-| `adaptability` | generic traits, timed wet/practice, setup, battle wet skill, F1 energy and wet recovery | named |
+| `adaptability` | generic traits, practice, setup, battle wet skill, F1 energy and wet recovery | named |
 | `raceAwareness` | generic traits, F1 energy, release/abort, race control, pursuit, VSC, strategy, incidents and battle | named |
 | `carBalanceAdaptation` | generic tyre-limit trait and practice setup feedback | named |
 
@@ -202,7 +202,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-01 | Generic attack/contact request followed by battle attempt/pass/contact skills | sequential compound / review required | Intent and outcome have separate owners, but sensitivity allocation is unexplained |
 | DA-02 | Window-level control/error followed by independent lap incident rolls | sequential compound / review required | Continuous error and discrete incident roles differ, but overlap is not bounded by a shared contract |
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
-| DA-04 | Timed decision control followed by a wet multiplier reusing adaptability, braking and throttle skills | sequential compound / review required | Wet skill is unique to the overlay; the repeated axes need allocation review |
+| DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
 | DA-06 | Adaptability in practice score, car-balance derivation and setup feedback | sequential compound / review required | Setup ownership is clear; repeated source-axis influence is not |
 | DA-07 | Execution/awareness skills also influence team qualifying release order | independent outcome / ownership review | Current behavior is recorded without claiming release is a driver-agent decision |
@@ -277,6 +277,14 @@ The separate `lap-execution` draw is named and tested as one non-negative
 whole-run assembly shortfall: opposite draw signs are equivalent, a zero draw
 adds zero, and the existing consistency endpoints bound it. Limit-break recovery
 remains the only route to a negative total adjustment.
+
+The seventh cleanup resolves DA-04 without adding or refitting a coefficient.
+The existing generic decision windows remain the owners of adaptability,
+braking and throttle-control execution. The separate rain overlay now reads
+only `wetSkill` while preserving the existing clear/light/heavy severities and
+the same 1.00..1.625 risk envelope. Decision-window count, contexts, hashes,
+run-wide draw, return shape, and saved state are unchanged; dry execution is
+exactly unchanged and wet results intentionally lose the duplicate axes.
 
 ## Invariants
 

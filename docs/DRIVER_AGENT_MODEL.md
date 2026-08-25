@@ -90,6 +90,12 @@ non-negative whole-run assembly shortfall. A pure helper test fixes its
 symmetry, zero point, and consistency endpoints; no historical spread or grid
 gap is used as an acceptance target.
 
+DA-04 is resolved next by assigning the timed-session rain overlay to
+`wetSkill` alone. Adaptability, braking and throttle control remain in the
+generic decision windows that precede it. Existing rain severities and risk
+bounds are retained without fitting or coefficient redistribution; dry output,
+decision hashes, and cadence are unchanged.
+
 ## Runtime flow
 
 ```text
@@ -236,7 +242,8 @@ The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
 return surfaces recorded by that graph. They do not select a new ability owner
 or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
-DA-08 is resolved by its two-cadence executable contract. The other
+DA-08 is resolved by its two-cadence executable contract, and DA-04 by its
+wet-skill-only rain overlay. The other
 duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
