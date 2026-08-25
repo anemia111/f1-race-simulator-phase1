@@ -130,6 +130,12 @@ plus tyre strategy and selection, keep their existing owners. Removed terms are
 not replaced; battle outcomes intentionally use only the physical state already
 delivered to the resolver.
 
+DA-12 then assigns timed abort/deletion/yellow and race track-limit outcomes to
+adjudication alone. Existing event keys and base/context terms remain, but no
+path rereads race awareness after generic execution. Removed sensitivity is
+not redistributed; event outcomes intentionally narrow without changing
+decision cadence or saved state.
+
 ## Runtime flow
 
 ```text
@@ -282,8 +288,8 @@ DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
 and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
 DA-13 is resolved by the subsequent race-distance cue gate, and DA-01 by the
 formal-battle-owner cleanup. DA-05 is resolved by removing the battle tyre
-surrogate. The other duplicate-effect sensitivity and removal work remains
-open.
+surrogate, and DA-12 by the adjudication-owner cleanup. The other
+duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
 

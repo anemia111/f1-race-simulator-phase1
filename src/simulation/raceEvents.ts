@@ -30,11 +30,8 @@ export const phaseThreeTuning = {
   dirtyAirInnerGapSeconds: 0.3,
   slipstreamMaxGainSeconds: 0.35,
   slipstreamRangeSeconds: 1.0,
-  // Track limits: per-lap warning chance scaled by the supplied
-  // race-awareness ability. The legacy tuning key stays stable because this
-  // object is exported; only the helper's misleading parameter label changes.
+  // Track limits: per-lap steward event chance from race context only.
   trackLimitBaseChance: 0.026,
-  trackLimitConsistencyWeight: 0.075,
   // Flag pace multipliers. A single yellow is a meaningful lift, roughly
   // twenty km/h off racing speed through the marshalling zone, not a crawl.
   singleYellowMarshallingPace: 0.9,
@@ -182,14 +179,13 @@ export function packFollowingLapTime(options: {
 
 // --- Track limits ----------------------------------------------------------
 
-function trackLimitChance(
-  raceAwarenessAbility: number,
+export function trackLimitAdjudicationChance(
   context: {
     pressure?: number
     tireWearPercent?: number
     trackGrip?: number
     weather?: WeatherState
-  },
+  } = {},
 ): number {
   const pressureRisk = Math.max(0, Math.min(1, context.pressure ?? 0)) * 0.018
   const tireRisk =
@@ -203,8 +199,6 @@ function trackLimitChance(
         : 0
   const chance =
     phaseThreeTuning.trackLimitBaseChance +
-    (1 - clamp01(raceAwarenessAbility)) *
-      phaseThreeTuning.trackLimitConsistencyWeight +
     pressureRisk +
     tireRisk +
     gripRisk +
@@ -217,7 +211,6 @@ function trackLimitChance(
 export function lapHasTrackLimitWarning(
   seed: string,
   driverId: string,
-  raceAwarenessAbility: number,
   lap: number,
   context: {
     pressure?: number
@@ -232,7 +225,7 @@ export function lapHasTrackLimitWarning(
 
   return (
     hashChance(`${seed}:track-limit:${driverId}:${lap}`) <
-    trackLimitChance(raceAwarenessAbility, context)
+    trackLimitAdjudicationChance(context)
   )
 }
 
@@ -240,13 +233,12 @@ export function lapHasTrackLimitWarning(
 export function trackLimitWarningsUpTo(
   seed: string,
   driverId: string,
-  raceAwarenessAbility: number,
   lap: number,
 ): number {
   let warnings = 0
 
   for (let pastLap = 2; pastLap <= lap; pastLap += 1) {
-    if (lapHasTrackLimitWarning(seed, driverId, raceAwarenessAbility, pastLap)) {
+    if (lapHasTrackLimitWarning(seed, driverId, pastLap)) {
       warnings += 1
     }
   }

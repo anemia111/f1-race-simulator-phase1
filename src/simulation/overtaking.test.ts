@@ -9,6 +9,7 @@ const f1Car = (tires: Partial<F1RuntimeTireState>): CarSnapshot =>
     overtakeStatus: 'inactive',
     runtimeSystems: {
       kind: 'f1',
+      ersPowerKw: 0,
       tires: {
         tire: 'M',
         tireAgeLaps: 8,
@@ -33,8 +34,8 @@ const superFormulaCar = (): CarSnapshot =>
     speedKph: 250,
   }) as unknown as CarSnapshot
 
-describe('overtaking tyre category boundary', () => {
-  it('omits Pirelli tyre and ERS differentials for SUPER FORMULA', () => {
+describe('overtaking category boundary', () => {
+  it('omits direct tyre edges and keeps F1 ERS out of SUPER FORMULA', () => {
     const f1Dynamics = battleDynamicsFor({
       attacker: initialDrivers[0],
       attackerCar: f1Car({ tireAgeLaps: 31, tireWearPercent: 92 }),
@@ -58,8 +59,8 @@ describe('overtaking tyre category boundary', () => {
       weather: 'clear',
     })
 
-    expect(f1Dynamics.tirePerformanceEdge).not.toBe(0)
-    expect(superFormulaDynamics.tirePerformanceEdge).toBe(0)
+    expect(f1Dynamics).not.toHaveProperty('tirePerformanceEdge')
+    expect(superFormulaDynamics).not.toHaveProperty('tirePerformanceEdge')
     expect(superFormulaDynamics.ersPowerDeltaKw).toBe(0)
     expect(superFormulaDynamics.electricalPerformanceEdge).toBe(0)
   })
