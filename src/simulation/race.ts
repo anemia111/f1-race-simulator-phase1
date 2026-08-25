@@ -5373,6 +5373,7 @@ export function advanceRace(
       0,
       raceLaps - car.totalDistance,
     )
+    const fuelUseMultiplier = driverFuelUseMultiplier(driver)
     const standardFuelToFinishKg =
       remainingRaceDistanceLaps *
       fuelBurnKgPerLap({
@@ -5381,8 +5382,7 @@ export function advanceRace(
         team,
         track: config.track,
         weather: localWeather,
-      }) *
-      driverFuelUseMultiplier(driver)
+      }) * fuelUseMultiplier
     const fuelMarginKg =
       car.fuelLoadKg - standardFuelToFinishKg - FUEL_SAMPLE_RESERVE_KG
     const shouldEvaluateAutomaticPace =
@@ -6048,7 +6048,7 @@ export function advanceRace(
             team,
             track: config.track,
             weather: localWeather,
-          }) * driverFuelUseMultiplier(driver),
+          }) * fuelUseMultiplier,
     )
     const components = f1Runtime
       ? advanceComponentWear({

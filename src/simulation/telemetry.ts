@@ -78,6 +78,26 @@ import {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+/**
+ * Uses an explicit decision control when one exists. Driver skill is evaluated
+ * only on the compatibility path where no decision was supplied.
+ */
+export function driverBrakePressureScale(
+  driver: Driver,
+  driverDecision?: Pick<DriverDecision, 'brakePressureScale'> | null,
+): number {
+  return (
+    driverDecision?.brakePressureScale ??
+    (0.96 +
+      driverSkillBlend(driver, {
+        brakingSkill: 0.58,
+        precision: 0.24,
+        pressureHandling: 0.18,
+      }) *
+        0.04)
+  )
+}
+
 /** Debits only CU-K DC energy that could not have been used on the normal curve. */
 export function overtakeIncrementalDcEnergyUsedMj(options: {
   actualDeploymentDcPowerKw: number
@@ -517,18 +537,12 @@ export function calculateCarTelemetry(options: {
   const profileBrakeDemand =
     Math.max(requiredBrakeUtilization, localOverspeedBrakeUtilization) * 100 +
     pitLaneBrakeDemand
-  const brakeControl = driverSkillBlend(driver, {
-    brakingSkill: 0.58,
-    precision: 0.24,
-    pressureHandling: 0.18,
-  })
   const brakePercent = Math.round(
     clamp(
       phase?.flag === 'red' || immobilizedIncident
         ? 100
         : profileBrakeDemand *
-          (driverDecision?.brakePressureScale ??
-            (0.96 + brakeControl * 0.04)),
+          driverBrakePressureScale(driver, driverDecision),
       0,
       100,
     ),

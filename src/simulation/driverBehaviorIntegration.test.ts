@@ -6,7 +6,10 @@ import { decideDriverBehavior } from './driverDecision'
 import { lateralBoundsForTrack } from './lateralDynamics'
 import { overtakeForLap } from './overtaking'
 import { advanceRace, createInitialRace } from './race'
-import { calculateCarTelemetry } from './telemetry'
+import {
+  calculateCarTelemetry,
+  driverBrakePressureScale,
+} from './telemetry'
 import { trackDynamicsAt } from './trackDynamics'
 import {
   dirtyAirDownforceMultiplier,
@@ -32,6 +35,28 @@ function startRace(config: RaceConfig): RaceSnapshot {
 }
 
 describe('driver behaviour integration', () => {
+  it('uses the skill brake blend only when no decision control exists', () => {
+    const driver = initialDrivers[0]
+    const withBrakeSkills = (value: number) => ({
+      ...driver,
+      skills: {
+        ...driver.skills,
+        brakingSkill: value,
+        precision: value,
+        pressureHandling: value,
+      },
+    })
+    const weakest = withBrakeSkills(0)
+    const strongest = withBrakeSkills(1)
+    const explicitDecision = { brakePressureScale: 0.81 }
+
+    expect(driverBrakePressureScale(weakest, explicitDecision)).toBe(0.81)
+    expect(driverBrakePressureScale(strongest, explicitDecision)).toBe(0.81)
+    expect(driverBrakePressureScale(strongest)).toBeGreaterThan(
+      driverBrakePressureScale(weakest),
+    )
+  })
+
   it('turns pedal decisions into controller inputs without a speed multiplier', () => {
     const config = makeConfig('pedal-behaviour')
     const initial = createInitialRace(config)

@@ -107,6 +107,12 @@ ability now changes that schedule; machine qualifying rating, pit-crew speed,
 teammate de-stacking and the existing deterministic planning hashes remain.
 Removed driver weights are not reassigned or refitted.
 
+DA-02, DA-09 and DA-10 are then fixed as behavior-neutral executable
+contracts: window controls do not own rare lap incident outcomes, an explicit
+brake decision short-circuits the skill fallback, and one cached fuel-use value
+feeds prediction plus the sole debit. Two unconsumed returned decision fields
+are removed without removing the local values that still feed consumed output.
+
 ## Runtime flow
 
 ```text
@@ -255,8 +261,9 @@ return surfaces recorded by that graph. They do not select a new ability owner
 or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
 DA-08 is resolved by its two-cadence executable contract, DA-04 by its
 wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
-DA-07 is resolved by its team-owned qualifying-release contract. The other
-duplicate-effect sensitivity and removal work remains open.
+DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
+and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
+The other duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
 
