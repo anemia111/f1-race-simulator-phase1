@@ -117,10 +117,10 @@ automatically justified.
 | Live grip and pedals | decision tyre-limit, brake and throttle requests | utilized grip and final pedal controls | `telemetry.ts`, every physics tick; physical limits remain downstream | Decision execution |
 | Live line execution | decision line request | reserved target and integrated lateral state | `race.ts` reserves the request and `advanceLateralState` executes/holds it during live advancement | Decision execution |
 | Fuel use | fuel management and throttle control | fuel-use multiplier | `vehicleDynamics.ts`; `race.ts` debits fuel | Physical state |
-| Tyre state | tyre management, throttle control, precision and wet skill | wear, temperature, cliff and selection signals | `race.ts`, `telemetry.ts`, `strategy.ts`, `weekendTires.ts` | Multi-owner review item |
+| Tyre state | tyre management, throttle control, precision and wet skill | physical wear/temperature plus cliff and selection signals | `race.ts`, `telemetry.ts`, `strategy.ts`, `weekendTires.ts` | Resolved physical/strategy roles |
 | Start | start skill, traction control, pressure handling and awareness | launch quality and start-error risk | `race.ts`, start transition only | Event decision |
 | Race control/compliance | awareness, consistency and pressure handling | VSC compliance, warning/penalty/permission rolls | `race.ts`, at the owning event or sector cadence | Rule outcome |
-| Battle resolution | overtaking, defending, error-control, wet, adaptability and tyre-management skills | attempt, pass, defend, contact and tyre edge | `overtaking.ts`, race-only battle windows | Formal outcome owner; DA-05 tyre edge pending |
+| Battle resolution | overtaking, defending, error-control, wet and adaptability skills plus physical speed/gap/energy state | attempt, pass, defend, contact and crash | `overtaking.ts`, race-only battle windows | Formal outcome owner |
 | Independent incidents | consistency, mistake resistance, pressure, precision, awareness and wet skills | incident probability/disposition | `incidents.ts`, lap incident cadence | Sequential review item |
 | F1 energy scheduling | ERS management, awareness, precision, adaptability, consistency, wet and braking skills | energy intent, deployment request, wet recovery and superclipping response | `driverEnergyIntent.ts`, `telemetry.ts`, `superClipping.ts`; Energy Store owns SOC/power | Sequential review item |
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
@@ -151,7 +151,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `highSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `tractionControl` | generic throttle trait and race launch | named |
 | `throttleControl` | generic throttle trait, fuel use and tyre temperature | named |
-| `tireManagement` | generic tyre-limit trait, tyre state, battle tyre edge, tyre/pit strategy and start tyre choice | named |
+| `tireManagement` | generic tyre-limit trait, physical tyre state, tyre/pit strategy and start tyre choice | named |
 | `tireWarmupSkill` | none outside source expansion/display | aggregate-only |
 | `wetSkill` | timed rain overlay, battle, incidents, start tyre choice and Energy Store recovery | named |
 | `intermediateSkill` | light-rain incident risk | named |
@@ -203,7 +203,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-02 | Window-level control/error followed by independent lap incident rolls | resolved distinct-cadence contract in Phase 7.8B | Generic decisions return bounded continuous controls and no damage/time/retirement/flag outcome; `incidentForLap` accepts no decision, skips lap 1 and owns rare lap-level outcomes under independent deterministic keys |
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
-| DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
+| DA-05 | Tyre skill in physical state, battle resolution and strategy | resolved physical-state boundary in Phase 7.8B | Physical wear, temperature, grip and strategy retain their owners; battle no longer rereads tyre-management skill or tyre state as a second direct edge and instead consumes resulting speed, gap and closing opportunity |
 | DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
 | DA-07 | Driver execution/awareness skills influencing team qualifying release order | resolved team owner in Phase 7.8B | Release order now reads no driver ability: machine qualifying rating, pit-crew speed and the existing deterministic planning hashes remain, without reallocating removed driver weights |
 | DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
@@ -329,6 +329,14 @@ Its duplicate decision-contact input is removed without reallocating weight.
 The deleted generic hash calls were stateless, so formal hash keys/cadence and
 all unrelated random results remain unchanged; battle outcomes intentionally
 change to the single-owner model.
+
+The thirteenth cleanup resolves DA-05 without replacing its removed terms.
+`overtaking.ts` no longer calls the tyre lap-delta model or reads
+`tireManagement` to create a second battle-only edge. Physical tyre wear,
+temperature, grip, car speed, gap, closing opportunity, pit/tyre strategy and
+selection remain unchanged in their existing owners. Battle attempt/pass
+outcomes intentionally lose the duplicate surrogate; hashes, cadence, state,
+schemas and non-battle tyre behavior remain unchanged.
 
 ## Invariants
 

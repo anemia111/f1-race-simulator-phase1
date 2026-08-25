@@ -69,6 +69,11 @@ decision while making `overtaking.ts` the sole owner of attempt, pass/defend,
 contact and crash rolls. The race loop calls it only for attack intent; removed
 generic attempt/contact weight is not reassigned.
 
+DA-05 is resolved by removing the battle-only tyre-management surrogate.
+Physical wear, temperature, grip, resulting speed/gap/closing opportunity,
+strategy and tyre selection retain their existing owners; no removed term is
+replaced or refitted.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -267,9 +272,10 @@ consumer, authority, and random-cadence graph in
 `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md`. It distinguishes named production
 reads, aggregate-only limit-break participation, materialized display overall,
 and overall's construction/import/migration/profile-selection ancestry. The
-review register deliberately leaves overlapping battle, incident, energy, and
-tyre effects unresolved for Phase 7.8B or later; DA-04's timed rain overlay and
-DA-06's practice/setup path are subsequently assigned single owners. The
+review register deliberately leaves overlapping incident and energy effects
+unresolved for Phase 7.8B or later; DA-01/DA-05's battle and tyre paths,
+DA-04's timed rain overlay, and DA-06's practice/setup path are subsequently
+assigned explicit owners. The
 documentation slice itself changes no coefficient, seed, random draw, runtime
 field, or saved state.
 
@@ -323,6 +329,10 @@ path is unchanged, and the non-battle timed traffic cues remain available.
 DA-01 is closed by removing the generic attempted-overtake, attempted-defence
 and contact-risk outputs. Formal battle hashes retain their keys and cadence;
 removed generic hash calls were stateless and cannot shift another stream.
+
+DA-05 is closed by removing the direct tyre-management/tire-delta edge from the
+formal battle model. Tests fix its invariance to tyre skill and direct tyre
+state while the physical vehicle remains the source of speed and gap inputs.
 
 ## Observability and authority
 

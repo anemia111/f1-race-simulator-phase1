@@ -124,6 +124,12 @@ output. The race loop calls `overtaking.ts` only for attack intent, and that
 module alone owns attempt, pass/defend, contact and crash rolls. Removed weights
 are not reassigned; its deterministic hash keys and cadence remain.
 
+DA-05 then removes the direct tyre-management/tyre-delta surrogate from battle
+resolution. Physical wear, temperature, grip and their resulting speed/gap,
+plus tyre strategy and selection, keep their existing owners. Removed terms are
+not replaced; battle outcomes intentionally use only the physical state already
+delivered to the resolver.
+
 ## Runtime flow
 
 ```text
@@ -275,8 +281,9 @@ wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
 DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
 and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
 DA-13 is resolved by the subsequent race-distance cue gate, and DA-01 by the
-formal-battle-owner cleanup. The other duplicate-effect sensitivity and removal
-work remains open.
+formal-battle-owner cleanup. DA-05 is resolved by removing the battle tyre
+surrogate. The other duplicate-effect sensitivity and removal work remains
+open.
 
 ## Contract model
 

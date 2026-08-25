@@ -17,7 +17,6 @@ import {
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
-import { tireDeltaSeconds } from './tires'
 import { trackDynamicsAt } from './trackDynamics'
 
 export type OvertakeOutcomeKind = 'pass' | 'defended' | 'contact' | 'crash'
@@ -73,7 +72,6 @@ export type OvertakeContext = {
 export type BattleDynamics = {
   zone: OvertakeOutcome['zone']
   assistance: OvertakeOutcome['assistance']
-  tirePerformanceEdge: number
   electricalPerformanceEdge: number
   ersPowerDeltaKw: number
   speedDeltaKph: number
@@ -203,9 +201,7 @@ export function battleDynamicsFor(
     lap,
     seed,
     track,
-    trackGrip,
     trackProgress,
-    weather,
   } = context
   const key = `${seed}:battle:${attacker.id}:${defender.id}:${lap}`
   const aeroZones = track?.aeroActivationZones ?? []
@@ -229,65 +225,9 @@ export function battleDynamicsFor(
     : zone === 'straight' && gapToAheadSeconds <= 1.2
       ? 'tow'
       : 'none'
-  // The Pirelli thermal and compound model is F1-only.  A SUPER FORMULA car
-  // has source-bound control tyres instead, so a mixed/non-F1 comparison is
-  // deliberately neutral rather than deriving an edge from an S/M/H/I/W
-  // compatibility value.
-  const attackerF1Tires =
-    attackerCar.runtimeSystems.kind === 'f1'
-      ? attackerCar.runtimeSystems.tires
-      : null
-  const defenderF1Tires =
-    defenderCar.runtimeSystems.kind === 'f1'
-      ? defenderCar.runtimeSystems.tires
-      : null
-  const tirePerformanceEdge =
-    attackerF1Tires && defenderF1Tires
-      ? (() => {
-          const attackerTireDelta = tireDeltaSeconds(
-            attackerF1Tires.tire,
-            attackerF1Tires.tireAgeLaps,
-            driverPerformanceAbility(attacker, 'tireManagement'),
-            weather,
-            trackGrip,
-            attackerF1Tires.tireTemperatureC,
-            attackerF1Tires.tireWearPercent,
-            track?.tireNomination,
-            undefined,
-            attackerF1Tires.tireThermalStressPercent ?? 0,
-            undefined,
-            {
-              carcassTemperatureC: attackerF1Tires.tireCarcassTemperatureC,
-              grainingPercent: attackerF1Tires.tireGrainingPercent,
-              overheatingPercent: attackerF1Tires.tireOverheatingPercent,
-            },
-          )
-          const defenderTireDelta = tireDeltaSeconds(
-            defenderF1Tires.tire,
-            defenderF1Tires.tireAgeLaps,
-            driverPerformanceAbility(defender, 'tireManagement'),
-            weather,
-            trackGrip,
-            defenderF1Tires.tireTemperatureC,
-            defenderF1Tires.tireWearPercent,
-            track?.tireNomination,
-            undefined,
-            defenderF1Tires.tireThermalStressPercent ?? 0,
-            undefined,
-            {
-              carcassTemperatureC: defenderF1Tires.tireCarcassTemperatureC,
-              grainingPercent: defenderF1Tires.tireGrainingPercent,
-              overheatingPercent: defenderF1Tires.tireOverheatingPercent,
-            },
-          )
-
-          return clamp(
-            (defenderTireDelta - attackerTireDelta) * 0.085,
-            -0.18,
-            0.18,
-          )
-        })()
-      : 0
+  // Tyre condition already reaches this window through physical speed, gap
+  // and closing opportunity. Battle resolution does not re-read a driver tyre
+  // skill to manufacture a second performance edge.
   // ERS is an F1-only physical subsystem.  A SUPER FORMULA battle may still
   // receive the common `overtake` assistance from a verified OTS runtime,
   // but it must never borrow F1 deployment power as a surrogate.
@@ -331,7 +271,6 @@ export function battleDynamicsFor(
     speedDeltaKph,
     speedPerformanceEdge,
     straightClosingOpportunity,
-    tirePerformanceEdge,
     zone,
   }
 }
@@ -370,7 +309,6 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     electricalPerformanceEdge,
     speedPerformanceEdge,
     straightClosingOpportunity,
-    tirePerformanceEdge,
     zone,
   } = battleDynamics
   const gapPressure = clamp01(1 - gapToAheadSeconds / attackWindow)
@@ -383,7 +321,6 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     0.14 +
       gapPressure * 0.48 +
       skillEdge * 0.22 +
-      tirePerformanceEdge +
       wetEdge * 0.12 +
       chaos +
       electricalPerformanceEdge +
@@ -434,7 +371,6 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     0.22 +
       gapPressure * 0.5 +
       skillEdge * 0.36 +
-      tirePerformanceEdge * 1.12 +
       wetEdge * 0.18 -
       (1 - trackGrip) * 0.1 -
       (isOpeningLap ? 0.05 : 0) +
