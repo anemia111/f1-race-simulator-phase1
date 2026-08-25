@@ -47,6 +47,11 @@ feedback: `consistency` alone owns the programme score, and final
 Removed adaptability weight is not redistributed; setup hashes and cadence are
 unchanged.
 
+DA-07 is resolved by returning qualifying pit-release ordering to team
+operations. It reads no driver ability; existing machine qualifying rating,
+pit-crew speed, teammate spacing and deterministic planning hashes remain.
+Removed driver weights are not reassigned.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -284,6 +289,11 @@ DA-06 is closed by giving programme execution to `consistency` and setup
 feedback/convergence to final `carBalanceAdaptation`. Direct final-skill
 `adaptability` reads are removed from this setup path without redistributing
 their coefficients. Compact-to-expanded construction remains tracked by DA-14.
+
+DA-07 is closed by removing qualifying pace, pressure, traffic and awareness
+from team pit-release ordering. Existing machine/crew inputs, hashes, traffic
+gaps, and teammate de-stacking remain; dry and wet schedules are tested as
+invariant to all driver skills.
 
 ## Observability and authority
 

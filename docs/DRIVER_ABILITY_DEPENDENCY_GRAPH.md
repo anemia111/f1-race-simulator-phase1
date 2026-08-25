@@ -126,7 +126,7 @@ automatically justified.
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
 | Pit/tyre strategy | tyre management, overtaking, awareness and traffic management | cliff, undercut and overcut choice | `strategy.ts`, strategy cadence | Strategy outcome |
 | Offline timed execution | generic decision plus a wet-skill-only rain overlay and a consistency/precision/pressure assembly overlay | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Resolved owner split |
-| Qualifying release | qualifying pace, pressure, traffic and awareness | release confidence/order | `qualifyingStrategy.ts`, scheduled run planning | Ownership review item |
+| Qualifying release | none; machine qualifying rating, pit-crew speed and deterministic team planning own release order | release order | `qualifyingStrategy.ts`, scheduled run planning | Resolved team owner |
 | Qualifying permission | qualifying pace | general performance evidence | `race.ts`, no-time/deleted Q1 steward simulation | Rule outcome |
 | Practice/setup | consistency and car-balance adaptation | programme execution score, feedback confidence and setup convergence | `qualifying.ts` and `engineering.ts`, practice-run cadence | Resolved owner split |
 
@@ -143,7 +143,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | Skill | Named production paths | Coverage |
 | --- | --- | --- |
 | `rawPace` | generic tyre-limit utilisation | named |
-| `qualifyingPace` | qualifying release and no-time/deleted-Q1 permission evidence | named |
+| `qualifyingPace` | no-time/deleted-Q1 permission evidence | named |
 | `racePace` | none for the final skill outside source expansion/display | aggregate-only |
 | `brakingSkill` | generic braking traits, live brake fallback and wet Energy Store recovery | named |
 | `lowSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
@@ -160,8 +160,8 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `racecraft` | generic racecraft/attack/defence traits | named |
 | `consistency` | generic control/error, timed run variation, incidents, VSC and superclipping response | named |
 | `mistakeResistance` | generic control/error, incidents and battle error | named |
-| `pressureHandling` | generic control/error, timed variation, incidents, battle, release, launch, VSC and brake fallback | named |
-| `trafficManagement` | generic awareness/racecraft, qualifying release and undercut choice | named |
+| `pressureHandling` | generic control/error, timed variation, incidents, battle, launch, VSC and brake fallback | named |
+| `trafficManagement` | generic awareness/racecraft and undercut choice | named |
 | `dirtyAirManagement` | none outside source expansion/display | aggregate-only |
 | `fuelManagement` | physical fuel-use multiplier | named |
 | `ersManagement` | F1 energy chain and automatic pursuit pace | named |
@@ -170,7 +170,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `confidence` | generic tyre-limit, aggression and risk traits | named |
 | `precision` | generic control, F1 energy, timed variation, incidents, battle, brake fallback and tyre temperature | named |
 | `adaptability` | generic traits, battle wet skill, F1 energy and wet recovery | named |
-| `raceAwareness` | generic traits, F1 energy, release/abort, race control, pursuit, VSC, strategy, incidents and battle | named |
+| `raceAwareness` | generic traits, F1 energy, qualifying abort, race control, pursuit, VSC, strategy, incidents and battle | named |
 | `carBalanceAdaptation` | generic tyre-limit trait and practice setup feedback | named |
 
 The four aggregate-only final skills are not described as unused because a value
@@ -205,7 +205,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in grip utilisation, temperature, wear, battle edge and strategy | sequential compound / review required | Local mechanisms are distinct; combined sensitivity is not documented as calibrated |
 | DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
-| DA-07 | Execution/awareness skills also influence team qualifying release order | independent outcome / ownership review | Current behavior is recorded without claiming release is a driver-agent decision |
+| DA-07 | Driver execution/awareness skills influencing team qualifying release order | resolved team owner in Phase 7.8B | Release order now reads no driver ability: machine qualifying rating, pit-crew speed and the existing deterministic planning hashes remain, without reallocating removed driver weights |
 | DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
 | DA-09 | Decision brake pressure versus telemetry skill fallback | mutually exclusive fallback | Not doubled on the normal live path |
 | DA-10 | Fuel multiplier used by prediction and actual debit | shared read-only calculation | One common multiplier keeps estimates aligned; fuel is debited once |
@@ -294,6 +294,14 @@ its compact-source contribution to expanded `carBalanceAdaptation` remains
 explicitly tracked under DA-14. Existing setup hashes, evaluation count,
 cadence, return types, and saved shape remain unchanged. Setup results
 intentionally lose the duplicate final-skill sensitivity.
+
+The ninth cleanup resolves DA-07 by making qualifying pit release a team-owned
+operation. The four direct driver-ability reads are removed from ordering;
+machine qualifying rating, pit-crew speed, teammate de-stacking, and the
+existing deterministic planning variations remain. Removed driver weights are
+not reassigned. Hash keys, evaluation order/count, schedule shape, traffic-gap
+rules, suspension handling, and cadence remain unchanged; dry and wet release
+orders intentionally become invariant to driver skills.
 
 ## Invariants
 
