@@ -113,6 +113,11 @@ brake decision short-circuits the skill fallback, and one cached fuel-use value
 feeds prediction plus the sole debit. Two unconsumed returned decision fields
 are removed without removing the local values that still feed consumed output.
 
+DA-13 then restricts live attack and defend cues to race-distance sessions,
+matching the formal battle boundary. Timed sessions retain tow, dirty-air,
+yield, pit, emergency and flag controls. Race hashes/cadence are unchanged;
+timed sessions intentionally stop selecting race battle intents.
+
 ## Runtime flow
 
 ```text
@@ -263,7 +268,8 @@ DA-08 is resolved by its two-cadence executable contract, DA-04 by its
 wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
 DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
 and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
-The other duplicate-effect sensitivity and removal work remains open.
+DA-13 is resolved by the subsequent race-distance cue gate. The other
+duplicate-effect sensitivity and removal work remains open.
 
 ## Contract model
 

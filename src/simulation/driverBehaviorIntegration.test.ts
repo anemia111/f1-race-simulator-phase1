@@ -5,7 +5,11 @@ import type { RaceConfig, RaceSnapshot } from '../types'
 import { decideDriverBehavior } from './driverDecision'
 import { lateralBoundsForTrack } from './lateralDynamics'
 import { overtakeForLap } from './overtaking'
-import { advanceRace, createInitialRace } from './race'
+import {
+  advanceRace,
+  createInitialRace,
+  raceDistanceBattleCue,
+} from './race'
 import {
   calculateCarTelemetry,
   driverBrakePressureScale,
@@ -35,6 +39,19 @@ function startRace(config: RaceConfig): RaceSnapshot {
 }
 
 describe('driver behaviour integration', () => {
+  it('exposes attack and defence cues only in race-distance sessions', () => {
+    const cue = {
+      active: true,
+      intensity: 0.7,
+      opponentId: 'opponent',
+      opponentLateralOffsetM: 0.4,
+    }
+
+    expect(raceDistanceBattleCue(true, cue)).toBe(cue)
+    expect(raceDistanceBattleCue(false, cue)).toBeUndefined()
+    expect(raceDistanceBattleCue(true, undefined)).toBeUndefined()
+  })
+
   it('uses the skill brake blend only when no decision control exists', () => {
     const driver = initialDrivers[0]
     const withBrakeSkills = (value: number) => ({

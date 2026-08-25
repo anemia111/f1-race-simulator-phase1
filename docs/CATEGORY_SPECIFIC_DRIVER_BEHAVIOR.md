@@ -59,6 +59,11 @@ cached fuel-use value now feeds prediction and the single debit. The unused
 returned nominal-line and error-risk copies are removed, while their local
 values retain every existing calculation.
 
+DA-13 is resolved at the live caller: attack and defend cues are supplied only
+for race-distance sessions. Timed sessions keep tow alignment, dirty-air
+avoidance, yield, pit, emergency and flag controls, but no longer select
+race-only battle intents.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -306,6 +311,9 @@ DA-02, DA-09 and DA-10 are closed by executable contracts for distinct
 window/lap outcomes, a mutually exclusive brake fallback, and one shared fuel
 multiplier. Removing the two unconsumed decision return fields does not remove
 their local calculations or alter hashes, cadence, state, or consumed output.
+
+DA-13 is closed by a tested session gate around attack/defend cues. The race
+path is unchanged, and the non-battle timed traffic cues remain available.
 
 ## Observability and authority
 

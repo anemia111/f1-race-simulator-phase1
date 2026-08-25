@@ -611,6 +611,14 @@ export function redRestartProcedureFor(
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
+/** Formal attack and defence are race-distance concepts, not timed-session cues. */
+export function raceDistanceBattleCue(
+  isRaceDistance: boolean,
+  cue: DriverDecisionContext['attack'],
+): DriverDecisionContext['attack'] {
+  return isRaceDistance ? cue : undefined
+}
+
 export function finalTimingLineSplit(options: {
   nextTotalDistance: number
   previousTotalDistance: number
@@ -4672,7 +4680,8 @@ export function advanceRace(
             ),
           }
         : undefined,
-      attack:
+      attack: raceDistanceBattleCue(
+        isRaceDistance,
         aheadCar?.status === 'running'
           ? {
               active: attackIntensity > 0 && hasPaceCase,
@@ -4681,7 +4690,9 @@ export function advanceRace(
               intensity: attackIntensity,
             }
           : undefined,
-      defend:
+      ),
+      defend: raceDistanceBattleCue(
+        isRaceDistance,
         behindCar?.status === 'running'
           ? {
               active: defendIntensity > 0,
@@ -4690,6 +4701,7 @@ export function advanceRace(
               intensity: defendIntensity,
             }
           : undefined,
+      ),
       dirtyAir:
         aheadCar?.status === 'running'
           ? {
