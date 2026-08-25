@@ -6,7 +6,6 @@ import type {
   TimedSessionSegmentPlan,
   WeekendStage,
 } from '../types'
-import { driverPerformanceAbility } from './driverAbility'
 import { effectiveMachineRating } from './machinePerformance'
 import { hashChance } from './random'
 import { weatherForecastFor } from './weather'
@@ -139,28 +138,27 @@ export function buildQualifyingReleaseSchedule({
         throw new Error(`Missing team for qualifying release driver ${driver.id}`)
       }
 
-      const driverConfidence =
-        driverPerformanceAbility(driver, 'qualifyingPace') * 0.42 +
-        driverPerformanceAbility(driver, 'pressureHandling') * 0.2 +
-        driverPerformanceAbility(driver, 'trafficManagement') * 0.23 +
-        driverPerformanceAbility(driver, 'raceAwareness') * 0.15
-      const competitiveness =
-        driverConfidence * 0.52 +
+      // Pit release is a team operation. The machine contribution, crew
+      // confidence and existing deterministic planning variation remain; the
+      // removed driver-ability contribution is not reassigned or refitted.
+      const machineCompetitiveness =
         effectiveMachineRating(team.machine.qualifyingPace) * 0.48
       const teamRisk = hashChance(
         `${config.seed}:qualifying-release-risk:${stage}:${segment.name}:${team.id}:${runIndex}`,
       )
-      const driverVariation = hashChance(
+      const releaseVariation = hashChance(
         `${config.seed}:qualifying-release-order:${stage}:${segment.name}:${driver.id}:${runIndex}`,
       )
       const operationalConfidence = clamp(team.pitCrewSpeed, 0.5, 1.1)
       const orderScore = rainThreat
-        ? -driverConfidence * 0.55 -
-          operationalConfidence * 0.25 +
-          driverVariation * 0.2
+        ? -operationalConfidence * 0.25 + releaseVariation * 0.2
         : runIndex === 0
-          ? competitiveness * 0.56 + teamRisk * 0.2 + driverVariation * 0.24
-          : competitiveness * 0.62 + teamRisk * 0.25 + driverVariation * 0.13
+          ? machineCompetitiveness * 0.56 +
+            teamRisk * 0.2 +
+            releaseVariation * 0.24
+          : machineCompetitiveness * 0.62 +
+            teamRisk * 0.25 +
+            releaseVariation * 0.13
 
       return { driver, orderScore, team }
     })

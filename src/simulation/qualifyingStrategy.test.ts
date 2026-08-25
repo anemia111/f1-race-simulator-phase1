@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { phaseOneConfig } from '../data/phaseOne'
-import type { TimedSessionSegmentPlan } from '../types'
+import type { Driver, TimedSessionSegmentPlan } from '../types'
 import { buildQualifyingReleaseSchedule } from './qualifyingStrategy'
 import { seriesPackageById } from '../series/seriesRegistry'
 import { runSeriesQualifying } from './qualifying'
@@ -19,7 +19,46 @@ const q1Segment = (): TimedSessionSegmentPlan => ({
   },
 })
 
+function configWithEveryDriverSkill(value: number) {
+  return {
+    ...phaseOneConfig,
+    drivers: phaseOneConfig.drivers.map((driver) => ({
+      ...driver,
+      skills: Object.fromEntries(
+        Object.keys(driver.skills).map((skill) => [skill, value]),
+      ) as Driver['skills'],
+    })),
+  }
+}
+
 describe('qualifying release strategy', () => {
+  it('keeps dry and wet team release plans independent of driver skills', () => {
+    const weakestDrivers = configWithEveryDriverSkill(0)
+    const strongestDrivers = configWithEveryDriverSkill(1)
+
+    for (const declaredWet of [false, true]) {
+      const segment = { ...q1Segment(), declaredWet }
+      const common = {
+        participantDriverIds: segment.participantDriverIds,
+        runIndex: 0,
+        segment,
+        stage: 'qualifying' as const,
+      }
+
+      expect(
+        buildQualifyingReleaseSchedule({
+          ...common,
+          config: strongestDrivers,
+        }),
+      ).toEqual(
+        buildQualifyingReleaseSchedule({
+          ...common,
+          config: weakestDrivers,
+        }),
+      )
+    }
+  })
+
   it('allocates a deterministic traffic gap to every Q1 car', () => {
     const options = {
       config: phaseOneConfig,
