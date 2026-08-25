@@ -391,6 +391,22 @@ export function timedSessionRunAssemblyShortfallSeconds(options: {
 }
 
 /**
+ * Rain-only execution overlay for offline timed sessions. The generic decision
+ * windows already own adaptability, braking and throttle control, so wet skill
+ * is the sole driver-ability owner here.
+ */
+export function timedSessionWetExecutionRiskScale(
+  driver: Driver,
+  weather: WeatherState,
+): number {
+  const wetSeverity =
+    weather === 'heavy-rain' ? 1 : weather === 'light-rain' ? 0.45 : 0
+  const wetControl = driverPerformanceAbility(driver, 'wetSkill')
+
+  return 1 + wetSeverity * (0.22 + (1 - wetControl) * 0.9)
+}
+
+/**
  * Converts low-frequency braking, throttle and line choices into time lost
  * relative to the force-derived lap. It does not read displayed overall
  * ratings or special-driver thresholds.
@@ -407,18 +423,10 @@ export function timedSessionDriverExecutionLossSeconds(
 ) {
   const plan = timedPhysicalLap(options)
   const trackHalfWidthM = trackWidthMeters(options.config.track) / 2
-  const wetSeverity =
-    options.weather === 'heavy-rain'
-      ? 1
-      : options.weather === 'light-rain'
-        ? 0.45
-        : 0
-  const wetControl = driverSkillBlend(options.driver, {
-    wetSkill: 0.58,
-    adaptability: 0.2,
-    brakingSkill: 0.12,
-    throttleControl: 0.1,
-  })
+  const wetRiskScale = timedSessionWetExecutionRiskScale(
+    options.driver,
+    options.weather,
+  )
   const windowTimeSeconds =
     plan.lapTimeSeconds / DRIVER_DECISION_WINDOWS_PER_LAP
   let lossSeconds = 0
@@ -475,9 +483,6 @@ export function timedSessionDriverExecutionLossSeconds(
     const errorLoss = decision.errorTriggered
       ? windowTimeSeconds * (0.018 + Math.abs(decision.controlError) * 0.04)
       : 0
-    const wetRiskScale =
-      1 + wetSeverity * (0.22 + (1 - wetControl) * 0.9)
-
     lossSeconds +=
       (brakingLoss + throttleLoss + lineLoss + controlLoss + errorLoss) *
       wetRiskScale

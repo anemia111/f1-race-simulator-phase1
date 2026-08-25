@@ -35,6 +35,12 @@ bounded non-negative whole-run assembly shortfall. Pure helper tests fix its
 symmetry, zero point, and consistency endpoints without using historical spread
 or grid gaps as targets.
 
+DA-04 is then resolved without coefficient fitting: the generic decision
+windows retain adaptability, braking and throttle-control execution, while the
+separate timed-session rain overlay reads only `wetSkill`. Dry execution,
+weather severities, the established risk envelope, decision hashes, and cadence
+remain unchanged.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -234,8 +240,9 @@ consumer, authority, and random-cadence graph in
 reads, aggregate-only limit-break participation, materialized display overall,
 and overall's construction/import/migration/profile-selection ancestry. The
 review register deliberately leaves overlapping battle, incident, energy,
-wet-execution, tyre, and practice effects unresolved for Phase 7.8B or later;
-this slice changes no coefficient, seed, random draw, runtime field, or saved
+tyre, and practice effects unresolved for Phase 7.8B or later; DA-04's timed
+rain overlay is subsequently assigned to `wetSkill` alone. The documentation
+slice itself changes no coefficient, seed, random draw, runtime field, or saved
 state.
 
 The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` and
@@ -260,6 +267,12 @@ DA-11 is resolved separately by saturating every named raw, performance, and
 direct energy-skill input at 100. Values up to 120 remain valid and displayed; only the
 existing `driverLimitBreakFraction` consumes the excess. The normal field,
 coefficients, seeds, random cadence, authority, and saved shape remain unchanged.
+
+DA-08 is closed by its two-cadence executable contract, and DA-04 is closed by
+making `wetSkill` the sole ability owner of the timed-session rain overlay.
+Adaptability, braking and throttle control remain active in the generic
+decision; no coefficient is redistributed to compensate for their removal from
+the overlay.
 
 ## Observability and authority
 

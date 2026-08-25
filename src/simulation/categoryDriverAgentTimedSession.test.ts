@@ -3,15 +3,18 @@ import { seriesPackageById } from '../series/seriesRegistry'
 import { isF1SeriesRules } from '../series/types'
 import type { ExecutableSeriesId } from '../series/seriesIds'
 import type {
+  Driver,
   DriverDecisionPath,
   RaceConfig,
   TimedSessionTire,
 } from '../types'
+import { driverBehaviorTraits } from './driverDecision'
 import { baselineSetupForTrack } from './engineering'
 import {
   superFormulaControlSessionTireForWeather,
   timedSessionDriverExecutionLossSeconds,
   timedSessionRunAssemblyShortfallSeconds,
+  timedSessionWetExecutionRiskScale,
 } from './qualifying'
 
 function timedSessionOptionsFor(seriesId: ExecutableSeriesId) {
@@ -61,6 +64,68 @@ function timedSessionOptionsFor(seriesId: ExecutableSeriesId) {
 }
 
 describe('category driver-agent timed-session seam', () => {
+  it('gives the timed rain overlay one wet-skill owner', () => {
+    const { driver } = timedSessionOptionsFor('f1-custom')
+    const withSkills = (
+      overrides: Partial<Driver['skills']>,
+    ): Driver => ({
+      ...driver,
+      skills: { ...driver.skills, ...overrides },
+    })
+    const lowSecondarySkills = withSkills({
+      adaptability: 0,
+      brakingSkill: 0,
+      throttleControl: 0,
+      wetSkill: 0.7,
+    })
+    const highSecondarySkills = withSkills({
+      adaptability: 1,
+      brakingSkill: 1,
+      throttleControl: 1,
+      wetSkill: 0.7,
+    })
+
+    expect(
+      timedSessionWetExecutionRiskScale(
+        lowSecondarySkills,
+        'heavy-rain',
+      ),
+    ).toBe(
+      timedSessionWetExecutionRiskScale(
+        highSecondarySkills,
+        'heavy-rain',
+      ),
+    )
+    expect(
+      timedSessionWetExecutionRiskScale(lowSecondarySkills, 'clear'),
+    ).toBe(1)
+
+    const weakestWet = withSkills({ wetSkill: 0 })
+    const strongestWet = withSkills({ wetSkill: 1 })
+    expect(
+      timedSessionWetExecutionRiskScale(strongestWet, 'heavy-rain'),
+    ).toBeCloseTo(1.22, 12)
+    expect(
+      timedSessionWetExecutionRiskScale(weakestWet, 'heavy-rain'),
+    ).toBeCloseTo(1.625, 12)
+    expect(
+      timedSessionWetExecutionRiskScale(strongestWet, 'light-rain'),
+    ).toBeCloseTo(1.099, 12)
+    expect(
+      timedSessionWetExecutionRiskScale(weakestWet, 'light-rain'),
+    ).toBeCloseTo(1.28125, 12)
+
+    const lowTraits = driverBehaviorTraits(lowSecondarySkills)
+    const highTraits = driverBehaviorTraits(highSecondarySkills)
+    expect(highTraits.reaction).toBeGreaterThan(lowTraits.reaction)
+    expect(highTraits.brakingPrecision).toBeGreaterThan(
+      lowTraits.brakingPrecision,
+    )
+    expect(highTraits.throttlePrecision).toBeGreaterThan(
+      lowTraits.throttlePrecision,
+    )
+  })
+
   it('bounds a symmetric once-per-run assembly shortfall', () => {
     const common = { consistency: 0.8, lapTimeSeconds: 90 }
 
