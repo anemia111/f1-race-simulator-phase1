@@ -1,4 +1,5 @@
 param(
+  [switch]$SkipFullTestSuite,
   [switch]$SkipPlaytest
 )
 
@@ -44,7 +45,9 @@ try {
   $env:VITE_APP_RELEASE_ID = $releaseId
 
   Invoke-Npm -NpmArguments @('run', 'lint') -FailureMessage 'Lint failed.'
-  Invoke-Npm -NpmArguments @('test') -FailureMessage 'Tests failed.'
+  if (-not $SkipFullTestSuite) {
+    Invoke-Npm -NpmArguments @('test') -FailureMessage 'Tests failed.'
+  }
   Invoke-Npm -NpmArguments @('run', 'build') -FailureMessage 'Build failed.'
 
   if (-not $SkipPlaytest) {
