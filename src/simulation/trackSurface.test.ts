@@ -3,6 +3,7 @@ import {
   advanceTrackSurface,
   advanceTrackSurfaceCell,
   applyLegacyTrackSurfaceSectorsToState,
+  createInitialTrackSurfaceState,
   createTrackSurfaceState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
@@ -44,6 +45,35 @@ function expectRubberFluxToClose(
 }
 
 describe('local track surface', () => {
+  it('creates a fresh canonical surface directly from initial rain', () => {
+    const state = createInitialTrackSurfaceState({
+      cellCount: 12,
+      initialRainIntensityMmH: 2,
+      initialSurfaceTemperatureC: 34,
+      sectorMarks: [0, 1 / 3, 2 / 3],
+    })
+    const racing = trackSurfaceAt(state, {
+      lane: 'racing-line',
+      progress: 0.2,
+    })
+    const offLine = trackSurfaceAt(state, {
+      lane: 'off-line',
+      progress: 0.2,
+    })
+    const expectedDryness = 1 - 0.56 / 3.5 - 2 / 18
+
+    expect(racing.bondedRubber).toBe(0)
+    expect(racing.surfaceTemperatureC).toBe(34)
+    expect(racing.waterFilmMm).toBeCloseTo(0.56, 12)
+    expect(racing.dryness).toBeCloseTo(expectedDryness, 12)
+    expect(offLine.bondedRubber).toBe(0)
+    expect(offLine.waterFilmMm).toBeCloseTo(
+      0.56 + (1 - expectedDryness) * 0.14,
+      12,
+    )
+    expect(offLine.dryness).toBeCloseTo(expectedDryness * 0.82, 12)
+  })
+
   it('starts as a neutral, bounded two-lane typed-array substrate', () => {
     const state = createTrackSurfaceState({ cellCount: 12 })
 

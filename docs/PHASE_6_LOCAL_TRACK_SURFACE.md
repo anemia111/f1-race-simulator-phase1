@@ -25,6 +25,12 @@ strictly and rejects malformed or normalizable persisted input.
 a cell and lane. A grid slot remains on the racing line; the off-line lane
 starts only outside the bounded lateral threshold.
 
+Fresh sessions enter through `createInitialTrackSurfaceState`, which writes
+the existing rain-derived water/dryness policy directly into the canonical
+two-lane arrays. The former `TrackWaterState` and `TrackRubberState` sector
+initializers are removed. `createTrackSurfaceStateFromLegacySectors` remains
+only for v2 checkpoint migration and focused compatibility fixtures.
+
 The live representation uses `Float64Array`; `RaceSnapshot.trackSurface`
 stores its strict plain-array serialization. It is the single persisted
 simulation authority. Active UI, strategy and session-rule consumers derive
