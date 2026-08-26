@@ -171,7 +171,7 @@ import {
   advanceTrackSurface,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  legacySectorStateForTrackSurface,
+  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
   trackSurfaceAt,
   trackSurfaceLaneForLateralOffset,
@@ -2120,7 +2120,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         profile: config.track.surfaceProfile,
       },
     )
-  const initialSurfaceSectors = legacySectorStateForTrackSurface(
+  const initialSurfaceSectors = trackSurfaceSectorSummary(
     initialTrackSurface,
   )
   const averageInitialSurfaceWaterMm =
@@ -2804,7 +2804,7 @@ export function advanceRace(
     targetSurfaceTemperatureC: trackTemperatureC,
     traversals: trackSurfaceTraversals,
   }).state
-  const trackSurfaceSectors = legacySectorStateForTrackSurface(trackSurface)
+  const trackSurfaceSectors = trackSurfaceSectorSummary(trackSurface)
   const serializedTrackSurface = serializeTrackSurfaceState(trackSurface)
   const weekendStage = requestedWeekendStage
   const isRaceDistance = isRaceDistanceSession(weekendStage)
