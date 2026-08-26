@@ -2,6 +2,7 @@ import { cleanEnvironmentValue } from '../../domain/environmentReadout'
 import { PitWallGroup, PitWallMetric } from './PitWallShared'
 import type { PitWallSource } from '../../domain/pitWall'
 import type { SectorFlagState } from '../../types'
+import { trackSurfaceSectorSummary } from '../../simulation/trackSurface'
 import type { PitWallTabProps } from './types'
 
 const sectorFlagLabels: Record<SectorFlagState, string> = {
@@ -25,6 +26,12 @@ export function PitWallWeather({
   const neutralised = snapshot.flag === 'sc' || snapshot.flag === 'vsc'
   const f1WeatherDeclarationsUnavailable = snapshot.heatIndexC === null
   const heatIndexLabel = snapshot.heatIndexC?.toFixed(1) ?? 'unavailable'
+  const surfaceSectors = trackSurfaceSectorSummary(snapshot.trackSurface)
+  const trackEvolutionLevel =
+    surfaceSectors.rubberLevelBySector.reduce(
+      (sum, value) => sum + value,
+      0,
+    ) / surfaceSectors.rubberLevelBySector.length
 
   return (
     <div className="pit-wall-columns">
@@ -136,7 +143,7 @@ export function PitWallWeather({
             key={`water-${index}`}
             label={`S${index + 1} standing water`}
             source="SIM"
-            value={`${snapshot.surfaceWaterMmBySector[index].toFixed(2)} mm`}
+            value={`${surfaceSectors.surfaceWaterMmBySector[index].toFixed(2)} mm`}
           />
         ))}
         {[0, 1, 2].map((index) => (
@@ -145,7 +152,7 @@ export function PitWallWeather({
             label={`S${index + 1} dry line`}
             source="SIM"
             title="Drying-line maturity from 0 (fully wet) to 100 (dry racing line)"
-            value={`${Math.round(snapshot.dryingLineBySector[index] * 100)}%`}
+            value={`${Math.round(surfaceSectors.dryingLineBySector[index] * 100)}%`}
           />
         ))}
       </PitWallGroup>
@@ -218,14 +225,14 @@ export function PitWallWeather({
         <PitWallMetric
           label="Track evolution"
           source="SIM"
-          value={`${Math.round(snapshot.trackEvolutionLevel * 100)}%`}
+          value={`${Math.round(trackEvolutionLevel * 100)}%`}
         />
         {[0, 1, 2].map((index) => (
           <PitWallMetric
             key={`rubber-${index}`}
             label={`S${index + 1} rubber`}
             source="SIM"
-            value={`${Math.round(snapshot.rubberLevelBySector[index] * 100)}%`}
+            value={`${Math.round(surfaceSectors.rubberLevelBySector[index] * 100)}%`}
           />
         ))}
       </PitWallGroup>

@@ -144,6 +144,7 @@ import {
   driverPublishedAbilityValue,
 } from './simulation/driverAbility'
 import { normalizeSimulationSeed } from './simulation/random'
+import { trackSurfaceSectorSummary } from './simulation/trackSurface'
 import {
   buildFreeModeRuntime,
   createDefaultFreeModeConfiguration,
@@ -2189,6 +2190,10 @@ export default function App() {
     speed,
   })
   const orderedCars = snapshot.cars
+  const trackSurfaceSectors = useMemo(
+    () => trackSurfaceSectorSummary(snapshot.trackSurface),
+    [snapshot.trackSurface],
+  )
 
   useEffect(() => {
     if (
@@ -2755,11 +2760,15 @@ export default function App() {
   }, [dataMode, openF1LiveState.positionsByCode, orderedCars])
   const timingRows = useMemo<TimingRow[]>(() => {
     const averageSurfaceWaterMm =
-      snapshot.surfaceWaterMmBySector.reduce((sum, value) => sum + value, 0) /
-      snapshot.surfaceWaterMmBySector.length
+      trackSurfaceSectors.surfaceWaterMmBySector.reduce(
+        (sum, value) => sum + value,
+        0,
+      ) / trackSurfaceSectors.surfaceWaterMmBySector.length
     const averageDryingLine =
-      snapshot.dryingLineBySector.reduce((sum, value) => sum + value, 0) /
-      snapshot.dryingLineBySector.length
+      trackSurfaceSectors.dryingLineBySector.reduce(
+        (sum, value) => sum + value,
+        0,
+      ) / trackSurfaceSectors.dryingLineBySector.length
     const rainIntensityMmH = weatherTrackStateFor(
       raceConfig.seed,
       raceConfig.track,
@@ -3022,12 +3031,11 @@ export default function App() {
       openF1TimingSources,
       fieldCalibration,
       raceConfig,
-      snapshot.dryingLineBySector,
       snapshot.elapsedSeconds,
-      snapshot.surfaceWaterMmBySector,
       snapshot.trackGrip,
       snapshot.weather,
       timingCars,
+      trackSurfaceSectors,
     ],
   )
   // The pit wall shows the same splits as the timing tower rather than deriving

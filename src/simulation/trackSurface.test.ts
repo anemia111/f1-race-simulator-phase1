@@ -6,7 +6,7 @@ import {
   createTrackSurfaceState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  legacySectorStateForTrackSurface,
+  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
   trackSurfaceAt,
   trackSurfaceBaseGripMultiplierAt,
@@ -93,7 +93,7 @@ describe('local track surface', () => {
     expect(third.bondedRubber).toBeCloseTo(0.85, 5)
     expect(third.dryness).toBeCloseTo(0.1, 5)
     expect(third.waterFilmMm).toBeCloseTo(2.4, 5)
-    expect(legacySectorStateForTrackSurface(state).rubberLevelBySector[1]).toBeCloseTo(0.6, 5)
+    expect(trackSurfaceSectorSummary(state).rubberLevelBySector[1]).toBeCloseTo(0.6, 5)
   })
 
   it('projects one legacy update into a fresh canonical state without changing its grid', () => {
@@ -130,11 +130,14 @@ describe('local track surface', () => {
     expect(updated.profile).not.toBe(canonical.profile)
     expect(updated.sectorMarks).toEqual([0, 1 / 3, 2 / 3])
     expect(updated.surfaceTemperatureC).toEqual(canonical.surfaceTemperatureC)
-    expect(legacySectorStateForTrackSurface(updated)).toEqual({
+    expect(trackSurfaceSectorSummary(updated)).toEqual({
       dryingLineBySector: [1, 0.5, 0.25],
       rubberLevelBySector: [0.25, 0.5, 0.75],
       surfaceWaterMmBySector: [0.125, 0.5, 1],
     })
+    expect(
+      trackSurfaceSectorSummary(serializeTrackSurfaceState(updated)),
+    ).toEqual(trackSurfaceSectorSummary(updated))
     expect(trackSurfaceAt(updated, { lane: 'racing-line', progress: 0.5 }))
       .toMatchObject({
         bondedRubber: 0.5,
@@ -150,8 +153,8 @@ describe('local track surface', () => {
     expect(restored && serializeTrackSurfaceState(restored)).toEqual(
       serializeTrackSurfaceState(updated),
     )
-    expect(restored && legacySectorStateForTrackSurface(restored)).toEqual(
-      legacySectorStateForTrackSurface(updated),
+    expect(restored && trackSurfaceSectorSummary(restored)).toEqual(
+      trackSurfaceSectorSummary(updated),
     )
   })
 

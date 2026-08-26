@@ -31,7 +31,7 @@ import {
   applyLegacyTrackSurfaceSectorsToState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  legacySectorStateForTrackSurface,
+  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
   trackSurfaceAt,
 } from './trackSurface'
@@ -480,7 +480,7 @@ describe('track-dependent systems', () => {
         rubberLevelBySector: [1, 1, 1],
         surfaceWaterMmBySector: [0, 0, 0],
       })
-      const sectors = legacySectorStateForTrackSurface(seededSurface)
+      const sectors = trackSurfaceSectorSummary(seededSurface)
 
       return {
         ...initial,

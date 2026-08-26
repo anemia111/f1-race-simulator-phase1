@@ -22,7 +22,7 @@ import {
 import {
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  legacySectorStateForTrackSurface,
+  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
 } from '../simulation/trackSurface'
 import { strictTrackSurfaceStateForTrack } from '../simulation/trackSurfaceValidation'
@@ -1197,7 +1197,7 @@ function normalizeTrackSurfaceCompatibility(
     return null
   }
 
-  const sectors = legacySectorStateForTrackSurface(trackSurface)
+  const sectors = trackSurfaceSectorSummary(trackSurface)
 
   return {
     ...value,

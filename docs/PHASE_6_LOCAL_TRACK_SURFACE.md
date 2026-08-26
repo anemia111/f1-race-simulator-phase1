@@ -27,9 +27,10 @@ starts only outside the bounded lateral threshold.
 
 The live representation uses `Float64Array`; `RaceSnapshot.trackSurface`
 stores its strict plain-array serialization. It is the single persisted
-simulation authority. The historic three-sector fields remain projections for
-existing UI and session-rule consumers, so they can be removed only after
-those consumers have a direct two-lane API.
+simulation authority. Active UI, strategy and session-rule consumers derive
+sector summaries directly from it through `trackSurfaceSectorSummary`. The
+historic three-sector fields remain output-only checkpoint compatibility data
+and can be retired with a deliberate schema-compatibility change.
 
 ## Canonical live evolution
 
@@ -61,8 +62,9 @@ does not appear as an external stock source or sink.
 
 `RaceSnapshot.trackSurface` is the only dynamic surface authority. After the
 canonical update, racing-line values are projected into the historic
-three-sector fields for existing UI and session-rule consumers. Those fields
-are outputs and are never advanced independently or projected back into the
+three-sector fields for checkpoint compatibility. Active runtime and UI reads
+use the same direct canonical summary helper instead. Compatibility fields are
+outputs and are never advanced independently or projected back into the
 canonical state.
 
 Checkpoint schema v3 requires a well-formed canonical surface and normalizes

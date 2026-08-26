@@ -1110,12 +1110,25 @@ export function applyLegacyTrackSurfaceSectorsToState(
   return nextState
 }
 
-/** Legacy UI/checkpoint fields reconstructed from the racing-line lane. */
-export function legacySectorStateForTrackSurface(state: TrackSurfaceState): {
+export type TrackSurfaceSectorSummary = {
   dryingLineBySector: [number, number, number]
   rubberLevelBySector: [number, number, number]
   surfaceWaterMmBySector: [number, number, number]
-} {
+}
+
+type TrackSurfaceSectorSource = Pick<
+  TrackSurfaceState,
+  'cellCount' | 'sectorMarks'
+> & {
+  bondedRubber: ArrayLike<number>
+  dryness: ArrayLike<number>
+  waterFilmMm: ArrayLike<number>
+}
+
+/** Canonical racing-line sector summary for runtime and compatibility views. */
+export function trackSurfaceSectorSummary(
+  state: TrackSurfaceSectorSource,
+): TrackSurfaceSectorSummary {
   const totals = Array.from({ length: 3 }, () => ({
     count: 0,
     dryness: 0,

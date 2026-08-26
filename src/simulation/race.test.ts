@@ -73,7 +73,7 @@ import {
 import {
   applyLegacyTrackSurfaceSectorsToState,
   deserializeTrackSurfaceState,
-  legacySectorStateForTrackSurface,
+  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
   trackSurfaceAt,
 } from './trackSurface'
@@ -161,7 +161,7 @@ function canonicalTrackSurfaceFor(snapshot: RaceSnapshot) {
 }
 
 function expectTrackSurfaceCompatibilityProjection(snapshot: RaceSnapshot) {
-  const sectors = legacySectorStateForTrackSurface(
+  const sectors = trackSurfaceSectorSummary(
     canonicalTrackSurfaceFor(snapshot),
   )
 
@@ -188,7 +188,7 @@ function withCanonicalTrackSurfaceSectors(
     canonicalTrackSurfaceFor(snapshot),
     sectors,
   )
-  const compatibility = legacySectorStateForTrackSurface(trackSurface)
+  const compatibility = trackSurfaceSectorSummary(trackSurface)
 
   return {
     ...snapshot,
@@ -769,7 +769,7 @@ describe('lap-start energy rule authority', () => {
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
     const beforeLine = withUsedEnergyLedger(initial.cars[0], 1.25)
     const alreadyAfterLine = withUsedEnergyLedger(initial.cars[1], 0.75)
-    const initialSurfaceSectors = legacySectorStateForTrackSurface(
+    const initialSurfaceSectors = trackSurfaceSectorSummary(
       canonicalTrackSurfaceFor(initial),
     )
     const forced: RaceSnapshot = {
@@ -876,7 +876,7 @@ describe('lap-start energy rule authority', () => {
       })
     }
     const soakTrack = (snapshot: RaceSnapshot): RaceSnapshot => {
-      const currentSectors = legacySectorStateForTrackSurface(
+      const currentSectors = trackSurfaceSectorSummary(
         canonicalTrackSurfaceFor(snapshot),
       )
 

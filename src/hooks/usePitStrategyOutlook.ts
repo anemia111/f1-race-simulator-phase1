@@ -4,6 +4,7 @@ import {
   strategyOutlookFor,
 } from '../simulation/strategy'
 import type { StrategyOutlook } from '../simulation/strategy'
+import { trackSurfaceSectorSummary } from '../simulation/trackSurface'
 import type {
   CarSnapshot,
   Driver,
@@ -46,6 +47,8 @@ export function pitStrategyOutlookFor(
     return null
   }
 
+  const surfaceSectors = trackSurfaceSectorSummary(snapshot.trackSurface)
+
   // The engineer's read-out and the stop the F1 race actually applies come
   // from the same base. They used to differ by 2 s, so the pit wall quoted a
   // cost the car never paid.
@@ -80,7 +83,7 @@ export function pitStrategyOutlookFor(
     observedCalibration: track.observedCalibration,
     trackCondition: {
       dryingLine:
-        snapshot.dryingLineBySector.reduce(
+        surfaceSectors.dryingLineBySector.reduce(
           (total, value) => total + value,
           0,
         ) / 3,
@@ -91,7 +94,7 @@ export function pitStrategyOutlookFor(
             ? 2
             : 0,
       surfaceWaterMm:
-        snapshot.surfaceWaterMmBySector.reduce(
+        surfaceSectors.surfaceWaterMmBySector.reduce(
           (total, value) => total + value,
           0,
         ) / 3,
