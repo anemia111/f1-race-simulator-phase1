@@ -122,7 +122,7 @@ automatically justified.
 | Race control/compliance | awareness, consistency and pressure handling | VSC compliance, warning/penalty/permission rolls | `race.ts`, at the owning event or sector cadence | Rule outcome |
 | Battle resolution | overtaking, defending, error-control, wet and adaptability skills plus physical speed/gap/energy state | attempt, pass, defend, contact and crash | `overtaking.ts`, race-only battle windows | Formal outcome owner |
 | Independent incidents | consistency, mistake resistance, pressure, precision, awareness and wet skills | incident probability/disposition | `incidents.ts`, lap incident cadence | Sequential review item |
-| F1 energy scheduling | ERS management, awareness, precision, adaptability, consistency, wet and braking skills | energy intent, deployment request, wet recovery and superclipping response | `driverEnergyIntent.ts`, `telemetry.ts`, `superClipping.ts`; Energy Store owns SOC/power | Sequential review item |
+| F1 energy scheduling | ERS management, awareness and precision | energy intent; deployment and superclipping consume intent, while recovery consumes physical/team state, all without rereading ability | `driverEnergyIntent.ts` is the sole ability owner; Energy Store retains SOC/power authority | Resolved single ability owner |
 | Automatic pursuit pace | overtaking, ERS management and awareness | requested pace mode | `race.ts` / `racePace.ts`; clear-race planning uses the existing 24 mini-sector windows per lap and a lap-keyed pursuit roll, while local-control phases re-evaluate the retained/current mode on each simulation advance | Strategy request |
 | Pit/tyre strategy | tyre management, overtaking, awareness and traffic management | cliff, undercut and overcut choice | `strategy.ts`, strategy cadence | Strategy outcome |
 | Offline timed execution | generic decision plus a wet-skill-only rain overlay and a consistency/precision/pressure assembly overlay | execution loss and run-wide variation | `qualifying.ts`, 12 windows plus one run-wide draw | Resolved owner split |
@@ -146,7 +146,7 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `rawPace` | generic tyre-limit utilisation | named |
 | `qualifyingPace` | no-time/deleted-Q1 permission evidence | named |
 | `racePace` | none for the final skill outside source expansion/display | aggregate-only |
-| `brakingSkill` | generic braking traits, live brake fallback and wet Energy Store recovery | named |
+| `brakingSkill` | generic braking traits and live brake fallback | named |
 | `lowSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `mediumSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
 | `highSpeedCornerSkill` | generic cornering/line/tyre-limit traits | named |
@@ -154,24 +154,24 @@ skill also participates in the above-100 all-skill limit-break aggregate.
 | `throttleControl` | generic throttle trait, fuel use and tyre temperature | named |
 | `tireManagement` | generic tyre-limit trait, physical tyre state, tyre/pit strategy and start tyre choice | named |
 | `tireWarmupSkill` | none outside source expansion/display | aggregate-only |
-| `wetSkill` | timed rain overlay, battle, incidents, start tyre choice and Energy Store recovery | named |
+| `wetSkill` | timed rain overlay, battle, incidents and start tyre choice | named |
 | `intermediateSkill` | light-rain incident risk | named |
 | `overtakingSkill` | generic racecraft/attack, battle, pursuit pace and undercut choice | named |
 | `defendingSkill` | generic racecraft/defence and battle | named |
 | `racecraft` | generic racecraft/attack/defence traits | named |
-| `consistency` | generic control/error, timed run variation, incidents, VSC and superclipping response | named |
+| `consistency` | generic control/error, timed run variation, incidents and VSC | named |
 | `mistakeResistance` | generic control/error, incidents and battle error | named |
 | `pressureHandling` | generic control/error, timed variation, incidents, battle, launch, VSC and brake fallback | named |
 | `trafficManagement` | generic awareness/racecraft and undercut choice | named |
 | `dirtyAirManagement` | none outside source expansion/display | aggregate-only |
 | `fuelManagement` | physical fuel-use multiplier | named |
-| `ersManagement` | F1 energy chain and automatic pursuit pace | named |
+| `ersManagement` | F1 energy intent and automatic pursuit pace | named |
 | `restartSkill` | none outside source expansion/display | aggregate-only |
 | `startSkill` | generic reaction and race launch | named |
 | `confidence` | generic tyre-limit, aggression and risk traits | named |
-| `precision` | generic control, F1 energy, timed variation, incidents, battle, brake fallback and tyre temperature | named |
-| `adaptability` | generic traits, battle wet skill, F1 energy and wet recovery | named |
-| `raceAwareness` | generic traits, F1 energy, race control, pursuit, VSC, strategy, incidents and battle | named |
+| `precision` | generic control, F1 energy intent, timed variation, incidents, battle, brake fallback and tyre temperature | named |
+| `adaptability` | generic traits and battle wet skill | named |
+| `raceAwareness` | generic traits, F1 energy intent, race control, pursuit, VSC, strategy, incidents and battle | named |
 | `carBalanceAdaptation` | generic tyre-limit trait and practice setup feedback | named |
 
 The four aggregate-only final skills are not described as unused because a value
@@ -202,7 +202,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | --- | --- | --- | --- |
 | DA-01 | Generic attack intent followed by formal battle resolution | resolved single stochastic owner in Phase 7.8B | Generic decisions own intent and physical controls only; `overtaking.ts` alone owns attempt, pass/defend, contact and crash rolls, and is called only for attack intent |
 | DA-02 | Window-level control/error followed by independent lap incident rolls | resolved distinct-cadence contract in Phase 7.8B | Generic decisions return bounded continuous controls and no damage/time/retirement/flag outcome; `incidentForLap` accepts no decision, skips lap 1 and owns rare lap-level outcomes under independent deterministic keys |
-| DA-03 | ERS skill in intent, deployment, recovery and superclipping response | sequential compound / review required | Regulatory/physical authority is separated; repeated ability sensitivity remains unexplained |
+| DA-03 | ERS skill in intent, deployment, recovery and superclipping response | resolved single ability owner in Phase 7.8B | `driverEnergyIntent.ts` alone reads ability for F1 energy scheduling; deployment, recovery and superclipping retain their existing formulas at the ideal execution endpoint without a second ability edge |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in physical state, battle resolution and strategy | resolved physical-state boundary in Phase 7.8B | Physical wear, temperature, grip and strategy retain their owners; battle no longer rereads tyre-management skill or tyre state as a second direct edge and instead consumes resulting speed, gap and closing opportunity |
 | DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
@@ -347,6 +347,16 @@ rain terms, cap, lap-1 exclusion and hash key, while removing the awareness
 term and its now-dead exported tuning key. Removed sensitivity is not
 redistributed. Adjudication outcomes intentionally change; decision control,
 random cadence, schemas and saved state remain unchanged.
+
+The fifteenth cleanup resolves DA-03 by making `F1EnergyIntent` the sole
+driver-ability owner for F1 energy scheduling. Deployment, wet recovery and
+superclipping no longer reread ERS, wet, braking, adaptability, consistency or
+awareness skills; their existing formulas use the ideal execution endpoint
+without reallocating or refitting a coefficient. The intent's existing ERS,
+awareness and precision blend remains the scheduling signal, and deterministic
+superclipping variation still uses the driver ID. SOC, recharge, power,
+regulatory and team-machine authorities are unchanged. Energy results
+intentionally lose the repeated downstream ability sensitivity.
 
 ## Invariants
 

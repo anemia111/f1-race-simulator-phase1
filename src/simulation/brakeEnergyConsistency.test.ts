@@ -48,8 +48,6 @@ function energyStepFor(options: {
     deltaSeconds: 0.5,
     deploymentDcPowerLimitKw: 350,
     deploymentRequest: 0,
-    driverErsManagement: f1Driver.skills.ersManagement,
-    driverWetSkill: f1Driver.skills.wetSkill,
     gripMultiplier: 1,
     rechargeRule,
     speedKph: options.speedKph,

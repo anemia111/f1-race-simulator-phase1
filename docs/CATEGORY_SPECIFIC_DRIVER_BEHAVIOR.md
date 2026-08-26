@@ -80,6 +80,12 @@ Existing event keys/base chances remain; race track limits also retain their
 pressure, tyre-wear, grip and rain context. Removed awareness weight is not
 redistributed.
 
+DA-03 is resolved by making `F1EnergyIntent` the sole F1 energy scheduling
+ability owner. Deployment, recovery and superclipping retain their existing
+formulas at the ideal execution endpoint and no longer reread driver skills.
+The intent blend and driver-ID strategy variation remain; physical, SOC,
+recharge, power, regulatory and team-machine authorities do not move.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -301,7 +307,8 @@ calculation from `F1EnergyIntent`, plus only the redundant returned
 unchanged `superclipAcceptance` formula, and qualifying phase still affects
 consumed intent outputs. The internal surface narrows without changing SOC,
 energy authority, seeds, random evaluations, saved state, or simulation results;
-DA-03 remains unresolved.
+DA-03 remained unresolved at that point and is closed by the later
+single-ability-owner slice.
 
 DA-11 is resolved separately by saturating every named raw, performance, and
 direct energy-skill input at 100. Values up to 120 remain valid and displayed; only the
@@ -344,6 +351,13 @@ DA-12 is closed by pure adjudication helpers and a driver-independent race
 track-limit chance. Decision-window control remains separate; hashes and event
 cadence are retained while outcomes intentionally lose duplicate awareness
 sensitivity.
+
+DA-03 is closed by keeping the ERS-management, awareness and precision blend in
+`driverEnergyIntent.ts` and removing every downstream F1 energy ability reread.
+Existing deployment, recovery and superclipping coefficients use their ideal
+execution endpoint without redistribution or fitting. Intent scheduling still
+varies by driver ability, deterministic superclipping variation still uses the
+driver ID, and the physical Energy Store remains authoritative.
 
 ## Observability and authority
 

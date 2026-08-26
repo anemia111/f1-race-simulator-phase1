@@ -4893,11 +4893,6 @@ export function advanceRace(
           deltaSeconds,
           deploymentDcPowerLimitKw: 0,
           deploymentRequest: 0,
-          driverErsManagement: driverPerformanceAbility(
-            driver,
-            'ersManagement',
-          ),
-          driverWetSkill: driverPerformanceAbility(driver, 'wetSkill'),
           gripMultiplier: trackGrip,
           rechargeRule: f1Runtime.energyStore.rechargeRule,
           speedKph,

@@ -349,8 +349,6 @@ describe('super clipping physical integration', () => {
       deltaSeconds,
       deploymentDcPowerLimitKw: boundedLimitKw,
       deploymentRequest: 1,
-      driverErsManagement: driver.skills.ersManagement,
-      driverWetSkill: driver.skills.wetSkill,
       gripMultiplier: 1,
       rechargeRule: initial.rechargeRule,
       speedKph,
@@ -487,6 +485,18 @@ describe('super clipping physical integration', () => {
       throttlePercent: 100,
     }
     const needed = advanceSuperClipping({ ...shared, speedKph: 340 })
+    const weakestDriver = {
+      ...driver,
+      skills: Object.fromEntries(
+        Object.keys(driver.skills).map((skill) => [skill, 0]),
+      ) as typeof driver.skills,
+    }
+    const strongestDriver = {
+      ...driver,
+      skills: Object.fromEntries(
+        Object.keys(driver.skills).map((skill) => [skill, 1]),
+      ) as typeof driver.skills,
+    }
     const belowCurveOpportunity = advanceSuperClipping({
       ...shared,
       speedKph: 289,
@@ -507,6 +517,19 @@ describe('super clipping physical integration', () => {
     expect(belowCurveOpportunity.intensity).toBe(0)
     expect(noLedgerHeadroom.intensity).toBe(0)
     expect(lowThrottle.intensity).toBe(0)
+    expect(
+      advanceSuperClipping({
+        ...shared,
+        driver: strongestDriver,
+        speedKph: 340,
+      }),
+    ).toEqual(
+      advanceSuperClipping({
+        ...shared,
+        driver: weakestDriver,
+        speedKph: 340,
+      }),
+    )
   })
 
   it('integrates actual full-throttle generation and CU-K recharge into telemetry', () => {

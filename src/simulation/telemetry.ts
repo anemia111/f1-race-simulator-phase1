@@ -796,15 +796,9 @@ export function calculateCarTelemetry(options: {
         normalRegulatoryDeploymentPowerLimitKw,
       remainingAllowanceMj: f1Runtime?.overtakeEnergyRemainingMj ?? 0,
     })
-  const driverErsManagement = driverSkillBlend(driver, {
-    ersManagement: 0.64,
-    raceAwareness: 0.22,
-    precision: 0.14,
-  })
   const deploymentRequest = energyStoreAtFrameStart
     ? energyDeploymentRequestFor({
         battlePhase: car.battlePhase,
-        driverErsManagement,
         isFinalLap,
         lapProgress: car.progress,
         overtakeActive: overtakeStatus === 'active',
@@ -910,12 +904,6 @@ export function calculateCarTelemetry(options: {
           deltaSeconds,
           deploymentDcPowerLimitKw: regulatoryDeploymentPowerLimitKw,
           deploymentRequest: effectiveDeploymentRequest,
-          driverErsManagement,
-          driverWetSkill: driverSkillBlend(driver, {
-            wetSkill: 0.68,
-            brakingSkill: 0.18,
-            adaptability: 0.14,
-          }),
           gripMultiplier: localGrip,
           rechargeRule: energyStoreAtFrameStart.rechargeRule,
           recoveryRequestScale:
