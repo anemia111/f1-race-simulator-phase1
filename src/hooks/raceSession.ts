@@ -22,11 +22,9 @@ import {
 import {
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
 } from '../simulation/trackSurface'
 import { strictTrackSurfaceStateForTrack } from '../simulation/trackSurfaceValidation'
-import { trackEvolutionLevelFor } from '../simulation/trackEvolution'
 import {
   validateSuperFormulaControlTireInventory,
 } from '../simulation/superFormulaControlTires2026'
@@ -50,7 +48,8 @@ const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',
   LEGACY_V2_RACE_SIMULATION_MODEL_VERSION,
 ])
-const RACE_CHECKPOINT_VERSION = 3
+const LEGACY_V3_RACE_CHECKPOINT_VERSION = 3
+const RACE_CHECKPOINT_VERSION = 4
 const MAX_CHECKPOINT_LENGTH = 4_500_000
 /**
  * Persistence only rejects clearly corrupt lateral state. The live lateral
@@ -285,6 +284,15 @@ type StoredRaceCheckpoint = {
   snapshot: RaceSnapshot
   version: typeof RACE_CHECKPOINT_VERSION
 }
+
+type LegacyTrackSurfaceProjection = {
+  dryingLineBySector: [number, number, number]
+  rubberLevelBySector: [number, number, number]
+  surfaceWaterMmBySector: [number, number, number]
+  trackEvolutionLevel?: number
+}
+
+type LegacySurfaceRaceSnapshot = RaceSnapshot & LegacyTrackSurfaceProjection
 
 const carStatuses = new Set([
   'running',
@@ -1167,7 +1175,9 @@ function migrateLegacyF1CarRuntime(value: unknown): Record<string, unknown> | nu
   return { ...migrated, runtimeSystems }
 }
 
-function migrateLegacyF1RaceSnapshot(value: unknown): RaceSnapshot | null {
+function migrateLegacyF1RaceSnapshot(
+  value: unknown,
+): LegacySurfaceRaceSnapshot | null {
   if (!isRecord(value) || !Array.isArray(value.cars)) {
     return null
   }
@@ -1180,16 +1190,15 @@ function migrateLegacyF1RaceSnapshot(value: unknown): RaceSnapshot | null {
   return {
     ...value,
     cars,
-  } as unknown as RaceSnapshot
+  } as unknown as LegacySurfaceRaceSnapshot
 }
 
 /**
- * Rebuild compatibility-only sector fields from the persisted canonical
- * surface. This keeps a valid v3 checkpoint from reviving an obsolete sector
- * projection as a second source of simulation state.
+ * Validate and normalize the persisted canonical surface while discarding any
+ * pre-v4 sector projections so they cannot return as a second state authority.
  */
-function normalizeTrackSurfaceCompatibility(
-  value: RaceSnapshot,
+function normalizeCanonicalTrackSurface(
+  value: RaceSnapshot & Partial<LegacyTrackSurfaceProjection>,
 ): RaceSnapshot | null {
   const trackSurface = deserializeTrackSurfaceState(value.trackSurface)
 
@@ -1197,18 +1206,18 @@ function normalizeTrackSurfaceCompatibility(
     return null
   }
 
-  const sectors = trackSurfaceSectorSummary(trackSurface)
-
-  return {
+  const normalized: RaceSnapshot & Partial<LegacyTrackSurfaceProjection> = {
     ...value,
-    dryingLineBySector: sectors.dryingLineBySector,
-    rubberLevelBySector: sectors.rubberLevelBySector,
-    surfaceWaterMmBySector: sectors.surfaceWaterMmBySector,
-    trackEvolutionLevel: trackEvolutionLevelFor(sectors.rubberLevelBySector),
     // Serialization also ensures a plain JSON-compatible snapshot rather
     // than letting typed arrays leak through an externally supplied payload.
     trackSurface: serializeTrackSurfaceState(trackSurface),
   }
+  delete normalized.dryingLineBySector
+  delete normalized.rubberLevelBySector
+  delete normalized.surfaceWaterMmBySector
+  delete normalized.trackEvolutionLevel
+
+  return normalized
 }
 
 /**
@@ -1217,7 +1226,7 @@ function normalizeTrackSurfaceCompatibility(
  * using the active track's source-labelled static profile and sector marks.
  */
 function hydrateLegacyTrackSurface(
-  value: RaceSnapshot,
+  value: LegacySurfaceRaceSnapshot,
   config: RaceConfig,
 ): RaceSnapshot | null {
   const trackSurface = createTrackSurfaceStateFromLegacySectors(
@@ -1232,7 +1241,7 @@ function hydrateLegacyTrackSurface(
     },
   )
 
-  return normalizeTrackSurfaceCompatibility({
+  return normalizeCanonicalTrackSurface({
     ...value,
     trackSurface: serializeTrackSurfaceState(trackSurface),
   })
@@ -1272,7 +1281,10 @@ function migrateRaceSnapshot(value: RaceSnapshot): RaceSnapshot {
 function isCompatibleRaceSnapshot(
   value: unknown,
   config: RaceConfig,
-  options: { requireTrackSurface?: boolean } = {},
+  options: {
+    requireLegacySurfaceProjection?: boolean
+    requireTrackSurface?: boolean
+  } = {},
 ) {
   if (!isRecord(value)) {
     return false
@@ -1340,9 +1352,10 @@ function isCompatibleRaceSnapshot(
     typeof value.sessionStatus === 'string' &&
     sessionStatuses.has(value.sessionStatus) &&
     typeof value.eventMessage === 'string' &&
-    isFiniteTuple(value.rubberLevelBySector, 3) &&
-    isFiniteTuple(value.surfaceWaterMmBySector, 3) &&
-    isFiniteTuple(value.dryingLineBySector, 3) &&
+    (!options.requireLegacySurfaceProjection ||
+      (isFiniteTuple(value.rubberLevelBySector, 3) &&
+        isFiniteTuple(value.surfaceWaterMmBySector, 3) &&
+        isFiniteTuple(value.dryingLineBySector, 3))) &&
     (!options.requireTrackSurface ||
       strictTrackSurfaceStateForTrack(value.trackSurface, config.track) !==
         null) &&
@@ -1416,8 +1429,23 @@ export function parseRaceCheckpoint(
         requireTrackSurface: true,
       })
     ) {
-      const normalized = normalizeTrackSurfaceCompatibility(
+      const normalized = normalizeCanonicalTrackSurface(
         parsed.snapshot as RaceSnapshot,
+      )
+
+      return normalized ? migrateRaceSnapshot(normalized) : null
+    }
+
+    if (
+      parsed.version === LEGACY_V3_RACE_CHECKPOINT_VERSION &&
+      parsed.modelVersion === RACE_SIMULATION_MODEL_VERSION &&
+      isCompatibleRaceSnapshot(parsed.snapshot, config, {
+        requireLegacySurfaceProjection: true,
+        requireTrackSurface: true,
+      })
+    ) {
+      const normalized = normalizeCanonicalTrackSurface(
+        parsed.snapshot as LegacySurfaceRaceSnapshot,
       )
 
       return normalized ? migrateRaceSnapshot(normalized) : null
@@ -1426,10 +1454,12 @@ export function parseRaceCheckpoint(
     if (
       parsed.version === 2 &&
       parsed.modelVersion === LEGACY_V2_RACE_SIMULATION_MODEL_VERSION &&
-      isCompatibleRaceSnapshot(parsed.snapshot, config)
+      isCompatibleRaceSnapshot(parsed.snapshot, config, {
+        requireLegacySurfaceProjection: true,
+      })
     ) {
       const hydrated = hydrateLegacyTrackSurface(
-        parsed.snapshot as RaceSnapshot,
+        parsed.snapshot as LegacySurfaceRaceSnapshot,
         config,
       )
 
@@ -1446,7 +1476,12 @@ export function parseRaceCheckpoint(
     }
 
     const migratedLegacy = migrateLegacyF1RaceSnapshot(parsed.snapshot)
-    if (!migratedLegacy || !isCompatibleRaceSnapshot(migratedLegacy, config)) {
+    if (
+      !migratedLegacy ||
+      !isCompatibleRaceSnapshot(migratedLegacy, config, {
+        requireLegacySurfaceProjection: true,
+      })
+    ) {
       return null
     }
 

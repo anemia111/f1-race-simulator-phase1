@@ -29,8 +29,8 @@ The live representation uses `Float64Array`; `RaceSnapshot.trackSurface`
 stores its strict plain-array serialization. It is the single persisted
 simulation authority. Active UI, strategy and session-rule consumers derive
 sector summaries directly from it through `trackSurfaceSectorSummary`. The
-historic three-sector fields remain output-only checkpoint compatibility data
-and can be retired with a deliberate schema-compatibility change.
+historic three-sector fields are absent from the current `RaceSnapshot` and
+checkpoint schema v4; they exist only in the explicit v3/v2 migration input.
 
 ## Canonical live evolution
 
@@ -61,22 +61,21 @@ does not appear as an external stock source or sink.
 ## Compatibility, force coupling, and checkpoints
 
 `RaceSnapshot.trackSurface` is the only dynamic surface authority. After the
-canonical update, racing-line values are projected into the historic
-three-sector fields for checkpoint compatibility. Active runtime and UI reads
-use the same direct canonical summary helper instead. Compatibility fields are
-outputs and are never advanced independently or projected back into the
-canonical state.
+canonical update, active runtime and UI reads use the same direct canonical
+summary helper. No three-sector water, drying or rubber copy is written to the
+current snapshot.
 
-Checkpoint schema v3 requires a well-formed canonical surface and normalizes
-all compatibility sectors from it on restore. Schema v2 checkpoints are
-deterministically hydrated once from their then-authoritative three-sector
-values, active track sector marks, and source-labelled surface profile. A
-malformed v3 canonical state is rejected rather than silently rebuilt from
-stale compatibility fields.
+Checkpoint schema v4 requires a well-formed canonical surface and stores no
+three-sector projection. Schema v3 checkpoints validate their canonical state,
+discard their projection copies, and continue as v4 state. Schema v2
+checkpoints are deterministically hydrated once from their then-authoritative
+three-sector values, active track sector marks, and source-labelled surface
+profile. A malformed v3 or v4 canonical state is rejected rather than silently
+rebuilt from stale compatibility fields.
 
 The source-labelled static profile is selected when the race is created and is
 saved with that race's canonical state. Updating an external configuration
-cannot alter an already-running race; v3 restoration verifies that the saved
+cannot alter an already-running race; restoration verifies that the saved
 static profile, cell grid, defaults, and base-friction array match the active
 track definition before allowing continuation.
 
@@ -234,10 +233,11 @@ not run the cell probe as a second evolution pass.
 Focused tests cover neutral/default behavior, wrap-around cell resolution,
 lane selection, canonical serialize/deserialize round trips, water and rubber
 flux closure, rain wash, local tyre work, traversal ordering, session carry,
-checkpoint rejection, compatibility projection, local-force monotonicity, and
-race-loop integration. `npm run validate:track-surface` also runs a deterministic
-36-case matrix: Monaco, Monza, Singapore, Spa, Suzuka, and Zandvoort crossed
-with green, rubbered, light-rain, heavy-rain, drying, and off-line scenarios.
+checkpoint rejection, v3/v2 compatibility migration, local-force monotonicity,
+and race-loop integration. `npm run validate:track-surface` also runs a
+deterministic 36-case matrix: Monaco, Monza, Singapore, Spa, Suzuka, and
+Zandvoort crossed with green, rubbered, light-rain, heavy-rain, drying, and
+off-line scenarios.
 The light- and heavy-rain probes use fixed 2 and 10 mm/h policy inputs.
 The circuit names are coverage labels only: the generator uses the public
 domain API, performs no fit or calibration, consults no holdout, and applies no
