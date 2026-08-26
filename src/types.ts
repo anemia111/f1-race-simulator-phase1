@@ -1460,15 +1460,8 @@ export type RaceSnapshot = {
   /** End of the post-SC/VSC/red restart window (low grip), if active. */
   restartUntilSeconds: number | null
   fuelEffectSeconds: number
-  trackEvolutionLevel: number
-  /**
-   * Canonical, serializable two-lane local-surface state. The historic
-   * three-sector values below are compatibility projections for existing UI
-   * and session rules; they must not become a second simulation authority.
-   */
+  /** Canonical, serializable two-lane local-surface state. */
   trackSurface: TrackSurfaceStateSnapshot
-  /** Stateful racing-line rubber for sectors 1..3, 0 (green) to 1 (rubbered). */
-  rubberLevelBySector: [number, number, number]
   weather: WeatherState
   weatherLabel: string
   weatherForecastLabel: string
@@ -1483,10 +1476,6 @@ export type RaceSnapshot = {
   /** FIA B1.5.12 Race Director grip declaration; unavailable outside F1. */
   lowGripConditions: boolean | null
   trackGrip: number
-  /** Stateful surface water depth in millimetres for sectors 1..3. */
-  surfaceWaterMmBySector: [number, number, number]
-  /** Drying-line maturity from 0 (fully wet) to 1 (dry racing line). */
-  dryingLineBySector: [number, number, number]
   greenFlagLaps: number
   /** Running clock excludes red-flag suspension time. */
   raceClockSeconds: number

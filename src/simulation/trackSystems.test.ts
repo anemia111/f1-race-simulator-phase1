@@ -31,7 +31,6 @@ import {
   applyLegacyTrackSurfaceSectorsToState,
   createTrackSurfaceStateFromLegacySectors,
   deserializeTrackSurfaceState,
-  trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
   trackSurfaceAt,
 } from './trackSurface'
@@ -480,8 +479,6 @@ describe('track-dependent systems', () => {
         rubberLevelBySector: [1, 1, 1],
         surfaceWaterMmBySector: [0, 0, 0],
       })
-      const sectors = trackSurfaceSectorSummary(seededSurface)
-
       return {
         ...initial,
         cars: initial.cars.map((car, index) =>
@@ -495,14 +492,11 @@ describe('track-dependent systems', () => {
               }
             : { ...car, speedKph: 0, status: 'retired' as const },
         ),
-        dryingLineBySector: sectors.dryingLineBySector,
         formationLapsCompleted: 1,
         formationLapsPlanned: 0,
         raceStartedAtSeconds: 0,
-        rubberLevelBySector: sectors.rubberLevelBySector,
         startProcedure: 'racing' as const,
         startProcedureRemainingSeconds: 0,
-        surfaceWaterMmBySector: sectors.surfaceWaterMmBySector,
         trackSurface: serializeTrackSurfaceState(seededSurface),
       }
     }

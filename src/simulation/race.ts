@@ -165,7 +165,6 @@ import {
 import {
   createTrackRubberState,
   gripWithTrackRubber,
-  trackEvolutionLevelFor,
 } from './trackEvolution'
 import {
   advanceTrackSurface,
@@ -2568,11 +2567,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         (cars[0]?.fuelLoadKg ?? 0) + heatHazardMassIncreaseKg,
       track: config.track,
     }).lapTimeDeltaSeconds,
-    trackEvolutionLevel: trackEvolutionLevelFor(
-      initialSurfaceSectors.rubberLevelBySector,
-    ),
     trackSurface: serializeTrackSurfaceState(initialTrackSurface),
-    rubberLevelBySector: initialSurfaceSectors.rubberLevelBySector,
     weather,
     weatherLabel: weatherLabelFor(weather),
     weatherForecastLabel: weatherForecast.label,
@@ -2582,8 +2577,6 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     rainHazardDeclared: f1WeatherRules ? rainHazardDeclared : null,
     lowGripConditions: f1WeatherRules ? lowGripConditions : null,
     trackGrip,
-    surfaceWaterMmBySector: initialSurfaceSectors.surfaceWaterMmBySector,
-    dryingLineBySector: initialSurfaceSectors.dryingLineBySector,
     greenFlagLaps: 0,
     raceClockSeconds: 0,
     raceEndedEarly: false,
@@ -3442,12 +3435,6 @@ export function advanceRace(
         snapshot.formationBehindSafetyCar && nextProcedure === 'formation'
           ? ['sc', 'sc', 'sc']
           : ['clear', 'clear', 'clear'],
-      surfaceWaterMmBySector: trackSurfaceSectors.surfaceWaterMmBySector,
-      dryingLineBySector: trackSurfaceSectors.dryingLineBySector,
-      rubberLevelBySector: trackSurfaceSectors.rubberLevelBySector,
-      trackEvolutionLevel: trackEvolutionLevelFor(
-        trackSurfaceSectors.rubberLevelBySector,
-      ),
       trackSurface: serializedTrackSurface,
       weather,
       weatherLabel: weatherLabelFor(weather),
@@ -8648,11 +8635,7 @@ export function advanceRace(
       fuelLoadKg: leader.fuelLoadKg + heatHazardMassIncreaseKg,
       track: config.track,
     }).lapTimeDeltaSeconds,
-    trackEvolutionLevel: trackEvolutionLevelFor(
-      trackSurfaceSectors.rubberLevelBySector,
-    ),
     trackSurface: serializedTrackSurface,
-    rubberLevelBySector: trackSurfaceSectors.rubberLevelBySector,
     weather,
     weatherLabel: weatherLabelFor(weather),
     weatherForecastLabel: weatherForecast.label,
@@ -8662,8 +8645,6 @@ export function advanceRace(
     rainHazardDeclared: f1WeatherRules ? rainHazardDeclared : null,
     lowGripConditions: f1WeatherRules ? lowGripConditions : null,
     trackGrip,
-    surfaceWaterMmBySector: trackSurfaceSectors.surfaceWaterMmBySector,
-    dryingLineBySector: trackSurfaceSectors.dryingLineBySector,
     greenFlagLaps,
     raceClockSeconds,
     raceEndedEarly,

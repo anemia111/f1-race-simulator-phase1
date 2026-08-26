@@ -9,6 +9,7 @@ import { createInitialActiveAeroState } from '../simulation/activeAero'
 import {
   deserializeTrackSurfaceState,
   serializeTrackSurfaceState,
+  trackSurfaceSectorSummary,
 } from '../simulation/trackSurface'
 import { strictTrackSurfaceStateForTrack } from '../simulation/trackSurfaceValidation'
 import type { RaceConfig, RaceSnapshot } from '../types'
@@ -43,6 +44,7 @@ function memoryStorage() {
 type MutableCheckpoint = {
   modelVersion?: unknown
   snapshot: {
+    [key: string]: unknown
     cars: Array<Record<string, unknown>>
     trackSurface?: unknown
   }
@@ -88,6 +90,7 @@ function f1Runtime(car: RaceSnapshot['cars'][number]) {
 }
 
 function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
+  addLegacySurfaceProjection(checkpoint)
   checkpoint.version = 1
   checkpoint.modelVersion = '2026.08.09.1'
   delete checkpoint.snapshot.trackSurface
@@ -101,9 +104,30 @@ function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
 }
 
 function convertCheckpointToV2(checkpoint: MutableCheckpoint) {
+  addLegacySurfaceProjection(checkpoint)
   checkpoint.version = 2
   checkpoint.modelVersion = '2026.08.11.3'
   delete checkpoint.snapshot.trackSurface
+}
+
+function addLegacySurfaceProjection(checkpoint: MutableCheckpoint) {
+  const surface = deserializeTrackSurfaceState(checkpoint.snapshot.trackSurface)
+
+  if (!surface) {
+    throw new Error('Expected a canonical surface fixture.')
+  }
+
+  const sectors = trackSurfaceSectorSummary(surface)
+  Object.assign(checkpoint.snapshot, sectors, {
+    trackEvolutionLevel:
+      sectors.rubberLevelBySector.reduce((sum, value) => sum + value, 0) /
+      sectors.rubberLevelBySector.length,
+  })
+}
+
+function convertCheckpointToV3(checkpoint: MutableCheckpoint) {
+  addLegacySurfaceProjection(checkpoint)
+  checkpoint.version = 3
 }
 
 describe('race session continuity', () => {
@@ -146,7 +170,7 @@ describe('race session continuity', () => {
       f1Runtime(snapshot.cars[0]).energyStore.rechargeRule,
     )
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
-    expect(JSON.parse(raw!).version).toBe(3)
+    expect(JSON.parse(raw!).version).toBe(4)
   })
 
   it('round-trips an event-authorized recharge rule from the supplied FIA input', () => {
@@ -173,7 +197,7 @@ describe('race session continuity', () => {
     })
   })
 
-  it('round-trips a strict SUPER FORMULA v3 checkpoint and rejects F1 runtime payloads', () => {
+  it('round-trips a strict SUPER FORMULA v4 checkpoint and rejects F1 runtime payloads', () => {
     const series = seriesPackageById.get('super-formula')
 
     if (!series) {
@@ -327,16 +351,16 @@ describe('race session continuity', () => {
       expect(restored).not.toBeNull()
       // v2 carried only aggregate sector values, so the newly hydrated lane
       // arrays can differ by last-bit rounding from a pre-v3 transient array.
-      // Once migrated and saved as v3, however, continuation is byte-stable.
-      const v3Raw = serializeRaceCheckpoint(sessionKey, restored!, now)
+      // Once migrated and saved as v4, however, continuation is byte-stable.
+      const v4Raw = serializeRaceCheckpoint(sessionKey, restored!, now)
       const reloaded = parseRaceCheckpoint(
-        v3Raw,
+        v4Raw,
         sessionKey,
         checkpointConfig,
         now,
       )
 
-      expect(v3Raw).not.toBeNull()
+      expect(v4Raw).not.toBeNull()
       expect(reloaded).toEqual(restored)
 
       const uninterrupted = advanceRace(restored!, 0.25, checkpointConfig)
@@ -346,7 +370,7 @@ describe('race session continuity', () => {
     }
   })
 
-  it('requires a well-formed v3 canonical surface and projects compatibility fields from it', () => {
+  it('requires one well-formed v4 surface and strips pre-v4 projections', () => {
     const now = 1_800_000_000_000
     const snapshot = createInitialRace(config)
     const raw = serializeRaceCheckpoint('session-a', snapshot, now)!
@@ -369,12 +393,25 @@ describe('race session continuity', () => {
     )
 
     expect(normalized?.trackSurface).toEqual(snapshot.trackSurface)
-    expect(normalized?.rubberLevelBySector).toEqual(snapshot.rubberLevelBySector)
-    expect(normalized?.surfaceWaterMmBySector).toEqual(
-      snapshot.surfaceWaterMmBySector,
+    expect(Object.hasOwn(normalized!, 'rubberLevelBySector')).toBe(false)
+    expect(Object.hasOwn(normalized!, 'surfaceWaterMmBySector')).toBe(false)
+    expect(Object.hasOwn(normalized!, 'dryingLineBySector')).toBe(false)
+    expect(Object.hasOwn(normalized!, 'trackEvolutionLevel')).toBe(false)
+
+    const v3Checkpoint = JSON.parse(raw) as MutableCheckpoint
+    convertCheckpointToV3(v3Checkpoint)
+    const migratedV3 = parseRaceCheckpoint(
+      JSON.stringify(v3Checkpoint),
+      'session-a',
+      config,
+      now,
     )
-    expect(normalized?.dryingLineBySector).toEqual(snapshot.dryingLineBySector)
-    expect(normalized?.trackEvolutionLevel).toBe(snapshot.trackEvolutionLevel)
+
+    expect(migratedV3?.trackSurface).toEqual(snapshot.trackSurface)
+    expect(Object.hasOwn(migratedV3!, 'rubberLevelBySector')).toBe(false)
+    expect(Object.hasOwn(migratedV3!, 'surfaceWaterMmBySector')).toBe(false)
+    expect(Object.hasOwn(migratedV3!, 'dryingLineBySector')).toBe(false)
+    expect(Object.hasOwn(migratedV3!, 'trackEvolutionLevel')).toBe(false)
 
     const dynamicCheckpoint = JSON.parse(raw) as MutableCheckpoint
     const dynamicSurface = dynamicCheckpoint.snapshot.trackSurface as Record<
@@ -520,7 +557,7 @@ describe('race session continuity', () => {
     }
   })
 
-  it('continues heterogeneous local-surface evolution identically after v3 replay', () => {
+  it('continues heterogeneous local-surface evolution identically after v4 replay', () => {
     const now = 1_800_000_000_000
     const initial = createInitialRace(config)
     const surface = deserializeTrackSurfaceState(initial.trackSurface)

@@ -6,6 +6,7 @@ import { runSeriesQualifying, superFormulaControlSessionTireForWeather } from '.
 import { hashChance } from './random'
 import { advanceRace, createInitialRace } from './race'
 import { buildTimedSessionPlan } from './timedSessionPlan'
+import { trackSurfaceSectorSummary } from './trackSurface'
 import { weatherFor } from './weather'
 
 type UnknownRecord = Record<string, unknown>
@@ -319,8 +320,9 @@ describe('Super Formula runtime boundary', () => {
       expect(snapshot.rainHazardDeclared).toBeNull()
       expect(snapshot.lowGripConditions).toBeNull()
       expect(snapshot.trackGrip).toBeGreaterThan(0)
-      expect(snapshot.surfaceWaterMmBySector).toHaveLength(3)
-      expect(snapshot.dryingLineBySector).toHaveLength(3)
+      const surfaceSectors = trackSurfaceSectorSummary(snapshot.trackSurface)
+      expect(surfaceSectors.surfaceWaterMmBySector).toHaveLength(3)
+      expect(surfaceSectors.dryingLineBySector).toHaveLength(3)
       for (const f1DeclarationMessage of [
         'HEAT HAZARD',
         'RAIN HAZARD',

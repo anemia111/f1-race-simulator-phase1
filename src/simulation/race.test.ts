@@ -160,20 +160,18 @@ function canonicalTrackSurfaceFor(snapshot: RaceSnapshot) {
   return trackSurface
 }
 
-function expectTrackSurfaceCompatibilityProjection(snapshot: RaceSnapshot) {
+function expectCanonicalTrackSurfaceOnly(snapshot: RaceSnapshot) {
   const sectors = trackSurfaceSectorSummary(
     canonicalTrackSurfaceFor(snapshot),
   )
 
-  expect(snapshot.surfaceWaterMmBySector).toEqual(
-    sectors.surfaceWaterMmBySector,
-  )
-  expect(snapshot.dryingLineBySector).toEqual(sectors.dryingLineBySector)
-  expect(snapshot.rubberLevelBySector).toEqual(sectors.rubberLevelBySector)
-  expect(snapshot.trackEvolutionLevel).toBe(
-    sectors.rubberLevelBySector.reduce((sum, level) => sum + level, 0) /
-      sectors.rubberLevelBySector.length,
-  )
+  expect(sectors.surfaceWaterMmBySector).toHaveLength(3)
+  expect(sectors.dryingLineBySector).toHaveLength(3)
+  expect(sectors.rubberLevelBySector).toHaveLength(3)
+  expect(Object.hasOwn(snapshot, 'surfaceWaterMmBySector')).toBe(false)
+  expect(Object.hasOwn(snapshot, 'dryingLineBySector')).toBe(false)
+  expect(Object.hasOwn(snapshot, 'rubberLevelBySector')).toBe(false)
+  expect(Object.hasOwn(snapshot, 'trackEvolutionLevel')).toBe(false)
 }
 
 function withCanonicalTrackSurfaceSectors(
@@ -188,24 +186,14 @@ function withCanonicalTrackSurfaceSectors(
     canonicalTrackSurfaceFor(snapshot),
     sectors,
   )
-  const compatibility = trackSurfaceSectorSummary(trackSurface)
-
   return {
     ...snapshot,
-    dryingLineBySector: compatibility.dryingLineBySector,
-    rubberLevelBySector: compatibility.rubberLevelBySector,
-    surfaceWaterMmBySector: compatibility.surfaceWaterMmBySector,
-    trackEvolutionLevel:
-      compatibility.rubberLevelBySector.reduce(
-        (sum, level) => sum + level,
-        0,
-      ) / compatibility.rubberLevelBySector.length,
     trackSurface: serializeTrackSurfaceState(trackSurface),
   }
 }
 
 describe('canonical track-surface snapshot authority', () => {
-  it('creates once and projects compatibility sectors through formation and racing ticks', () => {
+  it('keeps one canonical surface through formation and racing ticks', () => {
     const config: RaceConfig = {
       ...makeConfig('canonical-surface-lifecycle'),
       track: { ...tracks[0], rainProbability: 0 },
@@ -213,19 +201,19 @@ describe('canonical track-surface snapshot authority', () => {
     const initial = createInitialRace(config)
     const initialSurfaceJson = JSON.stringify(initial.trackSurface)
 
-    expectTrackSurfaceCompatibilityProjection(initial)
+    expectCanonicalTrackSurfaceOnly(initial)
 
     const formation = advanceRace(initial, 0.5, config)
     expect(formation.startProcedure).toBe('formation')
-    expectTrackSurfaceCompatibilityProjection(formation)
+    expectCanonicalTrackSurfaceOnly(formation)
     expect(JSON.stringify(initial.trackSurface)).toBe(initialSurfaceJson)
 
     const racing = advanceRace(runThroughStart(config), 0.5, config)
     expect(racing.startProcedure).toBe('racing')
-    expectTrackSurfaceCompatibilityProjection(racing)
+    expectCanonicalTrackSurfaceOnly(racing)
   })
 
-  it('uses canonical surface lanes rather than stale three-sector compatibility fields', () => {
+  it('uses canonical surface lanes without three-sector snapshot state', () => {
     const config: RaceConfig = {
       ...makeConfig('canonical-surface-off-line'),
       track: { ...tracks[0], rainProbability: 0 },
@@ -242,22 +230,18 @@ describe('canonical track-surface snapshot authority', () => {
     const next = advanceRace(
       {
         ...initial,
-        // These are deliberately stale compatibility values. The serialized
-        // two-lane state above is the only source for the next tick.
-        dryingLineBySector: [0, 0, 0],
-        rubberLevelBySector: [0, 0, 0],
-        surfaceWaterMmBySector: [4, 4, 4],
         trackSurface: serializeTrackSurfaceState(seededSurface),
       },
       0,
       config,
     )
 
-    expectTrackSurfaceCompatibilityProjection(next)
-    next.rubberLevelBySector.forEach((level, sector) => {
+    expectCanonicalTrackSurfaceOnly(next)
+    const nextSectors = trackSurfaceSectorSummary(next.trackSurface)
+    nextSectors.rubberLevelBySector.forEach((level, sector) => {
       expect(level).toBeCloseTo([0.6, 0.4, 0.2][sector], 12)
     })
-    expect(next.surfaceWaterMmBySector).toEqual([0, 0, 0])
+    expect(nextSectors.surfaceWaterMmBySector).toEqual([0, 0, 0])
 
     const canonicalSurface = canonicalTrackSurfaceFor(next)
     const racingLine = trackSurfaceAt(canonicalSurface, {
@@ -297,7 +281,7 @@ describe('canonical track-surface snapshot authority', () => {
     const zero = advanceRace(seeded, 0, config)
 
     expect(zero.trackSurface).toEqual(seeded.trackSurface)
-    expectTrackSurfaceCompatibilityProjection(zero)
+    expectCanonicalTrackSurfaceOnly(zero)
 
     const live = advanceRace(zero, 0.25, config)
     const evolved = canonicalTrackSurfaceFor(live)
@@ -307,7 +291,7 @@ describe('canonical track-surface snapshot authority', () => {
     expect(evolved.bondedRubber[0]).toBeGreaterThan(
       evolved.bondedRubber[1],
     )
-    expectTrackSurfaceCompatibilityProjection(live)
+    expectCanonicalTrackSurfaceOnly(live)
   })
 
   it('restores only an exact same-track completed-session surface', () => {
@@ -347,7 +331,7 @@ describe('canonical track-surface snapshot authority', () => {
     })
 
     expect(restored.trackSurface).toEqual(carriedState)
-    expectTrackSurfaceCompatibilityProjection(restored)
+    expectCanonicalTrackSurfaceOnly(restored)
 
     const wrongTrack = createInitialRace({
       ...config,
@@ -1386,11 +1370,9 @@ describe('starting grid', () => {
     expect(partiallyCompleted.startProcedure).toBe('formation')
     expect(skipped.startProcedure).toBe('grid')
     expect(skipped.trackSurface).toEqual(manual.trackSurface)
-    expect(skipped.surfaceWaterMmBySector).toEqual(
-      manual.surfaceWaterMmBySector,
+    expect(trackSurfaceSectorSummary(skipped.trackSurface)).toEqual(
+      trackSurfaceSectorSummary(manual.trackSurface),
     )
-    expect(skipped.rubberLevelBySector).toEqual(manual.rubberLevelBySector)
-    expect(skipped.dryingLineBySector).toEqual(manual.dryingLineBySector)
     expect(skipped.formationLapsCompleted).toBe(skipped.formationLapsPlanned)
     expect(skipped.raceStartedAtSeconds).toBeNull()
     expect(skipped.cars.every((car) => car.lapHistory.length === 0)).toBe(true)
@@ -5104,9 +5086,11 @@ describe('SUPER FORMULA race-distance authority', () => {
     const initialRuntime = initial.cars[0]!.runtimeSystems
 
     expect(initial.weather).toBe('clear')
-    expect(initial.surfaceWaterMmBySector.every((water) => water > 0)).toBe(
-      true,
-    )
+    expect(
+      trackSurfaceSectorSummary(initial.trackSurface).surfaceWaterMmBySector.every(
+        (water) => water > 0,
+      ),
+    ).toBe(true)
     if (initialRuntime.kind !== 'super-formula') {
       throw new Error('Expected SUPER FORMULA runtime')
     }
@@ -5216,9 +5200,11 @@ describe('SUPER FORMULA race-distance authority', () => {
     expect(initial.weather).toBe('clear')
     expect(transitioned.weather).toBe('clear')
     expect(transitioned.timedSegmentId).toBe('Q1-B')
-    expect(transitioned.surfaceWaterMmBySector.some((water) => water > 0)).toBe(
-      true,
-    )
+    expect(
+      trackSurfaceSectorSummary(
+        transitioned.trackSurface,
+      ).surfaceWaterMmBySector.some((water) => water > 0),
+    ).toBe(true)
     if (
       initialRuntime.kind !== 'super-formula' ||
       transitionedRuntime.kind !== 'super-formula'
