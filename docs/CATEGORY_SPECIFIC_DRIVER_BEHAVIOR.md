@@ -86,6 +86,12 @@ formulas at the ideal execution endpoint and no longer reread driver skills.
 The intent blend and driver-ID strategy variation remain; physical, SOC,
 recharge, power, regulatory and team-machine authorities do not move.
 
+DA-14 is resolved without changing production formulas. The existing 12-to-30
+skill expansion is fixed as a non-negative, row-normalized construction:
+equal inputs stay equal, outputs remain inside the compact source envelope,
+and representative normalized rejoin blends do not amplify an equal value.
+The four aggregate-only skills gain no new consumer.
+
 The contract is in `src/simulation/driverAgentContract.ts`; the behavior-neutral
 adapter is in `src/simulation/categoryDriverAgent.ts`; the diagnostic projector
 is in `src/simulation/driverPerception.ts`; and the race and offline
@@ -283,13 +289,12 @@ Phase 7.8A records the 30-skill and six-style construction, normalization,
 consumer, authority, and random-cadence graph in
 `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md`. It distinguishes named production
 reads, aggregate-only limit-break participation, materialized display overall,
-and overall's construction/import/migration/profile-selection ancestry. The
-review register deliberately leaves overlapping incident and energy effects
-unresolved for Phase 7.8B or later; DA-01/DA-05's battle and tyre paths,
-DA-04's timed rain overlay, and DA-06's practice/setup path are subsequently
-assigned explicit owners. The
-documentation slice itself changes no coefficient, seed, random draw, runtime
-field, or saved state.
+and overall's construction/import/migration/profile-selection ancestry. At that
+boundary the review register deliberately left compound effects open for Phase
+7.8B or later. The subsequent DA-01 through DA-14 slices assign explicit
+owners, cadence/session contracts, removals, or the normalized construction
+contract. The documentation slice itself changes no coefficient, seed, random
+draw, runtime field, or saved state.
 
 The first Phase 7.8B cleanups remove the uncalled `driverAbilityDeficit` and
 `qualifyingSetupPenaltySeconds` exports, rename only the track-limit helper's
@@ -324,7 +329,8 @@ the overlay.
 DA-06 is closed by giving programme execution to `consistency` and setup
 feedback/convergence to final `carBalanceAdaptation`. Direct final-skill
 `adaptability` reads are removed from this setup path without redistributing
-their coefficients. Compact-to-expanded construction remains tracked by DA-14.
+their coefficients. Compact-to-expanded construction is covered by the
+separate normalized DA-14 contract.
 
 DA-07 is closed by removing qualifying pace, pressure, traffic and awareness
 from team pit-release ordering. Existing machine/crew inputs, hashes, traffic
@@ -358,6 +364,13 @@ Existing deployment, recovery and superclipping coefficients use their ideal
 execution endpoint without redistribution or fitting. Intent scheduling still
 varies by driver ability, deterministic superclipping variation still uses the
 driver ID, and the physical Energy Store remains authoritative.
+
+DA-14 is closed by black-boxing the existing compact expansion as a convex
+12-to-30 matrix. Tests require complete source/output coverage, non-negative
+row coefficients summing to one, equal-input preservation, source-envelope
+bounds and representative normalized-rejoin invariance. The mapping and all
+runtime consumers remain unchanged, the four aggregate-only final skills gain
+no named reader, and no validation or holdout value is used.
 
 ## Observability and authority
 
@@ -493,9 +506,7 @@ Both category policies still require shared agent capabilities:
 - persistent category experience separated by series and vehicle era;
 - decision-record retention and deterministic replay comparison;
 - audit and migration of any newly found or newly introduced direct
-  compatibility calls; and
-- resolution and removal of the unexplained duplicate effects recorded in the
-  Phase 7.8A driver-ability dependency graph in Phase 7.8B or a later slice.
+  compatibility calls.
 
 Until those items and category acceptance cases are implemented, the phrase
 "category-specific Driver Agent" refers to the contract boundary, Phase 7.1
@@ -506,6 +517,6 @@ explicit legacy Electrical Overtake compatibility request. Phase 7.6 adds only
 ownership-checked dispatch of the unchanged SF OTS use predicate after
 availability passes. Phase 7.7 adds only ownership-checked dispatch of the
 unchanged timed-session execution decision. Phase 7.8A adds only the audited
-driver-ability dependency graph and does not resolve its review-required
-compound effects. It does not mean completed category-specific driving
-behavior.
+driver-ability dependency graph; Phase 7.8B closes its DA-01 through DA-14
+review register through explicit contracts and removals. It does not mean
+completed category-specific driving behavior.

@@ -78,6 +78,15 @@ have multiple compact ancestors because several outputs are arithmetic means.
 The final `DriverSkillProfile.racePace` node must not be confused with the
 compact `racePace` source axis, which also constructs other active skills.
 
+Phase 7.8B fixes the expansion as a normalized construction contract. For each
+of the 30 outputs, the 12 inferred source coefficients are non-negative and sum
+to one; every compact source reaches at least one output. Equal compact inputs
+therefore remain equal after expansion, and a mixed input cannot produce a
+final skill outside the compact source minimum/maximum. The returned 30-skill
+profile materializes independent fields, while normalized downstream means
+preserve an equal-value input when expanded descendants rejoin. These are
+structural assertions over the existing mapping, not fitted coefficients.
+
 | Compact source axis | Final 30-skill outputs |
 | --- | --- |
 | `adaptability` | `adaptability`, `lowSpeedCornerSkill`, `mediumSpeedCornerSkill`, `highSpeedCornerSkill`, `tireWarmupSkill`, `intermediateSkill`, `trafficManagement`, `ersManagement`, `carBalanceAdaptation` |
@@ -205,7 +214,7 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-03 | ERS skill in intent, deployment, recovery and superclipping response | resolved single ability owner in Phase 7.8B | `driverEnergyIntent.ts` alone reads ability for F1 energy scheduling; deployment, recovery and superclipping retain their existing formulas at the ideal execution endpoint without a second ability edge |
 | DA-04 | Timed decision control followed by a rain multiplier | resolved single owner in Phase 7.8B | Generic decision windows retain adaptability, braking and throttle control; the rain overlay reads only `wetSkill`, with its existing severity and risk envelope fixed by a pure helper test |
 | DA-05 | Tyre skill in physical state, battle resolution and strategy | resolved physical-state boundary in Phase 7.8B | Physical wear, temperature, grip and strategy retain their owners; battle no longer rereads tyre-management skill or tyre state as a second direct edge and instead consumes resulting speed, gap and closing opportunity |
-| DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion remains a separate DA-14 construction review |
+| DA-06 | Practice programme execution followed by setup feedback and convergence | resolved owner split in Phase 7.8B | `consistency` alone owns the programme score; final `carBalanceAdaptation` alone owns feedback, completeness and convergence. Compact-source expansion is covered by the normalized DA-14 construction contract |
 | DA-07 | Driver execution/awareness skills influencing team qualifying release order | resolved team owner in Phase 7.8B | Release order now reads no driver ability: machine qualifying rating, pit-crew speed and the existing deterministic planning hashes remain, without reallocating removed driver weights |
 | DA-08 | Per-window control plus one run-wide consistency variation | resolved contract in Phase 7.8B | Twelve windows own local execution; one deterministic-key draw owns only a bounded non-negative whole-run assembly shortfall, with symmetry and bounds held by a pure helper test |
 | DA-09 | Decision brake pressure versus telemetry skill fallback | resolved mutually exclusive fallback in Phase 7.8B | An explicit decision scale short-circuits the skill blend; the skill path is evaluated only when no decision exists |
@@ -213,12 +222,12 @@ current authored per-driver variation; Phase 7.8A does not invent one.
 | DA-11 | Above-100 all-skill recovery plus named performance paths | resolved in Phase 7.8B | Named performance and energy paths now saturate each input at 100; only the bounded all-skill limit-break fraction consumes authored excess |
 | DA-12 | Generic control/awareness followed by qualifying and race adjudication rolls | resolved adjudication owner in Phase 7.8B | Offline abort/deletion and live timed yellow/deletion use fixed base chances only; race track-limit warnings use base plus pressure/tyre/grip/rain context, with no driver ability reread |
 | DA-13 | Live timed sessions inheriting race attack/defend cues while formal battle resolution is race-only | resolved session boundary in Phase 7.8B | Attack and defend cues are gated to race-distance sessions; timed-session tow, dirty-air avoidance and yield cues remain as traffic-management controls |
-| DA-14 | One compact axis fans out to multiple final skills that can rejoin the same blend, such as identical expanded `brakingSkill`/`precision` inputs in braking or `overtakingSkill`/`defendingSkill` rejoining their aggregate `racecraft` | construction-time duplicate / review required | The 12-to-30 expansion is explicit, but repeated sensitivity after fan-out has not been justified or calibrated |
+| DA-14 | One compact axis fans out to multiple final skills that can rejoin the same blend, such as identical expanded `brakingSkill`/`precision` inputs in braking or `overtakingSkill`/`defendingSkill` rejoining their aggregate `racecraft` | resolved normalized construction contract in Phase 7.8B | All 30 output rows are non-negative convex combinations of the 12 sources; equal inputs and source bounds survive expansion and representative normalized rejoin blends do not amplify an equal value. Final 30-skill fields remain independently editable after materialization |
 
-No `review required` row may be relabelled intentional merely because its
-modules have separate authorities. Resolution needs a dedicated sensitivity
-study and acceptance criteria; it must not use holdout or documentation
-validation values for tuning.
+The final Phase 7.8B audit leaves no `review required` row in DA-01 through
+DA-14. Their resolutions are explicit ownership, cadence, session-boundary,
+normalization or removal contracts; they are not empirical calibration claims.
+No holdout or documentation-validation value is used for tuning.
 
 ## Dead and incomplete sinks
 
@@ -288,9 +297,9 @@ programme execution now reads `consistency` alone, while final
 `carBalanceAdaptation` alone owns setup feedback, completeness and convergence.
 The direct final-skill `adaptability` reads are removed from both setup stages;
 its compact-source contribution to expanded `carBalanceAdaptation` remains
-explicitly tracked under DA-14. Existing setup hashes, evaluation count,
-cadence, return types, and saved shape remain unchanged. Setup results
-intentionally lose the duplicate final-skill sensitivity.
+covered by the normalized DA-14 construction contract. Existing setup hashes,
+evaluation count, cadence, return types, and saved shape remain unchanged.
+Setup results intentionally lose the duplicate final-skill sensitivity.
 
 The ninth cleanup resolves DA-07 by making qualifying pit release a team-owned
 operation. The four direct driver-ability reads are removed from ordering;
@@ -358,6 +367,17 @@ superclipping variation still uses the driver ID. SOC, recharge, power,
 regulatory and team-machine authorities are unchanged. Energy results
 intentionally lose the repeated downstream ability sensitivity.
 
+The sixteenth cleanup resolves DA-14 without changing production code. A
+black-box contract reconstructs the existing 12-to-30 expansion matrix and
+requires 30 complete output rows, non-negative coefficients, row sums of one,
+source coverage, equal-input preservation and source-envelope bounds. It also
+checks representative braking/racecraft rejoin paths and a performance blend
+for equal-value non-amplification. The four aggregate-only final skills remain
+schema/display values and participants in the existing all-skill limit-break
+mean only; no consumer or coefficient is invented. Mapping, runtime behavior,
+randomness, cadence and saved state are unchanged, and no observed, holdout or
+documentation-validation value is used.
+
 ## Invariants
 
 - displayed/derived overall cannot be reread after materialization as a race or
@@ -370,5 +390,5 @@ intentionally lose the repeated downstream ability sensitivity.
 - graph documentation cannot change random keys, cadence, state, or result;
 - a new production ability read must be added to this graph and classified for
   duplicate interaction before it is treated as reviewed; and
-- Phase 7 remains incomplete until the review-required compounds are resolved
-  and operational category policies consume bounded observations.
+- Phase 7 remains incomplete until operational category policies consume
+  bounded observations and the remaining agent capabilities are implemented.

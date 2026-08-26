@@ -15,13 +15,10 @@ that ephemeral compatibility request through the switch. Phase 7.6 routes the
   switch. Phase 7.7 routes the unchanged generic timed-session driver-execution
   decision used by qualifying, Sprint Qualifying, and practice through the same
   switch. Phase 7.8A documents the current driver-ability dependency graph and
-  its unresolved compound effects without changing production behavior. The
-  initial Phase 7.8B cleanups remove two unused helpers, correct a track-limit
-  parameter label, and narrow redundant decision and energy-intent return
-  surfaces without changing a consumed calculation. Those first thirteen slices
-  are behavior-neutral. The next Phase 7.8B slice resolves DA-11 by making the
-  existing limit-break aggregate the sole owner of ratings above 100; named
-  paths now saturate at 100 without coefficient refitting. These slices do
+  the compound effects then requiring review, without changing production
+  behavior. Phase 7.8B closes DA-01 through DA-14 with explicit owner, cadence,
+  session-boundary, normalization and removal contracts. It does not tune from
+  observed, holdout or documentation-validation values. This graph review does
   **not** complete Phase 7,
 activate an observation-consuming F1 or SUPER FORMULA driving policy, add
 learned category experience, or claim that the current generic driver logic is
@@ -39,7 +36,7 @@ The batch has five relevant implementation boundaries:
 - `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
   projection without joining the live race path;
 - `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md` records source construction,
-  normalization, production consumers, aggregate-only skills, and the unresolved
+  normalization, production consumers, aggregate-only skills, and the resolved
   duplicate-effect register; and
 - `src/simulation/race.ts` calls the reversible adapter wrapper at the
   pre-advance race decision seam and passes the same route metadata to
@@ -100,7 +97,7 @@ DA-06 then separates setup responsibilities without coefficient replacement.
 `consistency` owns practice programme execution, and final
 `carBalanceAdaptation` owns feedback, completeness, and convergence. The direct
 final-skill `adaptability` reads leave both setup stages; compact-source
-expansion remains a separate DA-14 review.
+expansion is covered by the separate normalized DA-14 contract.
 
 DA-07 returns qualifying pit-release ordering to the team domain. No driver
 ability now changes that schedule; machine qualifying rating, pit-crew speed,
@@ -141,6 +138,12 @@ scheduling. Deployment, recovery and superclipping keep their existing formulas
 at the ideal execution endpoint and no longer reread skills. The intent blend,
 driver-ID strategy variation, Energy Store accounting, regulatory limits and
 team-machine authority remain in their existing owners.
+
+DA-14 then closes the compact-expansion review without production changes. The
+existing 12-to-30 matrix is tested as non-negative and row-normalized, so equal
+inputs remain equal and every output stays inside the compact source envelope.
+Representative braking/racecraft rejoins and a performance blend preserve the
+equal value. The four aggregate-only skills gain no new consumer.
 
 ## Runtime flow
 
@@ -280,9 +283,9 @@ it does not create an observation-consuming qualifying or practice policy.
 Phase 7.8A records the current 30-skill and six-style dependency graph, including
 the separate raw-behavior, performance-normalized, limit-break, and display
 domains. It also identifies aggregate-only skills, dead sinks, and compound
-effects that still require review. The graph is documentation, not a new
-runtime manifest or a claim that the unexplained duplicate effects are fixed;
-their resolution remains Phase 7.8B or later work.
+effects that required review at that boundary. The graph is documentation, not
+a new runtime manifest; subsequent Phase 7.8B slices provide the explicit
+resolution contracts.
 
 The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
@@ -297,8 +300,9 @@ DA-13 is resolved by the subsequent race-distance cue gate, and DA-01 by the
 formal-battle-owner cleanup. DA-05 is resolved by removing the battle tyre
 surrogate, DA-12 by the adjudication-owner cleanup, and DA-03 by keeping ability
 only in `F1EnergyIntent` while downstream execution uses its ideal endpoint.
-DA-14 construction sensitivity remains open; Phase 7 also remains incomplete
-until operational category policies consume bounded observations.
+DA-14 closes the register with a normalized 12-to-30 construction contract and
+no production formula change. Phase 7 remains incomplete until operational
+category policies consume bounded observations.
 
 ## Contract model
 
@@ -548,9 +552,7 @@ Phase 7 is not complete until later slices provide and verify at least:
   start, and rule-aware racecraft policy;
 - decision-record retention, checkpoint/replay integration, and bounded logging;
 - audit and migration of any newly found or newly introduced direct
-  compatibility call sites;
-- resolution and removal of the unexplained duplicate effects recorded in the
-  Phase 7.8A driver-ability graph in Phase 7.8B or a later slice; and
+  compatibility call sites; and
 - cross-category and rule-aware behavior acceptance coverage.
 
 Until those items are implemented, `category-agent-v1` names the contract and
@@ -563,5 +565,6 @@ Electrical Overtake request; effective status remains downstream. Phase 7.6
 adds only category-owned dispatch of the unchanged SF OTS use predicate after
 downstream availability passes. Phase 7.7 adds only ownership-checked dispatch
 of the unchanged timed-session execution decision. Phase 7.8A adds only the
-audited driver-ability dependency graph; it does not resolve its review-required
-compound effects. None is operational category-specific Driver AI.
+audited driver-ability dependency graph; Phase 7.8B closes its DA-01 through
+DA-14 register through explicit contracts and removals. None is operational
+category-specific Driver AI.
