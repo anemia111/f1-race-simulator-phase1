@@ -40,7 +40,7 @@ export type TrackSurfaceState = {
   marbles: Float64Array
   /** Provenance for the static base-friction array, if one was supplied. */
   profile: TrackSurfaceProfile | null
-  /** Stable marks used only by the legacy sector adapter. */
+  /** Stable marks used by canonical summaries and the legacy adapter. */
   sectorMarks: readonly [number, number, number]
   surfaceTemperatureC: Float64Array
   version: typeof TRACK_SURFACE_STATE_VERSION
@@ -491,10 +491,8 @@ export function createTrackSurfaceState(options: {
 
   const state: TrackSurfaceState = {
     baseFriction: new Float64Array(length),
-    // Float64 keeps the legacy sector values byte-stable while the old
-    // checkpoint schema remains the migration authority. These are still SoA
-    // typed arrays; a later persisted local-surface schema can choose a more
-    // compact representation without perturbing current races.
+    // Float64 keeps deterministic surface continuation stable across
+    // serialization and legacy checkpoint migration.
     bondedRubber: new Float64Array(length),
     cellCount,
     defaults: defaultsFor(options.defaults),
