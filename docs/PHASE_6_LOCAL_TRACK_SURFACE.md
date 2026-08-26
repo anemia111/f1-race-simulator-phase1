@@ -4,10 +4,11 @@
 
 This Phase 6 implementation introduces a deterministic, two-lane local-surface
 substrate, connects it to the live race force path, and makes that substrate
-the live water/rubber evolution authority. It does **not** claim that Phase 6
-as a whole is complete: source-backed elevation/banking, physical-width
-ingestion, tyre transient/relaxation, chassis response, and measured
-circuit-specific surface parameters remain separate follow-up slices.
+the live water/rubber evolution authority. The canonical-authority migration
+and its legacy cleanup are complete. It does **not** claim that every Phase 6
+high-fidelity follow-up is complete: source-backed elevation/banking,
+physical-width ingestion, tyre transient/relaxation, chassis response, and
+measured circuit-specific surface parameters remain separate follow-up slices.
 
 ## Runtime model
 
@@ -220,6 +221,13 @@ these compatibility fallbacks only by carrying its own source, date, method,
 and confidence metadata.
 
 ## Explicitly not yet operational
+
+The canonical migration is closed with one live evolution authority, direct
+runtime/UI summaries, canonical fresh-session initialization, schema-v4
+checkpoint persistence, and explicit v3/v2 migration. The items below are not
+cleanup debt hidden behind legacy state; they require new source data or a new
+validated physical-model slice. They remain unavailable rather than receiving
+invented neutral or circuit-specific values.
 
 - Per-track roughness, drainage, evaporation, catchment, or runoff inputs;
 - measured cell-by-cell water, rubber, temperature, or debris state;

@@ -3,10 +3,6 @@ import type { TrackDefinition } from '../types'
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-export function trackEvolutionLevelFor(rubber: [number, number, number]) {
-  return rubber.reduce((total, value) => total + value, 0) / rubber.length
-}
-
 export function gripWithTrackRubber(
   baseGrip: number,
   rubberLevel: number,
