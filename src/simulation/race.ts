@@ -159,16 +159,10 @@ import {
   sessionDistanceLapsFor,
   shouldDeclareRainHazard,
 } from './regulations'
-import {
-  createTrackWaterState,
-} from './trackWater'
-import {
-  createTrackRubberState,
-  gripWithTrackRubber,
-} from './trackEvolution'
+import { gripWithTrackRubber } from './trackEvolution'
 import {
   advanceTrackSurface,
-  createTrackSurfaceStateFromLegacySectors,
+  createInitialTrackSurfaceState,
   deserializeTrackSurfaceState,
   trackSurfaceSectorSummary,
   serializeTrackSurfaceState,
@@ -2093,10 +2087,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     config.track,
     0,
   ).rainIntensityMmH
-  const initialWater = createTrackWaterState(initialRainIntensityMmH)
-  const initialRubber = createTrackRubberState()
-  // Establish the serialized two-lane surface once. Its three-sector values
-  // below are compatibility projections for established session rules and UI.
+  // Establish the serialized two-lane surface once.
   const carriedTrackSurface = config.weekendContext?.trackSurfaceCarry
   const restoredTrackSurface =
     carriedTrackSurface?.trackId === config.track.id
@@ -2107,18 +2098,12 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       : null
   const initialTrackSurface =
     restoredTrackSurface ??
-    createTrackSurfaceStateFromLegacySectors(
-      {
-        dryingLineBySector: initialWater.dryingLineBySector,
-        rubberLevelBySector: initialRubber.rubberLevelBySector,
-        sectorMarks: config.track.sectorMarks,
-        surfaceWaterMmBySector: initialWater.surfaceWaterMmBySector,
-      },
-      {
-        initialSurfaceTemperatureC: currentTemperatures.trackTemperatureC,
-        profile: config.track.surfaceProfile,
-      },
-    )
+    createInitialTrackSurfaceState({
+      initialRainIntensityMmH,
+      initialSurfaceTemperatureC: currentTemperatures.trackTemperatureC,
+      profile: config.track.surfaceProfile,
+      sectorMarks: config.track.sectorMarks,
+    })
   const initialSurfaceSectors = trackSurfaceSectorSummary(
     initialTrackSurface,
   )

@@ -1,4 +1,5 @@
 import type { TrackSurfaceProfile } from '../types'
+import { initialSurfaceWaterMmForRain } from './trackWater'
 
 /**
  * Local, deterministic road-surface state.
@@ -514,6 +515,47 @@ export function createTrackSurfaceState(options: {
     )
     state.baseFriction[flatIndex(cellIndex, 'racing-line')] = baseFriction
     state.baseFriction[flatIndex(cellIndex, 'off-line')] = baseFriction
+  }
+
+  return state
+}
+
+/** Fresh-session initializer for the canonical two-lane surface. */
+export function createInitialTrackSurfaceState(options: {
+  cellCount?: number
+  defaults?: Partial<TrackSurfaceDefaults>
+  initialRainIntensityMmH: number
+  initialSurfaceTemperatureC?: number
+  profile?: TrackSurfaceProfile
+  sectorMarks?: readonly number[]
+}): TrackSurfaceState {
+  const waterFilmMm = initialSurfaceWaterMmForRain(
+    options.initialRainIntensityMmH,
+  )
+  const dryness = clamp(
+    1 - waterFilmMm / 3.5 - options.initialRainIntensityMmH / 18,
+    0,
+    1,
+  )
+  const state = createTrackSurfaceState({
+    cellCount: options.cellCount,
+    defaults: options.defaults,
+    initialSurfaceTemperatureC: options.initialSurfaceTemperatureC,
+    profile: options.profile,
+    sectorMarks: options.sectorMarks,
+  })
+
+  for (let cellIndex = 0; cellIndex < state.cellCount; cellIndex += 1) {
+    const racingIndex = flatIndex(cellIndex, 'racing-line')
+    const offLineIndex = flatIndex(cellIndex, 'off-line')
+    state.dryness[racingIndex] = dryness
+    state.waterFilmMm[racingIndex] = waterFilmMm
+    state.dryness[offLineIndex] = clamp(dryness * 0.82, 0, 1)
+    state.waterFilmMm[offLineIndex] = clamp(
+      waterFilmMm + (1 - dryness) * 0.14,
+      0,
+      6,
+    )
   }
 
   return state

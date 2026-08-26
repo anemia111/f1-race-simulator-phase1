@@ -1,16 +1,7 @@
 import type { TrackDefinition } from '../types'
 
-export type TrackRubberState = {
-  rubberLevelBySector: [number, number, number]
-}
-
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-
-export function createTrackRubberState(initialLevel = 0): TrackRubberState {
-  const level = clamp(initialLevel, 0, 1)
-  return { rubberLevelBySector: [level, level, level] }
-}
 
 export function trackEvolutionLevelFor(rubber: [number, number, number]) {
   return rubber.reduce((total, value) => total + value, 0) / rubber.length
