@@ -27,6 +27,9 @@ const smoothstep = (edge0: number, edge1: number, value: number) => {
 }
 
 const ENERGY_INTEGRATION_STEP_SECONDS = 0.5
+// Driver ability belongs exclusively to F1EnergyIntent. Physical execution uses
+// the ideal endpoint of the existing formulas instead of reading it again.
+const IDEAL_DRIVER_ENERGY_EXECUTION = 1
 
 export const INITIAL_ENERGY_STORE_STATE_OF_CHARGE = 1
 
@@ -61,7 +64,6 @@ export type EnergySystemParameters = {
 
 export type EnergyDeploymentRequestOptions = {
   battlePhase: BattlePhase
-  driverErsManagement: number
   isFinalLap: boolean
   lapProgress: number
   overtakeActive: boolean
@@ -104,8 +106,6 @@ export type AdvanceEnergyStoreOptions = {
   /** C5.2.8 CU-K HV DC-bus limit selected by the regulatory resolver. */
   deploymentDcPowerLimitKw: number
   deploymentRequest: number
-  driverErsManagement: number
-  driverWetSkill: number
   gripMultiplier: number
   /** Lap-start-latched rule; an in-lap option change cannot rewrite the ledger. */
   rechargeRule: RechargeRuleDefinition
@@ -748,7 +748,6 @@ export function energyDeploymentRequestFor(
 ) {
   const {
     battlePhase,
-    driverErsManagement,
     isFinalLap,
     lapProgress,
     overtakeActive,
@@ -775,7 +774,7 @@ export function energyDeploymentRequestFor(
 
   const parameters = energySystemParametersFor(team)
   const management = clamp(
-    driverErsManagement * 0.68 +
+    IDEAL_DRIVER_ENERGY_EXECUTION * 0.68 +
       parameters.energyManagementSoftwareQuality * 0.32,
     0,
     1,
@@ -944,7 +943,7 @@ function advanceEnergyStoreSubstep(
   const grip = clamp(options.gripMultiplier, 0.25, 1.15)
   const wetStability =
     tireRecoveryStability(options.tire, options.surfaceWaterMm) *
-    (0.82 + clamp(options.driverWetSkill, 0, 1) * 0.18)
+    (0.82 + IDEAL_DRIVER_ENERGY_EXECUTION * 0.18)
   // The legacy 5.1 g prediction remains only for callers without an exact
   // contact-patch work budget. Its optional hardware ceiling keeps that
   // compatibility path from crediting unavailable service-brake torque.
@@ -982,7 +981,7 @@ function advanceEnergyStoreSubstep(
       : 1) *
     0.56 *
     wetStability *
-    (0.82 + clamp(options.driverErsManagement, 0, 1) * 0.18) *
+    (0.82 + IDEAL_DRIVER_ENERGY_EXECUTION * 0.18) *
     (0.84 + parameters.regenBlendingQuality * 0.16) *
     recoveryRequestScale
   const liftRecoveryRequestKw =

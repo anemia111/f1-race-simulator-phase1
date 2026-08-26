@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialDrivers, initialTeams } from '../data/grid2026';
+import { initialTeams } from '../data/grid2026';
 import type { EnergyStoreState, RechargeRuleDefinition } from '../types';
 import {
   advanceEnergyStore,
@@ -21,7 +21,6 @@ import {
 } from './regulations';
 
 const team = initialTeams.find((candidate) => candidate.id === 'ferrari')!;
-const driver = initialDrivers.find((candidate) => candidate.code === 'LEC')!;
 const raceRechargeRule = resolveF1RechargeRule({ stage: 'race' });
 
 function finiteRechargeRule(
@@ -66,8 +65,6 @@ const defaultStep: Omit<AdvanceEnergyStoreOptions, 'state'> = {
   deltaSeconds: 1,
   deploymentDcPowerLimitKw: FIA_2026_REGULATION_PROFILE.energy.maxErsPowerKw,
   deploymentRequest: 0,
-  driverErsManagement: driver.skills.ersManagement,
-  driverWetSkill: driver.skills.wetSkill,
   gripMultiplier: 1,
   rechargeRule: raceRechargeRule,
   speedKph: 300,
@@ -96,7 +93,6 @@ function deploymentRequest(
 ) {
   return energyDeploymentRequestFor({
     battlePhase: 'single-file',
-    driverErsManagement: driver.skills.ersManagement,
     isFinalLap: false,
     lapProgress: 0.2,
     overtakeActive: false,

@@ -136,6 +136,12 @@ path rereads race awareness after generic execution. Removed sensitivity is
 not redistributed; event outcomes intentionally narrow without changing
 decision cadence or saved state.
 
+DA-03 then makes `F1EnergyIntent` the sole driver-ability owner for F1 energy
+scheduling. Deployment, recovery and superclipping keep their existing formulas
+at the ideal execution endpoint and no longer reread skills. The intent blend,
+driver-ID strategy variation, Energy Store accounting, regulatory limits and
+team-machine authority remain in their existing owners.
+
 ## Runtime flow
 
 ```text
@@ -280,16 +286,19 @@ their resolution remains Phase 7.8B or later work.
 
 The first Phase 7.8B cleanups remove confirmed dead helpers, resolve the
 track-limit input-name mismatch, and narrow redundant decision and energy-intent
-return surfaces recorded by that graph. They do not select a new ability owner
-or resolve DA-03/DA-12. DA-11 is resolved by the subsequent single-owner change;
+return surfaces recorded by that graph. Those initial pieces did not select a
+new ability owner or resolve DA-03/DA-12. DA-11 is resolved by the subsequent
+single-owner change;
 DA-08 is resolved by its two-cadence executable contract, DA-04 by its
 wet-skill-only rain overlay, and DA-06 by its programme/feedback owner split.
 DA-07 is resolved by its team-owned qualifying-release contract; DA-02, DA-09
 and DA-10 are resolved by the subsequent behavior-neutral contract cleanup.
 DA-13 is resolved by the subsequent race-distance cue gate, and DA-01 by the
 formal-battle-owner cleanup. DA-05 is resolved by removing the battle tyre
-surrogate, and DA-12 by the adjudication-owner cleanup. The other
-duplicate-effect sensitivity and removal work remains open.
+surrogate, DA-12 by the adjudication-owner cleanup, and DA-03 by keeping ability
+only in `F1EnergyIntent` while downstream execution uses its ideal endpoint.
+DA-14 construction sensitivity remains open; Phase 7 also remains incomplete
+until operational category policies consume bounded observations.
 
 ## Contract model
 

@@ -82,6 +82,28 @@ describe('F1 driver energy intent', () => {
     expect(intent({ driver: limitBreak })).toEqual(intent({ driver: atScale }))
   })
 
+  it('owns the driver-ability sensitivity for the downstream energy chain', () => {
+    const withEnergySkills = (value: number) => ({
+      ...driver,
+      skills: {
+        ...driver.skills,
+        ersManagement: value,
+        precision: value,
+        raceAwareness: value,
+      },
+    })
+    const weakest = intent({ driver: withEnergySkills(0) })
+    const strongest = intent({ driver: withEnergySkills(1) })
+
+    expect(strongest).not.toEqual(weakest)
+    expect(strongest.attackEnergyReserve).toBeGreaterThan(
+      weakest.attackEnergyReserve,
+    )
+    expect(strongest.defendEnergyReserve).toBeGreaterThan(
+      weakest.defendEnergyReserve,
+    )
+  })
+
   it('changes scheduling for save, attack, defend, and qualifying contexts', () => {
     const standard = intent()
     const saving = intent({ paceMode: 'save' })

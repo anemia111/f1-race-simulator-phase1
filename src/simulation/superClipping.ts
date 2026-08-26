@@ -5,7 +5,6 @@ import type {
   RacePaceMode,
   Team,
 } from '../types'
-import { driverSkillBlend } from './driverAbility'
 import { effectiveMachineRating } from './machinePerformance'
 import {
   FIA_2026_REGULATION_PROFILE,
@@ -14,6 +13,8 @@ import {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+// Scheduling ability reaches this module only through F1EnergyIntent.
+const IDEAL_DRIVER_ENERGY_EXECUTION = 1
 
 const smoothstep = (edge0: number, edge1: number, value: number) => {
   const progress = clamp((value - edge0) / Math.max(0.000001, edge1 - edge0), 0, 1)
@@ -121,7 +122,7 @@ export type SuperClippingDemandOptions = {
   batteryPercent: number
   brakePercent: number
   deployedAtCuKBusThisLapMj: number
-  driver: Driver
+  driver: Pick<Driver, 'id'>
   energyIntent: F1EnergyIntent
   fuelLoadKg: number
   gapToAheadSeconds: number
@@ -177,11 +178,6 @@ export function superClippingDemandFor(options: SuperClippingDemandOptions) {
     return 0
   }
 
-  const ersManagement = driverSkillBlend(driver, {
-    ersManagement: 0.72,
-    raceAwareness: 0.16,
-    adaptability: 0.12,
-  })
   const isAttack =
     battlePhase === 'attacking' || battlePhase === 'side-by-side'
   const isDefend = battlePhase === 'defending'
@@ -242,7 +238,8 @@ export function superClippingDemandFor(options: SuperClippingDemandOptions) {
       0.16 +
     (1 - effectiveMachineRating(team.machine.energyRecoveryEfficiency)) * 0.11
   const fuelPressure = clamp(fuelLoadKg / 110, 0, 1) * 0.055
-  const managementCorrection = (0.82 - ersManagement) * 0.24
+  const managementCorrection =
+    (0.82 - IDEAL_DRIVER_ENERGY_EXECUTION) * 0.24
   const severeScarcity = batteryPercent < 14 ? (14 - batteryPercent) * 0.025 : 0
   const strategyVariation = deterministicStrategyVariation(driver.id, lap)
   const battleProtection = isBattle && batteryPercent >= 14 ? 0.68 : 1
@@ -275,16 +272,11 @@ export function advanceSuperClipping(
   },
 ): SuperClippingResult {
   const demandIntensity = superClippingDemandFor(options)
-  const management = driverSkillBlend(options.driver, {
-    ersManagement: 0.78,
-    consistency: 0.12,
-    raceAwareness: 0.1,
-  })
   const currentIntensity = clamp(options.currentIntensity, 0, 1)
   const rising = demandIntensity > currentIntensity
   const ratePerSecond = rising
-    ? 0.38 + (1 - management) * 0.26
-    : 0.68 + management * 0.18
+    ? 0.38 + (1 - IDEAL_DRIVER_ENERGY_EXECUTION) * 0.26
+    : 0.68 + IDEAL_DRIVER_ENERGY_EXECUTION * 0.18
   const step = ratePerSecond * Math.max(0, options.deltaSeconds)
   const intensity = rising
     ? Math.min(demandIntensity, currentIntensity + step)
