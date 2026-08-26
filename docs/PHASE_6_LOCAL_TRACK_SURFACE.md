@@ -41,8 +41,8 @@ represented cell/lane; drainage, evaporation, tyre spray, and capacity
 overflow are explicit external sinks. Vehicle traversals deposit rubber,
 displace water, mature the drying line, and move a bounded share of loose
 rubber from the racing line to the off-line lane. Rain washes bonded and loose
-rubber gradually. The former three-sector water and rubber updaters no longer
-run in parallel.
+rubber gradually. The obsolete three-sector water and rubber updater exports
+are removed, so they cannot be run as a second evolution authority.
 
 A traversal records normalized start progress, lap-fraction distance, and the
 resolved lane. Only a moving, running car that is on the circuit and outside a

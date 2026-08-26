@@ -25,11 +25,7 @@ import {
   racingLineAt,
   trackDynamicsAt,
 } from './trackDynamics'
-import {
-  advanceTrackWater,
-  createTrackWaterState,
-  gripForSurfaceWater,
-} from './trackWater'
+import { gripForSurfaceWater } from './trackWater'
 import { gripWithTrackRubber } from './trackEvolution'
 import {
   applyLegacyTrackSurfaceSectorsToState,
@@ -363,40 +359,6 @@ describe('track-dependent systems', () => {
         track,
       }),
     ).toBe('disabled')
-  })
-
-  it('accumulates standing water, then drains and restores grip', () => {
-    const track = tracks[0]
-    const cars = createInitialRace({
-      drivers: initialDrivers,
-      seed: 'water-test',
-      teams: initialTeams,
-      track,
-    }).cars
-    const wet = advanceTrackWater({
-      cars,
-      deltaSeconds: 300,
-      previous: createTrackWaterState(),
-      rainIntensityMmH: 18,
-      track,
-    })
-    const drying = advanceTrackWater({
-      cars,
-      deltaSeconds: 600,
-      previous: wet,
-      rainIntensityMmH: 0,
-      track,
-    })
-
-    expect(wet.surfaceWaterMmBySector[0]).toBeGreaterThan(0)
-    expect(drying.surfaceWaterMmBySector[0]).toBeLessThan(
-      wet.surfaceWaterMmBySector[0],
-    )
-    expect(
-      gripForSurfaceWater(1, drying.surfaceWaterMmBySector[0], 1),
-    ).toBeGreaterThan(
-      gripForSurfaceWater(1, wet.surfaceWaterMmBySector[0], 0),
-    )
   })
 
   it('preserves rubbered-in dry grip through the water model', () => {
