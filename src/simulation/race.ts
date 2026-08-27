@@ -32,6 +32,10 @@ import {
   type DriverDecision,
   type DriverDecisionContext,
 } from './driverDecision'
+import type {
+  DriverObservation,
+  SeriesDrivingPolicy,
+} from './driverAgentContract'
 import {
   decideDriverBehaviorForPath,
   resolveCategoryDrivingPolicy,
@@ -740,6 +744,26 @@ function newestDriverObservationTick(
   }
 
   return newestTick
+}
+
+function projectLiveDriverObservations(options: {
+  readonly context: DriverDecisionContext
+  readonly decisionTime: { readonly elapsedSeconds: number; readonly tick: number }
+  readonly policy: SeriesDrivingPolicy
+}): readonly DriverObservation[] {
+  if (options.policy.kind === 'f1-2026-driving-policy') {
+    return projectImmediateDriverPerception({
+      context: options.context,
+      decisionTime: options.decisionTime,
+      policy: options.policy,
+    })
+  }
+
+  return projectImmediateDriverPerception({
+    context: options.context,
+    decisionTime: options.decisionTime,
+    policy: options.policy,
+  })
 }
 
 function makeEvent(
@@ -4771,18 +4795,23 @@ export function advanceRace(
         vehicleEraId: driverPolicy.vehicleEraId,
       })
     const newestObservedTick = newestDriverObservationTick(observationInbox)
+    const observationDecisionTime = {
+      elapsedSeconds,
+      tick: driverObservationTick,
+    }
+    const observations =
+      newestObservedTick < driverObservationTick
+        ? projectLiveDriverObservations({
+            context: decisionContext,
+            decisionTime: observationDecisionTime,
+            policy: driverPolicy,
+          })
+        : []
     const advancedObservationInbox =
       newestObservedTick < driverObservationTick
         ? advanceDriverObservationInbox({
             currentTick: driverObservationTick,
-            observations: projectImmediateDriverPerception({
-              context: decisionContext,
-              decisionTime: {
-                elapsedSeconds,
-                tick: driverObservationTick,
-              },
-              policy: driverPolicy,
-            }),
+            observations,
             seed: config.seed,
             state: observationInbox,
           }).state
