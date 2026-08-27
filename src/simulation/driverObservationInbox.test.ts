@@ -331,24 +331,29 @@ describe('driver observation inbox', () => {
 
     expect(parseDriverObservationInboxState(jsonState, options)).toEqual(state)
 
-    const futureRetained = structuredClone(state)
-    futureRetained.retained = [futureRetained.pending[0]]
-    futureRetained.pending = []
+    const futureRetained = {
+      ...state,
+      pending: [],
+      retained: [state.pending[0]],
+    }
     expect(
       parseDriverObservationInboxState(futureRetained, options),
     ).toBeNull()
 
-    const crossCategory = structuredClone(state) as {
-      retained: Array<{ seriesId: string }>
+    const crossCategory = {
+      ...state,
+      retained: state.retained.map((observation, index) =>
+        index === 0
+          ? { ...observation, seriesId: 'super-formula' }
+          : observation,
+      ),
     }
-    crossCategory.retained[0].seriesId = 'super-formula'
     expect(parseDriverObservationInboxState(crossCategory, options)).toBeNull()
 
-    const duplicate = structuredClone(state)
-    duplicate.retained = [
-      duplicate.retained[0],
-      duplicate.retained[0],
-    ]
+    const duplicate = {
+      ...state,
+      retained: [state.retained[0], state.retained[0]],
+    }
     expect(parseDriverObservationInboxState(duplicate, options)).toBeNull()
   })
 })
