@@ -21,8 +21,11 @@ Phase 7.8A documents the current driver-ability dependency graph and unresolved
 compound effects without changing production behavior. The first Phase 7.8B
 cleanups remove two unused helpers, correct a track-limit parameter label, and
 narrow redundant decision and energy-intent return surfaces without changing a
-consumed calculation. These slices do not claim that perception or Phase 7 is
-complete.
+consumed calculation. Phase 7.9A adds a bounded deterministic observation inbox
+with causal delay, bounded sensor uncertainty, expiry, deduplication and finite
+retention. It remains an opt-in pure substrate and does not yet change a live
+decision or checkpoint. These slices do not claim that perception or Phase 7
+is complete.
 
 The next Phase 7.8B slice intentionally resolves DA-11: every named raw,
 performance, and direct energy-skill input saturates at 100, while the existing bounded
@@ -181,7 +184,9 @@ must not be confused with an operational category Driver Agent:
 Phase 7.0 wraps the generic race decision at its existing immutable,
 pre-advance evaluation point. Phase 7.1 can project immediate diagnostics from
 that immutable `DriverDecisionContext`, but does not invoke the projector from
-the live race hot path. Phase 7.2 also routes the existing F1 energy intent
+the live race hot path. Phase 7.9A can pass those readings through the pure
+bounded inbox, but still does not retain or consume them in the hot path.
+Phase 7.2 also routes the existing F1 energy intent
 through `categoryDriverAgent.ts`. The adapter's category/era checks cannot
 alter the delegated `DriverDecision` or energy-intent result, and the hot path
 adds no observation inbox/projector, decision record, event/log entry, retained
@@ -395,10 +400,23 @@ projection, observation, availability, and decision ticks are equal. The
 result is ephemeral: it is not retained in a live inbox, copied into a race
 snapshot, or consumed to change the delegated decision.
 
-Exact immediate readings are diagnostic compatibility evidence, not a model
-of sensing delay, noise, limited attention, or stale information. A bounded
-inbox with delayed/noisy delivery and operational consumption remains future
-work.
+Exact immediate readings are diagnostic compatibility evidence. Phase 7.9A's
+`driverObservationInbox.ts` provides the separate perception substrate:
+
+- race-control and team instructions are immediate and exact;
+- physical and category-system readings use fixed scope latency;
+- selected scalar sensors gain deterministic, bounded uncertainty from an
+  observation-ID seed namespace;
+- future readings and cross-driver/category observations are rejected;
+- duplicate IDs are idempotent only when their complete perceived payloads
+  match; and
+- pending/retained collections have fixed bounds and retained readings expire
+  by simulation tick.
+
+The operation is pure, input-order independent, JSON-serializable and never
+uses wall-clock or renderer time. It is not yet stored in `RaceSnapshot`, and
+the compatibility policy does not consume the delivered readings, so limited
+attention and operational perception remain future work.
 
 F1 and SUPER FORMULA system readings remain mutually isolated. In particular,
 F1 observations cannot carry SUPER FORMULA OTS readings, and SUPER FORMULA
@@ -498,7 +516,7 @@ agent must not gain a SUPER FORMULA OTS decision.
 
 Both category policies still require shared agent capabilities:
 
-- a bounded delayed/noisy observation inbox and operational perception policy;
+- live inbox production/persistence and an operational perception policy;
 - strategic goal, tactical intent, and low-level control layers;
 - finite memory and opponent beliefs;
 - risk budget and team-order response;
@@ -518,5 +536,6 @@ ownership-checked dispatch of the unchanged SF OTS use predicate after
 availability passes. Phase 7.7 adds only ownership-checked dispatch of the
 unchanged timed-session execution decision. Phase 7.8A adds only the audited
 driver-ability dependency graph; Phase 7.8B closes its DA-01 through DA-14
-review register through explicit contracts and removals. It does not mean
-completed category-specific driving behavior.
+review register through explicit contracts and removals. Phase 7.9A adds only
+the bounded observation-inbox substrate. It does not mean completed
+category-specific driving behavior.
