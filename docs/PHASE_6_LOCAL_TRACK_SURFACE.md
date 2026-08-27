@@ -5,10 +5,12 @@
 This Phase 6 implementation introduces a deterministic, two-lane local-surface
 substrate, connects it to the live race force path, and makes that substrate
 the live water/rubber evolution authority. The canonical-authority migration
-and its legacy cleanup are complete. It does **not** claim that every Phase 6
-high-fidelity follow-up is complete: source-backed elevation/banking,
-physical-width ingestion, tyre transient/relaxation, chassis response, and
-measured circuit-specific surface parameters remain separate follow-up slices.
+and its legacy cleanup are complete. The source-backed road-input follow-up now
+ingests the public MADRING width/banking/grade/elevation facts and Zandvoort's
+published bank angles. It also establishes fail-closed contracts for numeric
+road grip and tyre relaxation. It does **not** claim that unpublished
+circuit/tyre coefficients, a complete surveyed elevation mesh, or chassis
+response data have become available.
 
 ## Runtime model
 
@@ -123,9 +125,11 @@ temperature still evolve. Race and sprint sessions enable rubber evolution.
 
 The water ledger uses `mm-cell-lane`: the sum of film depths over equal model
 slots. It is proportional to represented inventory, but it is not kilograms,
-litres, or a claim about road area because physical width is unavailable. The
-rubber ledger uses dimensionless `coverage-cell-lane` stock. Coefficients are
-explicit neutral simulator policy; none is fitted per circuit.
+litres, or a claim about road area. Source-backed width is available only on
+MADRING; the cell stock still intentionally uses equal slots instead of mixing
+physical areas with legacy fallback tracks. The rubber ledger uses
+dimensionless `coverage-cell-lane` stock. Evolution coefficients are explicit
+neutral simulator policy; none is fitted per circuit.
 
 There is no slope, camber, catchment, drain-map, spray-return, or runoff
 geometry from which to route water between cells. Tyre-displaced film leaves
@@ -141,11 +145,14 @@ and one of `official`, `observed`, or `simulator-policy`. Its global or
 wrap-aware progress sections can currently supply only `baseFriction`.
 Malformed or unlabelled provenance fails closed to neutral `1.0` friction.
 
-No track in the shipped 2026 data receives a new static friction value in this
-slice. Consequently, a normal existing race keeps its prior base-friction
-input. A
-test-only policy profile proves the live coupling without presenting an
-invented circuit measurement as source data.
+No track in the shipped 2026 data receives a new static friction value. The
+2026 Pirelli material describes Zandvoort as relatively low grip and Madrid's
+new asphalt as unknown, but publishes no numeric coefficient. The
+`resolveSourceBackedRoadGrip` boundary retains those qualitative observations
+with `numericCoefficient: null`; it never maps an adjective to a force
+multiplier. Consequently, a normal existing race keeps its prior neutral
+base-friction input. A test-only policy profile proves the live coupling
+without presenting an invented circuit measurement as source data.
 
 ## Tyre-force and brake-capacity follow-up
 
@@ -188,37 +195,79 @@ silently mixing histories.
 ## Physical-track contract follow-up
 
 `src/simulation/physicalTrack.ts` provides a pure, provenance-labelled metric
-planar adapter for later chassis and surface work. It scales only the existing
-horizontal layout to the declared lap length, validates a closed loop, and
-exposes arc stations, tangents, normals, and signed horizontal curvature.
-Elevation, grade, vertical curvature, banking, and usable width are explicitly
-`unavailable`: render-space Y and render width are never reinterpreted as
-physical measurements. Consumers must branch on the resolver's discriminated
-availability result instead of receiving an invented neutral physical track.
+adapter for chassis and surface work. It scales only the existing horizontal
+layout to the declared lap length, validates a closed loop, and exposes arc
+stations, tangents, normals, signed horizontal curvature, and any locally
+available sourced road fields. Render-space Y and render width are still never
+reinterpreted as physical measurements. Unsupported station fields remain
+`null`, with `unavailable` provenance at track level.
 
 ## Physical-road input boundary
 
-The legacy centreline's Y coordinate is a rendering/layout signal, not a
-surveyed elevation profile. It is therefore excluded from the live vehicle
-force path. Until a source-labelled metric elevation survey is supplied, live
-road grade is explicitly unavailable and the only applied fallback is a
-neutral grade fraction of `0`.
+The legacy centreline's Y coordinate remains a rendering/layout signal, not a
+surveyed elevation profile. `physicalRoadProfiles.ts` adds data only when an
+independent primary source publishes it:
 
-The existing banking windows and carriageway-width table remain for
-compatibility with pre-existing simulator consumers, including racing-line,
-lateral-layout, timing-map, qualifying, strategy, and race-occupation paths.
-They are surfaced separately from physical provenance:
+- MADRING: all 22 official corner lengths, entry/exit widths and banking
+  slopes, the 15 m/589 m main straight, T2/T7 elevations, and the published
+  8% uphill/10 m rise and 5% downhill sections;
+- Zandvoort: the published 19 degree T3 and 18 degree T14 bank angles.
 
-- physical banking and usable-width provenance is `unavailable`;
-- a flat road uses a neutral-default fallback of `0 degrees` banking;
-- the named Zandvoort/Madrid banking windows and the 13/10/15 m width values
-  are labelled `legacy-simulator-policy`.
+MADRING banking values are published as percentage slope and are converted
+with `atan(slope / 100)`. Counter-banked corners retain a negative sign. Corner
+lengths are centred on the existing official corner markers and stationized on
+the declared lap length, so this transformation is labelled `derived` rather
+than promoted to a survey. The partial elevation profile is intentionally low
+confidence: only the source-covered landmarks/grade sections are populated.
 
-They must not be presented as an official, observed, or surveyed circuit
-profile. `TrackDefinition.width` remains render-only and never supplies a
-physical carriageway measurement. A future metric road survey can replace
-these compatibility fallbacks only by carrying its own source, date, method,
-and confidence metadata.
+The live grade/banking force paths, racing-line geometry, lateral boundaries,
+race occupation, qualifying decisions, and strategy width reference now read
+the same local physical road resolver. Where a source value is absent, grade
+and ordinary banking fall back neutrally to zero and width retains the labelled
+legacy policy. `TrackDefinition.width` remains render-only. In particular, the
+old misplaced Madrid bank window is removed; La Monumental is resolved from
+the T12 marker and its official 547.82 m length.
+
+## Tyre transient data boundary
+
+SAE 900129 experimentally derives a first-order differential response using a
+tyre relaxation length. `tyreTransient.ts` implements its exact distance-domain
+first-order update and requires positive, source-labelled lateral and
+longitudinal relaxation lengths. The numerical update is step-invariant for a
+constant target and contains no default coefficient.
+
+The latest FIA rulebook delegates the F1 tyre specification to the supplier,
+and public Pirelli 2026 material describes validation/testing without
+publishing category relaxation lengths. Public JRP/Yokohama material likewise
+does not publish the SUPER FORMULA inputs. Therefore
+`resolveTyreTransientParameters` returns `unavailable` for both shipped
+categories. The solver is not inserted into the live force path until those
+series-specific values exist; doing so now would silently turn an arbitrary
+road-tyre/test value into F1 or SF physics.
+
+## Source audit
+
+This non-regulatory Phase 6 source check was updated on 2026-08-27 and is
+separate from the frozen regulation manifest's 2026-08-08 cut-off.
+
+- MADRING official circuit technical information:
+  <https://www.madring.com/en/circuit>
+- Formula 1/Pirelli 2026 Dutch Grand Prix preview (published 2026-08-20):
+  <https://www.formula1.com/en/latest/article/need-to-know-the-most-important-facts-stats-and-trivia-ahead-of-the-2026-dutch-grand-prix.7rXg1scAXG5IMsHc9k74g4>
+- Pirelli 2026 Zandvoort/Monza/Madrid compound selection (published
+  2026-07-28):
+  <https://press.pirelli.com/tyre-compounds-selected-for-zandvoort-monza-and-madrid/>
+- Pirelli 2026 tyre-range validation summary (published 2025-11-24):
+  <https://press.pirelli.com/the-range-of-compounds-for-the-2026-season-has-been-set/>
+- FIA 2026 Technical Regulations, C10.8 tyre specification authority:
+  <https://www.fia.com/regulation/category/110>
+- Loeb et al., SAE 900129, experimental relaxation-length method:
+  <https://doi.org/10.4271/900129>
+
+The source audit found qualitative grip/roughness descriptions but no public
+numeric circuit friction coefficient. It found the generic first-order tyre
+method but no F1/SF construction-specific relaxation lengths or compound force
+coefficients.
 
 ## Explicitly not yet operational
 
@@ -229,14 +278,15 @@ cleanup debt hidden behind legacy state; they require new source data or a new
 validated physical-model slice. They remain unavailable rather than receiving
 invented neutral or circuit-specific values.
 
-- Per-track roughness, drainage, evaporation, catchment, or runoff inputs;
+- Per-track numeric roughness, drainage, evaporation, catchment, runoff, or
+  absolute tyre-road friction inputs;
 - measured cell-by-cell water, rubber, temperature, or debris state;
-- source-backed physical width, elevation, grade, banking, kerb, or runoff
-  geometry;
-- tyre relaxation/transient response, source-backed compound force
-  coefficients, or an SF control-tyre physics model. SUPER FORMULA remains
-  source-unavailable
-  for those coefficients and does not reuse F1/Pirelli values.
+- source-backed physical width/elevation/grade/banking outside the partial
+  MADRING and Zandvoort profiles, plus kerb and runoff geometry everywhere;
+- live tyre relaxation/transient response, source-backed compound force
+  coefficients, or an SF control-tyre physics model. Both series remain
+  source-unavailable for relaxation lengths, and SUPER FORMULA does not reuse
+  F1/Pirelli values.
 
 `advanceTrackSurfaceCell` remains a narrow, bounded policy probe. The live race
 uses the whole-state `advanceTrackSurface` flux-accounted update; callers must
@@ -248,7 +298,9 @@ Focused tests cover neutral/default behavior, wrap-around cell resolution,
 lane selection, canonical serialize/deserialize round trips, water and rubber
 flux closure, rain wash, local tyre work, traversal ordering, session carry,
 checkpoint rejection, v3/v2 compatibility migration, local-force monotonicity,
-and race-loop integration. `npm run validate:track-surface` also runs a
+MADRING/Zandvoort provenance and stationing, signed counter-banking, local
+width use, unavailable numeric road grip, and source-gated tyre relaxation.
+`npm run validate:track-surface` also runs a
 deterministic 36-case matrix: Monaco, Monza, Singapore, Spa, Suzuka, and
 Zandvoort crossed with green, rubbered, light-rain, heavy-rain, drying, and
 off-line scenarios.

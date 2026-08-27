@@ -154,6 +154,22 @@ describe('banking', () => {
     expect(banked).toBeGreaterThan(flat)
   })
 
+  it('makes officially counter-banked corners slower than the same flat corner', () => {
+    const flat = corneringSpeedLimitMps({
+      massKg: f1TestMinimumMassKg + 30,
+      physics: f1,
+      radiusMeters: 60,
+    })
+    const counterBanked = corneringSpeedLimitMps({
+      bankingDegrees: -5,
+      massKg: f1TestMinimumMassKg + 30,
+      physics: f1,
+      radiusMeters: 60,
+    })
+
+    expect(counterBanked).toBeLessThan(flat)
+  })
+
   it('keeps Zandvoort a normal circuit rather than a speedway', () => {
     // Banking applied to the whole lap instead of its two banked corners put
     // the slowest point at 164 km/h and took 18 % off the lap.
@@ -181,7 +197,7 @@ describe('physical road input provenance', () => {
       trackById('zandvoort-approx'),
       0.5,
     )
-    const madrid = physicalRoadInputsAt(trackById('madrid-approx'), 0.9)
+    const madrid = physicalRoadInputsAt(trackById('madrid-approx'), 0.44)
     const monaco = physicalRoadInputsAt(trackById('monaco-approx'), 0.5)
 
     expect(flat.gradeFraction).toMatchObject({
@@ -198,12 +214,15 @@ describe('physical road input provenance', () => {
       value: 0,
     })
     expect(zandvoort.bankingDegrees).toMatchObject({
-      fallback: 'legacy-simulator-policy',
-      physicalFieldProvenance: { source: 'unavailable' },
+      fallback: 'source-labelled-profile',
+      physicalFieldProvenance: {
+        method: 'corner-marker-mapped-profile',
+        source: 'derived',
+      },
       value: 19,
     })
     expect(zandvoort.bankingDegrees.fallbackLabel).toContain(
-      'LEGACY SIMULATOR POLICY',
+      'Formula 1 / Pirelli 2026',
     )
     expect(zandvoortFlat.bankingDegrees).toMatchObject({
       fallback: 'neutral-default',
@@ -211,10 +230,16 @@ describe('physical road input provenance', () => {
       value: 0,
     })
     expect(madrid.bankingDegrees).toMatchObject({
-      fallback: 'legacy-simulator-policy',
-      physicalFieldProvenance: { source: 'unavailable' },
-      value: 13.5,
+      fallback: 'source-labelled-profile',
+      physicalFieldProvenance: {
+        method: 'corner-marker-mapped-profile',
+        source: 'derived',
+      },
     })
+    expect(madrid.bankingDegrees.value).toBeCloseTo(
+      Math.atan(0.24) * (180 / Math.PI),
+      8,
+    )
     expect(monaco.usableWidthMeters).toMatchObject({
       fallback: 'legacy-simulator-policy',
       physicalFieldProvenance: { source: 'unavailable' },
@@ -244,12 +269,12 @@ describe('physical road input provenance', () => {
   it('treats one lap as the wrapped start rather than the end of a banking window', () => {
     const zandvoort = trackById('zandvoort-approx')
 
-    expect(physicalRoadInputsAt(zandvoort, 0.999).bankingDegrees).toMatchObject({
-      fallback: 'legacy-simulator-policy',
+    expect(physicalRoadInputsAt(zandvoort, 0.95).bankingDegrees).toMatchObject({
+      fallback: 'source-labelled-profile',
       value: 18,
     })
-    expect(physicalRoadInputsAt(zandvoort, -0.001).bankingDegrees).toMatchObject({
-      fallback: 'legacy-simulator-policy',
+    expect(physicalRoadInputsAt(zandvoort, -0.05).bankingDegrees).toMatchObject({
+      fallback: 'source-labelled-profile',
       value: 18,
     })
     expect(physicalRoadInputsAt(zandvoort, 1).bankingDegrees).toMatchObject({

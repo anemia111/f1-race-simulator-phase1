@@ -4524,8 +4524,6 @@ export function advanceRace(
   const driverDecisionById = new Map<string, DriverDecision>()
   const physicalAheadById = new Map<string, CarSnapshot>()
   const physicalGapSecondsById = new Map<string, number>()
-  const lateralBounds = lateralBoundsForTrack(config.track)
-  const trackHalfWidthM = trackWidthMeters(config.track) / 2
 
   for (const car of frameCars) {
     if (car.status !== 'running') {
@@ -4587,6 +4585,10 @@ export function advanceRace(
       car.progress,
       categoryPhysics,
     )
+    const lateralBounds = lateralBoundsForTrack(config.track, {
+      trackProgress: car.progress,
+    })
+    const trackHalfWidthM = trackWidthMeters(config.track, car.progress) / 2
     const emergencyVehicle = nearby.find((candidate) => {
       const trafficCar = frameCarById.get(candidate.driverId)
 
@@ -4789,6 +4791,7 @@ export function advanceRace(
                   decision.desiredLateralOffsetM,
                 state: car,
                 track: config.track,
+                trackProgress: car.progress,
               }),
             ] as const,
           ]

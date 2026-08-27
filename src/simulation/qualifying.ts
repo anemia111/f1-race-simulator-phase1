@@ -423,7 +423,6 @@ export function timedSessionDriverExecutionLossSeconds(
   options: TimedDriverExecutionOptions,
 ) {
   const plan = timedPhysicalLap(options)
-  const trackHalfWidthM = trackWidthMeters(options.config.track) / 2
   const wetRiskScale = timedSessionWetExecutionRiskScale(
     options.driver,
     options.weather,
@@ -446,6 +445,8 @@ export function timedSessionDriverExecutionLossSeconds(
           Math.floor(progress * plan.points.length),
         )
       ]
+    const trackHalfWidthM =
+      trackWidthMeters(options.config.track, progress) / 2
     const decision = decideDriverBehaviorForPath({
       context: {
         currentLateralOffsetM: 0,
