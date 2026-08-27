@@ -10,6 +10,7 @@ import {
 import { hashChance } from './random'
 
 export const DRIVER_OBSERVATION_INBOX_SCHEMA_VERSION = 1 as const
+export const DRIVER_OBSERVATION_TICK_SECONDS = 0.5
 
 /**
  * Bounded simulator policy. These values describe the driver's perception
@@ -60,6 +61,275 @@ export type AdvanceDriverObservationInboxResult = {
 const stableCompare = (left: string, right: string) =>
   left < right ? -1 : left > right ? 1 : 0
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const hasExactKeys = (value: Record<string, unknown>, keys: readonly string[]) => {
+  const actual = Object.keys(value)
+  const expected = new Set(keys)
+  return actual.length === expected.size && actual.every((key) => expected.has(key))
+}
+
+const isTick = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && (value as number) >= 0
+
+const observationStateValues = Object.freeze({
+  'f1-system/electrical-overtake': Object.freeze([
+    'disabled',
+    'available',
+    'active',
+  ]),
+  'race-control/flag-state': Object.freeze([
+    'clear',
+    'yellow',
+    'double-yellow',
+    'vsc',
+    'sc',
+    'red',
+  ]),
+  'sf-system/ots': Object.freeze(['disabled', 'available', 'active']),
+} satisfies Readonly<Record<string, readonly string[]>>)
+
+const allowedUnavailableReasons = new Set([
+  'not-observed',
+  'sensor-unavailable',
+  'source-unavailable',
+])
+const allowedProvenanceSources = new Set([
+  'physics-sensor',
+  'race-control',
+  'strategy',
+  'team',
+  'category-system',
+])
+
+/** Converts simulation time to the canonical bounded-perception cadence. */
+export function driverObservationTickAt(elapsedSeconds: number): number {
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) {
+    throw new Error('Driver observation time must be finite and non-negative')
+  }
+  return Math.floor(
+    (elapsedSeconds + 1e-12) / DRIVER_OBSERVATION_TICK_SECONDS,
+  )
+}
+
+function scalarUncertaintyIsValid(
+  value: unknown,
+  reading: number,
+  minimum: number,
+  maximum: number,
+) {
+  if (!isRecord(value)) return false
+  if (value.kind === 'exact') return hasExactKeys(value, ['kind'])
+  return (
+    hasExactKeys(value, ['kind', 'minimum', 'maximum']) &&
+    value.kind === 'bounded-interval' &&
+    typeof value.minimum === 'number' &&
+    Number.isFinite(value.minimum) &&
+    typeof value.maximum === 'number' &&
+    Number.isFinite(value.maximum) &&
+    value.minimum >= minimum &&
+    value.minimum <= reading &&
+    value.maximum >= reading &&
+    value.maximum <= maximum
+  )
+}
+
+function categoricalUncertaintyIsValid(value: unknown) {
+  if (!isRecord(value)) return false
+  if (value.kind === 'exact') return hasExactKeys(value, ['kind'])
+  return (
+    hasExactKeys(value, ['kind', 'confidence']) &&
+    value.kind === 'confidence' &&
+    typeof value.confidence === 'number' &&
+    Number.isFinite(value.confidence) &&
+    value.confidence >= 0 &&
+    value.confidence <= 1
+  )
+}
+
+function unavailableReadingIsValid(value: Record<string, unknown>) {
+  return (
+    hasExactKeys(value, ['kind', 'reason']) &&
+    value.kind === 'unavailable' &&
+    allowedUnavailableReasons.has(String(value.reason))
+  )
+}
+
+function readingIsValid(
+  observation: Record<string, unknown>,
+  signalKey: string,
+) {
+  if (!isRecord(observation.reading)) return false
+  const reading = observation.reading
+  if (reading.kind === 'unavailable') return unavailableReadingIsValid(reading)
+
+  const scalarBounds =
+    DRIVER_OBSERVATION_SCALAR_BOUNDS[
+      signalKey as keyof typeof DRIVER_OBSERVATION_SCALAR_BOUNDS
+    ]
+  if (scalarBounds) {
+    const [minimum, maximum] = scalarBounds
+    return (
+      hasExactKeys(reading, ['kind', 'value', 'uncertainty']) &&
+      reading.kind === 'scalar' &&
+      typeof reading.value === 'number' &&
+      Number.isFinite(reading.value) &&
+      reading.value >= minimum &&
+      reading.value <= maximum &&
+      scalarUncertaintyIsValid(
+        reading.uncertainty,
+        reading.value,
+        minimum,
+        maximum,
+      )
+    )
+  }
+  if (signalKey === 'team/pit-instruction') {
+    return (
+      hasExactKeys(reading, ['kind', 'value', 'uncertainty']) &&
+      reading.kind === 'boolean' &&
+      typeof reading.value === 'boolean' &&
+      categoricalUncertaintyIsValid(reading.uncertainty)
+    )
+  }
+  if (
+    signalKey === 'f1-system/straight-mode' ||
+    signalKey === 'f1-system/corner-mode'
+  ) {
+    return (
+      hasExactKeys(reading, ['kind', 'value', 'uncertainty']) &&
+      reading.kind === 'boolean' &&
+      typeof reading.value === 'boolean' &&
+      categoricalUncertaintyIsValid(reading.uncertainty)
+    )
+  }
+
+  const allowedStates =
+    observationStateValues[
+      signalKey as keyof typeof observationStateValues
+    ]
+  return (
+    allowedStates !== undefined &&
+    hasExactKeys(reading, ['kind', 'value', 'uncertainty']) &&
+    reading.kind === 'state' &&
+    typeof reading.value === 'string' &&
+    allowedStates.includes(reading.value) &&
+    categoricalUncertaintyIsValid(reading.uncertainty)
+  )
+}
+
+function persistedObservationIsValid(
+  value: unknown,
+  identity: {
+    driverId: string
+    seriesId: ExecutableSeriesId
+    vehicleEraId: RuntimeVehicleEraId
+  },
+) {
+  if (!isRecord(value)) return false
+  const traffic = value.scope === 'traffic'
+  if (
+    !hasExactKeys(value, [
+      'observationId',
+      'driverId',
+      'seriesId',
+      'vehicleEraId',
+      'scope',
+      'signalId',
+      ...(traffic ? ['subjectId'] : []),
+      'observedAtTick',
+      'availableAtTick',
+      'provenance',
+      'reading',
+    ]) ||
+    typeof value.observationId !== 'string' ||
+    value.observationId.length === 0 ||
+    value.driverId !== identity.driverId ||
+    value.seriesId !== identity.seriesId ||
+    value.vehicleEraId !== identity.vehicleEraId ||
+    typeof value.scope !== 'string' ||
+    typeof value.signalId !== 'string' ||
+    (traffic &&
+      (typeof value.subjectId !== 'string' || value.subjectId.length === 0)) ||
+    !isTick(value.observedAtTick) ||
+    !isTick(value.availableAtTick) ||
+    value.observedAtTick > value.availableAtTick ||
+    !isRecord(value.provenance) ||
+    !hasExactKeys(value.provenance, ['source', 'sourceId']) ||
+    !allowedProvenanceSources.has(String(value.provenance.source)) ||
+    typeof value.provenance.sourceId !== 'string' ||
+    value.provenance.sourceId.length === 0
+  ) {
+    return false
+  }
+  const signalKey = `${value.scope}/${value.signalId}`
+  if (
+    (value.scope === 'f1-system' && identity.seriesId !== 'f1-custom') ||
+    (value.scope === 'sf-system' && identity.seriesId !== 'super-formula')
+  ) {
+    return false
+  }
+  return readingIsValid(value, signalKey)
+}
+
+/** Strict checkpoint/import boundary for the JSON observation state. */
+export function parseDriverObservationInboxState(
+  value: unknown,
+  options: {
+    currentTick: number
+    driverId: string
+    seriesId: ExecutableSeriesId
+    vehicleEraId: RuntimeVehicleEraId
+  },
+): DriverObservationInboxState | null {
+  if (
+    !isTick(options.currentTick) ||
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'driverId',
+      'seriesId',
+      'vehicleEraId',
+      'pending',
+      'retained',
+    ]) ||
+    value.schemaVersion !== DRIVER_OBSERVATION_INBOX_SCHEMA_VERSION ||
+    value.driverId !== options.driverId ||
+    value.seriesId !== options.seriesId ||
+    value.vehicleEraId !== options.vehicleEraId ||
+    !Array.isArray(value.pending) ||
+    !Array.isArray(value.retained) ||
+    value.pending.length >
+      DRIVER_OBSERVATION_INBOX_POLICY.maximumPendingObservations ||
+    value.retained.length >
+      DRIVER_OBSERVATION_INBOX_POLICY.maximumRetainedObservations ||
+    !value.pending.every(
+      (observation) =>
+        persistedObservationIsValid(observation, options) &&
+        (observation as DriverObservation).availableAtTick >
+          options.currentTick,
+    ) ||
+    !value.retained.every(
+      (observation) =>
+        persistedObservationIsValid(observation, options) &&
+        (observation as DriverObservation).availableAtTick <=
+          options.currentTick,
+    )
+  ) {
+    return null
+  }
+  const observations = [...value.pending, ...value.retained] as DriverObservation[]
+  if (
+    new Set(observations.map(({ observationId }) => observationId)).size !==
+    observations.length
+  ) {
+    return null
+  }
+
+  return structuredClone(value) as DriverObservationInboxState
+}
+
 function requireTick(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new Error(`${label} must be a non-negative safe integer`)
@@ -102,7 +372,19 @@ function retainedCompare(
 }
 
 function cloneObservation(observation: DriverObservation): DriverObservation {
-  return structuredClone(observation)
+  const reading =
+    observation.reading.kind === 'unavailable'
+      ? { ...observation.reading }
+      : {
+          ...observation.reading,
+          uncertainty: { ...observation.reading.uncertainty },
+        }
+
+  return {
+    ...observation,
+    provenance: { ...observation.provenance },
+    reading,
+  } as DriverObservation
 }
 
 function boundedScalarReading(

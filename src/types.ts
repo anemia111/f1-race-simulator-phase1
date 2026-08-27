@@ -4,6 +4,7 @@ import type {
   RuntimeVehicleEraId,
 } from './series/seriesIds'
 import type { RuntimeSystems } from './simulation/runtimeSystems'
+import type { DriverObservationInboxState } from './simulation/driverObservationInbox'
 import type { TrackSurfaceStateSnapshot } from './simulation/trackSurface'
 import type {
   SuperFormulaControlTireInventory,
@@ -1241,6 +1242,8 @@ export type EnergyStoreState = {
 
 export type CarSnapshot = {
   driverId: string
+  /** Bounded causal perceptions retained for the category driver agent. */
+  driverObservationInbox?: DriverObservationInboxState
   teamId: string
   code: string
   carNumber: number

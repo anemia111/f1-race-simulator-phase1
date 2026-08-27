@@ -4,7 +4,9 @@ import {
   DRIVER_OBSERVATION_INBOX_POLICY,
   advanceDriverObservationInbox,
   createDriverObservationInbox,
+  driverObservationTickAt,
   latestDriverObservation,
+  parseDriverObservationInboxState,
 } from './driverObservationInbox'
 
 const driverId = 'driver-inbox-test'
@@ -78,6 +80,14 @@ const freshInbox = () =>
   })
 
 describe('driver observation inbox', () => {
+  it('uses a stable half-second observation cadence', () => {
+    expect(driverObservationTickAt(0)).toBe(0)
+    expect(driverObservationTickAt(0.499_999_999)).toBe(0)
+    expect(driverObservationTickAt(0.5)).toBe(1)
+    expect(driverObservationTickAt(1)).toBe(2)
+    expect(() => driverObservationTickAt(-0.1)).toThrow(/non-negative/u)
+  })
+
   it('delivers safety instructions immediately while delaying bounded sensors', () => {
     const result = advanceDriverObservationInbox({
       currentTick: 20,
@@ -299,5 +309,46 @@ describe('driver observation inbox', () => {
         },
       }),
     ).toThrow(/violates causality/u)
+  })
+
+  it('strictly parses a causal JSON checkpoint state', () => {
+    const state = advanceDriverObservationInbox({
+      currentTick: 12,
+      observations: [
+        scalarObservation({ id: 'pending', tick: 12, value: 0.2 }),
+        flagObservation(12),
+      ],
+      seed: 'parse-inbox',
+      state: freshInbox(),
+    }).state
+    const options = {
+      currentTick: 12,
+      driverId,
+      seriesId: 'f1-custom' as const,
+      vehicleEraId: 'f1-2026-current' as const,
+    }
+    const jsonState = JSON.parse(JSON.stringify(state)) as unknown
+
+    expect(parseDriverObservationInboxState(jsonState, options)).toEqual(state)
+
+    const futureRetained = structuredClone(state)
+    futureRetained.retained = [futureRetained.pending[0]]
+    futureRetained.pending = []
+    expect(
+      parseDriverObservationInboxState(futureRetained, options),
+    ).toBeNull()
+
+    const crossCategory = structuredClone(state) as {
+      retained: Array<{ seriesId: string }>
+    }
+    crossCategory.retained[0].seriesId = 'super-formula'
+    expect(parseDriverObservationInboxState(crossCategory, options)).toBeNull()
+
+    const duplicate = structuredClone(state)
+    duplicate.retained = [
+      duplicate.retained[0],
+      duplicate.retained[0],
+    ]
+    expect(parseDriverObservationInboxState(duplicate, options)).toBeNull()
   })
 })

@@ -32,7 +32,17 @@ import {
   type DriverDecision,
   type DriverDecisionContext,
 } from './driverDecision'
-import { decideDriverBehaviorForPath } from './categoryDriverAgent'
+import {
+  decideDriverBehaviorForPath,
+  resolveCategoryDrivingPolicy,
+} from './categoryDriverAgent'
+import { projectImmediateDriverPerception } from './driverPerception'
+import {
+  advanceDriverObservationInbox,
+  createDriverObservationInbox,
+  driverObservationTickAt,
+  type DriverObservationInboxState,
+} from './driverObservationInbox'
 import { effectiveMachineRating } from './machinePerformance'
 import { baselineSetupForTrack } from './engineering'
 import {
@@ -716,6 +726,21 @@ const formatElapsed = (seconds: number) => {
 
 const byId = <T extends { id: string }>(items: T[]) =>
   new Map(items.map((item) => [item.id, item]))
+
+function newestDriverObservationTick(
+  state: DriverObservationInboxState,
+): number {
+  let newestTick = -1
+
+  for (const observation of state.pending) {
+    newestTick = Math.max(newestTick, observation.observedAtTick)
+  }
+  for (const observation of state.retained) {
+    newestTick = Math.max(newestTick, observation.observedAtTick)
+  }
+
+  return newestTick
+}
 
 function makeEvent(
   id: string,
@@ -2020,6 +2045,10 @@ const weekendOrderFor = (config: RaceConfig): WeekendStage[] =>
 export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnapshot {
   const teams = byId(config.teams)
   const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const driverPolicy = resolveCategoryDrivingPolicy(
+    config.seriesId,
+    config.vehicleEraId,
+  )
   const f1WeatherRules = categoryPhysics.id === 'f1-custom'
   const weekendStage = config.weekendStage ?? 'race'
   const isRaceDistance = isRaceDistanceSession(weekendStage)
@@ -2366,6 +2395,11 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
 
     const car: CarSnapshot = {
       driverId: driver.id,
+      driverObservationInbox: createDriverObservationInbox({
+        driverId: driver.id,
+        seriesId: driverPolicy.seriesId,
+        vehicleEraId: driverPolicy.vehicleEraId,
+      }),
       teamId: team.id,
       code: driver.code,
       carNumber: driver.carNumber,
@@ -2724,6 +2758,11 @@ export function advanceRace(
   const raceLaps = snapshot.raceLaps
   const baseLapTime = config.track.baseLapTime
   const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const driverPolicy = resolveCategoryDrivingPolicy(
+    config.seriesId,
+    config.vehicleEraId,
+  )
+  const driverObservationTick = driverObservationTickAt(elapsedSeconds)
   const f1WeatherRules = categoryPhysics.id === 'f1-custom'
   const newEvents: RaceEvent[] = []
   const weather = weatherFor(config.seed, config.track, elapsedSeconds)
@@ -4522,6 +4561,10 @@ export function advanceRace(
       totalDistanceM: car.totalDistance * lapLengthM,
     }))
   const driverDecisionById = new Map<string, DriverDecision>()
+  const driverObservationInboxById = new Map<
+    string,
+    DriverObservationInboxState
+  >()
   const physicalAheadById = new Map<string, CarSnapshot>()
   const physicalGapSecondsById = new Map<string, number>()
 
@@ -4720,6 +4763,32 @@ export function advanceRace(
             }
           : undefined,
     }
+    const observationInbox =
+      car.driverObservationInbox ??
+      createDriverObservationInbox({
+        driverId: car.driverId,
+        seriesId: driverPolicy.seriesId,
+        vehicleEraId: driverPolicy.vehicleEraId,
+      })
+    const newestObservedTick = newestDriverObservationTick(observationInbox)
+    const advancedObservationInbox =
+      newestObservedTick < driverObservationTick
+        ? advanceDriverObservationInbox({
+            currentTick: driverObservationTick,
+            observations: projectImmediateDriverPerception({
+              context: decisionContext,
+              decisionTime: {
+                elapsedSeconds,
+                tick: driverObservationTick,
+              },
+              policy: driverPolicy,
+            }),
+            seed: config.seed,
+            state: observationInbox,
+          }).state
+        : observationInbox
+
+    driverObservationInboxById.set(car.driverId, advancedObservationInbox)
     const decision = decideDriverBehaviorForPath({
       context: decisionContext,
       path: config.driverDecisionPath,
@@ -6166,6 +6235,9 @@ export function advanceRace(
     } = displayTelemetry
     let next: CarSnapshot = {
       ...car,
+      driverObservationInbox:
+        driverObservationInboxById.get(car.driverId) ??
+        car.driverObservationInbox,
       totalDistance,
       passedDoubleYellowThisLap:
         car.passedDoubleYellowThisLap ||
