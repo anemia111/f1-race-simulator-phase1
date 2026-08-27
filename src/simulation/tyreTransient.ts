@@ -94,7 +94,7 @@ export function validateTyreTransientParameters(
       sourceDate: value.sourceDate,
       sourceLabel: value.sourceLabel.trim(),
       sourceUrl: value.sourceUrl.trim(),
-      [VALIDATED_TYRE_TRANSIENT_PARAMETERS]: true,
+      [VALIDATED_TYRE_TRANSIENT_PARAMETERS]: true as const,
     }),
     status: 'available',
   })
