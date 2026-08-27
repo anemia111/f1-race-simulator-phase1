@@ -375,7 +375,9 @@ export function bankedLateralAccelerationMps2(options: {
   // Effective coefficient implied by the budget already worked out above, so
   // load sensitivity and the friction ellipse both carry through.
   const effectiveMu = lateralForceBudgetN / Math.max(1, verticalLoadN)
-  const angle = (Math.abs(bankingDegrees) * Math.PI) / 180
+  // Positive banking leans into the turn. A negative value is official
+  // counter-banking and must increase, not reduce, tyre demand.
+  const angle = (clamp(bankingDegrees, -45, 45) * Math.PI) / 180
   const sin = Math.sin(angle)
   const cos = Math.cos(angle)
   const denominator = cos - effectiveMu * sin
@@ -391,7 +393,7 @@ export function bankedLateralAccelerationMps2(options: {
       GRAVITY_MPS2 * sin) /
     denominator
 
-  return Math.max(flatAcceleration, banked)
+  return Math.max(0, banked)
 }
 
 /**

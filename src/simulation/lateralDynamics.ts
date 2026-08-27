@@ -115,15 +115,16 @@ function finiteSafetyMargin(value: number | undefined, fallback: number) {
 }
 
 /**
- * Course-coordinate limits from the retained simulator-policy road-width
- * fallback. `TrackDefinition.width` is render-only and no surveyed
- * carriageway width is currently available.
+ * Course-coordinate limits from a source-labelled physical width when one is
+ * available at this progress, otherwise from the retained simulator policy.
+ * `TrackDefinition.width` remains render-only.
  */
 export function lateralBoundsForTrack(
   track: TrackDefinition,
   options: {
     edgeSafetyMarginM?: number
     footprint?: Partial<VehicleFootprint>
+    trackProgress?: number
   } = {},
 ): LateralBounds {
   const footprint = resolveVehicleFootprint(options.footprint)
@@ -133,7 +134,9 @@ export function lateralBoundsForTrack(
   )
   const usableHalfWidthM = Math.max(
     0,
-    trackWidthMeters(track) / 2 - footprint.widthM / 2 - edgeMarginM,
+    trackWidthMeters(track, options.trackProgress) / 2 -
+      footprint.widthM / 2 -
+      edgeMarginM,
   )
 
   return {
@@ -312,10 +315,12 @@ export function advanceLateralState(options: {
   limits?: Partial<LateralMotionLimits>
   state: Partial<LateralState>
   track: TrackDefinition
+  trackProgress?: number
 }): LateralState {
   const bounds = lateralBoundsForTrack(options.track, {
     edgeSafetyMarginM: options.edgeSafetyMarginM,
     footprint: options.footprint,
+    trackProgress: options.trackProgress,
   })
   const maxLateralSpeedMps = positiveFiniteOr(
     options.limits?.maxLateralSpeedMps,
@@ -466,10 +471,12 @@ function reservationCandidates(
   request: LateralReservationRequest,
   track: TrackDefinition,
   edgeSafetyMarginM: number | undefined,
+  trackProgress: number,
 ) {
   const bounds = lateralBoundsForTrack(track, {
     edgeSafetyMarginM,
     footprint: request.footprint,
+    trackProgress,
   })
   const desiredOffsetM = clamp(
     finiteOr(request.desiredLateralOffsetM, 0),
@@ -532,6 +539,8 @@ export function reserveDesiredLateralOffsets(options: {
       request,
       options.track,
       options.edgeSafetyMarginM,
+      positiveModulo(request.totalDistanceM, options.lapLengthM) /
+        options.lapLengthM,
     )
     const offsetM =
       candidates.find((candidateOffsetM) =>

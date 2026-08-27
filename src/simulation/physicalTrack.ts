@@ -1,4 +1,8 @@
 import type { TrackDefinition } from '../types'
+import {
+  sourcedPhysicalRoadFieldProvenance,
+  sourcedPhysicalRoadInputsAt,
+} from './physicalRoadProfiles'
 
 /**
  * Metric-track contract for force-model work that follows Phase 6.
@@ -7,11 +11,11 @@ import type { TrackDefinition } from '../types'
  * This resolver only turns their horizontal x/z shape into a metric planar
  * stationing using the declared lap length. It intentionally does not treat
  * render Y as elevation, nor `TrackDefinition.width` as carriageway width.
- * Those inputs remain explicitly unavailable until a source-labelled physical
- * survey is supplied.
+ * Independently sourced road fields are attached separately and remain null
+ * at stations where that source has no coverage.
  */
 
-export const PHYSICAL_TRACK_VERSION = 1 as const
+export const PHYSICAL_TRACK_VERSION = 2 as const
 /** Prevent malformed imported layouts from allocating unbounded station state. */
 export const MAX_PHYSICAL_TRACK_STATIONS = 16_384
 
@@ -55,6 +59,8 @@ export type PhysicalTrackMetricMethod =
   | 'planar-layout-normalised-to-declared-length'
   | 'planar-centred-difference'
   | 'three-point-planar-curvature'
+  | 'corner-marker-mapped-profile'
+  | 'official-gradient-section'
   | 'intentionally-unavailable'
 
 /** Source and transformation metadata for exactly one physical-track field. */
@@ -84,6 +90,9 @@ export type PhysicalTrackPlanarVector = {
  * wraps from the last station back to the first.
  */
 export type PhysicalTrackStation = {
+  bankingDegrees: number | null
+  elevationMeters: number | null
+  gradeFraction: number | null
   index: number
   planarNormal: PhysicalTrackPlanarVector
   planarPositionMeters: PhysicalTrackPlanarVector
@@ -92,6 +101,7 @@ export type PhysicalTrackStation = {
   segmentLengthMeters: number
   signedHorizontalCurvaturePerMeter: number
   sMeters: number
+  usableWidthMeters: number | null
 }
 
 export type PhysicalTrack = {
@@ -318,9 +328,15 @@ function fieldProvenanceFor(track: TrackDefinition): PhysicalTrackFieldProvenanc
       track,
       'planar-layout-normalised-to-declared-length',
     ),
-    bankingDegrees: unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
-    elevationMeters: unavailablePhysicalTrackFieldProvenance('elevationMeters'),
-    grade: unavailablePhysicalTrackFieldProvenance('grade'),
+    bankingDegrees:
+      sourcedPhysicalRoadFieldProvenance(track, 'bankingDegrees') ??
+      unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
+    elevationMeters:
+      sourcedPhysicalRoadFieldProvenance(track, 'elevationMeters') ??
+      unavailablePhysicalTrackFieldProvenance('elevationMeters'),
+    grade:
+      sourcedPhysicalRoadFieldProvenance(track, 'grade') ??
+      unavailablePhysicalTrackFieldProvenance('grade'),
     lapLengthMeters: declaredLengthProvenanceFor(track),
     planarCenterlineMeters: layoutDerivedProvenanceFor(
       track,
@@ -338,7 +354,9 @@ function fieldProvenanceFor(track: TrackDefinition): PhysicalTrackFieldProvenanc
       track,
       'three-point-planar-curvature',
     ),
-    usableWidthMeters: unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
+    usableWidthMeters:
+      sourcedPhysicalRoadFieldProvenance(track, 'usableWidthMeters') ??
+      unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
     verticalCurvaturePerMeter: unavailablePhysicalTrackFieldProvenance(
       'verticalCurvaturePerMeter',
     ),
@@ -577,7 +595,14 @@ export function resolvePhysicalTrack(track: TrackDefinition): PhysicalTrackResol
     const curvature =
       denominator > EPSILON ? (2 * signedDoubleArea) / denominator : 0
     const tangent = tangents[index]!
+    const roadInputs = sourcedPhysicalRoadInputsAt(
+      track,
+      stationMeters / lapLengthMeters,
+    )
     const station: PhysicalTrackStation = Object.freeze({
+      bankingDegrees: roadInputs?.bankingDegrees?.value ?? null,
+      elevationMeters: roadInputs?.elevationMeters?.value ?? null,
+      gradeFraction: roadInputs?.gradeFraction?.value ?? null,
       index,
       planarNormal: Object.freeze({ x: -tangent.z, z: tangent.x }),
       planarPositionMeters: Object.freeze({ ...position }),
@@ -586,6 +611,7 @@ export function resolvePhysicalTrack(track: TrackDefinition): PhysicalTrackResol
       segmentLengthMeters: segmentLengths[index],
       signedHorizontalCurvaturePerMeter: curvature,
       sMeters: stationMeters,
+      usableWidthMeters: roadInputs?.usableWidthMeters?.value ?? null,
     })
 
     stationMeters += segmentLengths[index]

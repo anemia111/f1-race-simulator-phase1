@@ -41,6 +41,7 @@ import {
 } from './tyreForces'
 import { unavailablePhysicalTrackFieldProvenance } from './physicalTrack'
 import type { PhysicalTrackFieldProvenance } from './physicalTrack'
+import { sourcedPhysicalRoadInputsAt } from './physicalRoadProfiles'
 import type {
   FiaPuEventInput,
   RechargeRuleDefinition,
@@ -137,58 +138,10 @@ const DEPLOYMENT_ALLOCATION_PASSES = 3
  */
 const DEPLOYMENT_TRIM_PASSES = 5
 
-export type BankedSection = {
-  /** Lap progress the banking runs between, 0 to 1. */
-  fromProgress: number
-  toProgress: number
-  degrees: number
-  /** Visible policy label; this is not a source-labelled road survey. */
-  policyLabel: string
-}
-
-/**
- * Legacy simulator-policy banked sections, by lap progress.
- *
- * These retained values preserve existing simulator behaviour, but neither
- * the angles nor their progress ranges are a source-labelled physical banking
- * profile. `physicalRoadInputsAt` exposes them as legacy policy rather than
- * physical measurement. Every other point explicitly takes a neutral 0 degree
- * fallback while banking remains unavailable in the physical-track contract.
- */
-export const TRACK_BANKED_SECTIONS: Record<string, BankedSection[]> = {
-  'zandvoort-approx': [
-    // Hugenholtz, turn 3 of 14.
-    {
-      degrees: 19,
-      fromProgress: 0.16,
-      policyLabel:
-        'LEGACY SIMULATOR POLICY — retained Zandvoort Hugenholtz banking approximation',
-      toProgress: 0.24,
-    },
-    // Arie Luyendyk, the banked final corner onto the straight.
-    {
-      degrees: 18,
-      fromProgress: 0.92,
-      policyLabel:
-        'LEGACY SIMULATOR POLICY — retained Zandvoort Arie Luyendyk banking approximation',
-      toProgress: 1,
-    },
-  ],
-  'madrid-approx': [
-    // La Monumental retained as a legacy approximation (13.5 degrees).
-    {
-      degrees: 13.5,
-      fromProgress: 0.86,
-      policyLabel:
-        'LEGACY SIMULATOR POLICY — retained Madrid La Monumental banking approximation',
-      toProgress: 0.96,
-    },
-  ],
-}
-
 export type PhysicalInputFallback =
   | 'legacy-simulator-policy'
   | 'neutral-default'
+  | 'source-labelled-profile'
 
 /**
  * A scalar currently applied to the simulator, paired with the honest
@@ -212,6 +165,7 @@ export type AppliedPhysicalRoadInput = Readonly<{
  */
 export type PhysicalRoadInputs = Readonly<{
   bankingDegrees: AppliedPhysicalRoadInput
+  elevationMeters: AppliedPhysicalRoadInput | null
   gradeFraction: AppliedPhysicalRoadInput
   usableWidthMeters: AppliedPhysicalRoadInput
 }>
@@ -220,23 +174,6 @@ function normalisedRoadProgress(progress: number) {
   const finiteProgress = Number.isFinite(progress) ? progress : 0
 
   return ((finiteProgress % 1) + 1) % 1
-}
-
-function bankedSectionAt(track: TrackDefinition, progress: number) {
-  const sections = TRACK_BANKED_SECTIONS[track.id]
-
-  if (!sections) {
-    return null
-  }
-
-  const normalised = normalisedRoadProgress(progress)
-
-  return (
-    sections.find(
-      (candidate) =>
-        normalised >= candidate.fromProgress && normalised <= candidate.toProgress,
-    ) ?? null
-  )
 }
 
 function appliedPhysicalRoadInput(
@@ -265,15 +202,18 @@ export function physicalRoadInputsAt(
   track: TrackDefinition,
   progress: number,
 ): PhysicalRoadInputs {
-  const section = bankedSectionAt(track, progress)
+  const sourced = sourcedPhysicalRoadInputsAt(
+    track,
+    normalisedRoadProgress(progress),
+  )
   const widthOverride = LEGACY_TRACK_WIDTH_METERS[track.id]
 
-  const bankingDegrees = section
+  const bankingDegrees = sourced?.bankingDegrees
     ? appliedPhysicalRoadInput(
-        section.degrees,
-        'legacy-simulator-policy',
-        section.policyLabel,
-        unavailablePhysicalTrackFieldProvenance('bankingDegrees'),
+        sourced.bankingDegrees.value,
+        'source-labelled-profile',
+        sourced.bankingDegrees.provenance.sourceLabel,
+        sourced.bankingDegrees.provenance,
       )
     : appliedPhysicalRoadInput(
         0,
@@ -284,20 +224,42 @@ export function physicalRoadInputsAt(
 
   return Object.freeze({
     bankingDegrees,
-    gradeFraction: appliedPhysicalRoadInput(
-      0,
-      'neutral-default',
-      'NEUTRAL DEFAULT — 0% grade while a physical elevation profile is unavailable',
-      unavailablePhysicalTrackFieldProvenance('grade'),
-    ),
-    usableWidthMeters: appliedPhysicalRoadInput(
-      widthOverride ?? LEGACY_DEFAULT_TRACK_WIDTH_M,
-      'legacy-simulator-policy',
-      widthOverride === undefined
-        ? 'LEGACY SIMULATOR POLICY — retained default usable-width assumption; no physical width survey'
-        : 'LEGACY SIMULATOR POLICY — retained circuit usable-width override; no physical width survey',
-      unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
-    ),
+    elevationMeters: sourced?.elevationMeters
+      ? appliedPhysicalRoadInput(
+          sourced.elevationMeters.value,
+          'source-labelled-profile',
+          sourced.elevationMeters.provenance.sourceLabel,
+          sourced.elevationMeters.provenance,
+        )
+      : null,
+    gradeFraction: sourced?.gradeFraction
+      ? appliedPhysicalRoadInput(
+          sourced.gradeFraction.value,
+          'source-labelled-profile',
+          sourced.gradeFraction.provenance.sourceLabel,
+          sourced.gradeFraction.provenance,
+        )
+      : appliedPhysicalRoadInput(
+          0,
+          'neutral-default',
+          'NEUTRAL DEFAULT — 0% grade where a source-labelled profile is unavailable',
+          unavailablePhysicalTrackFieldProvenance('grade'),
+        ),
+    usableWidthMeters: sourced?.usableWidthMeters
+      ? appliedPhysicalRoadInput(
+          sourced.usableWidthMeters.value,
+          'source-labelled-profile',
+          sourced.usableWidthMeters.provenance.sourceLabel,
+          sourced.usableWidthMeters.provenance,
+        )
+      : appliedPhysicalRoadInput(
+          widthOverride ?? LEGACY_DEFAULT_TRACK_WIDTH_M,
+          'legacy-simulator-policy',
+          widthOverride === undefined
+            ? 'LEGACY SIMULATOR POLICY — retained default usable-width assumption; no physical width survey'
+            : 'LEGACY SIMULATOR POLICY — retained circuit usable-width override; no physical width survey',
+          unavailablePhysicalTrackFieldProvenance('usableWidthMeters'),
+        ),
   })
 }
 
@@ -369,8 +331,21 @@ const LEGACY_TRACK_WIDTH_METERS: Record<string, number> = {
 }
 
 /** Retained scalar wrapper for legacy simulator-policy usable width. */
-export function trackWidthMeters(track: TrackDefinition) {
-  return physicalRoadInputsAt(track, 0).usableWidthMeters.value
+export function trackWidthMeters(track: TrackDefinition, progress = 0) {
+  return physicalRoadInputsAt(track, progress).usableWidthMeters.value
+}
+
+/** Deterministic lap-average width for strategy consumers without a position. */
+export function averageTrackWidthMeters(
+  track: TrackDefinition,
+  samples = 48,
+) {
+  const boundedSamples = Math.max(1, Math.min(256, Math.floor(samples)))
+  let total = 0
+  for (let index = 0; index < boundedSamples; index += 1) {
+    total += trackWidthMeters(track, (index + 0.5) / boundedSamples)
+  }
+  return total / boundedSamples
 }
 
 /**
@@ -487,9 +462,12 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
 
     return magnitude * (cross >= 0 ? 1 : -1)
   })
-  const usableHalfWidthMeters = Math.max(
-    0,
-    trackWidthMeters(track) / 2 - FORMULA_VEHICLE_HALF_WIDTH_M,
+  const usableHalfWidthMetersAt = points.map((_point, index) =>
+    Math.max(
+      0,
+      trackWidthMeters(track, index / count) / 2 -
+        FORMULA_VEHICLE_HALF_WIDTH_M,
+    ),
   )
   /** How far the corner this point belongs to turns, in radians. */
   const cornerArcRadians = centrelineRadii.map((radius, index) => {
@@ -536,7 +514,7 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
       radiusMeters: racingLineRadiusMeters({
         centrelineRadiusMeters: centrelineRadii[index],
         cornerArcRadians: cornerArcRadians[index],
-        usableHalfWidthMeters,
+        usableHalfWidthMeters: usableHalfWidthMetersAt[index],
       }),
       segmentLengthMeters: segmentLengths[index],
       signedTurnRadians,
@@ -1300,10 +1278,6 @@ export function simulatePhysicalLap(
 
     return total + point.segmentLengthMeters / averageMps
   }, 0)
-  const usableHalfWidthMeters = Math.max(
-    0,
-    trackWidthMeters(track) / 2 - FORMULA_VEHICLE_HALF_WIDTH_M,
-  )
   const points = geometry.map((point, index): PhysicalLapPoint => {
     const currentSpeedMps = speeds[index]
     const nextSpeedMps = speeds[(index + 1) % count]
@@ -1351,7 +1325,11 @@ export function simulatePhysicalLap(
     const referenceLine = referenceLinePlanAt(
       geometry,
       index,
-      usableHalfWidthMeters,
+      Math.max(
+        0,
+        trackWidthMeters(track, index / count) / 2 -
+          FORMULA_VEHICLE_HALF_WIDTH_M,
+      ),
     )
 
     return {

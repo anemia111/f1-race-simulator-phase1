@@ -1164,7 +1164,7 @@ function lateralTyreForceDemandN(options: {
   const centripetalAccelerationMps2 =
     (Math.max(0, options.speedMps) ** 2) / Math.max(1, radiusMeters)
   const bankingRadians =
-    (clamp(Math.abs(finiteOr(options.bankingDegrees ?? 0, 0)), 0, 45) *
+    (clamp(finiteOr(options.bankingDegrees ?? 0, 0), -45, 45) *
       Math.PI) /
     180
   // The inward component of the banked road supports part of the centripetal

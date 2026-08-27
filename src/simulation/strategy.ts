@@ -15,7 +15,7 @@ import {
   F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
   observedPitLaneTransitSeconds,
 } from '../data/f1PitLaneObservations2026'
-import { trackWidthMeters } from './physicalLap'
+import { averageTrackWidthMeters } from './physicalLap'
 import { hashChance } from './random'
 import { driverPerformanceAbility, driverSkillBlend } from './driverAbility'
 import {
@@ -104,7 +104,11 @@ export function overtakeDifficultyForTrack(track: TrackDefinition) {
   // the old formula's metre thresholds every circuit scored 2.2 to 2.85 and
   // the relief was flat zero for all of them, so width never separated Monaco
   // from Monza.
-  const widthRelief = clamp((trackWidthMeters(track) - 9) * 0.02, 0, 0.12)
+  const widthRelief = clamp(
+    (averageTrackWidthMeters(track) - 9) * 0.02,
+    0,
+    0.12,
+  )
 
   return clamp(0.6 + streetPremium - zoneRelief - widthRelief, 0.25, 0.9)
 }
