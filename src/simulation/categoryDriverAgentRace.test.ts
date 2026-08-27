@@ -73,6 +73,17 @@ describe('category driver-agent race seam', () => {
 
       expect(category).toEqual(legacy)
       expect(defaulted).toEqual(category)
+      expect(
+        category.cars.every((car) => {
+          const inbox = car.driverObservationInbox
+          return (
+            inbox !== undefined &&
+            inbox.driverId === car.driverId &&
+            inbox.seriesId === seriesId &&
+            inbox.pending.length + inbox.retained.length > 0
+          )
+        }),
+      ).toBe(true)
 
       if (seriesId === 'f1-custom') {
         const ersModesBefore = commonStartedSnapshot.cars.map((car) =>

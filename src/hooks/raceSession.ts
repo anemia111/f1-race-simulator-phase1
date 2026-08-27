@@ -12,6 +12,12 @@ import {
   isActiveAeroState,
 } from '../simulation/activeAero'
 import { energySystemParametersFor } from '../simulation/energySystem'
+import { resolveCategoryDrivingPolicy } from '../simulation/categoryDriverAgent'
+import {
+  createDriverObservationInbox,
+  driverObservationTickAt,
+  parseDriverObservationInboxState,
+} from '../simulation/driverObservationInbox'
 import {
   FIA_2026_REGULATION_PROFILE,
   resolveF1RechargeRule,
@@ -42,7 +48,7 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.08.20.3'
+export const RACE_SIMULATION_MODEL_VERSION = '2026.08.27.1'
 const LEGACY_V2_RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
 const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',
@@ -1019,6 +1025,10 @@ function isCompatibleCarSnapshot(
   expectedDriverIds: Set<string>,
   expectedTeamsByDriverId: Map<string, Team>,
   config: RaceConfig,
+  options: {
+    currentObservationTick: number
+    requireDriverObservationInbox: boolean
+  },
 ) {
   if (!isRecord(value) || !expectedDriverIds.has(String(value.driverId))) {
     return false
@@ -1037,6 +1047,19 @@ function isCompatibleCarSnapshot(
   }
 
   const seriesId = config.seriesId ?? 'f1-custom'
+  const driverPolicy = resolveCategoryDrivingPolicy(
+    config.seriesId,
+    config.vehicleEraId,
+  )
+  const hasCompatibleDriverObservationInbox =
+    value.driverObservationInbox === undefined
+      ? !options.requireDriverObservationInbox
+      : parseDriverObservationInboxState(value.driverObservationInbox, {
+          currentTick: options.currentObservationTick,
+          driverId: String(value.driverId),
+          seriesId: driverPolicy.seriesId,
+          vehicleEraId: driverPolicy.vehicleEraId,
+        }) !== null
   const hasCompatibleRuntime =
     seriesId === 'f1-custom'
       ? isCompatibleF1RuntimeSystems(
@@ -1088,6 +1111,7 @@ function isCompatibleCarSnapshot(
     (seriesId !== 'super-formula' ||
       (!hasNestedF1RuntimeFields(value.runtimeSystems) &&
         hasNoSuperFormulaFiaPenaltyState(value))) &&
+    hasCompatibleDriverObservationInbox &&
     hasCompatibleRuntime
   )
 }
@@ -1247,7 +1271,15 @@ function hydrateLegacyTrackSurface(
   })
 }
 
-function migrateRaceSnapshot(value: RaceSnapshot): RaceSnapshot {
+function migrateRaceSnapshot(
+  value: RaceSnapshot,
+  config: RaceConfig,
+): RaceSnapshot {
+  const driverPolicy = resolveCategoryDrivingPolicy(
+    config.seriesId,
+    config.vehicleEraId,
+  )
+
   return {
     ...value,
     cars: value.cars.map((car) => {
@@ -1270,6 +1302,13 @@ function migrateRaceSnapshot(value: RaceSnapshot): RaceSnapshot {
       return {
         ...car,
         desiredLateralOffsetM,
+        driverObservationInbox:
+          car.driverObservationInbox ??
+          createDriverObservationInbox({
+            driverId: car.driverId,
+            seriesId: driverPolicy.seriesId,
+            vehicleEraId: driverPolicy.vehicleEraId,
+          }),
         lateralOffsetM,
         lateralVelocityMps,
         trackLateralOffset: lateralOffsetM,
@@ -1282,6 +1321,7 @@ function isCompatibleRaceSnapshot(
   value: unknown,
   config: RaceConfig,
   options: {
+    requireDriverObservationInbox?: boolean
     requireLegacySurfaceProjection?: boolean
     requireTrackSurface?: boolean
   } = {},
@@ -1289,6 +1329,11 @@ function isCompatibleRaceSnapshot(
   if (!isRecord(value)) {
     return false
   }
+
+  const currentObservationTick =
+    isFiniteNumber(value.elapsedSeconds) && value.elapsedSeconds >= 0
+      ? driverObservationTickAt(value.elapsedSeconds)
+      : -1
 
   const expectedDriverIds = new Set(config.drivers.map((driver) => driver.id))
   const teamsById = new Map(config.teams.map((team) => [team.id, team]))
@@ -1333,6 +1378,11 @@ function isCompatibleRaceSnapshot(
         expectedDriverIds,
         expectedTeamsByDriverId,
         config,
+        {
+          currentObservationTick,
+          requireDriverObservationInbox:
+            options.requireDriverObservationInbox === true,
+        },
       ),
     ) ||
     new Set(cars.map((car) => String((car as Record<string, unknown>).driverId)))
@@ -1426,6 +1476,7 @@ export function parseRaceCheckpoint(
       parsed.version === RACE_CHECKPOINT_VERSION &&
       parsed.modelVersion === RACE_SIMULATION_MODEL_VERSION &&
       isCompatibleRaceSnapshot(parsed.snapshot, config, {
+        requireDriverObservationInbox: true,
         requireTrackSurface: true,
       })
     ) {
@@ -1433,13 +1484,14 @@ export function parseRaceCheckpoint(
         parsed.snapshot as RaceSnapshot,
       )
 
-      return normalized ? migrateRaceSnapshot(normalized) : null
+      return normalized ? migrateRaceSnapshot(normalized, config) : null
     }
 
     if (
       parsed.version === LEGACY_V3_RACE_CHECKPOINT_VERSION &&
       parsed.modelVersion === RACE_SIMULATION_MODEL_VERSION &&
       isCompatibleRaceSnapshot(parsed.snapshot, config, {
+        requireDriverObservationInbox: true,
         requireLegacySurfaceProjection: true,
         requireTrackSurface: true,
       })
@@ -1448,7 +1500,7 @@ export function parseRaceCheckpoint(
         parsed.snapshot as LegacySurfaceRaceSnapshot,
       )
 
-      return normalized ? migrateRaceSnapshot(normalized) : null
+      return normalized ? migrateRaceSnapshot(normalized, config) : null
     }
 
     if (
@@ -1463,7 +1515,7 @@ export function parseRaceCheckpoint(
         config,
       )
 
-      return hydrated ? migrateRaceSnapshot(hydrated) : null
+      return hydrated ? migrateRaceSnapshot(hydrated, config) : null
     }
 
     const isF1 = (config.seriesId ?? 'f1-custom') === 'f1-custom'
@@ -1487,7 +1539,7 @@ export function parseRaceCheckpoint(
 
     const hydrated = hydrateLegacyTrackSurface(migratedLegacy, config)
 
-    return hydrated ? migrateRaceSnapshot(hydrated) : null
+    return hydrated ? migrateRaceSnapshot(hydrated, config) : null
   } catch {
     return null
   }

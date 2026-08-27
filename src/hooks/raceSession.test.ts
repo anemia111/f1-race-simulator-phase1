@@ -96,6 +96,7 @@ function convertCheckpointToLegacyF1(checkpoint: MutableCheckpoint) {
   delete checkpoint.snapshot.trackSurface
 
   for (const car of checkpoint.snapshot.cars) {
+    delete car.driverObservationInbox
     const runtimeSystems = car.runtimeSystems as Record<string, unknown>
     delete car.runtimeSystems
     Object.assign(car, runtimeSystems)
@@ -108,6 +109,9 @@ function convertCheckpointToV2(checkpoint: MutableCheckpoint) {
   checkpoint.version = 2
   checkpoint.modelVersion = '2026.08.11.3'
   delete checkpoint.snapshot.trackSurface
+  for (const car of checkpoint.snapshot.cars) {
+    delete car.driverObservationInbox
+  }
 }
 
 function addLegacySurfaceProjection(checkpoint: MutableCheckpoint) {
@@ -171,6 +175,50 @@ describe('race session continuity', () => {
     )
     expect(JSON.parse(raw!).modelVersion).toBe(RACE_SIMULATION_MODEL_VERSION)
     expect(JSON.parse(raw!).version).toBe(4)
+  })
+
+  it('persists and validates causal driver observations across restore', () => {
+    const now = 1_800_000_000_000
+    const evolved = advanceRace(createInitialRace(config), 0.75, config)
+    const raw = serializeRaceCheckpoint('driver-inbox', evolved, now)!
+    const restored = parseRaceCheckpoint(
+      raw,
+      'driver-inbox',
+      config,
+      now,
+    )
+
+    expect(restored).not.toBeNull()
+    expect(restored?.cars.map((car) => car.driverObservationInbox)).toEqual(
+      evolved.cars.map((car) => car.driverObservationInbox),
+    )
+    expect(advanceRace(restored!, 0.25, config)).toEqual(
+      advanceRace(evolved, 0.25, config),
+    )
+
+    const missing = JSON.parse(raw) as MutableCheckpoint
+    delete missing.snapshot.cars[0].driverObservationInbox
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(missing),
+        'driver-inbox',
+        config,
+        now,
+      ),
+    ).toBeNull()
+
+    const malformed = JSON.parse(raw) as MutableCheckpoint
+    const inbox = malformed.snapshot.cars[0]
+      .driverObservationInbox as Record<string, unknown>
+    inbox.seriesId = 'super-formula'
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(malformed),
+        'driver-inbox',
+        config,
+        now,
+      ),
+    ).toBeNull()
   })
 
   it('round-trips an event-authorized recharge rule from the supplied FIA input', () => {
