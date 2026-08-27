@@ -973,6 +973,8 @@ export type RaceConfig = {
   seed: string
   /** Exact competition identity required by event-scoped official inputs. */
   eventId?: string | null
+  /** Free Mode has no FIA event bulletin; use simulator technical defaults. */
+  freeMode?: boolean
   /** Category identity keeps checkpoints and category-specific assists isolated. */
   seriesId?: ExecutableSeriesId
   vehicleEraId?: RuntimeVehicleEraId

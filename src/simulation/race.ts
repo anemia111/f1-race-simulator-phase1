@@ -2024,6 +2024,7 @@ function rechargeRuleForLapStart(
     stage,
     timedRunPhase: options.timedRunPhase,
     trackId: config.track.id,
+    allowUnverifiedSessionDefault: config.freeMode === true,
   })
 }
 

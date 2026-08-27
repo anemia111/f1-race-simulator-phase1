@@ -318,6 +318,7 @@ function rechargeRuleSpecificity(rule: FiaPuRechargeRule) {
 }
 
 export function resolveF1RechargeRule(options: {
+  allowUnverifiedSessionDefault?: boolean
   behindSafetyCar?: boolean
   eventId?: string
   eventInput?: FiaPuEventInput | null
@@ -417,6 +418,20 @@ export function resolveF1RechargeRule(options: {
   const hasTechnicalDefault =
     (sessionType === 'race' || sessionType === 'sprint') &&
     options.overtakeAtLapStart !== true
+  const maximumRechargeMj =
+    FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
+
+  if (options.allowUnverifiedSessionDefault) {
+    return {
+      additionalAllowanceMJ: 0,
+      baseLimitMJ: maximumRechargeMj,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: maximumRechargeMj },
+      measuredAt: 'CU-K-HV-DC-bus',
+      resolution: 'technical-default',
+      ruleId: 'sim-free-mode-default',
+      sourceId: 'fia-f1-2026-technical-c20',
+    }
+  }
 
   if (!hasTechnicalDefault) {
     return {
@@ -429,9 +444,6 @@ export function resolveF1RechargeRule(options: {
       sourceId: 'fia-f1-2026-technical-c20',
     }
   }
-
-  const maximumRechargeMj =
-    FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
 
   return {
     additionalAllowanceMJ: 0,

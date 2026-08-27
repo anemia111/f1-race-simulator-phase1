@@ -606,6 +606,7 @@ export function buildFreeModeRaceConfig(
     drivers,
     overtakeSystem: rules.overtakeSystem,
     seed: weatherResolved.seed,
+    freeMode: true,
     seriesId: series.id,
     vehicleEraId: series.vehicleEraId,
     sessionDurationSeconds:

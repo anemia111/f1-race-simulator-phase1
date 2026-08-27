@@ -100,6 +100,51 @@ function runSessionToFinish(config: RaceConfig, maximumSteps: number) {
 }
 
 describe('Free Mode runtime integration', () => {
+  it('recharges F1 ERS after deployment in practice', () => {
+    const config = buildFreeModeRaceConfig(
+      configurationFor({
+        carCount: 1,
+        categoryId: 'f1-custom',
+        sessionKind: 'practice',
+        trackId: 'suzuka-approx',
+      }),
+      context,
+    )
+    let snapshot = createInitialRace(config)
+    let minimumStateOfCharge = 1
+    let recoveredAfterDischarge = false
+    let stateOfChargeIncreasedAfterDischarge = false
+    let previousStateOfCharge = 1
+
+    for (
+      let step = 0;
+      step < 1_200 && snapshot.sessionStatus !== 'finished';
+      step += 1
+    ) {
+      snapshot = advanceRace(snapshot, 0.5, config)
+      const runtime = snapshot.cars[0]?.runtimeSystems
+      if (runtime?.kind !== 'f1') continue
+
+      minimumStateOfCharge = Math.min(
+        minimumStateOfCharge,
+        runtime.energyStore.stateOfCharge,
+      )
+      recoveredAfterDischarge ||=
+        minimumStateOfCharge < 0.99 &&
+        runtime.energyStore.actualRecoveryPowerKw > 0 &&
+        runtime.energyStore.chargeDcPowerKw > 0
+      stateOfChargeIncreasedAfterDischarge ||=
+        minimumStateOfCharge < 0.99 &&
+        runtime.energyStore.stateOfCharge > previousStateOfCharge
+      previousStateOfCharge = runtime.energyStore.stateOfCharge
+    }
+
+    expect(config.freeMode).toBe(true)
+    expect(minimumStateOfCharge).toBeLessThan(0.99)
+    expect(recoveredAfterDischarge).toBe(true)
+    expect(stateOfChargeIncreasedAfterDischarge).toBe(true)
+  })
+
   it.each([
     ['practice', 180],
     ['qualifying', 700],

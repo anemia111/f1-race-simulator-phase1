@@ -198,6 +198,20 @@ describe('FIA 2026 event recharge resolver', () => {
     }
   })
 
+  it('uses the simulator default recharge budget for Free Mode sessions', () => {
+    expect(
+      resolveF1RechargeRule({
+        allowUnverifiedSessionDefault: true,
+        stage: 'fp1',
+      }),
+    ).toMatchObject({
+      baseLimitMJ: 8.5,
+      limit: { kind: 'finite', maxCuKBusRechargeMj: 8.5 },
+      resolution: 'technical-default',
+      ruleId: 'sim-free-mode-default',
+    })
+  })
+
   it('treats the Overtake row as a 9.0 MJ total latched at lap start', () => {
     expect(
       resolveF1RechargeRule({
