@@ -406,6 +406,25 @@ describe('Phase 4 ERS-K operating modes', () => {
     expectAuditToClose(result);
   });
 
+  it('does not invent an FIA-unpublished high-SOC recharge taper', () => {
+    const common = {
+      brakePercent: 100,
+      deltaSeconds: 0.5,
+      speedKph: 300,
+      throttlePercent: 0,
+    } as const;
+    const midSoc = step(createInitialEnergyStore(team, 0.5), common);
+    const highSoc = step(createInitialEnergyStore(team, 0.95), common);
+
+    expect(highSoc.state.actualRecoveryPowerKw).toBeCloseTo(
+      midSoc.state.actualRecoveryPowerKw,
+      10,
+    );
+    expect(highSoc.state.stateOfCharge).toBeGreaterThan(0.95);
+    expectAuditToClose(midSoc);
+    expectAuditToClose(highSoc);
+  });
+
   it('uses a temperature-limited brake ceiling before calculating recovery and friction heat', () => {
     const normal = step(createInitialEnergyStore(team, 0.3), {
       brakeDecelerationLimitMps2: 49.05,

@@ -732,10 +732,6 @@ function socDischargeFactor(stateOfCharge: number) {
   return smoothstep(0.025, 0.34, stateOfCharge)
 }
 
-function socChargeAcceptanceFactor(stateOfCharge: number) {
-  return 1 - smoothstep(0.78, 1, stateOfCharge)
-}
-
 function tireRecoveryStability(tire: TireCompound, surfaceWaterMm: number) {
   if (surfaceWaterMm <= 0.05) return 1
 
@@ -1036,7 +1032,6 @@ function advanceEnergyStoreSubstep(
   const batteryChargeDcPowerLimitKw =
     parameters.maximumRecoveryMechanicalPowerKw *
     recoveryDcEfficiency *
-    socChargeAcceptanceFactor(state.stateOfCharge) *
     thermalRecoveryFactor
   const remainingRechargeMJ = remainingRechargeAtCuKBusMJ(state)
   const energyRoomMJ = Math.max(
