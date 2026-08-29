@@ -353,11 +353,14 @@ describe('immediate driver perception', () => {
       'runtimeSystems',
       'f1-system',
       'sf-system',
-      'forbidden-opponent',
-      'dirty-air-opponent',
     ]) {
       expect(serialized).not.toContain(forbiddenText)
     }
+    expect(serialized).toContain('forbidden-opponent')
+    expect(serialized).toContain('dirty-air-opponent')
+    expect(
+      observations.filter(({ scope }) => scope === 'traffic'),
+    ).toHaveLength(2)
   })
 
   it.each([

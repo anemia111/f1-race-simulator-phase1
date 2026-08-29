@@ -1,6 +1,23 @@
 # Driver Agent model
 
-## Status and Phase 7.8 boundary
+## Status — Phase 7 operational closure
+
+Phase 7 is operationally complete as of 2026-08-29. The default
+`category-agent-v1` path now consumes the bounded causal inbox in live races,
+projects self/track/race-control/team/traffic readings, and emits a validated
+goal -> intention/tactic -> low-level-control record. F1 battle tactics remain
+F1 energy/Electrical Overtake requests; SUPER FORMULA battle tactics remain
+OTS attack/defend requests. All physical, system, pit, FIA, pass, contact and
+classification outcomes stay with their existing downstream authorities.
+
+`driverAgentRuntime.ts` persists versioned category mileage/confidence and one
+complete replay record per car. The one-record bound keeps browser checkpoints
+below their storage budget; the observation inbox retains the longer causal
+history. Checkpoint parsing rejects future, cross-driver and cross-category
+runtime state. `legacy-direct` remains an exact low-level rollback path and
+does not collect operational records.
+
+The historical phase sequence below explains how this boundary was reached.
 
 Phase 7.0 established a typed Driver Agent boundary and a reversible runtime
 seam. Phase 7.1 extended that boundary with closed, value-bearing observation
@@ -18,13 +35,12 @@ that ephemeral compatibility request through the switch. Phase 7.6 routes the
   the compound effects then requiring review, without changing production
   behavior. Phase 7.8B closes DA-01 through DA-14 with explicit owner, cadence,
   session-boundary, normalization and removal contracts. It does not tune from
-  observed, holdout or documentation-validation values. This graph review does
-  **not** complete Phase 7,
-activate an observation-consuming F1 or SUPER FORMULA driving policy, add
-learned category experience, or claim that the current generic driver logic is
-a complete agent or perception model.
+  observed, holdout or documentation-validation values. This graph review did
+  not by itself complete Phase 7; the later operational closure described
+  above supplies observation consumption, bounded category experience and
+  retained decision records.
 
-The batch has five relevant implementation boundaries:
+The completed model has six relevant implementation boundaries:
 
 - `src/simulation/driverAgentContract.ts` defines the portable agent contract,
   category policy types, closed observation readings, requests, validation,
@@ -33,8 +49,11 @@ The batch has five relevant implementation boundaries:
   driver decision, F1 energy-intent and ERS-mode schedulers, F1 active-aero
   mode selector, and the F1 Electrical Overtake compatibility request without
   changing their results, plus the unchanged SF OTS use predicate;
-- `src/simulation/driverPerception.ts` provides the opt-in immediate diagnostic
-  projection without joining the live race path;
+- `src/simulation/driverPerception.ts` projects the closed common observation
+  set, including subject-scoped traffic readings, into the live inbox;
+- `src/simulation/driverObservationInbox.ts` and
+  `src/simulation/driverAgentRuntime.ts` own causal delivery, finite retention,
+  category experience and the persisted replay tail;
 - `docs/DRIVER_ABILITY_DEPENDENCY_GRAPH.md` records source construction,
   normalization, production consumers, aggregate-only skills, and the resolved
   duplicate-effect register; and
@@ -42,7 +61,9 @@ The batch has five relevant implementation boundaries:
   pre-advance race decision seam and passes the same route metadata to
   `src/simulation/telemetry.ts` for F1 energy, active-aero, Electrical
   Overtake, and SF OTS request dispatch, while `src/simulation/qualifying.ts`
-  uses it for the shared offline timed-session execution decision.
+  uses it for the shared offline timed-session execution decision. The live
+  race evaluates operational records only when the low-frequency decision
+  window/intent changes.
 
 The behavior delegated by the adapter remains
 `src/simulation/driverDecision.ts`. Existing category system truth remains in
@@ -301,8 +322,8 @@ formal-battle-owner cleanup. DA-05 is resolved by removing the battle tyre
 surrogate, DA-12 by the adjudication-owner cleanup, and DA-03 by keeping ability
 only in `F1EnergyIntent` while downstream execution uses its ideal endpoint.
 DA-14 closes the register with a normalized 12-to-30 construction contract and
-no production formula change. Phase 7 remains incomplete until operational
-category policies consume bounded observations.
+no production formula change. The operational closure now consumes the bounded
+observations without reopening those ability-owner decisions.
 
 ## Contract model
 
@@ -314,14 +335,16 @@ category policies consume bounded observations.
 with reference-only decision/observation ID memory. A live seat, team, car number,
 category, and vehicle era are deliberately excluded. The base values are not
 re-fit or silently changed when the same driver is placed in another executable
-category. Phase 7.0 does not yet define operational update/eviction bounds or
-implement opponent learning.
+category. Operational memory is bounded by the 96-observation inbox and the
+single retained replay record; opponent traffic is perceived by subject ID
+without exposing an opponent's private plan or internal state.
 
 `DriverCategoryExperience`, with its F1 and SUPER FORMULA branches, is separate
 from shared identity. This allows future learning to be scoped by category and
-vehicle era without modifying the driver's base skill profile. Phase 7.0 does
-not learn, persist, or apply an experience modifier. Category experience must
-therefore have no effect on the delegated decision in this batch.
+vehicle era without modifying the driver's base skill profile. The live runtime
+persists category mileage and a bounded confidence value. Confidence only
+weights noisy perception; no learned grip/energy/OTS estimator is claimed, and
+those model references remain explicitly unavailable.
 
 ### Series policy
 
@@ -376,9 +399,9 @@ explicit system-observation producer preserve that as an unavailable reading
 without inventing an OTS budget, duration, power, or opponent estimate. The
 Phase 7.1 immediate projector emits no category-system observation at all.
 
-Operational policies still require a bounded inbox with delayed and noisy
+Operational policies consume the bounded inbox with delayed and noisy
 readings, causal delivery, retention limits, and explicit consumption rules.
-Those later inputs must remain inside this contract rather than handing an
+Those inputs remain inside this contract rather than handing an
 agent an unrestricted `RaceSnapshot`, category runtime truth, future random
 result, opponent internal state, or final outcome.
 
@@ -502,9 +525,9 @@ Through Phase 7.8A, the required invariants are:
   and
 - the same seed and canonical contract input produce the same canonical data.
 
-This is a determinism foundation, not a completed save/replay feature.
-Projected observations and decision records are not yet part of checkpoint
-state, a retained driver inbox, or a persisted replay contract.
+This determinism foundation is now exercised by live checkpoint/replay state:
+the inbox, category experience and latest complete decision record are saved,
+strictly parsed and continued deterministically.
 
 ## Rollback
 
@@ -521,12 +544,11 @@ migration switch:
   `f1ErsModeIntentFor`, `activeAeroModeFor`, and
   `f1ElectricalOvertakeIntentFor`, plus `sfOtsUseRequestedFor` for SF OTS.
 
-After exact parity coverage, an omitted property resolves to
-`category-agent-v1`. Setting `legacy-direct` is the rollback point. Both modes
-remain available while the adapter is behavior-neutral, so a regression can be
-isolated without changing category physics, seeds, or saved driver ratings.
-Exact decision parity applies to supported series/vehicle-era pairs; invalid
-pairs are intentionally rejected only by the category-agent validation path.
+An omitted property resolves to `category-agent-v1`. Setting `legacy-direct`
+is the rollback point. The operational path may intentionally differ because
+it reads delayed/noisy perceptions and category experience; the rollback path
+still calls the reviewed low-level controller from exact compatibility context.
+Invalid series/era pairs are rejected only by category-agent validation.
 The same exact parity and rollback rules apply to the F1 energy-intent object
 and to generic timed-session execution loss; no supported-path divergence is
 allowed in this ownership-only slice. `src/simulation/qualifying.ts` now routes
@@ -536,35 +558,25 @@ compatibility input; neither it nor this call-site migration constitutes an
 operational qualifying agent. Phase 7.8B subsequently removes the unconsumed
 returned `qualifyingSpendBias` field.
 
-## Remaining Phase 7 work
+## Phase 7 closure and bounded limits
 
-Phase 7 is not complete until later slices provide and verify at least:
+The completion criteria are now covered by live integration and acceptance
+tests: causal delayed/noisy observations, layered requests, category-isolated
+F1/SF tactics, bounded memory and experience, a deterministic rollback,
+decision-record retention, checkpoint continuation, malformed-state rejection,
+and cross-category race coverage.
 
-- a delayed/noisy bounded observation inbox with causal delivery, retention,
-  uncertainty, and operational policy consumption;
-- strategic goals, tactical intent, and low-level controls as distinct layers;
-- finite memory, opponent beliefs, risk budget, team-order response, and grip
-  exploration;
-- persistent, versioned category experience and neutral-to-learned transitions;
-- operational F1 Straight/Corner Mode, energy, Overtake, tyre, brake, start,
-  flag, pit, track-limit, and racecraft policy;
-- operational SUPER FORMULA OTS attack/defend, tow, tyre, pit/refuelling,
-  start, and rule-aware racecraft policy;
-- decision-record retention, checkpoint/replay integration, and bounded logging;
-- audit and migration of any newly found or newly introduced direct
-  compatibility call sites; and
-- cross-category and rule-aware behavior acceptance coverage.
+The following limitations are intentional boundaries rather than unfinished
+Phase 7 code:
 
-Until those items are implemented, `category-agent-v1` names the contract and
-behavior-neutral adapter path. Phase 7.1 adds only an opt-in diagnostic
-projection, and Phase 7.2 adds only ownership-checked dispatch of the unchanged
-F1 energy scheduler. Phase 7.3 adds the same ownership check for the unchanged
-active-aero mode selector. Phase 7.4 adds only the unchanged baseline ERS-mode
-selector. Phase 7.5 adds only an explicit representation of the legacy implicit
-Electrical Overtake request; effective status remains downstream. Phase 7.6
-adds only category-owned dispatch of the unchanged SF OTS use predicate after
-downstream availability passes. Phase 7.7 adds only ownership-checked dispatch
-of the unchanged timed-session execution decision. Phase 7.8A adds only the
-audited driver-ability dependency graph; Phase 7.8B closes its DA-01 through
-DA-14 register through explicit contracts and removals. None is operational
-category-specific Driver AI.
+- opponent memory stores observed subject relationships, not hidden opponent
+  beliefs or strategy plans;
+- confidence adapts perception weighting, while learned grip/energy/OTS model
+  references stay unavailable until a validated estimator and evidence exist;
+- only the latest complete replay record is retained per car to meet browser
+  checkpoint size constraints; the longer observation history stays bounded in
+  the inbox; and
+- category requests never bypass the existing legality and outcome authorities.
+
+New capabilities or direct compatibility call sites must preserve these
+boundaries and add their own category and replay acceptance coverage.

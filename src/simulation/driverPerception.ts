@@ -374,6 +374,86 @@ export function projectImmediateDriverPerception(
     },
   ]
 
+  const trafficBySubject = new Map<
+    string,
+    { gapSeconds?: number; lateralOffsetM: number }
+  >()
+  for (const key of ['attack', 'defend', 'dirtyAir', 'tow'] as const) {
+    const cueValue = optionalOwnValue(contextRecord, key)
+    if (cueValue === undefined) continue
+    const cue = requirePlainDataObject(
+      cueValue,
+      `Driver perception ${key} cue`,
+    )
+    const subjectId = requireOwnValue(
+      cue,
+      'opponentId',
+      `Driver perception ${key} cue`,
+    )
+    const lateralOffsetM = requireOwnValue(
+      cue,
+      'opponentLateralOffsetM',
+      `Driver perception ${key} cue`,
+    )
+    const gapSeconds = optionalOwnValue(cue, 'gapSeconds')
+    if (
+      typeof subjectId !== 'string' ||
+      subjectId.length === 0 ||
+      typeof lateralOffsetM !== 'number' ||
+      !Number.isFinite(lateralOffsetM) ||
+      (gapSeconds !== undefined &&
+        (typeof gapSeconds !== 'number' || !Number.isFinite(gapSeconds)))
+    ) {
+      throw new Error(`Driver perception ${key} traffic cue is invalid`)
+    }
+    const previous = trafficBySubject.get(subjectId)
+    trafficBySubject.set(subjectId, {
+      gapSeconds:
+        typeof gapSeconds === 'number'
+          ? Math.min(previous?.gapSeconds ?? gapSeconds, gapSeconds)
+          : previous?.gapSeconds,
+      lateralOffsetM,
+    })
+  }
+
+  const selfOffset = requireOwnValue(
+    contextRecord,
+    'currentLateralOffsetM',
+    'Driver perception context',
+  ) as number
+  const mutableObservations = observations as unknown as DriverObservation[]
+  for (const [subjectId, traffic] of trafficBySubject) {
+    const trafficCommon = {
+      ...common,
+      provenance: {
+        source: 'physics-sensor' as const,
+        sourceId: `driver-decision-context/traffic/${encodeURIComponent(subjectId)}`,
+      },
+      scope: 'traffic' as const,
+      subjectId,
+    }
+    mutableObservations.push({
+      ...trafficCommon,
+      observationId: identify('traffic', `lateral-separation-m:${subjectId}`),
+      reading: exactScalarReading(
+        'traffic/lateral-separation-m',
+        traffic.lateralOffsetM - selfOffset,
+      ),
+      signalId: 'lateral-separation-m' as const,
+    } as unknown as DriverObservation)
+    if (traffic.gapSeconds !== undefined) {
+      mutableObservations.push({
+        ...trafficCommon,
+        observationId: identify('traffic', `gap-seconds:${subjectId}`),
+        reading: exactScalarReading(
+          'traffic/gap-seconds',
+          traffic.gapSeconds,
+        ),
+        signalId: 'gap-seconds' as const,
+      } as unknown as DriverObservation)
+    }
+  }
+
   observations.sort((left, right) =>
     stableCompare(left.observationId, right.observationId),
   )

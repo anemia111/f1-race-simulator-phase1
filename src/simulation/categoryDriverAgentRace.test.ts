@@ -52,7 +52,7 @@ describe('category driver-agent race seam', () => {
     'f1-custom',
     'super-formula',
   ] as const satisfies readonly ExecutableSeriesId[]) {
-    it(`keeps the complete ${seriesId} race snapshot equal to legacy`, () => {
+    it(`runs the operational ${seriesId} agent deterministically with a legacy rollback`, () => {
       const legacyConfig = configFor(seriesId, 'legacy-direct')
       const categoryConfig = configFor(seriesId, 'category-agent-v1')
       const defaultConfig = configFor(seriesId)
@@ -71,8 +71,8 @@ describe('category driver-agent race seam', () => {
         defaultConfig,
       )
 
-      expect(category).toEqual(legacy)
       expect(defaulted).toEqual(category)
+      expect(category).not.toEqual(legacy)
       expect(
         category.cars.every((car) => {
           const inbox = car.driverObservationInbox
@@ -83,6 +83,20 @@ describe('category driver-agent race seam', () => {
             inbox.pending.length + inbox.retained.length > 0
           )
         }),
+      ).toBe(true)
+      expect(
+        category.cars.every(
+          (car) =>
+            car.driverAgentRuntime !== undefined &&
+            car.driverAgentRuntime.experience.mileageKm > 0 &&
+            car.driverAgentRuntime.recentDecisions.length > 0 &&
+            car.driverAgentRuntime.recentDecisions.length <= 1,
+        ),
+      ).toBe(true)
+      expect(
+        legacy.cars.every(
+          (car) => car.driverAgentRuntime?.recentDecisions.length === 0,
+        ),
       ).toBe(true)
 
       if (seriesId === 'f1-custom') {

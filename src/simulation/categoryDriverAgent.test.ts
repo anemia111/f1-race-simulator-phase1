@@ -441,12 +441,14 @@ describe('category driver-agent adapter', () => {
       ])
       const after = decideDriverBehavior(context)
 
-      expect(first.decision).toEqual(before)
-      expect(reordered.decision).toEqual(before)
+      expect(first.decision).toEqual(reordered.decision)
+      expect(first.decision.intent).toBe(before.intent)
+      expect(first.decision.absoluteDecisionWindow).not.toBe(
+        before.absoluteDecisionWindow,
+      )
       expect(after).toEqual(before)
       expect(reordered.record).toEqual(first.record)
       expect(first.record.observationIds).toEqual([
-        `observation:${context.driver.id}:alpha`,
         `observation:${context.driver.id}:zeta`,
       ])
       expect(first.record.utilities).toEqual([

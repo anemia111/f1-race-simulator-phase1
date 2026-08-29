@@ -19,6 +19,10 @@ import {
   parseDriverObservationInboxState,
 } from '../simulation/driverObservationInbox'
 import {
+  createDriverAgentRuntimeState,
+  parseDriverAgentRuntimeState,
+} from '../simulation/driverAgentRuntime'
+import {
   FIA_2026_REGULATION_PROFILE,
   resolveF1RechargeRule,
 } from '../simulation/regulations'
@@ -48,7 +52,7 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.08.27.1'
+export const RACE_SIMULATION_MODEL_VERSION = '2026.08.29.1'
 const LEGACY_V2_RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
 const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',
@@ -1060,6 +1064,14 @@ function isCompatibleCarSnapshot(
           seriesId: driverPolicy.seriesId,
           vehicleEraId: driverPolicy.vehicleEraId,
         }) !== null
+  const hasCompatibleDriverAgentRuntime =
+    value.driverAgentRuntime === undefined
+      ? true
+      : parseDriverAgentRuntimeState(value.driverAgentRuntime, {
+          currentTick: options.currentObservationTick,
+          driverId: String(value.driverId),
+          policy: driverPolicy,
+        }) !== null
   const hasCompatibleRuntime =
     seriesId === 'f1-custom'
       ? isCompatibleF1RuntimeSystems(
@@ -1111,6 +1123,7 @@ function isCompatibleCarSnapshot(
     (seriesId !== 'super-formula' ||
       (!hasNestedF1RuntimeFields(value.runtimeSystems) &&
         hasNoSuperFormulaFiaPenaltyState(value))) &&
+    hasCompatibleDriverAgentRuntime &&
     hasCompatibleDriverObservationInbox &&
     hasCompatibleRuntime
   )
@@ -1302,6 +1315,12 @@ function migrateRaceSnapshot(
       return {
         ...car,
         desiredLateralOffsetM,
+        driverAgentRuntime:
+          car.driverAgentRuntime ??
+          createDriverAgentRuntimeState({
+            driverId: car.driverId,
+            policy: driverPolicy,
+          }),
         driverObservationInbox:
           car.driverObservationInbox ??
           createDriverObservationInbox({

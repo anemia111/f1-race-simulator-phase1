@@ -390,5 +390,6 @@ documentation-validation value is used.
 - graph documentation cannot change random keys, cadence, state, or result;
 - a new production ability read must be added to this graph and classified for
   duplicate interaction before it is treated as reviewed; and
-- Phase 7 remains incomplete until operational category policies consume
-  bounded observations and the remaining agent capabilities are implemented.
+- The 2026-08-29 Phase 7 closure consumes bounded observations in the live
+  category policy and persists bounded experience plus the latest replay
+  record without reopening the DA-01 through DA-14 ownership decisions.

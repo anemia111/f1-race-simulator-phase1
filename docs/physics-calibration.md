@@ -178,51 +178,43 @@ with a zero, estimate, expectation or test tolerance.
 
 ## Current read-only result
 
-Run on 2026-08-04 against the checked-in official qualifying observations,
-after the deployment allowance and the reference lap's active aero:
+Run on 2026-08-29 against the same checked-in official qualifying
+observations. Parameter selection and structural investigation used only the
+five-circuit calibration split. The holdout was read once after the code and
+the unchanged 5.0 m2 lift-area value were fixed.
 
-| Set | Samples | Mean lap ratio | MAPE | Mean absolute error |
-| --- | ---: | ---: | ---: | ---: |
-| Calibration | 5 | 0.9975 | 1.67% | 1.32 s |
-| Holdout | 6 | 0.9923 | 3.49% | 3.02 s |
-| Overall | 11 | 0.9946 | 2.66% | 2.24 s |
+| Set | Samples | Mean percentage bias | Mean absolute error |
+| --- | ---: | ---: | ---: |
+| Calibration | 5 | +0.813% | 1.181 s |
+| Holdout | 6 | +0.091% | 2.646 s |
+| Overall | 11 | — | 1.980 s |
 
-Against the previous run, on the same observations:
+The structural defect was in reference MGU-K allocation. A segment had been
+ranked by only its immediate local seconds per joule, so the allocator ignored
+speed carried into downstream parts of a long acceleration run and overvalued
+short low-speed exits. The allocator now removes each segment's deployment,
+resolves the complete closed lap, and ranks the complete-lap marginal benefit.
+The forward sweep also permits negative net acceleration from drag instead of
+treating terminal-equilibrium speed as an instantaneous pointwise cap.
 
-| Set | Mean absolute error | Mean lap ratio |
-| --- | ---: | ---: |
-| Calibration | 1.02 s -> 1.32 s | 1.0082 -> 0.9975 |
-| Holdout | 2.65 s -> 3.02 s | 1.0003 -> 0.9923 |
-| Overall | 1.91 s -> 2.24 s | 1.0039 -> 0.9946 |
-
-**Lap-time accuracy got worse and this is not being tuned away.** Two defects
-were fixed and the number that measures a third got larger. The holdout was
-read once, after both values were fixed, and neither was chosen against it.
-
-What moved is scatter, not level: the mean ratio went from 0.4 % slow to 0.5 %
-fast, so the model is no better and no worse centred than it was, and the
-growth is on the straight-against-corner axis that the per-circuit spread has
-always shown. Both fixes act on straights, so both push circuits apart along
-exactly that axis; a model that cannot yet tell a long straight from a short
-one gets a larger error when its straights start behaving differently from
-each other. That axis is still unexplained, and is recorded as such below.
+On the calibration split this reduced lap MAE from 1.329 to 1.181 s, peak MAE
+from 11.8 to 3.4 km/h, and peak bias from -11.8 to +0.9 km/h; modelled peak
+spread increased from 5.1 to 8.3 km/h against 15 km/h observed. No production
+coefficient moved. The one-time holdout MAE improved from 3.02 to 2.646 s. The
+overall observed-peak MAE is 7.527 km/h with +3.919 km/h bias.
 
 The executable Suzuka comparison is F1 versus SUPER FORMULA; former F2/F3
-records are driver-pool history and are not physical validation categories. The
-shared official
-F1/SUPER FORMULA observation has the same order.
-
-The alternative was measured rather than argued. The deployment allowance on
-its own, with the reference lap still blind to active aero, gives calibration
-1.04 s, holdout 2.59 s and overall 1.88 s - slightly better than before on lap
-time - but leaves peak-speed error at 18.13 km/h and the modelled peaks spread
-over 6.1 km/h across circuits whose observed peaks span 55. That was the
-trade: a better lap-time number and a reference lap that still cannot
-distinguish one circuit's straight from another's. The spread was taken.
+records are driver-pool history and are not physical validation categories.
+The shared official F1/SUPER FORMULA observation has the same order.
 
 ### Straight-line speed
 
-Run on 2026-08-04 against the eleven observed qualifying peaks:
+The current 2026-08-29 aggregate is reported above (MAE 7.527 km/h, bias
++3.919 km/h). The table and investigation below are the 2026-08-04 historical
+baseline that led to active-aero and energy-budget work; they are retained to
+show why the rejected hypotheses must not be repeated.
+
+Historical run against the eleven observed qualifying peaks:
 
 | Metric | 2026-08-02 | Now |
 | --- | ---: | ---: |

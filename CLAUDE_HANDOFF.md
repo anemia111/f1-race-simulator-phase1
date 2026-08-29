@@ -364,8 +364,9 @@ npm run benchmark
    unavailable states even when testing with a data-rich historical race.
 3. SC/red procedures still simplify some race-director discretion and detailed
    delta enforcement.
-4. FIA event packs currently provide a truthful document ledger; most values
-   are not yet parsed from PDFs into normalized machine-readable markers.
+4. FIA event packs provide a truthful document ledger. Values absent from the
+   normalized supplied packs remain closed as unavailable; they must not be
+   inferred from another event or circuit.
 5. The lazy Three.js scene is about 0.93 MB minified. It no longer blocks the
    initial UI bundle, but Three.js remains the largest download.
 
@@ -382,20 +383,16 @@ npm run benchmark
   reports the pipe's status, not the command's, and has already produced a
   false "clean" for a failing lint.
 
-## Next Piece Of Work
+## Closure state
 
-`docs/NEXT_SESSION_PACE_CALIBRATION.md` holds a prompt for the open pace work:
-the straight-against-corner spread. Reference peaks discriminate circuits by
-26.3 km/h against an observed 55, and lap-time scatter sits on the same axis.
+The straight-against-corner investigation is complete and archived in
+`docs/NEXT_SESSION_PACE_CALIBRATION.md`: complete-lap marginal MGU-K allocation
+reduced calibration lap MAE to 1.181 s and the one-time holdout MAE to 2.646 s
+without changing a production coefficient or adding a track multiplier.
 
-Start it in a fresh session. The calibration policy forbids moving a parameter
-after reading its holdout error, so that prompt carries the published aggregate
-figures and withholds the per-circuit breakdown on purpose.
-
-It also carries six hypotheses already tested and rejected, two of which were
-premises of an earlier version of the prompt itself. There is no mean pace
-error to close - the calibration split runs 0.18 s slow, and the 2.5 s figure
-that was chased came from estimated references. And the energy budget is not
-coupled to straight-line drag: enforcing one left the speed trap bit-identical,
-because the budget lands on the reference lap and the trap measures driven
-laps.
+Phase 6 measured inputs are either source-backed or explicitly unavailable.
+Phase 7 now consumes its causal inbox, persists bounded category experience and
+the latest decision record, and retains `legacy-direct` as rollback. Local
+yellow order is explicitly enforced while passable obstructions remain
+exempt. No known implementation phase remains open; the numbered limits above
+are source/discretion/bundle boundaries, not hidden completion claims.

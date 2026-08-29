@@ -323,10 +323,11 @@ describe('simulatePhysicalLap', () => {
     // Nothing in this path is told the target. The lap time comes from corner
     // radii, tyre grip, power and drag, and is compared with the calibrated
     // baseline afterwards rather than being fitted to it.
+    const lapTimes = tracks.map(
+      (track) => simulatePhysicalLap(track, { physics: f1 }).lapTimeSeconds,
+    )
     const ratios = tracks.map(
-      (track) =>
-        simulatePhysicalLap(track, { physics: f1 }).lapTimeSeconds /
-        track.baseLapTime,
+      (track, index) => lapTimes[index] / track.baseLapTime,
     )
     const mean = ratios.reduce((total, ratio) => total + ratio, 0) / ratios.length
 
@@ -336,9 +337,7 @@ describe('simulatePhysicalLap', () => {
     for (const [index, ratio] of ratios.entries()) {
       expect(
         ratio,
-        `${tracks[index].id}: ${(
-          simulatePhysicalLap(tracks[index], { physics: f1 }).lapTimeSeconds
-        ).toFixed(1)} s vs ${tracks[index].baseLapTime} s`,
+        `${tracks[index].id}: ${lapTimes[index].toFixed(1)} s vs ${tracks[index].baseLapTime} s`,
       ).toBeGreaterThan(0.88)
       expect(ratio).toBeLessThan(1.13)
     }
@@ -517,7 +516,7 @@ describe('simulatePhysicalLap', () => {
     )
   })
 
-  it('spends the allowance on slow corner exits rather than evenly', () => {
+  it('spends the allowance by complete-lap marginal value', () => {
     const f1 = categoryPhysicsFor('f1-custom')
     const suzuka = tracks.find((track) => track.id === 'suzuka-approx')!
     const budgeted = simulatePhysicalLap(suzuka, { physics: f1 })
@@ -526,10 +525,10 @@ describe('simulatePhysicalLap', () => {
       physics: f1,
     })
 
-    // The allowance is well short of what the lap would draw unmetered, so it
-    // has to be spent somewhere in particular. Ranking by seconds bought per
-    // joule puts it at the bottom of the speed range: the budgeted lap must
-    // give up more at the top of a straight than out of the slowest corner.
+    // Each segment is ranked by removing its deployment and resolving the
+    // complete closed lap, so speed carried into downstream straight segments
+    // is part of the seconds-per-joule value. The allowance is well short of
+    // the unmetered draw and therefore gives up more peak than minimum speed.
     expect(budgeted.deploymentEnergyMj).toBeLessThan(
       unbudgeted.deploymentEnergyMj * 0.75,
     )

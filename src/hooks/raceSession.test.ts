@@ -192,6 +192,9 @@ describe('race session continuity', () => {
     expect(restored?.cars.map((car) => car.driverObservationInbox)).toEqual(
       evolved.cars.map((car) => car.driverObservationInbox),
     )
+    expect(restored?.cars.map((car) => car.driverAgentRuntime)).toEqual(
+      evolved.cars.map((car) => car.driverAgentRuntime),
+    )
     expect(advanceRace(restored!, 0.25, config)).toEqual(
       advanceRace(evolved, 0.25, config),
     )
@@ -214,6 +217,19 @@ describe('race session continuity', () => {
     expect(
       parseRaceCheckpoint(
         JSON.stringify(malformed),
+        'driver-inbox',
+        config,
+        now,
+      ),
+    ).toBeNull()
+
+    const malformedRuntime = JSON.parse(raw) as MutableCheckpoint
+    const runtime = malformedRuntime.snapshot.cars[0]
+      .driverAgentRuntime as Record<string, unknown>
+    runtime.seriesId = 'super-formula'
+    expect(
+      parseRaceCheckpoint(
+        JSON.stringify(malformedRuntime),
         'driver-inbox',
         config,
         now,
@@ -1159,7 +1175,8 @@ describe('race session continuity', () => {
     const raw = serializeRaceCheckpoint('session-a', snapshot, now)
 
     expect(raw).not.toBeNull()
-    expect(raw!.length).toBeLessThan(1_500_000)
+    // Includes one complete, validated driver-agent replay record per car.
+    expect(raw!.length).toBeLessThan(1_650_000)
     expect(
       snapshot.cars.some((car) => car.lapHistory.length >= 2),
     ).toBe(true)

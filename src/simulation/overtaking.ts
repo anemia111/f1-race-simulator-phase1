@@ -291,7 +291,11 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
     sector: currentSector,
     evaluationsPerLap = 1,
   } = context
-  const attackWindow = isOpeningLap ? 1.65 : inRestartWindow ? 1.25 : 1.05
+  // The driver-agent starts shaping an attack from 1.8 s, so the formal
+  // resolver must not wait until the cars are almost touching.  A slightly
+  // wider normal window lets tow, braking and driver skill create a move while
+  // still requiring a genuinely close battle.
+  const attackWindow = isOpeningLap ? 1.8 : inRestartWindow ? 1.45 : 1.25
 
   if (
     gapToAheadSeconds <= 0 ||
@@ -318,15 +322,15 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   const chaos =
     (isOpeningLap ? 0.18 : 0) + (inRestartWindow ? 0.12 : 0) + (1 - trackGrip) * 0.18
   const lapAttemptChance = clamp(
-    0.14 +
-      gapPressure * 0.48 +
+    0.3 +
+      gapPressure * 0.52 +
       skillEdge * 0.22 +
       wetEdge * 0.12 +
       chaos +
       electricalPerformanceEdge +
       speedPerformanceEdge +
       straightClosingOpportunity +
-      (zone === 'straight' ? 0.025 : 0),
+      (zone === 'straight' ? 0.04 : 0),
     0.05,
     0.82,
   )
@@ -368,8 +372,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
           0.34,
         )
   const passChance = clamp(
-    0.22 +
-      gapPressure * 0.5 +
+    0.36 +
+      gapPressure * 0.54 +
       skillEdge * 0.36 +
       wetEdge * 0.18 -
       (1 - trackGrip) * 0.1 -
@@ -377,9 +381,9 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       electricalPerformanceEdge * 1.2 +
       speedPerformanceEdge * 1.25 +
       straightClosingOpportunity * 1.1 +
-      (zone === 'straight' ? 0.03 : 0),
+      (zone === 'straight' ? 0.05 : 0),
     0.08,
-    0.86,
+    0.9,
   )
   const outcomeRoll = hashChance(`${key}:outcome`)
 

@@ -33,12 +33,18 @@ import {
   type DriverDecisionContext,
 } from './driverDecision'
 import type {
+  DriverAgentTickInput,
   DriverObservation,
+  F1_2026_DrivingPolicy,
+  SF_2026_DrivingPolicy,
   SeriesDrivingPolicy,
 } from './driverAgentContract'
 import {
+  baseDriverIdentityModel,
   decideDriverBehaviorForPath,
+  evaluateCategoryDriverAgent,
   resolveCategoryDrivingPolicy,
+  resolveDriverDecisionPath,
 } from './categoryDriverAgent'
 import { projectImmediateDriverPerception } from './driverPerception'
 import {
@@ -47,6 +53,11 @@ import {
   driverObservationTickAt,
   type DriverObservationInboxState,
 } from './driverObservationInbox'
+import {
+  advanceDriverAgentRuntimeState,
+  createDriverAgentRuntimeState,
+  type DriverAgentRuntimeState,
+} from './driverAgentRuntime'
 import { effectiveMachineRating } from './machinePerformance'
 import { baselineSetupForTrack } from './engineering'
 import {
@@ -2420,6 +2431,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
 
     const car: CarSnapshot = {
       driverId: driver.id,
+      driverAgentRuntime: createDriverAgentRuntimeState({
+        driverId: driver.id,
+        policy: driverPolicy,
+      }),
       driverObservationInbox: createDriverObservationInbox({
         driverId: driver.id,
         seriesId: driverPolicy.seriesId,
@@ -4590,6 +4605,7 @@ export function advanceRace(
     string,
     DriverObservationInboxState
   >()
+  const driverAgentRuntimeById = new Map<string, DriverAgentRuntimeState>()
   const physicalAheadById = new Map<string, CarSnapshot>()
   const physicalGapSecondsById = new Map<string, number>()
 
@@ -4675,9 +4691,11 @@ export function advanceRace(
     // Monaco, 160 passes across 76 pairs, 2.1 per pair and up to seven between
     // the same two cars.
     //
-    // The case can be a faster recent lap, fresher rubber, or Overtake in
-    // hand. Before either car has a lap on the board there is nothing to
-    // compare, so the opening laps are left alone.
+    // The case can be competitive recent pace, fresher rubber, or Overtake in
+    // hand. A small tolerance matters because a tow or better braking can let
+    // a similarly paced car pass; a clearly slower car is still held back to
+    // prevent repetitive position trading. Before either car has a lap on the
+    // board there is nothing to compare, so the opening laps are left alone.
     const attackerLastLap = car.lastLapTimeSeconds
     const defenderLastLap = aheadCar?.lastLapTimeSeconds ?? null
     const attackerF1Tires = f1RuntimeFor(car)?.tires ?? null
@@ -4687,7 +4705,7 @@ export function advanceRace(
     const hasPaceCase =
       attackerLastLap === null ||
       defenderLastLap === null ||
-      attackerLastLap < defenderLastLap ||
+      attackerLastLap <= defenderLastLap + 0.25 ||
       (attackerF1Tires !== null &&
         defenderF1Tires !== null &&
         attackerF1Tires.tireAgeLaps + 4 <
@@ -4735,6 +4753,7 @@ export function advanceRace(
         aheadCar?.status === 'running'
           ? {
               active: attackIntensity > 0 && hasPaceCase,
+              gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
               intensity: attackIntensity,
@@ -4746,6 +4765,7 @@ export function advanceRace(
         behindCar?.status === 'running'
           ? {
               active: defendIntensity > 0,
+              gapSeconds: gapBehindSeconds,
               opponentId: behindCar.driverId,
               opponentLateralOffsetM: nearestBehind!.lateralOffsetM,
               intensity: defendIntensity,
@@ -4757,6 +4777,7 @@ export function advanceRace(
           ? {
               active:
                 gapAheadSeconds < 2.5 && dynamics.curvature >= 0.025,
+              gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
               intensity: clamp01(1 - gapAheadSeconds / 2.5),
@@ -4767,6 +4788,7 @@ export function advanceRace(
           ? {
               active:
                 gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72,
+              gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
               intensity: clamp01(1 - gapAheadSeconds / 1.8),
@@ -4819,12 +4841,87 @@ export function advanceRace(
         : observationInbox
 
     driverObservationInboxById.set(car.driverId, advancedObservationInbox)
-    const decision = decideDriverBehaviorForPath({
-      context: decisionContext,
-      path: config.driverDecisionPath,
-      seriesId: config.seriesId,
-      vehicleEraId: config.vehicleEraId,
-    })
+    const driverAgentRuntime =
+      car.driverAgentRuntime ??
+      createDriverAgentRuntimeState({
+        driverId: car.driverId,
+        policy: driverPolicy,
+      })
+    const availableObservations = advancedObservationInbox.retained
+    const identity = baseDriverIdentityModel(driver)
+    const identityWithMemory = {
+      ...identity,
+      memory: {
+        decisionIds: driverAgentRuntime.recentDecisions.map(
+          ({ decisionId }) => decisionId,
+        ),
+        observationIds: availableObservations.map(
+          ({ observationId }) => observationId,
+        ),
+      },
+    }
+    let decision: DriverDecision
+    let nextDriverAgentRuntime = driverAgentRuntime
+    if (
+      resolveDriverDecisionPath(config.driverDecisionPath) ===
+      'category-agent-v1'
+    ) {
+      const agentInput = {
+        decisionTime: observationDecisionTime,
+        driverId: car.driverId,
+        experience: driverAgentRuntime.experience,
+        identity: identityWithMemory,
+        observations: availableObservations,
+        policy: driverPolicy,
+        seed: config.seed,
+      }
+      decision = decideDriverBehaviorForPath({
+        context: decisionContext,
+        experience: driverAgentRuntime.experience,
+        observations: availableObservations,
+        path: config.driverDecisionPath,
+        seriesId: config.seriesId,
+        vehicleEraId: config.vehicleEraId,
+      })
+      const currentDecisionKey = `window:${decision.absoluteDecisionWindow}:${decision.intent}`
+      const retainedDecisionId =
+        driverAgentRuntime.recentDecisions.at(-1)?.decisionId
+      if (!retainedDecisionId?.includes(currentDecisionKey)) {
+        const evaluation =
+          driverPolicy.kind === 'f1-2026-driving-policy'
+            ? evaluateCategoryDriverAgent({
+                agentInput:
+                  agentInput as unknown as DriverAgentTickInput<F1_2026_DrivingPolicy>,
+                context: decisionContext,
+                path: config.driverDecisionPath,
+                seriesId: driverPolicy.seriesId,
+                vehicleEraId: driverPolicy.vehicleEraId,
+              })
+            : evaluateCategoryDriverAgent({
+                agentInput:
+                  agentInput as unknown as DriverAgentTickInput<SF_2026_DrivingPolicy>,
+                context: decisionContext,
+                path: config.driverDecisionPath,
+                seriesId: driverPolicy.seriesId,
+                vehicleEraId: driverPolicy.vehicleEraId,
+              })
+        decision = evaluation.decision
+        nextDriverAgentRuntime = advanceDriverAgentRuntimeState({
+          mileageKm: Math.max(0, car.totalDistance) * config.track.lengthKm,
+          observations: availableObservations,
+          record: evaluation.record,
+          state: driverAgentRuntime,
+        })
+      }
+    } else {
+      decision = decideDriverBehaviorForPath({
+        context: decisionContext,
+        path: config.driverDecisionPath,
+        seriesId: config.seriesId,
+        vehicleEraId: config.vehicleEraId,
+      })
+    }
+    driverAgentRuntimeById.set(car.driverId, nextDriverAgentRuntime)
 
     driverDecisionById.set(car.driverId, decision)
 
@@ -6265,6 +6362,8 @@ export function advanceRace(
     } = displayTelemetry
     let next: CarSnapshot = {
       ...car,
+      driverAgentRuntime:
+        driverAgentRuntimeById.get(car.driverId) ?? car.driverAgentRuntime,
       driverObservationInbox:
         driverObservationInboxById.get(car.driverId) ??
         car.driverObservationInbox,
@@ -8136,10 +8235,12 @@ export function advanceRace(
   // width. Until now it only priced a pit-stop rejoin: nothing about the
   // circuit reached the racing, so Monaco produced as many passes as Monza.
   //
-  // At the hardest end this asks for about 2.4 m between centres against 1.95 m
-  // at the easiest. A wider spread reads better against real pass counts but
-  // the file-past under local yellow stops holding its order, so it is capped
-  // here rather than tuned further; see the note below.
+  // At the hardest end this asks for about 2.2 m between centres against 1.95 m
+  // at the easiest. That keeps a small circuit difference without making
+  // wheel-to-wheel moves fail on an overly cautious clearance requirement.
+  // The margin is capped as a plausible geometric completion gate. Local
+  // yellow order is enforced separately by distanceRespectingLocalYellowOrder
+  // and does not rely on this clearance as a side effect.
   //
   // This gates whether a car may complete a move. It does not move anybody:
   // routing the same score through attack commitment changed where drivers
@@ -8152,7 +8253,7 @@ export function advanceRace(
     margins: {
       lateralSafetyMarginM:
         OVERTAKE_LATERAL_SAFETY_MARGIN_M +
-        clamp01((circuitDifficulty - 0.25) / 0.65) * 0.65,
+        clamp01((circuitDifficulty - 0.25) / 0.65) * 0.25,
     },
   })
   const occupancyResolvedCars = cars.map((car) => {

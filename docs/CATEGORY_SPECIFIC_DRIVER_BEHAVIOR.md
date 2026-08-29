@@ -1,9 +1,17 @@
 # Category-specific driver behavior
 
-## Status and purpose
+## Status and purpose — operational
 
-This document defines the F1 2026 and SUPER FORMULA 2026 Driver Agent boundary
-introduced by Phase 7.0 and extended through the first Phase 7.8B cleanups.
+Phase 7 is operationally complete as of 2026-08-29. The default live race path
+consumes delayed/noisy, bounded self/track/traffic/race-control/team
+observations, retains category mileage/confidence, and records a validated
+goal -> intention/tactic -> control decision. F1 and SUPER FORMULA retain
+separate policy discriminants and tactics; downstream physics and regulation
+modules remain the sole outcome authorities. `legacy-direct` remains the
+explicit exact-context rollback.
+
+The historical sequence below records the incremental boundary introduced by
+Phase 7.0 and extended through the first Phase 7.8B cleanups.
 Phase 7.1 adds closed,
 value-bearing observation readings and an immediate diagnostic projector.
 Phase 7.2 moves dispatch ownership of the existing pure F1 energy intent behind
@@ -23,9 +31,8 @@ cleanups remove two unused helpers, correct a track-limit parameter label, and
 narrow redundant decision and energy-intent return surfaces without changing a
 consumed calculation. Phase 7.9A adds a bounded deterministic observation inbox
 with causal delay, bounded sensor uncertainty, expiry, deduplication and finite
-retention. It remains an opt-in pure substrate and does not yet change a live
-decision or checkpoint. These slices do not claim that perception or Phase 7
-is complete.
+retention. The operational closure subsequently connects it to live decisions,
+category experience, decision records and checkpoints.
 
 The next Phase 7.8B slice intentionally resolves DA-11: every named raw,
 performance, and direct energy-skill input saturates at 100, while the existing bounded
@@ -394,11 +401,12 @@ unrelated signal. Every accepted observation must also satisfy:
 observedAtTick <= availableAtTick <= decisionTime.tick
 ```
 
-The immediate diagnostic projector derives selected exact readings from the
+The pure projector derives selected exact readings from the
 immutable, pre-advance `DriverDecisionContext`. For this compatibility
 projection, observation, availability, and decision ticks are equal. The
-result is ephemeral: it is not retained in a live inbox, copied into a race
-snapshot, or consumed to change the delegated decision.
+function itself owns no state; the live race passes its readings into the
+causal inbox, which applies scope latency/noise and persists the result before
+the operational policy consumes it.
 
 Exact immediate readings are diagnostic compatibility evidence. Phase 7.9A's
 `driverObservationInbox.ts` provides the separate perception substrate:
@@ -414,9 +422,10 @@ Exact immediate readings are diagnostic compatibility evidence. Phase 7.9A's
   by simulation tick.
 
 The operation is pure, input-order independent, JSON-serializable and never
-uses wall-clock or renderer time. It is not yet stored in `RaceSnapshot`, and
-the compatibility policy does not consume the delivered readings, so limited
-attention and operational perception remain future work.
+uses wall-clock or renderer time. It is stored in `RaceSnapshot`, strictly
+restored from checkpoints, and consumed by the default live policy. The longer
+inbox is bounded at 96 retained observations; the runtime retains the latest
+complete decision record.
 
 F1 and SUPER FORMULA system readings remain mutually isolated. In particular,
 F1 observations cannot carry SUPER FORMULA OTS readings, and SUPER FORMULA
@@ -443,12 +452,12 @@ policy cannot directly write:
 
 ## Determinism and category metadata
 
-Category metadata and immediate diagnostics must be deterministic and
-behaviorally inert through Phase 7.8A. The adapter uses the same decision context
-and the same seed as the legacy path. The projector is opt-in, pure, and uses no
-random draw. Canonicalization removes incidental ordering from contract
-collections; it does not add a seed namespace or convert unavailable
-observations into invented values.
+Category metadata and observations are deterministic. Perception uncertainty
+uses an observation-ID seed namespace, not mutable RNG or traversal order.
+Canonicalization removes incidental ordering from contract collections and
+never converts unavailable observations into invented values. The operational
+path may differ from legacy because it consumes causal perceptions; repeated
+runs with the same seed and state must remain identical.
 
 The energy ownership adapter also uses the same options and numerical kernel as
 the legacy path. It adds no RNG, wall-clock input, global state, coefficient, or
@@ -460,22 +469,17 @@ never wall-clock time, global counters, renderer timing, worker scheduling, or
 callback order. Record creation, sorting, retention, or omission must not change
 the returned decision.
 
-Changing only the category policy branch in a contract-level parity case may
-change category metadata and the legal diagnostic reading set, but it must not
-change the delegated decision, energy intent, ERS-mode request, or active-aero
-mode, and it must preserve the always-armed Electrical Overtake compatibility
-request and downstream effective status in Phase 7.5. For SF OTS it must also
-preserve the exact composite use predicate and every downstream availability,
-status, and sourced-power result in Phase 7.6. Timed-session legacy, category,
-and default paths must also preserve the exact execution loss for supported F1
-and SF metadata; only category validation may reject an invalid series/era pair.
-Later operational policy versions may intentionally diverge only after
-category-specific behavior and acceptance coverage are added explicitly.
+Energy, ERS-mode, active-aero and OTS ownership wrappers continue to preserve
+their downstream legality and numerical kernels. The live driving decision may
+intentionally diverge from `legacy-direct` because the category path now reads
+delayed/noisy observations and category confidence. Cross-category acceptance
+tests require the default path to be deterministic, the rollback to remain
+available, and F1-only/SF-only runtime state never to cross the discriminant.
 
-## Required future F1 behavior
+## Operational F1 behavior boundary
 
-The F1 policy remains non-operational until it can make bounded, rule-aware
-decisions for at least:
+The F1 policy owns bounded goal/tactic/control requests for the following live
+contexts while the listed system modules retain execution authority:
 
 - Straight Mode command timing and Corner Mode return margin;
 - energy deployment, harvesting, lift-and-coast, superclipping, SOC target, and
@@ -489,14 +493,14 @@ decisions for at least:
 - pit entry/exit and track limits; and
 - geometric, evidence-based racecraft predicates for attack and defence.
 
-Existing active-aero and energy runtime modules are inputs and downstream
-authorities for this future policy. Their existence alone does not satisfy these
-Driver Agent decisions.
+Existing active-aero, energy, tyre, brake and race-control runtime modules are
+the downstream authorities. Missing system observations or supplier inputs stay
+unavailable; the agent never manufactures them.
 
-## Required future SUPER FORMULA behavior
+## Operational SUPER FORMULA behavior boundary
 
-The SUPER FORMULA policy remains non-operational until it can make bounded,
-rule-aware decisions for at least:
+The SUPER FORMULA policy owns category-isolated attack/defend/tow and pit/rule
+requests for the following contexts:
 
 - own and opponent OTS-budget estimates;
 - distinct OTS attack and defend timing;
@@ -512,30 +516,23 @@ rule-aware decisions for at least:
 The SUPER FORMULA agent must not gain an F1 ERS-harvest decision, and the F1
 agent must not gain a SUPER FORMULA OTS decision.
 
-## Remaining shared Driver Agent work
+## Shared closure and intentional limits
 
-Both category policies still require shared agent capabilities:
+Both category policies now share live inbox production/persistence,
+goal/tactic/control layers, subject-scoped traffic memory, bounded category
+experience, latest-record replay persistence, malformed-state rejection and
+cross-category acceptance coverage.
 
-- live inbox production/persistence and an operational perception policy;
-- strategic goal, tactical intent, and low-level control layers;
-- finite memory and opponent beliefs;
-- risk budget and team-order response;
-- grip exploration and a time-based adaptive decision cadence;
-- persistent category experience separated by series and vehicle era;
-- decision-record retention and deterministic replay comparison;
-- audit and migration of any newly found or newly introduced direct
-  compatibility calls.
+The remaining limits are deliberate: no private opponent strategy is exposed;
+learned grip/energy/OTS estimators stay unavailable until independently
+validated; one full decision record is retained per car to satisfy checkpoint
+size limits; and every physical/regulatory outcome remains downstream. New
+compatibility calls must be audited when introduced, but that is an ongoing
+change-control rule rather than unfinished Phase 7 implementation.
 
-Until those items and category acceptance cases are implemented, the phrase
-"category-specific Driver Agent" refers to the contract boundary, Phase 7.1
-diagnostic projection, Phase 7.2 ownership-only F1 energy dispatch, and Phase
-7.3 ownership-only F1 mode-selector dispatch, plus Phase 7.4 ownership-only
-baseline ERS-mode dispatch and Phase 7.5 ownership-only dispatch of the
-explicit legacy Electrical Overtake compatibility request. Phase 7.6 adds only
-ownership-checked dispatch of the unchanged SF OTS use predicate after
-availability passes. Phase 7.7 adds only ownership-checked dispatch of the
-unchanged timed-session execution decision. Phase 7.8A adds only the audited
-driver-ability dependency graph; Phase 7.8B closes its DA-01 through DA-14
-review register through explicit contracts and removals. Phase 7.9A adds only
-the bounded observation-inbox substrate. It does not mean completed
-category-specific driving behavior.
+The phrase "category-specific Driver Agent" therefore refers to the live causal
+policy and its authority boundary, plus the existing ownership-checked system
+dispatches. Phase 7.7 owns timed-session execution dispatch, Phase 7.8A/7.8B
+close the ability dependency register, and Phase 7.9A plus the operational
+closure provide bounded perception, experience and replay state. This is the
+completed Phase 7 boundary.

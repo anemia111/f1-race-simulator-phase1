@@ -193,9 +193,10 @@ Known limits:
 
 ### Stage 5 - cleanup and final verification
 
-Status: pending.
+Status: complete in the 2026-08-29 closure batch.
 
-Planned checks: repository-wide legacy-symbol classification, tests, lint,
+Final checks cover repository-wide legacy-symbol classification, tests, lint,
 typecheck, production build, playtests, multi-seed determinism/stability,
 long-run finite-state checks, final diff/status, and no generated `dist` in a
-commit unless it was already tracked.
+commit unless it was already tracked. The release gate remains the canonical
+source of the final counts for each publication.

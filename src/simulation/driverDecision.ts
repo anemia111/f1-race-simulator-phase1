@@ -66,6 +66,8 @@ export type DriverBattleCue = {
   active: boolean
   opponentId: string
   opponentLateralOffsetM: number
+  /** Perceived longitudinal gap used by the causal observation layer. */
+  gapSeconds?: number
   /** A physical opportunity or threat score, not a pace multiplier. */
   intensity: number
 }
@@ -74,6 +76,8 @@ export type DriverWakeCue = {
   active: boolean
   opponentId: string
   opponentLateralOffsetM: number
+  /** Perceived longitudinal gap used by the causal observation layer. */
+  gapSeconds?: number
   intensity: number
 }
 

@@ -876,10 +876,7 @@ export function simulatePhysicalLap(
     options,
     straightAeroAreas.dragAreaMultiplier,
   )
-  const ceilingAt = dragScaleAt.map((scale) =>
-    scale < 1 ? straightCeilingMps : cornerCeilingMps,
-  )
-  const ceilingMps = straightCeilingMps
+  const searchCeilingMps = Math.max(cornerCeilingMps, straightCeilingMps)
   const gripArgs = {
     airDensityKgM3: resolved.airDensityKgM3,
     // The transient efficiency rides on the same multiplier the surface and
@@ -899,7 +896,7 @@ export function simulatePhysicalLap(
   // be integrated, but live control must never mistake that terminal-speed
   // assumption for a cornering limit on a straight.
   const corneringSpeedLimits = geometry.map((point, index) => {
-    const lateralSearchCeilingMps = Math.max(200, ceilingMps * 1.5)
+    const lateralSearchCeilingMps = Math.max(200, searchCeilingMps * 1.5)
     const limit = corneringSpeedLimitMps({
       ...gripArgs,
       // Banking only helps where the road is actually turning.
@@ -920,9 +917,7 @@ export function simulatePhysicalLap(
    * the profile it produces has been costed against the energy allowance.
    */
   let deploymentShare = new Array<number>(count).fill(1)
-  let speeds = corneringSpeedLimits.map((limit, index) =>
-    Math.min(ceilingAt[index], limit),
-  )
+  let speeds = [...corneringSpeedLimits]
   /** Fraction of the friction ellipse already spent turning at this speed. */
   const lateralUseFraction = (index: number, speedMps: number) => {
     const radius = geometry[index].radiusMeters
@@ -1010,18 +1005,21 @@ export function simulatePhysicalLap(
 
   /** The complete envelope for the deployment shares currently in force. */
   const sweepSpeeds = () => {
-    const profile = corneringSpeedLimits.map((limit, index) =>
-      Math.min(ceilingAt[index], limit),
-    )
+    const profile = [...corneringSpeedLimits]
 
     // Two laps of each sweep so the profile closes on itself at the line.
     for (let pass = 0; pass < 2; pass += 1) {
       for (let step = 0; step < count; step += 1) {
         const index = step % count
         const nextIndex = (index + 1) % count
-        const accelerationMps2 = Math.max(
-          0,
-          tractionLimitedAccelerationMps2(index, profile[index]),
+        // Terminal speed is the equilibrium produced by drive and resistance,
+        // not a point-wise speed cap. If an aero transition raises drag while
+        // the car is already faster than that equilibrium, the same force
+        // balance must decelerate it over distance instead of deleting speed
+        // instantaneously at the zone boundary.
+        const accelerationMps2 = tractionLimitedAccelerationMps2(
+          index,
+          profile[index],
         )
         const reachableMps = Math.sqrt(
           Math.max(
@@ -1057,34 +1055,6 @@ export function simulatePhysicalLap(
   }
 
   /**
-   * Seconds and megajoules a segment costs when it draws `share`, taken on its
-   * own from a given entry speed. This is the marginal quantity the ranking
-   * needs; what the lap is actually billed is `energyDrawMj` below.
-   */
-  const segmentCost = (index: number, entryMps: number, share: number) => {
-    const lengthMeters = geometry[index].segmentLengthMeters
-    const accelerationMps2 = accelerationWithShareMps2(index, entryMps, share)
-    const exitMps = Math.sqrt(
-      Math.max(0, entryMps ** 2 + 2 * accelerationMps2 * lengthMeters),
-    )
-    // The same trapezoidal rule the lap time and the energy integral use, so a
-    // segment's ranking and its bill are computed the same way.
-    const averageMps = Math.max(1, (entryMps + exitMps) / 2)
-    const seconds = lengthMeters / averageMps
-
-    return {
-      energyMj:
-        (permittedDeploymentMechanicalKw(
-          resolved.deploymentDcPowerKw * share,
-          averageMps,
-        ) *
-          seconds) /
-        1000,
-      seconds,
-    }
-  }
-
-  /**
    * What a segment adds to the lap's bill in a completed profile.
    *
    * This is the energy integral's own rule, and the allocation has to use it
@@ -1115,6 +1085,56 @@ export function simulatePhysicalLap(
         (geometry[index].segmentLengthMeters / averageMps)) /
       1000
     )
+  }
+  /**
+   * Complete-lap time bought by deployment on one segment.
+   *
+   * Withdrawing drive force can only lower the forward speed envelope; it
+   * cannot create a new braking violation.  Propagating that lower exit speed
+   * forward until it rejoins the already solved profile is therefore
+   * equivalent to re-running the complete envelope for this one marginal
+   * change, without repeating an unchanged backward sweep for every point.
+   */
+  const marginalLapBenefitSeconds = (
+    candidateIndex: number,
+    profile: readonly number[],
+  ) => {
+    let index = candidateIndex
+    let entryMps = profile[index]
+    let benefitSeconds = 0
+
+    for (let step = 0; step < count; step += 1) {
+      const nextIndex = (index + 1) % count
+      const share = step === 0 ? 0 : deploymentShare[index]
+      const accelerationMps2 = accelerationWithShareMps2(
+        index,
+        entryMps,
+        share,
+      )
+      const reachableMps = Math.sqrt(
+        Math.max(
+          0,
+          entryMps ** 2 +
+            2 * accelerationMps2 * geometry[index].segmentLengthMeters,
+        ),
+      )
+      const exitMps = Math.min(profile[nextIndex], reachableMps)
+
+      benefitSeconds +=
+        geometry[index].segmentLengthMeters /
+          Math.max(1, (entryMps + exitMps) / 2) -
+        geometry[index].segmentLengthMeters /
+          Math.max(1, (profile[index] + profile[nextIndex]) / 2)
+
+      if (Math.abs(exitMps - profile[nextIndex]) <= 1e-9) {
+        break
+      }
+
+      index = nextIndex
+      entryMps = exitMps
+    }
+
+    return benefitSeconds
   }
 
   /**
@@ -1166,17 +1186,21 @@ export function simulatePhysicalLap(
 
     return geometry
       .map((_point, index) => {
-        const entryMps = fullyDeployed[index]
-        const deployed = segmentCost(index, entryMps, 1)
-        const coasting = segmentCost(index, entryMps, 0)
-        const benefitSeconds = coasting.seconds - deployed.seconds
+        const energyMj = energyDrawMj(index, fullyDeployed)
+
+        if (energyMj <= 1e-9) {
+          return { index, value: 0 }
+        }
+
+        // Propagate the lost exit speed around the solved lap until braking or
+        // a corner limit absorbs it. Ranking only the current segment
+        // systematically overvalues short low-speed exits and erases the
+        // benefit of building speed down a long straight.
+        const benefitSeconds = marginalLapBenefitSeconds(index, fullyDeployed)
 
         return {
           index,
-          value:
-            deployed.energyMj > 1e-9 && benefitSeconds > 1e-9
-              ? benefitSeconds / deployed.energyMj
-              : 0,
+          value: benefitSeconds > 1e-9 ? benefitSeconds / energyMj : 0,
         }
       })
       .filter((candidate) => candidate.value > 0)

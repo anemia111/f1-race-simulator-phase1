@@ -1,6 +1,6 @@
 # Phase 6 local track-surface substrate
 
-## Status and scope
+## Status and scope — closed
 
 This Phase 6 implementation introduces a deterministic, two-lane local-surface
 substrate, connects it to the live race force path, and makes that substrate
@@ -11,6 +11,12 @@ published bank angles. It also establishes fail-closed contracts for numeric
 road grip and tyre relaxation. It does **not** claim that unpublished
 circuit/tyre coefficients, a complete surveyed elevation mesh, or chassis
 response data have become available.
+
+Phase 6 is closed at this source boundary. Every requested measured field is
+either connected with provenance or represented as explicitly unavailable; the
+absence of a public supplier/circuit number is not unfinished implementation.
+It may be reopened only when a primary source supplies the missing numeric
+input and its units/location/category scope.
 
 ## Runtime model
 
@@ -102,7 +108,7 @@ existing `gripWithTrackRubber` and telemetry water handling retain that job.
 This prevents a second rain or rubber multiplier from being introduced during
 the migration.
 
-The deterministic continuation model is `2026.08.20.3`. An earlier model is
+The current deterministic continuation model is `2026.08.29.1`. An earlier model is
 rejected rather than resuming with the former sector-level evolution rules.
 
 ## Weekend and session carry-over
@@ -247,7 +253,7 @@ road-tyre/test value into F1 or SF physics.
 
 ## Source audit
 
-This non-regulatory Phase 6 source check was updated on 2026-08-27 and is
+This non-regulatory Phase 6 source check was rechecked on 2026-08-29 and is
 separate from the frozen regulation manifest's 2026-08-08 cut-off.
 
 - MADRING official circuit technical information:
@@ -260,7 +266,10 @@ separate from the frozen regulation manifest's 2026-08-08 cut-off.
 - Pirelli 2026 tyre-range validation summary (published 2025-11-24):
   <https://press.pirelli.com/the-range-of-compounds-for-the-2026-season-has-been-set/>
 - FIA 2026 Technical Regulations, C10.8 tyre specification authority:
-  <https://www.fia.com/regulation/category/110>
+  <https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf>
+- Yokohama Rubber 2026 motorsport programme and SUPER FORMULA control-tyre
+  supply (published 2026-03-18):
+  <https://www.y-yokohama.com/release/?id=4749&lang=en>
 - Loeb et al., SAE 900129, experimental relaxation-length method:
   <https://doi.org/10.4271/900129>
 
@@ -269,14 +278,15 @@ numeric circuit friction coefficient. It found the generic first-order tyre
 method but no F1/SF construction-specific relaxation lengths or compound force
 coefficients.
 
-## Explicitly not yet operational
+## Closed source-unavailable inputs
 
 The canonical migration is closed with one live evolution authority, direct
 runtime/UI summaries, canonical fresh-session initialization, schema-v4
 checkpoint persistence, and explicit v3/v2 migration. The items below are not
 cleanup debt hidden behind legacy state; they require new source data or a new
 validated physical-model slice. They remain unavailable rather than receiving
-invented neutral or circuit-specific values.
+invented neutral or circuit-specific values. These are recorded limits, not an
+open coding backlog:
 
 - Per-track numeric roughness, drainage, evaporation, catchment, runoff, or
   absolute tyre-road friction inputs;
