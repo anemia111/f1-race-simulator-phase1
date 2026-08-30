@@ -25,8 +25,15 @@ function runScenario(label: string, trackId: string): RaceSnapshot {
   }
   let snapshot = createInitialRace(config)
 
-  for (let step = 0; step < 5_000 && snapshot.sessionStatus !== 'finished'; step += 1) {
-    snapshot = advanceRace(snapshot, 3, config)
+  // This is a bounded-state acceptance pass, not a frame-cadence test. Six
+  // simulated seconds keeps the same 15,000-second guard while halving the
+  // repeated full-field work used by the three complete races.
+  for (
+    let step = 0;
+    step < 2_500 && snapshot.sessionStatus !== 'finished';
+    step += 1
+  ) {
+    snapshot = advanceRace(snapshot, 6, config)
   }
 
   return snapshot
@@ -81,10 +88,9 @@ describe('multi-circuit race stability', () => {
         }
       }
     },
-    // Three complete 20-car races now include the operational causal-agent
-    // inbox and replay boundary. The assertion remains a finish/state check,
-    // not a micro-benchmark; 255.7 s was observed in the serial release suite
-    // on this hardware, so retain enough headroom for machine-load variance.
-    360_000,
+    // Three complete 20-car races include the operational causal-agent inbox
+    // and replay boundary. The assertion is a bounded-state acceptance pass,
+    // not a frame-cadence micro-benchmark; frame cadence has separate tests.
+    300_000,
   )
 })
