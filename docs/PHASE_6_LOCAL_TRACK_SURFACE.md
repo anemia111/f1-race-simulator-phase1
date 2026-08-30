@@ -108,7 +108,7 @@ existing `gripWithTrackRubber` and telemetry water handling retain that job.
 This prevents a second rain or rubber multiplier from being introduced during
 the migration.
 
-The current deterministic continuation model is `2026.08.29.1`. An earlier model is
+The current deterministic continuation model is `2026.08.30.1`. An earlier model is
 rejected rather than resuming with the former sector-level evolution rules.
 
 ## Weekend and session carry-over

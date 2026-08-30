@@ -401,6 +401,11 @@ Phase 7.1 immediate projector emits no category-system observation at all.
 
 Operational policies consume the bounded inbox with delayed and noisy
 readings, causal delivery, retention limits, and explicit consumption rules.
+The live race projects one reading set per physical decision window and also
+on an urgent flag, pit, emergency, battle-role, or yield transition. Pending
+readings are delivered when their fixed latency expires; unchanged physics
+ticks reuse the already retained causal view instead of rebuilding and
+revalidating the inbox for every car.
 Those inputs remain inside this contract rather than handing an
 agent an unrestricted `RaceSnapshot`, category runtime truth, future random
 result, opponent internal state, or final outcome.
@@ -575,7 +580,8 @@ Phase 7 code:
   references stay unavailable until a validated estimator and evidence exist;
 - only the latest complete replay record is retained per car to meet browser
   checkpoint size constraints; the longer observation history stays bounded in
-  the inbox; and
+  the inbox, with live production aligned to the twelve control windows and
+  urgent cue transitions; and
 - category requests never bypass the existing legality and outcome authorities.
 
 New capabilities or direct compatibility call sites must preserve these

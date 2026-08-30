@@ -425,7 +425,9 @@ The operation is pure, input-order independent, JSON-serializable and never
 uses wall-clock or renderer time. It is stored in `RaceSnapshot`, strictly
 restored from checkpoints, and consumed by the default live policy. The longer
 inbox is bounded at 96 retained observations; the runtime retains the latest
-complete decision record.
+complete decision record. Live projection follows the twelve physical decision
+windows and additionally reacts to urgent flag, pit, emergency, battle-role,
+and yield transitions; unchanged physics ticks reuse retained causal readings.
 
 F1 and SUPER FORMULA system readings remain mutually isolated. In particular,
 F1 observations cannot carry SUPER FORMULA OTS readings, and SUPER FORMULA

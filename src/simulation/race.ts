@@ -29,6 +29,8 @@ import {
   driverSkillBlend,
 } from './driverAbility'
 import {
+  DRIVER_DECISION_WINDOWS_PER_LAP,
+  driverDecisionWindow,
   type DriverDecision,
   type DriverDecisionContext,
 } from './driverDecision'
@@ -44,6 +46,7 @@ import {
   decideDriverBehaviorForPath,
   driverDecisionRecordCycleKey,
   evaluateCategoryDriverAgent,
+  latestCausalDriverObservations,
   resolveCategoryDrivingPolicy,
   resolveDriverDecisionPath,
 } from './categoryDriverAgent'
@@ -743,19 +746,88 @@ const formatElapsed = (seconds: number) => {
 const byId = <T extends { id: string }>(items: T[]) =>
   new Map(items.map((item) => [item.id, item]))
 
-function newestDriverObservationTick(
+const LIVE_DRIVER_OBSERVATION_CYCLE_MARKER = '/live-cycle/'
+
+function stableDriverObservationToken(value: string): string {
+  let left = 2_166_136_261
+  let right = 3_332_926_607
+
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    left = Math.imul(left ^ code, 16_777_619)
+    right = Math.imul(right ^ code, 2_246_822_519)
+  }
+
+  return `${(left >>> 0).toString(36)}${(right >>> 0).toString(36)}`
+}
+
+function liveDriverObservationCycleKey(context: DriverDecisionContext): string {
+  const absoluteWindow =
+    Math.max(0, Math.floor(context.lap)) * DRIVER_DECISION_WINDOWS_PER_LAP +
+    driverDecisionWindow(context.trackProgress)
+  const activeOpponent = (
+    cue:
+      | DriverDecisionContext['attack']
+      | DriverDecisionContext['defend']
+      | DriverDecisionContext['dirtyAir']
+      | DriverDecisionContext['tow'],
+  ) => (cue?.active ? cue.opponentId : '-')
+
+  return [
+    `window:${absoluteWindow}`,
+    `flag:${context.flagState ?? 'clear'}`,
+    `pit:${context.pit?.requested ? 1 : 0}`,
+    `emergency:${
+      context.emergency?.active
+        ? (context.emergency.obstacleId ?? 'active')
+        : '-'
+    }`,
+    `attack:${activeOpponent(context.attack)}`,
+    `defend:${activeOpponent(context.defend)}`,
+    `dirty:${activeOpponent(context.dirtyAir)}`,
+    `tow:${activeOpponent(context.tow)}`,
+    `yield:${
+      context.yield?.active ? (context.yield.approachingId ?? 'active') : '-'
+    }`,
+  ].join('|')
+}
+
+function newestLiveDriverObservationCycleKey(
   state: DriverObservationInboxState,
-): number {
-  let newestTick = -1
+): string | null {
+  let latest: DriverObservation | null = null
 
-  for (const observation of state.pending) {
-    newestTick = Math.max(newestTick, observation.observedAtTick)
-  }
-  for (const observation of state.retained) {
-    newestTick = Math.max(newestTick, observation.observedAtTick)
+  for (const observations of [state.pending, state.retained]) {
+    for (let index = observations.length - 1; index >= 0; index -= 1) {
+      const observation = observations[index]
+      if (
+        !observation.observationId.includes(
+          LIVE_DRIVER_OBSERVATION_CYCLE_MARKER,
+        )
+      ) {
+        continue
+      }
+      if (
+        latest === null ||
+        observation.observedAtTick > latest.observedAtTick ||
+        (observation.observedAtTick === latest.observedAtTick &&
+          observation.observationId > latest.observationId)
+      ) {
+        latest = observation
+      }
+      break
+    }
   }
 
-  return newestTick
+  if (latest === null) return null
+  const markerIndex = latest.observationId.lastIndexOf(
+    LIVE_DRIVER_OBSERVATION_CYCLE_MARKER,
+  )
+  return decodeURIComponent(
+    latest.observationId.slice(
+      markerIndex + LIVE_DRIVER_OBSERVATION_CYCLE_MARKER.length,
+    ),
+  )
 }
 
 function projectLiveDriverObservations(options: {
@@ -763,18 +835,40 @@ function projectLiveDriverObservations(options: {
   readonly decisionTime: { readonly elapsedSeconds: number; readonly tick: number }
   readonly policy: SeriesDrivingPolicy
 }): readonly DriverObservation[] {
-  if (options.policy.kind === 'f1-2026-driving-policy') {
-    return projectImmediateDriverPerception({
-      context: options.context,
-      decisionTime: options.decisionTime,
-      policy: options.policy,
-    })
-  }
+  const projected =
+    options.policy.kind === 'f1-2026-driving-policy'
+      ? projectImmediateDriverPerception({
+          context: options.context,
+          decisionTime: options.decisionTime,
+          policy: options.policy,
+        })
+      : projectImmediateDriverPerception({
+          context: options.context,
+          decisionTime: options.decisionTime,
+          policy: options.policy,
+        })
+  const cycleKey = encodeURIComponent(
+    liveDriverObservationCycleKey(options.context),
+  )
 
-  return projectImmediateDriverPerception({
-    context: options.context,
-    decisionTime: options.decisionTime,
-    policy: options.policy,
+  return projected.map((observation, index) => {
+    const payloadToken = stableDriverObservationToken(
+      JSON.stringify({
+        cycleKey,
+        reading: observation.reading,
+        subjectId:
+          observation.scope === 'traffic' ? observation.subjectId : null,
+      }),
+    )
+    const observationId = `${observation.observationId}/payload:${payloadToken}`
+
+    return {
+      ...observation,
+      observationId:
+        index === 0
+          ? `${observationId}${LIVE_DRIVER_OBSERVATION_CYCLE_MARKER}${cycleKey}`
+          : observationId,
+    }
   })
 }
 
@@ -4818,13 +4912,19 @@ export function advanceRace(
         seriesId: driverPolicy.seriesId,
         vehicleEraId: driverPolicy.vehicleEraId,
       })
-    const newestObservedTick = newestDriverObservationTick(observationInbox)
+    const observationCycleKey = liveDriverObservationCycleKey(decisionContext)
+    const shouldProjectObservations =
+      newestLiveDriverObservationCycleKey(observationInbox) !==
+      observationCycleKey
+    const hasDuePendingObservations = observationInbox.pending.some(
+      ({ availableAtTick }) => availableAtTick <= driverObservationTick,
+    )
     const observationDecisionTime = {
       elapsedSeconds,
       tick: driverObservationTick,
     }
     const observations =
-      newestObservedTick < driverObservationTick
+      shouldProjectObservations
         ? projectLiveDriverObservations({
             context: decisionContext,
             decisionTime: observationDecisionTime,
@@ -4832,7 +4932,7 @@ export function advanceRace(
           })
         : []
     const advancedObservationInbox =
-      newestObservedTick < driverObservationTick
+      shouldProjectObservations || hasDuePendingObservations
         ? advanceDriverObservationInbox({
             currentTick: driverObservationTick,
             observations,
@@ -4848,34 +4948,15 @@ export function advanceRace(
         driverId: car.driverId,
         policy: driverPolicy,
       })
-    const availableObservations = advancedObservationInbox.retained
-    const identity = baseDriverIdentityModel(driver)
-    const identityWithMemory = {
-      ...identity,
-      memory: {
-        decisionIds: driverAgentRuntime.recentDecisions.map(
-          ({ decisionId }) => decisionId,
-        ),
-        observationIds: availableObservations.map(
-          ({ observationId }) => observationId,
-        ),
-      },
-    }
+    const availableObservations = latestCausalDriverObservations(
+      advancedObservationInbox.retained,
+    )
     let decision: DriverDecision
     let nextDriverAgentRuntime = driverAgentRuntime
     if (
       resolveDriverDecisionPath(config.driverDecisionPath) ===
       'category-agent-v1'
     ) {
-      const agentInput = {
-        decisionTime: observationDecisionTime,
-        driverId: car.driverId,
-        experience: driverAgentRuntime.experience,
-        identity: identityWithMemory,
-        observations: availableObservations,
-        policy: driverPolicy,
-        seed: config.seed,
-      }
       decision = decideDriverBehaviorForPath({
         context: decisionContext,
         experience: driverAgentRuntime.experience,
@@ -4888,6 +4969,26 @@ export function advanceRace(
       const retainedDecisionId =
         driverAgentRuntime.recentDecisions.at(-1)?.decisionId
       if (!retainedDecisionId?.includes(currentDecisionKey)) {
+        const identity = baseDriverIdentityModel(driver)
+        const agentInput = {
+          decisionTime: observationDecisionTime,
+          driverId: car.driverId,
+          experience: driverAgentRuntime.experience,
+          identity: {
+            ...identity,
+            memory: {
+              decisionIds: driverAgentRuntime.recentDecisions.map(
+                ({ decisionId }) => decisionId,
+              ),
+              observationIds: availableObservations.map(
+                ({ observationId }) => observationId,
+              ),
+            },
+          },
+          observations: availableObservations,
+          policy: driverPolicy,
+          seed: config.seed,
+        }
         const evaluation =
           driverPolicy.kind === 'f1-2026-driving-policy'
             ? evaluateCategoryDriverAgent({

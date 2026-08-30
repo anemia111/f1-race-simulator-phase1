@@ -87,21 +87,31 @@ const latestObservation = (
   scope: DriverObservation['scope'],
   signalId: string,
   subjectId?: string,
-) =>
-  observations
-    .filter(
-      (observation) =>
-        observation.scope === scope &&
-        observation.signalId === signalId &&
-        (subjectId === undefined ||
-          (observation.scope === 'traffic' &&
-            observation.subjectId === subjectId)),
-    )
-    .sort(
-      (left, right) =>
-        right.observedAtTick - left.observedAtTick ||
-        (left.observationId < right.observationId ? -1 : 1),
-    )[0]
+) => {
+  let latest: DriverObservation | undefined
+
+  for (const observation of observations) {
+    if (
+      observation.scope !== scope ||
+      observation.signalId !== signalId ||
+      (subjectId !== undefined &&
+        (observation.scope !== 'traffic' ||
+          observation.subjectId !== subjectId))
+    ) {
+      continue
+    }
+    if (
+      latest === undefined ||
+      observation.observedAtTick > latest.observedAtTick ||
+      (observation.observedAtTick === latest.observedAtTick &&
+        observation.observationId < latest.observationId)
+    ) {
+      latest = observation
+    }
+  }
+
+  return latest
+}
 
 const scalarObservationValue = (
   observations: readonly DriverObservation[],
@@ -120,7 +130,7 @@ const scalarObservationValue = (
     : undefined
 }
 
-function latestCausalObservations(
+export function latestCausalDriverObservations(
   observations: readonly DriverObservation[],
 ): readonly DriverObservation[] {
   const latestBySignal = new Map<string, DriverObservation>()
@@ -292,10 +302,13 @@ export function decideDriverBehaviorForPath(
 ): DriverDecision {
   if (resolveDriverDecisionPath(input.path) === 'category-agent-v1') {
     resolveCategoryDrivingPolicy(input.seriesId, input.vehicleEraId)
+    const causalObservations = latestCausalDriverObservations(
+      input.observations ?? [],
+    )
     return decideDriverBehavior(
       contextFromCausalObservations(
         input.context,
-        input.observations ?? [],
+        causalObservations,
         input.experience,
       ),
     )
@@ -739,7 +752,7 @@ export function evaluateCategoryDriverAgent<
     throw new Error('Driver agent replay ratings do not match its context')
   }
 
-  const causalObservations = latestCausalObservations(
+  const causalObservations = latestCausalDriverObservations(
     input.agentInput.observations,
   )
   const operationalAgentInput = {
