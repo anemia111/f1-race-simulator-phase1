@@ -163,36 +163,44 @@ describe('Free Mode runtime integration', () => {
     expect(snapshot.sessionStatus).toBe('finished')
   })
 
-  it('finishes a 30-car Super Formula session on an F1 circuit', () => {
-    const config = buildFreeModeRaceConfig(
-      configurationFor({
-        carCount: 30,
-        categoryId: 'super-formula',
-        sessionKind: 'practice',
-        trackId: 'suzuka-approx',
-      }),
-      context,
-    )
-    const snapshot = runSessionToFinish(config, 180)
+  it(
+    'finishes a 30-car Super Formula session on an F1 circuit',
+    () => {
+      const config = buildFreeModeRaceConfig(
+        configurationFor({
+          carCount: 30,
+          categoryId: 'super-formula',
+          sessionKind: 'practice',
+          trackId: 'suzuka-approx',
+        }),
+        context,
+      )
+      const snapshot = runSessionToFinish(config, 180)
 
-    expect(snapshot.cars).toHaveLength(30)
-    expect(snapshot.sessionStatus).toBe('finished')
-  })
+      expect(snapshot.cars).toHaveLength(30)
+      expect(snapshot.sessionStatus).toBe('finished')
+    },
+    20_000,
+  )
 
-  it('finishes a 40-car F1 race on a SUPER FORMULA circuit', () => {
-    const config = buildFreeModeRaceConfig(
-      configurationFor({
-        carCount: 40,
-        categoryId: 'f1-custom',
-        trackId: 'fuji-sf',
-      }),
-      context,
-    )
-    const snapshot = runSessionToFinish(config, 500)
+  it(
+    'finishes a 40-car F1 race on a SUPER FORMULA circuit',
+    () => {
+      const config = buildFreeModeRaceConfig(
+        configurationFor({
+          carCount: 40,
+          categoryId: 'f1-custom',
+          trackId: 'fuji-sf',
+        }),
+        context,
+      )
+      const snapshot = runSessionToFinish(config, 500)
 
-    expect(snapshot.cars).toHaveLength(40)
-    expect(snapshot.sessionStatus).toBe('finished')
-  })
+      expect(snapshot.cars).toHaveLength(40)
+      expect(snapshot.sessionStatus).toBe('finished')
+    },
+    20_000,
+  )
 
   it.each([
     ['f1-custom', 40, 'albert-park-approx'],

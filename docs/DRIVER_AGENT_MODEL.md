@@ -62,8 +62,8 @@ The completed model has six relevant implementation boundaries:
   `src/simulation/telemetry.ts` for F1 energy, active-aero, Electrical
   Overtake, and SF OTS request dispatch, while `src/simulation/qualifying.ts`
   uses it for the shared offline timed-session execution decision. The live
-  race evaluates operational records only when the low-frequency decision
-  window/intent changes.
+  race evaluates operational records only when the low-frequency lap/intent
+  record cycle changes; all twelve control windows still produce decisions.
 
 The behavior delegated by the adapter remains
 `src/simulation/driverDecision.ts`. Existing category system truth remains in

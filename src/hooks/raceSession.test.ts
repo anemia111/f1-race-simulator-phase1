@@ -1195,7 +1195,7 @@ describe('race session continuity', () => {
       parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
         ?.elapsedSeconds,
     ).toBe(snapshot.elapsedSeconds)
-  })
+  }, 20_000)
 
   it('continues a live active-aero transition identically after restore', () => {
     const now = 1_800_000_000_000

@@ -5,6 +5,7 @@ import {
   DEFAULT_DRIVER_DECISION_PATH,
   baseDriverIdentityModel,
   decideDriverBehaviorForPath,
+  driverDecisionRecordCycleKey,
   evaluateCategoryDriverAgent,
   resolveCategoryDrivingPolicy,
   resolveDriverDecisionPath,
@@ -251,6 +252,31 @@ function evaluateForCategory(
 }
 
 describe('category driver-agent adapter', () => {
+  it('retains one record cycle per lap unless the intention changes', () => {
+    const referenceAtStart = driverDecisionRecordCycleKey({
+      absoluteDecisionWindow: 12,
+      intent: 'physical-reference-line',
+    })
+    const referenceAtEnd = driverDecisionRecordCycleKey({
+      absoluteDecisionWindow: 23,
+      intent: 'physical-reference-line',
+    })
+
+    expect(referenceAtEnd).toBe(referenceAtStart)
+    expect(
+      driverDecisionRecordCycleKey({
+        absoluteDecisionWindow: 24,
+        intent: 'physical-reference-line',
+      }),
+    ).not.toBe(referenceAtEnd)
+    expect(
+      driverDecisionRecordCycleKey({
+        absoluteDecisionWindow: 12,
+        intent: 'attack',
+      }),
+    ).not.toBe(referenceAtStart)
+  })
+
   it('uses the category-agent path by default and retains explicit legacy mode', () => {
     expect(DEFAULT_DRIVER_DECISION_PATH).toBe('category-agent-v1')
     expect(resolveDriverDecisionPath()).toBe('category-agent-v1')

@@ -42,6 +42,7 @@ import type {
 import {
   baseDriverIdentityModel,
   decideDriverBehaviorForPath,
+  driverDecisionRecordCycleKey,
   evaluateCategoryDriverAgent,
   resolveCategoryDrivingPolicy,
   resolveDriverDecisionPath,
@@ -4883,7 +4884,7 @@ export function advanceRace(
         seriesId: config.seriesId,
         vehicleEraId: config.vehicleEraId,
       })
-      const currentDecisionKey = `window:${decision.absoluteDecisionWindow}:${decision.intent}`
+      const currentDecisionKey = driverDecisionRecordCycleKey(decision)
       const retainedDecisionId =
         driverAgentRuntime.recentDecisions.at(-1)?.decisionId
       if (!retainedDecisionId?.includes(currentDecisionKey)) {

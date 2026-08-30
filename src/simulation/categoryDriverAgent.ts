@@ -6,6 +6,7 @@ import type { Driver, DriverDecisionPath, F1EnergyIntent } from '../types'
 import { activeAeroModeFor } from './activeAero'
 import {
   decideDriverBehavior,
+  DRIVER_DECISION_WINDOWS_PER_LAP,
   type DriverDecision,
   type DriverDecisionContext,
   type DriverDecisionIntent,
@@ -41,6 +42,24 @@ export type { DriverDecisionPath } from '../types'
 
 export const DEFAULT_DRIVER_DECISION_PATH: DriverDecisionPath =
   'category-agent-v1'
+
+/**
+ * Low-frequency persistence key for the operational replay tail.
+ *
+ * Control still updates in all twelve windows. A full validated record is
+ * emitted once per lap and additionally when its intention changes, keeping
+ * the browser checkpoint audit trail useful without putting schema
+ * canonicalisation on every control window.
+ */
+export function driverDecisionRecordCycleKey(
+  decision: Pick<DriverDecision, 'absoluteDecisionWindow' | 'intent'>,
+): string {
+  const lap = Math.floor(
+    decision.absoluteDecisionWindow / DRIVER_DECISION_WINDOWS_PER_LAP,
+  )
+
+  return `record-lap:${lap}:intent:${decision.intent}`
+}
 
 /**
  * Keeps omitted, pre-Phase-7 configurations on the reviewed category-agent
@@ -742,6 +761,7 @@ export function evaluateCategoryDriverAgent<
     input.agentInput.driverId,
     `tick:${input.agentInput.decisionTime.tick}`,
     `window:${decision.absoluteDecisionWindow}`,
+    driverDecisionRecordCycleKey(decision),
     decision.intent,
   ].join(':')
   const requests = layeredRequestsFor({
