@@ -31,6 +31,7 @@ const carStub = (overrides: Partial<CarSnapshot>): CarSnapshot =>
     code: 'AAA',
     driverId: 'a',
     gapToAhead: 0,
+    gapToAheadLabel: '--',
     position: 1,
     runtimeSystems: f1RuntimeWithTireSets(),
     status: 'running',
@@ -296,30 +297,42 @@ describe('pitWallObservedSource', () => {
 describe('pitWallIntervals', () => {
   const field = [
     carStub({ code: 'AAA', driverId: 'a', gapToAhead: 0, position: 1 }),
-    carStub({ code: 'BBB', driverId: 'b', gapToAhead: 1.25, position: 2 }),
-    carStub({ code: 'CCC', driverId: 'c', gapToAhead: 0.5, position: 3 }),
+    carStub({
+      code: 'BBB',
+      driverId: 'b',
+      gapToAhead: 1.25,
+      gapToAheadLabel: '+1.4s',
+      position: 2,
+    }),
+    carStub({
+      code: 'CCC',
+      driverId: 'c',
+      gapToAhead: 0.5,
+      gapToAheadLabel: '+0.8s',
+      position: 3,
+    }),
   ]
 
   it('reads the interval behind from the following car own gap', () => {
     expect(pitWallIntervals(field, 'b')).toEqual({
       aheadCode: 'AAA',
       behindCode: 'CCC',
-      intervalAheadSeconds: 1.25,
-      intervalBehindSeconds: 0.5,
+      intervalAheadLabel: '+1.4s',
+      intervalBehindLabel: '+0.8s',
     })
   })
 
   it('leaves the leader with no interval ahead', () => {
     expect(pitWallIntervals(field, 'a')).toMatchObject({
       aheadCode: null,
-      intervalAheadSeconds: null,
+      intervalAheadLabel: null,
     })
   })
 
   it('leaves the last runner with no interval behind', () => {
     expect(pitWallIntervals(field, 'c')).toMatchObject({
       behindCode: null,
-      intervalBehindSeconds: null,
+      intervalBehindLabel: null,
     })
   })
 
@@ -342,8 +355,8 @@ describe('pitWallIntervals', () => {
     expect(pitWallIntervals(field, 'missing')).toEqual({
       aheadCode: null,
       behindCode: null,
-      intervalAheadSeconds: null,
-      intervalBehindSeconds: null,
+      intervalAheadLabel: null,
+      intervalBehindLabel: null,
     })
   })
 

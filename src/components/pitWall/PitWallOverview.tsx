@@ -34,12 +34,12 @@ const sectorStatusLabels: Record<SectorTimingStatus, string> = {
   slower: 'SLOWER',
 }
 
-const formatInterval = (seconds: number | null, code: string | null) => {
-  if (seconds === null || !Number.isFinite(seconds)) {
+const formatInterval = (label: string | null, code: string | null) => {
+  if (label === null) {
     return PIT_WALL_UNAVAILABLE
   }
 
-  return `${code ? `${code} ` : ''}+${seconds.toFixed(3)}`
+  return `${code ? `${code} ` : ''}${label}`
 }
 
 export function PitWallOverview({
@@ -113,7 +113,7 @@ export function PitWallOverview({
               : 'No car ahead on the road'
           }
           value={formatInterval(
-            intervals.intervalAheadSeconds,
+            intervals.intervalAheadLabel,
             intervals.aheadCode,
           )}
         />
@@ -126,7 +126,7 @@ export function PitWallOverview({
               : 'No car behind on the road'
           }
           value={formatInterval(
-            intervals.intervalBehindSeconds,
+            intervals.intervalBehindLabel,
             intervals.behindCode,
           )}
         />

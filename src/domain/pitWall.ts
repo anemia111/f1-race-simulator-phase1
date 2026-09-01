@@ -254,13 +254,14 @@ export function pitWallCapabilitiesForRuntime(
 export type PitWallIntervals = {
   aheadCode: string | null
   behindCode: string | null
-  intervalAheadSeconds: number | null
-  intervalBehindSeconds: number | null
+  intervalAheadLabel: string | null
+  intervalBehindLabel: string | null
 }
 
 /**
- * The car behind's own `gapToAhead` is the interval to the selected car, so no
- * second gap model is needed here.
+ * The car behind's own measured `gapToAheadLabel` is the interval to the
+ * selected car, so the pit wall shares the timing tower's latest common
+ * mini-sector measurement rather than formatting the physical traffic gap.
  */
 export function pitWallIntervals(
   cars: CarSnapshot[],
@@ -276,8 +277,8 @@ export function pitWallIntervals(
     return {
       aheadCode: null,
       behindCode: null,
-      intervalAheadSeconds: null,
-      intervalBehindSeconds: null,
+      intervalAheadLabel: null,
+      intervalBehindLabel: null,
     }
   }
 
@@ -287,8 +288,8 @@ export function pitWallIntervals(
   return {
     aheadCode: ahead?.code ?? null,
     behindCode: behind?.code ?? null,
-    intervalAheadSeconds: ahead ? running[index].gapToAhead : null,
-    intervalBehindSeconds: behind ? behind.gapToAhead : null,
+    intervalAheadLabel: ahead ? running[index].gapToAheadLabel : null,
+    intervalBehindLabel: behind ? behind.gapToAheadLabel : null,
   }
 }
 
