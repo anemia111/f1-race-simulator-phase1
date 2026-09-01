@@ -284,6 +284,64 @@ describe('vehicle occupancy and longitudinal capping', () => {
     ).toBe(false)
   })
 
+  it('keeps a blocked follower rolling with a moving car ahead', () => {
+    const closeRear: LongitudinalOccupancyCandidate = {
+      ...rear,
+      candidateTotalDistanceM: 112,
+      totalDistanceM: 100,
+    }
+    const closeFront: LongitudinalOccupancyCandidate = {
+      ...front,
+      candidateTotalDistanceM: 106.25,
+      totalDistanceM: 106,
+    }
+    const capped = capRearLongitudinalCandidateM({
+      front: closeFront,
+      lapLengthM: 5_000,
+      rear: closeRear,
+    })
+
+    expect(capped).toBeGreaterThan(closeRear.totalDistanceM)
+    expect(capped - closeRear.totalDistanceM).toBeCloseTo(
+      closeFront.candidateTotalDistanceM - closeFront.totalDistanceM,
+      5,
+    )
+    expect(closeFront.candidateTotalDistanceM - capped).toBeCloseTo(6, 5)
+  })
+
+  it('propagates rolling movement through a tightly spaced queue', () => {
+    const train: LongitudinalOccupancyCandidate[] = [
+      {
+        candidateTotalDistanceM: 112,
+        driverId: 'rear',
+        lateralOffsetM: 0,
+        totalDistanceM: 100,
+      },
+      {
+        candidateTotalDistanceM: 118,
+        driverId: 'middle',
+        lateralOffsetM: 0,
+        totalDistanceM: 106,
+      },
+      {
+        candidateTotalDistanceM: 112.25,
+        driverId: 'front',
+        lateralOffsetM: 0,
+        totalDistanceM: 112,
+      },
+    ]
+    const resolved = resolveLongitudinalOccupancy({
+      candidates: train,
+      lapLengthM: 5_000,
+    })
+
+    expect(resolved.get('front')).toBeCloseTo(112.25, 5)
+    expect(resolved.get('middle')).toBeGreaterThan(106)
+    expect(resolved.get('rear')).toBeGreaterThan(100)
+    expect(resolved.get('middle')! - 106).toBeCloseTo(0.25, 5)
+    expect(resolved.get('rear')! - 100).toBeCloseTo(0.25, 5)
+  })
+
   it('allows a safe overtake once the vehicle-width clearance exists', () => {
     const lateralSeparationM = requiredLateralCentreSeparationM(
       undefined,

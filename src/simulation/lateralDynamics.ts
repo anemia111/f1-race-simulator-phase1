@@ -669,11 +669,35 @@ export function capRearLongitudinalCandidateM(options: {
       LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M,
     ),
   )
+  const physicalLongitudinalM = requiredLongitudinalCentreSeparationM(
+    options.rear.footprint,
+    options.front.footprint,
+    0,
+  )
+  const physicalLateralM = requiredLateralCentreSeparationM(
+    options.rear.footprint,
+    options.front.footprint,
+    0,
+  )
+  const physicalCorridorsOverlap =
+    currentLateralSeparationM < physicalLateralM ||
+    candidateLateralSeparationM < physicalLateralM
+  // Do not repair an already-small *safety margin* by parking the following
+  // car for a frame. If the bodies are still physically separated, preserve
+  // the gap that existed at the start of the tick and let the rear car inherit
+  // the front car's movement. A normal blocking/defending move therefore
+  // creates a rolling queue instead of a momentary 0 km/h car. Actual body
+  // overlap remains fail-closed and is still corrected by the full footprint
+  // requirement.
+  const currentRequiredLongitudinalM =
+    physicalCorridorsOverlap && forwardDistanceM < physicalLongitudinalM
+      ? requiredLongitudinalM
+      : Math.min(requiredLongitudinalM, forwardDistanceM)
   const maximumRearAdvanceM = Math.max(
     0,
     forwardDistanceM +
       frontAdvanceM -
-      requiredLongitudinalM -
+      currentRequiredLongitudinalM -
       OCCUPANCY_NUMERIC_BUFFER_M,
   )
 

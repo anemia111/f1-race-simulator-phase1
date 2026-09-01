@@ -119,6 +119,11 @@ driving game.
   defence, yield, and avoidance corridors. Battle outcomes are evaluated once
   per 1/12-lap segment and use the actual mapped activation-zone/sector
   position.
+- A running car blocked by another moving car inherits the queue's forward
+  movement instead of being parked for one frame to recreate a pre-existing
+  safety margin. The occupancy resolver still stops for actual body-overlap
+  risk and for a genuinely stationary obstruction; normal defence therefore
+  remains rolling while red flags, pit boxes, and incidents can still stop a car.
 - A close pack below 1.9 seconds receives smoothly fading tow/pace support,
   capped at 0.9 seconds per lap. Once the train breaks, each car returns to its
   own projected pace. A formal pass outcome now converts the attacker's relative

@@ -36,7 +36,7 @@ function startRace(config: RaceConfig): RaceSnapshot {
 
   snapshot = advanceRace(snapshot, formationSeconds, config)
   snapshot = advanceRace(snapshot, 8, config)
-  return advanceRace(snapshot, 5, config)
+  return advanceRace(snapshot, 9, config)
 }
 
 describe('driver behaviour integration', () => {
@@ -279,6 +279,60 @@ describe('driver behaviour integration', () => {
       (nextLeader.totalDistance - nextAttacker.totalDistance) * lapLengthM
 
     expect(separationM).toBeGreaterThanOrEqual(6.44)
+  })
+
+  it('keeps a close same-lane queue rolling while the lead car moves', () => {
+    const config = makeConfig('live-occupancy-rolling-queue')
+    const started = startRace(config)
+    const lapLengthM = config.track.lengthKm * 1000
+    const leader = started.cars[0]
+    const follower = started.cars[1]
+    const leaderDistance = Math.max(2.2, leader.totalDistance)
+    const followerDistance = leaderDistance - 5.3 / lapLengthM
+    const cars = started.cars.map((car) => {
+      if (car.driverId === leader.driverId) {
+        return {
+          ...car,
+          desiredLateralOffsetM: 0,
+          lateralOffsetM: 0,
+          lateralVelocityMps: 0,
+          speedKph: 45,
+          status: 'running' as const,
+          totalDistance: leaderDistance,
+          trackLateralOffset: 0,
+        }
+      }
+      if (car.driverId === follower.driverId) {
+        return {
+          ...car,
+          desiredLateralOffsetM: 0,
+          lateralOffsetM: 0,
+          lateralVelocityMps: 0,
+          speedKph: 310,
+          status: 'running' as const,
+          totalDistance: followerDistance,
+          trackLateralOffset: 0,
+        }
+      }
+
+      return {
+        ...car,
+        status: 'retired' as const,
+        hiddenFromTrack: true,
+      }
+    })
+    const next = advanceRace({ ...started, cars }, 0.05, config)
+    const nextLeader = next.cars.find((car) => car.driverId === leader.driverId)!
+    const nextFollower = next.cars.find(
+      (car) => car.driverId === follower.driverId,
+    )!
+    const separationM =
+      (nextLeader.totalDistance - nextFollower.totalDistance) * lapLengthM
+
+    expect(nextLeader.totalDistance).toBeGreaterThan(leaderDistance)
+    expect(nextFollower.totalDistance).toBeGreaterThan(followerDistance)
+    expect(nextFollower.speedKph).toBeGreaterThan(0)
+    expect(separationM).toBeGreaterThanOrEqual(5.29)
   })
 
   it('records a pass only after laterally clear physical distance crossing', () => {
