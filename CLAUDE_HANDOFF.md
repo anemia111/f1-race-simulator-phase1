@@ -110,12 +110,16 @@ driving game.
   - Sprint: `H2/M4/S6/I6/W2`
 - SUPER FORMULA uses one Yokohama dry specification. Category labels and
   inventory are defined by the series registry, not inferred from F1.
-- Cars stay centered on one racing line. Battle outcomes are evaluated once
-  per 1/12-lap segment and use actual mapped DRS-zone/sector position without
-  adding lateral presentation offsets.
+- Cars carry bounded physical lateral position/velocity and reserve attack,
+  defence, yield, and avoidance corridors. Battle outcomes are evaluated once
+  per 1/12-lap segment and use the actual mapped activation-zone/sector
+  position.
 - A close pack below 1.9 seconds receives smoothly fading tow/pace support,
   capped at 0.9 seconds per lap. Once the train breaks, each car returns to its
-  own projected pace; the model never teleports distance or fixes an overtake.
+  own projected pace. A formal pass outcome now converts the attacker's relative
+  gain into bounded defender braking/line-concession loss; it never accelerates
+  the attacker beyond the physical speed ceiling. Lateral occupancy must still
+  clear and the pass event is emitted only after distance order crosses.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
   owed penalties. F1 teams use distinct pit-crew ratings derived from the

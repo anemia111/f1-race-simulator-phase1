@@ -469,6 +469,13 @@ An FIA request channel does not let a driver decide an FIA outcome. Likewise,
 a pit request does not complete a stop, and an overtake tactic does not move a
 car through another car.
 
+When the formal resolver returns a pass, the race owner now preserves that
+relative result as bounded braking/line-concession time loss on the defender.
+The attacker still advances at its physical force-model speed, longitudinal
+occupancy remains authoritative until lateral rectangles clear, and the event
+is recorded only after measured distance order crosses. This closes the former
+gap where `attackerTimeGainSeconds` was calculated but discarded.
+
 ## Observability and causal separation
 
 The live race constructs driver intent from one immutable physical field before

@@ -77,7 +77,7 @@ import {
   normalizeCarComponents,
   weakestComponent,
 } from './components'
-import { overtakeForLap } from './overtaking'
+import { overtakeForLap, type OvertakeOutcome } from './overtaking'
 import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
   advanceVscMarshallingSectorTracking,
@@ -647,6 +647,48 @@ export function driverDecisionRequestsFormalBattle(
   decision: Pick<DriverDecision, 'intent'> | undefined,
 ): boolean {
   return decision?.intent === 'attack'
+}
+
+/**
+ * Consume a bounded part of a resolved battle's time loss through physical
+ * travel. A successful attack's relative gain is stored as a loss for the
+ * defender, so this path never accelerates a car beyond its physical speed.
+ * The half-step cap prevents a one-tick stop after defence or contact.
+ */
+export function battleTravelAdjustment(
+  remainingSeconds: number,
+  deltaSeconds: number,
+) {
+  const finiteRemaining = Number.isFinite(remainingSeconds)
+    ? remainingSeconds
+    : 0
+  const finiteDelta = Number.isFinite(deltaSeconds)
+    ? Math.max(0, deltaSeconds)
+    : 0
+  const lossRemainingSeconds = Math.min(0, finiteRemaining)
+  const appliedSeconds =
+    lossRemainingSeconds < 0
+      ? -Math.min(Math.abs(lossRemainingSeconds), finiteDelta * 0.5)
+      : 0
+
+  return {
+    appliedSeconds,
+    nextRemainingSeconds: lossRemainingSeconds - appliedSeconds,
+    travelSeconds: Math.max(0, finiteDelta + appliedSeconds),
+  }
+}
+
+/** Relative time won by a completed pass is paid by the conceding defender. */
+export function defenderBattleTimeLossSeconds(
+  battle: Pick<
+    OvertakeOutcome,
+    'attackerTimeGainSeconds' | 'defenderTimeLossSeconds' | 'kind'
+  >,
+) {
+  return (
+    battle.defenderTimeLossSeconds +
+    (battle.kind === 'pass' ? battle.attackerTimeGainSeconds : 0)
+  )
 }
 
 export function finalTimingLineSplit(options: {
@@ -5989,15 +6031,15 @@ export function advanceRace(
       standard: 1,
     }
     const effectiveLapTime = baselineEffectiveLapTime
-    const battleDeltaStep = waitingForSafeRejoin
-      ? 0
-      : Math.sign(car.battleDeltaSecondsRemaining) *
-        Math.min(
-          Math.abs(car.battleDeltaSecondsRemaining),
-          deltaSeconds * 0.5,
-        )
-    const battleDeltaSecondsRemaining =
-      car.battleDeltaSecondsRemaining - battleDeltaStep
+    const battleTravel =
+      waitingForSafeRejoin || controlPhase || !hasCrossedRestartLine
+      ? {
+          appliedSeconds: 0,
+          nextRemainingSeconds: car.battleDeltaSecondsRemaining,
+          travelSeconds: deltaSeconds,
+        }
+      : battleTravelAdjustment(car.battleDeltaSecondsRemaining, deltaSeconds)
+    const battleDeltaSecondsRemaining = battleTravel.nextRemainingSeconds
     let totalDistance =
       waitingForSafeRejoin
         ? car.totalDistance
@@ -6006,7 +6048,7 @@ export function advanceRace(
             config.track,
             car.progress,
             displayTelemetry.speedKph,
-            deltaSeconds,
+            battleTravel.travelSeconds,
           )
     const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
@@ -6758,6 +6800,12 @@ export function advanceRace(
             if (battle.kind === 'pass' || battle.kind === 'defended') {
               next = {
                 ...next,
+                // A corner attempt or a defended move costs the attacker time.
+                // A successful move's relative gain is applied to the defender
+                // below so this car never exceeds its physical speed ceiling.
+                battleDeltaSecondsRemaining:
+                  next.battleDeltaSecondsRemaining -
+                  battle.attackerTimeLossSeconds,
                 battlePhase:
                   battle.kind === 'pass' ? 'side-by-side' : 'attacking',
                 battleOpponentId: defender.id,
@@ -6800,13 +6848,19 @@ export function advanceRace(
               }
             }
 
+            const defenderTimeLossSeconds =
+              defenderBattleTimeLossSeconds(battle)
+
             if (
-              battle.defenderTimeLossSeconds > 0 ||
+              defenderTimeLossSeconds > 0 ||
               battle.defenderDamageDelta > 0 ||
               battle.defenderRetires
             ) {
               addDeferredBattleEffect(deferredBattleEffects, defenderCar.driverId, {
-                timeLossSeconds: battle.defenderTimeLossSeconds,
+                // A pass outcome is relative time gained over this defender.
+                // Model the braking/line concession as defender loss instead
+                // of inventing super-physical attacker acceleration.
+                timeLossSeconds: defenderTimeLossSeconds,
                 damageDelta: battle.defenderDamageDelta,
                 retires: battle.defenderRetires,
                 reason: battle.defenderRetires ? 'contact' : null,

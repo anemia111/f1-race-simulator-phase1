@@ -40,9 +40,11 @@ import {
 } from './qualifying'
 import {
   advanceRace,
+  battleTravelAdjustment,
   blueFlagApproachingCarFor,
   carDefinesNeutralisationQueueOrder,
   createInitialRace,
+  defenderBattleTimeLossSeconds,
   finalTimingLineSplit,
   formationLapDurationSecondsFor,
   formationLapsPlannedFor,
@@ -2044,6 +2046,40 @@ describe('weekend grid penalties', () => {
 })
 
 describe('physical running order', () => {
+  it('consumes resolved battle losses without creating super-physical speed', () => {
+    expect(battleTravelAdjustment(1.2, 0.4)).toEqual({
+      appliedSeconds: 0,
+      nextRemainingSeconds: 0,
+      travelSeconds: 0.4,
+    })
+    const loss = battleTravelAdjustment(-1.2, 0.4)
+    expect(loss.appliedSeconds).toBeCloseTo(-0.2, 10)
+    expect(loss.nextRemainingSeconds).toBeCloseTo(-1, 10)
+    expect(loss.travelSeconds).toBeCloseTo(0.2, 10)
+    expect(battleTravelAdjustment(Number.NaN, 0.4)).toEqual({
+      appliedSeconds: 0,
+      nextRemainingSeconds: 0,
+      travelSeconds: 0.4,
+    })
+  })
+
+  it('pays a completed pass gain through the conceding defender', () => {
+    expect(
+      defenderBattleTimeLossSeconds({
+        attackerTimeGainSeconds: 0.72,
+        defenderTimeLossSeconds: 0,
+        kind: 'pass',
+      }),
+    ).toBeCloseTo(0.72, 10)
+    expect(
+      defenderBattleTimeLossSeconds({
+        attackerTimeGainSeconds: 0,
+        defenderTimeLossSeconds: 0,
+        kind: 'defended',
+      }),
+    ).toBe(0)
+  })
+
   it('keeps penalties and baseLapTime out of physical on-track gaps', () => {
     const config = makeConfig('pending-penalty-physical-order')
     const initial = createInitialRace(config)
@@ -2182,6 +2218,12 @@ describe('physical running order', () => {
       })),
     ].map((car, index) => ({
       ...car,
+      // This fixture isolates obstruction clearance from any launch battle
+      // that may have resolved in the setup step.
+      battleDeltaSecondsRemaining: 0,
+      battleOpponentId: null,
+      battlePhase: 'single-file' as const,
+      battlePhaseUntilSeconds: null,
       lap: 2,
       position: index + 1,
       processedBattleSegment: Number.MAX_SAFE_INTEGER,

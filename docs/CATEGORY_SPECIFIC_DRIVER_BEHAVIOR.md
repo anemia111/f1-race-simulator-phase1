@@ -360,6 +360,9 @@ path is unchanged, and the non-battle timed traffic cues remain available.
 DA-01 is closed by removing the generic attempted-overtake, attempted-defence
 and contact-risk outputs. Formal battle hashes retain their keys and cadence;
 removed generic hash calls were stateless and cannot shift another stream.
+The formal pass result is consumed by the race owner as bounded defender
+concession loss after a successful attack; it cannot create super-physical
+attacker speed and does not bypass lateral occupancy.
 
 DA-05 is closed by removing the direct tyre-management/tire-delta edge from the
 formal battle model. Tests fix its invariance to tyre skill and direct tyre
