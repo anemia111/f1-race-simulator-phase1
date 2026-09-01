@@ -143,7 +143,7 @@ describe('race classification', () => {
         gapToLeaderLabel: index === 0 ? 'Leader' : `+${index + 0.4}s`,
         status: 'running',
       })),
-      sessionStatus: 'running',
+      sessionStatus: 'racing',
     }
     const entries = buildRaceClassification(liveSnapshot)
 

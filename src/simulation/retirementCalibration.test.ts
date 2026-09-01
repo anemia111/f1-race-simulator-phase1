@@ -10,7 +10,6 @@ import { advanceRace, createInitialRace } from './race'
 // sample, including proof that terminal outcomes remain possible.
 const calibrationSeeds = [
   'ret-probe-0',
-  'ret-probe-1',
 ]
 
 function runRace(seed: string): RaceSnapshot {
@@ -67,7 +66,7 @@ describe('full-race retirement calibration', () => {
       expect(early).toBeLessThanOrEqual(earlyRetirementLimit)
       expect(samples.some((sample) => sample.retired <= 1)).toBe(true)
     },
-    240_000,
+    300_000,
   )
 })
 

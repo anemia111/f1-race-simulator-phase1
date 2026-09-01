@@ -1597,7 +1597,9 @@ describe('starting grid', () => {
     expect(Number.isFinite(fastestCleanLap)).toBe(true)
     expect(fastestCleanLap).toBeGreaterThan(40)
     expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
-  }, 20_000)
+  // Synchronous full-field physics varies substantially with host load. The
+  // assertions are the regression gate; this is not a wall-clock benchmark.
+  }, 180_000)
 
   it(
     'times a race out-lap from the line so the pit lane is never a free sector',
@@ -1646,7 +1648,7 @@ describe('starting grid', () => {
         expect(lap.sectors[0]).toBeGreaterThan(fastestGreenFirstSector)
       }
     },
-    30_000,
+    180_000,
   )
 
   it('stages routine green-flag stops instead of sending the field together', () => {
@@ -2196,7 +2198,7 @@ describe('physical running order', () => {
             miniSectors: leaderMiniSectors,
             tireRun: {
               ageLaps: 1,
-              compound: 'medium',
+              compound: 'M',
               kind: 'f1-pirelli',
             },
             weather: 'clear',
