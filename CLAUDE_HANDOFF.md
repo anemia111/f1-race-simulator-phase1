@@ -86,8 +86,10 @@ driving game.
 - Timed-session adjudication includes deleted track-limit laps, double-yellow
   invalidation, impeding/grid penalties, serialized pit-exit queues, chequered
   lap completion, and Q1 107% checks with explicit steward exemptions.
-- Race starts use a moving formation lap, return to grid slots, five lights,
-  then launch. Opening laps do not trigger an immediate strategy stop.
+- Race starts use a moving formation lap, return to grid slots, five lights at
+  one-second intervals, then a deterministic SIM starter hold of 0.2-3.0
+  seconds after the fifth light before launch. Opening laps do not trigger an
+  immediate strategy stop.
 - Completed lap records use elapsed timing-line crossing timestamps. Sector
   records always sum to the measured lap. Each lap also persists 24 measured
   mini-sector intervals; the first car through is provisionally purple and a

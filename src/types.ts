@@ -1439,6 +1439,12 @@ export type RaceSnapshot = {
   startProcedure: StartProcedurePhase
   /** Seconds remaining in the current pre-start phase; zero once racing. */
   startProcedureRemainingSeconds: number
+  /**
+   * Total time from the first red light to lights out. The five lights
+   * illuminate one second apart; the remaining fraction is the starter-held
+   * delay after the fifth light.
+   */
+  startLightSequenceSeconds?: number
   formationLapDurationSeconds: number
   formationLapsPlanned: number
   formationLapsCompleted: number

@@ -53,6 +53,7 @@ import {
   reformFieldForStandingRestart,
   rankCars,
   skipFormationLap,
+  startLightSequenceSecondsFor,
 } from './race'
 import {
   dirtyAirDeltaSeconds,
@@ -148,7 +149,11 @@ function runThroughStart(
 
   snapshot = advanceRace(snapshot, formationSeconds, config)
   snapshot = advanceRace(snapshot, 8, config)
-  snapshot = advanceRace(snapshot, 5, config)
+  snapshot = advanceRace(
+    snapshot,
+    snapshot.startLightSequenceSeconds ?? 5,
+    config,
+  )
   return snapshot
 }
 
@@ -883,7 +888,11 @@ describe('lap-start energy rule authority', () => {
       config,
     )
     const lights = advanceRace(grid, 8, config)
-    const startedFromGrid = advanceRace(soakTrack(lights), 5, config)
+    const startedFromGrid = advanceRace(
+      soakTrack(lights),
+      lights.startLightSequenceSeconds ?? 5,
+      config,
+    )
 
     expect(startedFromGrid.startProcedure).toBe('racing')
     expect(startedFromGrid.lowGripConditions).toBe(true)
@@ -1322,6 +1331,10 @@ describe('starting grid', () => {
       )
     })
     expect(snapshot.cars.every((car) => car.status === 'running')).toBe(true)
+    expect(snapshot.cars[0].gapToAheadLabel).toBe('0.0s')
+    expect(
+      snapshot.cars.slice(1).every((car) => car.gapToAheadLabel === '--'),
+    ).toBe(true)
   })
 
   it('starts every car with a fully charged Energy Store', () => {
@@ -1385,7 +1398,13 @@ describe('starting grid', () => {
 
     const lights = advanceRace(skipped, 8, config)
     expect(lights.startProcedure).toBe('lights')
-    expect(advanceRace(lights, 5, config).startProcedure).toBe('racing')
+    expect(
+      advanceRace(
+        lights,
+        lights.startLightSequenceSeconds ?? 5,
+        config,
+      ).startProcedure,
+    ).toBe('racing')
   })
 
   it('ignores formation skipping after the race has started', () => {
@@ -1408,7 +1427,11 @@ describe('starting grid', () => {
     snapshot = advanceRace(snapshot, formationSeconds, config)
     snapshot = advanceRace(snapshot, 8, config)
     expect(snapshot.startProcedure).toBe('lights')
-    const lightsOut = advanceRace(snapshot, 5, config)
+    const lightsOut = advanceRace(
+      snapshot,
+      snapshot.startLightSequenceSeconds ?? 5,
+      config,
+    )
     const onGrid = lightsOut.cars.filter((car) => !car.startsFromPitLane)
 
     expect(lightsOut.startProcedure).toBe('racing')
@@ -1437,6 +1460,16 @@ describe('starting grid', () => {
       onGrid.map((car) => [car.driverId, car.totalDistance]),
     )
     const launched = advanceRace(lightsOut, 0.25, config)
+
+    // A standing start must build road speed through tire-limited traction;
+    // it must not snap to the normal profile speed on the first live tick.
+    expect(
+      Math.max(
+        ...launched.cars
+          .filter((car) => !car.startsFromPitLane)
+          .map((car) => car.speedKph),
+      ),
+    ).toBeLessThan(30)
 
     launched.cars
       .filter((car) => !car.startsFromPitLane)
@@ -2671,6 +2704,16 @@ describe('full race', () => {
 })
 
 describe('start procedure and persisted weekend', () => {
+  it('varies the permanent-starter hold after the fifth red light', () => {
+    const sequenceDurations = Array.from({ length: 20 }, (_, index) =>
+      startLightSequenceSecondsFor(`starter-hold-${index}`),
+    )
+
+    expect(Math.min(...sequenceDurations)).toBeGreaterThanOrEqual(4.2)
+    expect(Math.max(...sequenceDurations)).toBeLessThanOrEqual(7)
+    expect(new Set(sequenceDurations).size).toBeGreaterThan(1)
+  })
+
   it('holds the race on the grid through formation, grid and lights phases', () => {
     const config = makeConfig('start-sequence')
     let snapshot = createInitialRace(config)
@@ -2690,7 +2733,11 @@ describe('start procedure and persisted weekend', () => {
     expect(snapshot.cars[0].totalDistance).toBeCloseTo(initialLeaderDistance, 5)
     snapshot = advanceRace(snapshot, 8, config)
     expect(snapshot.startProcedure).toBe('lights')
-    snapshot = advanceRace(snapshot, 5, config)
+    snapshot = advanceRace(
+      snapshot,
+      snapshot.startLightSequenceSeconds ?? 5,
+      config,
+    )
     expect(snapshot.startProcedure).toBe('racing')
   })
 
@@ -2704,7 +2751,11 @@ describe('start procedure and persisted weekend', () => {
       config,
     )
     snapshot = advanceRace(snapshot, 8, config)
-    snapshot = advanceRace(snapshot, 5, config)
+    snapshot = advanceRace(
+      snapshot,
+      snapshot.startLightSequenceSeconds ?? 5,
+      config,
+    )
 
     expect(snapshot.events.length).toBeGreaterThanOrEqual(4)
     expect(

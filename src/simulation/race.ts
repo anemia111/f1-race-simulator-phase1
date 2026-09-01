@@ -1,5 +1,9 @@
 import { phaseOneConfig } from '../data/phaseOne'
-import { START_LIGHT_SEQUENCE_SECONDS } from '../domain/startSignal'
+import {
+  START_LIGHT_BUILD_SECONDS,
+  START_LIGHT_MAXIMUM_HOLD_SECONDS,
+  START_LIGHT_MINIMUM_HOLD_SECONDS,
+} from '../domain/startSignal'
 import type {
   ActiveFlagPhase,
   CarSnapshot,
@@ -547,6 +551,24 @@ const PIT_EXIT_VISUAL_SECONDS = 4
 const GRID_SETTLE_SECONDS = 8
 const OVERTAKE_EXTRA_ENERGY_MJ =
   FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj
+
+/**
+ * FIA B5.7.2 fixes the one-second spacing between red lights but leaves the
+ * delay after the fifth light to the permanent starter. This SIM policy keeps
+ * that hold deterministic for replay while avoiding a learnable fixed start.
+ */
+export function startLightSequenceSecondsFor(seed: string) {
+  const holdRangeSeconds =
+    START_LIGHT_MAXIMUM_HOLD_SECONDS - START_LIGHT_MINIMUM_HOLD_SECONDS
+
+  return Number(
+    (
+      START_LIGHT_BUILD_SECONDS +
+      START_LIGHT_MINIMUM_HOLD_SECONDS +
+      hashChance(`${seed}:permanent-starter-hold`) * holdRangeSeconds
+    ).toFixed(3),
+  )
+}
 
 function advanceLiveActiveAeroState(options: {
   car: CarSnapshot
@@ -2575,6 +2597,10 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       : null
   const initialTimedSegment = config.timedSessionPlan?.segments[0] ?? null
   const startProcedure = isRaceDistance ? 'formation' : 'racing'
+  const startLightSequenceSeconds =
+    isRaceDistance && !formationBehindSafetyCar
+      ? startLightSequenceSecondsFor(config.seed)
+      : 0
   const f1WeekendContext =
     config.weekendContext?.seriesId === 'f1-custom'
       ? config.weekendContext
@@ -2937,6 +2963,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     startProcedureRemainingSeconds: isRaceDistance
       ? formationLapDurationSeconds * formationLapsPlanned
       : 0,
+    startLightSequenceSeconds,
     formationLapDurationSeconds,
     formationLapsPlanned,
     formationLapsCompleted: 0,
@@ -3366,13 +3393,17 @@ export function advanceRace(
   }
 
   if (isRaceDistance && snapshot.startProcedure !== 'racing') {
+    const startLightSequenceSeconds = snapshot.formationBehindSafetyCar
+      ? 0
+      : (snapshot.startLightSequenceSeconds ??
+        startLightSequenceSecondsFor(config.seed))
     const totalFormationSeconds =
       snapshot.formationLapDurationSeconds * snapshot.formationLapsPlanned
     const gridStartsAt = totalFormationSeconds
     const lightsStartAt = gridStartsAt + GRID_SETTLE_SECONDS
     const raceStartsAt = snapshot.formationBehindSafetyCar
       ? gridStartsAt
-      : lightsStartAt + START_LIGHT_SEQUENCE_SECONDS
+      : lightsStartAt + startLightSequenceSeconds
     const nextProcedure =
       elapsedSeconds < gridStartsAt
         ? 'formation'
@@ -3810,6 +3841,7 @@ export function advanceRace(
       ),
       startProcedure: nextProcedure,
       startProcedureRemainingSeconds: Math.max(0, phaseEndsAt - elapsedSeconds),
+      startLightSequenceSeconds,
       formationLapsCompleted: completedFormationLaps,
       wetWeatherTyresMandatory:
         nextProcedure === 'racing'
@@ -4093,7 +4125,9 @@ export function advanceRace(
       restartProcedureUntilSeconds =
         elapsedSeconds +
         (restartProcedure === 'standing'
-          ? GRID_SETTLE_SECONDS + START_LIGHT_SEQUENCE_SECONDS
+          ? GRID_SETTLE_SECONDS +
+            (snapshot.startLightSequenceSeconds ??
+              startLightSequenceSecondsFor(config.seed))
           : Math.max(35, baseLapTime * 1.18))
     }
     if (phase.flag !== 'yellow') {
@@ -9156,6 +9190,11 @@ export function advanceRace(
     sessionStatus: allDone ? 'finished' : 'racing',
     startProcedure: snapshot.startProcedure,
     startProcedureRemainingSeconds: snapshot.startProcedureRemainingSeconds,
+    startLightSequenceSeconds:
+      snapshot.startLightSequenceSeconds ??
+      (isRaceDistance && !snapshot.formationBehindSafetyCar
+        ? startLightSequenceSecondsFor(config.seed)
+        : 0),
     formationLapDurationSeconds: snapshot.formationLapDurationSeconds,
     formationLapsPlanned: snapshot.formationLapsPlanned,
     formationLapsCompleted: snapshot.formationLapsCompleted,

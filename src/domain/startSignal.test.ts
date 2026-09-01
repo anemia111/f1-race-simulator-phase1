@@ -67,6 +67,32 @@ describe('start signal presentation', () => {
     ).toBeNull()
   })
 
+  it('keeps the fifth light on through a starter-held delay', () => {
+    const sequenceSeconds = 6.4
+
+    expect(
+      signalFor({
+        startLightSequenceSeconds: sequenceSeconds,
+        startProcedure: 'lights',
+        startProcedureRemainingSeconds: sequenceSeconds,
+      })?.activeLightCount,
+    ).toBe(1)
+    expect(
+      signalFor({
+        startLightSequenceSeconds: sequenceSeconds,
+        startProcedure: 'lights',
+        startProcedureRemainingSeconds: sequenceSeconds - 4,
+      })?.activeLightCount,
+    ).toBe(5)
+    expect(
+      signalFor({
+        startLightSequenceSeconds: sequenceSeconds,
+        startProcedure: 'lights',
+        startProcedureRemainingSeconds: 0.01,
+      })?.activeLightCount,
+    ).toBe(5)
+  })
+
   it('never shows standing-start lights for a Safety Car rolling start', () => {
     expect(
       signalFor({
