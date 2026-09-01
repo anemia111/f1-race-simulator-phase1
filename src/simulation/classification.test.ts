@@ -51,7 +51,7 @@ describe('race classification', () => {
       statusLabel: 'FIN',
     })
     expect(entries[1]).toMatchObject({
-      gapLabel: '+1.200',
+      gapLabel: '--',
       penaltyLabel: '+5s applied',
       positionChange: 0,
     })
@@ -132,6 +132,22 @@ describe('race classification', () => {
 
     expect(entries[3].statusLabel).toBe('FIN')
     expect(entries[3].gapLabel).toBe('+1 lap')
+  })
+
+  it('uses the measured timing label in a live classification', () => {
+    const snapshot = snapshotFixture()
+    const liveSnapshot: RaceSnapshot = {
+      ...snapshot,
+      cars: snapshot.cars.map((car, index) => ({
+        ...car,
+        gapToLeaderLabel: index === 0 ? 'Leader' : `+${index + 0.4}s`,
+        status: 'running',
+      })),
+      sessionStatus: 'running',
+    }
+    const entries = buildRaceClassification(liveSnapshot)
+
+    expect(entries[1].gapLabel).toBe('+1.4s')
   })
 
   it('builds lap-deficit labels from classified laps', () => {

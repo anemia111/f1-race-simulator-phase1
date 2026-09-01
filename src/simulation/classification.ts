@@ -68,8 +68,6 @@ export type RaceClassificationEntry = {
   trackLimitWarnings: number
 }
 
-const formatGap = (seconds: number) => `+${seconds.toFixed(3)}`
-
 /** Classified lap count: completed laps net of any lap penalties. */
 const classifiedLaps = (car: Pick<CarSnapshot, 'lap' | 'penaltyLaps'>) =>
   car.lap - car.penaltyLaps
@@ -219,7 +217,8 @@ export function buildRaceClassification(
           ? snapshot.sessionStatus === 'finished'
             ? 'Winner'
             : 'Leader'
-          : lappedGap ?? formatGap(car.gapToLeader)
+          : lappedGap ??
+            (car.gapToLeaderLabel || '--')
 
     return {
       bestLapLap: car.bestLapLap,

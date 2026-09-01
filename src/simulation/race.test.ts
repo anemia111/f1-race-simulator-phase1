@@ -2119,6 +2119,118 @@ describe('physical running order', () => {
     )
   })
 
+  it('labels GAP and INT from the latest shared measured mini-sector', () => {
+    const config = makeConfig('measured-mini-sector-gaps')
+    const initial = createInitialRace(config)
+    const measured = (
+      intervals: number[],
+    ): CarSnapshot['currentLapMiniSectorTimes'] => [
+      ...intervals,
+      ...Array.from({ length: 24 - intervals.length }, () => null),
+    ]
+    const cars = initial.cars.slice(0, 3).map((car, index) => {
+      const totalDistance = 2.2 - index * 0.001
+      const timing = [
+        { intervals: [4, 4, 4, 4], lapStart: 100 },
+        { intervals: [4.1, 3.9, 4.2], lapStart: 101.2 },
+        { intervals: [4, 4.1, 4.1], lapStart: 102 },
+      ][index]
+
+      return {
+        ...car,
+        currentLapMiniSectorTimes: measured(timing.intervals),
+        lap: 2,
+        lapStartedAtSeconds: timing.lapStart,
+        progress: totalDistance - 2,
+        speedKph: 300 - index * 10,
+        status: 'running' as const,
+        totalDistance,
+      }
+    })
+
+    const ranked = rankCars(cars, config)
+
+    // The latest checkpoint shared by all three cars is mini-sector 3. Its
+    // absolute passage times are 112.0, 113.4 and 114.2 seconds respectively.
+    expect(ranked[1].gapToLeaderLabel).toBe('+1.4s')
+    expect(ranked[1].gapToAheadLabel).toBe('+1.4s')
+    expect(ranked[2].gapToLeaderLabel).toBe('+2.2s')
+    expect(ranked[2].gapToAheadLabel).toBe('+0.8s')
+
+    // Physics still sees the instantaneous road distance for battles, while
+    // timing labels stay frozen until both cars cross another timing line.
+    expect(ranked[1].gapToAhead).not.toBeCloseTo(1.4, 1)
+    const movedBetweenLines = rankCars(
+      cars.map((car, index) => ({
+        ...car,
+        speedKph: 180 + index * 50,
+        totalDistance: car.totalDistance - index * 0.0003,
+      })),
+      config,
+    )
+    expect(movedBetweenLines[1].gapToAheadLabel).toBe('+1.4s')
+    expect(movedBetweenLines[2].gapToAheadLabel).toBe('+0.8s')
+  })
+
+  it('keeps the preceding lap mini-sector available across the timing line', () => {
+    const config = makeConfig('mini-sector-gap-across-line')
+    const [leader, follower] = createInitialRace(config).cars.slice(0, 2)
+    const leaderMiniSectors = Array.from({ length: 24 }, () => 3.5)
+    const followerCurrentMiniSectors = [
+      ...Array.from({ length: 20 }, () => 3.5),
+      ...Array.from({ length: 4 }, () => null),
+    ]
+    const cars: CarSnapshot[] = [
+      {
+        ...leader,
+        currentLapMiniSectorTimes: [
+          3.5,
+          ...Array.from({ length: 23 }, () => null),
+        ],
+        lap: 3,
+        lapHistory: [
+          {
+            lap: 1,
+            lapTimeSeconds: 84,
+            sectors: [28, 28, 28],
+            miniSectors: leaderMiniSectors,
+            tireRun: {
+              ageLaps: 1,
+              compound: 'medium',
+              kind: 'f1-pirelli',
+            },
+            weather: 'clear',
+            trackGrip: 1,
+            position: 1,
+            pitStop: false,
+            isValid: true,
+            invalidReason: null,
+          },
+        ],
+        lapStartedAtSeconds: 184,
+        progress: 0.04,
+        status: 'running',
+        totalDistance: 3.04,
+      },
+      {
+        ...follower,
+        currentLapMiniSectorTimes: followerCurrentMiniSectors,
+        lap: 2,
+        lapStartedAtSeconds: 101.2,
+        progress: 0.84,
+        status: 'running',
+        totalDistance: 2.84,
+      },
+    ]
+
+    const ranked = rankCars(cars, config)
+
+    // The leader is already on the next lap, but its recorded lap-1 mini 20
+    // remains comparable with the follower's current lap-1 mini 20.
+    expect(ranked[1].gapToLeaderLabel).toBe('+1.2s')
+    expect(ranked[1].gapToAheadLabel).toBe('+1.2s')
+  })
+
   it('does not use a stopped or recovering car as the neutralisation queue reference', () => {
     const car = createInitialRace(makeConfig('neutralisation-obstruction')).cars[0]
 

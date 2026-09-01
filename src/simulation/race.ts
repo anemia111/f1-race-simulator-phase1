@@ -1558,6 +1558,164 @@ function completedMeasuredMiniSectors(
   })
 }
 
+/**
+ * Rebuild absolute passage times for every measured 1/24-lap timing line.
+ *
+ * Completed laps store interval times rather than clock timestamps. The start
+ * of the current lap is an absolute timestamp, so walking the immutable lap
+ * history backwards gives an absolute origin for every recorded lap. This
+ * also keeps a usable common checkpoint while the leader has already crossed
+ * the Line and the following car is still finishing the preceding lap.
+ */
+type MeasuredMiniSectorLap = {
+  completedMiniSectors: number
+  finishedAtSeconds: number | null
+  lapStartedAtSeconds: number
+  miniSectorTimes: ReadonlyArray<number | null>
+}
+
+function measuredMiniSectorLaps(car: CarSnapshot) {
+  const measuredLaps = new Map<number, MeasuredMiniSectorLap>()
+
+  if (
+    car.lapStartedAtSeconds === null ||
+    !Number.isFinite(car.lapStartedAtSeconds)
+  ) {
+    return measuredLaps
+  }
+
+  let completedLapEndedAtSeconds = car.lapStartedAtSeconds
+
+  for (let index = car.lapHistory.length - 1; index >= 0; index -= 1) {
+    const lapRecord = car.lapHistory[index]
+
+    if (
+      !Number.isFinite(lapRecord.lapTimeSeconds) ||
+      lapRecord.lapTimeSeconds <= 0
+    ) {
+      continue
+    }
+
+    const completedLapStartedAtSeconds =
+      completedLapEndedAtSeconds - lapRecord.lapTimeSeconds
+    const miniSectorTimes = lapRecord.miniSectors
+
+    measuredLaps.set(lapRecord.lap, {
+      completedMiniSectors:
+        miniSectorTimes?.length === MINI_SECTOR_COUNT
+          ? MINI_SECTOR_COUNT
+          : 0,
+      // A legacy checkpoint may predate measured mini-sectors. Its lap time
+      // still gives one truthful passage timestamp: the start/finish line.
+      finishedAtSeconds: completedLapEndedAtSeconds,
+      lapStartedAtSeconds: completedLapStartedAtSeconds,
+      miniSectorTimes: miniSectorTimes ?? [],
+    })
+
+    completedLapEndedAtSeconds = completedLapStartedAtSeconds
+  }
+
+  const currentTimingLap = (car.lapHistory.at(-1)?.lap ?? 0) + 1
+  const firstPendingMiniSector = car.currentLapMiniSectorTimes.findIndex(
+    (intervalSeconds) => intervalSeconds === null,
+  )
+  measuredLaps.set(currentTimingLap, {
+    completedMiniSectors:
+      firstPendingMiniSector === -1
+        ? Math.min(
+            MINI_SECTOR_COUNT,
+            car.currentLapMiniSectorTimes.length,
+          )
+        : firstPendingMiniSector,
+    finishedAtSeconds: null,
+    lapStartedAtSeconds: car.lapStartedAtSeconds,
+    miniSectorTimes: car.currentLapMiniSectorTimes,
+  })
+
+  return measuredLaps
+}
+
+function measuredMiniSectorGapSeconds(
+  referenceLaps: ReadonlyMap<number, MeasuredMiniSectorLap>,
+  carLaps: ReadonlyMap<number, MeasuredMiniSectorLap>,
+) {
+  let latestCommonCheckpoint = Number.NEGATIVE_INFINITY
+  let intervalSeconds: number | null = null
+
+  const crossingAt = (lap: MeasuredMiniSectorLap, miniSectorIndex: number) => {
+    let cumulativeSeconds = 0
+
+    for (let index = 0; index <= miniSectorIndex; index += 1) {
+      const miniSectorSeconds = lap.miniSectorTimes[index]
+
+      if (
+        miniSectorSeconds === null ||
+        miniSectorSeconds === undefined ||
+        !Number.isFinite(miniSectorSeconds) ||
+        miniSectorSeconds <= 0
+      ) {
+        return null
+      }
+
+      cumulativeSeconds += miniSectorSeconds
+    }
+
+    return lap.lapStartedAtSeconds + cumulativeSeconds
+  }
+
+  for (const [lapNumber, carLap] of carLaps) {
+    const referenceLap = referenceLaps.get(lapNumber)
+
+    if (!referenceLap) {
+      continue
+    }
+
+    const latestCommonMiniSector =
+      Math.min(
+        referenceLap.completedMiniSectors,
+        carLap.completedMiniSectors,
+      ) - 1
+    const checkpoint =
+      (lapNumber - 1) * MINI_SECTOR_COUNT + latestCommonMiniSector
+
+    if (
+      latestCommonMiniSector >= 0 &&
+      checkpoint > latestCommonCheckpoint
+    ) {
+      const referenceCrossedAtSeconds = crossingAt(
+        referenceLap,
+        latestCommonMiniSector,
+      )
+      const crossedAtSeconds = crossingAt(carLap, latestCommonMiniSector)
+
+      if (
+        referenceCrossedAtSeconds !== null &&
+        crossedAtSeconds !== null
+      ) {
+        latestCommonCheckpoint = checkpoint
+        intervalSeconds = Math.abs(
+          crossedAtSeconds - referenceCrossedAtSeconds,
+        )
+      }
+    }
+
+    const finishCheckpoint = lapNumber * MINI_SECTOR_COUNT - 1
+
+    if (
+      finishCheckpoint >= latestCommonCheckpoint &&
+      referenceLap.finishedAtSeconds !== null &&
+      carLap.finishedAtSeconds !== null
+    ) {
+      latestCommonCheckpoint = finishCheckpoint
+      intervalSeconds = Math.abs(
+        carLap.finishedAtSeconds - referenceLap.finishedAtSeconds,
+      )
+    }
+  }
+
+  return intervalSeconds
+}
+
 function rankTimedSessionCars(cars: CarSnapshot[], config: RaceConfig) {
   const segmentNames = config.timedSessionPlan?.segments.map(
     (segment) => segment.name,
@@ -1865,6 +2023,17 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
     ...excluded,
   ]
   const liveLeader = liveOrdered[0]
+  const measuredLapsById = new Map(
+    liveOrdered.map((car) => [
+      car.driverId,
+      measuredMiniSectorLaps(car),
+    ]),
+  )
+  const measuredGapTo = (reference: CarSnapshot, car: CarSnapshot) =>
+    measuredMiniSectorGapSeconds(
+      measuredLapsById.get(reference.driverId)!,
+      measuredLapsById.get(car.driverId)!,
+    )
   const liveTimingById = new Map(
     liveOrdered.map((car, index) => {
       if (isExcludedStatus(car)) {
@@ -1885,19 +2054,19 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
         ] as const
       }
 
-      const gapToLeaderOnTrack =
+      const gapToLeaderAtTimingLine =
         index === 0
           ? 0
           : car.status === 'finished' && liveLeader.status === 'finished'
             ? finishTime(car) - finishTime(liveLeader)
-            : physicalGapSeconds(liveLeader, car)
+            : measuredGapTo(liveLeader, car)
       const liveAhead = index === 0 ? null : liveOrdered[index - 1]
-      const gapToAheadOnTrack =
+      const gapToAheadAtTimingLine =
         !liveAhead || liveAhead.status === 'retired'
           ? 0
           : car.status === 'finished' && liveAhead.status === 'finished'
             ? finishTime(car) - finishTime(liveAhead)
-            : physicalGapSeconds(liveAhead, car)
+            : measuredGapTo(liveAhead, car)
       // A finisher short of the reference's classified laps shows the lap
       // deficit, never the raw crossing-time difference at the flag.
       const lappedToLeader =
@@ -1920,11 +2089,17 @@ export function rankCars(cars: CarSnapshot[], config: RaceConfig) {
               ? car.status === 'finished'
                 ? 'Winner'
                 : 'Leader'
-              : lappedToLeader ?? formatGap(gapToLeaderOnTrack),
+              : lappedToLeader ??
+                (gapToLeaderAtTimingLine === null
+                  ? '--'
+                  : formatGap(gapToLeaderAtTimingLine)),
           gapToAheadLabel:
             index === 0
               ? '0.0s'
-              : lappedToAhead ?? `+${gapToAheadOnTrack.toFixed(1)}s`,
+              : lappedToAhead ??
+                (gapToAheadAtTimingLine === null
+                  ? '--'
+                  : `+${gapToAheadAtTimingLine.toFixed(1)}s`),
         },
       ] as const
     }),

@@ -91,7 +91,10 @@ driving game.
 - Completed lap records use elapsed timing-line crossing timestamps. Sector
   records always sum to the measured lap. Each lap also persists 24 measured
   mini-sector intervals; the first car through is provisionally purple and a
-  later faster interval moves the old purple to personal-best green.
+  later faster interval moves the old purple to personal-best green. Race
+  `GAP` and `INT` labels compare absolute passage times at the latest shared
+  mini-sector line and remain frozen between lines; instantaneous physical
+  gaps remain separate inputs for traffic, strategy, and overtaking.
 - Tire wear is percentage-based with compound, pace, weather, thermal, damage,
   and driver-management effects. Strategy reads measured wear and brake heat.
 - Rain intensity and track grip transition continuously rather than jumping at
