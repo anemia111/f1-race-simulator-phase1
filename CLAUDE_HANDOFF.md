@@ -29,6 +29,11 @@ driving game.
   but are visibly marked cancelled.
 - `src/data/realTrackLayouts.ts` contains 23 OpenF1-derived centerlines and the
   official 2026 MADRING organizer vector. Do not hand-edit its point arrays.
+- `src/data/measuredRoadProfiles.ts` contains reproducibly generated 96-station
+  public-geodata profiles for Zandvoort, Silverstone, Suzuka, Motegi,
+  Autopolis, Fuji, and SUGO. Elevation is observed/interpolated, grade is
+  derived, and Zandvoort alone currently has low-confidence generated banking
+  and a 10 m OSM width tag. These are not FIA circuit-dossier surveys.
 - `src/data/f1Performance.csv` is the canonical F1 11-team/30-driver source on
   a 0-100 scale (22 fielded seats, two per team; the rest are `reserve` rows).
   Cadillac is present, and Ferrari `NAK` retains car number 31.
@@ -282,6 +287,8 @@ driving game.
 - `src/data/calendar2026.ts`, `trackAudit.ts`, `sourceRegistry.ts`: amended
   calendar, 24-pack validation, and source ledger.
 - `src/data/realTrackLayouts.ts`: generated real circuit geometry.
+- `src/data/measuredRoadProfiles.ts`: generated public elevation/grade and
+  partial banking/width profiles for seven circuits.
 - `src/data/f1Performance.csv`: canonical F1 11-team/30-driver source values.
 - `src/data/motorsportSeries2026.json`: executable F1/SF category rules and SF
   field; `historicalDriverPool2026.json`: former F2/F3 pool provenance.
@@ -289,6 +296,8 @@ driving game.
 - `src/data/performanceCsv.ts`: strict parser, validator, and domain mapping.
 - `src/data/f1PitCrewCalibration.ts`: source-backed F1 pit-crew calibration.
 - `scripts/generate-real-track-layouts.mjs`: layout generator.
+- `scripts/generate-measured-road-profiles.mjs`: reproducible OSM/AHN/EA/GSI
+  physical-road profile generator (`npm run generate:road-profiles`).
 - `src/services/openF1.ts`: OpenF1 request/bundle logic.
 - `src/services/openF1Location.ts`: sample projection to track progress.
 - `src/services/openF1Performance.ts`: factual field calibration inputs.
@@ -367,7 +376,10 @@ npm run benchmark
 4. FIA event packs provide a truthful document ledger. Values absent from the
    normalized supplied packs remain closed as unavailable; they must not be
    inferred from another event or circuit.
-5. The lazy Three.js scene is about 0.93 MB minified. It no longer blocks the
+5. Public DSM/DEM road profiles are lower-confidence physical inputs, not FIA
+   homologation survey data. Exact circuit friction, drainage, kerb/runoff
+   geometry, and F1/SF tyre relaxation parameters remain unavailable.
+6. The lazy Three.js scene is about 0.93 MB minified. It no longer blocks the
    initial UI bundle, but Three.js remains the largest download.
 
 ## Guardrails
@@ -391,6 +403,9 @@ reduced calibration lap MAE to 1.181 s and the one-time holdout MAE to 2.646 s
 without changing a production coefficient or adding a track multiplier.
 
 Phase 6 measured inputs are either source-backed or explicitly unavailable.
+Its public-geodata follow-up now supplies seven elevation/grade profiles plus
+partial Zandvoort banking/width with per-field provenance; unpublished numeric
+friction and tyre-transient values remain fail-closed.
 Phase 7 now consumes its causal inbox, persists bounded category experience and
 the latest decision record, and retains `legacy-direct` as rollback. Local
 yellow order is explicitly enforced while passable obstructions remain

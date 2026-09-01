@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { measuredRoadProfiles } from '../data/measuredRoadProfiles'
+import { supportSeriesTracks } from '../data/supportSeriesTracks'
 import { tracks } from '../data/tracks'
 import { lateralBoundsForTrack } from './lateralDynamics'
 import { resolvePhysicalTrack } from './physicalTrack'
@@ -10,6 +12,66 @@ import {
 const trackById = (id: string) => tracks.find((track) => track.id === id)!
 
 describe('source-labelled physical road profiles', () => {
+  it('ships bounded public-geodata samples for all seven acquired circuits', () => {
+    const expectedTrackIds = [
+      'autopolis-sf',
+      'fuji-sf',
+      'motegi-sf',
+      'silverstone-approx',
+      'sugo-sf',
+      'suzuka-approx',
+      'zandvoort-approx',
+    ]
+    expect(Object.keys(measuredRoadProfiles).sort()).toEqual(expectedTrackIds)
+
+    const trackByMeasuredId = new Map(
+      [...tracks, ...supportSeriesTracks].map((track) => [track.id, track]),
+    )
+    for (const trackId of expectedTrackIds) {
+      const profile = measuredRoadProfiles[trackId]
+      const track = trackByMeasuredId.get(trackId)
+      expect(track, trackId).toBeDefined()
+      expect(profile.samples, trackId).toHaveLength(96)
+      expect(profile.geometry.attribution, trackId).toContain(
+        'OpenStreetMap contributors',
+      )
+      expect(profile.geometry.measuredKm, trackId).toBeGreaterThan(3.5)
+      expect(profile.sampleSpacingMeters, trackId).toBeGreaterThan(30)
+      expect(
+        profile.samples.every(
+          ([progress, elevation, grade, bank, width], index) =>
+            progress === Number((index / 96).toFixed(8)) &&
+            Number.isFinite(elevation) &&
+            Number.isFinite(grade) &&
+            Math.abs(grade) <= 0.2 &&
+            (bank === null || (Math.abs(bank) >= 2 && Math.abs(bank) <= 25)) &&
+            (width === null || (width >= 5 && width <= 30)),
+        ),
+        trackId,
+      ).toBe(true)
+
+      const resolution = resolvePhysicalTrack(track!)
+      expect(resolution.status, trackId).toBe('available')
+      if (resolution.status !== 'available') continue
+      expect(
+        resolution.track.stations.every(
+          ({ elevationMeters, gradeFraction }) =>
+            elevationMeters !== null &&
+            Number.isFinite(elevationMeters) &&
+            gradeFraction !== null &&
+            Number.isFinite(gradeFraction),
+        ),
+        trackId,
+      ).toBe(true)
+      expect(
+        resolution.track.stations.some(
+          ({ gradeFraction }) => Math.abs(gradeFraction ?? 0) > 0.005,
+        ),
+        trackId,
+      ).toBe(true)
+    }
+  })
+
   it('transcribes all 22 official MADRING corner records without duplicates', () => {
     expect(MADRING_OFFICIAL_CORNER_ROAD_INPUTS).toHaveLength(22)
     expect(
@@ -110,7 +172,7 @@ describe('source-labelled physical road profiles', () => {
       throw new Error('Expected the official MADRING layout to resolve')
     }
 
-    expect(resolution.track.version).toBe(2)
+    expect(resolution.track.version).toBe(3)
     expect(resolution.track.fieldProvenance.usableWidthMeters).toMatchObject({
       method: 'corner-marker-mapped-profile',
       source: 'derived',
@@ -136,7 +198,7 @@ describe('source-labelled physical road profiles', () => {
     ).toBe(true)
   })
 
-  it('keeps Zandvoort banking sourced while unrelated fields remain unavailable', () => {
+  it('combines official Zandvoort banks with public elevation and mapped width', () => {
     const zandvoort = trackById('zandvoort-approx')
     const resolution = resolvePhysicalTrack(zandvoort)
     if (resolution.status !== 'available') {
@@ -148,14 +210,35 @@ describe('source-labelled physical road profiles', () => {
         bankingDegrees === null ? [] : [bankingDegrees],
       ),
     )
-    expect(bankValues).toEqual(new Set([18, 19]))
+    expect(bankValues).toContain(18)
+    expect(bankValues).toContain(19)
+    expect(
+      [...bankValues].some((value) => value > 2 && value < 10),
+    ).toBe(true)
     expect(resolution.track.fieldProvenance.bankingDegrees).toMatchObject({
-      method: 'corner-marker-mapped-profile',
+      confidence: 'low',
+      method: 'source-priority-composite',
       source: 'derived',
-      sourceDate: { precision: 'day', value: '2026-08-20' },
     })
-    expect(resolution.track.fieldProvenance.elevationMeters.source).toBe(
-      'unavailable',
-    )
+    expect(resolution.track.fieldProvenance.elevationMeters).toMatchObject({
+      method: 'public-elevation-grid-interpolation',
+      source: 'observed',
+    })
+    expect(resolution.track.fieldProvenance.grade).toMatchObject({
+      method: 'public-elevation-grid-gradient',
+      source: 'derived',
+    })
+    expect(resolution.track.fieldProvenance.usableWidthMeters).toMatchObject({
+      method: 'osm-width-tag-interpolation',
+      source: 'observed',
+    })
+    expect(
+      resolution.track.stations.every(
+        ({ elevationMeters, gradeFraction, usableWidthMeters }) =>
+          elevationMeters !== null &&
+          gradeFraction !== null &&
+          usableWidthMeters === 10,
+      ),
+    ).toBe(true)
   })
 })

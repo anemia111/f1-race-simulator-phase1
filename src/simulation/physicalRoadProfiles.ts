@@ -1,4 +1,9 @@
 import type { TrackDefinition } from '../types'
+import {
+  measuredRoadProfiles,
+  type MeasuredRoadProfile,
+  type MeasuredRoadProfileField,
+} from '../data/measuredRoadProfiles'
 import type {
   PhysicalTrackFieldProvenance,
   PhysicalTrackSourceDate,
@@ -91,6 +96,80 @@ const forwardProgress = (from: number, to: number) =>
 const signedProgress = (from: number, to: number) => {
   const forward = forwardProgress(from, to)
   return forward > 0.5 ? forward - 1 : forward
+}
+
+type MeasuredFieldName = keyof MeasuredRoadProfile['fields']
+
+const measuredTupleIndex: Readonly<
+  Record<MeasuredFieldName, 1 | 2 | 3 | 4>
+> = Object.freeze({
+  bankingDegrees: 3,
+  elevationMeters: 1,
+  grade: 2,
+  usableWidthMeters: 4,
+})
+
+function measuredFieldProvenance(
+  field: MeasuredRoadProfileField,
+): PhysicalTrackFieldProvenance {
+  return Object.freeze({
+    confidence: field.confidence,
+    method: field.method,
+    source: field.source,
+    sourceDate: field.sourceDate,
+    sourceLabel: field.sourceLabel,
+    sourceUrl: field.sourceUrl,
+  })
+}
+
+function measuredValueAt(
+  profile: MeasuredRoadProfile,
+  fieldName: MeasuredFieldName,
+  progress: number,
+): SourcedRoadValue | null {
+  const field = profile.fields[fieldName]
+  const samples = profile.samples
+  if (!field || samples.length < 2) return null
+
+  const scaled = normalisedProgress(progress) * samples.length
+  const startIndex = Math.floor(scaled) % samples.length
+  const endIndex = (startIndex + 1) % samples.length
+  const ratio = scaled - Math.floor(scaled)
+  const tupleIndex = measuredTupleIndex[fieldName]
+  const startValue = samples[startIndex]?.[tupleIndex] ?? null
+  const endValue = samples[endIndex]?.[tupleIndex] ?? null
+  if (
+    typeof startValue !== 'number' ||
+    !Number.isFinite(startValue) ||
+    typeof endValue !== 'number' ||
+    !Number.isFinite(endValue)
+  ) {
+    return null
+  }
+
+  return Object.freeze({
+    provenance: measuredFieldProvenance(field),
+    value: startValue + (endValue - startValue) * ratio,
+  })
+}
+
+function measuredInputsAt(
+  trackId: string,
+  progress: number,
+): SourcedPhysicalRoadInputs | null {
+  const profile = measuredRoadProfiles[trackId]
+  if (!profile) return null
+
+  return Object.freeze({
+    bankingDegrees: measuredValueAt(profile, 'bankingDegrees', progress),
+    elevationMeters: measuredValueAt(profile, 'elevationMeters', progress),
+    gradeFraction: measuredValueAt(profile, 'grade', progress),
+    usableWidthMeters: measuredValueAt(
+      profile,
+      'usableWidthMeters',
+      progress,
+    ),
+  })
 }
 
 function stationingFor(track: TrackDefinition): TrackStationing | null {
@@ -354,16 +433,25 @@ export function sourcedPhysicalRoadInputsAt(
   track: TrackDefinition,
   progress: number,
 ): SourcedPhysicalRoadInputs | null {
-  const stationing = stationingFor(track)
-  if (!stationing) return null
-
   if (track.id === 'madrid-approx') {
+    const stationing = stationingFor(track)
+    if (!stationing) return null
     return madridInputsAt(progress, stationing)
   }
   if (track.id === 'zandvoort-approx') {
-    return zandvoortInputsAt(progress, stationing)
+    const stationing = stationingFor(track)
+    if (!stationing) return measuredInputsAt(track.id, progress)
+    const official = zandvoortInputsAt(progress, stationing)
+    const measured = measuredInputsAt(track.id, progress)
+    return Object.freeze({
+      bankingDegrees:
+        official.bankingDegrees ?? measured?.bankingDegrees ?? null,
+      elevationMeters: measured?.elevationMeters ?? null,
+      gradeFraction: measured?.gradeFraction ?? null,
+      usableWidthMeters: measured?.usableWidthMeters ?? null,
+    })
   }
-  return null
+  return measuredInputsAt(track.id, progress)
 }
 
 export function sourcedPhysicalRoadFieldProvenance(
@@ -378,11 +466,23 @@ export function sourcedPhysicalRoadFieldProvenance(
     })
   }
   if (track.id === 'zandvoort-approx' && field === 'bankingDegrees') {
+    const measuredBank = measuredRoadProfiles[track.id]?.fields.bankingDegrees
+    if (measuredBank) {
+      return Object.freeze({
+        confidence: 'low',
+        method: 'source-priority-composite',
+        source: 'derived',
+        sourceDate: { precision: 'unavailable', value: null } as const,
+        sourceLabel: `${ZANDVOORT_BANKING_SOURCE.sourceLabel}; official Turns 3/14 take precedence over the source-gated AHN cross-section profile elsewhere`,
+        sourceUrl: ZANDVOORT_BANKING_SOURCE.sourceUrl,
+      })
+    }
     return provenance({
       confidence: 'medium',
       field,
       source: ZANDVOORT_BANKING_SOURCE,
     })
   }
-  return null
+  const measuredField = measuredRoadProfiles[track.id]?.fields[field]
+  return measuredField ? measuredFieldProvenance(measuredField) : null
 }

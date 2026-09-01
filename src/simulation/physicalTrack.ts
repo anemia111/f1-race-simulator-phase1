@@ -15,7 +15,7 @@ import {
  * at stations where that source has no coverage.
  */
 
-export const PHYSICAL_TRACK_VERSION = 2 as const
+export const PHYSICAL_TRACK_VERSION = 3 as const
 /** Prevent malformed imported layouts from allocating unbounded station state. */
 export const MAX_PHYSICAL_TRACK_STATIONS = 16_384
 
@@ -61,6 +61,11 @@ export type PhysicalTrackMetricMethod =
   | 'three-point-planar-curvature'
   | 'corner-marker-mapped-profile'
   | 'official-gradient-section'
+  | 'public-elevation-grid-interpolation'
+  | 'public-elevation-grid-gradient'
+  | 'public-lidar-cross-section'
+  | 'osm-width-tag-interpolation'
+  | 'source-priority-composite'
   | 'intentionally-unavailable'
 
 /** Source and transformation metadata for exactly one physical-track field. */

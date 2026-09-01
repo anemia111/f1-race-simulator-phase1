@@ -289,6 +289,17 @@ checks.
   shown as an estimate.
 - FIA event pages and decision documents are source links until a field is
   explicitly normalized. A linked document is not treated as imported data.
+- Seven physical-road profiles are generated from public OSM-aligned AHN,
+  Environment Agency, and GSI elevation data. Elevation, derived grade, and the
+  partial Zandvoort bank/width fields retain source/confidence metadata and are
+  never presented as FIA circuit-dossier surveys.
+
+Rebuild those checked-in profiles only when intentionally refreshing their
+public source snapshots:
+
+```bash
+npm run generate:road-profiles
+```
 
 ## 2026 Pace Calibration
 

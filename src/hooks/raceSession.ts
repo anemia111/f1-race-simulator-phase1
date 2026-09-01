@@ -52,7 +52,7 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.08.30.1'
+export const RACE_SIMULATION_MODEL_VERSION = '2026.08.31.1'
 const LEGACY_V2_RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
 const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',

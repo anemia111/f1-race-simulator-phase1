@@ -59,7 +59,7 @@ describe('physical track contract', () => {
     }
   })
 
-  it('labels every metric field and makes unsupported 3D inputs unavailable', () => {
+  it('labels public elevation while keeping unsupported road inputs unavailable', () => {
     const physical = availableTrackFor(referenceTrack)
 
     for (const field of PHYSICAL_TRACK_FIELDS) {
@@ -75,13 +75,18 @@ describe('physical track contract', () => {
 
     expect(physical.fieldProvenance.lapLengthMeters.source).toBe('official')
     expect(physical.fieldProvenance.elevationMeters).toMatchObject({
-      confidence: 'unavailable',
-      method: 'intentionally-unavailable',
-      source: 'unavailable',
+      confidence: 'medium',
+      method: 'public-elevation-grid-interpolation',
+      source: 'observed',
     })
     expect(physical.fieldProvenance.elevationMeters.sourceLabel).toContain(
-      'render Y',
+      'Geospatial Information Authority of Japan',
     )
+    expect(physical.fieldProvenance.grade).toMatchObject({
+      confidence: 'low',
+      method: 'public-elevation-grid-gradient',
+      source: 'derived',
+    })
     expect(physical.fieldProvenance.bankingDegrees.source).toBe('unavailable')
     expect(physical.fieldProvenance.usableWidthMeters.source).toBe(
       'unavailable',

@@ -72,7 +72,9 @@ describe('physical track-dynamics profile', () => {
     const changed = sampledProfile(renderElevationOnly, f1)
 
     expect(changed).toEqual(original)
-    expect(changed.every((point) => point.roadGradeFraction === 0)).toBe(true)
+    expect(
+      changed.some((point) => Math.abs(point.roadGradeFraction) > 0.005),
+    ).toBe(true)
     expect(
       referenceProfileLapTimeSeconds(renderElevationOnly, f1),
     ).toBeCloseTo(referenceProfileLapTimeSeconds(suzuka, f1), 10)

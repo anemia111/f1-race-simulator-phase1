@@ -6,11 +6,13 @@ This Phase 6 implementation introduces a deterministic, two-lane local-surface
 substrate, connects it to the live race force path, and makes that substrate
 the live water/rubber evolution authority. The canonical-authority migration
 and its legacy cleanup are complete. The source-backed road-input follow-up now
-ingests the public MADRING width/banking/grade/elevation facts and Zandvoort's
-published bank angles. It also establishes fail-closed contracts for numeric
-road grip and tyre relaxation. It does **not** claim that unpublished
-circuit/tyre coefficients, a complete surveyed elevation mesh, or chassis
-response data have become available.
+ingests the public MADRING width/banking/grade/elevation facts, Zandvoort's
+published bank angles, and reproducible public-geodata profiles for Zandvoort,
+Silverstone, Suzuka, Motegi, Autopolis, Fuji, and SUGO. It also establishes
+fail-closed contracts for numeric road grip and tyre relaxation. It does
+**not** claim that public DSM/DEM samples are FIA circuit-dossier surveys, or
+that unpublished circuit/tyre coefficients and chassis-response data have
+become available.
 
 Phase 6 is closed at this source boundary. Every requested measured field is
 either connected with provenance or represented as explicitly unavailable; the
@@ -108,7 +110,7 @@ existing `gripWithTrackRubber` and telemetry water handling retain that job.
 This prevents a second rain or rubber multiplier from being introduced during
 the migration.
 
-The current deterministic continuation model is `2026.08.30.1`. An earlier model is
+The current deterministic continuation model is `2026.08.31.1`. An earlier model is
 rejected rather than resuming with the former sector-level evolution rules.
 
 ## Weekend and session carry-over
@@ -131,18 +133,21 @@ temperature still evolve. Race and sprint sessions enable rubber evolution.
 
 The water ledger uses `mm-cell-lane`: the sum of film depths over equal model
 slots. It is proportional to represented inventory, but it is not kilograms,
-litres, or a claim about road area. Source-backed width is available only on
-MADRING; the cell stock still intentionally uses equal slots instead of mixing
-physical areas with legacy fallback tracks. The rubber ledger uses
+litres, or a claim about road area. Source-backed width is available on MADRING
+and from a low-confidence 10 m OpenStreetMap tag around Zandvoort; the cell
+stock still intentionally uses equal slots instead of mixing physical areas
+with legacy fallback tracks. The rubber ledger uses
 dimensionless `coverage-cell-lane` stock. Evolution coefficients are explicit
 neutral simulator policy; none is fitted per circuit.
 
-There is no slope, camber, catchment, drain-map, spray-return, or runoff
-geometry from which to route water between cells. Tyre-displaced film leaves
-the represented substrate as spray, and only film above the 6 mm slot capacity
-is recorded as overflow. `dryness` is a bounded response state, not a second
-water inventory. Likewise, bonded rubber, marbles, and surface temperature are
-policy proxies rather than measured circuit telemetry.
+The seven generated profiles provide a longitudinal slope input, and the AHN
+profile provides gated cross-slope observations at part of Zandvoort. They do
+not provide a catchment model, drain map, spray return, kerb, or runoff geometry
+from which to route water between cells. Tyre-displaced film leaves the
+represented substrate as spray, and only film above the 6 mm slot capacity is
+recorded as overflow. `dryness` is a bounded response state, not a second water
+inventory. Likewise, bonded rubber, marbles, and surface temperature are policy
+proxies rather than measured circuit telemetry.
 
 ## Provenance boundary
 
@@ -212,12 +217,18 @@ reinterpreted as physical measurements. Unsupported station fields remain
 
 The legacy centreline's Y coordinate remains a rendering/layout signal, not a
 surveyed elevation profile. `physicalRoadProfiles.ts` adds data only when an
-independent primary source publishes it:
+independent published source supports it:
 
 - MADRING: all 22 official corner lengths, entry/exit widths and banking
   slopes, the 15 m/589 m main straight, T2/T7 elevations, and the published
   8% uphill/10 m rise and 5% downhill sections;
-- Zandvoort: the published 19 degree T3 and 18 degree T14 bank angles.
+- Zandvoort: the published 19 degree T3 and 18 degree T14 bank angles;
+- Zandvoort: AHN4 0.5 m DSM elevation, derived centreline grade, gated 8 m
+  cross-track banking, and the selected OpenStreetMap raceway's 10 m width tag;
+- Silverstone: Environment Agency 1 m DSM elevation and derived centreline
+  grade;
+- Suzuka, Motegi, Autopolis, Fuji, and SUGO: GSI elevation API observations and
+  derived centreline grade.
 
 MADRING banking values are published as percentage slope and are converted
 with `atan(slope / 100)`. Counter-banked corners retain a negative sign. Corner
@@ -225,6 +236,21 @@ lengths are centred on the existing official corner markers and stationized on
 the declared lap length, so this transformation is labelled `derived` rather
 than promoted to a survey. The partial elevation profile is intentionally low
 confidence: only the source-covered landmarks/grade sections are populated.
+
+`npm run generate:road-profiles` rebuilds
+`src/data/measuredRoadProfiles.ts`. The generator selects explicit
+OpenStreetMap raceway way IDs, aligns the closed centreline to the shipped
+layout, then samples each public elevation product into 96 circular stations.
+OpenStreetMap geometry and width tags retain their ODbL attribution. AHN/EA
+cross-track banking is accepted only after plane-residual, magnitude, and sign
+stability gates; public-geodata banking remains low confidence. The official
+Zandvoort T3/T14 values override that derived input at their covered stations.
+
+The resulting profiles cover 4.253 km at Zandvoort, 5.881 km at Silverstone,
+5.807 km at Suzuka, 4.812 km at Motegi, 4.633 km at Autopolis, 4.554 km at Fuji,
+and 3.581 km at SUGO. Elevation interpolation is labelled observed/medium;
+centreline grade and cross-section banking are labelled derived/low. These are
+useful physical inputs, but not millimetre-grade homologation measurements.
 
 The live grade/banking force paths, racing-line geometry, lateral boundaries,
 race occupation, qualifying decisions, and strategy width reference now read
@@ -253,7 +279,7 @@ road-tyre/test value into F1 or SF physics.
 
 ## Source audit
 
-This non-regulatory Phase 6 source check was rechecked on 2026-08-29 and is
+This non-regulatory Phase 6 source check was rechecked on 2026-09-01 and is
 separate from the frozen regulation manifest's 2026-08-08 cut-off.
 
 - MADRING official circuit technical information:
@@ -272,6 +298,16 @@ separate from the frozen regulation manifest's 2026-08-08 cut-off.
   <https://www.y-yokohama.com/release/?id=4749&lang=en>
 - Loeb et al., SAE 900129, experimental relaxation-length method:
   <https://doi.org/10.4271/900129>
+- FIA Appendix O 2026, circuit dossier survey/cross-section requirements:
+  <https://www.fia.com/system/files/documents/appendix_o_2026_published_23122025.pdf>
+- AHN public elevation data room and product documentation:
+  <https://www.ahn.nl/dataroom>
+- Environment Agency 1 m composite DSM open dataset:
+  <https://www.data.gov.uk/dataset/cf3f1137-c12b-44a1-a835-e80fe4a60b92/lidar-composite-digital-surface-model-dsm-1m>
+- GSI elevation-value API specification:
+  <https://maps.gsi.go.jp/development/elevation_s.html>
+- OpenStreetMap attribution and ODbL terms:
+  <https://www.openstreetmap.org/copyright>
 
 The source audit found qualitative grip/roughness descriptions but no public
 numeric circuit friction coefficient. It found the generic first-order tyre
@@ -291,8 +327,10 @@ open coding backlog:
 - Per-track numeric roughness, drainage, evaporation, catchment, runoff, or
   absolute tyre-road friction inputs;
 - measured cell-by-cell water, rubber, temperature, or debris state;
-- source-backed physical width/elevation/grade/banking outside the partial
-  MADRING and Zandvoort profiles, plus kerb and runoff geometry everywhere;
+- FIA dossier-grade width/elevation/grade/banking and surveyed profiles outside
+  MADRING's published facts; public profiles cover only the seven listed
+  circuits, Zandvoort alone has generated width/partial banking, and kerb/runoff
+  geometry remains unavailable everywhere;
 - live tyre relaxation/transient response, source-backed compound force
   coefficients, or an SF control-tyre physics model. Both series remain
   source-unavailable for relaxation lengths, and SUPER FORMULA does not reuse
@@ -308,8 +346,10 @@ Focused tests cover neutral/default behavior, wrap-around cell resolution,
 lane selection, canonical serialize/deserialize round trips, water and rubber
 flux closure, rain wash, local tyre work, traversal ordering, session carry,
 checkpoint rejection, v3/v2 compatibility migration, local-force monotonicity,
-MADRING/Zandvoort provenance and stationing, signed counter-banking, local
-width use, unavailable numeric road grip, and source-gated tyre relaxation.
+all seven generated profile bounds/station interpolation, MADRING/Zandvoort
+provenance and stationing, signed counter-banking, official-over-derived bank
+priority, local width use, unavailable numeric road grip, and source-gated tyre
+relaxation.
 `npm run validate:track-surface` also runs a
 deterministic 36-case matrix: Monaco, Monza, Singapore, Spa, Suzuka, and
 Zandvoort crossed with green, rubbered, light-rain, heavy-rain, drying, and
