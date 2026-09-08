@@ -2414,6 +2414,8 @@ describe('physical running order', () => {
     const stopped = snapshot.cars.find(
       (car) => car.driverId === obstruction.driverId,
     )!
+    expect(stopped.speedKph).toBe(0)
+    expect(stopped.totalDistance).toBe(2.445)
     const clearedFollowers = followers.map(
       (follower) =>
         snapshot.cars.find(
@@ -2707,9 +2709,6 @@ describe('start procedure and persisted weekend', () => {
     const sequenceDurations = Array.from({ length: 20 }, (_, index) =>
       startLightSequenceSecondsFor(`starter-hold-${index}`),
     )
-
-    expect(stopped.speedKph).toBe(0)
-    expect(stopped.totalDistance).toBe(2.445)
 
     expect(Math.min(...sequenceDurations)).toBeGreaterThanOrEqual(4.2)
     expect(Math.max(...sequenceDurations)).toBeLessThanOrEqual(7)
