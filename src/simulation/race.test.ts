@@ -2340,7 +2340,7 @@ describe('physical running order', () => {
     ).toBe(false)
   })
 
-  it('lets several followers clear one passable accident under local yellow', () => {
+  it.each([0.05, 0.2])('lets several followers clear one passable accident under local yellow at %s s', (stepSeconds) => {
     const config = makeConfig('yellow-obstruction-field')
     // `runThroughStart` stops exactly at lights-out. Let the force model make
     // its first launch step before arranging an on-track incident.
@@ -2370,7 +2370,7 @@ describe('physical running order', () => {
       ...car,
       // This fixture isolates obstruction clearance from any launch battle
       // that may have resolved in the setup step.
-      battleDeltaSecondsRemaining: 0,
+      battleDeltaSecondsRemaining: car.driverId === obstruction.driverId ? -20 : 0,
       battleOpponentId: null,
       battlePhase: 'single-file' as const,
       battlePhaseUntilSeconds: null,
@@ -2407,8 +2407,8 @@ describe('physical running order', () => {
     // Cars now move laterally around the obstruction before the longitudinal
     // occupancy model permits them through; allow that continuous manoeuvre
     // to propagate through the four-car queue.
-    for (let step = 0; step < 80; step += 1) {
-      snapshot = advanceRace(snapshot, 0.2, config)
+    for (let step = 0; step < Math.round(16 / stepSeconds); step += 1) {
+      snapshot = advanceRace(snapshot, stepSeconds, config)
     }
 
     const stopped = snapshot.cars.find(
@@ -2432,14 +2432,10 @@ describe('physical running order', () => {
         )
         .join(',')}`,
     ).toBe(true)
-    expect(
-      clearedFollowers.map((follower) => follower.totalDistance),
-    ).toEqual(
-      clearedFollowers
-        .map((follower) => follower.totalDistance)
-        .slice()
-        .sort((left, right) => right - left),
-    )
+    // Outside the yellow zone they can race each other again. The only car
+    // still stopped must be the original obstruction, not its following queue.
+    expect(snapshot.cars.filter((car) => car.speedKph === 0).map((car) => car.driverId))
+      .toEqual([obstruction.driverId])
   })
 
   it.each([
@@ -2711,6 +2707,9 @@ describe('start procedure and persisted weekend', () => {
     const sequenceDurations = Array.from({ length: 20 }, (_, index) =>
       startLightSequenceSecondsFor(`starter-hold-${index}`),
     )
+
+    expect(stopped.speedKph).toBe(0)
+    expect(stopped.totalDistance).toBe(2.445)
 
     expect(Math.min(...sequenceDurations)).toBeGreaterThanOrEqual(4.2)
     expect(Math.max(...sequenceDurations)).toBeLessThanOrEqual(7)

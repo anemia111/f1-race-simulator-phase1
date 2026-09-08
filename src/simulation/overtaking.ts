@@ -84,6 +84,8 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 const battleIncidentTuning = {
+  /** User-selected calmer SIM racing; not an observed accident frequency. */
+  contactFrequencyScale: 0.4,
   driverErrorScale: 0.4,
   contactBaseChance: 0.022,
   attackerErrorContactWeight: 0.16,
@@ -387,7 +389,9 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
   )
   const outcomeRoll = hashChance(`${key}:outcome`)
 
-  if (outcomeRoll < contactChance) {
+  // Lower accident frequency without taking successful passes out of the
+  // probability interval below. Avoided contacts become clean moves.
+  if (outcomeRoll < contactChance * battleIncidentTuning.contactFrequencyScale) {
     const crashRoll = hashChance(`${key}:crash`)
     const attackerResponsibility = clamp(
       0.56 +

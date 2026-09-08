@@ -3,6 +3,7 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type { RaceConfig, RaceSnapshot } from '../types'
 import { overtakeForLap } from './overtaking'
+import { incidentForLap } from './incidents'
 import { advanceRace, createInitialRace } from './race'
 
 // Keep the publish gate to a small deterministic full-race smoke sample. The
@@ -117,9 +118,23 @@ describe('wheel-to-wheel retirement calibration', () => {
     )
 
     expect(contacts.length).toBeGreaterThan(0)
+    expect(contacts.length / outcomes.length).toBeLessThan(0.03)
     expect(crashes.length).toBeGreaterThan(0)
     expect(retirementOutcomes.length).toBeGreaterThan(0)
     expect(crashes.length / contacts.length).toBeLessThan(0.16)
-    expect(retirementOutcomes.length / outcomes.length).toBeLessThan(0.008)
+    expect(retirementOutcomes.length / outcomes.length).toBeLessThan(0.004)
+  })
+
+  it('keeps standalone driver accidents rare in the calmer SIM setting', () => {
+    const driver = initialDrivers[0]
+    const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
+    const outcomes = Array.from({ length: 20_000 }, (_, index) =>
+      incidentForLap(`calmer-errors-${index}`, driver, team, 3),
+    )
+    const accidents = outcomes.filter((outcome) => outcome?.classification === 'accident')
+    const crashes = outcomes.filter((outcome) => outcome?.kind === 'terminal-crash')
+    expect(accidents.length).toBeGreaterThan(0)
+    expect(accidents.length / outcomes.length).toBeLessThan(0.002)
+    expect(crashes.length / outcomes.length).toBeLessThan(0.0005)
   })
 })

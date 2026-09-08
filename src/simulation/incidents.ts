@@ -53,10 +53,10 @@ export const incidentTuning = {
   /** Per-lap mechanical failure chance factor (scaled by 1 - reliability). */
   mechanicalBaseChance: 0.003,
   /** Per-lap driver error chance factor (scaled by 1 - consistency). */
-  errorBaseChance: 0.02,
+  errorBaseChance: 0.01,
   /** Error severity split: first minor, then damage, otherwise a crash. */
-  minorSeverityShare: 0.55,
-  damageSeverityShare: 0.85,
+  minorSeverityShare: 0.7,
+  damageSeverityShare: 0.95,
 } as const
 
 const flagRank: Record<Exclude<FlagState, 'clear'>, number> = {

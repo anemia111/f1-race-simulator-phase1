@@ -142,6 +142,14 @@ driving game.
   Red-flag standing restarts record a separate launch timestamp without changing
   the original race clock. Actual inward lane changes wait for an occupied
   corridor to clear before longitudinal resolution, preventing cut-in stops.
+  Healthy followers avoiding an incident retain a bounded 0.4 m/s low-speed
+  lateral manoeuvring envelope even when the longitudinal collision guard
+  briefly stops them. This is a SIM escape allowance, not grid-start steering
+  or permission to overlap the stopped car. Avoidance starts up to three
+  seconds ahead and remains active until the obstacle is fully behind.
+  User-requested calmer racing scales battle contact probability to 40% of its
+  previous value and halves standalone driver-error probability. Of those
+  errors, 70% are minor and 5% terminal; mechanical failure rates are unchanged.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
   owed penalties. F1 teams use distinct pit-crew ratings derived from the

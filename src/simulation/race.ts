@@ -4995,6 +4995,7 @@ export function advanceRace(
   const driverAgentRuntimeById = new Map<string, DriverAgentRuntimeState>()
   const physicalAheadById = new Map<string, CarSnapshot>()
   const physicalGapSecondsById = new Map<string, number>()
+  const avoidingObstructionIds = new Set<string>()
 
   for (const car of frameCars) {
     if (car.status !== 'running') {
@@ -5064,13 +5065,16 @@ export function advanceRace(
       const trafficCar = frameCarById.get(candidate.driverId)
 
       return (
-        candidate.signedLongitudinalDistanceM >= 0 &&
-        candidate.signedLongitudinalDistanceM < 55 &&
+        candidate.signedLongitudinalDistanceM >= -7 &&
+        candidate.signedLongitudinalDistanceM < Math.max(55, representativeSpeedMps * 3) &&
         trafficCar !== undefined &&
         (trafficCar.status === 'retired' ||
           (trafficCar.incidentTrackState ?? 'clear') !== 'clear')
       )
     })
+    if (emergencyVehicle && car.incidentTrackState === 'clear') {
+      avoidingObstructionIds.add(car.driverId)
+    }
     // A pass has to be paid for with pace. Without this a car that is merely
     // in the tow commits to a move, gets ahead on the slipstream alone, and is
     // taken straight back on the next straight by the car it just passed: the
@@ -5376,7 +5380,13 @@ export function advanceRace(
               car.driverId,
               advanceLateralState({
                 deltaSeconds,
-                forwardSpeedKph: car.speedKph,
+                // SIM low-speed manoeuvring: a healthy car already clamped
+                // behind an obstruction must still be able to steer out of
+                // the queue. Only obstacle avoidance gets this 0.4 m/s
+                // lateral envelope; grid launches and the stopped car do not.
+                forwardSpeedKph: avoidingObstructionIds.has(car.driverId)
+                  ? Math.max(car.speedKph, 18)
+                  : car.speedKph,
                 desiredLateralOffsetM:
                   reservedLateralOffsets.get(car.driverId) ??
                   decision.desiredLateralOffsetM,
