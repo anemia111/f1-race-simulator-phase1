@@ -46,6 +46,8 @@ const LATERAL_TARGET_RESPONSE_SECONDS = 0.25
 const LATERAL_SETTLING_TOLERANCE_M = 0.001
 /** Prevent strict rectangle tests from failing on a floating-point boundary. */
 const OCCUPANCY_NUMERIC_BUFFER_M = 1e-6
+/** SIM steering envelope: lateral travel is at most 8% of forward travel. */
+const MAX_LANE_CHANGE_SLOPE = 0.08
 
 export type LateralState = {
   lateralOffsetM: number
@@ -312,6 +314,8 @@ export function advanceLateralState(options: {
   desiredLateralOffsetM?: number
   edgeSafetyMarginM?: number
   footprint?: Partial<VehicleFootprint>
+  /** Live road speed prevents a stationary car sliding sideways at launch. */
+  forwardSpeedKph?: number
   limits?: Partial<LateralMotionLimits>
   state: Partial<LateralState>
   track: TrackDefinition
@@ -322,9 +326,12 @@ export function advanceLateralState(options: {
     footprint: options.footprint,
     trackProgress: options.trackProgress,
   })
-  const maxLateralSpeedMps = positiveFiniteOr(
-    options.limits?.maxLateralSpeedMps,
-    MAX_LATERAL_SPEED_MPS,
+  const maxLateralSpeedMps = Math.min(
+    positiveFiniteOr(options.limits?.maxLateralSpeedMps, MAX_LATERAL_SPEED_MPS),
+    options.forwardSpeedKph === undefined
+      ? Number.POSITIVE_INFINITY
+      : Math.max(0, finiteOr(options.forwardSpeedKph, 0)) / 3.6 *
+        MAX_LANE_CHANGE_SLOPE,
   )
   const maxLateralAccelerationMps2 = positiveFiniteOr(
     options.limits?.maxLateralAccelerationMps2,
@@ -353,6 +360,10 @@ export function advanceLateralState(options: {
     0,
     MAX_LATERAL_STEP_SECONDS,
   )
+
+  if (maxLateralSpeedMps === 0) {
+    return { desiredLateralOffsetM, lateralOffsetM, lateralVelocityMps: 0 }
+  }
 
   if (
     (lateralOffsetM <= bounds.minOffsetM && lateralVelocityMps < 0) ||
@@ -562,6 +573,102 @@ export function reserveDesiredLateralOffsets(options: {
   }
 
   return result
+}
+
+/**
+ * Hold an inward lane change at the occupied corridor before longitudinal
+ * resolution. Desired reservations alone cannot prevent two live, still-
+ * converging trajectories from entering the same rectangle.
+ *
+ * Each alongside pair shares its remaining clearance between inward moves.
+ * Outward motion is always allowed, but is not borrowed as clearance: another
+ * neighbour may limit that move. Taking each car's smallest allowed fraction
+ * therefore remains safe for a whole pack without order-dependent iteration.
+ */
+export function resolveLateralOccupancy(options: {
+  candidates: readonly LongitudinalOccupancyCandidate[]
+  lapLengthM: number
+  margins?: OccupancyMargins
+}): ReadonlyMap<string, number> {
+  const candidates = [...options.candidates].sort((first, second) =>
+    compareDriverIds(first.driverId, second.driverId),
+  )
+  const motions = candidates.map((car) => {
+    const current = finiteOr(car.lateralOffsetM, 0)
+    return {
+      car,
+      current,
+      delta: finiteOr(car.candidateLateralOffsetM, current) - current,
+      fraction: 1,
+    }
+  })
+
+  for (let firstIndex = 0; firstIndex < motions.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < motions.length; secondIndex += 1) {
+      const first = motions[firstIndex]
+      const second = motions[secondIndex]
+      const initialLongitudinalM = wrappedSignedDistanceM(
+        first.car.totalDistanceM,
+        second.car.totalDistanceM,
+        options.lapLengthM,
+      )
+      const finalLongitudinalM = initialLongitudinalM +
+        Math.max(0, second.car.candidateTotalDistanceM - second.car.totalDistanceM) -
+        Math.max(0, first.car.candidateTotalDistanceM - first.car.totalDistanceM)
+      const requiredLongitudinalM = requiredLongitudinalCentreSeparationM(
+        first.car.footprint,
+        second.car.footprint,
+        finiteSafetyMargin(
+          options.margins?.longitudinalSafetyMarginM,
+          LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M,
+        ),
+      )
+
+      // Check the whole longitudinal sweep, including a pass across the line.
+      if (
+        Math.min(initialLongitudinalM, finalLongitudinalM) >= requiredLongitudinalM ||
+        Math.max(initialLongitudinalM, finalLongitudinalM) <= -requiredLongitudinalM
+      ) {
+        continue
+      }
+
+      const firstIsLeft = first.current < second.current ||
+        (first.current === second.current && first.delta <= second.delta)
+      const left = firstIsLeft ? first : second
+      const right = firstIsLeft ? second : first
+      const initialLateralM = right.current - left.current
+      const requiredLateralM = requiredLateralCentreSeparationM(
+        left.car.footprint,
+        right.car.footprint,
+        finiteSafetyMargin(
+          options.margins?.lateralSafetyMarginM,
+          OVERTAKE_LATERAL_SAFETY_MARGIN_M,
+        ),
+      )
+      const availableClearanceM = Math.max(
+        0,
+        initialLateralM - requiredLateralM - OCCUPANCY_NUMERIC_BUFFER_M,
+      )
+      const leftInwardM = Math.max(0, left.delta)
+      const rightInwardM = Math.max(0, -right.delta)
+      const inwardTravelM = leftInwardM + rightInwardM
+
+      if (inwardTravelM <= availableClearanceM) {
+        continue
+      }
+
+      // When already inside the margin, preserve the existing separation;
+      // never teleport either car to repair it or prohibit an outward escape.
+      const fraction = availableClearanceM / inwardTravelM
+      if (leftInwardM > 0) left.fraction = Math.min(left.fraction, fraction)
+      if (rightInwardM > 0) right.fraction = Math.min(right.fraction, fraction)
+    }
+  }
+
+  return new Map(motions.map(({ car, current, delta, fraction }) => [
+    car.driverId,
+    current + delta * fraction,
+  ]))
 }
 
 function exactPositionFrontWins(

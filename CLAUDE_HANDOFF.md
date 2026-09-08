@@ -90,6 +90,10 @@ driving game.
   one-second intervals, then a deterministic SIM starter hold of 0.2-3.0
   seconds after the fifth light before launch. Opening laps do not trigger an
   immediate strategy stop.
+- Grid markings, staged cars, and live launch state share the same physical
+  column offsets. A phase change alone cannot shift a stationary car sideways.
+  Live lane-change speed is bounded by forward road speed, preventing sideways
+  sliding at rest and excessive steering before the car has accelerated.
 - Completed lap records use elapsed timing-line crossing timestamps. Sector
   records always sum to the measured lap. Each lap also persists 24 measured
   mini-sector intervals; the first car through is provisionally purple and a
@@ -127,9 +131,17 @@ driving game.
 - A close pack below 1.9 seconds receives smoothly fading tow/pace support,
   capped at 0.9 seconds per lap. Once the train breaks, each car returns to its
   own projected pace. A formal pass outcome now converts the attacker's relative
-  gain into bounded defender braking/line-concession loss; it never accelerates
-  the attacker beyond the physical speed ceiling. Lateral occupancy must still
-  clear and the pass event is emitted only after distance order crosses.
+  gain into a temporary defender pace request, with at most a 12% concession
+  applied to pedal demand and reference speed before force integration. The
+  event's loss budget is a SIM estimate, not an exact measured delay. Travel
+  uses the full physics step; repeatedly shortening travel and feeding that
+  reduced speed back into the next tick previously brought cars almost to rest.
+  Formal battle outcomes wait until the 4.5-second standing launch is
+  complete; physical position crossings still determine passes. Lateral
+  occupancy must clear and the pass event is emitted after distance order crosses.
+  Red-flag standing restarts record a separate launch timestamp without changing
+  the original race clock. Actual inward lane changes wait for an occupied
+  corridor to clear before longitudinal resolution, preventing cut-in stops.
 - Pit stops include entry/exit interpolation, boxes, tire-set consumption,
   double-stack delay, unsafe release, speed violations, repairs, and serving
   owed penalties. F1 teams use distinct pit-crew ratings derived from the

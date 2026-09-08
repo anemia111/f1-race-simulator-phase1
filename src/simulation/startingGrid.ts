@@ -32,6 +32,17 @@ export const STARTING_GRID_BOX_PITCH_M = 8
 export const STARTING_GRID_REQUIRED_SEPARATION_M =
   FORMULA_VEHICLE_LENGTH_M + LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M
 
+/**
+ * SIM grid column placement, in physical metres from the track centreline.
+ * Uses the same zero-based index as startingGridDistance. Both the engine and
+ * the map must use this position so lights-out cannot move a stationary car.
+ */
+export function startingGridLateralOffsetM(gridIndex: number) {
+  const normalizedIndex = Math.max(0, Math.floor(gridIndex))
+
+  return normalizedIndex % 2 === 0 ? -1.35 : 1.35
+}
+
 /** Longitudinal spacing between consecutive grid slots, as a lap fraction. */
 export function startingGridSlotGap(lapLengthM: number) {
   return STARTING_GRID_BOX_PITCH_M / Math.max(1, lapLengthM)

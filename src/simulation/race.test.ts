@@ -2085,15 +2085,18 @@ describe('physical running order', () => {
     expect(battleTravelAdjustment(1.2, 0.4)).toEqual({
       appliedSeconds: 0,
       nextRemainingSeconds: 0,
+      paceScale: 1,
       travelSeconds: 0.4,
     })
     const loss = battleTravelAdjustment(-1.2, 0.4)
-    expect(loss.appliedSeconds).toBeCloseTo(-0.2, 10)
-    expect(loss.nextRemainingSeconds).toBeCloseTo(-1, 10)
-    expect(loss.travelSeconds).toBeCloseTo(0.2, 10)
+    expect(loss.appliedSeconds).toBeCloseTo(-0.048, 10)
+    expect(loss.nextRemainingSeconds).toBeCloseTo(-1.152, 10)
+    expect(loss.paceScale).toBeCloseTo(0.88, 10)
+    expect(loss.travelSeconds).toBeCloseTo(0.4, 10)
     expect(battleTravelAdjustment(Number.NaN, 0.4)).toEqual({
       appliedSeconds: 0,
       nextRemainingSeconds: 0,
+      paceScale: 1,
       travelSeconds: 0.4,
     })
   })

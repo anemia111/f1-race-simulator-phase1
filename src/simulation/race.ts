@@ -125,7 +125,7 @@ import {
   pitLaneLossSecondsForTrack,
   pitStopLossSeconds,
 } from './strategy'
-import { startingGridDistance } from './startingGrid'
+import { startingGridDistance, startingGridLateralOffsetM } from './startingGrid'
 import { f1StandingStartMguKDecision } from './f1StandingStart'
 import { calculateCarTelemetry } from './telemetry'
 import {
@@ -175,6 +175,7 @@ import {
   lateralBoundsForTrack,
   lateralTrafficContext,
   reserveDesiredLateralOffsets,
+  resolveLateralOccupancy,
   resolveLongitudinalOccupancy,
   type LateralVehicle,
 } from './lateralDynamics'
@@ -672,14 +673,16 @@ export function driverDecisionRequestsFormalBattle(
 }
 
 /**
- * Consume a bounded part of a resolved battle's time loss through physical
- * travel. A successful attack's relative gain is stored as a loss for the
- * defender, so this path never accelerates a car beyond its physical speed.
- * The half-step cap prevents a one-tick stop after defence or contact.
+ * Spread an estimated battle loss over a bounded temporary pace request.
+ * The force solver must receive that request before integrating road speed.
+ * Shortening travel after integration feeds the shortened speed into the next
+ * tick and repeatedly halves it, turning a normal defended move into a stop.
+ * Stationary incidents retain their separate recovery-duration debit.
  */
 export function battleTravelAdjustment(
   remainingSeconds: number,
   deltaSeconds: number,
+  stationaryIncident = false,
 ) {
   const finiteRemaining = Number.isFinite(remainingSeconds)
     ? remainingSeconds
@@ -690,13 +693,17 @@ export function battleTravelAdjustment(
   const lossRemainingSeconds = Math.min(0, finiteRemaining)
   const appliedSeconds =
     lossRemainingSeconds < 0
-      ? -Math.min(Math.abs(lossRemainingSeconds), finiteDelta * 0.5)
+      ? -Math.min(
+          Math.abs(lossRemainingSeconds),
+          finiteDelta * (stationaryIncident ? 0.5 : 0.12),
+        )
       : 0
 
   return {
     appliedSeconds,
     nextRemainingSeconds: lossRemainingSeconds - appliedSeconds,
-    travelSeconds: Math.max(0, finiteDelta + appliedSeconds),
+    paceScale: finiteDelta > 0 ? 1 + appliedSeconds / finiteDelta : 1,
+    travelSeconds: finiteDelta,
   }
 }
 
@@ -2744,9 +2751,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     const lap = Math.floor(totalDistance)
     const gridLateralOffsetM =
       isRaceDistance && !startsFromPitLane
-        ? gridIndex % 2 === 0
-          ? -1.35
-          : 1.35
+        ? startingGridLateralOffsetM(gridIndex)
         : 0
     const runtimeSystems: CarSnapshot['runtimeSystems'] =
       categoryPhysics.id === 'f1-custom'
@@ -3914,6 +3919,7 @@ export function advanceRace(
   let restartUntilSeconds = snapshot.restartUntilSeconds
   let restartProcedure = snapshot.restartProcedure
   let restartProcedureUntilSeconds = snapshot.restartProcedureUntilSeconds
+  let lastStandingRestartAtSeconds = snapshot.lastStandingRestartAtSeconds ?? null
   let overtakeEnabled = snapshot.overtakeEnabled
   let overtakeEnableAtLeaderDistance = snapshot.overtakeEnableAtLeaderDistance
   let overtakeEnableTargetsByDriver =
@@ -4148,6 +4154,9 @@ export function advanceRace(
     elapsedSeconds >= restartProcedureUntilSeconds
   ) {
     const completedProcedure = restartProcedure
+    if (completedProcedure === 'standing') {
+      lastStandingRestartAtSeconds = restartProcedureUntilSeconds
+    }
     restartProcedure = 'none'
     restartProcedureUntilSeconds = null
     restartUntilSeconds = elapsedSeconds + phaseThreeTuning.restartWindowSeconds
@@ -5367,6 +5376,7 @@ export function advanceRace(
               car.driverId,
               advanceLateralState({
                 deltaSeconds,
+                forwardSpeedKph: car.speedKph,
                 desiredLateralOffsetM:
                   reservedLateralOffsets.get(car.driverId) ??
                   decision.desiredLateralOffsetM,
@@ -6094,10 +6104,13 @@ export function advanceRace(
     const standingStartMguKRestricted =
       standingStartMguKDecision !== null &&
       !standingStartMguKDecision.positiveTorqueAllowed
+    const standingLaunchAtSeconds =
+      lastStandingRestartAtSeconds ??
+      (!snapshot.formationBehindSafetyCar ? snapshot.raceStartedAtSeconds : null)
     const standingStartLaunchActive =
-      !snapshot.formationBehindSafetyCar &&
-      snapshot.raceStartedAtSeconds !== null &&
-      elapsedSeconds - snapshot.raceStartedAtSeconds < 4.5 &&
+      standingLaunchAtSeconds !== null &&
+      elapsedSeconds >= standingLaunchAtSeconds &&
+      elapsedSeconds - standingLaunchAtSeconds < 4.5 &&
       (car.progress >= 0.88 || car.progress <= 0.1)
     const blueFlagApproachingCar =
       isRaceDistance &&
@@ -6131,9 +6144,23 @@ export function advanceRace(
       ...paceManagedCar,
       gapToAhead: physicalGapSeconds ?? Number.POSITIVE_INFINITY,
     }
+    const battleTravel =
+      waitingForSafeRejoin || controlPhase || !hasCrossedRestartLine
+        ? {
+            appliedSeconds: 0,
+            nextRemainingSeconds: car.battleDeltaSecondsRemaining,
+            paceScale: 1,
+            travelSeconds: deltaSeconds,
+          }
+        : battleTravelAdjustment(
+            car.battleDeltaSecondsRemaining,
+            deltaSeconds,
+            car.incidentTrackState === 'on-track-stopped',
+          )
     const telemetry = calculateCarTelemetry({
       car: telemetryCar,
       aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
+      battlePaceScale: battleTravel.paceScale,
       categoryPhysics,
       deltaSeconds,
       driver,
@@ -6272,14 +6299,6 @@ export function advanceRace(
       standard: 1,
     }
     const effectiveLapTime = baselineEffectiveLapTime
-    const battleTravel =
-      waitingForSafeRejoin || controlPhase || !hasCrossedRestartLine
-      ? {
-          appliedSeconds: 0,
-          nextRemainingSeconds: car.battleDeltaSecondsRemaining,
-          travelSeconds: deltaSeconds,
-        }
-      : battleTravelAdjustment(car.battleDeltaSecondsRemaining, deltaSeconds)
     const battleDeltaSecondsRemaining = battleTravel.nextRemainingSeconds
     let totalDistance =
       waitingForSafeRejoin
@@ -6921,7 +6940,8 @@ export function advanceRace(
       if (
         !localControlPhase &&
         !frame.proposedPhase &&
-        hasCrossedRestartLine
+        hasCrossedRestartLine &&
+        !standingStartLaunchActive
       ) {
         const defenderCar = physicalAheadById.get(car.driverId) ?? null
         const defender = defenderCar ? drivers.get(defenderCar.driverId) : null
@@ -8644,16 +8664,43 @@ export function advanceRace(
   // placed the car, and followers began gaining places on each other while
   // filing past an accident under local yellow.
   const circuitDifficulty = overtakeDifficultyForTrack(config.track)
-  const resolvedLongitudinalM = resolveLongitudinalOccupancy({
+  const occupancyMargins = {
+    lateralSafetyMarginM:
+      OVERTAKE_LATERAL_SAFETY_MARGIN_M +
+      clamp01((circuitDifficulty - 0.25) / 0.65) * 0.25,
+  }
+  // A driver alongside another car must wait for space before merging. Check
+  // the actual lateral step, not just the desired line reservation, so the
+  // longitudinal resolver never has to park a car to undo a lateral cut-in.
+  const resolvedLateralM = resolveLateralOccupancy({
     candidates: occupancyCandidates,
     lapLengthM,
-    margins: {
-      lateralSafetyMarginM:
-        OVERTAKE_LATERAL_SAFETY_MARGIN_M +
-        clamp01((circuitDifficulty - 0.25) / 0.65) * 0.25,
-    },
+    margins: occupancyMargins,
   })
-  const occupancyResolvedCars = cars.map((car) => {
+  const laterallyResolvedCars = cars.map((car) => {
+    const lateralOffsetM = resolvedLateralM.get(car.driverId)
+
+    return lateralOffsetM === undefined ||
+      Math.abs(lateralOffsetM - car.lateralOffsetM) < 1e-9
+      ? car
+      : {
+          ...car,
+          lateralOffsetM,
+          trackLateralOffset: lateralOffsetM,
+          lateralVelocityMps: 0,
+        }
+  })
+  const resolvedLongitudinalM = resolveLongitudinalOccupancy({
+    candidates: occupancyCandidates.map((candidate) => ({
+      ...candidate,
+      candidateLateralOffsetM:
+        resolvedLateralM.get(candidate.driverId) ??
+        candidate.candidateLateralOffsetM,
+    })),
+    lapLengthM,
+    margins: occupancyMargins,
+  })
+  const occupancyResolvedCars = laterallyResolvedCars.map((car) => {
     const previous = frameCarById.get(car.driverId)
     const resolvedDistanceM = resolvedLongitudinalM.get(car.driverId)
 
@@ -9201,6 +9248,7 @@ export function advanceRace(
     formationBehindSafetyCar: snapshot.formationBehindSafetyCar,
     wetWeatherTyresMandatory: snapshot.wetWeatherTyresMandatory,
     raceStartedAtSeconds: snapshot.raceStartedAtSeconds,
+    lastStandingRestartAtSeconds,
     restartProcedure,
     restartProcedureUntilSeconds,
     overtakeEnabled,

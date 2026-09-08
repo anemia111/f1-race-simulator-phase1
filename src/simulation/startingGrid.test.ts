@@ -4,14 +4,29 @@ import {
   STARTING_GRID_BOX_PITCH_M,
   STARTING_GRID_REQUIRED_SEPARATION_M,
   startingGridDistance,
+  startingGridLateralOffsetM,
   startingGridRowGap,
   startingGridSlotGap,
   startingGridStagger,
 } from './startingGrid'
+import { requiredLateralCentreSeparationM } from './vehicleGeometry'
 
 const ALBERT_PARK_LAP_M = 5278
 
 describe('starting grid', () => {
+  it('gives both grid columns enough lateral room to launch beside each other', () => {
+    const requiredSeparationM = requiredLateralCentreSeparationM(undefined, undefined)
+
+    for (let gridIndex = 0; gridIndex < 40; gridIndex += 2) {
+      const left = startingGridLateralOffsetM(gridIndex)
+      const right = startingGridLateralOffsetM(gridIndex + 1)
+
+      expect(left).toBeLessThan(0)
+      expect(right).toBe(-left)
+      expect(right - left).toBeGreaterThan(requiredSeparationM)
+    }
+  })
+
   it('spaces the boxes by a distance rather than a fraction of the lap', () => {
     // The previous constant was 0.00105 of a lap on every circuit, which made
     // the grid stretch and shrink with the layout: 7.35 m at Spa, 5.54 m at

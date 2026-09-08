@@ -168,6 +168,8 @@ export function calculateCarTelemetry(options: {
   car: CarSnapshot
   /** Physical lateral position of the nearest car ahead, when one exists. */
   aheadLateralOffsetM?: number
+  /** Temporary, bounded pace concession from a resolved racing battle. */
+  battlePaceScale?: number
   deltaSeconds: number
   driver: Driver
   driverDecision?: DriverDecision
@@ -210,6 +212,7 @@ export function calculateCarTelemetry(options: {
   const {
     car,
     aheadLateralOffsetM,
+    battlePaceScale = 1,
     categoryPhysics = categoryPhysicsFor(undefined),
     deltaSeconds,
     driver,
@@ -462,11 +465,13 @@ export function calculateCarTelemetry(options: {
           createInitialActiveAeroState(),
         )
       : Number.POSITIVE_INFINITY
-  const brakingTargetSpeedKph = Number.isFinite(
-    liveBrakingTargetSpeedKph,
-  )
-    ? liveBrakingTargetSpeedKph
-    : dynamics.brakingTargetSpeedKph
+  const battlePace = Number.isFinite(battlePaceScale)
+    ? clamp(battlePaceScale, 0.88, 1)
+    : 1
+  const brakingTargetSpeedKph =
+    (Number.isFinite(liveBrakingTargetSpeedKph)
+      ? liveBrakingTargetSpeedKph
+      : dynamics.brakingTargetSpeedKph) * battlePace
   // Neutralisation and preparation rules are operational speed ceilings. They
   // shape pedal demand without scaling engine power or the integrated speed.
   const neutralisedSpeedCeilingKph = phase
@@ -476,9 +481,12 @@ export function calculateCarTelemetry(options: {
     ? dynamics.referenceSpeedKph * preparationPaceScale
     : Number.POSITIVE_INFINITY
   const targetSpeedKph = Math.min(
-    corneringSpeedLimitKph,
+    corneringSpeedLimitKph * battlePace,
     neutralisedSpeedCeilingKph,
     preparationSpeedCeilingKph,
+    battlePace < 1
+      ? dynamics.referenceSpeedKph * battlePace
+      : Number.POSITIVE_INFINITY,
   )
   const currentSpeedMps = car.speedKph / 3.6
   const brakingTargetSpeedMps = brakingTargetSpeedKph / 3.6
@@ -564,7 +572,7 @@ export function calculateCarTelemetry(options: {
           Math.max(0, targetSpeedKph - car.speedKph) * 0.24
   const controlThrottleScale = phase?.flag === 'red' ? 0 : phase ? 0.84 : 1
   const requestedThrottlePercent = Math.round(
-    clamp(baseThrottle * controlThrottleScale, 0, 100),
+    clamp(baseThrottle * controlThrottleScale * battlePace, 0, 100),
   )
   const preparationThrottleCeiling =
     timedRunPhase === 'in-lap'

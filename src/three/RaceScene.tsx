@@ -19,7 +19,10 @@ import {
   progressWithinWrapped,
 } from '../simulation/pitLane'
 import { trackWidthMeters } from '../simulation/physicalLap'
-import { startingGridDistance } from '../simulation/startingGrid'
+import {
+  startingGridDistance,
+  startingGridLateralOffsetM,
+} from '../simulation/startingGrid'
 import {
   progressAtTime,
   type OpenF1TrackProgress,
@@ -253,13 +256,21 @@ function InstancedPitBoxes({ boxes }: { boxes: PosedInstance[] }) {
 }
 
 function startingGridSlotOffset(track: TrackDefinition, position: number) {
-  const side = position % 2 === 1 ? -1 : 1
-
-  return side * presentationTrackWidth(track) * 0.28
+  return presentationLateralOffset(track, startingGridLateralOffsetM(position - 1))
 }
 
+type LaneDisplayCar = Pick<
+  CarSnapshot,
+  | 'gridPosition'
+  | 'totalDistance'
+  | 'status'
+  | 'timedRunPhase'
+  | 'lateralOffsetM'
+  | 'trackLateralOffset'
+>
+
 function shouldUseStartingGridSlot(
-  car: CarSnapshot,
+  car: LaneDisplayCar,
   showStartingGridSlots: boolean,
   track: TrackDefinition,
 ) {
@@ -276,9 +287,10 @@ function shouldUseStartingGridSlot(
   )
 }
 
-function displayLaneOffset(
+// oxlint-disable-next-line react/only-export-components -- verifies lights-out placement continuity
+export function displayLaneOffset(
   track: TrackDefinition,
-  car: CarSnapshot,
+  car: LaneDisplayCar,
   showStartingGridSlots: boolean,
 ) {
   if (shouldUseStartingGridSlot(car, showStartingGridSlots, track)) {

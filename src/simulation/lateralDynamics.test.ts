@@ -8,6 +8,7 @@ import {
   MAX_LATERAL_ACCELERATION_MPS2,
   MAX_LATERAL_SPEED_MPS,
   reserveDesiredLateralOffsets,
+  resolveLateralOccupancy,
   resolveLongitudinalOccupancy,
   vehicleOccupanciesOverlap,
   wrappedForwardDistanceM,
@@ -62,6 +63,35 @@ describe('lateral vehicle geometry', () => {
 })
 
 describe('advanceLateralState', () => {
+  it('cannot slide sideways from a stopped grid slot', () => {
+    const next = advanceLateralState({
+      deltaSeconds: 0.5,
+      desiredLateralOffsetM: 3,
+      forwardSpeedKph: 0,
+      state: { lateralOffsetM: -1.35, lateralVelocityMps: 0 },
+      track: silverstone,
+    })
+
+    expect(next.lateralOffsetM).toBe(-1.35)
+    expect(next.lateralVelocityMps).toBe(0)
+  })
+
+  it('limits launch steering by forward travel and permits racing-speed lane changes', () => {
+    const move = (forwardSpeedKph: number) => advanceLateralState({
+      deltaSeconds: 1,
+      desiredLateralOffsetM: 3,
+      forwardSpeedKph,
+      state: { lateralOffsetM: 0, lateralVelocityMps: 0 },
+      track: silverstone,
+    })
+    const launching = move(3.6)
+    const racing = move(180)
+
+    expect(launching.lateralOffsetM).toBeGreaterThan(0)
+    expect(launching.lateralOffsetM).toBeLessThanOrEqual(0.08)
+    expect(racing.lateralOffsetM).toBeGreaterThan(1)
+  })
+
   it('changes line continuously rather than teleporting to the target', () => {
     const next = advanceLateralState({
       deltaSeconds: 0.05,
@@ -246,6 +276,88 @@ describe('desired-offset reservations', () => {
 
     expect(reservation.get('alpha')).toBe(1)
     expect(reservation.get('bravo')).not.toBe(1)
+  })
+})
+
+describe('live lateral occupancy', () => {
+  const candidate = (
+    driverId: string,
+    lateralOffsetM: number,
+    candidateLateralOffsetM: number,
+    totalDistanceM = 100,
+    candidateTotalDistanceM = totalDistanceM + 2.6,
+  ): LongitudinalOccupancyCandidate => ({
+    driverId,
+    lateralOffsetM,
+    candidateLateralOffsetM,
+    totalDistanceM,
+    candidateTotalDistanceM,
+  })
+  const resolve = (candidates: LongitudinalOccupancyCandidate[]) =>
+    resolveLateralOccupancy({ candidates, lapLengthM: 5_000 })
+
+  it('holds an alongside cut-in without stopping the rear car', () => {
+    const rear = candidate('rear', 0, 0)
+    const front = candidate('front', 1.96, 1.8, 102)
+    const offsets = resolve([rear, front])
+    const resolvedRear = { ...rear, candidateLateralOffsetM: offsets.get('rear') }
+    const resolvedFront = { ...front, candidateLateralOffsetM: offsets.get('front') }
+
+    expect(offsets.get('front')).toBeGreaterThanOrEqual(1.95)
+    expect(offsets.get('front')).toBeLessThan(front.lateralOffsetM)
+    expect(capRearLongitudinalCandidateM({
+      rear: resolvedRear,
+      front: resolvedFront,
+      lapLengthM: 5_000,
+    })).toBe(rear.candidateTotalDistanceM)
+  })
+
+  it('prevents two cars swapping sides even when both end offsets are clear', () => {
+    const cars = [candidate('left', -2, 2), candidate('right', 2, -2)]
+    const offsets = resolve(cars)
+
+    expect(offsets.get('left')).toBeLessThan(offsets.get('right')!)
+    expect(offsets.get('right')! - offsets.get('left')!).toBeGreaterThanOrEqual(1.95)
+    expect(sortedEntries(resolve([...cars].reverse()))).toEqual(sortedEntries(offsets))
+  })
+
+  it('protects a catch-up and line-crossing sweep while allowing an outward escape', () => {
+    const cars = [
+      candidate('rear', -1, 0, 4_995, 5_007),
+      candidate('front', 1, 0, 5, 6),
+    ]
+    const offsets = resolve(cars)
+    expect(offsets.get('front')! - offsets.get('rear')!).toBeGreaterThanOrEqual(1.95)
+
+    const escaping = resolve([
+      { ...cars[0], candidateLateralOffsetM: -2 },
+      { ...cars[1], candidateLateralOffsetM: 2 },
+    ])
+    expect(escaping.get('rear')).toBe(-2)
+    expect(escaping.get('front')).toBe(2)
+  })
+
+  it('does not worsen an existing overlap or restrict a separated car', () => {
+    const offsets = resolve([
+      candidate('left', 0, 0.2),
+      candidate('right', 1.8, 1.6),
+      candidate('far', 0, 1, 200),
+    ])
+    expect(offsets.get('left')).toBe(0)
+    expect(offsets.get('right')).toBe(1.8)
+    expect(offsets.get('far')).toBe(1)
+  })
+
+  it('keeps a three-car squeeze safe independently of field order', () => {
+    const cars = [
+      candidate('left', -2, 0),
+      candidate('middle', 0, 1),
+      candidate('right', 2, 0),
+    ]
+    const offsets = resolve(cars)
+    expect(offsets.get('middle')! - offsets.get('left')!).toBeGreaterThanOrEqual(1.95)
+    expect(offsets.get('right')! - offsets.get('middle')!).toBeGreaterThanOrEqual(1.95)
+    expect(sortedEntries(resolve([...cars].reverse()))).toEqual(sortedEntries(offsets))
   })
 })
 

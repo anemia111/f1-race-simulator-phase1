@@ -1456,6 +1456,8 @@ export type RaceSnapshot = {
    */
   wetWeatherTyresMandatory: boolean
   raceStartedAtSeconds: number | null
+  /** Latest red-flag standing launch; separate from the race timing origin. */
+  lastStandingRestartAtSeconds?: number | null
   restartProcedure: RestartProcedure
   restartProcedureUntilSeconds: number | null
   overtakeEnabled: boolean
