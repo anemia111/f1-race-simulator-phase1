@@ -95,6 +95,16 @@ driving game.
   Live lane-change speed is bounded by forward road speed, preventing sideways
   sliding at rest and excessive steering before the car has accelerated.
 - Completed lap records use elapsed timing-line crossing timestamps. Sector
+  and lap accounting now runs after field occupancy resolution, so a candidate
+  crossing blocked by traffic cannot create a phantom lap or sector record.
+  Real-time playback uses the same 50 ms integration step at every multiplier.
+  Normal running has anticipatory following brake/throttle demand based on
+  closing speed and measured lane separation; the initial ten-second launch
+  and incident-avoidance manoeuvres retain their dedicated behavior.
+  Yielding/blue flags no longer bypass body clearance. The bounded stationary
+  lateral escape described below remains a SIM approximation: removing it
+  without a reverse/steering manoeuvre model reintroduces a blocked queue.
+  Sector
   records always sum to the measured lap. Each lap also persists 24 measured
   mini-sector intervals; the first car through is provisionally purple and a
   later faster interval moves the old purple to personal-best green. Race

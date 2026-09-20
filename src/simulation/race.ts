@@ -128,6 +128,7 @@ import {
 import { startingGridDistance, startingGridLateralOffsetM } from './startingGrid'
 import { f1StandingStartMguKDecision } from './f1StandingStart'
 import { calculateCarTelemetry } from './telemetry'
+import { followingDemand } from './following'
 import {
   categoryPhysicsFor,
   resolveOperationalVehicleMass,
@@ -261,7 +262,7 @@ const PACE_MODE_WINDOWS_PER_LAP = 24
  * move developing on a straight is answered on that straight.
  */
 const PACE_MODE_MINIMUM_HOLD_WINDOWS = 8
-const PHYSICS_INTEGRATION_STEP_SECONDS = 0.5
+const PHYSICS_INTEGRATION_STEP_SECONDS = 0.05
 const SAFETY_CAR_QUEUE_MIN_GAP_SECONDS = 0.22
 /** VSC cars retain their track gaps but cannot overlap while overtaking is banned. */
 const VSC_QUEUE_MIN_GAP_SECONDS = 0.4
@@ -3141,11 +3142,11 @@ export function advanceRace(
     config.weekendStage ?? snapshot.weekend.stage
 
   if (
-    deltaSeconds > PHYSICS_INTEGRATION_STEP_SECONDS &&
+    deltaSeconds > PHYSICS_INTEGRATION_STEP_SECONDS + 1e-9 &&
     deltaSeconds <= MAX_REALTIME_STEP_SECONDS
   ) {
     const integrationSteps = Math.ceil(
-      deltaSeconds / PHYSICS_INTEGRATION_STEP_SECONDS,
+      deltaSeconds / PHYSICS_INTEGRATION_STEP_SECONDS - 1e-9,
     )
     const integrationStepSeconds = deltaSeconds / integrationSteps
     let integratedSnapshot = snapshot
@@ -5323,7 +5324,7 @@ export function advanceRace(
 
     driverDecisionById.set(car.driverId, decision)
 
-    if (aheadCar?.status === 'running' && nearestAhead) {
+    if (aheadCar && nearestAhead) {
       physicalAheadById.set(car.driverId, aheadCar)
       physicalGapSecondsById.set(car.driverId, gapAheadSeconds)
     }
@@ -5400,6 +5401,9 @@ export function advanceRace(
     }),
   )
 
+  // Finish timing, lap adjudication and strategy only after the whole field's
+  // physical movement has been resolved. A blocked candidate is not a crossing.
+  const completeMotionById = new Map<string, (motion: CarSnapshot) => CarSnapshot>()
   const cars = frameCars.map((car, index) => {
     const driver = drivers.get(car.driverId)
     const team = teams.get(car.teamId)
@@ -5409,7 +5413,7 @@ export function advanceRace(
     }
 
     const driverDecision = driverDecisionById.get(car.driverId)
-    const lateralState = lateralStateById.get(car.driverId) ?? {
+    let lateralState = lateralStateById.get(car.driverId) ?? {
       desiredLateralOffsetM: car.desiredLateralOffsetM,
       lateralOffsetM: car.lateralOffsetM,
       lateralVelocityMps: car.lateralVelocityMps,
@@ -6168,6 +6172,17 @@ export function advanceRace(
             car.incidentTrackState === 'on-track-stopped',
           )
     const telemetry = calculateCarTelemetry({
+      following: physicalAhead && physicalGapSeconds !== undefined &&
+        !avoidingObstructionIds.has(car.driverId) &&
+        (standingLaunchAtSeconds === null || elapsedSeconds - standingLaunchAtSeconds > 10 ||
+          physicalAhead.incidentTrackState !== 'clear')
+        ? followingDemand({
+            speedKph: car.speedKph,
+            aheadSpeedKph: physicalAhead.speedKph,
+            distanceM: physicalGapSeconds * Math.max(5, car.speedKph / 3.6),
+            lateralSeparationM: car.lateralOffsetM - physicalAhead.lateralOffsetM,
+          })
+        : undefined,
       car: telemetryCar,
       aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
       battlePaceScale: battleTravel.paceScale,
@@ -6593,6 +6608,13 @@ export function advanceRace(
       )
     }
 
+    completeMotionById.set(car.driverId, (motion) => {
+    totalDistance = motion.totalDistance
+    lateralState = {
+      desiredLateralOffsetM: lateralState.desiredLateralOffsetM,
+      lateralOffsetM: motion.lateralOffsetM,
+      lateralVelocityMps: motion.lateralVelocityMps,
+    }
     const actualTravelSpeedKph = speedForProfileTravelKph(
       config.track,
       car.totalDistance,
@@ -8612,11 +8634,16 @@ export function advanceRace(
     // A car recovering from an obvious incident is a passable obstruction
     // under yellow/neutralisation rules. Keep the last unaffected car as the
     // queue reference so the entire field is not chained behind the stopped car.
-    if (carDefinesNeutralisationQueueOrder(next)) {
-      aheadTotal = next.totalDistance
-    }
-
     return next
+    })
+    if (carDefinesNeutralisationQueueOrder(car)) aheadTotal = totalDistance
+    return {
+      ...car,
+      totalDistance,
+      ...lateralState,
+      trackLateralOffset: lateralState.lateralOffsetM,
+      offTrackSinceSeconds: waitingForSafeRejoin ? offTrackSinceSeconds : null,
+    }
   })
 
   // Longitudinal candidates are reconciled only after every car has produced
@@ -8627,8 +8654,9 @@ export function advanceRace(
     const previous = frameCarById.get(car.driverId)
 
     return previous &&
-      previous.status === 'running' &&
-      car.status === 'running' &&
+      (previous.status === 'running' || previous.status === 'retired') &&
+      (car.status === 'running' || car.status === 'retired') &&
+      !car.hiddenFromTrack &&
       previous.offTrackSinceSeconds === null &&
       car.offTrackSinceSeconds === null &&
       car.pitPhase === 'none'
@@ -8768,7 +8796,10 @@ export function advanceRace(
     }
   })
 
-  const carsWithBattleEffects = occupancyResolvedCars.map((car) => {
+  const completedCars = occupancyResolvedCars.map((motion) =>
+    completeMotionById.get(motion.driverId)?.(motion) ?? motion,
+  )
+  const carsWithBattleEffects = completedCars.map((car) => {
     const effect = deferredBattleEffects.get(car.driverId)
 
     if (

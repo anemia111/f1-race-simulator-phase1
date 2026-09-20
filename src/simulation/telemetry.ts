@@ -165,6 +165,7 @@ type CalculatedTelemetry = {
 }
 
 export function calculateCarTelemetry(options: {
+  following?: { decelerationMps2: number; throttleScale: number }
   car: CarSnapshot
   /** Physical lateral position of the nearest car ahead, when one exists. */
   aheadLateralOffsetM?: number
@@ -543,7 +544,9 @@ export function calculateCarTelemetry(options: {
       ? 0
       : clamp((car.speedKph - pitLaneSpeedLimitKph) * 1.8, 0, 55)
   const profileBrakeDemand =
-    Math.max(requiredBrakeUtilization, localOverspeedBrakeUtilization) * 100 +
+    Math.max(requiredBrakeUtilization, localOverspeedBrakeUtilization,
+      (options.following?.decelerationMps2 ?? 0) /
+        Math.max(1, categoryPhysics.maximumBrakeDecelerationMps2)) * 100 +
     pitLaneBrakeDemand
   const brakePercent = Math.round(
     clamp(
@@ -572,7 +575,8 @@ export function calculateCarTelemetry(options: {
           Math.max(0, targetSpeedKph - car.speedKph) * 0.24
   const controlThrottleScale = phase?.flag === 'red' ? 0 : phase ? 0.84 : 1
   const requestedThrottlePercent = Math.round(
-    clamp(baseThrottle * controlThrottleScale * battlePace, 0, 100),
+    clamp(baseThrottle * controlThrottleScale * battlePace *
+      (options.following?.throttleScale ?? 1), 0, 100),
   )
   const preparationThrottleCeiling =
     timedRunPhase === 'in-lap'

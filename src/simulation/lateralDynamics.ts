@@ -93,16 +93,8 @@ export type LongitudinalOccupancyCandidate = LateralVehicle & {
   /**
    * The driver has conceded the road and is not defending it.
    *
-   * The occupancy rule exists so two cars cannot occupy the same rectangle,
-   * and it is the right rule between drivers who are racing. It is the wrong
-   * rule when one has been told to let the other past: a lapped car under a
-   * blue flag lifts and waves the leader through long before a full car width
-   * plus margin of centre separation exists, and holding the leader behind
-   * until that separation is measured leaves the flag with no effect at all.
-   *
-   * When set, the lateral requirement is treated as met without requiring the
-   * offset to be reached. The concession stands in for the movement rather
-   * than the movement being simulated.
+   * Retained for compatibility with callers. Intent never waives the physical
+   * clearance requirement; the driver must actually move to a passing corridor.
    */
   concedesRoad?: boolean
 }
@@ -735,10 +727,8 @@ export function capRearLongitudinalCandidateM(options: {
     return rearCandidateM
   }
 
-  // A conceded road is clear by declaration. See `concedesRoad`.
-  if (options.front.concedesRoad === true) {
-    return rearCandidateM
-  }
+  // Yielding changes driver intent, never the physical footprint. Both
+  // measured ends of the lateral step must clear before passing is allowed.
 
   const lapLengthM = positiveFiniteOr(options.lapLengthM, 0)
 
