@@ -7,7 +7,7 @@ import type { MiniSectorState } from '../types'
  */
 export function MiniSectorStrip({
   sectorIndex,
-  states,
+  states = [],
 }: {
   sectorIndex: number
   states: MiniSectorState[]

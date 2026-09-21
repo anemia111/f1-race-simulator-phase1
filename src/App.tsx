@@ -676,8 +676,8 @@ const measuredMiniSectorStates = (
   overallBests: Array<number | null>,
   personalBests: Array<number | null>,
   displayingCurrentLap: boolean,
+  sectorCount: number,
 ): MiniSectorState[][] => {
-  const sectorCount = car.currentLapSectorTimes.length
   if (car.status === 'pit' || car.timedRunPhase === 'garage') {
     return Array.from({ length: sectorCount }, (_, sectorIndex) =>
       Array.from({ length: microSectorCount }, (_, miniSectorIndex) =>
@@ -3001,6 +3001,7 @@ export default function App() {
                   : noOverallMiniSectorBests,
                 personalBests.miniSectors,
                 row.microSectorDisplayIsCurrent,
+                row.sectors.length,
               )
             : row.microSectors,
         sectorStatuses: row.sectors.map((sectorTime, sectorIndex) =>
