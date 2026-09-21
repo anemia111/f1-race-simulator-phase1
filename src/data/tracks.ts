@@ -9,6 +9,7 @@ import {
   pointDistance,
 } from './aeroZoneGeometry'
 import { realTrackLayouts } from './realTrackLayouts'
+import { sectorBoundaryReferences, sourcedSectorData } from './sectorBoundaries'
 import { tireNominationForTrack } from './tireNominations2026'
 import { calendar2026ByTrackId } from './calendar2026'
 import {
@@ -884,19 +885,6 @@ const officialOvertakeControlLines = (
   ]
 }
 
-const officialSectorMarks = (operations: OfficialTrackOperations) => [
-  0,
-  Number(
-    (operations.sectorLengthsKm[0] / operations.centerlineLengthKm).toFixed(6),
-  ),
-  Number(
-    (
-      (operations.sectorLengthsKm[0] + operations.sectorLengthsKm[1]) /
-      operations.centerlineLengthKm
-    ).toFixed(6),
-  ),
-]
-
 const derivePitLane = (track: Pick<TrackDefinition, 'id'>) => ({
   boxCount: 12,
   boxSpacingProgress: 0.0017,
@@ -943,7 +931,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
 
   const pitLane = derivePitLane(track)
   const officialOperations = officialTrackOperations2026[id]
-  const lengthKm = officialOperations?.centerlineLengthKm ?? circuitLengthKm[id]
+  const lengthKm = sectorBoundaryReferences[id]?.lengthKm ?? circuitLengthKm[id]
   const trackWidth = realLayout?.width ?? fallbackTrackWidth(track)
   const derivedAeroActivationZones = deriveAeroActivationZones(
     centerline,
@@ -1017,12 +1005,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     raceLaps: officialRaceLaps[id],
     raceLapsSource: officialRaceLaps[id] === undefined ? 'estimated' : 'official',
     safetyCarLines: deriveSafetyCarLines({ ...track, pitLane }),
-    sectorMarks: officialOperations
-      ? officialSectorMarks(officialOperations)
-      : realLayout?.sectorMarks ?? track.sectorMarks,
-    sectorMarksSource: officialOperations
-      ? 'official'
-      : realLayout?.sectorMarksSource ?? 'fallback',
+    ...sourcedSectorData({ id, centerline, corners: realLayout?.corners }),
     tireNomination: tireNominationForTrack(track),
     width: trackWidth,
   }

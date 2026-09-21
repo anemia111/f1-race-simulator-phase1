@@ -312,8 +312,8 @@ type TimingRow = {
   rpm: number
   sectorLapNumber: number | null
   source: 'openf1' | 'simulation'
-  sectors: [number | null, number | null, number | null]
-  sectorStatuses: [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus]
+  sectors: Array<number | null>
+  sectorStatuses: SectorTimingStatus[]
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
@@ -329,7 +329,7 @@ type TimingRow = {
 type TimingRowWithoutSectorStatuses = Omit<TimingRow, 'sectorStatuses'>
 
 type PersonalTimingBests = {
-  sectors: [number | null, number | null, number | null]
+  sectors: Array<number | null>
   miniSectors: Array<number | null>
 }
 
@@ -357,9 +357,9 @@ const personalTimingBestsForRow = (
     }
   }
 
-  const sectors: PersonalTimingBests['sectors'] = [null, null, null]
+  const sectors: PersonalTimingBests['sectors'] = row.sectors.map(() => null)
   const miniSectors: PersonalTimingBests['miniSectors'] = Array.from(
-    { length: totalMicroSectorCount },
+    { length: row.sectors.length * microSectorCount },
     () => null,
   )
 
@@ -677,19 +677,20 @@ const measuredMiniSectorStates = (
   personalBests: Array<number | null>,
   displayingCurrentLap: boolean,
 ): MiniSectorState[][] => {
+  const sectorCount = car.currentLapSectorTimes.length
   if (car.status === 'pit' || car.timedRunPhase === 'garage') {
-    return Array.from({ length: 3 }, (_, sectorIndex) =>
+    return Array.from({ length: sectorCount }, (_, sectorIndex) =>
       Array.from({ length: microSectorCount }, (_, miniSectorIndex) =>
         sectorIndex === 0 && miniSectorIndex === 0
           ? 'pit'
-          : sectorIndex === 2 && miniSectorIndex === microSectorCount - 1
+          : sectorIndex === sectorCount - 1 && miniSectorIndex === microSectorCount - 1
             ? 'pit'
             : 'dim',
       ),
     )
   }
 
-  return Array.from({ length: 3 }, (_, sectorIndex) =>
+  return Array.from({ length: sectorCount }, (_, sectorIndex) =>
     Array.from({ length: microSectorCount }, (_, miniSectorIndex) => {
       const timingIndex = sectorIndex * microSectorCount + miniSectorIndex
       const value = displayedTimes[timingIndex]
@@ -2759,6 +2760,8 @@ export default function App() {
       })
   }, [dataMode, openF1LiveState.positionsByCode, orderedCars])
   const timingRows = useMemo<TimingRow[]>(() => {
+    const sectorCount = raceConfig.track.sectorMarks.length
+    const totalMicroSectorCount = sectorCount * microSectorCount
     const averageSurfaceWaterMm =
       trackSurfaceSectors.surfaceWaterMmBySector.reduce(
         (sum, value) => sum + value,
@@ -2895,14 +2898,10 @@ export default function App() {
         const hasCurrentLapTiming =
           hasCurrentLapSector || hasCurrentLapMiniSector
         const measuredSectors = hasCurrentLapTiming
-          ? ([...car.currentLapSectorTimes] as [
-              number | null,
-              number | null,
-              number | null,
-            ])
+          ? [...car.currentLapSectorTimes]
           : latestCompletedLap
-            ? ([...latestCompletedLap.sectors] as [number, number, number])
-            : ([null, null, null] as [null, null, null])
+            ? [...latestCompletedLap.sectors]
+            : Array.from({ length: sectorCount }, () => null)
         const measuredMiniSectors = hasCurrentLapTiming
           ? [...car.currentLapMiniSectorTimes]
           : latestCompletedLap?.miniSectors
@@ -2935,7 +2934,7 @@ export default function App() {
           lapDataLabel: latestCompletedLap
             ? `SIM MEASURED / LAP ${sectorLapNumber}`
             : 'SIM AWAITING TIMING LINE',
-          microSectors: Array.from({ length: 3 }, () =>
+          microSectors: Array.from({ length: sectorCount }, () =>
             Array.from({ length: microSectorCount }, () => 'dim' as const),
           ),
           microSectorTimes: measuredMiniSectors,
@@ -2960,7 +2959,7 @@ export default function App() {
     const comparisonRows = rows.filter(
       (row) => row.source === overallComparisonSource,
     )
-    const overallSectorBests = [0, 1, 2].map((sectorIndex) =>
+    const overallSectorBests = Array.from({ length: sectorCount }, (_, sectorIndex) =>
       bestSectorTime(
         comparisonRows.map(
           (row) =>
@@ -3017,7 +3016,7 @@ export default function App() {
                   : null,
                 personalBests.sectors[sectorIndex],
               ),
-        ) as [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus],
+        ) as SectorTimingStatus[],
       }
     })
     .sort((left, right) => left.displayPosition - right.displayPosition)
@@ -3050,11 +3049,11 @@ export default function App() {
       return {
         isCurrentLap: false,
         lapNumber: null,
-        miniSectors: Array.from({ length: 3 }, () =>
+        miniSectors: Array.from({ length: raceConfig.track.sectorMarks.length }, () =>
           Array.from({ length: microSectorCount }, () => 'dim' as const),
         ),
-        sectors: [null, null, null],
-        sectorStatuses: ['pending', 'pending', 'pending'],
+        sectors: raceConfig.track.sectorMarks.map(() => null),
+        sectorStatuses: raceConfig.track.sectorMarks.map(() => 'pending'),
       }
     }
 
@@ -3065,7 +3064,7 @@ export default function App() {
       sectors: row.sectors,
       sectorStatuses: row.sectorStatuses,
     }
-  }, [selectedCar.driverId, timingRows])
+  }, [selectedCar.driverId, timingRows, raceConfig.track.sectorMarks])
   const openF1LoadedEndpoints =
     openF1Bundle?.endpointStatuses.filter((status) => status.count > 0).length ?? 0
   const openF1RequestedEndpoints = openF1Bundle?.endpointStatuses.length ?? 0

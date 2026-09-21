@@ -59,9 +59,7 @@ export function PitWallLapLog({
             <tr>
               <th scope="col">Lap</th>
               <th scope="col">Time</th>
-              <th scope="col">S1</th>
-              <th scope="col">S2</th>
-              <th scope="col">S3</th>
+              {car.currentLapSectorTimes.map((_, index) => <th scope="col" key={index}>S{index + 1}</th>)}
               <th scope="col">{f1Runtime ? 'Tyre' : 'Control tyre'}</th>
               <th scope="col">Pos</th>
               <th scope="col">Note</th>

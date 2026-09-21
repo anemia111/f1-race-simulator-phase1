@@ -84,8 +84,8 @@ export type BroadcastTimingRow = {
   rpm: number
   sectorLapNumber: number | null
   source: 'openf1' | 'simulation'
-  sectors: [number | null, number | null, number | null]
-  sectorStatuses: [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus]
+  sectors: Array<number | null>
+  sectorStatuses: SectorTimingStatus[]
   speedKph: number
   telemetrySource: 'openf1' | 'simulation' | 'unavailable'
   throttlePercent: number
@@ -465,7 +465,7 @@ function LeftLeaderboard({
   title: string
 }) {
   return (
-    <section className="broadcast-panel broadcast-leaderboard">
+    <section className={`broadcast-panel broadcast-leaderboard${rows[0]?.sectors.length === 4 ? ' has-four-sectors' : ''}`}>
       <PanelHeader
         action={
           <div className="broadcast-tabs" role="tablist">
@@ -486,7 +486,7 @@ function LeftLeaderboard({
       />
       <div className="leaderboard-column-head" aria-hidden="true">
         <span>POS</span><span>DRIVER</span><span>TYRE</span><span>{mode === 'gap' ? 'GAP' : 'INT'}</span>
-        <span>LAST</span><span>BEST</span><span>S1</span><span>S2</span><span>S3</span>
+        <span>LAST</span><span>BEST</span>{(rows[0]?.sectors ?? [null, null, null]).map((_, index) => <span key={index}>S{index + 1}</span>)}
         <span title="Completed pit stops">ST</span><span title="Compounds used">USED</span><span>SPD</span>
         <span>
           {rows[0]?.car.runtimeSystems.kind === 'f1'

@@ -895,6 +895,27 @@ async function inspectSeriesModes(browser) {
     path: results['super-formula'].replacementScreenshot,
     fullPage: true,
   })
+  // Suzuka has four domestic timing sectors, unlike the F1 configuration.
+  await page.getByLabel('Championship round').selectOption('sf-04')
+  await page.waitForFunction(() => document.querySelectorAll('.leaderboard-rows li:first-child .sector-value').length === 4)
+  await page.getByTitle('Close setup').click()
+  results['super-formula'].fourSectorView = []
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 720 })
+    results['super-formula'].fourSectorView.push(await page.evaluate(() => {
+      const header = document.querySelector('.leaderboard-column-head')
+      const bounds = header.getBoundingClientRect()
+      const cells = Array.from(header.querySelectorAll('span'))
+      return {
+        width: window.innerWidth,
+        sectors: document.querySelectorAll('.leaderboard-rows li:first-child .sector-value').length,
+        miniSectors: document.querySelectorAll('.leaderboard-rows li:first-child .broadcast-mini-sectors span').length,
+        fourthHeader: cells.some((cell) => cell.textContent === 'S4'),
+        fits: cells.every((cell) => cell.getBoundingClientRect().right <= bounds.right + 1),
+      }
+    }))
+    await page.screenshot({ path: join(artifactDirectory, `broadcast-sf-four-sectors-${width}.png`), fullPage: true })
+  }
   await page.close()
 
   return { pageErrors, results, seriesOptions }
@@ -1383,6 +1404,11 @@ try {
     }
   }
   const replacement = seriesModes.results['super-formula']
+  for (const view of replacement.fourSectorView ?? []) {
+    if (view.sectors !== 4 || view.miniSectors !== 32 || !view.fourthHeader || !view.fits) {
+      seriesFailures.push(`SF four-sector timing does not fit: ${JSON.stringify(view)}`)
+    }
+  }
   if (replacement.replacementSessions?.join(',') !== 'race') {
     seriesFailures.push(`SF replacement event has extra sessions: ${replacement.replacementSessions?.join(', ')}`)
   }

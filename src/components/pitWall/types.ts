@@ -29,8 +29,8 @@ export type PitWallSectorTiming = {
   lapNumber: number | null
   /** Three sectors of eight measured segments each. */
   miniSectors: MiniSectorState[][]
-  sectors: [number | null, number | null, number | null]
-  sectorStatuses: [SectorTimingStatus, SectorTimingStatus, SectorTimingStatus]
+  sectors: Array<number | null>
+  sectorStatuses: SectorTimingStatus[]
 }
 
 /**

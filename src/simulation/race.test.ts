@@ -1830,7 +1830,7 @@ describe('CPU timing lines', () => {
       track: { ...tracks[0], rainProbability: 0 },
     }
     const before = runThroughStart(config)
-    const deltaSeconds = 0.25
+    const deltaSeconds = 0.05
     const after = advanceRace(before, deltaSeconds, config)
     const beforeCar = before.cars[0]
     const afterCar = after.cars[0]
@@ -1860,17 +1860,19 @@ describe('CPU timing lines', () => {
     ).toBe(true)
   })
 
-  it('locks sectors at CPU crossings and builds the lap from those crossings', () => {
+  it.each([3, 4])('locks %i sectors at CPU crossings and builds the lap from those crossings', (sectorCount) => {
     const driver = initialDrivers[0]
     const team = initialTeams.find((candidate) => candidate.id === driver.teamId)!
     const config: RaceConfig = {
       ...makeConfig('measured-timing-lines'),
       drivers: [driver],
       teams: [team],
-      track: { ...tracks[0], rainProbability: 0 },
+      track: { ...tracks[0], rainProbability: 0,
+        sectorMarks: sectorCount === 4 ? [0, 0.2, 0.48, 0.77] : tracks[0].sectorMarks },
     }
     const driverId = driver.id
-    const deltaSeconds = 0.1
+    // Crossings are interpolated inside a single 50 ms physics step.
+    const deltaSeconds = 0.05
     let previous = runThroughStart(config)
     let measuredS1: number | null = null
     let snapshot = previous
@@ -1918,7 +1920,7 @@ describe('CPU timing lines', () => {
 
     for (
       let step = 0;
-      step < 2_000 &&
+      step < 4_000 &&
       snapshot.cars.find((car) => car.driverId === driverId)!.lapHistory
         .length === 0;
       step += 1
@@ -1931,13 +1933,16 @@ describe('CPU timing lines', () => {
     )!.lapHistory[0]
 
     expect(completedLap).toBeDefined()
+    expect(completedLap.sectors).toHaveLength(sectorCount)
+    expect(completedLap.sectors.every((sector) => sector > 0)).toBe(true)
+    expect(snapshot.sectorFlags).toHaveLength(sectorCount)
     expect(completedLap.sectors[0]).toBeCloseTo(measuredS1!, 6)
     expect(completedLap.sectors[1]).toBeGreaterThan(0)
     expect(completedLap.sectors[2]).toBeGreaterThan(0)
     expect(
       completedLap.sectors.reduce((sum, sector) => sum + sector, 0),
     ).toBeCloseTo(completedLap.lapTimeSeconds, 8)
-    expect(completedLap.miniSectors).toHaveLength(24)
+    expect(completedLap.miniSectors).toHaveLength(sectorCount * 8)
     expect(completedLap.miniSectors?.every((sector) => sector > 0)).toBe(true)
     const completedMiniSectors = completedLap.miniSectors!
     expect(

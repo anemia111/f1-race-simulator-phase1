@@ -41,10 +41,16 @@ driving game.
   packages. `src/data/historicalDriverPool2026.json` retains all 52 former
   F2/F3 identities as provenance-only history. The validated relational pool
   contains 110 unique people and 111 provenance records.
-- MADRING uses the official 5.416 km / 57-lap specification and 22 numbered
-  corners. Its sector boundaries remain labelled derived until the FIA event
-  circuit map is published, and it intentionally has no fabricated OpenF1
-  telemetry-coordinate projection.
+- MADRING uses the issued FIA 5.414 km / 57-lap specification and 22 numbered
+  model corners. Its 2026 sector distances are now source-backed; it still has
+  no fabricated OpenF1 telemetry-coordinate projection.
+- All 28 physical courses have source-backed timing references. F1 keeps three
+  sectors; SF Suzuka, Motegi and SUGO use four (32 model mini-sectors). See
+  `docs/SECTOR_BOUNDARY_AUDIT_20260921.md` for source dates and precision limits.
+  Historical turn-relative positions and SF Suzuka remain map-derived.
+  Support-course control-line alignment preserves the original geodata frame
+  through `measuredRoadProgressOffset`. Do not remove that offset or manually
+  rotate generated road-profile arrays. Checkpoint model is `2026.09.21.1`.
 - OpenF1 collection covers drivers, grid/results, laps, sectors, mini-sectors,
   weather, pit/stints, race control, positions, intervals, overtakes, radio,
   car telemetry, location, and championship data when endpoints provide it.

@@ -52,7 +52,7 @@ export const RACE_CHECKPOINT_MAX_AGE_MS = 7 * 24 * 60 * 60_000
  * faithfully. The storage schema can stay stable while old engine snapshots
  * are rejected instead of mixing lap histories from different pace models.
  */
-export const RACE_SIMULATION_MODEL_VERSION = '2026.09.01.1'
+export const RACE_SIMULATION_MODEL_VERSION = '2026.09.21.1'
 const LEGACY_V2_RACE_SIMULATION_MODEL_VERSION = '2026.08.11.3'
 const LEGACY_F1_RACE_SIMULATION_MODEL_VERSIONS = new Set([
   '2026.08.09.1',
@@ -1116,8 +1116,8 @@ function isCompatibleCarSnapshot(
     isOptionalUnitInterval(value.clutchEngagementFraction) &&
     isFiniteNumber(value.fuelLoadKg) &&
     typeof value.passedDoubleYellowThisLap === 'boolean' &&
-    isNullableFiniteTuple(value.currentLapSectorTimes, 3) &&
-    isNullableFiniteTuple(value.currentLapMiniSectorTimes, 24) &&
+    isNullableFiniteTuple(value.currentLapSectorTimes, config.track.sectorMarks.length) &&
+    isNullableFiniteTuple(value.currentLapMiniSectorTimes, config.track.sectorMarks.length * 8) &&
     Array.isArray(value.lapHistory) &&
     Array.isArray(value.penalties) &&
     (seriesId !== 'super-formula' ||
@@ -1381,7 +1381,7 @@ function isCompatibleRaceSnapshot(
     !isRecord(value.weekend) ||
     value.weekend.stage !== (config.weekendStage ?? 'race') ||
     !Array.isArray(value.sectorFlags) ||
-    value.sectorFlags.length !== 3 ||
+    value.sectorFlags.length !== config.track.sectorMarks.length ||
     !value.sectorFlags.every(
       (sectorFlag) =>
         typeof sectorFlag === 'string' && SECTOR_FLAG_STATES.has(sectorFlag),

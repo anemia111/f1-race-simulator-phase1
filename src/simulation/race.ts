@@ -1414,10 +1414,7 @@ function measuredSectorTimesAfterTravel({
 
   const lapBase = Math.floor(previousTotalDistance)
   const frameDistance = nextTotalDistance - previousTotalDistance
-  const boundaries = [
-    lapBase + (sectorMarks[1] ?? 1 / 3),
-    lapBase + (sectorMarks[2] ?? 2 / 3),
-  ]
+  const boundaries = sectorMarks.slice(1).map((mark) => lapBase + mark)
 
   boundaries.forEach((boundary, sectorIndex) => {
     if (
@@ -1442,21 +1439,16 @@ function measuredSectorTimesAfterTravel({
     measured[sectorIndex] =
       sectorIndex === 0
         ? cumulativeTime
-        : Math.max(0.001, cumulativeTime - (measured[0] ?? 0))
+        : Math.max(0.001, cumulativeTime - measured.slice(0, sectorIndex).reduce<number>((sum, value) => sum + (value ?? 0), 0))
   })
 
   return measured
 }
 
 function miniSectorBoundaries(sectorMarks: RaceConfig['track']['sectorMarks']) {
-  const sectorStarts = [
-    sectorMarks[0] ?? 0,
-    sectorMarks[1] ?? 1 / 3,
-    sectorMarks[2] ?? 2 / 3,
-    1,
-  ]
+  const sectorStarts = [...sectorMarks, 1]
 
-  return Array.from({ length: 3 }, (_, sectorIndex) => {
+  return Array.from({ length: sectorMarks.length }, (_, sectorIndex) => {
     const start = sectorStarts[sectorIndex]
     const end = sectorStarts[sectorIndex + 1]
 
@@ -1532,44 +1524,30 @@ function measuredMiniSectorTimesAfterTravel({
   return measured
 }
 
-function emptyCurrentLapSectorTimes(): CarSnapshot['currentLapSectorTimes'] {
-  return [null, null, null]
+function emptyCurrentLapSectorTimes(count = 3): CarSnapshot['currentLapSectorTimes'] {
+  return Array.from({ length: count }, () => null)
 }
 
-function emptyCurrentLapMiniSectorTimes(): CarSnapshot['currentLapMiniSectorTimes'] {
-  return Array.from({ length: MINI_SECTOR_COUNT }, () => null)
+function emptyCurrentLapMiniSectorTimes(count = 3): CarSnapshot['currentLapMiniSectorTimes'] {
+  return Array.from({ length: count * MINI_SECTORS_PER_SECTOR }, () => null)
 }
 
 function completedMeasuredSectors(
   current: CarSnapshot['currentLapSectorTimes'],
   lapTimeSeconds: number,
   sectorMarks: RaceConfig['track']['sectorMarks'],
-): [number, number, number] {
-  const weights = [
-    Math.max(0.12, (sectorMarks[1] ?? 1 / 3) - (sectorMarks[0] ?? 0)),
-    Math.max(
-      0.12,
-      (sectorMarks[2] ?? 2 / 3) - (sectorMarks[1] ?? 1 / 3),
-    ),
-    Math.max(0.12, 1 - (sectorMarks[2] ?? 2 / 3)),
-  ]
-  const totalWeight = weights[0] + weights[1] + weights[2]
-  let sectorOne = current[0] ?? (lapTimeSeconds * weights[0]) / totalWeight
-  let sectorTwo = current[1] ?? (lapTimeSeconds * weights[1]) / totalWeight
-  const maximumFirstTwo = Math.max(0.002, lapTimeSeconds - 0.001)
-
-  if (sectorOne + sectorTwo > maximumFirstTwo) {
-    const scale = maximumFirstTwo / (sectorOne + sectorTwo)
-    sectorOne *= scale
-    sectorTwo *= scale
-  }
-
-  return [sectorOne, sectorTwo, lapTimeSeconds - sectorOne - sectorTwo]
+): number[] {
+  const weights = sectorMarks.map((start, index) => Math.max(0.001, (sectorMarks[index + 1] ?? 1) - start))
+  const first = weights.slice(0, -1).map((weight, index) => current[index] ?? lapTimeSeconds * weight)
+  const sum = first.reduce((a, b) => a + b, 0)
+  const scale = sum > lapTimeSeconds - 0.001 ? (lapTimeSeconds - 0.001) / sum : 1
+  const measured = first.map((value) => value * scale)
+  return [...measured, lapTimeSeconds - measured.reduce((a, b) => a + b, 0)]
 }
 
 function completedMeasuredMiniSectors(
   current: CarSnapshot['currentLapMiniSectorTimes'],
-  sectors: [number, number, number],
+  sectors: number[],
 ): number[] {
   return sectors.flatMap((sectorTime, sectorIndex) => {
     const start = sectorIndex * MINI_SECTORS_PER_SECTOR
@@ -1589,7 +1567,7 @@ function completedMeasuredMiniSectors(
 }
 
 /**
- * Rebuild absolute passage times for every measured 1/24-lap timing line.
+ * Rebuild absolute passage times for every measured mini-sector timing line.
  *
  * Completed laps store interval times rather than clock timestamps. The start
  * of the current lap is an absolute timestamp, so walking the immutable lap
@@ -1641,10 +1619,7 @@ function measuredMiniSectorLapAt(
     return {
       completedMiniSectors:
         firstPendingMiniSector === -1
-          ? Math.min(
-              MINI_SECTOR_COUNT,
-              timeline.currentMiniSectorTimes.length,
-            )
+          ? timeline.currentMiniSectorTimes.length
           : firstPendingMiniSector,
       finishedAtSeconds: null,
       lapStartedAtSeconds: timeline.currentLapStartedAtSeconds,
@@ -1684,8 +1659,8 @@ function measuredMiniSectorLapAt(
 
       return {
         completedMiniSectors:
-          miniSectorTimes?.length === MINI_SECTOR_COUNT
-            ? MINI_SECTOR_COUNT
+          miniSectorTimes?.length === lapRecord.sectors.length * MINI_SECTORS_PER_SECTOR
+            ? miniSectorTimes.length
             : 0,
         // A legacy checkpoint may predate measured mini-sectors. Its lap time
         // still gives one truthful passage timestamp: the start/finish line.
@@ -2294,11 +2269,11 @@ function incidentProgressWithinTimingSector(
 ) {
   const starts =
     track.sectorMarks.length >= 3
-      ? track.sectorMarks.slice(0, 3)
+      ? track.sectorMarks
       : [0, 1 / 3, 2 / 3]
-  const boundedSector = Math.min(2, Math.max(0, sector))
+  const boundedSector = Math.min(starts.length - 1, Math.max(0, sector))
   const start = starts[boundedSector] ?? boundedSector / 3
-  const end = boundedSector === 2 ? 1 : (starts[boundedSector + 1] ?? 1)
+  const end = boundedSector === starts.length - 1 ? 1 : (starts[boundedSector + 1] ?? 1)
   const span = end > start ? end - start : end + 1 - start
   const offset = 0.15 + hashChance(`${key}:incident-progress`) * 0.7
 
@@ -2843,8 +2818,8 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       bestLapLap: null,
       lapStartedAtSeconds: null,
       passedDoubleYellowThisLap: false,
-      currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-      currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+      currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+      currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
       lapHistory: [],
       position: 0,
       gapToLeader: 0,
@@ -2994,9 +2969,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     flagLabel: formationBehindSafetyCar ? 'SC FORMATION' : 'CLEAR',
     flagPhase: null,
     greenLightUntilSeconds: null,
-    sectorFlags: formationBehindSafetyCar
-      ? ['sc', 'sc', 'sc']
-      : ['clear', 'clear', 'clear'],
+    sectorFlags: sectorFlagStatesFor(formationBehindSafetyCar ? 'sc' : 'clear', null, null, config.track.sectorMarks.length),
     restartUntilSeconds: null,
     fuelEffectSeconds: fuelMassEffects({
       fuelLoadKg:
@@ -3654,8 +3627,8 @@ export function advanceRace(
             : car.runtimeSystems,
           lapStartedAtSeconds: null,
           passedDoubleYellowThisLap: false,
-          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
         }
       }
 
@@ -3812,10 +3785,10 @@ export function advanceRace(
           ? elapsedSeconds
           : car.lapStartedAtSeconds,
         currentLapSectorTimes: raceStartTriggered
-          ? emptyCurrentLapSectorTimes()
+          ? emptyCurrentLapSectorTimes(config.track.sectorMarks.length)
           : car.currentLapSectorTimes,
         currentLapMiniSectorTimes: raceStartTriggered
-          ? emptyCurrentLapMiniSectorTimes()
+          ? emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length)
           : car.currentLapMiniSectorTimes,
         lowPowerStartDetected: lowPowerStart,
         warningLightsUntilSeconds: lowPowerStart
@@ -3877,10 +3850,9 @@ export function advanceRace(
         snapshot.formationBehindSafetyCar && nextProcedure === 'formation'
           ? 'SC FORMATION'
           : 'CLEAR',
-      sectorFlags:
+      sectorFlags: sectorFlagStatesFor(
         snapshot.formationBehindSafetyCar && nextProcedure === 'formation'
-          ? ['sc', 'sc', 'sc']
-          : ['clear', 'clear', 'clear'],
+          ? 'sc' : 'clear', null, null, config.track.sectorMarks.length),
       trackSurface: serializedTrackSurface,
       weather,
       weatherLabel: weatherLabelFor(weather),
@@ -4457,8 +4429,8 @@ export function advanceRace(
           pitExitUntilSeconds: null,
           lapStartedAtSeconds: null,
           passedDoubleYellowThisLap: false,
-          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
           timedRunStartedAtSeconds: null,
           timedRunPhase: 'garage' as const,
           timedReleaseStrategy: null,
@@ -4609,8 +4581,8 @@ export function advanceRace(
         pitExitUntilSeconds: null,
         lapStartedAtSeconds: null,
         passedDoubleYellowThisLap: false,
-        currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-        currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+        currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+        currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
         timedRunStartedAtSeconds: null,
         timedRunPhase: 'garage' as const,
         timedRunsCompleted: completedRuns,
@@ -5782,10 +5754,10 @@ export function advanceRace(
             ? false
             : car.passedDoubleYellowThisLap,
           currentLapSectorTimes: isTimedSession
-            ? emptyCurrentLapSectorTimes()
+            ? emptyCurrentLapSectorTimes(config.track.sectorMarks.length)
             : car.currentLapSectorTimes,
           currentLapMiniSectorTimes: isTimedSession
-            ? emptyCurrentLapMiniSectorTimes()
+            ? emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length)
             : car.currentLapMiniSectorTimes,
           fuelLoadKg:
             practiceFuelLoadKgFor(config.track, practicePlan) ??
@@ -7528,8 +7500,8 @@ export function advanceRace(
             bestLapLap: isPersonalBest ? completedTimedLap : next.bestLapLap,
             lapStartedAtSeconds: crossedAtSeconds,
             passedDoubleYellowThisLap: false,
-            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
             lapHistory: [
               ...next.lapHistory,
               {
@@ -7727,8 +7699,8 @@ export function advanceRace(
             pitExitUntilSeconds: null,
             lapStartedAtSeconds: null,
             passedDoubleYellowThisLap: false,
-            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
             timedRunStartedAtSeconds: null,
             timedRunPhase: 'garage',
             practiceProgram: nextPracticePlan?.kind ?? null,
@@ -7756,8 +7728,8 @@ export function advanceRace(
             ...next,
             lapStartedAtSeconds: crossedAtSeconds,
             passedDoubleYellowThisLap: false,
-            currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+            currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+            currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
             timedRunPhase: 'attack-lap',
             timedSegmentAttemptStatus: {
               ...next.timedSegmentAttemptStatus,
@@ -7795,8 +7767,8 @@ export function advanceRace(
             : next.bestLapTimeSeconds,
           bestLapLap: isPersonalBest ? completedLap : next.bestLapLap,
           lapStartedAtSeconds: crossedAtSeconds,
-          currentLapSectorTimes: emptyCurrentLapSectorTimes(),
-          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(),
+          currentLapSectorTimes: emptyCurrentLapSectorTimes(config.track.sectorMarks.length),
+          currentLapMiniSectorTimes: emptyCurrentLapMiniSectorTimes(config.track.sectorMarks.length),
           lapHistory: [
             ...next.lapHistory,
             {
@@ -9268,6 +9240,7 @@ export function advanceRace(
       (phase?.flag === 'yellow' && phase.yellowSeverity === 'double'
         ? phase.sector
         : null),
+    config.track.sectorMarks.length,
   )
 
   const nextSnapshot: RaceSnapshot = {

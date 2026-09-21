@@ -117,7 +117,7 @@ export function RaceInsightsPanel({
       return null
     }
 
-    return [0, 1, 2].map((sector) =>
+    return car.lapHistory[0].sectors.map((_, sector) =>
       Math.min(...car.lapHistory.map((lap) => lap.sectors[sector])),
     )
   }, [car.lapHistory])
@@ -181,6 +181,13 @@ export function RaceInsightsPanel({
           </>
         )}
         <span>Layout</span><strong className={track.layoutSource?.detail === 'real' ? 'flag-clear' : 'flag-yellow'}>{track.layoutSource?.detail === 'real' ? 'Real' : 'Fallback'}</strong>
+        <span>Timing sectors</span><strong>{track.sectorMarks.length} / {track.sectorMarksSource === 'official' ? 'published distances' : 'map-derived'}</strong>
+        {track.sectorBoundaryReference && <>
+          <span>Boundary source</span>
+          <a href={track.sectorBoundaryReference.sourceUrl} target="_blank" rel="noreferrer">
+            {track.sectorBoundaryReference.year ?? 'Undated'} / checked {track.sectorBoundaryReference.checkedOn}
+          </a>
+        </>}
       </div>
 
       <section className="insight-section">

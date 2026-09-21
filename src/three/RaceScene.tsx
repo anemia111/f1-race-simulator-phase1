@@ -58,7 +58,7 @@ type SceneContentsProps = RaceSceneProps & {
 const PIT_ENTRY_VISUAL_SECONDS = 3.2
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
-const sectorPathColors = ['#00d8ff', '#ffd21f', '#ff344d']
+const sectorPathColors = ['#00d8ff', '#ffd21f', '#ff344d', '#bb89ff']
 const sectorFlagColors: Record<RaceSnapshot['sectorFlags'][number], string> = {
   clear: '#35d66f',
   'double-yellow': '#ffe35a',
@@ -854,11 +854,11 @@ function SectorPathLinesContent({
 }) {
   const sectors = useMemo(() => {
     const starts = track.sectorMarks.length >= 3
-      ? track.sectorMarks.slice(0, 3)
+      ? track.sectorMarks
       : [0, 1 / 3, 2 / 3]
 
     return starts.map((start, index) => {
-      const end = index === 2 ? 1 : (starts[index + 1] ?? 1)
+      const end = starts[index + 1] ?? 1
       const span = end > start ? end - start : end + 1 - start
       const points = Array.from({ length: 45 }, (_, pointIndex) => {
         const progress = (start + (pointIndex / 44) * span) % 1
@@ -908,7 +908,7 @@ function SectorPathLinesContent({
   return (
     <group>
       {sectors.map((sector, index) => {
-        const flag = sectorFlags[index]
+        const flag = sectorFlags[index] ?? 'clear'
         const isLocalYellowSummary =
           yellowZone !== null &&
           (flag === 'yellow' || flag === 'double-yellow')
@@ -1044,7 +1044,7 @@ function TrackSurface({
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[0.24, 0.31, 32]} />
               <meshBasicMaterial
-                color={index === 0 ? '#00d8ff' : index === 1 ? '#ffd21f' : '#ff344d'}
+                color={sectorPathColors[index]}
                 transparent
                 opacity={0.92}
                 side={THREE.DoubleSide}

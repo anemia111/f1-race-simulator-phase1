@@ -135,6 +135,13 @@ function convertCheckpointToV3(checkpoint: MutableCheckpoint) {
 }
 
 describe('race session continuity', () => {
+  it('round-trips four-sector timing and rejects a mismatched split count', () => {
+    const four = { ...config, track: { ...config.track, sectorMarks: [0, 0.2, 0.5, 0.8] } }
+    const now = 1_800_000_000_000
+    const raw = serializeRaceCheckpoint('four-sector', createInitialRace(four), now)!
+    expect(parseRaceCheckpoint(raw, 'four-sector', four, now)?.cars[0].currentLapMiniSectorTimes).toHaveLength(32)
+    expect(parseRaceCheckpoint(raw, 'four-sector', config, now)).toBeNull()
+  })
   it('holds the active config while live calibration refreshes the same session', () => {
     const current = { config, key: 'session-a' }
     const refreshedConfig = {
@@ -1195,7 +1202,9 @@ describe('race session continuity', () => {
       parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
         ?.elapsedSeconds,
     ).toBe(snapshot.elapsedSeconds)
-  }, 20_000)
+  // The 50 ms physics integrator now does real substeps during this full-field
+  // two-lap fixture; keep the storage assertions without a machine-speed flake.
+  }, 90_000)
 
   it('continues a live active-aero transition identically after restore', () => {
     const now = 1_800_000_000_000

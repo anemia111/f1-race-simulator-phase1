@@ -547,29 +547,26 @@ export function sectorFlagStatesFor(
   flag: FlagState,
   localYellowSector: number | null,
   timedDoubleYellowSector: number | null = null,
-): [SectorFlagState, SectorFlagState, SectorFlagState] {
+  sectorCount = 3,
+): SectorFlagState[] {
   if (flag === 'vsc' || flag === 'sc' || flag === 'red') {
-    return [flag, flag, flag]
+    return Array.from({ length: sectorCount }, () => flag)
   }
 
-  const states: [SectorFlagState, SectorFlagState, SectorFlagState] = [
-    'clear',
-    'clear',
-    'clear',
-  ]
+  const states: SectorFlagState[] = Array.from({ length: sectorCount }, () => 'clear')
 
   if (flag === 'yellow') {
     if (
       timedDoubleYellowSector !== null &&
       timedDoubleYellowSector >= 0 &&
-      timedDoubleYellowSector <= 2
+      timedDoubleYellowSector < sectorCount
     ) {
       states[timedDoubleYellowSector] = 'double-yellow'
       return states
     }
 
-    if (localYellowSector === null || localYellowSector < 0 || localYellowSector > 2) {
-      return ['yellow', 'yellow', 'yellow']
+    if (localYellowSector === null || localYellowSector < 0 || localYellowSector >= sectorCount) {
+      return Array.from({ length: sectorCount }, () => 'yellow')
     }
 
     states[localYellowSector] = 'yellow'
@@ -579,7 +576,7 @@ export function sectorFlagStatesFor(
   if (
     timedDoubleYellowSector !== null &&
     timedDoubleYellowSector >= 0 &&
-    timedDoubleYellowSector <= 2
+    timedDoubleYellowSector < sectorCount
   ) {
     states[timedDoubleYellowSector] = 'double-yellow'
   }

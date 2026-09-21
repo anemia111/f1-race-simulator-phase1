@@ -7,6 +7,11 @@
 // published lap length before it is written out.
 //
 // OpenStreetMap data is © OpenStreetMap contributors, licensed under the ODbL.
+// This generator retains the legacy frame shared with measuredRoadProfiles.
+// Runtime timing uses supportTiming.ts, which reanchors the control line and
+// remaps geodata progress. The longest-straight heuristic below is NOT an
+// official control line (notably it selects Motegi's downhill straight).
+// Generated sectorMarks are legacy estimates, not the runtime authority.
 
 import { writeFile } from 'node:fs/promises'
 

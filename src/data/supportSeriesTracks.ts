@@ -1,6 +1,7 @@
 import type { TrackDefinition } from '../types'
 import { deriveAeroActivationZones } from './aeroZoneGeometry'
 import { supportSeriesTrackLayouts } from './supportSeriesTrackLayouts'
+import { supportTimingFor } from './supportTiming'
 
 // The domestic circuits have no OpenF1 layout feed, so their geometry comes
 // from surveyed OpenStreetMap ways instead of a hand-drawn placeholder. Each
@@ -13,10 +14,7 @@ const layoutFor = (trackId: string) => {
   }
 
   return {
-    centerline: layout.centerline,
-    // Overrides the shared placeholder split so each circuit gets boundaries
-    // that follow its own layout.
-    sectorMarks: layout.sectorMarks,
+    ...supportTimingFor(trackId),
     layoutSource: {
       detail: 'real' as const,
       label: `Surveyed centerline, ${layout.measuredKm} km measured (${layout.source.attribution})`,
@@ -61,7 +59,7 @@ const derivedZonesFor = (
   pitExitProgress: number,
 ) =>
   deriveAeroActivationZones(
-    supportSeriesTrackLayouts[trackId]!.centerline,
+    supportTimingFor(trackId).centerline,
     'permanent',
     {
       // This is a conservative geometry-screening assumption, not an observed

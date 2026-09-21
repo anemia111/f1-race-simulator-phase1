@@ -451,7 +451,7 @@ export function sourcedPhysicalRoadInputsAt(
       usableWidthMeters: measured?.usableWidthMeters ?? null,
     })
   }
-  return measuredInputsAt(track.id, progress)
+  return measuredInputsAt(track.id, progress + (track.measuredRoadProgressOffset ?? 0))
 }
 
 export function sourcedPhysicalRoadFieldProvenance(

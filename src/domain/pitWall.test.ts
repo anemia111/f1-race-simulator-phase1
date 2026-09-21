@@ -168,6 +168,15 @@ describe('pitWallLapLog', () => {
     expect(byLap.get(2)?.isPersonalBestSector[0]).toBe(true)
   })
 
+  it('compares all four domestic splits by their indices', () => {
+    const rows = pitWallLapLog([
+      lapStub({ lap: 1, sectors: [20, 21, 22, 23] }),
+      lapStub({ lap: 2, sectors: [21, 20, 23, 22] }),
+    ])
+    expect(rows.find((row) => row.lap === 1)?.isPersonalBestSector).toEqual([true, false, true, false])
+    expect(rows.find((row) => row.lap === 2)?.isPersonalBestSector).toEqual([false, true, false, true])
+  })
+
   it('carries the qualifying segment through so each row states its session', () => {
     const rows = pitWallLapLog([lapStub({ lap: 4, segment: 'Q2' })])
 

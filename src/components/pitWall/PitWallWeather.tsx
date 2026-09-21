@@ -137,11 +137,11 @@ export function PitWallWeather({
         />
       </PitWallGroup>
 
-      <PitWallGroup title="Sector surface">
+      <PitWallGroup title="Surface zones (3 model regions)">
         {[0, 1, 2].map((index) => (
           <PitWallMetric
             key={`water-${index}`}
-            label={`S${index + 1} standing water`}
+            label={`Zone ${index + 1} standing water`}
             source="SIM"
             value={`${surfaceSectors.surfaceWaterMmBySector[index].toFixed(2)} mm`}
           />
@@ -149,7 +149,7 @@ export function PitWallWeather({
         {[0, 1, 2].map((index) => (
           <PitWallMetric
             key={`drying-${index}`}
-            label={`S${index + 1} dry line`}
+            label={`Zone ${index + 1} dry line`}
             source="SIM"
             title="Drying-line maturity from 0 (fully wet) to 100 (dry racing line)"
             value={`${Math.round(surfaceSectors.dryingLineBySector[index] * 100)}%`}
@@ -158,9 +158,7 @@ export function PitWallWeather({
       </PitWallGroup>
 
       <PitWallGroup title="Race control state">
-        {[0, 1, 2].map((index) => {
-          const flag = snapshot.sectorFlags[index]
-
+        {snapshot.sectorFlags.map((flag, index) => {
           return (
             <PitWallMetric
               key={`flag-${index}`}
@@ -230,7 +228,7 @@ export function PitWallWeather({
         {[0, 1, 2].map((index) => (
           <PitWallMetric
             key={`rubber-${index}`}
-            label={`S${index + 1} rubber`}
+            label={`Zone ${index + 1} rubber`}
             source="SIM"
             value={`${Math.round(surfaceSectors.rubberLevelBySector[index] * 100)}%`}
           />

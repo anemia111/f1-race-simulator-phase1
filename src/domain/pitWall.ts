@@ -299,7 +299,7 @@ export type PitWallLapLogRow = {
   invalidReason: string | null
   isPersonalBestLap: boolean
   /** Per sector, true when this lap owns the car's best measured split. */
-  isPersonalBestSector: [boolean, boolean, boolean]
+  isPersonalBestSector: boolean[]
   isValid: boolean
   lap: number
   lapTimeSeconds: number
@@ -307,7 +307,7 @@ export type PitWallLapLogRow = {
   position: number
   /** Q1/Q2/Q3 or SQ1-3 for a timed session; absent on a race lap. */
   segment: string | null
-  sectors: [number, number, number]
+  sectors: number[]
   /** Discriminated F1 Pirelli or SF control-tyre presentation payload. */
   tireDisplay: LapTireDisplay
 }
@@ -333,7 +333,7 @@ export function pitWallLapLog(laps: LapRecord[]): PitWallLapLogRow[] {
         : best,
     null,
   )
-  const bestSectors = [0, 1, 2].map((index) =>
+  const bestSectors = Array.from({ length: Math.max(3, ...laps.map((lap) => lap.sectors.length)) }, (_, index) =>
     valid.reduce<number | null>((best, lap) => {
       const split = lap.sectors[index]
 
@@ -348,12 +348,12 @@ export function pitWallLapLog(laps: LapRecord[]): PitWallLapLogRow[] {
       invalidReason: lap.invalidReason,
       isPersonalBestLap:
         lap.isValid && bestLapTime !== null && lap.lapTimeSeconds === bestLapTime,
-      isPersonalBestSector: [0, 1, 2].map(
-        (index) =>
+      isPersonalBestSector: lap.sectors.map(
+        (_, index) =>
           lap.isValid &&
           bestSectors[index] !== null &&
           lap.sectors[index] === bestSectors[index],
-      ) as [boolean, boolean, boolean],
+      ) as boolean[],
       isValid: lap.isValid,
       lap: lap.lap,
       lapTimeSeconds: lap.lapTimeSeconds,

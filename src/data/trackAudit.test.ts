@@ -21,7 +21,7 @@ describe('2026 track data packs', () => {
 
     expect(madrid.name).toBe('MADRING')
     expect(madrid.kind).toBe('hybrid')
-    expect(madrid.lengthKm).toBe(5.416)
+    expect(madrid.lengthKm).toBe(5.414)
     expect(madrid.raceLaps).toBe(57)
     expect(madrid.centerline).toHaveLength(156)
     expect(madrid.centerline[1][2]).toBeLessThan(madrid.centerline[0][2])
@@ -36,7 +36,7 @@ describe('2026 track data packs', () => {
       year: 2026,
     })
     expect(madrid.locationProjection).toBeUndefined()
-    expect(madrid.sectorMarksSource).toBe('derived')
+    expect(madrid.sectorMarksSource).toBe('official')
     expect(madrid.paceReference2026).toMatchObject({
       qualifyingBasis: 'estimate',
       qualifyingRangeSeconds: [90, 94],

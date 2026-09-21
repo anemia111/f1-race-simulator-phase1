@@ -10,6 +10,7 @@ import {
   DRIVER_ABILITY_LIMIT_BREAK_MAX,
 } from '../simulation/driverAbility'
 import { supportSeriesTracks } from '../data/supportSeriesTracks'
+import { superFormulaSuzukaTiming } from '../data/supportTiming'
 import { tracks as f1Tracks } from '../data/tracks'
 import {
   baseLapTimeSourceForPaceReference,
@@ -537,6 +538,7 @@ function tracksFor(definition: RawSeries) {
       // a track record or copy a one-off event to every use of that circuit.
       return {
         ...trackWithoutRaceDistance,
+        ...(definition.id === 'super-formula' ? superFormulaSuzukaTiming(track) : {}),
         baseLapTime: simulationBaseLapTimeForPaceReference(
           paceReference2026,
           track.baseLapTime,

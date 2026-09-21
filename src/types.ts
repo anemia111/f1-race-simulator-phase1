@@ -889,6 +889,14 @@ export type TrackDefinition = {
   raceLapsSource?: 'official' | 'estimated'
   sectorMarks: number[]
   sectorMarksSource?: OperationalDataSource
+  /** Runtime control-line progress -> generated geodata's original origin. */
+  measuredRoadProgressOffset?: number
+  sectorBoundaryReference?: {
+    checkedOn: string
+    year?: number
+    sourceUrl: string
+    lengthKm: number
+  }
   /** 2026 front/rear driver-adjustable bodywork activation zones. */
   aeroActivationZones?: AeroActivationZone[]
   /** FIA event map explicitly lists Straight Mode as unavailable. */
@@ -1162,8 +1170,8 @@ export type LapTireRun = F1LapTireRun | SuperFormulaLapTireRun
 export type LapRecord = {
   lap: number
   lapTimeSeconds: number
-  sectors: [number, number, number]
-  /** 24 measured timing segments (eight per sector), written at the line. */
+  sectors: number[]
+  /** Eight measured mini-segments per timing sector, written at the line. */
   miniSectors?: number[]
   /**
    * Timed-session segment the lap was set in (Q1/Q2/Q3, SQ1-3). Lets the timing
@@ -1287,8 +1295,8 @@ export type CarSnapshot = {
   /** True only after this timed lap physically passes a double-yellow zone. */
   passedDoubleYellowThisLap: boolean
   /** Current-lap splits, written once when the CPU car crosses each sector line. */
-  currentLapSectorTimes: [number | null, number | null, number | null]
-  /** Current-lap 24-part timing, frozen as each mini-sector line is crossed. */
+  currentLapSectorTimes: Array<number | null>
+  /** Current-lap timing (eight mini-segments per sector), frozen at each crossing. */
   currentLapMiniSectorTimes: Array<number | null>
   /** Completed lap history; sampled at the timing line, never per frame. */
   lapHistory: LapRecord[]
@@ -1472,7 +1480,7 @@ export type RaceSnapshot = {
   /** FIA green light-panel display following a VSC/SC withdrawal. */
   greenLightUntilSeconds: number | null
   /** Control state for sectors 1..3, including local and double yellows. */
-  sectorFlags: [SectorFlagState, SectorFlagState, SectorFlagState]
+  sectorFlags: SectorFlagState[]
   /** End of the post-SC/VSC/red restart window (low grip), if active. */
   restartUntilSeconds: number | null
   fuelEffectSeconds: number

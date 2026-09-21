@@ -180,7 +180,7 @@ export function PitWallOverview({
 
       <PitWallGroup title="Sectors and mini sectors" wide>
         <div className="pit-wall-sector-board" title={splitsTitle}>
-          {[0, 1, 2].map((index) => {
+          {timing.sectors.map((_, index) => {
             const measured = timing.sectors[index]
             const status = timing.sectorStatuses[index]
             const states = timing.miniSectors[index] ?? []
