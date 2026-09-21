@@ -16,6 +16,26 @@ function launched() {
 }
 
 describe('traffic integrity', () => {
+  it('keeps tyre and speed values finite through the opening race', () => {
+    const probeConfig = { ...config, seed: 'broadcast-playtest-stable' }
+    let state = createInitialRace(probeConfig)
+    state = advanceRace(state, state.formationLapDurationSeconds, probeConfig)
+    state = advanceRace(state, 8, probeConfig)
+    state = advanceRace(state, state.startLightSequenceSeconds!, probeConfig)
+    for (let tick = 0; tick < 2400; tick++) {
+      const previous = state
+      state = advanceRace(state, 0.05, probeConfig)
+      for (const car of state.cars) {
+        if (car.runtimeSystems.kind !== 'f1') continue
+        expect([car.speedKph, car.throttlePercent, car.brakePercent,
+          car.runtimeSystems.tires.tireWearPercent].every(Number.isFinite),
+          JSON.stringify({ tick, code: car.code, speed: car.speedKph, brake: car.brakePercent,
+            throttle: car.throttlePercent, distance: car.totalDistance, tires: car.runtimeSystems.tires,
+            previousSpeed: previous.cars.find((candidate) => candidate.driverId === car.driverId)?.speedKph }))
+          .toBe(true)
+      }
+    }
+  }, 60_000)
   it('records no lap when collision resolution leaves the car before the line', () => {
     const state = launched()
     const cars = state.cars.slice(0, 2).map((car, index) => ({ ...car,

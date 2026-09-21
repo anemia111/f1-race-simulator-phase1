@@ -575,7 +575,9 @@ export function calculateCarTelemetry(options: {
           Math.max(0, targetSpeedKph - car.speedKph) * 0.24
   const controlThrottleScale = phase?.flag === 'red' ? 0 : phase ? 0.84 : 1
   const requestedThrottlePercent = Math.round(
-    clamp(baseThrottle * controlThrottleScale * battlePace *
+    // A straight can have an unbounded target. Bound pedal demand before
+    // applying a zero following throttle, otherwise Infinity * 0 is NaN.
+    clamp(clamp(baseThrottle, 0, 100) * controlThrottleScale * battlePace *
       (options.following?.throttleScale ?? 1), 0, 100),
   )
   const preparationThrottleCeiling =
