@@ -1085,7 +1085,10 @@ async function inspectFreeMode(browser) {
         .querySelector('.footer-race-control')
         ?.textContent?.includes('Race complete.') === true,
     undefined,
-    { timeout: 30_000 },
+    // All playback multipliers now retain 50 ms physics steps. Forty cars
+    // can run below the requested 60x on CPU/SwiftShader test machines; keep
+    // the actual completion assertion, but allow enough wall-clock time.
+    { timeout: 120_000 },
   )
   const championshipStorageAfterFree = await page.evaluate(
     ({ seasonStorageKey, weekendStorageKey }) => ({
