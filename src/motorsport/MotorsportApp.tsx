@@ -162,7 +162,7 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
     const link = document.createElement('a'); link.href = url; link.download = `${config.championship}-${config.eventId.replaceAll(':', '-')}-race.json`; link.click(); URL.revokeObjectURL(url)
   }
   const track = useMemo(() => dashboardCourse(config), [config])
-  const {snapshot, timingRows, sceneConfig} = useMemo(() => dashboardFrame(config, state, track), [config, state, track])
+  const {snapshot, timingRows, sceneConfig} = useMemo(() => dashboardFrame(config, state, track, paused ? 0 : speed), [config, state, track, paused, speed])
   const selectedCar = snapshot.cars.find(car => car.driverId === selected.entry.id) ?? snapshot.cars[0]
   const label = { kyojo: 'KYOJO CUP', 'super-gt': 'SUPER GT', wec: 'FIA WEC', indycar: 'INDYCAR' }[config.championship]
   const focusDriver = (id: string) => { setSelectedId(id) }

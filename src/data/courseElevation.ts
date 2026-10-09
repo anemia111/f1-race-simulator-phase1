@@ -2,6 +2,7 @@ import data from './courseElevations.json'
 export type CourseElevationProfile = {
   lengthM: number; basis: string; sourceUrl: string
   planarPoints: number[][]; elevationsM: number[]; grades: number[]
+  anchors?: number[][]
 }
 export const courseElevationProfiles = data.profiles as Record<string, CourseElevationProfile>
 const cache = new WeakMap<object, {id:string;lengthM:number;profile:CourseElevationProfile|null}>()
@@ -28,6 +29,15 @@ export function elevationProfileFor(id: string, points: readonly (readonly numbe
 /** Periodic linear interpolation keeps start/finish continuous. Absolute
  * altitude is retained for physics; rendering subtracts one common datum. */
 export function elevationAt(profile:CourseElevationProfile, progress:number) {
+  if(profile.anchors?.length){
+    const anchors=profile.anchors,p=((progress%1)+1)%1
+    let i=anchors.findIndex(a=>a[0]>p)-1
+    if(i===-2)i=anchors.length-1
+    const a=i<0?[anchors.at(-1)![0]-1,anchors.at(-1)![1]]:anchors[i]
+    const b=i===anchors.length-1?[anchors[0][0]+1,anchors[0][1]]:anchors[i+1]
+    const ratio=(p-a[0])/(b[0]-a[0])
+    return {elevationM:a[1]+(b[1]-a[1])*ratio,grade:(b[1]-a[1])/((b[0]-a[0])*profile.lengthM)}
+  }
   const q=((progress%1)+1)%1*profile.elevationsM.length,i=Math.floor(q),j=(i+1)%profile.elevationsM.length,w=q-i
   return {elevationM:profile.elevationsM[i]+(profile.elevationsM[j]-profile.elevationsM[i])*w,
     grade:profile.grades[i]+(profile.grades[j]-profile.grades[i])*w}

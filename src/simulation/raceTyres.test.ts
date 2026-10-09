@@ -90,13 +90,16 @@ describe('category tyre work, temperature and driven lap time', () => {
     const config={seriesId,drivers:series.drivers.slice(0,1),teams:series.teams,track:{...series.tracks[0],rainProbability:0},seed:'tyre-actual-lap',weekendStage:'race' as const,freeMode:true,sessionRaceLapsOverride:10,overtakeSystem:seriesId==='super-formula'?'ots' as const:'active-aero' as const}
     const lap=(life:number)=>{
       let state=skipFormationLap({...createInitialRace(config),formationBehindSafetyCar:true,formationLapsPlanned:1,startLightSequenceSeconds:0},config)
-      state={...state,cars:state.cars.map(car=>({...car,runtimeSystems:car.runtimeSystems.kind==='f1'?{...car.runtimeSystems,tires:{...car.runtimeSystems.tires,tireWearPercent:(1-life)*100,tireTemperatureC:90,tireCarcassTemperatureC:90}}:car.runtimeSystems.kind==='super-formula'?{...car.runtimeSystems,liveTires:{...car.runtimeSystems.liveTires,simulatedPerformance:initialRaceTyre(90,life)}}:car.runtimeSystems}))}
+      // Satisfy the dry compound obligation before this controlled stint so
+      // strategy cannot replace both test tyres and erase the wear difference.
+      state={...state,cars:state.cars.map(car=>({...car,runtimeSystems:car.runtimeSystems.kind==='f1'?{...car.runtimeSystems,tires:{...car.runtimeSystems.tires,compoundsUsed:['M','S'],tireWearPercent:(1-life)*100,tireTemperatureC:90,tireCarcassTemperatureC:90}}:car.runtimeSystems.kind==='super-formula'?{...car.runtimeSystems,liveTires:{...car.runtimeSystems.liveTires,simulatedPerformance:initialRaceTyre(90,life)}}:car.runtimeSystems}))}
       for(let i=0;i<800 && state.cars[0].lapHistory.filter(lap=>lap.isValid&&!lap.pitStop).length<2;i++) {
         state={...state,cars:state.cars.map(car=>({...car,fuelLoadKg:20}))}
         state=advanceRace(state,0.5,config)
       }
       const laps=state.cars[0].lapHistory.filter(lap=>lap.isValid&&!lap.pitStop)
       expect(laps.length).toBeGreaterThanOrEqual(2)
+      expect(state.cars[0].pitStops).toBe(0)
       return laps.at(-1)!.lapTimeSeconds
     }
     expect(lap(0.4)).toBeGreaterThan(lap(1)+0.02)

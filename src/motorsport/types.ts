@@ -54,6 +54,8 @@ export type MotorsportPitRequest = {
   entryId: string; fuelFraction: number; changeTyres: boolean; nextDriverIndex: number | null
 }
 export type MotorsportCar = {
+  /** Optional for old saves; integrated lateral motion, in source XY metres. */
+  lateralVelocityMps?: number
   battle?: { opponentId: string; side: -1 | 1; startedAt: number }
   teamInstruction?: import('../simulation/teamDecision').TeamInstruction
   driverIntent?: import('../simulation/driverDecision').DriverDecisionIntent

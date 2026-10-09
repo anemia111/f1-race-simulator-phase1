@@ -54,8 +54,23 @@ def elevations(coords,dataset):
 profiles={};failed=[]
 for t in targets:
  id=t['id'];points=np.array(t['points']);length=t['lengthM']
+ sparse_anchors=None
  try:
-  if id in aliases:
+  if id in ('madrid-approx','baku-approx'):
+   corners={c['number']:c for c in t['corners']}
+   if id=='madrid-approx':
+    p2,p7,p8=[corners[n]['progress'] for n in (2,7,8)]
+    # Only T2/T7 are published absolute elevations. The climb base follows
+    # the published 10m gain / 8%; T8 is inferred from the 5% descent.
+    sparse_anchors=sorted([[p2,671],[(p7-125/length)%1,687],[p7,697],[p8,max(671,697-((p8-p7)%1)*length*.05)]])
+    source='https://www.madring.com/en/circuit';basis='official-T2-T7-anchors-with-inferred-periodic-interpolation'
+    registration={'officialElevationsM':{'T2':671,'T7':697},'inferredSegments':'8% climb gaining 10m; 5% descent; remaining road is interpolated, not surveyed'}
+   else:
+    sparse_anchors=sorted([[c['progress'],c['elevationM']] for c in t['corners'] if c['number']!=20 and c['elevationM'] is not None])
+    source='user-supplied-corner-elevations';basis='unverified-user-corner-anchors-with-periodic-interpolation'
+    registration={'excludedCorner':'T20=2m retained separately, suspected geographic mismatch','datum':'unverified; negative altitude is allowed'}
+   a=np.array(sparse_anchors);heights=np.interp(np.arange(N)/N,np.r_[a[-1,0]-1,a[:,0],a[0,0]+1],np.r_[a[-1,1],a[:,1],a[0,1]]);coords=None
+  elif id in aliases:
    original=profiles[aliases[id]];native=next(v for v in targets if v['id']==aliases[id]);aligned,registration=align(native['points'],points)
    # Determine progress from a native sample; alignment uses a rigid shape transform.
    _,rev,shift=(registration['error'],registration['reversed'],registration['shift'])
@@ -109,6 +124,7 @@ for t in targets:
   grades=(np.roll(heights,-1)-np.roll(heights,1))/(2*length/N)
   if np.max(np.abs(grades))>.4:raise ValueError('Implausible gradient, review road/terrain separation')
   profiles[id]={'lengthM':length,'basis':basis,'sourceUrl':source,'registration':registration,'geometryFingerprint':hashlib.sha256(json.dumps(t['points'],separators=(',',':')).encode()).hexdigest(),'planarPoints':t['points'],'elevationsM':np.round(heights,3).tolist(),'grades':np.round(grades,6).tolist()}
+  if sparse_anchors is not None:profiles[id]['anchors']=sparse_anchors
   print(id,round(float(heights.min()),1),round(float(heights.max()),1),flush=True)
  except Exception as e:failed.append({'id':id,'error':str(e)});print('REVIEW',id,str(e),flush=True)
 (DATA/'courseElevations.json').write_text(json.dumps({'schemaVersion':1,'profiles':profiles,'unavailable':failed},separators=(',',':')),encoding='utf8')

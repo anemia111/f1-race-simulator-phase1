@@ -4,6 +4,26 @@ import { createMotorsportConfig } from './packages'
 import { createMotorsportRace } from './race'
 
 describe('existing dashboard category presentation', () => {
+  it.each(['kyojo','super-gt','wec','indycar'] as const)('%s presents the actual physical lane and continuous pit position',category=>{
+    const config=createMotorsportConfig(category),state=createMotorsportRace(config),track=dashboardCourse(config)
+    const car=state.cars[0]
+    state.phase='racing';car.distanceM=123;car.lateralM=2
+    let rendered=dashboardFrame(config,state,track,60).snapshot.cars.find(c=>c.driverId===car.entryId)!
+    expect(rendered.lateralOffsetM).toBe(-2)
+    expect(rendered.courseMotion).toEqual({rate:60,pitBlend:0})
+    for(const status of ['pit-entry','pit-service','pit-exit'] as const){
+      car.status=status;car.pitPathM=config.course.pitLengthM.value*0.5
+      rendered=dashboardFrame(config,state,track,1).snapshot.cars.find(c=>c.driverId===car.entryId)!
+      expect(rendered.totalDistance).toBe(123/config.course.lengthM)
+      expect(rendered.courseMotion?.pitBlend).toBe(1)
+    }
+    car.status='pit-entry';car.pitPathM=0
+    expect(dashboardFrame(config,state,track,1).snapshot.cars.find(c=>c.driverId===car.entryId)!.courseMotion?.pitBlend).toBe(0)
+    car.status='pit-exit';car.pitPathM=config.course.pitLengthM.value
+    expect(dashboardFrame(config,state,track,1).snapshot.cars.find(c=>c.driverId===car.entryId)!.courseMotion?.pitBlend).toBe(0)
+    expect(track.pitLane?.entryProgress).toBe(config.course.pitEntry.value)
+    expect(track.pitLane?.exitProgress).toBe(config.course.pitExit.value)
+  })
   it('keeps class positions and gaps independent of the overall leader', () => {
     const config = createMotorsportConfig('super-gt')
     const state = createMotorsportRace(config)

@@ -67,8 +67,11 @@ export function createMotorsportRace(config: MotorsportRaceConfig): MotorsportRa
   if (timed) cars.forEach((car, index) => {
     // Independent SIM pit releases, spaced along the exit queue. The first
     // partial out lap is excluded from best-lap classification below.
-    car.distanceM = -index * 20
-    car.status = 'pit-exit'; car.pitPathM = config.course.pitLengthM.value * 0.5
+    const pitLength=config.course.pitLengthM.value
+    const releaseSpacing=Math.min(6,pitLength*0.7/Math.max(1,cars.length-1))
+    car.status = 'pit-exit'; car.pitPathM = pitLength*0.75-index*releaseSpacing
+    const pitArc=modulo(config.course.pitExit.value-config.course.pitEntry.value,1)
+    car.distanceM=modulo(config.course.pitEntry.value+car.pitPathM/pitLength*pitArc,1)*config.course.lengthM
     car.lapInvalid = true
     car.speedMps = config.course.pitSpeedKph.value / 3.6
   })
@@ -253,9 +256,11 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
     if (car.status !== 'running' || state.flag !== 'green') car.lapInvalid = true
     if (car.status !== 'running') {
       const pitLimit = config.course.pitSpeedKph.value / 3.6
-      car.speedMps = car.status === 'pit-service' ? 0 : car.speedMps + clamp(pitLimit - car.speedMps, -6 * dt, 3 * dt)
+      const pitStopAt = config.course.pitLengthM.value * (car.status === 'pit-entry' ? 0.5 : 1)
+      const pitTarget = car.status === 'pit-entry' ? Math.min(pitLimit, Math.sqrt(12 * Math.max(0, pitStopAt - car.pitPathM))) : pitLimit
+      car.speedMps = car.status === 'pit-service' ? 0 : car.speedMps + clamp(pitTarget - car.speedMps, -6 * dt, 3 * dt)
       car.throttlePercent = car.status === 'pit-service' ? 0 : car.speedMps < pitLimit ? 35 : 10
-      car.brakePercent = car.speedMps > pitLimit ? 50 : 0
+      car.brakePercent = car.speedMps > pitTarget ? 50 : 0
       const pitDrivetrain = drivetrainState(machine, car.speedMps, car.gear)
       car.gear = pitDrivetrain.gear; car.rpm = pitDrivetrain.rpm
       car.tyreState = advanceRaceTyre(car.tyreState ?? initialRaceTyre(car.tyreTemperatureC, car.tyreLife), {
@@ -307,9 +312,10 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
           car.speedMps = Math.min(car.speedMps, safeSpeed)
           car.throttlePercent = 0; car.brakePercent = 50
         }
-        let step = pitAhead ? Math.min(car.speedMps*dt,Math.max(0,pitAhead.pitPathM + pitAhead.speedMps*dt-car.pitPathM-6)) : car.speedMps*dt
+        const pitTravel = (old.speedMps + car.speedMps) * 0.5 * dt
+        let step = pitAhead ? Math.min(pitTravel,Math.max(0,pitAhead.pitPathM + pitAhead.speedMps*dt-car.pitPathM-6)) : pitTravel
         step = Math.min(step, Math.max(0, (car.status === 'pit-entry' ? pitEnd * 0.5 : pitEnd - (mergeBlocked ? 0.5 : 0)) - car.pitPathM))
-        car.speedMps = step/dt
+        if (step < pitTravel - 1e-8) car.speedMps = Math.max(0, 2 * step / dt - old.speedMps)
         car.pitPathM += step
         const pitArc = modulo(config.course.pitExit.value - config.course.pitEntry.value, 1) * length
         car.distanceM += step / config.course.pitLengthM.value * pitArc
@@ -399,11 +405,21 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       if (overtaking && !car.battle && opponent) car.battle={opponentId:opponent.entryId,
         side:Math.abs(car.lateralM)>=1?(car.lateralM<0?-1:1):opponent.lateralM< -0.8?1:-1,startedAt:state.raceSeconds}
       const desiredLateral=car.battle&&overtaking?car.battle.side*Math.min(2.4,config.course.widthM.value/2-1.5):decision.desiredLateralOffsetM
-      car.lateralM+=clamp(desiredLateral-car.lateralM,-2.5*dt,2.5*dt)
+      const lateralError=desiredLateral-car.lateralM
+      const lateralLimit=car.speedMps>60?1.8:2.5
+      const desiredLateralVelocity=clamp(lateralError*2.5,-lateralLimit,lateralLimit)
+      car.lateralVelocityMps=(car.lateralVelocityMps??0)+clamp(desiredLateralVelocity-(car.lateralVelocityMps??0),-4*dt,4*dt)
+      const lateralStep=car.lateralVelocityMps*dt
+      if (lateralStep*lateralError>=0 && Math.abs(lateralStep)>=Math.abs(lateralError)) {
+        car.lateralM=desiredLateral;car.lateralVelocityMps=0
+      } else car.lateralM+=lateralStep
       if (ahead && (state.flag!=='green' || Math.abs(car.lateralM-ahead.car.lateralM)<2.1)) {
         const closing=Math.max(0,car.speedMps-ahead.car.speedMps)
         const braking=tyreForceBudget(machine,station,car.speedMps,conditions).longitudinal/mass
         const brakingGap=7+closing*0.5+closing**2/Math.max(1,2*braking*0.8)
+        const availableGap=Math.max(0,ahead.gap-7-car.speedMps*0.35)
+        const safeFollowingSpeed=Math.sqrt(ahead.car.speedMps**2+2*Math.max(0.5,braking*0.75)*availableGap)
+        target=Math.min(target,safeFollowingSpeed)
         if (ahead.gap<Math.max(brakingGap,car.speedMps*0.7)) target=Math.min(target,Math.max(0,ahead.car.speedMps+(ahead.gap-7)*0.5))
       }
       const drag = 0.5 * 1.225 * machine.dragAreaM2.value * aero.dragScale * car.speedMps ** 2
@@ -448,12 +464,13 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       const unconstrainedStep = (car.speedMps + nextSpeed) * 0.5 * dt
       // Neutralisation applies regardless of lateral lane. Integrate up to the
       // preceding car's safe rear envelope without changing lap identity.
-      const distanceStep = ahead && state.flag !== 'green'
+      const distanceStep = ahead && (state.flag !== 'green' || Math.abs(car.lateralM-ahead.car.lateralM)<2.1)
         ? Math.min(unconstrainedStep, Math.max(0, ahead.gap + ahead.car.speedMps * dt - 6))
         : unconstrainedStep
       car.throttlePercent = pedal.throttle
       car.brakePercent = pedal.brake
-      car.speedMps = nextSpeed; car.distanceM += distanceStep
+      car.speedMps = distanceStep < unconstrainedStep - 1e-8 ? Math.max(0, 2 * distanceStep / dt - old.speedMps) : nextSpeed
+      car.distanceM += distanceStep
       car.driverDistanceM[car.driverIndex] += distanceStep
       const fuelUsed = machine.fuelKgPerKm.value * distanceStep / 1000 * (acceleration < -1 ? 0.35 : 0.85 + 0.15 * Math.min(1, Math.max(0, acceleration) / 4)) * (entry.classId === 'hypercar' ? Math.max(0,(powerKw-hybrid)/powerKw) : 1) * (car.paceMode === 'save' ? 0.85 : car.paceMode === 'push' ? 1.05 : 1)
       car.fuelKg = Math.max(0, car.fuelKg - fuelUsed)

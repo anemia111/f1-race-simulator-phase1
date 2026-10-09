@@ -283,6 +283,7 @@ describe('on-track speed calibration', () => {
       .find((candidate) => trackDynamicsAt(track, candidate).fullThrottle)!
     const commonCar: CarSnapshot = {
       ...snapshot.cars[0],
+      throttlePercent: 100,
       clutchEngagementFraction: 1,
       gapToAhead: 0.8,
       progress,
@@ -579,6 +580,7 @@ describe('on-track speed calibration', () => {
     const telemetry = calculateCarTelemetry({
       car: {
         ...snapshot.cars[0],
+        throttlePercent: 100,
         gapToAhead: 10,
         progress: candidate.progress,
         speedKph: 410,
@@ -651,6 +653,7 @@ describe('on-track speed calibration', () => {
       const telemetry = calculateCarTelemetry({
         car: {
           ...snapshot.cars[0],
+          throttlePercent: 100,
           gapToAhead: 10,
           progress: candidate.progress,
           speedKph: Math.min(

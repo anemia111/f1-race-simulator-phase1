@@ -26,7 +26,7 @@
     "lint": "oxlint",
     "test": "vitest run --no-file-parallelism",
     "validate:montecarlo": "vitest run --no-file-parallelism src/simulation/monteCarloAcceptance.test.ts",
-    "playtest": "node scripts/run-built-playtest.mjs && node scripts/motorsport-playtest.mjs && node scripts/motorsport-free-playtest.mjs && node scripts/sf-ots-playtest.mjs && node scripts/common-category-ui-playtest.mjs && node scripts/sf-race-calendar-playtest.mjs",
+    "playtest": "node scripts/run-built-playtest.mjs && node scripts/motorsport-playtest.mjs && node scripts/motorsport-free-playtest.mjs && node scripts/sf-ots-playtest.mjs && node scripts/common-category-ui-playtest.mjs && node scripts/sf-race-calendar-playtest.mjs && node scripts/course-elevation-playtest.mjs",
     "playtest:dev": "node scripts/broadcast-playtest.mjs",
     "benchmark": "node scripts/run-built-benchmark.mjs",
     "benchmark:dev": "node scripts/benchmark.mjs",

@@ -28,10 +28,14 @@ export function dashboardCourse(config: MotorsportRaceConfig): TrackDefinition {
     kind: config.course.kind === 'street' ? 'street' : 'permanent', feature: config.course.geometryBasis,
     isSprintWeekend: false, rainProbability: 0, centerline: points.map(([x,y]) => [(x-cx)*scale,0,-(y-cy)*scale]),
     width: 4, lengthKm: config.course.lengthM / 1000, lengthSource: 'official', baseLapTime: 100,
+    pitLane: { entryProgress: config.course.pitEntry.value, exitProgress: config.course.pitExit.value,
+      boxStartProgress: (config.course.pitEntry.value + ((config.course.pitExit.value - config.course.pitEntry.value + 1) % 1) * 0.5) % 1,
+      boxCount: config.entries.length, speedLimitKph: config.course.pitSpeedKph.value,
+      geometrySource: 'derived', speedLimitSource: 'derived', sourceUrl: config.course.sourceUrl },
     ...expansionCourseTiming(config.course.id, config.course.points), activeAeroUnavailable: true,
     layoutSource: { detail: 'real', provider: 'fallback', label: config.course.geometryBasis, url: config.course.sourceUrl, year: 2026 } }
 }
-export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRaceState, track: TrackDefinition) {
+export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRaceState, track: TrackDefinition, motionRate = 0) {
   const standings = motorsportStandings(state, config)
   const count = track.sectorMarks.length
   const timing = new Map(standings.map(({ entry, car }) => {
@@ -64,11 +68,18 @@ export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRa
       return lapGap > 0 ? `+${lapGap}L` : `+${(Math.max(0,ahead.distanceM-car.distanceM)/Math.max(1,car.speedMps)).toFixed(1)}`
     }
     const distance = car.distanceM + (state.phase === 'formation' ? state.formationSeconds * 80 / 3.6 : 0)
+    const pitLength = config.course.pitLengthM.value
+    const pitTransition = Math.min(30, pitLength * 0.1)
+    const pitFraction = car.status.startsWith('pit-')
+      ? Math.max(0, Math.min(1, car.pitPathM / pitTransition, (pitLength - car.pitPathM) / pitTransition)) : 0
+    const pitBlend = pitFraction * pitFraction * (3 - 2 * pitFraction)
     return { ...empty.cars[0], driverId: entry.id, teamId: entry.id, code: driver.name.split(/\s+/).at(-1)!.slice(0,3).toUpperCase(),
       carNumber: Number(entry.number), driverName: driver.name, teamName: entry.team, teamColor: entry.color,
       position: overallPosition, gridPosition: config.entries.indexOf(entry) + 1, lap: car.laps + 1,
       totalDistance: distance / config.course.lengthM, progress: ((distance / config.course.lengthM) % 1 + 1) % 1,
-      lateralOffsetM: 0, trackLateralOffset: 0, desiredLateralOffsetM: 0,
+      // Source XY north becomes display -Z; the displayed normal has opposite sign.
+      lateralOffsetM: -car.lateralM, trackLateralOffset: -car.lateralM, desiredLateralOffsetM: -car.lateralM,
+      courseMotion: { rate: state.flag === 'red' || state.phase === 'finished' ? 0 : motionRate, pitBlend },
       lastLapTimeSeconds: car.lastLapSeconds, bestLapTimeSeconds: car.bestLapSeconds, telemetryHistory: car.telemetryHistory,
       currentLapSectorTimes: timing.get(entry.id)!.current.sectors, currentLapMiniSectorTimes: timing.get(entry.id)!.current.minis, lapHistory: [],
       gapToLeaderLabel: classIndex === 0 ? 'LEADER' : interval(classLeader),

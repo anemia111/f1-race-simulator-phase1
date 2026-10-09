@@ -829,6 +829,8 @@ export type Driver = {
 }
 
 export type TrackDefinition = {
+  /** Presentation only: 0 flattens the map; never used by the race engine. */
+  elevationDisplayScale?: number
   id: string
   name: string
   location: string
@@ -1273,6 +1275,8 @@ export type CarSnapshot = {
   progress: number
   lap: number
   totalDistance: number
+  /** Category-engine path; pitBlend follows that engine's continuous pit distance. */
+  courseMotion?: { rate: number; pitBlend: number }
   /** Signed physical displacement from the reference line, in metres. */
   lateralOffsetM: number
   /** Signed lateral velocity across the track, in metres per second. */

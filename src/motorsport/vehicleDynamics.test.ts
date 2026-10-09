@@ -7,6 +7,39 @@ import type { MotorsportClass } from './types'
 
 const classes: MotorsportClass[] = ['kyojo','gt500','gt300','hypercar','lmgt3','lmp2','indycar']
 describe('category-resolved driving physics', () => {
+  it.each(['kyojo','super-gt','wec','indycar'] as const)('%s approaches slower traffic without reversing or driving through its rear',category=>{
+    const config=createMotorsportConfig(category);config.entries=config.entries.slice(0,2)
+    config.course={...config.course,lengthM:4000,points:[[0,0],[1500,0],[1500,500],[0,500]]}
+    let state={...createMotorsportRace(config),phase:'racing' as const,flag:'yellow' as const}
+    state.cars[0]={...state.cars[0],distanceM:200,speedMps:40,lateralM:0,tyreTemperatureC:90}
+    state.cars[1]={...state.cars[1],distanceM:300,speedMps:15,lateralM:0,tyreTemperatureC:90}
+    for(let i=0;i<200;i++){
+      const old=state
+      state=advanceMotorsportRace(state,1,config) as typeof state
+      expect(state.cars[0].distanceM).toBeGreaterThanOrEqual(old.cars[0].distanceM)
+      expect(state.cars[1].distanceM-state.cars[0].distanceM).toBeGreaterThanOrEqual(5.8)
+      expect(state.cars[0].speedMps-old.cars[0].speedMps).toBeGreaterThan(-4)
+      expect(Math.abs((state.cars[0].lateralVelocityMps??0)-(old.cars[0].lateralVelocityMps??0))).toBeLessThanOrEqual(0.40001)
+    }
+  })
+  it('brakes towards the pit box before arriving and preserves integrated pit distance',()=>{
+    const config=createMotorsportConfig('super-gt');config.entries=config.entries.slice(0,1)
+    let state={...createMotorsportRace(config),phase:'racing' as const}
+    const box=config.course.pitLengthM.value*.5
+    state.cars[0]={...state.cars[0],status:'pit-entry',pitPathM:box-25,speedMps:15,
+      pitRequest:{entryId:state.cars[0].entryId,fuelFraction:1,changeTyres:true,nextDriverIndex:null}}
+    let slowApproach=false
+    for(let i=0;i<200&&state.cars[0].status==='pit-entry';i++){
+      const old=state.cars[0];state=advanceMotorsportRace(state,1,config) as typeof state
+      const car=state.cars[0]
+      expect(car.pitPathM).toBeGreaterThanOrEqual(old.pitPathM)
+      expect(car.pitPathM).toBeLessThanOrEqual(box)
+      if(car.status==='pit-entry'&&car.speedMps<5)slowApproach=true
+    }
+    expect(slowApproach).toBe(true)
+    expect(state.cars[0].status).toBe('pit-service')
+    expect(state.cars[0].speedMps).toBe(0)
+  })
   it.each(classes)('%s drives a complete flying lap with progressive pickup and brake release', classId => {
     const category = classId === 'kyojo' ? 'kyojo' : classId === 'indycar' ? 'indycar' : classId === 'gt500' || classId === 'gt300' ? 'super-gt' : 'wec'
     const config = createMotorsportConfig(category, classId === 'lmp2' ? 'wec:3' : undefined)
@@ -91,7 +124,7 @@ describe('category-resolved driving physics', () => {
     state.cars[0]={...state.cars[0],status:'pit-exit',pitPathM:config.course.pitLengthM.value*0.5,speedMps:0}
     const exit=advanceMotorsportRace(state,1,config).cars[0]
     expect(exit.speedMps).toBeCloseTo(0.3)
-    expect(exit.pitPathM-state.cars[0].pitPathM).toBeCloseTo(0.03)
+    expect(exit.pitPathM-state.cars[0].pitPathM).toBeCloseTo(0.015)
     const entryDistance=config.course.pitEntry.value*config.course.lengthM-15
     const prepared={...state,cars:[{...state.cars[0],status:'running' as const,pitPathM:0,distanceM:entryDistance,speedMps:40,tyreTemperatureC:90,pitRequest:{entryId:state.cars[0].entryId,fuelFraction:1,changeTyres:true,nextDriverIndex:null}}]}
     const approach=advanceMotorsportRace(prepared,1,config).cars[0]

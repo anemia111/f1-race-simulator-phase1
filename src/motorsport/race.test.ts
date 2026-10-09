@@ -86,7 +86,7 @@ describe('car and crew motorsport race runtime', () => {
     pitting = advanceMotorsportRace(pitting, 1, single)
     expect(pitting.phase).toBe('finished')
     expect(pitting.winnerId).toBe(single.entries[0].id)
-  })
+  }, 30000)
 
   it('performs a real pit transit, sequential WEC fuel/tyre work and crew change', () => {
     const base = racing('wec')

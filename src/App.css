@@ -13,6 +13,12 @@
   --radius: 8px;
 }
 
+.map-elevation-control { position:absolute; z-index:5; right:12px; bottom:12px; display:grid; gap:5px; padding:8px 10px; border:1px solid #ffffff24; border-radius:6px; background:#080c10e8; color:#dce7eb; font-size:10px; max-width:calc(100% - 24px); }
+.map-elevation-control > div { display:flex; align-items:center; gap:5px; }
+.map-elevation-control button { border:1px solid #ffffff30; border-radius:3px; padding:3px 8px; background:#19242a; color:#dce7eb; cursor:pointer; }
+.map-elevation-control button[aria-pressed="true"] { background:#306b72; border-color:#62ccd4; }
+.map-elevation-control a { color:#9ddde2; margin-left:auto; }
+
 .race-shell {
   position: relative;
   min-height: 100svh;

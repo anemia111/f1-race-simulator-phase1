@@ -3,6 +3,30 @@ import { createMotorsportConfig } from './packages'
 import { advanceMotorsportRace, createMotorsportRace } from './race'
 
 describe('pit exit joining clearance', () => {
+  it.each(['kyojo','super-gt','wec','indycar'] as const)('%s timed sessions release from the registered pit lane and merge at its actual exit',category=>{
+    const config=createMotorsportConfig(category);config.entries=config.entries.slice(0,2)
+    config.sessionKind='qualifying';config.format={kind:'time',seconds:1200,basis:'SIM test'}
+    let state=createMotorsportRace(config)
+    const length=config.course.lengthM,pitLength=config.course.pitLengthM.value
+    const arc=(config.course.pitExit.value-config.course.pitEntry.value+1)%1
+    for(const car of state.cars){
+      const progress=(config.course.pitEntry.value+car.pitPathM/pitLength*arc)%1
+      expect(car.distanceM/length).toBeCloseTo(progress,8)
+    }
+    const joined=new Set<string>()
+    for(let i=0;i<1000&&joined.size<state.cars.length;i++){
+      const before=state;state=advanceMotorsportRace(state,1,config)
+      for(const car of state.cars){
+        const old=before.cars.find(c=>c.entryId===car.entryId)!
+        expect(car.distanceM).toBeGreaterThanOrEqual(old.distanceM)
+        if(old.status==='pit-exit'&&car.status==='running'){
+          expect((car.distanceM/length+1)%1).toBeCloseTo(config.course.pitExit.value,8)
+          joined.add(car.entryId)
+        }
+      }
+    }
+    expect(joined.size).toBe(2)
+  })
   it.each(['super-gt', 'wec', 'indycar'] as const)('%s waits before joining occupied track, then releases when clear', category => {
     const base = createMotorsportConfig(category), config = { ...base, entries: base.entries.slice(0, 2) }
     const initial = { ...createMotorsportRace(config), phase: 'racing' as const }

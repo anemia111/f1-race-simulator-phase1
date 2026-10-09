@@ -1,7 +1,9 @@
 import { Line, OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { memo, Suspense, useEffect, useMemo, useRef } from 'react'
+import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { elevationProfileFor } from '../data/courseElevation'
 import * as THREE from 'three'
+import { courseMotionAt, nextCourseMotion, type CourseMotionSegment } from './courseMotion'
 import { sectorPresentationSpans } from './sectorPresentation'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type {
@@ -322,6 +324,10 @@ function displayPoseForCar(
   garageBayIndex: number,
   elapsedSeconds: number,
 ) {
+  if (car.courseMotion) {
+    const roadOffset = presentationLateralOffset(track, car.lateralOffsetM)
+    return poseOnTrack(curve, car.progress, roadOffset + (pitLaneOffset(track) - roadOffset) * car.courseMotion.pitBlend)
+  }
   const trackPose = poseOnTrack(curve, car.progress, laneOffset)
   const displaysPitLane =
     car.status === 'pit' ||
@@ -1079,6 +1085,8 @@ function CarMarker({
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const markerPlacedRef = useRef(false)
+  const motionRef = useRef<CourseMotionSegment | null>(null)
+  const motionClockRef = useRef(snapshotElapsedSeconds)
   const invalidate = useThree((state) => state.invalidate)
   const markerColor =
     car.status === 'retired' ||
@@ -1132,10 +1140,30 @@ function CarMarker({
 
   useEffect(() => () => markerTexture.dispose(), [markerTexture])
 
+  useEffect(() => {
+    if (!car.courseMotion) return
+    const durationMs = car.courseMotion.rate > 0 ? (snapshotElapsedSeconds - motionClockRef.current) / car.courseMotion.rate * 1000 : 0
+    motionRef.current = nextCourseMotion(motionRef.current, {
+      distance: car.totalDistance, lateral: car.lateralOffsetM, pitBlend: car.courseMotion.pitBlend,
+    }, performance.now(), durationMs)
+    motionClockRef.current = snapshotElapsedSeconds
+    invalidate()
+  }, [car, snapshotElapsedSeconds, invalidate])
+
   useFrame(() => {
     const group = groupRef.current
 
     if (!group) {
+      return
+    }
+
+    if (car.courseMotion && motionRef.current) {
+      const sample = courseMotionAt(motionRef.current, performance.now())
+      const offset = presentationLateralOffset(track, sample.lateral)
+      group.position.copy(poseOnTrack(curve, sample.distance, offset + (pitLaneOffset(track) - offset) * sample.pitBlend).position)
+      group.position.y += 0.54
+      markerPlacedRef.current = true
+      if (performance.now() < motionRef.current.startedMs + motionRef.current.durationMs) invalidate()
       return
     }
 
@@ -1760,7 +1788,11 @@ function SceneContents({
 }
 
 export function RaceScene(props: RaceSceneProps) {
-  const curve = useMemo(() => createPresentationTrackCurve(props.config.track), [props.config.track])
+  const [heightScale,setHeightScale] = useState(3)
+  const renderTrack=useMemo(()=>({...props.config.track,elevationDisplayScale:heightScale}),[props.config.track,heightScale])
+  const config=useMemo(()=>({...props.config,track:renderTrack}),[props.config,renderTrack])
+  const profile=useMemo(()=>elevationProfileFor(config.track.id,config.track.centerline.map(([x,,z])=>[x,-z]),config.track.lengthKm*1000),[config.track])
+  const curve = useMemo(() => createPresentationTrackCurve(config.track), [config.track])
   const trackWidth = presentationTrackWidth(props.config.track)
   const roadGeometry = useMemo(
     () => createTrackRibbonGeometry(curve, trackWidth),
@@ -1774,8 +1806,9 @@ export function RaceScene(props: RaceSceneProps) {
     () => edgePoints(curve, trackWidth, -1),
     [curve, trackWidth],
   )
+  useEffect(()=>()=>roadGeometry.dispose(),[roadGeometry])
 
-  return (
+  return (<>
     <Canvas
       camera={{ fov: 48, near: 0.1, far: 600, position: [0, 47, 0.01] }}
       className="race-canvas"
@@ -1792,6 +1825,7 @@ export function RaceScene(props: RaceSceneProps) {
       <Suspense fallback={null}>
         <SceneContents
           {...props}
+          config={config}
           curve={curve}
           edgeLeft={edgeLeft}
           edgeRight={edgeRight}
@@ -1799,5 +1833,9 @@ export function RaceScene(props: RaceSceneProps) {
         />
       </Suspense>
     </Canvas>
-  )
+    {profile && <div className="map-elevation-control" aria-label="Map elevation">
+      <span title={profile.basis}>{profile.basis.includes('official')?'公式固定点＋補間':profile.basis.includes('unverified')?'提供値＋補間（未検証）':'公開標高データ（概算）'} · {Math.min(...profile.elevationsM,...(profile.anchors?.map(a=>a[1])??[])).toFixed(0)}–{Math.max(...profile.elevationsM,...(profile.anchors?.map(a=>a[1])??[])).toFixed(0)} m</span>
+      <div>{[0,1,3,5].map(scale=><button key={scale} type="button" aria-label={`Map elevation ${scale===0?'2D':`${scale}x`}`} aria-pressed={heightScale===scale} onClick={()=>setHeightScale(scale)}>{scale===0?'2D':`${scale}×`}</button>)}{profile.sourceUrl.startsWith('https://')&&<a href={profile.sourceUrl} target="_blank" rel="noreferrer">出典</a>}</div>
+    </div>}
+  </>)
 }

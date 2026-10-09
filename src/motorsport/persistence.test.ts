@@ -4,6 +4,16 @@ import { advanceMotorsportRace, createMotorsportRace } from './race'
 import { parseMotorsportSave, serializeMotorsportSave } from './persistence'
 
 describe('independent motorsport checkpoints', () => {
+  it('keeps optional lateral velocity backward compatible and rejects invalid motion on import',()=>{
+    const config=createMotorsportConfig('kyojo'),state=createMotorsportRace(config)
+    expect(parseMotorsportSave(serializeMotorsportSave(config,state))).not.toBeNull()
+    state.cars[0].lateralVelocityMps=0.4
+    expect(parseMotorsportSave(serializeMotorsportSave(config,state))?.state.cars[0].lateralVelocityMps).toBe(0.4)
+    for(const value of [Number.NaN,Number.POSITIVE_INFINITY,3]){
+      state.cars[0].lateralVelocityMps=value
+      expect(parseMotorsportSave(serializeMotorsportSave(config,state))).toBeNull()
+    }
+  })
   it('resumes the exact physical state and future trajectory, including a 62-car crew grid', () => {
     const config = createMotorsportConfig('wec', 'wec:3')
     expect(config.entries).toHaveLength(62)
