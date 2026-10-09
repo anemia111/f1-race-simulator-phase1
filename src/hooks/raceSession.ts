@@ -1,3 +1,6 @@
+import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
+import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
+import { createSfOtsSimulation } from '../simulation/sfOtsRuntime'
 import type {
   CarSnapshot,
   EnergyStoreState,
@@ -373,6 +376,7 @@ function authoritativeRechargeRulesFor(
     return [
       resolveF1RechargeRule({
         ...context,
+        allowUnverifiedSessionDefault: config.freeMode === true,
         eventId: config.eventId ?? undefined,
         eventInput: config.fiaPuEventInput,
         stage: config.weekendStage ?? 'race',
@@ -621,8 +625,15 @@ function isCompatibleEnergyStoreState(
       state.deployedAtCuKBusThisLapMJ + ENERGY_EPSILON ||
     state.deployedAtCuKBusThisLapMJ >
       state.energyRemovedThisLapMJ + ENERGY_EPSILON ||
-    (state.chargeDcPowerKw > ENERGY_EPSILON &&
-      state.dischargeDcPowerKw > ENERGY_EPSILON) ||
+    // These powers are averages over the integration interval. A transition
+    // from recovery to deployment can legitimately give both positive means;
+    // exclusivity applies to the internal substeps, not to this checkpoint.
+    state.chargeDcPowerKw > state.actualRecoveryPowerKw + ENERGY_EPSILON ||
+    !approximatelyEqual(state.dischargeDcPowerKw, state.actualDeploymentDcPowerKw) ||
+    state.storedChargePowerKw > state.chargeDcPowerKw + ENERGY_EPSILON ||
+    state.dischargeDcPowerKw > state.storedDischargePowerKw + ENERGY_EPSILON ||
+    !approximatelyEqual(state.motorMechanicalPowerKw,
+      state.actualDeploymentPowerKw - state.actualRecoveryPowerKw) ||
     !approximatelyEqual(
       state.conversionLossThisLapMJ,
       state.unattributedConversionLossThisLapMJ +
@@ -896,7 +907,7 @@ function isCompatibleSuperFormulaLiveTires(
 ) {
   if (
     !isRecord(liveTires) ||
-    !hasExactKeys(liveTires, SUPER_FORMULA_LIVE_TIRE_KEYS) ||
+    !hasExactKeys(liveTires, new Set([...SUPER_FORMULA_LIVE_TIRE_KEYS, ...(Object.hasOwn(liveTires, 'simulatedPerformance') ? ['simulatedPerformance'] : [])])) ||
     !isRecord(liveTires.fitment) ||
     !hasExactKeys(
       liveTires.fitment,
@@ -932,10 +943,11 @@ function isCompatibleSuperFormulaLiveTires(
 function isCompatibleSuperFormulaRuntimeSystems(
   value: unknown,
   teamId: string,
+  trackId: string,
 ) {
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, SUPER_FORMULA_RUNTIME_KEYS) ||
+    !hasExactKeys(value, new Set([...SUPER_FORMULA_RUNTIME_KEYS, ...(Object.hasOwn(value,'otsSimulation') ? ['otsSimulation'] : [])])) ||
     value.kind !== 'super-formula' ||
     !validateSuperFormulaControlTireInventory(value.controlTires).valid ||
     !isCompatibleSuperFormulaLiveTires(value.controlTires, value.liveTires)
@@ -943,6 +955,13 @@ function isCompatibleSuperFormulaRuntimeSystems(
     return false
   }
 
+  if (value.otsSimulation !== undefined) {
+    const expected = createSfOtsSimulation(trackId), ots = value.otsSimulation
+    if (!expected || !isRecord(ots) || !hasExactKeys(ots,new Set(Object.keys(expected))) ||
+      !isFiniteNumber(ots.remainingSeconds) || ots.remainingSeconds<0 || ots.remainingSeconds>200 ||
+      !isFiniteNumber(ots.cooldownUntilSeconds) || ots.cooldownUntilSeconds<0 || typeof ots.active!=='boolean' ||
+      ots.cooldownSeconds!==expected.cooldownSeconds || ots.boostPowerKw!==expected.boostPowerKw || ots.source!==expected.source) return false
+  }
   const engine = validateSuperFormula2026EngineLedger(value.engineLedger)
   if (
     !engine.valid ||
@@ -1081,9 +1100,10 @@ function isCompatibleCarSnapshot(
           value.timedRunPhase,
           value.overtakeStatus,
         )
-      : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id)
+      : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id, config.track.id)
 
   return (
+    (value.telemetryHistory === undefined || (Array.isArray(value.telemetryHistory) && value.telemetryHistory.length<=768 && value.telemetryHistory.every(point=>isRecord(point) && ['lap','progress','seconds','speedKph','throttlePercent','brakePercent','gear','rpm'].every(key=>isFiniteNumber(point[key])) && Number.isInteger(point.lap) && (point.lap as number)>=0 && (point.progress as number)>=0 && (point.progress as number)<1 && (point.speedKph as number)>=0 && (point.throttlePercent as number)>=0 && (point.throttlePercent as number)<=100 && (point.brakePercent as number)>=0 && (point.brakePercent as number)<=100))) &&
     typeof value.code === 'string' &&
     typeof value.status === 'string' &&
     carStatuses.has(value.status) &&
@@ -1293,7 +1313,7 @@ function migrateRaceSnapshot(
     config.vehicleEraId,
   )
 
-  return {
+  return repairSafetyCarStartTiming({
     ...value,
     cars: value.cars.map((car) => {
       const persisted = car as CarSnapshot &
@@ -1314,6 +1334,14 @@ function migrateRaceSnapshot(
 
       return {
         ...car,
+        runtimeSystems:
+          car.runtimeSystems.kind === 'super-formula' &&
+          car.runtimeSystems.otsSimulation === undefined
+            ? {
+                ...car.runtimeSystems,
+                otsSimulation: createSfOtsSimulation(config.track.id),
+              }
+            : car.runtimeSystems,
         desiredLateralOffsetM,
         driverAgentRuntime:
           car.driverAgentRuntime ??
@@ -1333,7 +1361,7 @@ function migrateRaceSnapshot(
         trackLateralOffset: lateralOffsetM,
       }
     }),
-  }
+  }, config.track.lengthKm)
 }
 
 function isCompatibleRaceSnapshot(
@@ -1460,7 +1488,7 @@ export function serializeRaceCheckpoint(
       sessionKey,
       snapshot,
       version: RACE_CHECKPOINT_VERSION,
-    } satisfies StoredRaceCheckpoint)
+    } satisfies StoredRaceCheckpoint,(key,value)=>key==='telemetryHistory' && Array.isArray(value)?encodeTelemetryHistory(value):value)
 
     return serialized.length <= MAX_CHECKPOINT_LENGTH ? serialized : null
   } catch {
@@ -1479,7 +1507,7 @@ export function parseRaceCheckpoint(
   }
 
   try {
-    const parsed = JSON.parse(raw) as unknown
+    const parsed = JSON.parse(raw,(key,value)=>key==='telemetryHistory'?decodeTelemetryHistory(value):value) as unknown
 
     if (
       !isRecord(parsed) ||

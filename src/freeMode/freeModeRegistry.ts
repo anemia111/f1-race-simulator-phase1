@@ -602,6 +602,7 @@ export function buildFreeModeRaceConfig(
         'super-formula',
       )
   const config: RaceConfig = {
+    raceStartMode: configuration.raceStartMode ?? 'standing',
     categoryRaceFormat: rules.race,
     drivers,
     overtakeSystem: rules.overtakeSystem,

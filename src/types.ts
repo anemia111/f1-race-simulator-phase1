@@ -889,6 +889,9 @@ export type TrackDefinition = {
   raceLapsSource?: 'official' | 'estimated'
   sectorMarks: number[]
   sectorMarksSource?: OperationalDataSource
+  sectorTimingUnavailableReason?: string
+  /** Published section names for series using timing loops instead of F1 sectors. */
+  sectorLabels?: string[]
   /** Runtime control-line progress -> generated geodata's original origin. */
   measuredRoadProgressOffset?: number
   sectorBoundaryReference?: {
@@ -920,6 +923,7 @@ export type TrackDefinition = {
     sourceUrl?: string | null
   }
   corners?: Array<{
+    label?: string
     number: number
     position: Vector3Tuple
   }>
@@ -986,6 +990,8 @@ export type RaceConfig = {
   freeMode?: boolean
   /** Category identity keeps checkpoints and category-specific assists isolated. */
   seriesId?: ExecutableSeriesId
+  /** Initial start format; omission preserves the standing-start rule package. */
+  raceStartMode?: 'standing' | 'rolling'
   vehicleEraId?: RuntimeVehicleEraId
   /** Omission selects the behavior-neutral category agent adapter. */
   driverDecisionPath?: DriverDecisionPath
@@ -1252,6 +1258,7 @@ export type EnergyStoreState = {
 }
 
 export type CarSnapshot = {
+  telemetryHistory?: import('./simulation/telemetryHistory').TelemetryPoint[]
   driverId: string
   /** Category mileage plus a bounded replay tail of operational decisions. */
   driverAgentRuntime?: DriverAgentRuntimeState

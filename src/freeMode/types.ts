@@ -45,6 +45,8 @@ export type FreeModeConfiguration = {
   gridMode: FreeModeGridMode
   weatherMode: FreeModeWeatherMode
   raceLaps: number
+  /** Optional for existing version-1 saves, which keep standing starts. */
+  raceStartMode?: 'standing' | 'rolling'
   practiceDurationMinutes: number
   seed: string
   equalCars: boolean

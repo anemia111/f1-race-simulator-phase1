@@ -190,12 +190,12 @@ describe('Free Mode registry and validation', () => {
     expect(runtime.raceConfig).not.toHaveProperty('tireAllocation')
   })
 
-  it('loads only F1 and Super Formula machinery plus the 110-driver pool', () => {
+  it('loads F1 and Super Formula machinery plus the expanded driver pool', () => {
     expect([...seriesById.keys()]).toEqual([
       'f1-custom',
       'super-formula',
     ])
-    expect(driverPool2026).toHaveLength(110)
+    expect(driverPool2026).toHaveLength(348)
   })
 
   it.each(Array.from({ length: FREE_MODE_MAX_CARS }, (_, index) => index + 1))(

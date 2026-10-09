@@ -15,6 +15,7 @@ export function offlineQualifyingRunAdjudication(runKey: string): {
 /** Live timed-lap steward events. Driver execution is resolved separately. */
 export function liveTimedLapAdjudication(options: {
   completedTimedLap: number
+  obstructed?: boolean
   driverId: string
   seed: string
   segmentKey: string
@@ -25,10 +26,7 @@ export function liveTimedLapAdjudication(options: {
   const { completedTimedLap, driverId, seed, segmentKey } = options
 
   return {
-    causedYellow:
-      hashChance(
-        `${seed}:timed-yellow:${segmentKey}:${driverId}:${completedTimedLap}`,
-      ) < 0.01,
+    causedYellow: options.obstructed === true,
     trackLimitDeleted:
       hashChance(
         `${seed}:timed-track-limit:${segmentKey}:${driverId}:${completedTimedLap}`,

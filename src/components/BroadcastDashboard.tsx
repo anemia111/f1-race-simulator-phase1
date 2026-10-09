@@ -1,3 +1,6 @@
+import { CompoundUsageChart } from './CompoundUsageChart'
+import { TelemetryComparison } from './TelemetryComparison'
+import { trackCornerTelemetry } from '../data/cornerReferences'
 import {
   Activity,
   Database,
@@ -42,7 +45,7 @@ import type { SeriesId } from '../series/types'
 import type { ApplicationMode } from '../freeMode/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
-type DashboardView = 'map' | 'data'
+type DashboardView = 'map' | 'data' | 'telemetry'
 
 const practiceProgramLabels: Record<
   NonNullable<CarSnapshot['practiceProgram']>,
@@ -66,6 +69,7 @@ const practiceProgramLabels: Record<
 }
 
 export type BroadcastTimingRow = {
+  categoryDisplay?: { carNumberLabel: string; classLabel: string; classId: string; classPosition: number; tyreLabel: string; usedTyres: string; energyLabel: string }
   aeroOvertakeLabel: string
   /** F1-only Energy Store SOC; null for a SUPER FORMULA runtime. */
   batteryPercent: number | null
@@ -113,6 +117,7 @@ export type BroadcastDataDetail = {
 
 
 type BroadcastDashboardProps = {
+  categoryPresentation?: { seriesValue: string; systemsLabel: string; tyreUsage: ReactNode; tyreLegend: ReactNode; speeds: number[]; telemetryCorners?: {label: string; progress: number}[] }
   applicationMode: ApplicationMode
   cameraMode: CameraMode
   dataControl: ReactNode
@@ -134,6 +139,7 @@ type BroadcastDashboardProps = {
   onOpenSetup: () => void
   onPauseChange: () => void
   onSeriesChange: (seriesId: SeriesId) => void
+  onOpenMotorsport?: (championship: import('../motorsport/types').ChampionshipId) => void
   onSkipFormationLap: () => void
   onSpeedChange: (speed: SpeedMultiplier) => void
   onStageChange: (stage: WeekendStage) => void
@@ -202,6 +208,7 @@ const dashboardViews: Array<{
   label: string
 }> = [
   { Icon: Database, id: 'data', label: 'Data' },
+  { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
 ]
 
 const defaultTireLabels: Record<TireCompound, string> = {
@@ -401,46 +408,7 @@ function TireUsage({
     )
   }
 
-  const total = Math.max(1, cars.length)
-  let offset = 0
-
-  return (
-    <div className="tyre-usage-content">
-      <svg aria-label="tyre compound usage" className="tyre-donut" viewBox="0 0 42 42">
-        <circle className="tyre-donut-base" cx="21" cy="21" fill="none" r="15.9" strokeWidth="6" />
-        {usage.map(([compound, count]) => {
-          const share = (count / total) * 100
-          const dashOffset = -offset
-          offset += share
-
-          return (
-            <circle
-              cx="21"
-              cy="21"
-              fill="none"
-              key={compound}
-              r="15.9"
-              stroke={tireColors[compound]}
-              strokeDasharray={`${share} ${100 - share}`}
-              strokeDashoffset={dashOffset}
-              strokeWidth="6"
-              transform="rotate(-90 21 21)"
-            />
-          )
-        })}
-      </svg>
-      <div className="tyre-usage-legend">
-        {usage.map(([compound, count]) => (
-          <div key={compound}>
-            <span className={`broadcast-tire tire-${compound}`}>{compound}</span>
-            <span>{labels[compound]}</span>
-            <strong>{count}</strong>
-            <small>{Math.round((count / total) * 100)}%</small>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  return <CompoundUsageChart items={usage.map(([compound,count])=>({id:compound,label:labels[compound],count,color:tireColors[compound],badgeClass:`tire-${compound}`}))}/>
 }
 
 function LeftLeaderboard({
@@ -451,6 +419,7 @@ function LeftLeaderboard({
   rows,
   selectedDriverId,
   showCarNumbers,
+  showClassLabels = false,
   stage,
   title,
 }: {
@@ -461,6 +430,7 @@ function LeftLeaderboard({
   rows: BroadcastTimingRow[]
   selectedDriverId: string
   showCarNumbers: boolean
+  showClassLabels?: boolean
   stage: WeekendStage
   title: string
 }) {
@@ -489,7 +459,7 @@ function LeftLeaderboard({
         <span>LAST</span><span>BEST</span>{(rows[0]?.sectors ?? [null, null, null]).map((_, index) => <span key={index}>S{index + 1}</span>)}
         <span title="Completed pit stops">ST</span><span title="Compounds used">USED</span><span>SPD</span>
         <span>
-          {rows[0]?.car.runtimeSystems.kind === 'f1'
+          {rows[0]?.categoryDisplay ? 'ENERGY' : rows[0]?.car.runtimeSystems.kind === 'f1'
             ? 'ERS'
             : rows[0]?.car.runtimeSystems.kind === 'super-formula'
               ? 'OTS'
@@ -525,7 +495,7 @@ function LeftLeaderboard({
                 </span>
                 <span className="leaderboard-driver">
                   <i style={{ backgroundColor: row.car.teamColor }} />
-                  <strong>{row.car.code}</strong>
+                  <span className="leaderboard-driver-identity"><strong title={row.categoryDisplay ? `${row.car.driverName} / ${row.car.teamName} / ${row.categoryDisplay.classLabel}` : undefined}>{row.car.code}</strong>{showClassLabels && row.categoryDisplay && <small className="leaderboard-class-label">{row.categoryDisplay.classId.toUpperCase()}</small>}</span>
                   {row.car.blueFlag ? (
                     <small className="blue-flag-label" title="Blue flag">
                       <Flag aria-hidden="true" size={7} /> BLUE
@@ -539,7 +509,7 @@ function LeftLeaderboard({
                     </small>
                   ) : showCarNumbers ? (
                     <small className="leaderboard-car-number">
-                      #{row.car.carNumber}
+                      #{row.categoryDisplay?.carNumberLabel ?? row.car.carNumber}
                     </small>
                   ) : practiceProgram &&
                     (stage === 'fp1' || stage === 'fp2' || stage === 'fp3') ? (
@@ -550,7 +520,7 @@ function LeftLeaderboard({
                     <small>{compactSource(row.source)}</small>
                   )}
                 </span>
-                {row.tireDisplay.kind === 'f1-pirelli' ? (
+                {row.categoryDisplay ? <span className="broadcast-tire leaderboard-tire-life" title={row.categoryDisplay.tyreLabel}>{tireLife ?? '--'}</span> : row.tireDisplay.kind === 'f1-pirelli' ? (
                   <span
                     aria-label={`${labels[row.tireDisplay.compound]} tyre, ${tireLife ?? '--'}% life remaining`}
                     className={`broadcast-tire leaderboard-tire-life tire-${row.tireDisplay.compound}`}
@@ -591,7 +561,7 @@ function LeftLeaderboard({
                 >
                   {row.car.pitStops}
                 </span>
-                {row.car.runtimeSystems.kind === 'f1' ? (
+                {row.categoryDisplay ? <span title={row.categoryDisplay.usedTyres}>{row.categoryDisplay.usedTyres}</span> : row.car.runtimeSystems.kind === 'f1' ? (
                   <span
                     aria-label={`Compounds used: ${row.car.runtimeSystems.tires.compoundsUsed.map((compound) => labels[compound]).join(', ') || 'none yet'}`}
                     className="leaderboard-compounds"
@@ -610,12 +580,14 @@ function LeftLeaderboard({
                   </span>
                 )}
                 <span title={`${row.speedKph} km/h`}>{Math.round(row.speedKph)}</span>
-                {row.car.runtimeSystems.kind === 'f1' ? (
+                {row.categoryDisplay ? <span title={row.categoryDisplay.energyLabel}>{row.categoryDisplay.energyLabel}</span> : row.car.runtimeSystems.kind === 'f1' ? (
                   <span
                     title={`ERS SOC ${row.batteryPercent ?? '--'}% / ${row.car.runtimeSystems.energyStore.currentEnergyMJ.toFixed(2)} MJ / deploy ${Math.round(row.car.runtimeSystems.energyStore.actualDeploymentPowerKw)} kW / recover ${Math.round(row.car.runtimeSystems.energyStore.actualRecoveryPowerKw)} kW`}
                   >
                     {row.batteryPercent ?? '--'}%
                   </span>
+                ) : row.car.runtimeSystems.otsSimulation ? (
+                  <span title={`OTS ${row.car.overtakeStatus} / ${row.car.runtimeSystems.otsSimulation.remainingSeconds.toFixed(1)}s left / cooldown ${row.car.runtimeSystems.otsSimulation.cooldownSeconds.toFixed(0)}s / SIM boost`}>{row.car.runtimeSystems.otsSimulation.active ? 'ON ' : ''}{row.car.runtimeSystems.otsSimulation.remainingSeconds.toFixed(0)}s</span>
                 ) : row.car.runtimeSystems.ots.availability === 'verified-event-rule' ? (
                   <span
                     title={`Event OTS allocation ${row.car.runtimeSystems.ots.allocationSeconds} seconds; activation condition evaluation is pending`}
@@ -643,10 +615,12 @@ function CenterView({
 }) {
   return (
     <div className="data-view">
+      <div className="data-content">
       <div className="data-detail-grid">
         {dataDetails.map((detail) => (
           <div key={detail.label}><span>{detail.label}</span><strong>{detail.value}</strong><SourceTag source={detail.source} /></div>
         ))}
+      </div>
       </div>
       {dataControl}
     </div>
@@ -654,6 +628,7 @@ function CenterView({
 }
 
 export function BroadcastDashboard({
+  categoryPresentation,
   applicationMode,
   cameraMode,
   dataControl,
@@ -675,6 +650,7 @@ export function BroadcastDashboard({
   onOpenSetup,
   onPauseChange,
   onSeriesChange,
+  onOpenMotorsport,
   onSkipFormationLap,
   onSpeedChange,
   onStageChange,
@@ -698,6 +674,8 @@ export function BroadcastDashboard({
   const [activeView, setActiveView] = useState<DashboardView>('map')
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
+  const classIds = categoryPresentation ? ['gt500','gt300','hypercar','lmp2','lmgt3','kyojo','indycar'].filter(id => timingRows.some(row => row.categoryDisplay?.classId === id)) : []
+  const telemetryCorners = useMemo(() => categoryPresentation?.telemetryCorners ?? trackCornerTelemetry(track), [categoryPresentation?.telemetryCorners, track])
 
   useEffect(() => {
     if (dataMode !== 'SIM' && cameraMode !== 'overview') {
@@ -722,7 +700,9 @@ export function BroadcastDashboard({
       ? track.activeAeroUnavailable
         ? `${overtakeLabel} N/A`
         : `${track.aeroActivationZones?.length ?? 0} ${overtakeLabel} ZONES`
-      : selectedCar.runtimeSystems.ots.availability === 'verified-event-rule'
+      : selectedCar.runtimeSystems.otsSimulation
+        ? `OTS ${selectedCar.overtakeStatus.toUpperCase()} / ${selectedCar.runtimeSystems.otsSimulation.remainingSeconds.toFixed(1)}s / WAIT ${Math.max(0,selectedCar.runtimeSystems.otsSimulation.cooldownUntilSeconds-snapshot.elapsedSeconds).toFixed(1)}s`
+        : selectedCar.runtimeSystems.ots.availability === 'verified-event-rule'
         ? 'OTS EVENT RULE / CONDITION PENDING'
         : 'OTS UNAVAILABLE'
   const activeSectorFlagIndex = snapshot.sectorFlags.findIndex(
@@ -775,12 +755,17 @@ export function BroadcastDashboard({
             aria-label="Racing series"
             className="broadcast-series-select"
             disabled={applicationMode === 'free'}
-            onChange={(event) => onSeriesChange(event.target.value as SeriesId)}
-            value={seriesId}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value.startsWith('motorsport:')) onOpenMotorsport?.(value.slice(11) as import('../motorsport/types').ChampionshipId)
+              else onSeriesChange(value as SeriesId)
+            }}
+            value={categoryPresentation?.seriesValue ?? seriesId}
           >
             {seriesOptions.map((series) => (
               <option key={series.id} value={series.id}>{series.label}</option>
             ))}
+            {onOpenMotorsport && <><option value="motorsport:kyojo">KYOJO CUP</option><option value="motorsport:super-gt">SUPER GT</option><option value="motorsport:wec">FIA WEC</option><option value="motorsport:indycar">INDYCAR</option></>}
           </select>
         </div>
         <div className="broadcast-session-core">
@@ -833,7 +818,7 @@ export function BroadcastDashboard({
           <span>{sessionProgressLabel}</span>
           <time>
             {formatClock(
-              isRaceStage
+              isRaceStage && !(categoryPresentation && sessionPhaseLabel === 'FORMATION')
                 ? snapshot.raceClockSeconds
                 : snapshot.elapsedSeconds,
             )}
@@ -870,6 +855,11 @@ export function BroadcastDashboard({
 
       <main className="broadcast-workspace">
         <div className="broadcast-left-column">
+          {classIds.length > 1 ? <div className="broadcast-class-leaderboards">{classIds.map(classId => <LeftLeaderboard
+            key={classId} labels={tireLabels} mode={leaderboardMode} onFocusDriver={onFocusDriver} onModeChange={setLeaderboardMode}
+            rows={timingRows.filter(row => row.categoryDisplay?.classId === classId).map(row => ({...row,displayPosition:row.categoryDisplay!.classPosition}))}
+            selectedDriverId={selectedCar.driverId} showCarNumbers showClassLabels stage={stage} title={`${classId.toUpperCase()} Leaderboard`}
+          />)}</div> : (
           <LeftLeaderboard
             labels={tireLabels}
             mode={leaderboardMode}
@@ -887,8 +877,9 @@ export function BroadcastDashboard({
                   : 'Race Leaderboard'
             }
           />
+          )}
           <div className="broadcast-left-analytics">
-            <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" /><TireUsage cars={timingRows.map((row) => row.car)} labels={tireLabels} /></section>
+            <section className="broadcast-panel tyre-usage-panel"><PanelHeader title="Tyre Compound Usage" />{categoryPresentation?.tyreUsage ?? <TireUsage cars={timingRows.map((row) => row.car)} labels={tireLabels} />}</section>
             <section className="broadcast-panel pit-stop-panel"><PanelHeader title="Pit Stops" /><div aria-label="All drivers pit stops" className="pit-stop-list" role="table" tabIndex={0}><div role="row"><span>DRIVER</span><span>STOPS</span><span>LAST</span></div>{timingRows.filter((row) => row.car.pitStops > 0).map((row) => <div key={row.car.driverId} role="row"><strong style={{ color: row.car.teamColor }}>{row.car.code}</strong><span>{row.car.pitStops}</span><span>{latestPitLap(row.car) ?? '-'}</span></div>)}</div></section>
           </div>
         </div>
@@ -898,7 +889,7 @@ export function BroadcastDashboard({
           <section className="broadcast-panel broadcast-track-panel">
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
-              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${trackOvertakeStatus}`}
+              eyebrow={`${track.lengthKm.toFixed(3)} KM / ${categoryPresentation?.systemsLabel ?? trackOvertakeStatus}`}
               title={`Track Map - ${track.name}`}
             />
             <div className="broadcast-track-stage">
@@ -907,7 +898,7 @@ export function BroadcastDashboard({
               <StartSignal snapshot={snapshot} />
               <div className="track-map-status"><span className={`flag-dot flag-${controlFlagClass}`} />{snapshot.lowGripConditions ? 'LOW GRIP' : controlFlagLabel}<SourceTag source={layoutSourceTag(track)} /></div>
               <div className="track-map-legend">
-                {selectedCar.runtimeSystems.kind === 'f1' ? (
+                {categoryPresentation ? categoryPresentation.tyreLegend : selectedCar.runtimeSystems.kind === 'f1' ? (
                   (Object.keys(tireLabels) as TireCompound[])
                     .filter((compound) => !tireLabels[compound].startsWith('Not '))
                     .map((compound) => (
@@ -923,6 +914,14 @@ export function BroadcastDashboard({
                   </span>
                 )}
               </div>
+            </div>
+          </section>
+          ) : activeView === 'telemetry' ? (
+          <section className="broadcast-panel broadcast-telemetry-panel" aria-label="Telemetry workspace">
+            <PanelHeader title="Telemetry comparison" action={<button aria-label="Close telemetry comparison" className="panel-close" onClick={()=>setActiveView('map')} type="button"><X size={13}/></button>}/>
+            <div className="telemetry-workspace">
+              <label className="telemetry-primary-car">車両A<select aria-label="Telemetry primary car" value={selectedCar.driverId} onChange={event=>onFocusDriver(event.target.value)}>{snapshot.cars.map(car=><option key={car.driverId} value={car.driverId}>#{car.carNumber} {car.driverName}</option>)}</select></label>
+              <TelemetryComparison selectedId={selectedCar.driverId} lengthM={track.lengthKm*1000} traces={snapshot.cars.map(car=>({id:car.driverId,name:`#${car.carNumber} ${car.driverName}`,color:car.teamColor,samples:car.telemetryHistory ?? []}))} corners={telemetryCorners}/>
             </div>
           </section>
           ) : (
@@ -944,7 +943,7 @@ export function BroadcastDashboard({
         <div className="footer-race-control"><Radio size={14}/><strong>RACE CONTROL</strong><time>{raceControlLog[0]?.timeLabel ?? snapshot.elapsedLabel}</time><span>{raceControlLog[0]?.message ?? snapshot.eventMessage}</span></div>
         <div className="footer-controls">
           <button aria-label={isPaused ? 'Resume simulation' : 'Pause simulation'} onClick={onPauseChange} title={isPaused ? 'Resume' : 'Pause'} type="button">{isPaused ? <Play size={14}/> : <Pause size={14}/>}</button>
-          {snapshot.startProcedure === 'formation' ? (
+          {snapshot.startProcedure === 'formation' || (categoryPresentation && sessionPhaseLabel === 'FORMATION') ? (
             <button
               aria-label="Skip formation lap"
               className="formation-skip-control"
@@ -955,7 +954,7 @@ export function BroadcastDashboard({
               <StepForward size={14}/><span>SKIP FORMATION</span>
             </button>
           ) : null}
-          {([1, 5, 20, 60] as SpeedMultiplier[]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option)} type="button">{option}x</button>)}
+          {(categoryPresentation?.speeds ?? [1, 5, 20, 60]).map((option) => <button aria-pressed={speed === option} key={option} onClick={() => onSpeedChange(option as SpeedMultiplier)} type="button">{option}x</button>)}
           <button
             className="pit-wall-control"
             onClick={onOpenPitWall}

@@ -111,6 +111,7 @@ export type SuperFormulaRuntimeSystems = {
    * deliberately has no F1 compound or coefficient-based tyre model.
    */
   readonly liveTires: SuperFormulaLiveTireState
+  readonly otsSimulation?: import('./sfOtsRuntime').SfOtsSimulation
   readonly ots: SuperFormulaOtsResolution
   readonly refuelling: SuperFormulaRefuellingResolution
   /**

@@ -399,6 +399,7 @@ function markersFor(circuit, key, transform, limit) {
     .filter((marker) => marker?.trackPosition)
     .map((marker) => ({
       number: Number(marker.number),
+      label: `${marker.number}${marker.letter ?? ''}`,
       position: transform(marker.trackPosition),
     }))
     .filter((marker) => Number.isFinite(marker.number))
@@ -409,7 +410,7 @@ function cornersLiteral(corners) {
   return `[\n${corners
     .map(
       (corner) =>
-        `      { number: ${corner.number}, position: [${corner.position[0]}, ${corner.position[1]}, ${corner.position[2]}] },`,
+        `      { number: ${corner.number}, label: ${JSON.stringify(corner.label ?? String(corner.number))}, position: [${corner.position[0]}, ${corner.position[1]}, ${corner.position[2]}] },`,
     )
     .join('\n')}\n    ]`
 }
@@ -431,7 +432,7 @@ function layoutLiteral(trackId, meeting, circuit) {
     sectorMarksSource: 'derived',
     width: ${trackWidthFor(trackId)},
     projection: ${JSON.stringify(normalized.projection)},
-    corners: ${cornersLiteral(corners)} as Array<{ number: number; position: [number, number, number] }>,
+    corners: ${cornersLiteral(corners)} as Array<{ number: number; label?: string; position: [number, number, number] }>,
     marshalPosts: ${pointsLiteral(marshalPosts)} as Array<[number, number, number]>,
     source: {
       kind: 'openf1',
@@ -452,7 +453,7 @@ function madridLayoutLiteral(circuit) {
     sectorMarks: [0, 0.333, 0.667] as [number, number, number],
     sectorMarksSource: 'derived',
     width: ${trackWidthFor('madrid-approx')},
-    corners: ${cornersLiteral(corners)} as Array<{ number: number; position: [number, number, number] }>,
+    corners: ${cornersLiteral(corners)} as Array<{ number: number; label?: string; position: [number, number, number] }>,
     marshalPosts: [] as Array<[number, number, number]>,
     source: {
       kind: 'official',
@@ -520,7 +521,7 @@ export type RealTrackLayout = {
     centerY: number
     scale: number
   }
-  corners: Array<{ number: number; position: [number, number, number] }>
+  corners: Array<{ number: number; label?: string; position: [number, number, number] }>
   marshalPosts: Array<[number, number, number]>
   source: {
     kind: 'openf1' | 'official'

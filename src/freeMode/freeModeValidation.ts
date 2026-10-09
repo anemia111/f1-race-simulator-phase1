@@ -68,6 +68,10 @@ export function validateFreeModeConfiguration(
       message: 'Select a supported category.',
     })
   }
+  if (configuration.raceStartMode !== undefined &&
+    configuration.raceStartMode !== 'standing' && configuration.raceStartMode !== 'rolling') {
+    issues.push({ code: 'start-mode', field: 'raceStartMode', message: 'Select standing or rolling start.' })
+  }
   if (!trackIds.has(configuration.trackId)) {
     issues.push({
       code: 'unknown-track',
@@ -233,6 +237,7 @@ export function parseFreeModeConfiguration(
   if (
     !isRecord(value) ||
     value.version !== 1 ||
+    (value.raceStartMode !== undefined && value.raceStartMode !== 'standing' && value.raceStartMode !== 'rolling') ||
     !isExecutableSeriesId(value.categoryId) ||
     typeof value.trackId !== 'string' ||
     value.trackId.length < 1 ||
@@ -263,6 +268,7 @@ export function parseFreeModeConfiguration(
   }
 
   const configuration: FreeModeConfiguration = {
+    ...(value.raceStartMode === undefined ? {} : { raceStartMode: value.raceStartMode as 'standing' | 'rolling' }),
     categoryId: value.categoryId as SeriesId,
     entrants: entrants as FreeModeEntrant[],
     equalCars: value.equalCars,

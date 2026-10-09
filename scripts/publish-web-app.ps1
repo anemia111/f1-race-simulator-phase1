@@ -119,7 +119,10 @@ if ($LASTEXITCODE -ne 0) {
 
   & git -C $deployRoot push origin HEAD:master
   if ($LASTEXITCODE -ne 0) {
-    throw 'Could not push the deployment.'
+    & node (Join-Path $PSScriptRoot 'recover-github-push.mjs') $deployRoot $expectedRepository master
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Could not push the deployment or verify an identical API recovery.'
+    }
   }
 }
 

@@ -1,3 +1,7 @@
+import { advancePedals } from './pedalControl'
+import { raceTyreGrip } from './raceTyres'
+import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
+import { advanceSfOts } from './sfOtsRuntime'
 import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
@@ -262,12 +266,11 @@ export function calculateCarTelemetry(options: {
       ? resolveSuperFormulaOperational()
       : null
   const superFormulaOts = superFormulaRuntime?.ots
-  // Article 24.3.8 delegates OTS operation to an event source. With no
-  // verified event pack (or no evaluated event conditions), this is false and
-  // the runtime must neither activate OTS nor preserve a legacy allocation.
+  // Keep official event resolution separate from the manufacturer-backed SIM
+  // model. Unknown courses retain the unavailable event-rule boundary.
   const otsRuntimeCanActivate =
-    superFormulaOts?.availability === 'verified-event-rule' &&
-    superFormulaOts.runtimeEligibility.canActivate
+    (superFormulaOts?.availability === 'verified-event-rule' &&
+    superFormulaOts.runtimeEligibility.canActivate) || superFormulaRuntime?.otsSimulation !== undefined
   const operationalVehicleMass =
     options.operationalVehicleMass ??
     resolveOperationalVehicleMass({
@@ -370,11 +373,13 @@ export function calculateCarTelemetry(options: {
       })
   const compoundGrip = f1Tires
     ? tireTrackGripMultiplier(f1Tires.tire, trackCondition)
-    : 1
-  // The F1 Pirelli runtime carries the state needed to resolve a live tyre
-  // force envelope. SUPER FORMULA deliberately has no equivalent coefficient
-  // state: its control-tire branch remains unavailable rather than borrowing
-  // an F1 zero-loss compatibility value.
+    : superFormulaRuntime
+      ? superFormulaRuntime.liveTires.activeSurface === 'wet'
+        ? trackCondition.surfaceWaterMm > 0.1 ? 1 : 0.78
+        : trackCondition.surfaceWaterMm > 0.28 ? 0.65 : 1
+      : 1
+  // F1 retains its Pirelli envelope. SF uses a separate control-tyre SIM
+  // envelope; unavailable supplier coefficients never become F1 compounds.
   const f1TireForceEnvelope =
     f1Tires !== null && categoryPhysics.id === 'f1-custom'
       ? f1TireForceEnvelopeFor({
@@ -401,7 +406,10 @@ export function calculateCarTelemetry(options: {
   const localGrip = clamp(
     surfaceGrip *
       compoundGrip *
-      (f1TireForceEnvelope?.gripMultiplier ?? 1),
+      (f1TireForceEnvelope?.gripMultiplier ?? (superFormulaRuntime ? raceTyreGrip(
+        superFormulaSimulatedTyreFor(superFormulaRuntime.liveTires, track.lengthKm), 'super-formula',
+        superFormulaRuntime.liveTires.activeSurface === 'wet' ? 'wet' : 'primary',
+      ) : 1)),
     // `tyreForces` is numerically stable down to 0.05. Keeping the same
     // lower boundary here ensures a wet/mismatched F1 tyre's dynamic-state
     // loss remains visible instead of being flattened by a compatibility
@@ -548,7 +556,7 @@ export function calculateCarTelemetry(options: {
       (options.following?.decelerationMps2 ?? 0) /
         Math.max(1, categoryPhysics.maximumBrakeDecelerationMps2)) * 100 +
     pitLaneBrakeDemand
-  const brakePercent = Math.round(
+  const requestedBrakePercent = Math.round(
     clamp(
       phase?.flag === 'red' || immobilizedIncident
         ? 100
@@ -567,12 +575,14 @@ export function calculateCarTelemetry(options: {
           : car.speedKph < pitLaneSpeedLimitKph + 1
             ? 8
             : 0
-    : brakePercent > 3
+    : requestedBrakePercent > 3
       ? 0
       : dynamics.fullThrottle
         ? 100
-        : 34 + dynamics.straightness * 62 +
-          Math.max(0, targetSpeedKph - car.speedKph) * 0.24
+        : Number.isFinite(corneringSpeedLimitKph)
+          ? 100 * Math.sqrt(Math.max(0, 1 - Math.min(1, car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 4)) +
+            Math.max(0, targetSpeedKph - car.speedKph) * 0.24
+          : 100
   const controlThrottleScale = phase?.flag === 'red' ? 0 : phase ? 0.84 : 1
   const requestedThrottlePercent = Math.round(
     // A straight can have an unbounded target. Bound pedal demand before
@@ -607,13 +617,24 @@ export function calculateCarTelemetry(options: {
       100,
     ),
   )
-  const throttlePercent = timedTrafficYield
-    ? Math.min(38, behaviorManagedThrottlePercent)
-    : behaviorManagedThrottlePercent
+  const pedals = advancePedals({
+    throttle: timedTrafficYield ? Math.min(38, behaviorManagedThrottlePercent) : behaviorManagedThrottlePercent,
+    brake: requestedBrakePercent,
+    previousThrottle: car.throttlePercent,
+    previousBrake: car.brakePercent,
+    seconds: deltaSeconds,
+    carbonBrakes: categoryPhysics.id === 'f1-custom',
+    stop: phase?.flag === 'red' || immobilizedIncident,
+  })
+  const throttlePercent = car.pitPhase === 'box' ? 0 : pedals.throttle
+  const brakePercent = pedals.brake
   const otsAvailable =
     overtakeSystem === 'ots' &&
     otsRuntimeCanActivate &&
     !isPreparationLap &&
+    !lowGripConditions &&
+    (!superFormulaRuntime?.otsSimulation || (superFormulaRuntime.otsSimulation.remainingSeconds > 0 && elapsedSeconds >= superFormulaRuntime.otsSimulation.cooldownUntilSeconds)) &&
+    car.pitPhase === 'none' &&
     sessionType === 'race-distance' &&
     raceControlOvertakeEnabled &&
     !phase &&
@@ -632,11 +653,14 @@ export function calculateCarTelemetry(options: {
           throttlePercent,
         },
         path: driverDecisionPath,
-        seriesId,
+        seriesId: seriesId ?? (categoryPhysics.id === 'super-formula' ? 'super-formula' : undefined),
         vehicleEraId,
       })
     : false
+  const otsSimulation = superFormulaRuntime?.otsSimulation
+    ? advanceSfOts(superFormulaRuntime.otsSimulation, sfOtsUseRequested, otsAvailable, elapsedSeconds, deltaSeconds) : undefined
   const otsActive = otsAvailable && sfOtsUseRequested
+  const otsUsedSeconds = otsActive ? Math.min(deltaSeconds, superFormulaRuntime?.otsSimulation?.remainingSeconds ?? deltaSeconds) : 0
   const f1ElectricalOvertakeRequest =
     !isPreparationLap &&
     overtakeSystem !== 'ots' &&
@@ -840,9 +864,7 @@ export function calculateCarTelemetry(options: {
         ? intentScheduledDeploymentRequest * 0.72
         : intentScheduledDeploymentRequest
   const extraCombustionPowerKw =
-    otsActive && superFormulaOts?.availability === 'verified-event-rule'
-      ? superFormulaOts.boostPowerKw
-      : 0
+    otsActive ? (superFormulaRuntime?.otsSimulation?.boostPowerKw ?? (superFormulaOts?.availability === 'verified-event-rule' ? superFormulaOts.boostPowerKw : 0)) * (deltaSeconds > 0 ? otsUsedSeconds / deltaSeconds : 0) : 0
   const combustionWheelPowerKw = combustionWheelPowerKwAt({
     categoryPhysics,
     clutchEngagementFraction: car.clutchEngagementFraction,
@@ -1084,7 +1106,7 @@ export function calculateCarTelemetry(options: {
           superClippingStartedAtProgress,
           superClippingStartedAtSeconds,
         }
-      : car.runtimeSystems
+      : superFormulaRuntime && otsSimulation ? { ...superFormulaRuntime, otsSimulation } : car.runtimeSystems
 
   return {
     brakePercent,

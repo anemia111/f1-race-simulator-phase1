@@ -1,3 +1,4 @@
+import { FreeModeHeader, FreeModeSearch } from './SessionChrome'
 import {
   ArrowDown,
   ArrowUp,
@@ -11,7 +12,6 @@ import {
   Shuffle,
   Trash2,
   Upload,
-  X,
 } from 'lucide-react'
 import {
   useEffect,
@@ -49,6 +49,7 @@ import type { SeriesId } from '../series/types'
 import { createSeededRandom, normalizeSimulationSeed } from '../simulation/random'
 
 type FreeModeBuilderProps = {
+  onOpenMotorsport?: (championship: import('../motorsport/types').ChampionshipId, free?: boolean) => void
   context: FreeModeBuildContext
   initialConfiguration: FreeModeConfiguration
   isOpen: boolean
@@ -75,6 +76,12 @@ const historySeriesLabels = {
   f3: 'F3 history',
   'super-formula': 'SF history',
   external: 'External history',
+  kyojo: 'KYOJO CUP history',
+  'super-gt-gt500': 'SUPER GT GT500 history',
+  'super-gt-gt300': 'SUPER GT GT300 history',
+  indycar: 'INDYCAR history',
+  'wec-hypercar': 'WEC Hypercar history',
+  'wec-lmgt3': 'WEC LMGT3 history',
 } as const
 
 const sessionLabels = {
@@ -219,6 +226,7 @@ function fieldMeanOverall(
 }
 
 export function FreeModeBuilder({
+  onOpenMotorsport,
   context,
   initialConfiguration,
   isOpen,
@@ -697,36 +705,24 @@ export function FreeModeBuilder({
       role="dialog"
     >
       <section className="free-mode-builder">
-        <header className="free-mode-header">
-          <div>
-            <span>INDEPENDENT SIM SESSION</span>
-            <h1>Free Mode Builder</h1>
-            <p>
-              Championship points, calendar progress and OpenF1 sessions stay
-              untouched.
-            </p>
-          </div>
-          <button
-            aria-label="Close Free Mode Builder"
-            className="free-mode-icon-button"
-            onClick={onClose}
-            ref={closeButtonRef}
-            title="Close"
-            type="button"
-          >
-            <X size={19} />
-          </button>
-        </header>
+        <FreeModeHeader onClose={onClose} closeRef={closeButtonRef}/>
 
         <div className="free-mode-settings">
           <label>
+            <span>Race start (SIM)</span>
+            <select aria-label="Race start mode" value={configuration.raceStartMode ?? 'standing'}
+              onChange={(event) => setConfiguration((current) => ({ ...current,
+                raceStartMode: event.target.value as 'standing' | 'rolling' }))}>
+              <option value="standing">Standing</option><option value="rolling">Rolling</option>
+            </select>
+          </label>
+          <label>
             <span>Category</span>
             <select
-              onChange={(event) =>
-                setCategory(
-                  event.target.value as FreeModeConfiguration['categoryId'],
-                )
-              }
+              aria-label="Free Mode category"
+              onChange={(event) => event.target.value.startsWith('motorsport:')
+                ? onOpenMotorsport?.(event.target.value.slice(11) as import('../motorsport/types').ChampionshipId, true)
+                : setCategory(event.target.value as FreeModeConfiguration['categoryId'])}
               value={configuration.categoryId}
             >
               {Object.entries(freeModeCategoryLabels).map(([id, label]) => (
@@ -734,6 +730,7 @@ export function FreeModeBuilder({
                   {label}
                 </option>
               ))}
+              {onOpenMotorsport && <><option value="motorsport:kyojo">KYOJO CUP</option><option value="motorsport:super-gt">SUPER GT</option><option value="motorsport:wec">FIA WEC</option><option value="motorsport:indycar">INDYCAR</option></>}
             </select>
           </label>
           <label className="free-mode-track-select">
@@ -980,30 +977,7 @@ export function FreeModeBuilder({
           </button>
         </div>
 
-        <div className="free-mode-search">
-          <label>
-            <span>Find driver</span>
-            <input
-              onChange={(event) => setDriverSearch(event.target.value)}
-              placeholder="Name, code, nationality, rating, history"
-              value={driverSearch}
-            />
-          </label>
-          <label>
-            <span>Find vehicle</span>
-            <input
-              onChange={(event) => setVehicleSearch(event.target.value)}
-              placeholder="Team name or car number"
-              value={vehicleSearch}
-            />
-          </label>
-          <div className="free-mode-field-summary">
-            <strong>{configuration.entrants.length}</strong>
-            <span>cars</span>
-            <strong>{fieldMean.toFixed(1)}</strong>
-            <span>{configuration.equalCars ? 'equal rating' : 'field mean'}</span>
-          </div>
-        </div>
+        <FreeModeSearch driverSearch={driverSearch} vehicleSearch={vehicleSearch} onDriverSearch={setDriverSearch} onVehicleSearch={setVehicleSearch} cars={configuration.entrants.length} mean={fieldMean.toFixed(1)} equalCars={configuration.equalCars}/>
 
         <div className="free-mode-entry-table" role="region" aria-label="Entries">
           <div className="free-mode-entry-head">

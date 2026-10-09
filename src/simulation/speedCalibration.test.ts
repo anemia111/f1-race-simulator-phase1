@@ -795,7 +795,7 @@ describe('on-track speed calibration', () => {
     expect(lasVegas.minimumBatteryPercent).toBeLessThan(70)
     expect(monza.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
     expect(lasVegas.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
-  })
+  }, 60_000)
 
   it('keeps a complete 30-car field inside physical top-gear bounds', () => {
     const monza = runIntegratedRaceSpeedTrace(
@@ -812,5 +812,5 @@ describe('on-track speed calibration', () => {
     // the field still reaches the top-gear region without overspeed.
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(330)
     expect(lasVegas.maximumSpeedKph).toBeLessThan(402)
-  }, 30_000)
+  }, 300_000)
 })

@@ -40,7 +40,14 @@ driving game.
 - `src/data/motorsportSeries2026.json` contains only executable F1/SF series
   packages. `src/data/historicalDriverPool2026.json` retains all 52 former
   F2/F3 identities as provenance-only history. The validated relational pool
-  contains 110 unique people and 111 provenance records.
+  originally contained 110 unique people and 111 provenance records. The
+  user-authorized `importedDriverRatings2026.json` adds 238 people from 338 CSV
+  rows, yielding 348 people and 468 provenance records. All original abilities
+  remain intact; new people use the exact supplied CSV axes and overall.
+  Missing Potential stays null in the imported source and uses Overall only
+  when materialized into the existing runtime schema. Unknown nationality is
+  `UNK`. Category history does not assign a championship seat or make a new
+  category executable.
 - MADRING uses the issued FIA 5.414 km / 57-lap specification and 22 numbered
   model corners. Its 2026 sector distances are now source-backed; it still has
   no fabricated OpenF1 telemetry-coordinate projection.

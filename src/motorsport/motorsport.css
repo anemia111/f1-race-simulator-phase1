@@ -1,0 +1,38 @@
+.motorsport-overlay .motorsport-header,.motorsport-overlay .motorsport-controls { display: grid; gap: 12px; }
+.motorsport-overlay.insights-panel label { display: grid; gap: 5px; }
+.motorsport-overlay .motorsport-header > label, .motorsport-overlay .motorsport-controls > label { margin-top: 10px; color: #b7c1d0; font-size: 13px; }
+.motorsport-overlay .motorsport-header > label select, .motorsport-overlay .motorsport-controls select, .motorsport-overlay .motorsport-controls input { min-height: 32px; padding: 6px 8px; border: 1px solid #294156; border-radius: 6px; background: #0c1925; color: #e5f4fa; font: inherit; }
+.motorsport-overlay select,.motorsport-overlay input[type=number] { width: 100%; }
+.motorsport-overlay table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.motorsport-overlay td,.motorsport-overlay th { padding: 6px; border-bottom: 1px solid #263446; text-align: left; }
+.motorsport-overlay .motorsport-table-scroll { overflow: auto; }
+.motorsport-overlay .motorsport-car-detail dd { margin: 0 0 10px; overflow-wrap: anywhere; }
+.motorsport-overlay .motorsport-car-detail dt { color: #91a0b4; }
+.motorsport-overlay .motorsport-car-detail small { display: block; margin: 10px 0; }
+.motorsport-overlay .motorsport-timing button { text-align: left; }
+.motorsport-overlay .motorsport-timing button span { display: block; }
+.motorsport-message { position: fixed; z-index: 90; bottom: 45px; left: 90px; background: #151e2c; padding: 12px; }
+.motorsport-pit-wall .pit-wall-body table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.motorsport-pit-wall .pit-wall-body th,.motorsport-pit-wall .pit-wall-body td { padding: 5px; border-bottom: 1px solid #263446; text-align: left; }
+.motorsport-pit-wall .pit-wall-body label { display: grid; gap: 6px; margin: 8px 0; }
+.motorsport-pit-wall .pit-wall-body select { width: 100%; }
+.motorsport-pit-wall { font-size: 11px; }
+.motorsport-pit-wall .pit-wall-body h3 { margin: 12px 0 8px; color: #b8d6e5; font-size: 11px; text-transform: uppercase; }
+.motorsport-pit-wall .pit-wall-body p { color: #9db0bd; line-height: 1.5; }
+.motorsport-pit-wall .pit-wall-body select { min-height: 28px; padding: 4px 6px; border: 1px solid #294156; border-radius: 3px; background: #091824; color: #e5f4fa; font: inherit; }
+.motorsport-pit-wall .pit-wall-body label:has(input[type=checkbox]) { display: flex; align-items: center; }
+
+.motorsport-overlay .motorsport-controls > button,
+.motorsport-overlay .motorsport-header > button {
+  min-height: 32px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: var(--text-main);
+  background: rgba(255,255,255,.08);
+  font: inherit;
+  cursor: pointer;
+}
+.motorsport-overlay .motorsport-controls > button:hover,
+.motorsport-overlay .motorsport-header > button:hover { background: rgba(255,255,255,.14); }
+.motorsport-overlay .motorsport-controls > button:disabled { opacity: .45; cursor: default; }

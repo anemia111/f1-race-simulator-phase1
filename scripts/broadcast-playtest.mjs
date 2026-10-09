@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 import { mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -6,6 +7,7 @@ import { join, resolve } from 'node:path'
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:5173/'
 // The 2026 F1 baseline includes Cadillac: eleven teams and twenty-two cars.
 const EXPECTED_FIELD_SIZE = 22
+const EXPECTED_DRIVER_POOL_SIZE = 348
 const MINI_SECTORS_PER_DRIVER = 24
 // This Node harness cannot import the TypeScript persistence module directly.
 // Keep these aligned with src/persistence.ts so the Free Mode isolation check
@@ -103,6 +105,7 @@ async function inspectScroll(locator) {
 }
 
 async function runViewport(browser, name, viewport, screenshotPath) {
+  console.error(`[playtest] ${name}: opening built app`)
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
   const pageErrors = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
@@ -112,6 +115,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForSelector('.broadcast-app')
   await page.waitForSelector('canvas')
   await page.waitForTimeout(1800)
+  console.error(`[playtest] ${name}: app loaded`)
 
   const leaderboardRows = await page.locator('.leaderboard-rows li').count()
   const leaderboardScroll = await inspectScroll(page.locator('.leaderboard-rows'))
@@ -202,10 +206,22 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForSelector('.series-data-manager')
   await page.getByLabel('Filter series').selectOption('all')
   await page.waitForFunction(
-    () => document.querySelectorAll('.driver-directory-list li').length === 110,
+    (count) => document.querySelectorAll('.driver-directory-list li').length === count,
+    EXPECTED_DRIVER_POOL_SIZE,
   )
   const dataManagerDriverRows = await page.locator('.driver-directory-list li').count()
+  console.error(`[playtest] ${name}: ${dataManagerDriverRows} pool drivers`)
   const dataManagerDriverScroll = await inspectScroll(page.locator('.driver-directory-list'))
+  await page.getByLabel('Search drivers', { exact: true }).fill('KYOJO')
+  await page.waitForFunction(() => document.querySelectorAll('.driver-directory-list li').length === 20)
+  await page.getByLabel('Search drivers', { exact: true }).fill('Riona Tomishita')
+  await page.locator('.driver-directory-list li button').click()
+  await page.getByLabel('Imported driver rating source').waitFor()
+  if (!(await page.getByLabel('Imported driver rating source').innerText()).includes('Overall 77')) {
+    throw new Error('Imported KYOJO driver did not retain supplied rating')
+  }
+  await page.getByLabel('Search drivers', { exact: true }).fill('')
+  console.error(`[playtest] ${name}: imported driver checked`)
   if (name === 'desktop') {
     await page.screenshot({
       path: join(artifactDirectory, 'series-data-manager-drivers.png'),
@@ -418,6 +434,8 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.getByTitle('Selected driver analysis').click()
   await page.waitForSelector('.insights-panel')
   const insightsVisible = await page.locator('.insights-panel').isVisible()
+  assert.equal(await page.getByLabel('Telemetry comparison').getByRole('img').count(),4)
+  assert.ok(await page.getByLabel('Telemetry comparison car').locator('option').count()>0)
   const strategyControlsVisible = await page.locator('.manual-strategy').isVisible()
   await page.locator('.insights-panel header button').click()
 
@@ -547,19 +565,12 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await enabledBoxCommand.click()
   await page.getByRole('button', { name: '60x' }).click()
   let pitWallBoxApplied = false
-  for (let sample = 0; sample < 140; sample += 1) {
-    await page.waitForTimeout(150)
-    const stops = Number(
-      await page
-        .locator('.leaderboard-rows li.selected .leaderboard-stops')
-        .innerText(),
-    )
-
-    if (Number.isFinite(stops) && stops > selectedStopsBefore) {
-      pitWallBoxApplied = true
-      break
-    }
-  }
+  try {
+    // A command still has to complete a real lap and pit passage. Concurrent
+    // physics validation can make 60x take longer than the old 21s wall budget.
+    await page.waitForFunction((before) => Number(document.querySelector('.leaderboard-rows li.selected .leaderboard-stops')?.textContent)>before, selectedStopsBefore, {timeout:90_000,polling:250})
+    pitWallBoxApplied = true
+  } catch { /* Preserve the failed-command assertion and full UI report below. */ }
   await page.getByRole('button', { name: '1x' }).click()
 
   const pitWallLayout = await page.evaluate(() => {
@@ -870,6 +881,8 @@ async function inspectSeriesModes(browser) {
   await page.locator('.broadcast-sidebar .sidebar-settings').click()
   await page.waitForSelector('.setup-panel')
   await page.getByLabel('Championship round').selectOption('sf-03-replacement')
+  // Check scheduled distance without random wet/aborted-start lap reductions.
+  await page.getByLabel('Seed', { exact: true }).fill('sf-calendar-dry-0')
   await page.waitForFunction(
     () =>
       document.querySelector('select[aria-label="Weekend session"]')?.value ===
@@ -1182,6 +1195,18 @@ async function inspectFreeMode(browser) {
   }
 }
 
+async function inspectExpansionCatalog(browser) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+  try {
+    await page.goto(appUrl)
+    await page.locator('.broadcast-sidebar button[title="Data"]').click()
+    if (await page.locator('.expansion-catalog').count()) throw new Error('Removed category catalog is still displayed')
+    if (!(await page.locator('.data-detail-grid').isVisible())) throw new Error('Data controls missing')
+    await page.screenshot({ path: join(artifactDirectory, 'data-without-catalog.png') })
+    return { removed: true, originalDataView: true }
+  } finally { await page.close() }
+}
+
 const browser = await chromium.launch({ headless: true })
 
 try {
@@ -1191,8 +1216,9 @@ try {
   ]
   const seriesModes = await inspectSeriesModes(browser)
   const freeMode = await inspectFreeMode(browser)
+  const expansionCatalog = await inspectExpansionCatalog(browser)
 
-  console.log(JSON.stringify({ freeMode, seriesModes, viewports: results }, null, 2))
+  console.log(JSON.stringify({ expansionCatalog, freeMode, seriesModes, viewports: results }, null, 2))
 
   for (const result of results) {
     const failures = []
@@ -1238,13 +1264,13 @@ try {
       if (!fitsWithoutScrolling && (metrics.maxScrollTop <= 0 || !metrics.reachedBottom)) failures.push(`${name} list cannot scroll through all drivers: ${JSON.stringify(metrics)}`)
     }
     if (result.dataDetails < 10 || !result.tokenInputVisible) failures.push('data reliability view is incomplete')
-    if (result.dataManagerDriverRows !== 110) failures.push(`data manager rendered ${result.dataManagerDriverRows}/110 pool drivers`)
+    if (result.dataManagerDriverRows !== EXPECTED_DRIVER_POOL_SIZE) failures.push(`data manager rendered ${result.dataManagerDriverRows}/${EXPECTED_DRIVER_POOL_SIZE} pool drivers`)
     if (result.dataManagerDriverScroll.maxScrollTop <= 0 || !result.dataManagerDriverScroll.reachedBottom) failures.push(`driver directory cannot scroll: ${JSON.stringify(result.dataManagerDriverScroll)}`)
     if (result.dataManagerTeamRows !== 11) failures.push(`data manager rendered ${result.dataManagerTeamRows}/11 F1 teams`)
     if (result.dataManagerRuleRows !== 25) failures.push(`data manager rendered ${result.dataManagerRuleRows - 1}/24 F1 events`)
     if (result.dataManagerRuleInputs < 10 || result.dataManagerQualifyingRows !== 4) failures.push(`rule editor is incomplete: ${result.dataManagerRuleInputs} inputs / ${result.dataManagerQualifyingRows - 1} segments`)
     if (result.dataManagerEventInputs < 7 || !result.dataManagerSelectedEvent.includes('f1-16')) failures.push(`event override editor is incomplete: ${result.dataManagerEventInputs} inputs / ${result.dataManagerSelectedEvent}`)
-    if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes(`${EXPECTED_FIELD_SIZE} / ${EXPECTED_FIELD_SIZE}`) || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes('110')) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
+    if (!result.dataManagerAudit.includes('Driver records') || !result.dataManagerAudit.includes(`${EXPECTED_FIELD_SIZE} / ${EXPECTED_FIELD_SIZE}`) || !result.dataManagerAudit.includes('Pool records') || !result.dataManagerAudit.includes(String(EXPECTED_DRIVER_POOL_SIZE))) failures.push(`data manager audit is incomplete: ${result.dataManagerAudit}`)
     if (result.dataManagerLayout.scrollWidth !== result.dataManagerLayout.clientWidth || result.dataManagerLayout.scrollHeight !== result.dataManagerLayout.clientHeight) failures.push(`data manager overflows its frame: ${JSON.stringify(result.dataManagerLayout)}`)
     if (!result.liveTimingClosed || !result.liveTimingRestored) failures.push('live timing close/restore failed')
     if (result.selectedRows !== 1) failures.push(`expected one selected timing row, saw ${result.selectedRows}`)
@@ -1342,7 +1368,7 @@ try {
 
   const expectedCars = { 'f1-custom': 22, 'super-formula': 24 }
   const seriesFailures = []
-  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,super-formula') {
+  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,super-formula,motorsport:kyojo,motorsport:super-gt,motorsport:wec,motorsport:indycar') {
     seriesFailures.push(`series selector is incomplete: ${seriesModes.seriesOptions.join(', ')}`)
   }
   for (const [seriesId, carCount] of Object.entries(expectedCars)) {
@@ -1386,7 +1412,10 @@ try {
         },
         {
           label: 'OTS',
-          required: ['N/A'],
+          required: ['DISABLED', 'SIM'],
+        },
+        { label: 'OTS remaining', required: ['200.0s', 'SIM'] },
+        { label: 'OTS cooldown', required: ['WAIT 0.0s', 'SIM']
         },
         {
           label: 'Refuelling safety',

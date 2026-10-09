@@ -94,11 +94,103 @@
       "teamCount": 16,
       "carCount": 24,
       "calendar": [
-        { "id": "sf-01", "round": 1, "trackId": "motegi-sf", "raceCount": 1 },
-        { "id": "sf-02", "round": 2, "trackId": "motegi-sf", "raceCount": 1 },
+        {
+          "id": "sf-01",
+          "round": 1,
+          "trackId": "motegi-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 37,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r01-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24415/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-02",
+          "round": 2,
+          "trackId": "motegi-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 37,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r02-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24415/"
+              }
+            }
+          }
+        },
         { "id": "sf-03-original", "round": 3, "trackId": "autopolis-sf", "raceCount": 1, "cancelled": true },
-        { "id": "sf-04", "round": 4, "trackId": "suzuka-approx", "raceCount": 1 },
-        { "id": "sf-05", "round": 5, "trackId": "suzuka-approx", "raceCount": 1 },
+        {
+          "id": "sf-04",
+          "round": 4,
+          "trackId": "suzuka-approx",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 31,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r04-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24422/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-05",
+          "round": 5,
+          "trackId": "suzuka-approx",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 31,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r05-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24422/"
+              }
+            }
+          }
+        },
         {
           "id": "sf-03-replacement",
           "round": 3,
@@ -126,13 +218,174 @@
           },
           "weekendStages": ["race"]
         },
-        { "id": "sf-06", "round": 6, "trackId": "fuji-sf", "raceCount": 1 },
-        { "id": "sf-07", "round": 7, "trackId": "fuji-sf", "raceCount": 1 },
-        { "id": "sf-08", "round": 8, "trackId": "sugo-sf", "raceCount": 1 },
-        { "id": "sf-09", "round": 9, "trackId": "fuji-sf", "raceCount": 1 },
-        { "id": "sf-10", "round": 10, "trackId": "fuji-sf", "raceCount": 1 },
-        { "id": "sf-11", "round": 11, "trackId": "suzuka-approx", "raceCount": 1 },
-        { "id": "sf-12", "round": 12, "trackId": "suzuka-approx", "raceCount": 1 }
+        {
+          "id": "sf-06",
+          "round": 6,
+          "trackId": "fuji-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 41,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r06-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24425/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-07",
+          "round": 7,
+          "trackId": "fuji-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 41,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r07-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24425/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-08",
+          "round": 8,
+          "trackId": "sugo-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 51,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r08-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24428/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-09",
+          "round": 9,
+          "trackId": "fuji-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 41,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r09-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24431/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-10",
+          "round": 10,
+          "trackId": "fuji-sf",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 41,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-10-08",
+                "sourceId": "sf-2026-r10-official-schedule-snapshot",
+                "url": "https://superformula.net/sf3/race/24431/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-11",
+          "round": 11,
+          "trackId": "suzuka-approx",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 31,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-09-18",
+                "sourceId": "sf-2026-r11-official-schedule-snapshot",
+                "url": "https://www.suzukacircuit.jp/superformula/2/schedule/"
+              }
+            }
+          }
+        },
+        {
+          "id": "sf-12",
+          "round": 12,
+          "trackId": "suzuka-approx",
+          "raceCount": 1,
+          "eventOperations": {
+            "raceDistance": {
+              "availability": "verified-event-override",
+              "value": {
+                "laps": 31,
+                "timeLimitSeconds": 4500,
+                "overallTimeLimitSeconds": null
+              },
+              "provenance": {
+                "authority": "official-calendar",
+                "checksum": null,
+                "effectiveFrom": null,
+                "publishedAt": "2026-09-18",
+                "sourceId": "sf-2026-r12-official-schedule-snapshot",
+                "url": "https://www.suzukacircuit.jp/superformula/2/schedule/"
+              }
+            }
+          }
+        }
       ],
       "rules": {
         "championshipTeamScoring": "best-two",

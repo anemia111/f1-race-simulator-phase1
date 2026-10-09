@@ -26,6 +26,7 @@ const BRAKE_OVERHEAT_CRITICAL_SECONDS = 12
 
 export function PitWallSystems({
   car,
+  snapshot,
   openF1Mode,
   telemetryIsOpenF1,
   tireCondition,
@@ -143,21 +144,27 @@ export function PitWallSystems({
           <PitWallMetric
             label="OTS"
             source={
-              superFormulaRuntime.ots.availability === 'verified-event-rule'
+              superFormulaRuntime.otsSimulation ? 'SIM' : superFormulaRuntime.ots.availability === 'verified-event-rule'
                 ? 'EVENT'
                 : 'UNAVAILABLE'
             }
             title={
-              superFormulaRuntime.ots.availability === 'verified-event-rule'
+              superFormulaRuntime.otsSimulation ? `${superFormulaRuntime.otsSimulation.source} · allocation/cooldown published; 37 kW boost SIM` : superFormulaRuntime.ots.availability === 'verified-event-rule'
                 ? `${superFormulaRuntime.ots.activationConditions}; runtime condition evaluation pending`
                 : superFormulaRuntime.ots.reason
             }
             value={
-              superFormulaRuntime.ots.availability === 'verified-event-rule'
+              superFormulaRuntime.otsSimulation
+                ? car.overtakeStatus.toUpperCase()
+                : superFormulaRuntime.ots.availability === 'verified-event-rule'
                 ? `CONFIGURED / ${superFormulaRuntime.ots.allocationSeconds}s`
                 : PIT_WALL_UNAVAILABLE
             }
           />
+            {superFormulaRuntime.otsSimulation && <>
+              <PitWallMetric label="OTS remaining" source="SIM" value={`${superFormulaRuntime.otsSimulation.remainingSeconds.toFixed(1)}s`} />
+              <PitWallMetric label="OTS cooldown" source="SIM" value={`WAIT ${Math.max(0,superFormulaRuntime.otsSimulation.cooldownUntilSeconds-snapshot.elapsedSeconds).toFixed(1)}s`} />
+            </>}
           <PitWallMetric
             label="Refuelling"
             source="JAF"
