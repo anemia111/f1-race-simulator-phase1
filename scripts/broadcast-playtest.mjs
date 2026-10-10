@@ -313,7 +313,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   if (await skipFormation.isVisible()) {
     await skipFormation.click()
   }
-  await page.getByRole('button', { name: '5x' }).click()
+  await page.getByRole('button', { name: '5x', exact: true }).click()
   let observedOverallBest = false
   let observedMeasuredSector = false
 
@@ -333,7 +333,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     }
   }
 
-  await page.getByRole('button', { name: '60x' }).click()
+  await page.getByRole('button', { name: '60x', exact: true }).click()
   for (let sample = 0; sample < 180; sample += 1) {
     await page.waitForTimeout(100)
     const measuredSectorCount = await page
@@ -388,12 +388,12 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     colored: bars.filter((bar) => !bar.classList.contains('mini-dim')).length,
     dim: bars.filter((bar) => bar.classList.contains('mini-dim')).length,
   }))
-  const speed60Selected = await page.getByRole('button', { name: '60x' }).getAttribute('aria-pressed')
+  const speed60Selected = await page.getByRole('button', { name: '60x', exact: true }).getAttribute('aria-pressed')
   const pauseButton = page.getByLabel('Pause simulation')
   await pauseButton.click()
   const resumeVisible = await page.getByLabel('Resume simulation').isVisible()
   await page.getByLabel('Resume simulation').click()
-  await page.getByRole('button', { name: '1x' }).click()
+  await page.getByRole('button', { name: '1x', exact: true }).click()
 
   if ((await page.locator('.broadcast-track-panel').count()) === 0) {
     await page.locator('.broadcast-sidebar button[title="Data"]').click()
@@ -506,9 +506,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   // is empty until the car first crosses the line, so the session is wound on
   // until there is a completed lap to read.
   await pitWallTabButtons.nth(1).click()
-  await page.getByRole('button', { name: '60x' }).click()
+  await page.getByRole('button', { name: '60x', exact: true }).click()
   await page.waitForSelector('.pit-wall-lap-log tbody tr', { timeout: 60_000 })
-  await page.getByRole('button', { name: '1x' }).click()
+  await page.getByRole('button', { name: '1x', exact: true }).click()
   const pitWallLapLogSample = await page
     .locator('.pit-wall-lap-log tbody tr')
     .first()
@@ -568,7 +568,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     .first()
   const pitWallBoxCommandLabel = (await enabledBoxCommand.innerText()).trim()
   await enabledBoxCommand.click()
-  await page.getByRole('button', { name: '60x' }).click()
+  await page.getByRole('button', { name: '60x', exact: true }).click()
   let pitWallBoxApplied = false
   try {
     // A command still has to complete a real lap and pit passage. Concurrent
@@ -576,7 +576,7 @@ async function runViewport(browser, name, viewport, screenshotPath) {
     await page.waitForFunction((before) => Number(document.querySelector('.leaderboard-rows li.selected .leaderboard-stops')?.textContent)>before, selectedStopsBefore, {timeout:90_000,polling:250})
     pitWallBoxApplied = true
   } catch { /* Preserve the failed-command assertion and full UI report below. */ }
-  await page.getByRole('button', { name: '1x' }).click()
+  await page.getByRole('button', { name: '1x', exact: true }).click()
 
   await page.getByRole('tab', { name: 'DECISIONS', exact: true }).click()
   await page.waitForFunction(() => Array.from(document.querySelectorAll('.pit-wall-decision')).some((entry) => entry.textContent.includes('Manual box instruction')), null, { timeout: 8000 })
