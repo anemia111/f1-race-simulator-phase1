@@ -1,3 +1,4 @@
+import { crossCategoryCoursePacks } from './crossCategoryTracks'
 import {
   baseLapTimeSourceForPaceReference,
   paceReference2026For,
@@ -42,6 +43,9 @@ import type {
 } from './types'
 
 const physicalTracks = [...f1Tracks, ...supportSeriesTracks]
+for (const pack of crossCategoryCoursePacks) {
+  if (!physicalTracks.some(track => track.id === pack.id)) physicalTracks.push(pack.track)
+}
 const physicalTrackById = new Map(physicalTracks.map((track) => [track.id, track]))
 
 const cloneTeam = (team: Team): Team => ({
@@ -89,7 +93,7 @@ export function freeModeTrackOptions(
   const sfIds = new Set(
     (seriesById.get('super-formula')?.tracks ?? []).map((track) => track.id),
   )
-  const ids = [...new Set([...f1Ids, ...sfIds])]
+  const ids = [...new Set([...f1Ids, ...sfIds, ...crossCategoryCoursePacks.map(pack => pack.id)])]
 
   return ids
     .map((id): FreeModeTrackOption | null => {
@@ -102,6 +106,7 @@ export function freeModeTrackOptions(
       const sources: FreeModeTrackSource[] = [
         ...(f1Ids.has(id) ? (['F1'] as const) : []),
         ...(sfIds.has(id) ? (['SF'] as const) : []),
+        ...new Set(crossCategoryCoursePacks.filter(pack => pack.id === id).map(pack => pack.source)),
       ]
 
       return {
@@ -602,6 +607,7 @@ export function buildFreeModeRaceConfig(
         'super-formula',
       )
   const config: RaceConfig = {
+    raceStartMode: configuration.raceStartMode ?? 'standing',
     categoryRaceFormat: rules.race,
     drivers,
     overtakeSystem: rules.overtakeSystem,

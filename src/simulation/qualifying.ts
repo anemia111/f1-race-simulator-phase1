@@ -1,3 +1,4 @@
+import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 // Timed weekend sessions: practice builds setup confidence, qualifying runs
 // pit-release plans and ranks legal flying laps for the race grid.
 
@@ -45,7 +46,6 @@ import { tireTrackGripMultiplier } from './tires'
 import { createSuperFormulaControlTireInventory } from './superFormulaControlTires2026'
 import { gripForSurfaceWater } from './trackWater'
 import {
-  airDensityKgM3,
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
   vehicleDownforceMultiplier,
@@ -301,7 +301,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     trackGrip,
     weather,
   } = options
-  const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const categoryPhysics = config.seriesId === 'super-formula'
+    ? superFormulaPhysicsForTrack(config.track) : categoryPhysicsFor(config.seriesId)
   const operationalMass = resolveOperationalVehicleMass({
     f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
     physics: categoryPhysics,
@@ -336,10 +337,7 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     weather,
   )
   const result = simulatePhysicalLap(config.track, {
-    airDensityKgM3: airDensityKgM3({
-      altitudeMeters: config.track.altitudeMeters,
-      temperatureC: temperatures.airTemperatureC,
-    }),
+    airTemperatureC: temperatures.airTemperatureC,
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
     eventId: config.eventId,
     fiaPuEventInput: config.fiaPuEventInput,

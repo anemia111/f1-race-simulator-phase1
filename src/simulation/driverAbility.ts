@@ -13,6 +13,17 @@ export const DRIVER_ABILITY_SCALE_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0
 export const DRIVER_PERFORMANCE_INTERNAL_MIN = 0.55
 export const DRIVER_PERFORMANCE_INTERNAL_MAX = 1
+
+/** Upgrade only untouched authored Nakayama defaults, preserving custom tunes. */
+export function migrateLegacyNakayamaAbility(driver: Driver, current: Driver): Driver {
+  if (driver.id !== 'yuki_nakayama' || current.id !== driver.id
+    || !Object.values(current.skills).every(value => value === 1.1)) return driver
+  const values = Object.values(driver.skills)
+  if (values.length !== Object.keys(current.skills).length) return driver
+  if (!values.every(value => value === 1.05) && !values.every(value => value === 1.2)) return driver
+  return { ...driver, skills: { ...current.skills },
+    potential: driver.potential === 1.05 || driver.potential === 1.2 ? current.potential : driver.potential }
+}
 export const DRIVER_ABILITY_STATS = [
   'rawPace',
   'qualifyingPace',

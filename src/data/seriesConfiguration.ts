@@ -4,6 +4,7 @@ import {
   DRIVER_ABILITY_STATS,
   clampDriverAbility,
   driverAbilityGroupValue,
+  migrateLegacyNakayamaAbility,
 } from '../simulation/driverAbility'
 import {
   driverPool2026,
@@ -564,7 +565,7 @@ function parseStoredDrivers(
       ? { ...base.skills }
       : skills
 
-    return {
+    return migrateLegacyNakayamaAbility({
       ...base,
       carNumber,
       code: requiredText(candidate.code, `${id}.code`, 5).toUpperCase(),
@@ -581,7 +582,7 @@ function parseStoredDrivers(
       skills: migratedSkills,
       style: { ...base.style },
       teamId,
-    }
+    }, base)
   })
 
   const numbers = drivers.map((driver) => driver.carNumber)

@@ -23,6 +23,8 @@ export function followingDemand(options: {
   )
   return {
     decelerationMps2,
-    throttleScale: Math.min(1, Math.max(0, (gap - desiredGap) / Math.max(3, desiredGap))),
+    // At matched speed, maintain the leader's pace instead of repeatedly
+    // lifting to zero at the desired gap. Brake only for a genuine closure.
+    throttleScale: Math.min(1, Math.max(0, 1 - decelerationMps2 / 5)),
   }
 }

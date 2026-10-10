@@ -476,7 +476,8 @@ export function overtakeForLap(context: OvertakeContext): OvertakeOutcome | null
       }
     }
 
-    const needsYellow = detail > 0.46
+    // Moving contact alone does not create a stationary hazard or debris.
+    const needsYellow = false
 
     return {
       kind: 'contact',

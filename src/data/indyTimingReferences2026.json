@@ -1,0 +1,532 @@
+{
+  "checkedOn": "2026-10-08",
+  "references": [
+    {
+      "id": "st-petersburg",
+      "lengthM": 2896.8594336,
+      "cumulativeM": [
+        0.0,
+        1313.4274813440002,
+        2310.729911424
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        -113.618,
+        -204.597
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5515/6732/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.8,
+      "sectionLengthsMiles": [
+        0.816126,
+        0.619695,
+        0.364204
+      ],
+      "notes": [],
+      "sourceSha256": "bc8458b8e483cd15cba5e23fc8cc6192d940c16d60ffeab546105b0c32b0dc67"
+    },
+    {
+      "id": "phoenix",
+      "lengthM": 1609.347218688,
+      "cumulativeM": [
+        0.0,
+        226.16272166400003,
+        641.6052192000001,
+        1037.8466334720001,
+        1445.0605551360002
+      ],
+      "labels": [
+        "SF > T1",
+        "T1 > T2",
+        "T2 > T3",
+        "T3 > T4",
+        "T4 > SF"
+      ],
+      "controlPoint": [
+        100.754,
+        57.962
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5518/6735/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.0,
+      "sectionLengthsMiles": [
+        0.14053100000000002,
+        0.258144,
+        0.24621300000000002,
+        0.253031,
+        0.102083
+      ],
+      "notes": [],
+      "sourceSha256": "6a0292a9168b09f80140d9b56c29f4ce5eff6bda5efa5dcd1a1b8d4252e9c2a0"
+    },
+    {
+      "id": "arlington",
+      "lengthM": 4393.679710464,
+      "cumulativeM": [
+        0.0,
+        1304.239736448,
+        3071.4603828480003
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        0.0,
+        0.0
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5517/6734/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.73,
+      "sectionLengthsMiles": [
+        0.810417,
+        1.0981,
+        0.821589
+      ],
+      "notes": [],
+      "sourceSha256": "1bbb78bf8d34c851dd0928982fc9f65198fe0185f128ebdeccac45d78e9f1ed0"
+    },
+    {
+      "id": "barber",
+      "lengthM": 3674.650560768,
+      "cumulativeM": [
+        0.0,
+        1671.8187340800002,
+        2609.3790961920004
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        -13.308709,
+        -12.994699
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5528/6745/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.3,
+      "sectionLengthsMiles": [
+        1.03882,
+        0.582573,
+        0.661929
+      ],
+      "notes": [],
+      "sourceSha256": "3cb4192b20e71c6fdf349eb3756722c2919da32e9e032c121735afe12404dbad"
+    },
+    {
+      "id": "long-beach",
+      "lengthM": 3168.09022464,
+      "cumulativeM": [
+        0.0,
+        1136.903366016,
+        2367.9903709440005
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        869.895,
+        -65.763
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5529/6746/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.968,
+      "sectionLengthsMiles": [
+        0.706439,
+        0.764962,
+        0.497159
+      ],
+      "notes": [
+        "Report names the middle broadcast section I3 to I6 although the first ends at I5; distances are retained, no claim that this label is a connected loop chain."
+      ],
+      "sourceSha256": "de726acc4108ff306627b453a0037d17a64e2f5374bac0ba609bd69761a7c958"
+    },
+    {
+      "id": "indianapolis",
+      "lengthM": 3925.209328128,
+      "cumulativeM": [
+        0.0,
+        1364.284361088,
+        2718.204546816
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        -100.596153,
+        -700.720606
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5527/6744/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.439,
+      "sectionLengthsMiles": [
+        0.847727,
+        0.841287,
+        0.749998
+      ],
+      "notes": [],
+      "sourceSha256": "1314b21733b93381a4c5e833c8a56c48f47edbb5c75197e97373429f5c9e5350"
+    },
+    {
+      "id": "indianapolis-500",
+      "lengthM": 4023.3455159040004,
+      "cumulativeM": [
+        0.0,
+        301.14044928000004,
+        1306.9772305920003,
+        2312.8140119040004,
+        3318.6507932160007
+      ],
+      "labels": [
+        "SF > T1",
+        "T1 > T2",
+        "T2 > T3",
+        "T3 > T4",
+        "T4 > SF"
+      ],
+      "controlPoint": [
+        0.0,
+        0.0
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5526/6743/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.5,
+      "sectionLengthsMiles": [
+        0.18712,
+        0.624998,
+        0.624998,
+        0.624998,
+        0.437877
+      ],
+      "notes": [],
+      "sourceSha256": "a608972cd347b76b3587d43a555e889ab23247fb8cb55cd791493dbed0e39421"
+    },
+    {
+      "id": "detroit",
+      "lengthM": 2646.577473408,
+      "cumulativeM": [
+        0.0,
+        823.2647512320001,
+        1804.7199709440001
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        352.862,
+        -179.056
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5525/6742/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.645,
+      "sectionLengthsMiles": [
+        0.511553,
+        0.609848,
+        0.523106
+      ],
+      "notes": [],
+      "sourceSha256": "f32fa2f647ab8deb777997ead8cdf4ad59d2d07581d98d06c9692292f16dfdce"
+    },
+    {
+      "id": "wwtr",
+      "lengthM": 2011.6735626240002,
+      "cumulativeM": [
+        0.0,
+        259.382800512,
+        686.1019714560001,
+        1195.4207232,
+        1753.507426176
+      ],
+      "labels": [
+        "SF > T1",
+        "T1 > T2",
+        "T2 > T3",
+        "T3 > T4",
+        "T4 > SF"
+      ],
+      "controlPoint": [
+        69.552,
+        -256.283
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5524/6741/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.25,
+      "sectionLengthsMiles": [
+        0.161173,
+        0.265151,
+        0.316476,
+        0.346779,
+        0.160417
+      ],
+      "notes": [],
+      "sourceSha256": "6614fb7279475ec58a2bd8c121abcd7fc4e39c4eb9d5a4b04daffe756cf9154b"
+    },
+    {
+      "id": "road-america",
+      "lengthM": 6459.633227519999,
+      "cumulativeM": [
+        0.0,
+        2058.62456448,
+        4266.5962521599995
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        982.325,
+        295.48
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5530/6747/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 4.014,
+      "sectionLengthsMiles": [
+        1.27917,
+        1.37197,
+        1.36269
+      ],
+      "notes": [],
+      "sourceSha256": "8d6a075411a3a93594a6e6e8aeb2e5016d1c5160dfc23957f4d89d3e145fce7d"
+    },
+    {
+      "id": "mid-ohio",
+      "lengthM": 3633.898752,
+      "cumulativeM": [
+        0.0,
+        1556.003902464,
+        2839.211122176
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        -317.059474,
+        -46.132052
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5523/6740/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.258,
+      "sectionLengthsMiles": [
+        0.966856,
+        0.797348,
+        0.4937960000000001
+      ],
+      "notes": [
+        "Official I10 to SF repeats 0.966856, giving 2.731060mi versus 2.258mi lap. Final span is derived from lap minus the first two measured spans, not the inconsistent final value."
+      ],
+      "sourceSha256": "a52d9ec58080e0486b47a22162c767cfb216b15464ffe4cc1cfdaf27f4a680f9"
+    },
+    {
+      "id": "nashville",
+      "lengthM": 2093.054870016,
+      "cumulativeM": [
+        0.0,
+        242.62148275200002,
+        824.481415296,
+        1245.102781824,
+        1851.6532700159999
+      ],
+      "labels": [
+        "SF > T1",
+        "T1 > T2",
+        "T2 > T3",
+        "T3 > T4",
+        "T4 > SF"
+      ],
+      "controlPoint": [
+        -7.648,
+        -41.614
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5531/6748/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.3,
+      "sectionLengthsMiles": [
+        0.150758,
+        0.361551,
+        0.261362,
+        0.376893,
+        0.15
+      ],
+      "notes": [],
+      "sourceSha256": "a8eaa856d85a2ef2fe5aa0be34952883c556abefd64f39681ecd5577b310b204"
+    },
+    {
+      "id": "portland",
+      "lengthM": 3160.76770944,
+      "cumulativeM": [
+        0.0,
+        1087.520645376,
+        2202.171611904
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        285.572,
+        -109.02
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5516/6733/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.964,
+      "sectionLengthsMiles": [
+        0.675754,
+        0.692612,
+        0.595644
+      ],
+      "notes": [],
+      "sourceSha256": "30f5517f10505d326858e8b09537b8d6c12b1904629b6e5c72ccf8ee3fd32f91"
+    },
+    {
+      "id": "markham",
+      "lengthM": 3379.60630656,
+      "cumulativeM": [
+        0.0,
+        933.292381824,
+        2387.487573504
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        0.0,
+        0.0
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5520/6737/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.1,
+      "sectionLengthsMiles": [
+        0.579921,
+        0.903595,
+        0.616474
+      ],
+      "notes": [],
+      "sourceSha256": "1ce905094b7cb4e88f71080b49832b3d5b16042346d26ad8a895f61c287297a7"
+    },
+    {
+      "id": "washington-dc",
+      "lengthM": 2735.878362624,
+      "cumulativeM": [
+        0.0,
+        1085.08409856,
+        1833.97623552
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        0.0,
+        0.0
+      ],
+      "reverse": false,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5549/6796/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.7,
+      "sectionLengthsMiles": [
+        0.67424,
+        0.46534,
+        0.560416
+      ],
+      "notes": [],
+      "sourceSha256": "eda540b17bca00f6231b2c1a64075627ac564d96c2e97eebd4c31a20efef1f14"
+    },
+    {
+      "id": "milwaukee",
+      "lengthM": 1633.406911488,
+      "cumulativeM": [
+        0.0,
+        206.04270297600002,
+        642.207113856,
+        919.266948864,
+        1293.5585203199998
+      ],
+      "labels": [
+        "SF > T1",
+        "T1 > T2",
+        "T2 > T3",
+        "T3 > T4",
+        "T4 > SF"
+      ],
+      "controlPoint": [
+        -73.722,
+        291.259
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5522/6739/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 1.015,
+      "sectionLengthsMiles": [
+        0.128029,
+        0.27102,
+        0.172157,
+        0.232574,
+        0.211172
+      ],
+      "notes": [],
+      "sourceSha256": "878ebd592d3c0a443400151d1faf7c70cadd228ff92cf3a6c51e6024e60b73ee"
+    },
+    {
+      "id": "laguna-seca",
+      "lengthM": 3601.8100419840002,
+      "cumulativeM": [
+        0.0,
+        1309.721162112,
+        2627.67250944
+      ],
+      "labels": [
+        "SECTOR 1",
+        "SECTOR 2",
+        "SECTOR 3"
+      ],
+      "controlPoint": [
+        23.82,
+        355.673
+      ],
+      "reverse": true,
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5519/6736/indycar-topsectiontimes-race.pdf",
+      "registrationBasis": "derived registration against official 2026 timing map on public centerline; not surveyed coordinates",
+      "declaredLapMiles": 2.238,
+      "sectionLengthsMiles": [
+        0.813823,
+        0.818937,
+        0.605301
+      ],
+      "notes": [],
+      "sourceSha256": "7fad8d986eecb42df0996b4d42f577cfe3c7c7bb2065d2a3a2dd13343ab95803"
+    }
+  ]
+}

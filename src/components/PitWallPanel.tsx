@@ -17,6 +17,8 @@ import { PitWallRaceControl } from './pitWall/PitWallRaceControl'
 import { PitWallSourceTag } from './pitWall/PitWallShared'
 import { PitWallStrategy } from './pitWall/PitWallStrategy'
 import { PitWallSystems } from './pitWall/PitWallSystems'
+import { PitWallTeam } from './pitWall/PitWallTeam'
+import { PitWallDecisions } from './pitWall/PitWallDecisions'
 import { PitWallWeather } from './pitWall/PitWallWeather'
 import type {
   PitWallCommandProps,
@@ -73,6 +75,8 @@ const tabContent: Record<
   strategy: PitWallStrategy,
   systems: PitWallSystems,
   weather: PitWallWeather,
+  team: PitWallTeam,
+  decisions: PitWallDecisions,
 }
 
 type PitWallTabPaneProps = PitWallTabProps & {
@@ -320,6 +324,8 @@ export function PitWallPanel({
 
       {isF1Runtime ? (
         <F1PitWallTabPane
+          onRequestPitStop={onRequestPitStop}
+          onSetDriverPaceMode={onSetDriverPaceMode}
           activeTab={activeTab}
           capabilities={capabilities}
           car={car}
@@ -337,6 +343,8 @@ export function PitWallPanel({
         />
       ) : (
         <SuperFormulaPitWallTabPane
+          onRequestPitStop={onRequestPitStop}
+          onSetDriverPaceMode={onSetDriverPaceMode}
           activeTab={activeTab}
           capabilities={capabilities}
           car={car}

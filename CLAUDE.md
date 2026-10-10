@@ -23,7 +23,9 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
   the file as `reserve` rows so their authored axes survive; they are pooled
   but never fielded.
 - `motorsportSeries2026.json` supplies the F2/F3/SF fields and rule packages;
-  preserve the 110-person relational pool and never subtract ratings at runtime.
+  preserve the original 110-person relational pool and never subtract ratings
+  at runtime. The authorized cross-category CSV extends the pool to 348 people;
+  original abilities remain unchanged and new people retain supplied CSV axes.
 - Driver `overall` is one absolute scale shared by every category, so a driver
   keeps their own rating wherever they race. The support-series fields are
   stored already rebased against F1: F1 78-100, SF 66-79, F2 65-75, F3 54-66.
@@ -34,7 +36,7 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
 - Free Mode is an independent application mode over the existing F1/F2/F3/SF
-  packages and race engine. It supports 1-40 cars from all 110 people and the
+  packages and race engine. It supports 1-40 cars from all 348 people and the
   F1/SF track union, stays SIM-only, and must not mutate championship progress
   or OpenF1 state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ

@@ -42,6 +42,7 @@ import {
 import { unavailablePhysicalTrackFieldProvenance } from './physicalTrack'
 import type { PhysicalTrackFieldProvenance } from './physicalTrack'
 import { sourcedPhysicalRoadInputsAt } from './physicalRoadProfiles'
+import { roadGradeForceN, trackAtmosphereAt } from './roadEnvironment'
 import type {
   FiaPuEventInput,
   RechargeRuleDefinition,
@@ -55,6 +56,8 @@ const clamp = (value: number, min: number, max: number) =>
 
 export type PhysicalLapOptions = {
   airDensityKgM3?: number
+  /** Local atmosphere uses profile elevation or track altitude; default 15 C. */
+  airTemperatureC?: number
   /** Frontal drag area in m^2, from `vehicleDragAreaM2` for a real car. */
   dragAreaM2?: number
   /** Surface and compound state, as in `tyreForces`. */
@@ -158,10 +161,9 @@ export type AppliedPhysicalRoadInput = Readonly<{
 /**
  * Physical road inputs available to a live force consumer at one lap point.
  *
- * All three physical fields are currently unavailable. The values here are
- * deliberately explicit simulator fallbacks: grade and ordinary banking use
- * neutral zero; the retained banking sections and width table retain their
- * legacy-policy label.
+ * Source-labelled elevation, grade, banking and width profiles take precedence.
+ * Missing grade/banking resolve to neutral zero; unavailable widths retain
+ * their explicitly labelled policy fallback.
  */
 export type PhysicalRoadInputs = Readonly<{
   bankingDegrees: AppliedPhysicalRoadInput
@@ -191,12 +193,11 @@ function appliedPhysicalRoadInput(
 }
 
 /**
- * Resolves the simulator's explicitly-labelled physical-road fallbacks.
+ * Resolves source-labelled physical road inputs and explicit fallbacks.
  *
  * This never reads `TrackDefinition.centerline[][1]` or
  * `TrackDefinition.width`: those are rendering inputs. A future physical
- * survey can replace an individual fallback only by also replacing its
- * unavailable field provenance.
+ * survey replaces an individual fallback together with its field provenance.
  */
 export function physicalRoadInputsAt(
   track: TrackDefinition,
@@ -753,6 +754,8 @@ export type PhysicalReferenceLinePhase =
   | 'exit'
 
 export type PhysicalLapPoint = {
+  airDensityKgM3: number
+  gradeForceN: number
   /** Banking applied only to this part of the circuit. */
   bankingDegrees: number
   /** Banking at the end of the current braking event. */
@@ -840,9 +843,20 @@ export function simulatePhysicalLap(
   track: TrackDefinition,
   options: PhysicalLapOptions = {},
 ): PhysicalLapResult {
+  const explicitDensity = options.airDensityKgM3
+  options = {
+    ...options,
+    airDensityKgM3: explicitDensity ?? trackAtmosphereAt(track, 0, options.airTemperatureC ?? 15).airDensityKgM3,
+  }
   const resolved = resolveOptions(options, track.id)
   const geometry = trackGeometry(track)
   const count = geometry.length
+  const densityAt = geometry.map((_, index) => explicitDensity ??
+    trackAtmosphereAt(track, index / count, options.airTemperatureC ?? 15).airDensityKgM3)
+  const gradeForceAt = geometry.map((_, index) => roadGradeForceN(
+    resolved.massKg, physicalRoadInputsAt(track, index / count).gradeFraction.value,
+  ))
+  const localOptionsAt = (index: number) => ({ ...options, airDensityKgM3: densityAt[index] })
   // The offline lap reads the same declared zones as live runtime, but at the
   // category prior's neutral point because pitch, yaw, setup and wake are not
   // observations available to this planner.
@@ -877,14 +891,14 @@ export function simulatePhysicalLap(
     straightAeroAreas.dragAreaMultiplier,
   )
   const searchCeilingMps = Math.max(cornerCeilingMps, straightCeilingMps)
-  const gripArgs = {
-    airDensityKgM3: resolved.airDensityKgM3,
+  const gripArgsAt = (index: number) => ({
+    airDensityKgM3: densityAt[index],
     // The transient efficiency rides on the same multiplier the surface and
     // compound state use, so it reduces cornering, braking and traction
     // together rather than only one of them.
     gripMultiplier: resolved.gripMultiplier * DRIVER_TRANSIENT_EFFICIENCY,
     massKg: resolved.massKg,
-  }
+  })
   const physicsAt = (index: number) => ({
     ...resolved.physics,
     liftAreaM2:
@@ -898,7 +912,7 @@ export function simulatePhysicalLap(
   const corneringSpeedLimits = geometry.map((point, index) => {
     const lateralSearchCeilingMps = Math.max(200, searchCeilingMps * 1.5)
     const limit = corneringSpeedLimitMps({
-      ...gripArgs,
+      ...gripArgsAt(index),
       // Banking only helps where the road is actually turning.
       bankingDegrees: Number.isFinite(point.centrelineRadiusMeters)
         ? bankingDegreesAt(track, index / count)
@@ -927,7 +941,7 @@ export function simulatePhysicalLap(
     }
 
     const grip = tyreGripAt({
-      ...gripArgs,
+      ...gripArgsAt(index),
       physics: physicsAt(index),
       speedMps,
     })
@@ -945,7 +959,7 @@ export function simulatePhysicalLap(
     share: number,
   ) => {
     const grip = tyreGripAt({
-      ...gripArgs,
+      ...gripArgsAt(index),
       physics: physicsAt(index),
       speedMps,
     })
@@ -969,7 +983,8 @@ export function simulatePhysicalLap(
 
     return (
       (driveForceN -
-        resistanceForceN(speedMps, options, dragScaleAt[index])) /
+        resistanceForceN(speedMps, localOptionsAt(index), dragScaleAt[index]) -
+        gradeForceAt[index]) /
       resolved.massKg
     )
   }
@@ -977,7 +992,7 @@ export function simulatePhysicalLap(
     accelerationWithShareMps2(index, speedMps, deploymentShare[index])
   const brakingDecelerationMps2 = (index: number, speedMps: number) => {
     const grip = tyreGripAt({
-      ...gripArgs,
+      ...gripArgsAt(index),
       // The driver-adjustable bodywork returns to Corner Mode on the brakes.
       physics: resolved.physics,
       speedMps,
@@ -999,7 +1014,7 @@ export function simulatePhysicalLap(
     // shuts on the brake pedal, so a car slowing down never has the shed drag
     // helping it stop.
     return (
-      (brakeForceN + resistanceForceN(speedMps, options)) / resolved.massKg
+      Math.max(0, brakeForceN + resistanceForceN(speedMps, localOptionsAt(index)) + gradeForceAt[index]) / resolved.massKg
     )
   }
 
@@ -1360,6 +1375,8 @@ export function simulatePhysicalLap(
       bankingDegrees: Number.isFinite(point.centrelineRadiusMeters)
         ? bankingDegreesAt(track, index / count)
         : 0,
+      airDensityKgM3: densityAt[index],
+      gradeForceN: gradeForceAt[index],
       brakingDistanceAheadMeters,
       brakingTargetBankingDegrees: Number.isFinite(
         geometry[brakingTargetIndex].centrelineRadiusMeters,
@@ -1424,9 +1441,9 @@ export function peakDownforceN(
 ) {
   const resolved = resolveOptions(options)
 
-  return aerodynamicDownforceN({
-    airDensityKgM3: resolved.airDensityKgM3,
+  return Math.max(0, ...result.points.map(point => aerodynamicDownforceN({
+    airDensityKgM3: options.airDensityKgM3 ?? point.airDensityKgM3,
     liftAreaM2: resolved.physics.liftAreaM2,
-    speedMps: result.maximumSpeedKph / 3.6,
-  })
+    speedMps: point.referenceSpeedMps,
+  })))
 }

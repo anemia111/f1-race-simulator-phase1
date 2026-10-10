@@ -1,0 +1,2557 @@
+{
+  "checkedOn": "2026-10-09",
+  "references": [
+    {
+      "id": "fuji-sf",
+      "frame": "support-aligned",
+      "sourceUrl": "https://www.fsw.tv/driving/file/licence_text.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.182,
+          "position": [
+            21.930633,
+            -23.876772
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.232,
+          "position": [
+            21.56131,
+            -16.959137
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.295,
+          "position": [
+            14.957856,
+            -8.6434
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.352,
+          "position": [
+            16.053442,
+            0.086473
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.394,
+          "position": [
+            12.703207,
+            5.613371
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.465,
+          "position": [
+            3.6408,
+            -0.125442
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.5,
+          "position": [
+            2.129895,
+            5.28087
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.526,
+          "position": [
+            2.52065,
+            9.639153
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.6,
+          "position": [
+            -3.961767,
+            19.897649
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.646,
+          "position": [
+            -10.172788,
+            23.505628
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.667,
+          "position": [
+            -12.314,
+            21.714523
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.7,
+          "position": [
+            -17.181574,
+            19.517467
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.725,
+          "position": [
+            -16.097434,
+            16.281976
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.75,
+          "position": [
+            -13.472334,
+            13.268992
+          ]
+        },
+        {
+          "label": "15",
+          "progress": 0.775,
+          "position": [
+            -15.630573,
+            10.330192
+          ]
+        },
+        {
+          "label": "16",
+          "progress": 0.825,
+          "position": [
+            -22.455123,
+            14.208456
+          ]
+        }
+      ]
+    },
+    {
+      "id": "motegi-sf",
+      "frame": "support-aligned",
+      "sourceUrl": "https://www.mr-motegi.jp/mcom/pdf/17text.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.055,
+          "position": [
+            -23.929269,
+            -11.815657
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.078,
+          "position": [
+            -20.521708,
+            -13.754747
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.2,
+          "position": [
+            -6.293828,
+            5.212259
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.225,
+          "position": [
+            -3.276095,
+            1.733213
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.35,
+          "position": [
+            -17.64496,
+            -17.024135
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.415,
+          "position": [
+            -5.386824,
+            -16.936521
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.477,
+          "position": [
+            1.174908,
+            -6.773404
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.5,
+          "position": [
+            5.437842,
+            -7.107719
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.568,
+          "position": [
+            8.628041,
+            3.940502
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.67,
+          "position": [
+            23.929839,
+            -4.413275
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.835,
+          "position": [
+            0.920287,
+            17.78092
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.885,
+          "position": [
+            -4.829147,
+            11.069354
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.9,
+          "position": [
+            -7.534229,
+            10.042627
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.925,
+          "position": [
+            -12.00357,
+            10.582723
+          ]
+        }
+      ]
+    },
+    {
+      "id": "autopolis-sf",
+      "frame": "support-aligned",
+      "sourceUrl": "https://autopolis.jp/ap/wp-content/uploads/2021/04/2021_magical_kisoku.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.15,
+          "position": [
+            23.751581,
+            6.930548
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.202,
+          "position": [
+            18.276707,
+            13.704998
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.278,
+          "position": [
+            5.259532,
+            16.676498
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.302,
+          "position": [
+            3.059044,
+            13.070412
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.324,
+          "position": [
+            -0.431684,
+            11.913504
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.351,
+          "position": [
+            -3.952519,
+            14.93665
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.385,
+          "position": [
+            -3.181686,
+            10.531605
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.425,
+          "position": [
+            2.43579,
+            6.512294
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.465,
+          "position": [
+            -0.998916,
+            1.111544
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.5,
+          "position": [
+            -5.62124,
+            -2.95686
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.625,
+          "position": [
+            -12.499796,
+            -2.994625
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.717,
+          "position": [
+            -21.735668,
+            5.19306
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.786,
+          "position": [
+            -23.945867,
+            -6.190244
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.805,
+          "position": [
+            -22.294428,
+            -8.834683
+          ]
+        },
+        {
+          "label": "15",
+          "progress": 0.832,
+          "position": [
+            -17.979126,
+            -7.347299
+          ]
+        },
+        {
+          "label": "16",
+          "progress": 0.855,
+          "position": [
+            -14.15315,
+            -8.05378
+          ]
+        },
+        {
+          "label": "17",
+          "progress": 0.903,
+          "position": [
+            -11.923766,
+            -16.108709
+          ]
+        },
+        {
+          "label": "18",
+          "progress": 0.93,
+          "position": [
+            -7.546243,
+            -16.196502
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sugo-sf",
+      "frame": "support-aligned",
+      "sourceUrl": "https://www.sportsland-sugo.co.jp/assets/docs/course/c-racing/2026_racing-course_layout.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.082,
+          "position": [
+            16.519149,
+            -7.039121
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.12,
+          "position": [
+            14.443323,
+            -2.530551
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.156,
+          "position": [
+            8.772134,
+            -2.594034
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.221,
+          "position": [
+            6.210059,
+            6.054009
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.25,
+          "position": [
+            10.298047,
+            4.428404
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.27,
+          "position": [
+            11.996008,
+            2.009904
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.325,
+          "position": [
+            19.524763,
+            -2.468398
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.368,
+          "position": [
+            23.962138,
+            2.086296
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.575,
+          "position": [
+            -6.932578,
+            11.810597
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.651,
+          "position": [
+            -4.862354,
+            1.396986
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.7,
+          "position": [
+            -10.415424,
+            -3.220347
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.763,
+          "position": [
+            -20.185772,
+            -1.209386
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.84,
+          "position": [
+            -21.260279,
+            -10.677793
+          ]
+        }
+      ]
+    },
+    {
+      "id": "okayama",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.okayama-international-circuit.jp/guide/pdf/course.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.29,
+          "position": [
+            -502.700184,
+            -400.193019
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.205,
+          "position": [
+            -228.095998,
+            -452.847327
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.17,
+          "position": [
+            -166.649966,
+            -341.310842
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.145,
+          "position": [
+            -135.983779,
+            -254.499338
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.1,
+          "position": [
+            -134.588401,
+            -93.841164
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.025,
+          "position": [
+            -20.324873,
+            86.811427
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.89,
+          "position": [
+            -115.787774,
+            -389.606533
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.8,
+          "position": [
+            -208.065197,
+            -708.86111
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.72,
+          "position": [
+            -342.481147,
+            -541.014495
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.625,
+          "position": [
+            -383.995957,
+            -855.796006
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.58,
+          "position": [
+            -277.098517,
+            -780.939607
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.515,
+          "position": [
+            -276.621513,
+            -998.042391
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.465,
+          "position": [
+            -447.851326,
+            -1039.890003
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imola",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.fia.com/system/files/decision-document/2025_imola_event_-_circuit_map_-_imola_2025_0.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.225,
+          "position": [
+            14.96557,
+            328.043445
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.4,
+          "position": [
+            -835.822136,
+            352.775023
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.42,
+          "position": [
+            -908.667619,
+            303.807019
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.45,
+          "position": [
+            -1019.732481,
+            220.130077
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.56,
+          "position": [
+            -1183.205998,
+            -276.246699
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.575,
+          "position": [
+            -1233.450012,
+            -328.015819
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.62,
+          "position": [
+            -1384.096975,
+            -481.306959
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.69,
+          "position": [
+            -1058.523711,
+            -472.46151
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.75,
+          "position": [
+            -769.698086,
+            -484.80486
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.78,
+          "position": [
+            -708.852752,
+            -353.181441
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.82,
+          "position": [
+            -740.70588,
+            -160.557785
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.85,
+          "position": [
+            -697.022959,
+            -28.695365
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.88,
+          "position": [
+            -558.053295,
+            -38.018956
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.95,
+          "position": [
+            -214.746334,
+            -35.422797
+          ]
+        },
+        {
+          "label": "15",
+          "progress": 0.97,
+          "position": [
+            -136.158346,
+            -55.765915
+          ]
+        },
+        {
+          "label": "16",
+          "progress": 0.05,
+          "position": [
+            191.882393,
+            150.483544
+          ]
+        },
+        {
+          "label": "17",
+          "progress": 0.105,
+          "position": [
+            411.543153,
+            300.382406
+          ]
+        },
+        {
+          "label": "18",
+          "progress": 0.143,
+          "position": [
+            396.573046,
+            441.876902
+          ]
+        },
+        {
+          "label": "19",
+          "progress": 0.185,
+          "position": [
+            203.545485,
+            373.619767
+          ]
+        }
+      ]
+    },
+    {
+      "id": "le-mans",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://fiawec.alkamelsystems.com/Results/15_2026/03_LE%20MANS/00_Event%20Info/Circuit%20Map%20v3.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.37,
+          "position": [
+            -1310.00163,
+            4100.354387
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.39,
+          "position": [
+            -1117.996734,
+            4281.017304
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.405,
+          "position": [
+            -1010.751787,
+            4424.521296
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.418,
+          "position": [
+            -888.871782,
+            4549.74988
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.43,
+          "position": [
+            -737.091826,
+            4597.551245
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.445,
+          "position": [
+            -615.998023,
+            4719.0434
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.455,
+          "position": [
+            -520.133038,
+            4811.52549
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.47,
+          "position": [
+            -330.223186,
+            4882.515056
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.49,
+          "position": [
+            -113.571144,
+            4722.137046
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.617,
+          "position": [
+            510.842436,
+            3120.181863
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.63,
+          "position": [
+            520.681228,
+            2955.32583
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.639,
+          "position": [
+            583.909053,
+            2860.177484
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.767,
+          "position": [
+            1127.632648,
+            1206.153709
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.781,
+          "position": [
+            1208.270814,
+            1060.062625
+          ]
+        },
+        {
+          "label": "15",
+          "progress": 0.789,
+          "position": [
+            1209.185839,
+            953.7848
+          ]
+        },
+        {
+          "label": "16",
+          "progress": 0.88,
+          "position": [
+            1333.419947,
+            -273.766983
+          ]
+        },
+        {
+          "label": "17",
+          "progress": 0.893,
+          "position": [
+            1313.432533,
+            -447.920498
+          ]
+        },
+        {
+          "label": "18",
+          "progress": 0.955,
+          "position": [
+            537.5458,
+            -291.95384
+          ]
+        },
+        {
+          "label": "19",
+          "progress": 0.002,
+          "position": [
+            -21.968696,
+            16.083898
+          ]
+        },
+        {
+          "label": "20",
+          "progress": 0.059,
+          "position": [
+            -570.825077,
+            461.775995
+          ]
+        },
+        {
+          "label": "21",
+          "progress": 0.083,
+          "position": [
+            -802.547976,
+            496.769407
+          ]
+        },
+        {
+          "label": "22",
+          "progress": 0.093,
+          "position": [
+            -833.801258,
+            629.270007
+          ]
+        },
+        {
+          "label": "23",
+          "progress": 0.181,
+          "position": [
+            -1235.729112,
+            1722.742419
+          ]
+        },
+        {
+          "label": "24",
+          "progress": 0.192,
+          "position": [
+            -1137.903059,
+            1835.765794
+          ]
+        },
+        {
+          "label": "25",
+          "progress": 0.217,
+          "position": [
+            -1224.479415,
+            2136.751961
+          ]
+        },
+        {
+          "label": "26",
+          "progress": 0.227,
+          "position": [
+            -1261.751849,
+            2262.951142
+          ]
+        },
+        {
+          "label": "27",
+          "progress": 0.239,
+          "position": [
+            -1167.495028,
+            2391.230516
+          ]
+        },
+        {
+          "label": "28",
+          "progress": 0.264,
+          "position": [
+            -1164.748158,
+            2724.147808
+          ]
+        },
+        {
+          "label": "29",
+          "progress": 0.282,
+          "position": [
+            -1207.700853,
+            2962.86301
+          ]
+        },
+        {
+          "label": "30",
+          "progress": 0.303,
+          "position": [
+            -1292.941144,
+            3232.840146
+          ]
+        },
+        {
+          "label": "31",
+          "progress": 0.31,
+          "position": [
+            -1336.099515,
+            3309.794712
+          ]
+        },
+        {
+          "label": "32",
+          "progress": 0.317,
+          "position": [
+            -1377.123276,
+            3385.286112
+          ]
+        },
+        {
+          "label": "33",
+          "progress": 0.323,
+          "position": [
+            -1373.635057,
+            3466.888364
+          ]
+        }
+      ]
+    },
+    {
+      "id": "st-petersburg",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5515/6732/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.35,
+          "position": [
+            -377.563,
+            -335.24037
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.405,
+          "position": [
+            -437.358891,
+            -203.074386
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.453,
+          "position": [
+            -540.746914,
+            -113.136973
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.59,
+          "position": [
+            -536.831978,
+            278.738111
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.625,
+          "position": [
+            -459.109976,
+            323.345545
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.645,
+          "position": [
+            -477.90354,
+            375.829725
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.66,
+          "position": [
+            -489.859845,
+            414.636187
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.68,
+          "position": [
+            -484.289914,
+            472.402289
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.735,
+          "position": [
+            -382.012482,
+            411.254729
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.917,
+          "position": [
+            -230.041956,
+            -66.792812
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.99,
+          "position": [
+            -27.869773,
+            -8.113966
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.025,
+          "position": [
+            70.371649,
+            -11.216821
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.075,
+          "position": [
+            200.678506,
+            49.89081
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.1,
+          "position": [
+            247.29982,
+            13.481398
+          ]
+        }
+      ]
+    },
+    {
+      "id": "barber",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5528/6745/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.94,
+          "position": [
+            152.210598,
+            160.531074
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.89,
+          "position": [
+            127.933201,
+            339.246632
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.85,
+          "position": [
+            243.886113,
+            310.282634
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.8,
+          "position": [
+            197.678084,
+            136.08166
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.7,
+          "position": [
+            -53.588225,
+            -132.983841
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.675,
+          "position": [
+            22.974302,
+            -147.451502
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.65,
+          "position": [
+            100.119578,
+            -95.739158
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.55,
+          "position": [
+            319.63851,
+            204.044408
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.5,
+          "position": [
+            468.991682,
+            223.708306
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.425,
+          "position": [
+            297.787969,
+            14.5261
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.39,
+          "position": [
+            232.085646,
+            -93.164564
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.275,
+          "position": [
+            -152.116592,
+            -275.353919
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.25,
+          "position": [
+            -201.443426,
+            -352.845204
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.19,
+          "position": [
+            -410.164529,
+            -319.160244
+          ]
+        },
+        {
+          "label": "15",
+          "progress": 0.16,
+          "position": [
+            -434.898578,
+            -214.615903
+          ]
+        },
+        {
+          "label": "16",
+          "progress": 0.125,
+          "position": [
+            -348.379439,
+            -135.547037
+          ]
+        },
+        {
+          "label": "17",
+          "progress": 0.09,
+          "position": [
+            -249.520545,
+            -216.172239
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-beach",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5529/6746/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.105,
+          "position": [
+            255.985337,
+            13.887257
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.065,
+          "position": [
+            147.143352,
+            60.170942
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.002,
+          "position": [
+            -1.809537,
+            -6.260572
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.977,
+          "position": [
+            -61.005041,
+            42.567133
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.945,
+          "position": [
+            -84.301004,
+            124.938103
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.913,
+          "position": [
+            -27.12461,
+            204.496406
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.8,
+          "position": [
+            289.634137,
+            17.133419
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.688,
+          "position": [
+            360.279377,
+            305.898997
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.5,
+          "position": [
+            970.148317,
+            279.92248
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.455,
+          "position": [
+            996.522333,
+            141.876256
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.405,
+          "position": [
+            1116.503101,
+            120.093386
+          ]
+        }
+      ]
+    },
+    {
+      "id": "indianapolis",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5527/6744/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.035,
+          "position": [
+            -107.52537,
+            -55.450587
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.995,
+          "position": [
+            0.619773,
+            19.504986
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.969,
+          "position": [
+            11.136304,
+            118.833307
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.921,
+          "position": [
+            165.811555,
+            185.383429
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.875,
+          "position": [
+            194.960411,
+            12.857606
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.85,
+          "position": [
+            227.208968,
+            -70.593363
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.675,
+          "position": [
+            235.151464,
+            -754.957914
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.65,
+          "position": [
+            292.712657,
+            -801.380397
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.63,
+          "position": [
+            370.468747,
+            -802.213539
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.571,
+          "position": [
+            557.098011,
+            -888.228501
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.5,
+          "position": [
+            531.896871,
+            -1157.913912
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.405,
+          "position": [
+            200.004827,
+            -1237.150556
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.37,
+          "position": [
+            191.065766,
+            -1103.465423
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.295,
+          "position": [
+            -62.82363,
+            -1066.296267
+          ]
+        }
+      ]
+    },
+    {
+      "id": "detroit",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5525/6742/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.702,
+          "position": [
+            612.777731,
+            -165.34118
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.77,
+          "position": [
+            608.895615,
+            0
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.175,
+          "position": [
+            -427.214933,
+            -37.766112
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.245,
+          "position": [
+            -254.764,
+            -55.286671
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.32,
+          "position": [
+            -250.463022,
+            -251.944941
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.35,
+          "position": [
+            -171.071306,
+            -252.36
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.37,
+          "position": [
+            -129.215751,
+            -278.366978
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.518,
+          "position": [
+            230.729,
+            -276.799522
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.545,
+          "position": [
+            230.729,
+            -205.320471
+          ]
+        }
+      ]
+    },
+    {
+      "id": "road-america",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5530/6747/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.5,
+          "position": [
+            984.271237,
+            -314.305232
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.54,
+          "position": [
+            745.090047,
+            -388.874713
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.58,
+          "position": [
+            509.48227,
+            -359.631735
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.65,
+          "position": [
+            572.963641,
+            85.187146
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.755,
+          "position": [
+            757.38544,
+            733.409584
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.81,
+          "position": [
+            452.676499,
+            705.647921
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.845,
+          "position": [
+            442.800986,
+            485.515817
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.902,
+          "position": [
+            158.641057,
+            253.669028
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.945,
+          "position": [
+            254.004478,
+            11.149007
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.98,
+          "position": [
+            84.142565,
+            -90.193916
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.055,
+          "position": [
+            -71.255362,
+            346.669966
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.195,
+          "position": [
+            365.412972,
+            1110.554738
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.25,
+          "position": [
+            677.815317,
+            970.804248
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.305,
+          "position": [
+            969.771784,
+            939.160599
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mid-ohio",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5523/6740/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.8,
+          "position": [
+            -542.954056,
+            -70.837591
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.625,
+          "position": [
+            -593.794367,
+            -673.042064
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.455,
+          "position": [
+            -633.732359,
+            -92.865221
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.345,
+          "position": [
+            -480.223752,
+            271.672786
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.3,
+          "position": [
+            -331.996393,
+            248.911317
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.258,
+          "position": [
+            -320.107208,
+            396.792914
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.215,
+          "position": [
+            -179.994489,
+            434.415534
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.19,
+          "position": [
+            -120.364708,
+            501.700735
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.15,
+          "position": [
+            17.983074,
+            502.989991
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.075,
+          "position": [
+            35.137879,
+            236.649741
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.025,
+          "position": [
+            -44.299121,
+            77.660325
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.974,
+          "position": [
+            21.294989,
+            -89.568168
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.945,
+          "position": [
+            -58.960477,
+            -117.116654
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portland",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5516/6733/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.941,
+          "position": [
+            119.365539,
+            -26.943351
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.956,
+          "position": [
+            132.861982,
+            17.692595
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.975,
+          "position": [
+            77.097836,
+            16.931235
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.1,
+          "position": [
+            -255.585849,
+            155.354074
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.153,
+          "position": [
+            -145.956782,
+            255.15094
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.2,
+          "position": [
+            -33.827948,
+            165.86647
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.28,
+          "position": [
+            35.329954,
+            384.601333
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.33,
+          "position": [
+            181.969247,
+            346.594734
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.375,
+          "position": [
+            322.657491,
+            329.331819
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.595,
+          "position": [
+            824.633182,
+            -130.01422
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.62,
+          "position": [
+            893.265835,
+            -166.627234
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.66,
+          "position": [
+            932.732002,
+            -282.260807
+          ]
+        }
+      ]
+    },
+    {
+      "id": "markham",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5520/6737/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.977,
+          "position": [
+            23.267647,
+            67.690038
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.95,
+          "position": [
+            70.624668,
+            141.655536
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.9,
+          "position": [
+            208.378521,
+            220.743704
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.846,
+          "position": [
+            127.55945,
+            375.892545
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.697,
+          "position": [
+            -235.311625,
+            148.763448
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.39,
+          "position": [
+            672.770794,
+            572.855066
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.29,
+          "position": [
+            517.873001,
+            281.924715
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.25,
+          "position": [
+            396.258214,
+            246.68201
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.17,
+          "position": [
+            385.1514,
+            -15.410805
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.105,
+          "position": [
+            178.892504,
+            -92.074275
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.075,
+          "position": [
+            86.009381,
+            -106.227726
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.05,
+          "position": [
+            21.886953,
+            -149.633438
+          ]
+        }
+      ]
+    },
+    {
+      "id": "washington-dc",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5549/6796/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.075,
+          "position": [
+            -6.098895,
+            202.609689
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.38,
+          "position": [
+            -786.079197,
+            475.880434
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.455,
+          "position": [
+            -783.252565,
+            271.870057
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.52,
+          "position": [
+            -605.947623,
+            269.300505
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.71,
+          "position": [
+            -598.103189,
+            -246.795629
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.875,
+          "position": [
+            -146.704548,
+            -246.573673
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.93,
+          "position": [
+            -15.91085,
+            -181.804943
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arlington",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5517/6734/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.062,
+          "position": [
+            -88.814,
+            215.250842
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.08,
+          "position": [
+            -130.691916,
+            266.86532
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.1,
+          "position": [
+            -215.840404,
+            245.228608
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.135,
+          "position": [
+            -367.311384,
+            218.721633
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.222,
+          "position": [
+            -567.712406,
+            109.615494
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.25,
+          "position": [
+            -675.217987,
+            157.721713
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.3,
+          "position": [
+            -716.92856,
+            -14.791128
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.325,
+          "position": [
+            -793.5033,
+            5.680949
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.365,
+          "position": [
+            -791.001471,
+            181.07453
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.7,
+          "position": [
+            658.855495,
+            242.035043
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.73,
+          "position": [
+            692.83,
+            125.320518
+          ]
+        },
+        {
+          "label": "12",
+          "progress": 0.835,
+          "position": [
+            473.246536,
+            -247.722923
+          ]
+        },
+        {
+          "label": "13",
+          "progress": 0.87,
+          "position": [
+            335.228634,
+            -181.082948
+          ]
+        },
+        {
+          "label": "14",
+          "progress": 0.959,
+          "position": [
+            -20.538499,
+            -128.955473
+          ]
+        }
+      ]
+    },
+    {
+      "id": "laguna-seca",
+      "frame": "expansion-raw",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5519/6736/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.1,
+          "position": [
+            -65.534486,
+            159.639251
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.025,
+          "position": [
+            -17.253594,
+            -73.857815
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.945,
+          "position": [
+            16.338105,
+            191.277497
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.875,
+          "position": [
+            258.892337,
+            147.46907
+          ]
+        },
+        {
+          "label": "5",
+          "progress": 0.733,
+          "position": [
+            244.138674,
+            -342.457079
+          ]
+        },
+        {
+          "label": "6",
+          "progress": 0.615,
+          "position": [
+            646.087006,
+            -287.627869
+          ]
+        },
+        {
+          "label": "7",
+          "progress": 0.53,
+          "position": [
+            697.260724,
+            9.19344
+          ]
+        },
+        {
+          "label": "8",
+          "progress": 0.477,
+          "position": [
+            707.280426,
+            194.750486
+          ]
+        },
+        {
+          "label": "8A",
+          "progress": 0.455,
+          "position": [
+            658.759457,
+            242.730768
+          ]
+        },
+        {
+          "label": "9",
+          "progress": 0.405,
+          "position": [
+            622.628464,
+            411.07507
+          ]
+        },
+        {
+          "label": "10",
+          "progress": 0.333,
+          "position": [
+            374.491291,
+            368.516888
+          ]
+        },
+        {
+          "label": "11",
+          "progress": 0.253,
+          "position": [
+            227.395578,
+            611.084303
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phoenix",
+      "frame": "expansion-aligned",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5518/6735/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.20506658986682028,
+          "position": [
+            190.827856,
+            330.251982
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.3341383317233365,
+          "position": [
+            -5.314592,
+            360.158272
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.7081443337113326,
+          "position": [
+            -344.472472,
+            20.634547
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.8346595806808386,
+          "position": [
+            -147.323767,
+            -48.270829
+          ]
+        }
+      ]
+    },
+    {
+      "id": "indianapolis-500",
+      "frame": "expansion-aligned",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5526/6743/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.13734829445386004,
+          "position": [
+            121.769922,
+            -518.817627
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.2623483444540401,
+          "position": [
+            613.224586,
+            -514.455294
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.6373484944545801,
+          "position": [
+            598.025197,
+            932.560345
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.7623485444547601,
+          "position": [
+            106.448318,
+            928.838456
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwtr",
+      "frame": "expansion-aligned",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5524/6741/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.18196918230138337,
+          "position": [
+            185.902753,
+            -606.438115
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.2880299216957495,
+          "position": [
+            368.858002,
+            -577.920813
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.6635979235133551,
+          "position": [
+            249.595103,
+            168.801157
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.8023099673918956,
+          "position": [
+            10.623293,
+            134.150522
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nashville",
+      "frame": "expansion-aligned",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5531/6748/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.18541628862555015,
+          "position": [
+            64.77469,
+            -422.414423
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.32441406189929906,
+          "position": [
+            323.441046,
+            -435.815443
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.6673214466954336,
+          "position": [
+            433.006941,
+            264.918423
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.8122174302840921,
+          "position": [
+            169.262572,
+            309.27134
+          ]
+        }
+      ]
+    },
+    {
+      "id": "milwaukee",
+      "frame": "expansion-aligned",
+      "sourceUrl": "https://www.imscdn.com/INDYCAR/Documents/5522/6739/indycar-topsectiontimes-race.pdf",
+      "positionBasis": "registration of published turn regions on public centerline, not surveyed apex GPS",
+      "turns": [
+        {
+          "label": "1",
+          "progress": 0.19289976274740084,
+          "position": [
+            4.38604,
+            -2.00135
+          ]
+        },
+        {
+          "label": "2",
+          "progress": 0.3264134658584839,
+          "position": [
+            194.034596,
+            54.292594
+          ]
+        },
+        {
+          "label": "3",
+          "progress": 0.6200780923629885,
+          "position": [
+            210.108689,
+            538.56771
+          ]
+        },
+        {
+          "label": "4",
+          "progress": 0.7346519835420788,
+          "position": [
+            75.80583,
+            651.759
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1021,6 +1021,17 @@ describe('race session continuity', () => {
     ).toBeNull()
   })
 
+  it('allows only integration roundoff above harvested energy in superclip totals', () => {
+    const now = 1_800_000_000_000
+    for (const recovered of [0, 5e-8, -1e-8, 1e-6]) {
+      const checkpoint = mutableCheckpoint(now)
+      mutableF1Runtime(checkpoint).superClippingRecoveredThisLapMj = recovered
+      const restored = parseRaceCheckpoint(JSON.stringify(checkpoint), 'session-a', config, now)
+      if (recovered >= 0 && recovered <= 1e-7) expect(restored).not.toBeNull()
+      else expect(restored).toBeNull()
+    }
+  })
+
   it('rejects corrupted Phase 4 energy fields and derived displays', () => {
     const now = 1_800_000_000_000
     const corruptions: Array<(checkpoint: MutableCheckpoint) => void> = [
@@ -1183,7 +1194,8 @@ describe('race session continuity', () => {
 
     expect(raw).not.toBeNull()
     // Includes one complete, validated driver-agent replay record per car.
-    expect(raw!.length).toBeLessThan(1_650_000)
+    // UTF-16 storage plus compact three-lap telemetry stays below 4 MB.
+    expect(raw!.length*2).toBeLessThan(4_000_000)
     expect(
       snapshot.cars.some((car) => car.lapHistory.length >= 2),
     ).toBe(true)

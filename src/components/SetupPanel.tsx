@@ -1,4 +1,5 @@
-import { Dices, RotateCcw, Wrench, X } from 'lucide-react'
+import { SetupPanelHeader } from './SessionChrome'
+import { Dices, RotateCcw, Wrench } from 'lucide-react'
 import type {
   KnockoutQualifying,
   PracticeSessionResult,
@@ -313,21 +314,7 @@ export function SetupPanel({
 
   return (
     <section className="hud setup-panel" aria-label="race setup">
-      <div className="setup-header">
-        <div>
-          <span>Weekend engineering</span>
-          <strong>{teams.length} teams / {drivers.length} cars</strong>
-        </div>
-        <button
-          aria-label="close setup"
-          className="plain-icon-button"
-          onClick={onToggle}
-          title="Close setup"
-          type="button"
-        >
-          <X aria-hidden="true" size={18} />
-        </button>
-      </div>
+      <SetupPanelHeader teams={teams.length} cars={drivers.length} onClose={onToggle} closeLabel="close setup"/>
 
       <label className="field-block">
         <span>Championship round</span>

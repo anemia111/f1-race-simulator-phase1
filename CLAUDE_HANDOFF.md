@@ -40,7 +40,14 @@ driving game.
 - `src/data/motorsportSeries2026.json` contains only executable F1/SF series
   packages. `src/data/historicalDriverPool2026.json` retains all 52 former
   F2/F3 identities as provenance-only history. The validated relational pool
-  contains 110 unique people and 111 provenance records.
+  originally contained 110 unique people and 111 provenance records. The
+  user-authorized `importedDriverRatings2026.json` adds 238 people from 338 CSV
+  rows, yielding 348 people and 468 provenance records. All original abilities
+  remain intact; new people use the exact supplied CSV axes and overall.
+  Missing Potential stays null in the imported source and uses Overall only
+  when materialized into the existing runtime schema. Unknown nationality is
+  `UNK`. Category history does not assign a championship seat or make a new
+  category executable.
 - MADRING uses the issued FIA 5.414 km / 57-lap specification and 22 numbered
   model corners. Its 2026 sector distances are now source-backed; it still has
   no fabricated OpenF1 telemetry-coordinate projection.
@@ -219,6 +226,17 @@ driving game.
   drops persist in season garage state between rounds.
 
 ## 3D And UI
+
+- Phase 2 foundation adds TEAM and DECISIONS to the existing pit-wall overlay.
+  TEAM handles the actual number of same-team entrants (including Free Mode),
+  with named per-car commands using the existing eligibility checks. F1 pit
+  decisions are recorded at execution in `src/simulation/decisionLog.ts`,
+  settled on the first ranked snapshot after physical pit exit, and restored
+  through the bounded checkpoint parser. Invalid optional logs are discarded
+  without rejecting an otherwise valid race. Predicted pit loss is the engine
+  estimate at the call; actual call-to-exit elapsed time is a separate quantity.
+  Neither rejoin position nor elapsed service time is labelled net strategy gain.
+  No alternative-future simulation or expanded SF pit model is implemented yet.
 
 - `RaceScene` is lazy-loaded and uses lightweight Three.js primitives for cars, track, kerbs,
   runoff, barriers, pit lane/boxes, grid slots, corner numbers, marshal posts,
@@ -461,3 +479,97 @@ the latest decision record, and retains `legacy-direct` as rollback. Local
 yellow order is explicitly enforced while passable obstructions remain
 exempt. No known implementation phase remains open; the numbered limits above
 are source/discretion/bundle boundaries, not hidden completion claims.
+# Tyre degradation and age follow-up
+
+- F1 C1–C5 and I/W degradation now share explicit SIM stint targets. Default
+  H/M/S uses C2/C3/C4 consistently with the thermal model. These rates are
+  simulator policy, not published Pirelli degradation measurements.
+- Representative pre-cliff pace slopes (s/lap before driver management) are
+  C1 .035, C2 .050, C3 .070, C4 .095, C5 .125, I .065, W .045. Base cliff
+  ages are 40/32/25/18/13/26/34 laps respectively. Physical wear reaches 70%
+  at the management-adjusted cliff before track, fuel, pace and thermal loads.
+- Live remaining life uses measured SIM wear plus irreversible thermal stress;
+  age only estimates life if wear state is unavailable. The timing tower shows
+  completed laps on the fitted set beside life, including SF set age.
+- Carcass heat now contributes to overheating and permanent thermal damage
+  after surface cooling. Carcass equilibrium stays closer to the surface;
+  reversible overheating still cools, while wear and thermal stress persist.
+- SF retains its separate control-tyre availability boundary; no F1 wear or
+  thermal coefficients are applied to it.
+- `tireDegradation.test.ts` covers every family, controlled stints, push/save,
+  heat/cooling, wet-tyre cooling loss, allocation consistency and observed-rate
+  confidence. Desktop playtest also checks age text and column clipping.
+
+## User-authored circuit compound pace gaps
+
+- `data/tirePaceGaps.ts` preserves the user's 24 fresh-tyre pace targets in
+  seconds/lap. Medium is zero, Hard is +hardToMedium, Soft is -mediumToSoft.
+  Values are user-authored SIM inputs, not Pirelli or observed race data.
+- 23 entries attach to current selectable courses. Imola is retained in the
+  table without creating a new track pack. Spain means Barcelona; unprovided
+  Madrid keeps its prior live behaviour.
+- `tireCompoundPace.ts` fits bounded dry grip coefficients to force-based,
+  isolated reference laps once per immutable track object. Only F1 live tyre
+  force consumes them. Wet tyres and SF remain outside this dry-pace fit.
+- Live timing and gaps are never forced to these values. Slipstream, dirty
+  air, Electrical Overtake, ERS, fuel, execution, weather and tyre condition
+  still determine the actual trajectory and timing. The offline reference
+  excludes active-aero zones and uses the unbounded capability energy policy;
+  it is a tuning reference rather than a prediction for every race lap.
+- Numeric acceptance covers all 23 course targets to 0.005 s on the reference
+  model, live compound traction, and retained slipstream effects.
+
+## Road grade and local-altitude force follow-up
+
+- Live road gravity already existed, but its ±3.5% clamp flattened the sourced
+  8% MADRING grade. Shared `roadEnvironment.roadGradeForceN` now retains source
+  grades through ±20%, using mg sin(atan(rise/run)); invalid input stays neutral.
+- Live atmosphere now reads absolute source-labelled point elevation first,
+  then track altitude, then the explicit 100 m SIM fallback. Rendering Y is
+  never an altitude input. Temperature still modifies density. Missing profile
+  grade remains 0%; this change does not invent new elevation surveys.
+- Density feeds both drag and downforce. The physical reference-lap forward
+  sweep now subtracts road gravity and the backward braking sweep includes
+  its signed contribution. Both use local density, so offline and live paths
+  consume the same environmental inputs without adding gravity twice.
+- Reference atmosphere defaults to 15 C unless an air temperature is provided;
+  simplified qualifying passes simulated air temperature, while explicit
+  density overrides remain available for controlled benchmarks. Peak downforce
+  reporting now uses per-point density too.
+- Numeric tests cover 8% uphill/downhill acceleration, density/drag/downforce
+  ratios at 2200 m, source precedence, unavailable/invalid fallbacks, local
+  reference inputs and continued circuit compound-pace calibration.
+
+## 2026-10-09 all-category elevation and motion follow-up
+
+Work from the deployed category branch, not outdated master. See
+`docs/CATEGORY_MOTION_AND_ELEVATION.md` for the 58-layout elevation ledger,
+MADRING official anchors, Baku exclusion, display height controls and category
+road/pit/lateral interpolation. The existing WEC/GT/INDY/KYOJO category engine
+owns all motion; its actual lanes and continuous pit distance now reach the
+map. `scripts/course-elevation-playtest.mjs` is included in the publish gate.
+# Full-suite qualifying assertion follow-up
+
+Additional baseline0461fd4 failures reproduced in isolated baseline tests:
+speedCalibration's three running-car fixtures inherited throttle0 from the grid,
+so the pedal slew limit correctly returned20% at100ms and prevented deployment.
+They now start with throttle100; all original force, power and pedal assertions
+remain. The F1 tyre lap test compared newly fitted tyres after a compulsory
+compound stop; its controlled stint now starts with the compound obligation met
+and asserts zero pit stops. The SF round6 UI expectation now matches its existing
+verified schedule snapshot instead of expecting unavailable data. Corrected
+speed regressions3/3 and tyre/UI19/19 pass. No runtime changes in these repairs.
+
+The dry qualifying ERS test failed identically on baseline 0461fd4: attack peak
+340km/h vs preparation peak340.41km/h. Both phases can reach the physical speed
+ceiling, so a strict peak-speed comparison does not establish ERS deployment.
+The test now compares the minimum battery level between attack and preparation,
+alongside the existing harvest/deploy, battery depletion and full run-cycle
+assertions. The isolated regression and lint pass. Runtime physics is unchanged.
+The normal full publish gate must be rerun after this test correction.
+
+## Six-category integration continued, 2026-10-10
+
+Merged the six-category elevation/motion branch with the pit-wall, tyre and road-environment work. See docs/SIX_CATEGORY_CROSS_VALIDATION.md for driver/course interchange, Nakayama 110, SF effective-grip calibration, live pace measurements and limitations. All six tyre badges show set age. Additional-category aero forces now use local elevation-derived density. Full normal publish gate is required and its result remains pending.
+
+Post-integration checks: all six tyre badges now have readable backgrounds and set-age labels; 110-point driver slider assertions match the explicit Nakayama request. Imola imported from WEC now receives the supplied 0.3s/0.125s F1 fresh-tyre targets; all 28 compound tests pass. The tyre-force fixture starts at full throttle so the merged pedal slew limit does not mask the requested traction comparison. The integrated speed regression now measures actual ERS power/energy and charge depletion instead of an arbitrary 70% remaining-charge cutoff (Las Vegas yielded 71%); its isolated regression passes. Native desktop, additional-category race/Free Mode/Le Mans and SF OTS preflight checks pass; the remaining UI/calendar/elevation preflight and normal full publication gate still require completion.

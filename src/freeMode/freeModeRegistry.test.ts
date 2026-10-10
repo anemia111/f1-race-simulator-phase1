@@ -1,3 +1,4 @@
+import { crossCategoryCoursePacks } from './crossCategoryTracks'
 import { describe, expect, it } from 'vitest'
 import {
   driverPool2026,
@@ -79,10 +80,11 @@ const configurationFor = (
 })
 
 describe('Free Mode registry and validation', () => {
-  it('unifies every F1 and SUPER FORMULA track without duplicate IDs', () => {
+  it('unifies all six categories without duplicate course IDs', () => {
     const options = freeModeTrackOptions(seriesById)
     const expectedIds = new Set([
       ...seriesPackageById.get('f1-custom')!.tracks.map((track) => track.id),
+      ...crossCategoryCoursePacks.map(pack => pack.id),
       ...seriesPackageById
         .get('super-formula')!
         .tracks.map((track) => track.id),
@@ -90,10 +92,10 @@ describe('Free Mode registry and validation', () => {
 
     expect(options).toHaveLength(expectedIds.size)
     expect(new Set(options.map((track) => track.id)).size).toBe(options.length)
-    expect(options.find((track) => track.id === 'suzuka-approx')?.sources).toEqual([
+    expect(options.find((track) => track.id === 'suzuka-approx')?.sources).toEqual(expect.arrayContaining([
       'F1',
       'SF',
-    ])
+    ]))
     expect(options.some((track) => track.id === 'fuji-sf')).toBe(true)
   })
 
@@ -190,12 +192,12 @@ describe('Free Mode registry and validation', () => {
     expect(runtime.raceConfig).not.toHaveProperty('tireAllocation')
   })
 
-  it('loads only F1 and Super Formula machinery plus the 110-driver pool', () => {
+  it('loads F1 and Super Formula machinery plus the expanded driver pool', () => {
     expect([...seriesById.keys()]).toEqual([
       'f1-custom',
       'super-formula',
     ])
-    expect(driverPool2026).toHaveLength(110)
+    expect(driverPool2026).toHaveLength(348)
   })
 
   it.each(Array.from({ length: FREE_MODE_MAX_CARS }, (_, index) => index + 1))(

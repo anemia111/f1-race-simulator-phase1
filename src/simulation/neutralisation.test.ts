@@ -12,6 +12,7 @@ import {
   isSafetyCarFieldQueued,
 } from './neutralisation'
 import { createInitialRace } from './race'
+import { progressForProfileSpeed } from './trackDynamics'
 
 const config: RaceConfig = {
   drivers: initialDrivers,
@@ -84,6 +85,26 @@ function deployedScenario() {
 }
 
 describe('Safety Car queue traffic', () => {
+  it('measures the maximum queue gap in car lengths at safety-car pace', () => {
+    const [leader, follower] = createInitialRace(config).cars
+    const lengthM = config.track.lengthKm * 1000
+    const inside = [atDistance(leader, 10.2), atDistance(follower, 10.2 - 55 / lengthM)]
+    const outside = [atDistance(leader, 10.2), atDistance(follower, 10.2 - 57 / lengthM)]
+    expect(isSafetyCarFieldQueued(inside, 250, 10, lengthM)).toBe(true)
+    expect(isSafetyCarFieldQueued(outside, 250, 10, lengthM)).toBe(false)
+    expect(isSafetyCarFieldQueued(outside, 250, 20, lengthM)).toBe(true)
+  })
+
+  it('uses physical arc distance on a nonuniform source centerline', () => {
+    const [leader, follower] = createInitialRace(config).cars
+    for (const start of [10.1, 10.4, 10.8]) {
+      const inside = start + progressForProfileSpeed(config.track, start, 55 * 3.6, 1)
+      const outside = start + progressForProfileSpeed(config.track, start, 57 * 3.6, 1)
+      expect(isSafetyCarFieldQueued([atDistance(leader, inside), atDistance(follower, start)], 250, 10, config.track)).toBe(true)
+      expect(isSafetyCarFieldQueued([atDistance(leader, outside), atDistance(follower, start)], 250, 10, config.track)).toBe(false)
+    }
+  })
+
   it('does not wait for a stopped on-track obstruction to join the queue', () => {
     const [leader, obstruction, follower] = createInitialRace(config).cars
     const cars = [

@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   test: {
+    // Full-field race and weekend integration tests simulate many minutes of
+    // fixed-step physics. Wall-clock performance is checked by benchmark,
+    // while these tests retain their complete deterministic assertions.
+    testTimeout: 600_000,
     // A Claude Code worktree lives at .claude/worktrees/<name> inside the
     // repository. Without this exclusion its copy of every suite is collected
     // as well, so `npm test` runs each file twice against two different

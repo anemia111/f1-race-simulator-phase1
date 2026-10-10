@@ -1,0 +1,2654 @@
+{
+  "schemaVersion": 1,
+  "season": 2026,
+  "verifiedOn": "2026-10-07",
+  "machines": [
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Chevrolet / road-street",
+      "configuration": "road-street",
+      "engineSupplier": "Chevrolet",
+      "sourceId": "indy-shared-chassis",
+      "mass": {
+        "value": 1785.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1785"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "未確認"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "Chevrolet 2.2 L V6 twin-turbo",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "共通シャシーと2026規則重量。Chevrolet固有の出力曲線は未確認。Hondaの出力範囲を転用しません。"
+    },
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Chevrolet / short-oval",
+      "configuration": "short-oval",
+      "engineSupplier": "Chevrolet",
+      "sourceId": "indy-shared-chassis",
+      "mass": {
+        "value": 1770.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1770"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "未確認"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "Chevrolet 2.2 L V6 twin-turbo",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "共通シャシーと2026規則重量。Chevrolet固有の出力曲線は未確認。Hondaの出力範囲を転用しません。"
+    },
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Chevrolet / speedway",
+      "configuration": "speedway",
+      "engineSupplier": "Chevrolet",
+      "sourceId": "indy-shared-chassis",
+      "mass": {
+        "value": 1740.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1740"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "未確認"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "Chevrolet 2.2 L V6 twin-turbo",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "共通シャシーと2026規則重量。Chevrolet固有の出力曲線は未確認。Hondaの出力範囲を転用しません。"
+    },
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Honda / road-street",
+      "configuration": "road-street",
+      "engineSupplier": "Honda",
+      "sourceId": "honda-ir18-2026",
+      "mass": {
+        "value": 1785.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1785"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": 550,
+        "upper": 700,
+        "unit": "hp",
+        "relation": "range",
+        "text": "550–700 hp; circuit-dependent"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "HI22TT",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "重量は2026年5月28日版規則14.4を優先。ドライバー・等価バラスト・燃料・飲料を除く。Honda紹介ページの旧概数1630/1620/1590 lbは走行重量に使いません。出力はHonda公表のサーキット依存範囲。"
+    },
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Honda / short-oval",
+      "configuration": "short-oval",
+      "engineSupplier": "Honda",
+      "sourceId": "honda-ir18-2026",
+      "mass": {
+        "value": 1770.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1770"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": 550,
+        "upper": 700,
+        "unit": "hp",
+        "relation": "range",
+        "text": "550–700 hp; circuit-dependent"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "HI22TT",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "重量は2026年5月28日版規則14.4を優先。ドライバー・等価バラスト・燃料・飲料を除く。Honda紹介ページの旧概数1630/1620/1590 lbは走行重量に使いません。出力はHonda公表のサーキット依存範囲。"
+    },
+    {
+      "categoryId": "indycar",
+      "name": "Dallara IR-18 / Honda / speedway",
+      "configuration": "speedway",
+      "engineSupplier": "Honda",
+      "sourceId": "honda-ir18-2026",
+      "mass": {
+        "value": 1740.0,
+        "unit": "lb",
+        "relation": "regulatory-minimum-excluding-driver-fuel",
+        "text": "1740"
+      },
+      "massSourceId": "indy-rulebook-2026-0528",
+      "driverEquivalencyPounds": 185,
+      "length": {
+        "value": 201.7,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "201.7"
+      },
+      "width": {
+        "value": 76.5,
+        "unit": "in",
+        "relation": "upper-bound",
+        "text": "76.5"
+      },
+      "height": {
+        "value": 40.0,
+        "unit": "in",
+        "relation": "approximate",
+        "text": "40"
+      },
+      "wheelbase": {
+        "value": 117.5,
+        "upper": 121.5,
+        "unit": "in",
+        "relation": "range",
+        "text": "117.5–121.5 in"
+      },
+      "displacement": {
+        "value": 2200.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "2200"
+      },
+      "power": {
+        "value": 550,
+        "upper": 700,
+        "unit": "hp",
+        "relation": "range",
+        "text": "550–700 hp; circuit-dependent"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "HI22TT",
+      "architecture": "2.2 L V6 twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "重量は2026年5月28日版規則14.4を優先。ドライバー・等価バラスト・燃料・飲料を除く。Honda紹介ページの旧概数1630/1620/1590 lbは走行重量に使いません。出力はHonda公表のサーキット依存範囲。"
+    },
+    {
+      "categoryId": "kyojo",
+      "name": "KC-MG01",
+      "sourceId": "kcmg-kc-mg01",
+      "mass": {
+        "value": 635.0,
+        "unit": "kg",
+        "relation": "manufacturer-vehicle-weight",
+        "text": "635"
+      },
+      "length": {
+        "value": 4150.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4150"
+      },
+      "width": {
+        "value": 1506.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1506"
+      },
+      "height": {
+        "value": 980.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "980"
+      },
+      "wheelbase": {
+        "value": 2753.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2753"
+      },
+      "displacement": {
+        "value": 1400.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "1400"
+      },
+      "power": {
+        "value": 176.0,
+        "unit": "bhp",
+        "relation": "published",
+        "text": "176"
+      },
+      "gears": {
+        "value": 6.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "engine": "1.4 L turbo",
+      "architecture": "1.4Lターボ",
+      "enginePosition": null,
+      "notes": "KCMG公表の参考車両重量。適用年式とドライバー・燃料の算入条件は未確認。2026年はハイブリッド撤去のため、この値を2026年実戦重量とは扱わない。空力・タイヤ特性は未校正。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "Aston Martin Vantage GT3 EVO",
+      "sourceId": "gt-spec-17447",
+      "mass": {
+        "value": 1265.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1265kg"
+      },
+      "length": {
+        "value": 4551.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4551"
+      },
+      "width": {
+        "value": 2049.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2049"
+      },
+      "height": {
+        "value": 1144.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1144"
+      },
+      "wheelbase": {
+        "value": 2761.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2761mm"
+      },
+      "displacement": {
+        "value": 3992.5,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3992.5cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "16A",
+      "architecture": "水冷V型8気筒 ツインターボ",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "BMW M4 GT3 EVO",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1288.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1288kg"
+      },
+      "length": {
+        "value": 4838.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4838"
+      },
+      "width": {
+        "value": 2048.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2048"
+      },
+      "height": {
+        "value": 1237.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1237"
+      },
+      "wheelbase": {
+        "value": 2917.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2917mm"
+      },
+      "displacement": {
+        "value": 2993.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2993cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "P58 EVO",
+      "architecture": "水冷直列6気筒 シングルターボ",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "FERRARI 296 GT3 EVO",
+      "sourceId": "gt-spec-17447",
+      "mass": {
+        "value": 1270.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1270kg"
+      },
+      "length": {
+        "value": 4620.5,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4620.5"
+      },
+      "width": {
+        "value": 2050.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2050"
+      },
+      "height": {
+        "value": 1070.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1070"
+      },
+      "wheelbase": {
+        "value": 2654.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2654mm"
+      },
+      "displacement": {
+        "value": 2992.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2992cc"
+      },
+      "power": {
+        "value": 600.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "600ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "F163CE",
+      "architecture": "水冷V型6気筒 ツインターボ",
+      "enginePosition": "ミッドシップ",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "LAMBORGHINI HURACAN GT3 EVO2",
+      "sourceId": "gt-spec-17447",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4555.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4555"
+      },
+      "width": {
+        "value": 2050.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2050"
+      },
+      "height": {
+        "value": 1103.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1103"
+      },
+      "wheelbase": {
+        "value": 2648.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2648mm"
+      },
+      "displacement": {
+        "value": 5204.2,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5204.2cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "DGF",
+      "architecture": "水冷V型10気筒 自然吸気",
+      "enginePosition": "ミッドシップ",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "LEXUS LC500",
+      "sourceId": "gt-spec-17451",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4790.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4790"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1105.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1105"
+      },
+      "wheelbase": {
+        "value": 2870.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2870mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-G",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "LEXUS LC500h",
+      "sourceId": "gt-spec-17451",
+      "mass": {
+        "value": 1300.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1300kg"
+      },
+      "length": {
+        "value": 4770.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4770"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1108.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1108"
+      },
+      "wheelbase": {
+        "value": 2870.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2870mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-G",
+      "architecture": "水冷V型8気筒 自然吸気＋ハイブリッド",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "LEXUS RC F GT3",
+      "sourceId": "gt-spec-16594",
+      "mass": {
+        "value": 1300.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1300kg"
+      },
+      "length": {
+        "value": 4846.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4846"
+      },
+      "width": {
+        "value": 2030.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2030"
+      },
+      "height": {
+        "value": 1271.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1271"
+      },
+      "wheelbase": {
+        "value": 2770.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2770mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": 500.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "500ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-GSE",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "Mercedes AMG GT3",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1285.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1285kg"
+      },
+      "length": {
+        "value": 4609.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4609"
+      },
+      "width": {
+        "value": 2049.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2049"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "非公表"
+      },
+      "wheelbase": {
+        "value": 2625.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2625mm"
+      },
+      "displacement": {
+        "value": 6208.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "6208cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "M159",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "NISSAN GT-R NISMO GT3",
+      "sourceId": "gt-spec-16594",
+      "mass": {
+        "value": 1285.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1285kg"
+      },
+      "length": {
+        "value": 4832.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4832"
+      },
+      "width": {
+        "value": 2036.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2036"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "非公表"
+      },
+      "wheelbase": {
+        "value": 2817.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2817mm"
+      },
+      "displacement": {
+        "value": 3799.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3799cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "VR38DETT",
+      "architecture": "水冷V型6気筒 ツインターボ",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "Nissan Fairlady Z",
+      "sourceId": "gt-spec-17451",
+      "mass": {
+        "value": 1300.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1300kg"
+      },
+      "length": {
+        "value": 4382.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4382"
+      },
+      "width": {
+        "value": 1845.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1845"
+      },
+      "height": {
+        "value": 1315.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1315"
+      },
+      "wheelbase": {
+        "value": 2675.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2675mm"
+      },
+      "displacement": {
+        "value": 3799.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3799cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "VR38DETT",
+      "architecture": "水冷V型6気筒 ツインターボ",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "PORSCHE 911 GT3R EVO",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4619.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4619"
+      },
+      "width": {
+        "value": 2050.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2050"
+      },
+      "height": {
+        "value": 1163.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1163"
+      },
+      "wheelbase": {
+        "value": 2504.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2504mm"
+      },
+      "displacement": {
+        "value": 4194.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "4194cc"
+      },
+      "power": {
+        "value": 565.0,
+        "unit": "PS",
+        "relation": "published",
+        "text": "565ps"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "MA187",
+      "architecture": "水冷水平対向6気筒 自然吸気",
+      "enginePosition": "リア",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "SUBARU BRZ GT300",
+      "sourceId": "gt-spec-17449",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4600.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4600"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1160.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1160"
+      },
+      "wheelbase": {
+        "value": 2700.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2700mm"
+      },
+      "displacement": {
+        "value": 2932.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2932cc"
+      },
+      "power": {
+        "value": 500.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "500ps以上/7000rpm"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "EG33",
+      "architecture": "水平対向6気筒ツインターボ",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "TOYOTA 86 MC",
+      "sourceId": "gt-spec-17449",
+      "mass": {
+        "value": 1175.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1175kg"
+      },
+      "length": {
+        "value": 4725.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4725"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1100.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1100"
+      },
+      "wheelbase": {
+        "value": 2750.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2750mm"
+      },
+      "displacement": {
+        "value": 4494.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "4494cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "GTA",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "TOYOTA GR Supra",
+      "sourceId": "gt-spec-17449",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4490.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4490"
+      },
+      "width": {
+        "value": 1940.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1940"
+      },
+      "height": {
+        "value": 1106.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1106"
+      },
+      "wheelbase": {
+        "value": 2590.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2590mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-G",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt300",
+      "name": "TOYOTA GR86",
+      "sourceId": "gt-spec-17451",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4550.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4550"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1100.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1100"
+      },
+      "wheelbase": {
+        "value": 2650.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2650mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-G",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt500",
+      "name": "Honda HRC PRELUDE-GT",
+      "sourceId": "gt-spec-16526",
+      "mass": {
+        "value": 1020.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1020kg以上"
+      },
+      "length": {
+        "value": 4725.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4725"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1150.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1150"
+      },
+      "wheelbase": {
+        "value": 2750.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2750mm"
+      },
+      "displacement": {
+        "value": 1995.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "1995cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "HR-420E",
+      "architecture": "水冷直列4気筒直噴シングルターボ",
+      "enginePosition": "フロント（リア2輪駆動）",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt500",
+      "name": "Nissan Z NISMO GT500",
+      "sourceId": "gt-spec-16528",
+      "mass": {
+        "value": 1020.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1020kg以上"
+      },
+      "length": {
+        "value": 4725.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4725"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1150.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1150"
+      },
+      "wheelbase": {
+        "value": 2750.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2750mm"
+      },
+      "displacement": {
+        "value": 1998.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "1998cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "NR4S26",
+      "architecture": "水冷直列4気筒直噴シングルターボ",
+      "enginePosition": "フロント（リア2輪駆動）",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "super-gt-gt500",
+      "name": "TOYOTA GR Supra GT500",
+      "sourceId": "gt-spec-16395",
+      "mass": {
+        "value": 1020.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1020kg以上"
+      },
+      "length": {
+        "value": 4725.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4725"
+      },
+      "width": {
+        "value": 1950.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1950"
+      },
+      "height": {
+        "value": 1150.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1150"
+      },
+      "wheelbase": {
+        "value": 2750.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2750mm"
+      },
+      "displacement": {
+        "value": 2000.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2000cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "RI4BG",
+      "architecture": "水冷直列4気筒直噴シングルターボ",
+      "enginePosition": "フロント（リア2輪駆動）",
+      "notes": "基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Toyota TR010 Hybrid",
+      "sourceId": "toyota-tr010-2026",
+      "mass": {
+        "value": 1040.0,
+        "unit": "kg",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "1040"
+      },
+      "length": {
+        "value": 4900.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4900"
+      },
+      "width": {
+        "value": 2000.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2000"
+      },
+      "height": {
+        "value": 1150.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1150"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "未公表"
+      },
+      "displacement": {
+        "value": 3500.0,
+        "unit": "cc",
+        "relation": "rounded",
+        "text": "3500"
+      },
+      "power": {
+        "value": 520.0,
+        "unit": "kW",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "520"
+      },
+      "gears": {
+        "value": 7.0,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "engine": "V6 twin-turbo",
+      "architecture": "3.5 L V6 direct injection twin-turbo hybrid",
+      "enginePosition": null,
+      "notes": "2026 TR010メーカー諸元。重量・出力はBoP依存。200 kWの前輪モーターを520 kWに足して720 kWとして扱いません。大会別BoPと展開条件が必要です。"
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Alpine A424",
+      "sourceId": "alpine-a424-reference",
+      "mass": {
+        "value": 1030,
+        "unit": "kg",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "1030"
+      },
+      "power": {
+        "value": 500,
+        "unit": "kW",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "500"
+      },
+      "gears": {
+        "value": 7,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "length": {
+        "value": 5088,
+        "unit": "mm",
+        "relation": "published",
+        "text": "5088"
+      },
+      "width": {
+        "value": 1992,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1992"
+      },
+      "height": {
+        "value": 1055,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1055"
+      },
+      "wheelbase": {
+        "value": 3148,
+        "unit": "mm",
+        "relation": "published",
+        "text": "3148"
+      },
+      "displacement": {
+        "value": 3400,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3400"
+      },
+      "engine": "90 degree single-turbo V6",
+      "architecture": "90 degree single-turbo V6",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap.",
+      "hybridPowerKw": 50
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Genesis GMR-001-Hypercar",
+      "sourceId": "genesis-gmr001-2026",
+      "mass": {
+        "value": 1030,
+        "unit": "kg",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "1030"
+      },
+      "power": {
+        "value": 680,
+        "unit": "hp",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "680"
+      },
+      "gears": {
+        "value": 7,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "length": {
+        "value": 5000,
+        "unit": "mm",
+        "relation": "published",
+        "text": "5000"
+      },
+      "width": {
+        "value": 2000,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2000"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": 3150,
+        "unit": "mm",
+        "relation": "published",
+        "text": "3150"
+      },
+      "displacement": {
+        "value": 3200,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3200"
+      },
+      "engine": "G8MR turbo V8",
+      "architecture": "G8MR turbo V8",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap.",
+      "hybridPowerKw": 50
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Peugeot 9X8",
+      "sourceId": "peugeot-9x8-reference-2024",
+      "mass": {
+        "value": 1030,
+        "unit": "kg",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "1030"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": 7,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "length": {
+        "value": 4995,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4995"
+      },
+      "width": {
+        "value": 2000,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2000"
+      },
+      "height": {
+        "value": 1145,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1145"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": 2600,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2600"
+      },
+      "engine": "90 degree twin-turbo V6",
+      "architecture": "90 degree twin-turbo V6",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap.",
+      "hybridPowerKw": 200
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Cadillac V-Series.R",
+      "sourceId": "cadillac-vseriesr-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": 670,
+        "unit": "hp",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "670"
+      },
+      "gears": {
+        "value": 7,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": 5500,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5500"
+      },
+      "engine": "Naturally aspirated DOHC V8 hybrid",
+      "architecture": "Naturally aspirated DOHC V8 hybrid",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "BMW M Hybrid V8",
+      "sourceId": "bmw-mhybridv8-2026",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": 3999,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3999"
+      },
+      "engine": "P66/3 twin-turbo V8; published 640PS is ICE-only, not combined output",
+      "architecture": "P66/3 twin-turbo V8; published 640PS is ICE-only, not combined output",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Aston Martin Valkyrie",
+      "sourceId": "aston-valkyrie-race-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": 7,
+        "unit": "count",
+        "relation": "published",
+        "text": "7"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": 6500,
+        "unit": "cc",
+        "relation": "published",
+        "text": "6500"
+      },
+      "engine": "Cosworth naturally aspirated V12; road-car 1000bhp does not apply",
+      "architecture": "Cosworth naturally aspirated V12; road-car 1000bhp does not apply",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap.",
+      "hybridPowerKw": 0
+    },
+    {
+      "categoryId": "wec-hypercar",
+      "name": "Ferrari 499P",
+      "sourceId": "ferrari-499p-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": null,
+        "unit": "cc",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "engine": "Manufacturer page requires interactive verification; no Modificata values imported",
+      "architecture": "Manufacturer page requires interactive verification; no Modificata values imported",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-lmp2",
+      "name": "Oreca 07 - Gibson",
+      "sourceId": "oreca07-reference",
+      "mass": {
+        "value": 950,
+        "unit": "kg",
+        "relation": "manufacturer-reference-subject-to-bop",
+        "text": "950"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "length": {
+        "value": 4745,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4745"
+      },
+      "width": {
+        "value": 1895,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1895"
+      },
+      "height": {
+        "value": 1045,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1045"
+      },
+      "wheelbase": {
+        "value": 3005,
+        "unit": "mm",
+        "relation": "published",
+        "text": "3005"
+      },
+      "displacement": {
+        "value": 4200,
+        "unit": "cc",
+        "relation": "published",
+        "text": "4200"
+      },
+      "engine": "Gibson GK-428 naturally aspirated 90 degree V8",
+      "architecture": "Gibson GK-428 naturally aspirated 90 degree V8",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Aston Martin Vantage AMR LMGT3",
+      "sourceId": "gt-spec-17447",
+      "mass": {
+        "value": 1265.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1265kg"
+      },
+      "length": {
+        "value": 4551.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4551"
+      },
+      "width": {
+        "value": 2049.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2049"
+      },
+      "height": {
+        "value": 1144.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1144"
+      },
+      "wheelbase": {
+        "value": 2761.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2761mm"
+      },
+      "displacement": {
+        "value": 3992.5,
+        "unit": "cc",
+        "relation": "published",
+        "text": "3992.5cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "16A",
+      "architecture": "水冷V型8気筒 ツインターボ",
+      "enginePosition": "フロント",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "BMW M4 LMGT3 Evo",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1288.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1288kg"
+      },
+      "length": {
+        "value": 4838.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4838"
+      },
+      "width": {
+        "value": 2048.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2048"
+      },
+      "height": {
+        "value": 1237.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1237"
+      },
+      "wheelbase": {
+        "value": 2917.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2917mm"
+      },
+      "displacement": {
+        "value": 2993.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2993cc"
+      },
+      "power": {
+        "value": null,
+        "unit": "PS",
+        "relation": "unavailable",
+        "text": "−"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "P58 EVO",
+      "architecture": "水冷直列6気筒 シングルターボ",
+      "enginePosition": "フロント",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Ferrari 296 LMGT3 Evo",
+      "sourceId": "gt-spec-17447",
+      "mass": {
+        "value": 1270.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1270kg"
+      },
+      "length": {
+        "value": 4620.5,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4620.5"
+      },
+      "width": {
+        "value": 2050.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2050"
+      },
+      "height": {
+        "value": 1070.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1070"
+      },
+      "wheelbase": {
+        "value": 2654.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2654mm"
+      },
+      "displacement": {
+        "value": 2992.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "2992cc"
+      },
+      "power": {
+        "value": 600.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "600ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "F163CE",
+      "architecture": "水冷V型6気筒 ツインターボ",
+      "enginePosition": "ミッドシップ",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Lexus RC F LMGT3",
+      "sourceId": "gt-spec-16594",
+      "mass": {
+        "value": 1300.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1300kg"
+      },
+      "length": {
+        "value": 4846.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4846"
+      },
+      "width": {
+        "value": 2030.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2030"
+      },
+      "height": {
+        "value": 1271.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1271"
+      },
+      "wheelbase": {
+        "value": 2770.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2770mm"
+      },
+      "displacement": {
+        "value": 5400.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5400cc"
+      },
+      "power": {
+        "value": 500.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "500ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "2UR-GSE",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Mercedes-AMG LMGT3",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1285.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1285kg"
+      },
+      "length": {
+        "value": 4609.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4609"
+      },
+      "width": {
+        "value": 2049.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2049"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "非公表"
+      },
+      "wheelbase": {
+        "value": 2625.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2625mm"
+      },
+      "displacement": {
+        "value": 6208.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "6208cc"
+      },
+      "power": {
+        "value": 550.0,
+        "unit": "PS",
+        "relation": "lower-bound",
+        "text": "550ps以上"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "M159",
+      "architecture": "水冷V型8気筒 自然吸気",
+      "enginePosition": "フロント",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Porsche 911 GT3 R LMGT3",
+      "sourceId": "gt-spec-16589",
+      "mass": {
+        "value": 1250.0,
+        "unit": "kg",
+        "relation": "base-minimum",
+        "text": "1250kg"
+      },
+      "length": {
+        "value": 4619.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "4619"
+      },
+      "width": {
+        "value": 2050.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2050"
+      },
+      "height": {
+        "value": 1163.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "1163"
+      },
+      "wheelbase": {
+        "value": 2504.0,
+        "unit": "mm",
+        "relation": "published",
+        "text": "2504mm"
+      },
+      "displacement": {
+        "value": 4194.0,
+        "unit": "cc",
+        "relation": "published",
+        "text": "4194cc"
+      },
+      "power": {
+        "value": 565.0,
+        "unit": "PS",
+        "relation": "published",
+        "text": "565ps"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "資料に記載なし"
+      },
+      "engine": "MA187",
+      "architecture": "水冷水平対向6気筒 自然吸気",
+      "enginePosition": "リア",
+      "notes": "GT3 base manufacturer reference only. LMGT3 homologation/BoP may differ. 基本諸元。BoP・サクセスウェイト・燃料流量制限を反映した大会別の実効性能ではありません。"
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Corvette Z06 LMGT3.R",
+      "sourceId": "corvette-gt3r-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": 6,
+        "unit": "count",
+        "relation": "published",
+        "text": "6"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": 5500,
+        "unit": "cc",
+        "relation": "published",
+        "text": "5500"
+      },
+      "engine": "LT6 DOHC flat-plane V8; manufacturer 500..600hp range is BoP dependent",
+      "architecture": "LT6 DOHC flat-plane V8; manufacturer 500..600hp range is BoP dependent",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "McLaren 720S LMGT3 Evo",
+      "sourceId": "mclaren-gt3-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": null,
+        "unit": "cc",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "engine": "GT3 Evo base model; no road-car output imported",
+      "architecture": "GT3 Evo base model; no road-car output imported",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    },
+    {
+      "categoryId": "wec-lmgt3",
+      "name": "Ford Mustang LMGT3",
+      "sourceId": "ford-gt3-reference",
+      "mass": {
+        "value": null,
+        "unit": "kg",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "power": {
+        "value": null,
+        "unit": "kW",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "gears": {
+        "value": null,
+        "unit": "count",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "length": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "width": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "height": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "wheelbase": {
+        "value": null,
+        "unit": "mm",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "displacement": {
+        "value": null,
+        "unit": "cc",
+        "relation": "unavailable",
+        "text": "Not published in reviewed source"
+      },
+      "engine": "GT3 race model; reference values pending official specification",
+      "architecture": "GT3 race model; reference values pending official specification",
+      "enginePosition": null,
+      "notes": "Individual manufacturer reference. Missing parameters remain unavailable. Combined output is BoP dependent; hybrid is not added to the cap."
+    }
+  ],
+  "sources": [
+    {
+      "id": "gt-spec-17451",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-8-gt300%e8%a6%8f%e5%ae%9atoyota-gr86%e3%80%81lexus-lc500%e3%80%81lexus-lc500h",
+      "sha256": "5614452db2c3f1787c1632dd89c348173a101c4c83da49002b188d540f3eaaf9",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-17449",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-7-gt300%ef%bc%8fgt300%e8%a6%8f%e5%ae%9atoyota-gr-supra%e3%80%81toyota-86-mc%e3%80%81",
+      "sha256": "510364e6be91c6fcd3358ca8e1b85775aeeb54e80016be46c1a58a5302b4b419",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-17447",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-6-gt300%ef%bc%8ffia-gt3%e8%a6%8f%e5%ae%9a%ef%bc%9aferrari-296-gt3-evo%e3%80%81aston",
+      "sha256": "a38b4c4a60317a87a1abe62b6f5f94ecbe90f16f6f4157cd8f7ff5e3c0ff0f3c",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-16594",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-5-gt300%ef%bc%8ffia-gt3%e8%a6%8f%e5%ae%9a%ef%bc%9anissan-gt-r-nismo-gt3%e3%80%81lexu",
+      "sha256": "0b53c22f19576f24c7cf91698ed3ac76311cee477a9c77cb77f2c8b7a7d22978",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-16589",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-4-gt300%ef%bc%8ffia-gt3%ef%bc%9amercedes-amg-gt3%e3%80%81porsche-911-gt3r-evo",
+      "sha256": "50f2250a5651183aadb558a0de5ef6f58d914daf80560cfc7084a03e03b54657",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-16528",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-3-gt500%ef%bc%8fnissan-z-nismo-gt500",
+      "sha256": "148f0d1596582936437c5af38e19eca47ba0c11097235dc991ac844bdf71194b",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-16526",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-2-gt500%ef%bc%8fhonda-hrc-prelude-gt",
+      "sha256": "eb23374d6b5265e17a8c2042e1111cf59e4b783ff4dcebd8a6f67a1791c372fe",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "gt-spec-16395",
+      "url": "https://supergt.net/news_race_report/%e3%80%902026%e9%96%8b%e5%b9%95%e7%89%b9%e9%9b%86%e3%80%91super-gt%e3%83%9e%e3%82%b7%e3%83%b3%e7%b7%8f%e8%a6%a7-vol-1-gt500%ef%bc%8ftoyota-gr-supra-gt500",
+      "sha256": "e55a97e1495c828c172c5a78da80461ae2c779715256f7d9b5d8be4dde61a4c0",
+      "scope": "2026 opening Okayama vehicle overview",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "kcmg-kc-mg01",
+      "url": "https://www.kcmg-japan.com/kyojo/",
+      "sha256": "be15060d0b9f09b9a8e61efc8ab97976da89cfed6c828e92f379c2085a0b3e51",
+      "scope": "KC-MG01 manufacturer specification",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "indy-rulebook-2026-0528",
+      "url": "https://epaddock.indycar.com/docs/default-source/rules-regulations-and-policies/2026-indycar-rulebook.pdf?sfvrsn=56785b60_47",
+      "sha256": "8221f3ca28eb5bf2070de1cc8404661b85047cce059ea20840c06fcf91df7542",
+      "scope": "2026-05-28 rulebook 14.4 car and driver equivalency mass",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "honda-ir18-2026",
+      "url": "https://honda.racing/ja/indy-car-series/machines/car-specifications-26",
+      "sha256": "6bea1a336545097b400065541136666d8305e4b070f18c4443849d8550645d08",
+      "scope": "2026 Honda-powered IR-18 manufacturer reference",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "indy-shared-chassis",
+      "url": "https://www.indycar.com/Fan-Info/INDYCAR-101/Additional-Updates",
+      "sha256": "41319208c46558b3b99df5e6bf99174a4f654b25cc0077d4630573702b56d59f",
+      "scope": "IR-12 chassis / IR-18 aero and engine suppliers",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "toyota-tr010-2026",
+      "url": "https://toyota-racing.com/toyota-racing-wec/",
+      "sha256": "4e5e77e3e1e60e572fa09d6994d9613ffd3eb7b97064528fdd25ccf16327e400",
+      "scope": "2026 TR010 technical specifications; weight/power subject to BoP",
+      "verifiedOn": "2026-10-07"
+    },
+    {
+      "id": "alpine-a424-reference",
+      "url": "https://www.alpinecars.fr/championnat-wec/alpine-a424.html",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "genesis-gmr001-2026",
+      "url": "https://motorsport.hyundai.com/Corporate%20Site/Car%20Spec/GMR-001/2026_Genesis_CarSpec_2026.pdf",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "peugeot-9x8-reference-2024",
+      "url": "https://peugeot-sport.com/wp-content/uploads/2024/11/fiche-technique-2024-9x8-1.pdf",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "cadillac-vseriesr-reference",
+      "url": "https://www.cadillac.com/racing/imsa",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "bmw-mhybridv8-2026",
+      "url": "https://www.bmw-m.com/de/fastlane/motorsport/race-cars/bmw-m-hybrid-v8.html",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "aston-valkyrie-race-reference",
+      "url": "https://www.astonmartinf1.com/en-GB/news/announcement/aston-martin-valkyrie-unveiled-as-le-mans-hypercar",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "ferrari-499p-reference",
+      "url": "https://www.ferrari.com/en-EN/hypercar/ferrari-499p",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "oreca07-reference",
+      "url": "https://www.oreca.com/wp-content/uploads/2021/08/Media_Kit_2021_EN.pdf",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "corvette-gt3r-reference",
+      "url": "https://www.chevroletjapan.com/racing",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "mclaren-gt3-reference",
+      "url": "https://cars.mclaren.com/en/customer-racing/720s-gt3",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    },
+    {
+      "id": "ford-gt3-reference",
+      "url": "https://performance.ford.com/vehicles/mustang-gt3",
+      "retrievedOn": "2026-10-07",
+      "scope": "Manufacturer reference, not a verified 2026 event BoP or surveyed performance map"
+    }
+  ]
+}

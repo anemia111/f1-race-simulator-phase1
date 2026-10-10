@@ -37,7 +37,7 @@ export type PitWallSectorTiming = {
  * Everything a pit-wall tab is allowed to read. Tabs are presentation only:
  * they never fetch, and they never compute simulation state of their own.
  */
-export type PitWallTabProps = {
+export type PitWallTabProps = PitWallCommandProps & {
   capabilities: PitWallCapabilities
   car: CarSnapshot
   driver: Driver

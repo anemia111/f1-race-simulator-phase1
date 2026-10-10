@@ -494,6 +494,13 @@ export type TireNomination = {
   sourceUrl: string | null
 }
 
+/** User-authored fresh-tyre targets in seconds/lap, relative to Medium. */
+export type TirePaceGaps = {
+  hardToMedium: number
+  mediumToSoft: number
+  source: 'user'
+}
+
 export type TrackObservedCalibration = {
   cleanLapSampleCount?: number
   fuelGainPerLapSeconds?: number | null
@@ -829,6 +836,8 @@ export type Driver = {
 }
 
 export type TrackDefinition = {
+  /** Presentation only: 0 flattens the map; never used by the race engine. */
+  elevationDisplayScale?: number
   id: string
   name: string
   location: string
@@ -847,6 +856,7 @@ export type TrackDefinition = {
   /** Optional source-labelled local-surface force profile. */
   surfaceProfile?: TrackSurfaceProfile
   tireNomination?: TireNomination
+  tirePaceGaps?: TirePaceGaps
   baseLapTime: number
   baseLapTimeSource?: 'estimated' | 'openf1-observed' | '2026-reference'
   /**
@@ -889,6 +899,9 @@ export type TrackDefinition = {
   raceLapsSource?: 'official' | 'estimated'
   sectorMarks: number[]
   sectorMarksSource?: OperationalDataSource
+  sectorTimingUnavailableReason?: string
+  /** Published section names for series using timing loops instead of F1 sectors. */
+  sectorLabels?: string[]
   /** Runtime control-line progress -> generated geodata's original origin. */
   measuredRoadProgressOffset?: number
   sectorBoundaryReference?: {
@@ -920,6 +933,7 @@ export type TrackDefinition = {
     sourceUrl?: string | null
   }
   corners?: Array<{
+    label?: string
     number: number
     position: Vector3Tuple
   }>
@@ -963,7 +977,7 @@ export type TrackDefinition = {
      */
     pace: 'native' | 'category-reference' | 'simulated'
     overtakeZones: 'native' | 'simulated'
-    sourceSeries: Array<'F1' | 'SF'>
+    sourceSeries: Array<'F1' | 'SF' | 'KYOJO' | 'SUPER GT' | 'WEC' | 'INDYCAR'>
   }
 }
 
@@ -986,6 +1000,8 @@ export type RaceConfig = {
   freeMode?: boolean
   /** Category identity keeps checkpoints and category-specific assists isolated. */
   seriesId?: ExecutableSeriesId
+  /** Initial start format; omission preserves the standing-start rule package. */
+  raceStartMode?: 'standing' | 'rolling'
   vehicleEraId?: RuntimeVehicleEraId
   /** Omission selects the behavior-neutral category agent adapter. */
   driverDecisionPath?: DriverDecisionPath
@@ -1252,6 +1268,7 @@ export type EnergyStoreState = {
 }
 
 export type CarSnapshot = {
+  telemetryHistory?: import('./simulation/telemetryHistory').TelemetryPoint[]
   driverId: string
   /** Category mileage plus a bounded replay tail of operational decisions. */
   driverAgentRuntime?: DriverAgentRuntimeState
@@ -1266,6 +1283,8 @@ export type CarSnapshot = {
   progress: number
   lap: number
   totalDistance: number
+  /** Category-engine path; pitBlend follows that engine's continuous pit distance. */
+  courseMotion?: { rate: number; pitBlend: number }
   /** Signed physical displacement from the reference line, in metres. */
   lateralOffsetM: number
   /** Signed lateral velocity across the track, in metres per second. */
@@ -1439,6 +1458,8 @@ export type CarSnapshot = {
 }
 
 export type RaceSnapshot = {
+  /** Bounded SIM pit-decision evidence, optional for older checkpoints. */
+  strategyDecisions?: import('./simulation/decisionLog').StrategyDecision[]
   elapsedSeconds: number
   elapsedLabel: string
   leaderLap: number

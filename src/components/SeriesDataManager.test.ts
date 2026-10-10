@@ -110,8 +110,8 @@ describe('Series Data Manager pool boundaries', () => {
     expect(superFormulaControlTyreSummary(superFormula.rules)).toContain(
       'Yokohama Dry max 6',
     )
-    expect(seriesEventOperationLabel(baseOperations.raceDistance)).toMatch(
-      /^UNAVAILABLE \/ /,
+    expect(seriesEventOperationLabel(baseOperations.raceDistance)).toBe(
+      'VERIFIED EVENT OVERRIDE / sf-2026-r06-official-schedule-snapshot',
     )
     expect(seriesEventOperationLabel(replacementOperations.raceDistance)).toBe(
       'VERIFIED EVENT OVERRIDE / jaf-sf-2026-substitute-round-3-web056',

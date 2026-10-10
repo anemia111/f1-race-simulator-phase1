@@ -6,6 +6,7 @@ import type {
   RacePaceMode,
   TireCompound,
   TireNomination,
+  TirePaceGaps,
   TirePerformanceState,
   WeatherState,
 } from '../types'
@@ -88,14 +89,6 @@ export type ObservedTireCalibration = {
   sampleCount?: number
 }
 
-export const tireCompounds: Record<TireCompound, TireCompoundSpec> = {
-  S: { offsetSeconds: -0.7, wearPerLapSeconds: 0.11, cliffLaps: 12, cliffPerLapSeconds: 0.44 },
-  M: { offsetSeconds: 0, wearPerLapSeconds: 0.064, cliffLaps: 21, cliffPerLapSeconds: 0.34 },
-  H: { offsetSeconds: 0.7, wearPerLapSeconds: 0.039, cliffLaps: 34, cliffPerLapSeconds: 0.27 },
-  I: { offsetSeconds: 1.25, wearPerLapSeconds: 0.074, cliffLaps: 22, cliffPerLapSeconds: 0.33 },
-  W: { offsetSeconds: 3.05, wearPerLapSeconds: 0.052, cliffLaps: 30, cliffPerLapSeconds: 0.26 },
-}
-
 export const SLICK_WATER_MAX_MM = 0.8
 export const INTERMEDIATE_WATER_MAX_MM = 3.4
 export const WET_WATER_MIN_MM = 3.5
@@ -105,15 +98,35 @@ export const WET_WATER_MIN_MM = 3.5
  * 2026 range deliberately, targeting roughly seven to eight tenths of a second
  * per step in qualifying rather than the few tenths the earlier range gave:
  * https://scuderiafans.com/f1-2026-tyres-pirelli-targets-bigger-compound-gaps-to-reshape-race-strategy/
- * C3 stays the zero reference and the per-step wear and cliff figures are
- * unchanged, so only the pace separation widens.
+ * C3 stays the zero reference. Degradation and stint lengths below are SIM
+ * tuning targets for a representative lap, not published Pirelli measurements.
+ * Weather, track demand, fuel, pace mode and driver management modify live wear.
  */
 export const dryCompoundFamilies: Record<DryCompoundFamily, TireCompoundSpec> = {
-  C1: { offsetSeconds: 1.4, wearPerLapSeconds: 0.032, cliffLaps: 38, cliffPerLapSeconds: 0.24 },
-  C2: { offsetSeconds: 0.7, wearPerLapSeconds: 0.044, cliffLaps: 31, cliffPerLapSeconds: 0.28 },
-  C3: { offsetSeconds: 0, wearPerLapSeconds: 0.062, cliffLaps: 24, cliffPerLapSeconds: 0.33 },
-  C4: { offsetSeconds: -0.7, wearPerLapSeconds: 0.086, cliffLaps: 17, cliffPerLapSeconds: 0.39 },
-  C5: { offsetSeconds: -1.4, wearPerLapSeconds: 0.115, cliffLaps: 12, cliffPerLapSeconds: 0.46 },
+  C1: { offsetSeconds: 1.4, wearPerLapSeconds: 0.035, cliffLaps: 40, cliffPerLapSeconds: 0.22 },
+  C2: { offsetSeconds: 0.7, wearPerLapSeconds: 0.05, cliffLaps: 32, cliffPerLapSeconds: 0.27 },
+  C3: { offsetSeconds: 0, wearPerLapSeconds: 0.07, cliffLaps: 25, cliffPerLapSeconds: 0.32 },
+  C4: { offsetSeconds: -0.7, wearPerLapSeconds: 0.095, cliffLaps: 18, cliffPerLapSeconds: 0.38 },
+  C5: { offsetSeconds: -1.4, wearPerLapSeconds: 0.125, cliffLaps: 13, cliffPerLapSeconds: 0.45 },
+}
+
+// No nomination means the same C2/C3/C4 allocation used by the thermal model.
+export const tireCompounds: Record<TireCompound, TireCompoundSpec> = {
+  H: { ...dryCompoundFamilies.C2 },
+  M: { ...dryCompoundFamilies.C3 },
+  S: { ...dryCompoundFamilies.C4 },
+  I: { offsetSeconds: 1.25, wearPerLapSeconds: 0.065, cliffLaps: 26, cliffPerLapSeconds: 0.3 },
+  W: { offsetSeconds: 3.05, wearPerLapSeconds: 0.045, cliffLaps: 34, cliffPerLapSeconds: 0.24 },
+}
+
+const WEAR_AT_CLIFF_PERCENT = 70
+
+function observedDegradationScale(spec: TireCompoundSpec, observed?: ObservedTireCalibration) {
+  const rate = observed?.degradationPerLapSeconds
+  const confidence = clamp(finiteOr(observed?.sampleCount ?? 0, 0) / 40, 0, 0.55)
+  if (rate == null || !Number.isFinite(rate)) return 1
+  const ratio = clamp(rate / spec.wearPerLapSeconds, 0.55, 1.65)
+  return 1 + (ratio - 1) * confidence
 }
 
 function specFor(
@@ -136,6 +149,17 @@ function specFor(
   }
 
   return tireCompounds[compound]
+}
+
+export function freshTireOffsetSeconds(
+  compound: TireCompound,
+  nomination?: TireNomination,
+  paceGaps?: TirePaceGaps,
+): number {
+  if (paceGaps && isDryCompound(compound)) {
+    return compound === 'H' ? paceGaps.hardToMedium : compound === 'S' ? -paceGaps.mediumToSoft : 0
+  }
+  return specFor(compound, nomination).offsetSeconds
 }
 
 function dryFamilyFor(
@@ -275,6 +299,7 @@ export function tireThermalWearForLap(options: {
   paceMode: RacePaceMode
   throttlePercent: number
   tireTemperatureC: number
+  tireCarcassTemperatureC?: number
   trackTemperatureC: number
   weather: WeatherState
   dryingLine?: number
@@ -290,6 +315,7 @@ export function tireThermalWearForLap(options: {
     paceMode,
     throttlePercent,
     tireTemperatureC,
+    tireCarcassTemperatureC = tireTemperatureC,
     trackTemperatureC,
     weather,
     dryingLine = weather === 'clear' ? 1 : 0,
@@ -298,7 +324,13 @@ export function tireThermalWearForLap(options: {
     surfaceWaterMm = weather === 'heavy-rain' ? 2.2 : weather === 'light-rain' ? 0.55 : 0,
   } = options
   const window = tireOperatingWindowFor(compound, nomination)
-  const overheatC = Math.max(0, tireTemperatureC - window.upperC)
+  // The surface can cool before the carcass. Retained internal heat continues
+  // to damage the tyre; use the dominant severity rather than adding both.
+  const overheatC = Math.max(
+    0,
+    tireTemperatureC - window.upperC,
+    tireCarcassTemperatureC - window.upperC - 5,
+  )
   const coldC = Math.max(0, window.lowerC - tireTemperatureC)
   const paceFactor: Record<RacePaceMode, number> = {
     defend: 1.08,
@@ -395,23 +427,21 @@ export function tireDeltaSeconds(
     TireDynamicState,
     'carcassTemperatureC' | 'grainingPercent' | 'overheatingPercent'
   >,
+  paceGaps?: TirePaceGaps,
 ): number {
   const spec = specFor(compound, nomination)
   const sampleWeight = Math.min(0.55, Math.max(0, (observed?.sampleCount ?? 0) / 40))
-  const observedWearPerLapSeconds = observed?.degradationPerLapSeconds
   const observedPaceOffsetSeconds = observed?.paceOffsetSeconds
-  const wearPerLapSeconds =
-    observedWearPerLapSeconds === null ||
-    observedWearPerLapSeconds === undefined
-      ? spec.wearPerLapSeconds
-      : spec.wearPerLapSeconds * (1 - sampleWeight) +
-        observedWearPerLapSeconds * sampleWeight
-  const freshPaceOffset =
+  const wearPerLapSeconds = spec.wearPerLapSeconds * observedDegradationScale(spec, observed)
+  const modeledFreshPaceOffset =
     observedPaceOffsetSeconds === null ||
     observedPaceOffsetSeconds === undefined
       ? spec.offsetSeconds
       : spec.offsetSeconds * (1 - sampleWeight) +
         observedPaceOffsetSeconds * sampleWeight
+  const freshPaceOffset = paceGaps && isDryCompound(compound)
+    ? freshTireOffsetSeconds(compound, nomination, paceGaps)
+    : modeledFreshPaceOffset
   // Better tire management shallows the wear slope.
   const wearFactor = 1.35 - tireManagement * 0.5
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
@@ -488,14 +518,8 @@ export function tireWearPercentPerLap(
 ): number {
   const spec = specFor(compound, nomination)
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
-  const baseWearPercent = 56 / Math.max(6, cliff)
-  const observedWear = observed?.degradationPerLapSeconds
-  const observedScale =
-    observedWear === null || observedWear === undefined
-      ? 1
-      : Math.min(1.65, Math.max(0.55, observedWear / spec.wearPerLapSeconds))
-
-  return baseWearPercent * observedScale
+  const baseWearPercent = WEAR_AT_CLIFF_PERCENT / Math.max(6, cliff)
+  return baseWearPercent * observedDegradationScale(spec, observed)
 }
 
 export function advanceTireDynamicState(options: {
@@ -569,13 +593,17 @@ export function advanceTireDynamicState(options: {
     surfaceTemperatureC + dryWetTyreHeatC - wetPatchCoolingC,
   )
   const carcassTargetC =
-    resolvedSurfaceTemperatureC * 0.76 + trackTemperatureC * 0.24
+    resolvedSurfaceTemperatureC * 0.92 + trackTemperatureC * 0.08
   const carcassResponse = 1 - Math.exp(-Math.max(0, deltaSeconds) * 0.038)
   const carcassTemperatureC =
     current.carcassTemperatureC +
     (carcassTargetC - current.carcassTemperatureC) * carcassResponse
   const coldSeverity = Math.max(0, window.lowerC - resolvedSurfaceTemperatureC)
-  const hotSeverity = Math.max(0, resolvedSurfaceTemperatureC - window.upperC)
+  const hotSeverity = Math.max(
+    0,
+    resolvedSurfaceTemperatureC - window.upperC,
+    carcassTemperatureC - window.upperC - 5,
+  )
   const dampSlickGraining =
     isDryCompound(compound) && lineWaterMm > 0.08 && lineWaterMm < 0.55
       ? 18 + lineWaterMm * 34
@@ -618,6 +646,7 @@ export function advanceTireDynamicState(options: {
     surfaceWaterMm,
     throttlePercent,
     tireTemperatureC: resolvedSurfaceTemperatureC,
+    tireCarcassTemperatureC: (current.carcassTemperatureC + carcassTemperatureC) / 2,
     trackTemperatureC,
     weather,
   })
@@ -665,22 +694,17 @@ export function tireConditionFor(
   ageLaps: number,
   tireManagement: number,
   tireTemperatureC: number,
-  tireWearPercent = 0,
+  tireWearPercent?: number,
   nomination?: TireNomination,
   thermalStressPercent = 0,
 ): TireCondition {
   const cliff = effectiveCliffLaps(compound, tireManagement, nomination)
-  const ageLifePercent = (1 - ageLaps / Math.max(1, cliff + 6)) * 100
-  const lifeRemainingPercent = Math.round(
-    Math.max(
-      0,
-      Math.min(
-        100,
-        ageLifePercent,
-        100 - tireWearPercent - thermalStressPercent,
-      ),
-    ),
-  )
+  // Live state already contains push/save, SC and thermal effects. Only use age
+  // as an estimate when no measured simulation wear was supplied (e.g. previews).
+  const resolvedWear = tireWearPercent ??
+    Math.max(0, ageLaps) * tireWearPercentPerLap(compound, tireManagement, nomination)
+  const effectiveWearPercent = resolvedWear + thermalStressPercent
+  const lifeRemainingPercent = Math.round(clamp(100 - effectiveWearPercent, 0, 100))
   const window = tireOperatingWindowFor(compound, nomination)
   const operatingState =
     tireTemperatureC < window.lowerC
@@ -688,7 +712,6 @@ export function tireConditionFor(
       : tireTemperatureC > window.upperC
         ? 'overheated'
         : 'window'
-  const effectiveWearPercent = tireWearPercent + thermalStressPercent
   const wearState =
     ageLaps >= cliff || effectiveWearPercent >= 85
       ? 'critical'

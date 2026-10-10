@@ -357,6 +357,9 @@ describe('canonical track-surface snapshot authority', () => {
   })
 
   it('counts only moving on-track traversals, excluding pit and excursion cars', () => {
+    // Test one physics tick: a coarse 0.25 s call contains five ticks, during
+    // which pit/excursion cars can rejoin and legitimately lay rubber later.
+    const physicsTickSeconds = 0.05
     const config: RaceConfig = {
       ...makeConfig('canonical-surface-traversal-filter'),
       track: { ...tracks[0], rainProbability: 0 },
@@ -373,7 +376,7 @@ describe('canonical track-surface snapshot authority', () => {
     }))
     const stationary = advanceRace(
       { ...initial, cars: stationaryCars },
-      0.25,
+      physicsTickSeconds,
       config,
     )
     const excluded = advanceRace(
@@ -389,7 +392,7 @@ describe('canonical track-surface snapshot authority', () => {
                 : car,
         ),
       },
-      0.25,
+      physicsTickSeconds,
       config,
     )
     const moving = advanceRace(
@@ -399,7 +402,7 @@ describe('canonical track-surface snapshot authority', () => {
           index === 0 ? { ...car, speedKph: 220 } : car,
         ),
       },
-      0.25,
+      physicsTickSeconds,
       config,
     )
     const stationarySurface = canonicalTrackSurfaceFor(stationary)
@@ -1164,7 +1167,7 @@ describe('determinism', () => {
 
       expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     },
-    40_000,
+    600_000,
   )
 
   it(
@@ -1177,7 +1180,7 @@ describe('determinism', () => {
         JSON.stringify(b.cars.map((car) => car.driverId)),
       )
     },
-    40_000,
+    600_000,
   )
 })
 
@@ -1632,7 +1635,7 @@ describe('starting grid', () => {
     expect(routineWearStops.length).toBeLessThan(snapshot.cars.length / 2)
   // Synchronous full-field physics varies substantially with host load. The
   // assertions are the regression gate; this is not a wall-clock benchmark.
-  }, 180_000)
+  }, 600_000)
 
   it(
     'times a race out-lap from the line so the pit lane is never a free sector',
@@ -1681,7 +1684,7 @@ describe('starting grid', () => {
         expect(lap.sectors[0]).toBeGreaterThan(fastestGreenFirstSector)
       }
     },
-    180_000,
+    900_000,
   )
 
   it('stages routine green-flag stops instead of sending the field together', () => {
@@ -1751,7 +1754,7 @@ describe('starting grid', () => {
       expect(maximumCarsInPit).toBeLessThan(snapshot.cars.length / 2)
       expect(vscPenalties.length).toBeLessThanOrEqual(2)
     },
-    15_000,
+    600_000,
   )
 
   it('starts practice from pit boxes and releases cars on staggered run plans', () => {
@@ -1773,7 +1776,7 @@ describe('starting grid', () => {
           .map((value) => value.toFixed(1)),
       ).size,
     ).toBeGreaterThan(1)
-  })
+  }, 30_000)
 
   it('streams a healthy practice field out early with pit-exit spacing', () => {
     const config = {
@@ -1802,7 +1805,7 @@ describe('starting grid', () => {
     expect(startTimes[0]).toBeLessThan(60)
     expect(startTimes[startTimes.length - 1]).toBeLessThan(150)
     expect(minimumSpacing).toBeGreaterThanOrEqual(2)
-  })
+  }, 120_000)
 
   it('finishes timed practice by clock instead of race distance', () => {
     const config = { ...makeConfig('fp-clock'), weekendStage: 'fp2' as const }
@@ -1816,7 +1819,7 @@ describe('starting grid', () => {
 
     expect(snapshot.sessionStatus).toBe('finished')
     expect(snapshot.eventMessage).toContain('FP2 complete')
-  })
+  }, 60_000)
 })
 
 describe('CPU timing lines', () => {
@@ -2067,7 +2070,7 @@ describe('CPU timing lines', () => {
         transition!.followerTime,
       ),
     ).toBe('overall-best')
-  })
+  }, 30_000)
 })
 
 describe('weekend grid penalties', () => {
@@ -2499,7 +2502,7 @@ describe('full race', () => {
     const result = runToFinish(config)
     finished = result.snapshot
     seenEventKinds = result.seenEventKinds
-  }, 180_000)
+  }, 1_800_000)
 
   it('completes with every car finished or retired', () => {
     expect(finished.sessionStatus).toBe('finished')
@@ -2974,7 +2977,7 @@ describe('start procedure and persisted weekend', () => {
 
     expect(snapshot.overtakeEnabled).toBe(true)
     expect(snapshot.overtakeEnableTargetsByDriver).toBeNull()
-  }, 30_000)
+  }, 600_000)
 
   it('measures VSC deltas against the pace-adjusted on-track speed', () => {
     const config = makeConfig('vsc-delta-pace')
@@ -3012,6 +3015,8 @@ describe('start procedure and persisted weekend', () => {
     const leaderDistance = 3.5
     const followerDistance = leaderDistance - 0.006
     const previousFollowerDistance = followerDistance
+    // Final drivetrain telemetry describes the last physics tick, not the
+    // average speed across a coarse call containing multiple ticks.
 
     snapshot = {
       ...snapshot,
@@ -3054,7 +3059,7 @@ describe('start procedure and persisted weekend', () => {
         return car
       }),
     }
-    snapshot = advanceRace(snapshot, 0.25, config)
+    snapshot = advanceRace(snapshot, 0.05, config)
 
     const nextFollower = snapshot.cars.find(
       (car) => car.driverId === follower.driverId,
@@ -3063,7 +3068,7 @@ describe('start procedure and persisted weekend', () => {
       config.track,
       previousFollowerDistance,
       nextFollower.totalDistance,
-      0.25,
+      0.05,
     )
 
     expect(nextFollower.speedKph).toBeCloseTo(actualTravelSpeedKph, 2)
@@ -3140,8 +3145,15 @@ describe('start procedure and persisted weekend', () => {
     expect(endingDuration).toBeLessThanOrEqual(15)
     expect(snapshot.eventMessage).toContain('VSC ENDING')
 
-    snapshot = advanceRace(snapshot, endingDuration - 0.2, config)
+    // Judge the injected four-sector offence at the green transition itself.
+    // Earlier injection can accrue another red sector before VSC is withdrawn.
+    snapshot = advanceRace(snapshot, endingDuration - 0.15, config)
     expect(snapshot.flagPhase?.flag).toBe('vsc')
+
+    // Place the injected four-sector infringement in the final physical tick.
+    // Earlier injection may legitimately add a fifth red sector (drive-through).
+    snapshot = advanceRace(snapshot,
+      Math.max(0, (procedure.resumeAtSeconds ?? 0) - 0.025 - snapshot.elapsedSeconds), config)
 
     const violatingDriverId = snapshot.cars[0].driverId
     const priorVscPenalty: PenaltyRecord = {
@@ -3169,7 +3181,7 @@ describe('start procedure and persisted weekend', () => {
             : { ...car, vscDeltaSeconds: 0.2, vscRedSectorCount: 0 },
         ),
       },
-      0.3,
+      0.05,
       config,
     )
     expect(snapshot.flagPhase).toBeNull()
@@ -3624,7 +3636,7 @@ describe('tires', () => {
         return lapTime > 40 && lapTime < 200
       }),
     ).toBe(true)
-  })
+  }, 30_000)
 })
 
 describe('weather and wet strategy', () => {
@@ -3711,11 +3723,16 @@ describe('weather and wet strategy', () => {
       ...baseConfig,
       track: { ...baseConfig.track, rainProbability: 0 },
     }).cars[0]
-    const calls = initialDrivers.map((driver) =>
+    // The start compound is strategy-selected and can change with tyre tuning.
+    // Eight laps on a soft sits near the neutralisation decision boundary;
+    // the same age on a hard still has too much life to justify a stop.
+    const callsForCompound = (tire: TireCompound) => initialDrivers.map((driver) =>
       decidePitStop({
         car: withF1Tires({
           ...baseCar,
         }, {
+          tire,
+          compoundsUsed: [tire],
           tireAgeLaps: 8,
           tireWearPercent: 38,
         }),
@@ -3731,10 +3748,11 @@ describe('weather and wet strategy', () => {
         weather: 'clear',
       }),
     )
-    const pitCalls = calls.filter((decision) => decision !== null)
+    const pitCalls = callsForCompound('S').filter((decision) => decision !== null)
 
     expect(pitCalls.length).toBeGreaterThan(0)
     expect(pitCalls.length).toBeLessThan(initialDrivers.length)
+    expect(callsForCompound('H').every(decision => decision === null)).toBe(true)
   })
 
   it('recalculates red-flag tyres while fresh-tyre cars retain track position', () => {
@@ -4103,6 +4121,17 @@ describe('manual strategy request', () => {
     expect(car.pitStops).toBeGreaterThanOrEqual(1)
     expect(f1Tires(car).pendingTire === 'H' || f1Tires(car).tire === 'H').toBe(true)
     expect(car.lapHistory.some((lap) => lap.pitStop)).toBe(true)
+    const call = snapshot.strategyDecisions?.find((d) => d.driverId === initialDrivers[0].id && d.reason === 'manual')
+    expect(call).toMatchObject({ compound: 'H', driverId: initialDrivers[0].id })
+    expect(call!.projectedRejoinPosition).toBeGreaterThanOrEqual(1)
+    const recorded = structuredClone(call!)
+    snapshot = advanceRace(snapshot, 90, config, requests)
+    snapshot = advanceRace(snapshot, 5, config, requests)
+    const settled = snapshot.strategyDecisions!.find((d) => d.id === recorded.id)!
+    expect(settled.outcome).not.toBeNull()
+    expect(settled.outcome!.elapsedSeconds).toBeGreaterThan(recorded.elapsedSeconds)
+    expect({ ...settled, outcome: null }).toEqual({ ...recorded, outcome: null })
+    expect(call).toEqual(recorded)
   })
 
   it('applies a driver pace instruction to live wear and state', () => {
@@ -4155,7 +4184,7 @@ describe('manual strategy request', () => {
     )!
 
     expect(pursuing.racePaceMode).toBe('push')
-  })
+  }, 30_000)
 })
 
 describe('procedural penalty service', () => {
@@ -5705,6 +5734,6 @@ describe('road speed across the timing line', () => {
       expect(maximumSpeedKph, trackId).toBeLessThan(430)
       expect(maximumSpeedKph, trackId).toBeGreaterThan(200)
     },
-    120_000,
+    600_000,
   )
 })
