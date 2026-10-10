@@ -1,5 +1,6 @@
 import { motorsportChampionships, motorsportCourses } from '../motorsport/packages'
 import { expansionCourseTiming } from '../data/expansionTiming'
+import { tirePaceGapsByTrack } from '../data/tirePaceGaps'
 import type { TrackDefinition } from '../types'
 import type { FreeModeTrackSource } from './types'
 
@@ -20,6 +21,7 @@ export const crossCategoryCoursePacks = motorsportChampionships.flatMap(champion
       centerline: course.points.map(([x, z]) => [x, 0, z]),
       width: course.widthM.value * geometricLength / course.lengthM,
       lengthKm: course.lengthM / 1000, lengthSource: 'official',
+      tirePaceGaps: tirePaceGapsByTrack[id] ?? tirePaceGapsByTrack[`${course.id}-approx`],
       // Scheduling estimate only. The force model derives running speed.
       baseLapTime: course.lengthM / 50, baseLapTimeSource: 'estimated',
       ...expansionCourseTiming(course.id, course.points),

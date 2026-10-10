@@ -1,8 +1,8 @@
 import type { TirePaceGaps } from '../types'
 
 // User-authored isolated fresh-tyre pace targets. Not observed race gaps or
-// manufacturer measurements. Imola is retained even though it is not selectable
-// in the current track pack; Barcelona and Madrid remain distinct courses.
+// manufacturer measurements. Imola is selectable through the WEC course pool;
+// Barcelona and Madrid remain distinct courses.
 export const tirePaceGapsByTrack: Readonly<Record<string, TirePaceGaps>> = {
   'albert-park-approx': { hardToMedium: 0.4, mediumToSoft: 0.5, source: 'user' },
   'shanghai-approx': { hardToMedium: 0.3, mediumToSoft: 0.3, source: 'user' },

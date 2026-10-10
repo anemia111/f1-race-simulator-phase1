@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tirePaceGapsByTrack } from '../data/tirePaceGaps'
 import { tracks } from '../data/tracks'
+import { crossCategoryCoursePacks } from '../freeMode/crossCategoryTracks'
 import { initialDrivers, initialTeams } from '../data/grid2026'
 import { categoryPhysicsFor } from './categoryPhysics'
 import { createInitialRace } from './race'
@@ -45,6 +46,16 @@ describe('user-authored fresh compound pace targets', () => {
     expect(delta(10, 'S')).toBeGreaterThan(delta(0, 'S'))
   })
 
+  it('carries the supplied Imola gaps into the imported WEC layout for F1 Free Mode', () => {
+    const track = crossCategoryCoursePacks.find(pack => pack.id === 'imola')!.track
+    expect(track.tirePaceGaps).toEqual(tirePaceGapsByTrack['imola-approx'])
+    const seconds = (compound: 'H' | 'M' | 'S') => simulatePhysicalLap(track, {
+      ...compoundReferenceLapOptions, gripMultiplier: freshCompoundGripFor(track, compound),
+    }).lapTimeSeconds
+    expect(seconds('H') - seconds('M')).toBeCloseTo(0.3, 2)
+    expect(seconds('M') - seconds('S')).toBeCloseTo(0.125, 2)
+  })
+
   it('keeps wet tyres and unconfigured tracks outside the dry-pace fit', () => {
     const track = tracks[0]
     expect(freshCompoundGripFor(track, 'I')).toBe(1)
@@ -65,6 +76,7 @@ describe('user-authored fresh compound pace targets', () => {
     const speed = (compound: 'H' | 'M' | 'S', speedKph: number, gapToAhead: number) => calculateCarTelemetry({
       car: {
         ...initial, progress, totalDistance: progress, speedKph, gapToAhead,
+        throttlePercent: 100, clutchEngagementFraction: 1, turboSpoolFraction: 1,
         status: 'running', pitPhase: 'none', timedRunPhase: null,
         runtimeSystems: { ...runtime, tires: { ...runtime.tires,
           tire: compound, tireWearPercent: 0, tireThermalStressPercent: 0,

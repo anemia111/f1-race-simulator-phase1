@@ -13,6 +13,9 @@ rules when drivers and courses are selected in Free Mode.
 - F1/SF course selection and its start validator now include the registered
   additional-category courses. Common physical layouts are deduplicated.
   The additional four categories already import the F1/SF course pool.
+- Imported Imola retains the supplied F1 fresh H→M/M→S gaps (0.3s/0.125s).
+  All 24 supplied course targets are now represented in selectable layouts;
+  the native F1 championship still has 23 matching targets.
 - The cross-category integration test exercises actual Free Mode construction
   and forward physical movement on every selectable course in all six
   categories, with imported drivers. This is startup/movement coverage, not a
@@ -55,6 +58,8 @@ All six timing-board tyre badges include completed laps on the current set
 beside remaining SIM life. F1 uses its C1–C5/I/W wear and carcass thermal damage;
 SF uses its separate control-tyre SIM model. The additional four categories
 retain their own tyre specifications and thermal models.
+Neutral control-tyre badges have a light background so remaining life is
+readable, and the SF map legend identifies its wear/thermal model as SIM.
 
 The user-provided H→M/M→S fresh tyre gaps remain physical grip calibration
 inputs for F1. Slipstream, dirty air and category overtaking systems continue
