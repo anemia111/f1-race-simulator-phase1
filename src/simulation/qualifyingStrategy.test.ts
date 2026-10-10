@@ -90,11 +90,8 @@ describe('qualifying release strategy', () => {
     }
   })
 
-  it('does not release team-mates consecutively when other cars are available', () => {
+  it('varies release order between runs and leaves irregular preparation windows', () => {
     const segment = q1Segment()
-    const teamsByDriver = new Map(
-      phaseOneConfig.drivers.map((driver) => [driver.id, driver.teamId]),
-    )
     const ordered = buildQualifyingReleaseSchedule({
       config: phaseOneConfig,
       participantDriverIds: segment.participantDriverIds,
@@ -109,11 +106,13 @@ describe('qualifying release strategy', () => {
         (slot) => slot.expectedFlyingStartAtSeconds < segment.endsAtSeconds,
       ),
     ).toBe(true)
-    for (let index = 1; index < ordered.length; index += 1) {
-      expect(teamsByDriver.get(ordered[index].driverId)).not.toBe(
-        teamsByDriver.get(ordered[index - 1].driverId),
-      )
-    }
+    const first = buildQualifyingReleaseSchedule({ config: phaseOneConfig, participantDriverIds: segment.participantDriverIds, runIndex: 0, segment, stage: 'qualifying' })
+    expect(first.map(slot => slot.driverId)).not.toEqual(ordered.map(slot => slot.driverId))
+    const intervals = first.slice(1).map((slot, index) => slot.pitExitAtSeconds - first[index].pitExitAtSeconds)
+    expect(Math.max(...intervals)).toBeGreaterThan(10)
+    expect(first.at(-1)!.pitExitAtSeconds - first[0].pitExitAtSeconds).toBeGreaterThan(100)
+    const otherSeed = buildQualifyingReleaseSchedule({ config: { ...phaseOneConfig, seed: 'another-qualifying-session' }, participantDriverIds: segment.participantDriverIds, runIndex: 0, segment, stage: 'qualifying' })
+    expect(first.map(slot => slot.driverId)).not.toEqual(otherSeed.map(slot => slot.driverId))
   })
 })
 

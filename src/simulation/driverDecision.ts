@@ -50,6 +50,7 @@ export type DriverDecisionIntent =
   | 'tow-alignment'
   | 'blue-flag-yield'
   | 'team-order-yield'
+  | 'timed-session-yield'
   | 'physical-reference-line'
 
 export type DriverDecisionRole =
@@ -98,7 +99,7 @@ export type DriverEmergencyCue = {
  * only lifts while holding the racing line blocks the leader indefinitely.
  */
 export type DriverYieldCue = {
-  reason?: 'blue-flag' | 'team-order'
+  reason?: 'blue-flag' | 'team-order' | 'timed-session'
   active: boolean
   /** Shared by a lapped train so adjacent cars clear the same corridor. */
   preferredSide?: -1 | 1
@@ -473,7 +474,7 @@ function chooseIntent(
   // against the very car it is being told to let past.
   if (context.yield?.active === true) {
     return {
-      intent: context.yield.reason === 'team-order' ? 'team-order-yield' : 'blue-flag-yield',
+      intent: context.yield.reason === 'team-order' ? 'team-order-yield' : context.yield.reason === 'timed-session' ? 'timed-session-yield' : 'blue-flag-yield',
       role: 'yield',
       opponentId: context.yield.approachingId,
     }
@@ -654,6 +655,7 @@ function nominalLineFor(
       )
     }
     case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield': {
       const approaching = clamp(
         finiteOr(context.yield?.approachingLateralOffsetM, reference),
@@ -717,6 +719,7 @@ function nominalControls(intent: DriverDecisionIntent): {
         throttleOpeningScale: 1,
       }
     case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield':
       // The blue-flag speed reduction is applied by the pace controller. What
       // belongs here is only the cost of driving offline while lifting.

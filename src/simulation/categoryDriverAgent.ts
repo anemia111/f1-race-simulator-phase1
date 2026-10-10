@@ -545,6 +545,7 @@ function intentionFor(
     case 'defend':
       return 'defend'
     case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield':
       return 'yield'
     case 'dirty-air-avoidance':
@@ -568,6 +569,7 @@ function opponentIdForDecision(
     case 'tow-alignment':
       return context.tow?.opponentId
     case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield':
       return context.yield?.approachingId
     case 'emergency-avoidance':

@@ -199,6 +199,7 @@ export function calculateCarTelemetry(options: {
   sessionType?: 'race-distance' | 'limited-time'
   timedRunPhase?: CarSnapshot['timedRunPhase']
   timedTrafficYield?: boolean
+  timedPreparationSpeedScale?: number
   standingStartLaunchActive?: boolean
   standingStartMguKRestricted?: boolean
   specifiedErsPowerSector?: boolean
@@ -489,7 +490,7 @@ export function calculateCarTelemetry(options: {
     ? dynamics.referenceSpeedKph * clamp(localFlagPaceScale, 0.42, 1)
     : Number.POSITIVE_INFINITY
   const preparationSpeedCeilingKph = isPreparationLap
-    ? dynamics.referenceSpeedKph * preparationPaceScale
+    ? dynamics.referenceSpeedKph * preparationPaceScale * clamp(options.timedPreparationSpeedScale ?? 1, 0.65, 1)
     : Number.POSITIVE_INFINITY
   const targetSpeedKph = Math.min(
     corneringSpeedLimitKph * battlePace,

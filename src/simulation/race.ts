@@ -228,7 +228,7 @@ import {
 } from './practicePrograms'
 import { timedLapLaunchBlend } from './timedLapPreparation'
 import { liveTimedLapAdjudication } from './timedSessionAdjudication'
-import { timedSessionYieldDecision } from './timedSessionTraffic'
+import { timedOutLapGapDecision, timedSessionYieldDecision } from './timedSessionTraffic'
 import {
   createSuperFormulaRuntimeSystems,
   type F1RuntimeSystems,
@@ -1145,14 +1145,14 @@ function timedSessionReleasePlan(
 
   if (
     segment &&
-    (stage === 'qualifying' || stage === 'sprintQualifying')
+    (stage === 'qualifying' || stage === 'qualifying2' || stage === 'sprintQualifying')
   ) {
     const slot = buildQualifyingReleaseSchedule({
       config,
       participantDriverIds: segment.participantDriverIds,
       runIndex,
       segment,
-      stage,
+      stage: stage === 'qualifying2' ? 'qualifying' : stage,
     }).find((candidate) => candidate.driverId === driver.id)
 
     if (slot) {
@@ -1191,17 +1191,16 @@ function timedSessionReleasePlan(
     return {
       pitExitAtSeconds:
         12 +
-        gridIndex * 3.1 +
         hashChance(
           `${config.seed}:practice-release:${stage}:${driver.id}:${runIndex}`,
         ) *
-          0.9,
+          110,
       strategy: null,
     }
   }
 
   const isQualifyingStyle =
-    stage === 'qualifying' || stage === 'sprintQualifying'
+    stage === 'qualifying' || stage === 'qualifying2' || stage === 'sprintQualifying'
   const baseSeconds = isQualifyingStyle ? 38 : 90
   const spreadSeconds =
     stage === 'sprintQualifying' ? 150 : stage === 'qualifying' ? 250 : 980
@@ -1211,7 +1210,7 @@ function timedSessionReleasePlan(
     pitExitAtSeconds:
       baseSeconds +
       gridIndex * garageSpacingSeconds +
-      hashChance(`${config.seed}:session-release:${stage}:${driver.id}`) *
+      hashChance(`${config.seed}:session-release:${stage}:${config.track.id}:${driver.id}:${runIndex}`) *
         spreadSeconds,
     strategy: null,
   }
@@ -5067,6 +5066,7 @@ export function advanceRace(
   >()
   const driverAgentRuntimeById = new Map<string, DriverAgentRuntimeState>()
   const physicalAheadById = new Map<string, CarSnapshot>()
+  const timedTrafficYieldById = new Map<string, ReturnType<typeof timedSessionYieldDecision>>()
   const physicalGapSecondsById = new Map<string, number>()
   const avoidingObstructionIds = new Set<string>()
   const blueFlagTrainApproaches = isRaceDistance
@@ -5192,6 +5192,13 @@ export function advanceRace(
     const defendIntensity = Number.isFinite(gapBehindSeconds)
       ? clamp01(1 - gapBehindSeconds / 1.6)
       : 0
+    const timedYield = isTimedSession && !localControlPhase
+      ? timedSessionYieldDecision({ car, cars: frameCars, physics: categoryPhysics, stage: weekendStage, track: config.track })
+      : null
+    const timedYieldTarget = timedYield?.shouldYield
+      ? frameCarById.get(timedYield.approachingDriverId ?? '')
+      : undefined
+    if (timedYield) timedTrafficYieldById.set(car.driverId, timedYield)
     const yieldingTo = !localControlPhase
       ? blueFlagTrainApproaches.get(car.driverId)
       : undefined
@@ -5286,7 +5293,18 @@ export function advanceRace(
                 undefined,
               ),
             }
-          : undefined,
+          : timedYield?.shouldYield
+            ? {
+                active: true,
+                reason: 'timed-session',
+                approachingId: timedYieldTarget?.driverId,
+                approachingLateralOffsetM: timedYieldTarget?.lateralOffsetM ?? dynamics.referenceLineOffsetM,
+                preferredSide: Math.abs(car.lateralOffsetM - dynamics.referenceLineOffsetM) > 1
+                  ? car.lateralOffsetM > dynamics.referenceLineOffsetM ? 1 : -1
+                  : dynamics.referenceLineOffsetM > 0 ? -1 : 1,
+                requiredSeparationM: requiredLateralCentreSeparationM(undefined, undefined),
+              }
+            : undefined,
     }
     if (isRaceDistance) {
       const own=ownTeamObservationById.get(car.driverId)!
@@ -6028,20 +6046,26 @@ export function advanceRace(
         ),
       )
     }
-    const timedTrafficYield = isTimedSession
-      ? timedSessionYieldDecision({
-          car,
-          cars: frameCars,
-          stage: weekendStage,
-          track: config.track,
-        })
-      : null
+    const timedTrafficYield = timedTrafficYieldById.get(car.driverId) ?? null
     const timedRun = timedRunPaceFor({
       car,
       seed: config.seed,
       stage: weekendStage,
       track: config.track,
     })
+    const outLapGap = isTimedSession
+      ? timedOutLapGapDecision({
+          car,
+          cars: frameCars,
+          physics: categoryPhysics,
+          stage: weekendStage,
+          track: config.track,
+          seed: config.seed,
+          runIndex: car.timedRunsCompleted,
+          remainingSessionSeconds: (timedSessionState.segment?.endsAtSeconds ?? timedSessionDurationSeconds ?? Infinity) - elapsedSeconds,
+          approachingPriorityTraffic: timedTrafficYield?.approachingDriverId !== null && timedTrafficYield?.approachingDriverId !== undefined,
+        })
+      : null
     const timedPaceMode = isTimedSession
       ? car.timedRunPhase === 'attack-lap'
         ? (timedRun.practicePlan?.paceMode ?? ('push' as const))
@@ -6305,6 +6329,7 @@ export function advanceRace(
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.physicsPhase,
+      timedPreparationSpeedScale: outLapGap?.speedScale,
       timedTrafficYield:
         (timedTrafficYield?.shouldYield ?? false) ||
         (blueFlag && !ignoresBlueFlag),
