@@ -8,14 +8,18 @@ import { GRAVITY_MPS2, aerodynamicDownforceN } from './tyreForces'
 
 const monza = tracks.find(track => track.id === 'monza-approx')!
 const suzuka = tracks.find(track => track.id === 'suzuka-approx')!
+// Keep the Monza geometry while explicitly removing its registered profile.
+// All native courses now have elevation data, so none is a missing-data fixture.
+const unsurveyed = { ...monza, id: 'test-unsurveyed-road-environment' }
 
 describe('road altitude and gradient force coupling', () => {
   it('resolves profile altitude before circuit altitude and labels missing data', () => {
     const measured = trackAtmosphereAt({ ...suzuka, altitudeMeters: 2500 }, 0.25)
     expect(measured.source).toBe('source-labelled-profile')
     expect(measured.altitudeMeters).toBeLessThan(200)
-    expect(trackAtmosphereAt({ ...monza, altitudeMeters: 2200 }, 0).source).toBe('track-altitude')
-    expect(trackAtmosphereAt({ ...monza, altitudeMeters: undefined }, 0)).toMatchObject({ source: 'sim-default', altitudeMeters: 100 })
+    expect(trackAtmosphereAt({ ...monza, altitudeMeters: 2200 }, 0)).toEqual(trackAtmosphereAt(monza, 0))
+    expect(trackAtmosphereAt({ ...unsurveyed, altitudeMeters: 2200 }, 0).source).toBe('track-altitude')
+    expect(trackAtmosphereAt({ ...unsurveyed, altitudeMeters: undefined }, 0)).toMatchObject({ source: 'sim-default', altitudeMeters: 100 })
   })
 
   it('matches standard sea-level density and decreases density with altitude and heat', () => {
@@ -75,7 +79,7 @@ describe('road altitude and gradient force coupling', () => {
   })
 
   it('propagates circuit altitude into an otherwise identical reference lap', () => {
-    const lap = (altitudeMeters: number) => simulatePhysicalLap({ ...monza, altitudeMeters }, {
+    const lap = (altitudeMeters: number) => simulatePhysicalLap({ ...unsurveyed, altitudeMeters }, {
       deploymentEnergyBudgetMj: null, activeAeroZones: false,
     })
     const sea = lap(0)
