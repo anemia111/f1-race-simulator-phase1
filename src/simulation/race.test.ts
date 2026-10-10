@@ -3723,11 +3723,16 @@ describe('weather and wet strategy', () => {
       ...baseConfig,
       track: { ...baseConfig.track, rainProbability: 0 },
     }).cars[0]
-    const calls = initialDrivers.map((driver) =>
+    // The start compound is strategy-selected and can change with tyre tuning.
+    // Eight laps on a soft sits near the neutralisation decision boundary;
+    // the same age on a hard still has too much life to justify a stop.
+    const callsForCompound = (tire: TireCompound) => initialDrivers.map((driver) =>
       decidePitStop({
         car: withF1Tires({
           ...baseCar,
         }, {
+          tire,
+          compoundsUsed: [tire],
           tireAgeLaps: 8,
           tireWearPercent: 38,
         }),
@@ -3743,10 +3748,11 @@ describe('weather and wet strategy', () => {
         weather: 'clear',
       }),
     )
-    const pitCalls = calls.filter((decision) => decision !== null)
+    const pitCalls = callsForCompound('S').filter((decision) => decision !== null)
 
     expect(pitCalls.length).toBeGreaterThan(0)
     expect(pitCalls.length).toBeLessThan(initialDrivers.length)
+    expect(callsForCompound('H').every(decision => decision === null)).toBe(true)
   })
 
   it('recalculates red-flag tyres while fresh-tyre cars retain track position', () => {
