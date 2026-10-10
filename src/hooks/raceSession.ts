@@ -863,7 +863,9 @@ function isCompatibleF1RuntimeSystems(
     isFiniteInRange(
       value.superClippingRecoveredThisLapMj,
       0,
-      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
+      // Independent integration/splitting of these cumulative energies can
+      // differ by floating-point roundoff at a timing-line crossing.
+      Number(value.energyStore.rechargedAtCuKBusThisLapMJ) + ENERGY_EPSILON,
     ) &&
     hasCompatibleOvertakeAuthorization &&
     hasCompatibleSuperclipEpisode
