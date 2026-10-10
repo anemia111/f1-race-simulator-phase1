@@ -917,9 +917,9 @@ export function BroadcastDashboard({
                       </span>
                     ))
                 ) : (
-                  <span title="Published dry/wet set maxima; control-tyre subdivision and physical coefficients are unavailable">
+                  <span title="SIM wear and thermal state; published dry/wet set maxima are separate from unavailable supplier coefficients">
                     <i className="broadcast-tire">CTRL</i>
-                    Yokohama control tyres / dry-wet state only
+                    Yokohama control tyres / SIM wear &amp; thermal
                   </span>
                 )}
               </div>
