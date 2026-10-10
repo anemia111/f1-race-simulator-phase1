@@ -72,15 +72,15 @@ describe('CSV performance source of truth', () => {
     // 中山裕樹 is the one profile deliberately placed past the published
     // scale; see DRIVER_ABILITY_LIMIT_BREAK_MAX. Every other driver stays
     // within 0-100, which the scale test below still checks.
-    expect(nakayama?.performanceSource?.overall).toBe(120)
-    expect(nakayama?.potential).toBe(1.2)
+    expect(nakayama?.performanceSource?.overall).toBe(110)
+    expect(nakayama?.potential).toBe(1.1)
     expect(
       Object.values(nakayama?.performanceSource?.rawRatings ?? {}).every(
-        (rating) => rating === 120,
+        (rating) => rating === 110,
       ),
     ).toBe(true)
     expect(
-      Object.values(nakayama?.skills ?? {}).every((skill) => skill === 1.2),
+      Object.values(nakayama?.skills ?? {}).every((skill) => skill === 1.1),
     ).toBe(true)
   })
 
@@ -90,10 +90,10 @@ describe('CSV performance source of truth', () => {
 
     // 中山裕樹 is deliberately placed past the published scale; see
     // DRIVER_ABILITY_LIMIT_BREAK_MAX. Everyone else stays on 0-100.
-    expect(driverOverallAbilityPoints(nakayama)).toBe(120)
-    expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(120)
+    expect(driverOverallAbilityPoints(nakayama)).toBe(110)
+    expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(110)
     expect(driverPerformanceAbility(nakayama, 'rawPace')).toBe(1)
-    expect(driverLimitBreakFraction(nakayama)).toBeCloseTo(0.2, 10)
+    expect(driverLimitBreakFraction(nakayama)).toBeCloseTo(0.1, 10)
     expect(driverOverallAbilityPoints(verstappen)).toBe(95)
     expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(95)
     expect(

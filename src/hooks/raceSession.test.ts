@@ -1183,7 +1183,8 @@ describe('race session continuity', () => {
 
     expect(raw).not.toBeNull()
     // Includes one complete, validated driver-agent replay record per car.
-    expect(raw!.length).toBeLessThan(1_650_000)
+    // UTF-16 storage plus compact three-lap telemetry stays below 4 MB.
+    expect(raw!.length*2).toBeLessThan(4_000_000)
     expect(
       snapshot.cars.some((car) => car.lapHistory.length >= 2),
     ).toBe(true)

@@ -972,7 +972,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     activeAeroUnavailable: officialOperations?.straightMode.length === 0,
     calendar2026: calendar2026ByTrackId[id],
     centerline,
-    corners: realLayout?.corners,
+    corners: realLayout?.corners.map((corner, index, all) => ({...corner, label: `${corner.number}${all.slice(0,index).some(previous => previous.number === corner.number) ? 'A' : ''}`})),
     aeroActivationZones,
     layoutSource: realLayout
       ? {

@@ -40,7 +40,14 @@ driving game.
 - `src/data/motorsportSeries2026.json` contains only executable F1/SF series
   packages. `src/data/historicalDriverPool2026.json` retains all 52 former
   F2/F3 identities as provenance-only history. The validated relational pool
-  contains 110 unique people and 111 provenance records.
+  originally contained 110 unique people and 111 provenance records. The
+  user-authorized `importedDriverRatings2026.json` adds 238 people from 338 CSV
+  rows, yielding 348 people and 468 provenance records. All original abilities
+  remain intact; new people use the exact supplied CSV axes and overall.
+  Missing Potential stays null in the imported source and uses Overall only
+  when materialized into the existing runtime schema. Unknown nationality is
+  `UNK`. Category history does not assign a championship seat or make a new
+  category executable.
 - MADRING uses the issued FIA 5.414 km / 57-lap specification and 22 numbered
   model corners. Its 2026 sector distances are now source-backed; it still has
   no fabricated OpenF1 telemetry-coordinate projection.
@@ -532,3 +539,35 @@ are source/discretion/bundle boundaries, not hidden completion claims.
 - Numeric tests cover 8% uphill/downhill acceleration, density/drag/downforce
   ratios at 2200 m, source precedence, unavailable/invalid fallbacks, local
   reference inputs and continued circuit compound-pace calibration.
+
+## 2026-10-09 all-category elevation and motion follow-up
+
+Work from the deployed category branch, not outdated master. See
+`docs/CATEGORY_MOTION_AND_ELEVATION.md` for the 58-layout elevation ledger,
+MADRING official anchors, Baku exclusion, display height controls and category
+road/pit/lateral interpolation. The existing WEC/GT/INDY/KYOJO category engine
+owns all motion; its actual lanes and continuous pit distance now reach the
+map. `scripts/course-elevation-playtest.mjs` is included in the publish gate.
+# Full-suite qualifying assertion follow-up
+
+Additional baseline0461fd4 failures reproduced in isolated baseline tests:
+speedCalibration's three running-car fixtures inherited throttle0 from the grid,
+so the pedal slew limit correctly returned20% at100ms and prevented deployment.
+They now start with throttle100; all original force, power and pedal assertions
+remain. The F1 tyre lap test compared newly fitted tyres after a compulsory
+compound stop; its controlled stint now starts with the compound obligation met
+and asserts zero pit stops. The SF round6 UI expectation now matches its existing
+verified schedule snapshot instead of expecting unavailable data. Corrected
+speed regressions3/3 and tyre/UI19/19 pass. No runtime changes in these repairs.
+
+The dry qualifying ERS test failed identically on baseline 0461fd4: attack peak
+340km/h vs preparation peak340.41km/h. Both phases can reach the physical speed
+ceiling, so a strict peak-speed comparison does not establish ERS deployment.
+The test now compares the minimum battery level between attack and preparation,
+alongside the existing harvest/deploy, battery depletion and full run-cycle
+assertions. The isolated regression and lint pass. Runtime physics is unchanged.
+The normal full publish gate must be rerun after this test correction.
+
+## Six-category integration continued, 2026-10-10
+
+Merged the six-category elevation/motion branch with the pit-wall, tyre and road-environment work. See docs/SIX_CATEGORY_CROSS_VALIDATION.md for driver/course interchange, Nakayama 110, SF effective-grip calibration, live pace measurements and limitations. All six tyre badges show set age. Additional-category aero forces now use local elevation-derived density. Full normal publish gate is required and its result remains pending.

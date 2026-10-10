@@ -34,6 +34,7 @@ import type {
   SuperFormulaSeriesRules,
 } from '../series/types'
 import { isF1SeriesRules } from '../series/types'
+import { importedDriverRatingById } from '../series/importedDriverRatings'
 import {
   isExecutableSeriesId,
   type DriverSourceSeriesId,
@@ -111,6 +112,12 @@ const historySeriesLabels: Record<DriverSourceSeriesId, string> = {
   f3: 'F3 history',
   'super-formula': 'SF history',
   external: 'External history',
+  kyojo: 'KYOJO CUP history',
+  'super-gt-gt500': 'SUPER GT GT500 history',
+  'super-gt-gt300': 'SUPER GT GT300 history',
+  indycar: 'INDYCAR history',
+  'wec-hypercar': 'WEC Hypercar history',
+  'wec-lmgt3': 'WEC LMGT3 history',
 }
 
 const driverRoleLabels: Record<Exclude<DriverRoleFilter, 'all'>, string> = {
@@ -1050,6 +1057,16 @@ export function SeriesDataManager({
                         ))
                       : <span>FREE AGENT</span>}
                   </div>
+                  <div className="driver-source-history">
+                  {(() => {
+                    const source = importedDriverRatingById.get(selectedDirectoryDriver.id)
+                    if (!source) return null
+                    return <p className="imported-driver-source" aria-label="Imported driver rating source">
+                      能力表CSV：Overall {source.overall} · {source.raw.Confidence} · {source.raw['Axis status']}。
+                      {source.potential === null && ' Potentialは未記入。新規選手のみ暫定的にOverallを使用。'}
+                      {' 既存選手の能力設定は保持しています。'}
+                    </p>
+                  })()}
                   <div
                     aria-label="Career history"
                     className="assignment-strip career-history-strip"
@@ -1064,6 +1081,7 @@ export function SeriesDataManager({
                         </span>
                       ),
                     )}
+                  </div>
                   </div>
                   {selectedDriver ? (
                     <>

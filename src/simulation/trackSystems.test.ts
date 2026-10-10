@@ -444,6 +444,9 @@ describe('track-dependent systems', () => {
         trackDynamicsAt(track, right).curvature -
         trackDynamicsAt(track, left).curvature,
     )[0]
+    // Keep this force-path fixture to one moving car. Retired cars placed
+    // near the Line remain physical obstructions and clamp all three traces
+    // to the same rear envelope before the grip comparison.
     const lowerGripConfig = {
       ...config,
       track: {
@@ -520,6 +523,7 @@ describe('track-dependent systems', () => {
     const baseline = baselineSnapshot.cars[0]
     const lowerGrip = lowerGripSnapshot.cars[0]
     const neutralProfile = neutralProfileSnapshot.cars[0]
+
 
     expect(lowerGrip.totalDistance).toBeLessThan(baseline.totalDistance)
     expect(neutralProfile.totalDistance).toBe(baseline.totalDistance)

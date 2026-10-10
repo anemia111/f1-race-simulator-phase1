@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { weatherFor } from '../simulation/weather'
+import { formationLapsPlannedFor } from '../simulation/race'
 import {
   historicalDriverPool2026,
   materializeAssignedDriver,
@@ -8,6 +10,7 @@ import {
 import {
   driverAssignments2026,
   driverPool2026,
+  originalDriverPool2026,
   resolveSuperFormulaEventOperations,
   seriesPackageById,
   seriesPackages,
@@ -107,9 +110,29 @@ describe('Phase 1 series registry boundary', () => {
       value: null,
     })
     expect(unrelated.raceDistance).toMatchObject({
-      availability: 'unavailable',
-      value: null,
+      availability: 'verified-event-override',
+      value: { laps: 41, timeLimitSeconds: 4500 },
     })
+  })
+
+  it('supplies each active SF round with its own published championship race distance', () => {
+    const series = seriesPackageById.get('super-formula')!
+    const expected = [37, 37, 25, 31, 31, 41, 41, 51, 41, 41, 31, 31]
+    const active = series.calendar.filter(event => !event.cancelled)
+    expect(active).toHaveLength(12)
+    for (const track of series.tracks) {
+      expect(weatherFor('sf-calendar-dry-0', track, 0)).toBe('clear')
+      expect(formationLapsPlannedFor({ seed: 'sf-calendar-dry-0', track, drivers: series.drivers, teams: series.teams, seriesId: series.id })).toBe(1)
+    }
+    for (const event of active) {
+      const distance = resolveSuperFormulaEventOperations(series, event.id)!.raceDistance
+      expect(distance.availability).toBe('verified-event-override')
+      expect(distance.value?.laps).toBe(expected[event.round - 1])
+      expect(distance.value?.timeLimitSeconds).toBe(event.round === 3 ? 3000 : 4500)
+      expect(distance.provenance.url).toMatch(/^https:\/\/(superformula.net|www.suzukacircuit.jp|motorsports.jaf.or.jp)\//)
+    }
+    expect(resolveSuperFormulaEventOperations(series, 'sf-03-original')!.raceDistance.availability).toBe('unavailable')
+    expect(resolveSuperFormulaEventOperations(series, 'unknown-event')!.raceDistance.availability).toBe('unavailable')
   })
 
   it('rejects a legacy SUPER FORMULA generic operation if one is injected', () => {
@@ -125,10 +148,12 @@ describe('Phase 1 series registry boundary', () => {
     )
   })
 
-  it('builds the canonical 110-identity, 111-provenance pool', () => {
-    expect(driverPool2026).toHaveLength(110)
-    expect(new Set(driverPool2026.map((driver) => driver.id)).size).toBe(110)
-    expect(provenanceCount(driverPool2026)).toBe(111)
+  it('preserves the original pool and adds the imported identities', () => {
+    expect(originalDriverPool2026).toHaveLength(110)
+    expect(provenanceCount(originalDriverPool2026)).toBe(111)
+    expect(driverPool2026).toHaveLength(348)
+    expect(new Set(driverPool2026.map((driver) => driver.id)).size).toBe(348)
+    expect(provenanceCount(driverPool2026)).toBe(468)
     expect(
       driverPool2026.every(
         (driver) =>
@@ -140,8 +165,8 @@ describe('Phase 1 series registry boundary', () => {
       ),
     ).toBe(true)
     expect(seriesRegistryAudit).toMatchObject({
-      driverPoolCount: 110,
-      provenanceCount: 111,
+      driverPoolCount: 348,
+      provenanceCount: 468,
       f2HistoricalDriverCount: 22,
       f3HistoricalDriverCount: 30,
     })

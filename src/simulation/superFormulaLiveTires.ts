@@ -1,3 +1,4 @@
+import { initialRaceTyre, raceTyreProfile, validRaceTyre, type RaceTyreState } from './raceTyres'
 import {
   createSuperFormulaControlTireInventory,
   consumeSuperFormulaControlTireSets,
@@ -32,7 +33,7 @@ export type SuperFormulaLiveTireFitment = {
 
 export type SuperFormulaLiveTirePhysicalModel = {
   readonly availability: 'unavailable'
-  /** The simulator must not synthesize pace, temperature, or wear coefficients. */
+  /** Do not synthesize supplier coefficients; SIM performance lives separately. */
   readonly simulatorPolicy: 'do-not-apply-physical-tire-coefficients'
   /**
    * Retains the JAF-backed unavailable input and its provenance rather than
@@ -44,13 +45,16 @@ export type SuperFormulaLiveTirePhysicalModel = {
 
 /**
  * Live SUPER FORMULA tyre state. Surface and set accounting are operational;
- * no F1 compound, allocation, thermal, or degradation model is represented.
+ * no F1 compound or allocation is represented. simulatedPerformance is the
+ * separate, explicitly estimated control-tyre model authorised by the user.
  */
 export type SuperFormulaLiveTireState = {
+  /** Separate SIM model; the source-bound supplier coefficients remain unavailable. */
+  readonly simulatedPerformance?: RaceTyreState
   readonly activeSurface: SuperFormulaControlTireSurface
   readonly fitment: SuperFormulaLiveTireFitment
   readonly kind: 'super-formula-live-control-tire'
-  /** Informational stint usage only; it has no coefficient-based pace effect. */
+  /** Completed laps of the physical fitted set. */
   readonly lapsOnCurrentSet: number
   readonly physicalModel: SuperFormulaLiveTirePhysicalModel
 }
@@ -58,6 +62,14 @@ export type SuperFormulaLiveTireState = {
 export type SuperFormulaLiveTireRuntime = {
   readonly controlTires: SuperFormulaControlTireInventory
   readonly liveTires: SuperFormulaLiveTireState
+}
+
+/** Legacy lap-count-only saves receive an explicit SIM wear estimate, not a new set. */
+export function superFormulaSimulatedTyreFor(state: SuperFormulaLiveTireState, lapLengthKm: number) {
+  if (state.simulatedPerformance) return state.simulatedPerformance
+  const distanceKm = state.lapsOnCurrentSet * lapLengthKm
+  const profile = raceTyreProfile('super-formula', state.activeSurface === 'wet' ? 'wet' : 'primary')
+  return { ...initialRaceTyre(65, 1 - distanceKm / profile.lifeKm), distanceKm, equivalentKm: distanceKm }
 }
 
 export type SuperFormulaLiveTireValidationIssue = {
@@ -142,6 +154,7 @@ const liveStateFor = (options: {
   },
   kind: 'super-formula-live-control-tire',
   lapsOnCurrentSet: options.lapsOnCurrentSet ?? 0,
+  simulatedPerformance: initialRaceTyre(),
   physicalModel: physicalModelFor(options.inventory),
 })
 
@@ -192,9 +205,8 @@ export function createSuperFormulaLiveTireRuntime(options: {
 }
 
 /**
- * Fits a new dry or wet control set and resets only the informational lap
- * count. No pace, thermal, or degradation model is changed because none is
- * verified for this category payload.
+ * Fits a new dry/wet control set, resetting laps and the separate SIM tyre
+ * state. Unpublished supplier coefficients remain unavailable.
  */
 export function fitSuperFormulaLiveControlTire(options: {
   readonly runtime: SuperFormulaLiveTireRuntime
@@ -224,9 +236,8 @@ export function fitSuperFormulaLiveControlTire(options: {
 }
 
 /**
- * Records completed laps for stint accounting only. Callers must not derive a
- * physical tyre penalty from this number while the coefficients remain
- * unavailable.
+ * Records completed laps for set accounting. The live SIM performance state
+ * advances from travelled distance and load, independently of this counter.
  */
 export function recordSuperFormulaLiveTireLaps(options: {
   readonly completedLaps: number
@@ -284,6 +295,10 @@ export function validateSuperFormulaLiveTireState(
       message: 'Live SUPER FORMULA tyre state must be an object.',
     })
     return { issues, valid: false }
+  }
+
+  if (liveTires.simulatedPerformance !== undefined && !validRaceTyre(liveTires.simulatedPerformance)) {
+    issues.push({ code: 'invalid-schema', message: 'Invalid SIM control-tyre performance state.' })
   }
 
   if (liveTires.kind !== 'super-formula-live-control-tire') {

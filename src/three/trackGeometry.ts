@@ -1,5 +1,26 @@
 import * as THREE from 'three'
 import type { TrackDefinition } from '../types'
+import { elevationAt, elevationProfileFor } from '../data/courseElevation'
+import { projectPointToArcProgress } from '../data/sectorBoundaries'
+
+const presentationAngles = new WeakMap<TrackDefinition, number>()
+function presentationAngle(track: TrackDefinition) {
+  let angle = presentationAngles.get(track)
+  if (angle === undefined) {
+    const tangent = createTrackCurve(track).getTangentAt(0)
+    angle = Math.atan2(tangent.z, tangent.x)
+    presentationAngles.set(track, angle)
+  }
+  return angle
+}
+
+/** Furniture must undergo the same rigid rotation as the rendered road. */
+export function presentationPoint(track: TrackDefinition, point: [number, number, number]): [number, number, number] {
+  const profile=displayElevationFor(track)
+  const progress=projectPointToArcProgress(track.centerline,point)
+  const height=profile?relativeRoadHeight(track,profile,progress):0
+  return new THREE.Vector3(point[0],point[1]+height,point[2]).applyAxisAngle(new THREE.Vector3(0,1,0),presentationAngle(track)).toArray()
+}
 
 export function createTrackCurve(track: TrackDefinition) {
   return new THREE.CatmullRomCurve3(
@@ -8,6 +29,49 @@ export function createTrackCurve(track: TrackDefinition) {
     'catmullrom',
     0.48,
   )
+}
+
+const displayElevations = new WeakMap<TrackDefinition, ReturnType<typeof elevationProfileFor>>()
+function displayElevationFor(track: TrackDefinition) {
+  if (displayElevations.has(track)) return displayElevations.get(track)!
+  const profile=elevationProfileFor(track.id,track.centerline.map(([x,,z])=>[x,-z]),track.lengthKm*1000)
+  displayElevations.set(track,profile);return profile
+}
+const heightMetrics=new WeakMap<TrackDefinition,{planarLength:number;datum:number}>()
+function relativeRoadHeight(track:TrackDefinition,profile:NonNullable<ReturnType<typeof elevationProfileFor>>,progress:number) {
+  let metrics=heightMetrics.get(track)
+  if(!metrics){metrics={planarLength:createTrackCurve(track).getLength(),datum:Math.min(...profile.elevationsM)};heightMetrics.set(track,metrics)}
+  return (elevationAt(profile,progress).elevationM-metrics.datum)*metrics.planarLength/(track.lengthKm*1000)*(track.elevationDisplayScale??1)
+}
+/** Display-only height: domain geometry, sector distances and planar stationing
+ * remain unchanged. Sampling uses the original planar arc progress exactly. */
+class ElevatedPresentationCurve extends THREE.CatmullRomCurve3 {
+  private flat:THREE.CatmullRomCurve3
+  private height:(p:number)=>number
+  constructor(flat:THREE.CatmullRomCurve3,height:(p:number)=>number) {
+    super(flat.points.map(p=>p.clone()),true,'catmullrom',0.48)
+    this.flat=flat;this.height=height
+  }
+  override getPointAt(u:number,target=new THREE.Vector3()) {
+    this.flat.getPointAt(u,target);target.y+=this.height(u);return target
+  }
+  override getTangentAt(u:number,target=new THREE.Vector3()) {
+    this.flat.getTangentAt(u,target)
+    const a=this.height((u+1-0.00001)%1),b=this.height((u+0.00001)%1)
+    target.y+=(b-a)/(0.00002*this.flat.getLength())
+    return target.normalize()
+  }
+}
+/** Rotate the display alone: the control-line tangent runs left to right. */
+export function createPresentationTrackCurve(track: TrackDefinition) {
+  const flat = createTrackCurve(track)
+  const angle = presentationAngle(track),axis = new THREE.Vector3(0, 1, 0)
+  for (const point of flat.points) point.applyAxisAngle(axis, angle)
+  flat.updateArcLengths()
+  const profile=displayElevationFor(track)
+  if (!profile) return flat
+  const scale=flat.getLength()/(track.lengthKm*1000)*(track.elevationDisplayScale??1),datum=Math.min(...profile.elevationsM)
+  return new ElevatedPresentationCurve(flat,p=>(elevationAt(profile,p).elevationM-datum)*scale)
 }
 
 export function poseOnTrack(
@@ -76,6 +140,6 @@ export function edgePoints(
     const tangent = curve.getTangentAt(progress).normalize()
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize()
 
-    return center.add(normal.multiplyScalar((width / 2) * side)).setY(0.06)
+    return center.add(normal.multiplyScalar((width / 2) * side)).add(new THREE.Vector3(0,0.06,0))
   })
 }

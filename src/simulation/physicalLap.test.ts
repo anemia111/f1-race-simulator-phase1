@@ -201,13 +201,10 @@ describe('physical road input provenance', () => {
     const monaco = physicalRoadInputsAt(trackById('monaco-approx'), 0.5)
 
     expect(flat.gradeFraction).toMatchObject({
-      fallback: 'neutral-default',
-      physicalFieldProvenance: {
-        method: 'intentionally-unavailable',
-        source: 'unavailable',
-      },
-      value: 0,
+      fallback: 'source-labelled-profile',
+      physicalFieldProvenance: { method: 'public-elevation-grid-gradient', source: 'derived' },
     })
+    expect(Number.isFinite(flat.gradeFraction.value)).toBe(true)
     expect(flat.bankingDegrees).toMatchObject({
       fallback: 'neutral-default',
       physicalFieldProvenance: { source: 'unavailable' },

@@ -148,6 +148,7 @@ import { trackSurfaceSectorSummary } from './simulation/trackSurface'
 import {
   buildFreeModeRuntime,
   createDefaultFreeModeConfiguration,
+  createEntrantsFromCategoryGrid,
   freeModeStageFor,
 } from './freeMode/freeModeRegistry'
 import {
@@ -418,7 +419,7 @@ function loadPersistedDrivers(series: SeriesPackage): Driver[] {
       (key) => window.localStorage.getItem(key),
     ),
     series.drivers,
-  )
+  ).map(driver=>driver.id==='yuki_nakayama' && Object.values(driver.skills).every(value=>value===1.2) ? {...driver,skills:{...series.drivers.find(person=>person.id===driver.id)!.skills}} : driver)
 }
 
 function loadSeriesConfiguration(
@@ -1024,7 +1025,9 @@ const telemetryForCar = (
               ? '+RDY'
               : ''
         }`
-        : superFormulaRuntime?.ots.availability === 'verified-event-rule'
+        : superFormulaRuntime?.otsSimulation
+          ? `OTS ${car.overtakeStatus.toUpperCase()} ${superFormulaRuntime.otsSimulation.remainingSeconds.toFixed(1)}s`
+          : superFormulaRuntime?.ots.availability === 'verified-event-rule'
           ? 'OTS EVENT RULE'
           : 'OTS N/A',
     batteryPercent: f1Runtime
@@ -1040,7 +1043,7 @@ const telemetryForCar = (
       : Math.round(car.throttlePercent),
     tireTemperatureC: f1Runtime
       ? Math.round(f1Runtime.tires.tireTemperatureC)
-      : null,
+      : superFormulaRuntime?.liveTires.simulatedPerformance?.surfaceC ?? null,
   }
 }
 
@@ -1275,14 +1278,20 @@ const openF1GridResultsFor = (
     )
 }
 
-export default function App() {
+export default function App({ onOpenMotorsport, requestedSeriesId, requestedFreeMode = false }: { requestedFreeMode?: boolean; requestedSeriesId?: SeriesId; onOpenMotorsport?: (championship: import('./motorsport/types').ChampionshipId, free?: boolean) => void }) {
   const [applicationMode, setApplicationMode] =
     useState<ApplicationMode>('championship')
   const [activeFreeModeRuntime, setActiveFreeModeRuntime] =
     useState<FreeModeRuntime | null>(null)
   const [freeModeStoredState, setFreeModeStoredState] =
-    useState<FreeModeStoredState>(initialFreeModeStoredState)
-  const [isFreeModeBuilderOpen, setIsFreeModeBuilderOpen] = useState(false)
+    useState<FreeModeStoredState>(() => {
+      const saved = initialFreeModeStoredState()
+      const requested = requestedFreeMode && requestedSeriesId ? seriesPackageById.get(requestedSeriesId) : null
+      return requested && saved.configuration.categoryId !== requested.id
+        ? { ...saved,configuration:{ ...saved.configuration,categoryId:requested.id,entrants:createEntrantsFromCategoryGrid(requested) } }
+        : saved
+    })
+  const [isFreeModeBuilderOpen, setIsFreeModeBuilderOpen] = useState(requestedFreeMode)
   const [championshipReturnSeriesId, setChampionshipReturnSeriesId] =
     useState<SeriesId>(initialSeriesId)
   const [selectedSeriesId, setSelectedSeriesId] =
@@ -1346,6 +1355,7 @@ export default function App() {
     ? seriesPackage.rules
     : null
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview')
+  const [resetViewKey, setResetViewKey] = useState(0)
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [isPaused, setIsPaused] = useState(false)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
@@ -2885,8 +2895,8 @@ export default function App() {
           : {
               ...sharedTireModel,
               tireDisplay,
-              tireLifePercent: null,
-              tireModelSource: 'unavailable' as const,
+              tireLifePercent: car.runtimeSystems.kind === 'super-formula' && car.runtimeSystems.liveTires.simulatedPerformance ? car.runtimeSystems.liveTires.simulatedPerformance.life * 100 : null,
+              tireModelSource: car.runtimeSystems.kind === 'super-formula' && car.runtimeSystems.liveTires.simulatedPerformance ? 'simulation' as const : 'unavailable' as const,
               tirePaceDeltaSeconds: null,
             }
         const hasCurrentLapSector = car.currentLapSectorTimes.some(
@@ -3159,6 +3169,13 @@ export default function App() {
 
     activateChampionshipSeries(seriesId)
   }
+  useEffect(() => {
+    if (requestedSeriesId && requestedSeriesId !== selectedSeriesId) changeSeries(requestedSeriesId)
+    if (requestedFreeMode) setIsFreeModeBuilderOpen(true)
+    // Apply the category selected when returning to this engine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedSeriesId, requestedFreeMode])
+
 
   const startFreeMode = (configuration: FreeModeConfiguration) => {
     const runtime = buildFreeModeRuntime(configuration, {
@@ -4213,7 +4230,7 @@ export default function App() {
             : `${seriesPackage.shortLabel} ROUND ${selectedEvent.round} / ${track.location}`
         }
         isPaused={isPaused}
-        onCameraModeChange={setCameraMode}
+        onCameraModeChange={(mode) => { setCameraMode(mode); if (mode === 'overview') setResetViewKey(key => key + 1) }}
         onDataModeChange={setRequestedDataMode}
         onExitFreeMode={() => {
           if (applicationMode === 'free') {
@@ -4244,6 +4261,7 @@ export default function App() {
         }
         onPauseChange={() => setIsPaused((paused) => !paused)}
         onSeriesChange={changeSeries}
+        onOpenMotorsport={onOpenMotorsport}
         onSkipFormationLap={skipFormationLap}
         onSpeedChange={setSpeed}
         onStageChange={jumpToWeekendStage}
@@ -4275,6 +4293,7 @@ export default function App() {
           >
             <RaceScene
               cameraMode={cameraMode}
+              resetViewKey={resetViewKey}
               config={raceConfig}
               onSelectDriver={focusDriver}
               openF1Overlay={
@@ -4359,6 +4378,7 @@ export default function App() {
       ) : null}
 
       <FreeModeBuilder
+        onOpenMotorsport={onOpenMotorsport}
         context={freeModeBuildContext}
         initialConfiguration={freeModeStoredState.configuration}
         isOpen={isFreeModeBuilderOpen}

@@ -1,3 +1,4 @@
+import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 // Timed weekend sessions: practice builds setup confidence, qualifying runs
 // pit-release plans and ranks legal flying laps for the race grid.
 
@@ -300,7 +301,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     trackGrip,
     weather,
   } = options
-  const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const categoryPhysics = config.seriesId === 'super-formula'
+    ? superFormulaPhysicsForTrack(config.track) : categoryPhysicsFor(config.seriesId)
   const operationalMass = resolveOperationalVehicleMass({
     f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
     physics: categoryPhysics,

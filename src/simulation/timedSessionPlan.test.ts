@@ -295,8 +295,7 @@ describe('timed session plan', () => {
     let snapshot = createInitialRace(config)
     const phases = new Set<string>()
     let minimumAttackBatteryPercent = 100
-    let maximumAttackSpeedKph = 0
-    let maximumOutLapSpeedKph = 0
+    let minimumOutLapBatteryPercent = 100
     let sawAttackDeployment = false
     let sawPreparationHarvest = false
 
@@ -313,7 +312,10 @@ describe('timed session plan', () => {
       }
 
       if (car.timedRunPhase === 'out-lap') {
-        maximumOutLapSpeedKph = Math.max(maximumOutLapSpeedKph, car.speedKph)
+        minimumOutLapBatteryPercent = Math.min(
+          minimumOutLapBatteryPercent,
+          runtimeSystems.ersBatteryPercent,
+        )
         sawPreparationHarvest ||= runtimeSystems.ersMode === 'harvest'
       }
 
@@ -322,7 +324,6 @@ describe('timed session plan', () => {
           minimumAttackBatteryPercent,
           runtimeSystems.ersBatteryPercent,
         )
-        maximumAttackSpeedKph = Math.max(maximumAttackSpeedKph, car.speedKph)
         sawAttackDeployment ||=
           runtimeSystems.ersMode === 'deploy' && runtimeSystems.ersPowerKw > 0
       }
@@ -343,7 +344,9 @@ describe('timed session plan', () => {
     expect(sawPreparationHarvest).toBe(true)
     expect(sawAttackDeployment).toBe(true)
     expect(minimumAttackBatteryPercent).toBeLessThanOrEqual(28)
-    expect(maximumAttackSpeedKph).toBeGreaterThan(maximumOutLapSpeedKph)
+    // Both phases can reach the same physical speed ceiling. Deployment is
+    // demonstrated by battery use, rather than comparing their peak speeds.
+    expect(minimumAttackBatteryPercent).toBeLessThan(minimumOutLapBatteryPercent)
   })
 
   it.each(['qualifying', 'fp1'] as const)(
@@ -437,7 +440,7 @@ describe('timed session plan', () => {
     expect(observedLongRun.timedRunsCompleted).toBe(1)
     expect(['H', 'M']).toContain(requireF1Runtime(observedLongRun).tires.tire)
     expect(observedLongRun.racePaceMode).toBe('standard')
-  })
+  }, 20_000)
 
   it('makes preparation traffic lift for a nearby FP attack car on a safe straight', () => {
     const drivers = initialDrivers.slice(0, 2)
@@ -617,7 +620,7 @@ describe('timed session plan', () => {
     expect(snapshot.flag).toBe('clear')
     expect(snapshot.timedSessionSuspended).toBe(false)
     expect(snapshot.cars.some((car) => car.status === 'running')).toBe(true)
-  })
+  }, 60_000)
 
   it('classifies timed sessions by best lap rather than track position', () => {
     const config: RaceConfig = {

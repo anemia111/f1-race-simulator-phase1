@@ -1,3 +1,4 @@
+import { wakeDownforceMultiplier, wakeDragReduction } from './wakeModel'
 import type {
   ActiveAeroMode,
   ActiveFlagPhase,
@@ -190,7 +191,7 @@ export type ServiceBrakeMechanicalBudget = Readonly<{
 }>
 
 const profileCache = new WeakMap<TrackDefinition, TrackLoadProfile>()
-const liveCorneringLimitCache = new Map<string, number>()
+const liveCorneringLimitCaches = new WeakMap<CategoryPhysicsProfile, Map<string, number>>()
 
 export function trackLoadProfileFor(track: TrackDefinition): TrackLoadProfile {
   const cached = profileCache.get(track)
@@ -237,27 +238,9 @@ export function dirtyAirDownforceMultiplier(options: {
   lateralSeparationM?: number
   team: Team
 }) {
-  const { dynamics, gapSeconds, team } = options
-
-  if (gapSeconds <= 0 || gapSeconds >= 2.5 || dynamics.curvature < 0.025) {
-    return 1
-  }
-
-  const proximity = 1 - clamp(gapSeconds / 2.5, 0, 1)
-  const sensitivity =
-    1.08 - machinePaceRating(team.machine.dirtyAirTolerance) * 0.22
-  const wakeAlignment =
-    options.lateralSeparationM === undefined
-      ? 1
-      : clamp(1 - Math.abs(options.lateralSeparationM) / 3.2, 0, 1) ** 1.35
-  const loss =
-    proximity ** 1.35 *
-    dynamics.curvature *
-    0.115 *
-    sensitivity *
-    wakeAlignment
-
-  return clamp(1 - loss, 0.88, 1)
+  return wakeDownforceMultiplier({ ...options.dynamics, gapSeconds: options.gapSeconds,
+    lateralSeparationM: options.lateralSeparationM },
+    1.08 - machinePaceRating(options.team.machine.dirtyAirTolerance) * 0.22)
 }
 
 export function towDragReductionFor(options: {
@@ -267,29 +250,9 @@ export function towDragReductionFor(options: {
   lateralSeparationM?: number
   team: Team
 }) {
-  const { dynamics, gapSeconds, team } = options
-
-  if (gapSeconds <= 0 || gapSeconds > 1.8 || dynamics.straightness < 0.72) {
-    return 0
-  }
-
-  const proximity = 1 - clamp((gapSeconds - 0.08) / 1.72, 0, 1)
-  const wakeAlignment =
-    options.lateralSeparationM === undefined
-      ? 1
-      : clamp(1 - Math.abs(options.lateralSeparationM) / 2.8, 0, 1) ** 1.2
-
-  // A 19 % drag reduction is worth roughly 35 km/h of top speed, which is why
-  // race peaks ran far further from observation than clear-air qualifying
-  // peaks did. A tow is a real but far smaller effect than an open rear wing.
-  return clamp(
-    proximity *
-      dynamics.straightness *
-      (0.039 + machinePaceRating(team.machine.towSensitivity) * 0.028) *
-      wakeAlignment,
-    0,
-    0.07,
-  )
+  return wakeDragReduction({ curvature: 0, ...options.dynamics, gapSeconds: options.gapSeconds,
+    lateralSeparationM: options.lateralSeparationM },
+    0.039 + machinePaceRating(options.team.machine.towSensitivity) * 0.028)
 }
 
 export type ActiveAeroForceAssumptions = Readonly<{
@@ -1086,8 +1049,12 @@ export function liveCorneringSpeedLimitKph(options: {
         options.categoryPhysics.topGearDesignSpeedKph * 1.5,
       ) / 2,
     ) * 2
+  let liveCorneringLimitCache = liveCorneringLimitCaches.get(options.categoryPhysics)
+  if (!liveCorneringLimitCache) {
+    liveCorneringLimitCache = new Map<string, number>()
+    liveCorneringLimitCaches.set(options.categoryPhysics, liveCorneringLimitCache)
+  }
   const cacheKey = [
-    options.categoryPhysics.id,
     massKg,
     airDensity,
     bankingDegrees,

@@ -53,6 +53,7 @@ import {
   type DriverSourceRole,
 } from './driverPool'
 import { resolveRuntimeVehicleEra } from './vehicleEraRegistry'
+import { appendImportedDriverRatings } from './importedDriverRatings'
 
 const DATA_FILE = 'src/data/motorsportSeries2026.json'
 
@@ -1346,11 +1347,13 @@ for (const reserve of rawData.reserves) {
   mergePoolRecord(poolRecordFromReserve(reserve))
 }
 
-export const driverPool2026 = validateDriverPool([...poolById.values()], {
+export const originalDriverPool2026 = validateDriverPool([...poolById.values()], {
   expectedIdentityCount: 110,
   expectedProvenanceBySourceSeries: { f2: 22, f3: 30 },
   expectedProvenanceCount: 111,
 })
+
+export const driverPool2026 = validateDriverPool(appendImportedDriverRatings(originalDriverPool2026))
 
 export type SeatAssignment = {
   carNumber: number

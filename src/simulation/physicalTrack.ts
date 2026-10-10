@@ -61,6 +61,7 @@ export type PhysicalTrackMetricMethod =
   | 'three-point-planar-curvature'
   | 'corner-marker-mapped-profile'
   | 'official-gradient-section'
+  | 'digitized-official-road-profile'
   | 'public-elevation-grid-interpolation'
   | 'public-elevation-grid-gradient'
   | 'public-lidar-cross-section'

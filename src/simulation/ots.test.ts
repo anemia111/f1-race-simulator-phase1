@@ -9,7 +9,7 @@ import { trackDynamicsAt } from './trackDynamics'
 describe('Super Formula OTS', () => {
   it('fails closed without a verified event OTS pack and clears legacy allocation state', () => {
     const series = seriesPackageById.get('super-formula')!
-    const track = series.tracks[0]
+    const track = { ...series.tracks[0], id: 'unknown-ots-event' }
     const team = series.teams[0]
     const driver = series.drivers.find((candidate) => candidate.teamId === team.id)!
     const snapshot = createInitialRace({
