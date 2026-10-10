@@ -84,4 +84,3 @@ describe('six-category course and driver interchange', () => {
       .not.toEqual(speedEnvelope(config.course, machine, { ...conditions, airDensityKgM3: sea }))
   })
 })
-
