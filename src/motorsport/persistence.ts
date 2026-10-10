@@ -1,6 +1,7 @@
 import { migrateCourseRegistration } from './courseMigration'
 import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
 import { motorsportMachine } from './packages'
+import { catalogPoolDriverById } from '../series/expansionCatalog'
 import { validateMotorsportConfig } from './race'
 import type { MotorsportRaceConfig, MotorsportRaceState } from './types'
 import { validSectorTiming } from './sectorTiming'
@@ -33,6 +34,15 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
     const save = JSON.parse(envelope.payload,(key,value)=>key==='telemetryHistory'?decodeTelemetryHistory(value):value) as MotorsportSave
     if (!finiteTree(save) || save.schemaVersion !== 1 || save.state.schemaVersion !== 1 || save.config.schemaVersion !== 1) return null
     for (const entry of save.config.entries) {
+      entry.drivers = entry.drivers.map(driver => {
+        if (driver.id !== 'yuki_nakayama' || ![105, 120].includes(driver.overall ?? 0)) return driver
+        const old = driver.overall! / 100
+        if (![driver.racePace, driver.consistency, driver.tyreManagement, driver.qualifyingPace ?? old].every(value => value === old)) return driver
+        const currentDriver = catalogPoolDriverById.get(driver.id)
+        return currentDriver?.overall === 110 ? { ...driver, overall: 110,
+          racePace: currentDriver.ratings.racePace, consistency: currentDriver.ratings.consistency,
+          tyreManagement: currentDriver.ratings.tyreManagement, qualifyingPace: currentDriver.ratings.qualifyingPace } : driver
+      })
       const current=motorsportMachine(entry.machine.name,entry.classId)
       entry.machine.hybridRecoveryPowerKw ??= current.hybridRecoveryPowerKw
       entry.machine.hybridMinimumSpeedKph ??= current.hybridMinimumSpeedKph

@@ -18,6 +18,7 @@ import {
   DRIVER_ABILITY_STATS,
   clampDriverAbility,
   driverAbilityValue,
+  migrateLegacyNakayamaAbility,
 } from './simulation/driverAbility'
 import type {
   F1SeasonState,
@@ -462,11 +463,11 @@ export function parsePersistedDriverRatings(
         }),
       ) as Partial<Record<DriverTunableStat, number>>
 
-      return {
+      return migrateLegacyNakayamaAbility({
         ...driver,
         skills: { ...driver.skills, ...ratings },
         style: { ...driver.style },
-      }
+      }, driver)
     })
   } catch {
     return baseDrivers.map((driver) => ({
