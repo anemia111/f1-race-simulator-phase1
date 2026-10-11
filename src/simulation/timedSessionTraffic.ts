@@ -20,6 +20,30 @@ type TimedTrafficCar = Pick<
 >
  & Partial<Pick<CarSnapshot, 'timedTrafficYield' | 'lateralOffsetM' | 'projectedLapTime'>>
 
+/** Do not merge a preparation lap into a flying car's immediate path. */
+export function timedPitExitIsClear(cars: readonly TimedTrafficCar[], track: TrackDefinition) {
+  const exit = track.pitLane?.exitProgress ?? 0.13
+  return !cars.some(car => {
+    if (car.status !== 'running' || !(car.timedRunPhase === 'attack-lap' ||
+      car.timedRunPhase === 'out-lap' && car.progress >= timedLapLaunchStartProgress(track))) return false
+    const distance = ((exit - car.progress + 1) % 1) * track.lengthKm * 1000
+    return distance / Math.max(5, car.speedKph / 3.6) < 12
+  })
+}
+
+/** Share the clearance: the passing car also uses the open side of the road. */
+export function timedTransitPassingLine(options: {
+  reference: number; transitOffset: number; transitTarget: number;
+  minOffset: number; maxOffset: number; requiredSeparation: number;
+}) {
+  const { reference, transitOffset, transitTarget, minOffset, maxOffset, requiredSeparation } = options
+  const clearance = requiredSeparation + 0.65
+  const target = transitTarget >= 0
+    ? Math.min(reference, Math.min(transitOffset, transitTarget) - clearance)
+    : Math.max(reference, Math.max(transitOffset, transitTarget) + clearance)
+  return Math.max(minOffset, Math.min(maxOffset, target))
+}
+
 /**
  * Who has the right to the road in a timed session, highest first.
  *

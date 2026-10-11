@@ -44,6 +44,18 @@ function contextFor(
 }
 
 describe('seeded driver decisions', () => {
+  it('keeps a timed-session refuge on one side when the corner line reverses', () => {
+    for (const side of [-1, 1] as const) {
+      for (const reference of [-1.5, 1.5]) {
+        const decision = decideDriverBehavior(contextFor({ trackHalfWidthM: 4.5,
+          physicalReferenceLineOffsetM: reference,
+          yield: { active: true, reason: 'timed-session', preferredSide: side,
+            approachingLateralOffsetM: reference, requiredSeparationM: 2.2 } }))
+        expect(decision.intent).toBe('timed-session-yield')
+        expect(Math.sign(decision.desiredLateralOffsetM)).toBe(side)
+      }
+    }
+  })
   it('returns exactly the same decision for the same seed and window', () => {
     const context = contextFor({
       attack: {

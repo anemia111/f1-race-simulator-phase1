@@ -477,6 +477,9 @@ function LeftLeaderboard({
       >
         {rows.map((row) => {
           const status = terminalLabel(row.car)
+          const qualifyingSegment = stage === 'qualifying' || stage === 'qualifying2' || stage === 'sprintQualifying'
+            ? Object.keys(row.car.timedSegmentBestSeconds).at(-1)
+            : undefined
           const tireLife =
             row.tireLifePercent === null
               ? null
@@ -501,7 +504,7 @@ function LeftLeaderboard({
                 </span>
                 <span className="leaderboard-driver">
                   <i style={{ backgroundColor: row.car.teamColor }} />
-                  <span className="leaderboard-driver-identity"><strong title={row.categoryDisplay ? `${row.car.driverName} / ${row.car.teamName} / ${row.categoryDisplay.classLabel}` : undefined}>{row.car.code}</strong>{showClassLabels && row.categoryDisplay && <small className="leaderboard-class-label">{row.categoryDisplay.classId.toUpperCase()}</small>}</span>
+                  <span className="leaderboard-driver-identity"><strong title={row.categoryDisplay ? `${row.car.driverName} / ${row.car.teamName} / ${row.categoryDisplay.classLabel}` : undefined}>{row.car.code}</strong>{showClassLabels && row.categoryDisplay ? <small className="leaderboard-class-label">{row.categoryDisplay.classId.toUpperCase()}</small> : qualifyingSegment && <small className="leaderboard-class-label" title={`${qualifyingSegment}の計測タイム・順位`}>{qualifyingSegment}</small>}</span>
                   {row.car.blueFlag ? (
                     <small className="blue-flag-label" title="Blue flag">
                       <Flag aria-hidden="true" size={7} /> BLUE
@@ -556,7 +559,7 @@ function LeftLeaderboard({
                   {status ?? (mode === 'gap' ? row.displayGapToLeaderLabel : row.displayIntervalLabel)}
                 </span>
                 <span>{formatLapTime(row.lapTimeSeconds)}</span>
-                <span>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
+                <span title={qualifyingSegment ? `${qualifyingSegment} BEST（区分ごとに順位を決定）` : undefined}>{formatLapTime(row.car.bestLapTimeSeconds)}</span>
                 {row.sectors.map((sector, index) => (
                   <span
                     className={`sector-value sector-status-${row.sectorStatuses[index]}`}

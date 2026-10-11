@@ -657,6 +657,12 @@ function nominalLineFor(
     case 'team-order-yield':
     case 'timed-session-yield':
     case 'blue-flag-yield': {
+      // A preparation car keeps one refuge through a corner sequence. If the
+      // racing line bends toward that edge, the attacker shares the clearance
+      // by using the other side; switching refuge would cross its path.
+      if (context.yield?.reason === 'timed-session' && context.yield.preferredSide) {
+        return context.yield.preferredSide * usableHalfWidthM
+      }
       const approaching = clamp(
         finiteOr(context.yield?.approachingLateralOffsetM, reference),
         -usableHalfWidthM,

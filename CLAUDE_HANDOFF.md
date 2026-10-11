@@ -706,3 +706,22 @@ All reproduce physical passage of two attackers. Focused unit cases cover early
 corner clearance, pace-aware spacing and the unchanged final-corner exception.
 Continue publishing with -SkipFullTestSuite -SkipPlaytest; the user explicitly
 does not want long tests or a repeat of the historical all-course timing audit.
+
+## Full-field qualifying traffic losses, 2026-10-11
+
+The user clarified that the odd results meant strong entrants dropping low,
+not simply the valid Q3/Q2/Q1 classification grouping. A short dry Fuji field
+reproduction found RUS at 90.995 s and NOR at 82.122 s on their first attacks:
+transit refuge offsets still flipped with reservations/corner-line changes,
+and cars merged out of the pits immediately ahead of flying traffic.
+Persist the optional timedTrafficYieldSide until the train clears; timed refuge
+intent uses the safe track edge, and an approaching priority car shares lateral
+clearance on the opposite side. Existing footprint/flag/launch rules remain.
+Timed pit exits wait for flying or final-corner-launch traffic within 12 s.
+Six focused suites pass 97 tests, including 42 physical passing cases and a
+short 22-car Fuji regression constraining the measured RUS/NOR laps below 80 s.
+Intermediate diagnosis improved them to 77.100/77.064 s; those numbers describe
+that working diagnosis, not a fresh all-course or complete-weekend audit.
+The tower now labels each driver's attained qualifying segment so older Q1/Q2
+times cannot be mistaken for Q3 ranking times. No strength-based position or
+clock correction is applied. Keep the user's short publication exception.

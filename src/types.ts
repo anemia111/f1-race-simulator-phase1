@@ -1454,6 +1454,8 @@ export type CarSnapshot = {
    * driver on a transit lap lets a lap on the clock through.
    */
   timedTrafficYield: boolean
+  /** Stable refuge side until the whole priority train has passed. */
+  timedTrafficYieldSide?: -1 | 1 | null
   startsFromPitLane: boolean
   lowPowerStartDetected: boolean
   warningLightsUntilSeconds: number | null

@@ -228,7 +228,7 @@ import {
 } from './practicePrograms'
 import { timedLapLaunchBlend } from './timedLapPreparation'
 import { liveTimedLapAdjudication } from './timedSessionAdjudication'
-import { timedOutLapGapDecision, timedSessionYieldDecision, timedSessionTrafficPriority } from './timedSessionTraffic'
+import { timedOutLapGapDecision, timedSessionYieldDecision, timedSessionTrafficPriority, timedPitExitIsClear, timedTransitPassingLine } from './timedSessionTraffic'
 import {
   createSuperFormulaRuntimeSystems,
   type F1RuntimeSystems,
@@ -5067,6 +5067,7 @@ export function advanceRace(
   const driverAgentRuntimeById = new Map<string, DriverAgentRuntimeState>()
   const physicalAheadById = new Map<string, CarSnapshot>()
   const timedTrafficYieldById = new Map<string, ReturnType<typeof timedSessionYieldDecision>>()
+  const timedTrafficYieldSideById = new Map<string, -1 | 1>()
   const physicalGapSecondsById = new Map<string, number>()
   const avoidingObstructionIds = new Set<string>()
   const blueFlagTrainApproaches = isRaceDistance
@@ -5203,6 +5204,12 @@ export function advanceRace(
     const passingTimedTransit = isTimedSession && aheadCar !== undefined &&
       timedSessionTrafficPriority(car, weekendStage) > timedSessionTrafficPriority(aheadCar, weekendStage)
     if (timedYield) timedTrafficYieldById.set(car.driverId, timedYield)
+    const timedYieldSide: -1 | 1 = car.timedTrafficYield && car.timedTrafficYieldSide
+      ? car.timedTrafficYieldSide
+      : Math.abs(car.lateralOffsetM - dynamics.referenceLineOffsetM) > 1
+        ? car.lateralOffsetM > dynamics.referenceLineOffsetM ? 1 : -1
+        : dynamics.referenceLineOffsetM > 0 ? -1 : 1
+    if (timedYield?.shouldYield) timedTrafficYieldSideById.set(car.driverId, timedYieldSide)
     const yieldingTo = !localControlPhase
       ? blueFlagTrainApproaches.get(car.driverId)
       : undefined
@@ -5217,7 +5224,16 @@ export function advanceRace(
           ? 'double-yellow'
           : (localControlPhase?.flag ?? 'clear'),
       currentLateralOffsetM: car.lateralOffsetM,
-      physicalReferenceLineOffsetM: dynamics.referenceLineOffsetM,
+      physicalReferenceLineOffsetM: passingTimedTransit && aheadCar.timedTrafficYield && gapAheadSeconds < 5
+        ? timedTransitPassingLine({
+            reference: dynamics.referenceLineOffsetM,
+            transitOffset: aheadCar.lateralOffsetM,
+            transitTarget: aheadCar.desiredLateralOffsetM,
+            minOffset: lateralBounds.minOffsetM,
+            maxOffset: lateralBounds.maxOffsetM,
+            requiredSeparation: requiredLateralCentreSeparationM(undefined, undefined),
+          })
+        : dynamics.referenceLineOffsetM,
       trackHalfWidthM,
       edgeClearanceM:
         FORMULA_VEHICLE_HALF_WIDTH_M + TRACK_EDGE_SAFETY_MARGIN_M,
@@ -5305,11 +5321,7 @@ export function advanceRace(
                 // Clear the line at our own location. A following car may
                 // still be at the opposite side of the preceding corner.
                 approachingLateralOffsetM: dynamics.referenceLineOffsetM,
-                preferredSide: car.timedTrafficYield
-                  ? car.desiredLateralOffsetM >= 0 ? 1 : -1
-                  : Math.abs(car.lateralOffsetM - dynamics.referenceLineOffsetM) > 1
-                  ? car.lateralOffsetM > dynamics.referenceLineOffsetM ? 1 : -1
-                  : dynamics.referenceLineOffsetM > 0 ? -1 : 1,
+                preferredSide: timedYieldSide,
                 requiredSeparationM: requiredLateralCentreSeparationM(undefined, undefined),
               }
             : undefined,
@@ -5648,6 +5660,13 @@ export function advanceRace(
       }
 
       if (car.pitUntilSeconds !== null && elapsedSeconds >= car.pitUntilSeconds) {
+        if (isTimedSession && !timedPitExitIsClear(frameCars, config.track)) {
+          return {
+            ...car,
+            pitUntilSeconds: elapsedSeconds + 0.5,
+            pitExitQueueSeconds: car.pitExitQueueSeconds + deltaSeconds,
+          }
+        }
         if (isTimedSession || car.status === 'pit') {
           const releaseAtSeconds = Math.max(
             car.pitUntilSeconds,
@@ -7017,6 +7036,7 @@ export function advanceRace(
       blueFlag,
       blueFlagSinceSeconds,
       timedTrafficYield: timedTrafficYield?.shouldYield ?? false,
+      timedTrafficYieldSide: timedTrafficYieldSideById.get(car.driverId) ?? null,
       warningLightsUntilSeconds:
         car.warningLightsUntilSeconds !== null &&
         elapsedSeconds >= car.warningLightsUntilSeconds

@@ -8,6 +8,8 @@ import {
   timedSessionTrafficPriority,
   timedSessionYieldDecision,
   timedOutLapGapDecision,
+  timedPitExitIsClear,
+  timedTransitPassingLine,
 } from './timedSessionTraffic'
 
 function safeStraightProgress() {
@@ -48,6 +50,28 @@ function timedCar(options: {
 }
 
 describe('timed-session traffic etiquette', () => {
+  it('holds pit exits for approaching flying cars and final-corner launches', () => {
+    const track = tracks[0]
+    const exit = track.pitLane?.exitProgress ?? 0.13
+    const car = timedCar({ driverId: 'flying', phase: 'attack-lap', speedKph: 250,
+      progress: (exit - 4 * 250 / 3.6 / (track.lengthKm * 1000) + 1) % 1 })
+    expect(timedPitExitIsClear([car], track)).toBe(false)
+    expect(timedPitExitIsClear([{ ...car, progress: (exit + 0.01) % 1 }], track)).toBe(true)
+    expect(timedPitExitIsClear([{ ...car, timedRunPhase: 'in-lap' }], track)).toBe(true)
+    const launchingTrack = { ...track, pitLane: { ...track.pitLane!, exitProgress: 0.02 } }
+    const launching = { ...car, progress: 0.999, timedRunPhase: 'out-lap' as const }
+    expect(timedPitExitIsClear([launching], launchingTrack)).toBe(false)
+  })
+
+  it('uses the open side when a transit car cannot clear the racing line alone', () => {
+    for (const side of [-1, 1]) {
+      const transitOffset = side * 1.7
+      const line = timedTransitPassingLine({ reference: side * 0.6, transitOffset,
+        transitTarget: side * 3, minOffset: -3, maxOffset: 3, requiredSeparation: 2.2 })
+      expect(Math.abs(line - transitOffset)).toBeGreaterThan(2.2)
+      expect(Math.abs(line)).toBeLessThanOrEqual(3)
+    }
+  })
   const gapDecision = (frontGapSeconds: number, overrides: { remainingSessionSeconds?: number; frontSpeed?: number; phase?: CarSnapshot['timedRunPhase']; rearAttack?: boolean; progress?: number; ownLapSeconds?: number; frontLapSeconds?: number } = {}) => {
     const track = tracks[0]
     const progress = overrides.progress ?? 0.5
