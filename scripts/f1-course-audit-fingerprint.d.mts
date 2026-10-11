@@ -1,1 +1,1 @@
-export function f1CourseAuditFingerprint(root: string): Promise<string>
+export function f1CourseAuditFingerprint(root: string, revision?: string): Promise<string>

@@ -610,7 +610,7 @@ removed rather than relabelled as current measurements.
 
 Final actual-lap audits use calibration seed 0 plus independent seeds 1 and 2
 over all 49 layouts. Their production-input fingerprint is checked by a
-regression test, so later production changes require fresh measurements. The
+regression test, so later production changes require fresh measurements.
 The user subsequently instructed that long-running tests are unnecessary.
 The in-progress full suite was stopped at their request. Publish this batch
 with `-SkipFullTestSuite -SkipPlaytest`, using the completed focused checks,
@@ -626,3 +626,17 @@ layouts remain estimates. These are isolated dry qualifying results, not
 independent validation of fuel-heavy races. See `docs/validation/F1_COURSE_TIMES.md`.
 Focused physics/tyre/speed/data/geometry checks passed 102 tests; the persisted
 source-fingerprint and three-seed audit checks passed another two tests.
+
+## Final-corner out-lap courtesy exception, 2026-10-11
+
+At the user's request, an out-lap car stops giving way when it reaches the
+existing final-corner launch zone. This clears an already active hold for
+multiple attackers as well as preventing a new courtesy lift. Earlier out-lap
+traffic, in laps and cooldowns retain their existing etiquette; collision and
+flag decisions remain independent. FP/Q/SQ boundary and train regressions pass.
+Keep using the user's shortened publication checks; do not restart long tests.
+
+The prior 147-run timing audit now explicitly records source revision 6cc4e08.
+Its test verifies that immutable Git revision's production fingerprint. It is
+historical evidence, not a claim that a later runtime was fully remeasured.
+Fresh reports without a recorded revision still check current production inputs.

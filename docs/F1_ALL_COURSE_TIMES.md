@@ -82,7 +82,8 @@ results.
 ## Actual-lap results
 
 All 49 layouts recorded at least one valid timed lap on each of three seeds
-(147 layout/seed runs). The 30 targeted layouts improved from 3.763 s mean
+(147 layout/seed runs, recorded production source `6cc4e08`). Later traffic
+changes were not remeasured. The 30 targeted layouts improved from 3.763 s mean
 absolute error on the previous runtime's seed 0 to 0.201 s for the new
 three-seed median; the maximum median error was 0.602 s. Independent seeds 1
 and 2 produced 0.244 s mean and 0.820 s maximum absolute error. No fitted

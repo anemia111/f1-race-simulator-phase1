@@ -28,7 +28,7 @@ const summary = {layouts:rows.length,targetedLayouts:targeted.length,unavailable
   medianMaximumAbsoluteErrorSeconds:Math.max(...targeted.map(row=>Math.abs(row.liveReferenceResidualSeconds))),
   independentSeedMeanAbsoluteErrorSeconds:independentErrors.reduce((a,b)=>a+b,0)/independentErrors.length,
   independentSeedMaximumAbsoluteErrorSeconds:Math.max(...independentErrors)}
-const report={schemaVersion:1,generatedAt:new Date().toISOString(),sourceFingerprint:reports[0].sourceFingerprint,
+const report={schemaVersion:1,sourceRevision:reports[0].sourceRevision ?? null,generatedAt:new Date().toISOString(),sourceFingerprint:reports[0].sourceFingerprint,
   conditions:reports[0].conditions,calibrationSeed:0,independentSeeds:[1,2],summary,rows}
 await mkdir(directory,{recursive:true})
 await writeFile(resolve(directory,'f1-course-times.json'),JSON.stringify(report,null,2)+'\n')

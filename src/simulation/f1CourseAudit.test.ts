@@ -5,8 +5,8 @@ import { freeModeTrackOptions } from '../freeMode/freeModeRegistry'
 import { seriesPackageById } from '../series/seriesRegistry'
 
 describe('persisted F1 actual-lap audit', () => {
-  it('belongs to the current production inputs and covers all selectable layouts', async () => {
-    expect(report.sourceFingerprint).toBe(await f1CourseAuditFingerprint('.'))
+  it('belongs to the recorded production revision and covers all selectable layouts', async () => {
+    expect(report.sourceFingerprint).toBe(await f1CourseAuditFingerprint('.', report.sourceRevision ?? undefined))
     const ids = freeModeTrackOptions(seriesPackageById).map(course => course.id).sort()
     expect(report.rows.map(row => row.id).sort()).toEqual(ids)
     expect(report.summary.layouts).toBe(49)

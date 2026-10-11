@@ -1,5 +1,8 @@
 # F1 all 49 course actual-lap audit
 
+Recorded source: `6cc4e08`. These measurements predate the final-corner out-lap
+courtesy exception; later runtime changes are not claimed as remeasured.
+
 Isolated driver 100, neutral machine axes 0.86, dry Q1, fixed seed per course, first two valid timed laps. SIM setup/temperature/tyre preparation remain active. Not an official top-three classification.
 
 Calibration seed 0; independent seeds 1 and 2. Times are seconds. Before runtime: c2a6750. SIM contact coefficients are not measured friction. No F1 reference means an estimate, not an accuracy claim.

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { tracks } from '../data/tracks'
 import type { CarSnapshot } from '../types'
 import { trackDynamicsAt } from './trackDynamics'
+import { timedLapLaunchStartProgress } from './timedLapPreparation'
 import {
   TIMED_TRAFFIC_PRIORITY,
   timedSessionTrafficPriority,
@@ -75,6 +76,28 @@ describe('timed-session traffic etiquette', () => {
       const priority = (phase: CarSnapshot['timedRunPhase']) => timedSessionTrafficPriority(timedCar({ driverId: 'car', phase, progress: 0 }), stage)
       expect(priority('attack-lap')).toBeGreaterThan(priority('out-lap'))
       expect(priority('out-lap')).toBeGreaterThan(priority('in-lap'))
+    }
+  })
+
+  it('ends an out-lap courtesy hold at final-corner launch, including a following train', () => {
+    const track = tracks[0]
+    const start = timedLapLaunchStartProgress(track)
+    for (const stage of ['fp1', 'fp2', 'fp3', 'qualifying', 'qualifying2', 'sprintQualifying'] as const) {
+      for (const progress of [start, (start + 1) / 2, 0.999]) {
+        const car = { ...timedCar({ driverId: 'launching', phase: 'out-lap', progress }), timedTrafficYield: true }
+        const decide = (phase: CarSnapshot['timedRunPhase'], at = progress) => {
+          const own = { ...car, progress: at, timedRunPhase: phase }
+          const following = [100, 300].map((distance, index) => timedCar({
+            driverId: `attack-${index}`, phase: 'attack-lap', speedKph: 240,
+            progress: (at - distance / (track.lengthKm * 1000) + 1) % 1,
+          }))
+          return timedSessionYieldDecision({ car: own, cars: [own, ...following], stage, track })
+        }
+        expect(decide('out-lap').shouldYield, stage).toBe(false)
+        expect(decide('out-lap').approachingDriverIds, stage).toEqual([])
+        expect(decide('out-lap', start - 0.001).shouldYield, stage).toBe(true)
+        expect(decide('in-lap').shouldYield, stage).toBe(true)
+      }
     }
   })
 

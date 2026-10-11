@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "sourceRevision": "6cc4e08",
   "generatedAt": "2026-10-11T04:30:16.476Z",
   "sourceFingerprint": "sha256:0199d52c51b0e5ae64c8f92cc8c9d739c00daf263a31e1ff9e35413bb807a437",
   "conditions": "Isolated driver 100, neutral machine axes 0.86, dry Q1, fixed seed per course, first two valid timed laps. SIM setup/temperature/tyre preparation remain active. Not an official top-three classification.",

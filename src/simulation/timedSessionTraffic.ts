@@ -140,14 +140,18 @@ export function timedSessionYieldDecision(options: {
 }) {
   const { car, cars, physics, stage, track } = options
   const priority = timedSessionTrafficPriority(car, stage)
+  // Once the out lap launches from the final corner, protect the run to the
+  // timing line. This also releases an existing courtesy hold for a train.
+  // Collision avoidance and flag instructions remain separate decisions.
+  const launching = car.timedRunPhase === 'out-lap' &&
+    car.progress >= timedLapLaunchStartProgress(track)
   const trackLengthMeters = Math.max(1, track.lengthKm * 1_000)
-  const approaching = cars
-    .filter(
+  const priorityTraffic = launching ? [] : cars.filter(
       (candidate) =>
         candidate.driverId !== car.driverId &&
         timedSessionTrafficPriority(candidate, stage) > priority,
     )
-    .map((candidate) => {
+  const approaching = priorityTraffic.map((candidate) => {
       const gapMeters =
         forwardProgress(candidate.progress, car.progress) * trackLengthMeters
       const currentSpeedKph = Number.isFinite(candidate.speedKph)
@@ -184,9 +188,7 @@ export function timedSessionYieldDecision(options: {
     dynamics.straightness >= 0.7 &&
     dynamics.brakingSeverity < 0.2 &&
     dynamics.referenceSpeedKph >= 175
-  const justPassed = car.timedTrafficYield === true && cars.some(candidate =>
-    candidate.driverId !== car.driverId &&
-    timedSessionTrafficPriority(candidate, stage) > priority &&
+  const justPassed = car.timedTrafficYield === true && priorityTraffic.some(candidate =>
     forwardProgress(car.progress, candidate.progress) * trackLengthMeters < 80,
   )
   const shouldHoldAside = car.timedTrafficYield === true && (approaching !== undefined || justPassed)
@@ -197,8 +199,7 @@ export function timedSessionYieldDecision(options: {
     gapSeconds: approaching?.gapSeconds ?? null,
     priority,
     safePassingPoint,
-    approachingDriverIds: cars.filter(candidate => candidate.driverId !== car.driverId &&
-      timedSessionTrafficPriority(candidate, stage) > priority &&
+    approachingDriverIds: priorityTraffic.filter(candidate =>
       forwardProgress(candidate.progress, car.progress) * trackLengthMeters / Math.max(5, candidate.speedKph / 3.6) <= 8).map(candidate => candidate.driverId),
     shouldYield: (approaching !== undefined && safePassingPoint) || shouldHoldAside,
   }
