@@ -1184,6 +1184,8 @@ export type LapTireRun = F1LapTireRun | SuperFormulaLapTireRun
 
 /** Immutable record written only when a car crosses the timing line. */
 export type LapRecord = {
+  /** Actual simulation timing-line crossing; absent in legacy saves. */
+  completedAtSeconds?: number
   lap: number
   lapTimeSeconds: number
   sectors: number[]

@@ -1,40 +1,33 @@
-# Broadcast Dashboard Design QA
-
-Reference: `codex-clipboard-c963d84e-0415-4a4c-988e-2e51125e1c31.png`
-
-Current prototype capture: `C:\Users\yuuki\AppData\Local\Temp\f1-simulator-qa\broadcast-compact.png`
-
-Automated verification: `npm run playtest`
-
-## P0 - Fixed
-
-- No viewport overflow or panel overlap at 1440x900 and 1280x720.
-- All core controls, tabs, close/restore actions, driver selection, playback controls, and secondary panels work.
-- The sidebar is Data and Settings only; the circuit map is the initial right-hand view and the leaderboard renders the whole field.
-- The leaderboard exposes a working vertical scroll range at 1280x720.
-- The WebGL circuit map renders nonblank and remains interactive.
-- The former lap comparison, duplicate live-sector, fuel-load, and next-events panels are absent; the map now uses the released center-column space.
-
-## P1 - Fixed
-
-- Three-column broadcast hierarchy matches the reference: classification, live timing/map, race control.
-- The real-layout circuit is thin, sector-colored, and uses compact circular driver markers.
-- Official event naming, broadcast wind units, and source provenance are visible and consistent.
-- Weather crossover calls are staggered. A full 57-lap accelerated audit produced two individual VSC infringements rather than a field-wide penalty wave.
-- Tyre circles show remaining life, start at 100, and fell into the 69-78 range during the accelerated in-app race check.
-- The setup panel exposes all 12 driver ability controls and their arithmetic-mean OVR; the Drivers view exposes the same OVR value.
-
-## P2 - Fixed
-
-- Typography, borders, spacing, compact tables, and chart density follow the supplied F1TV-style reference.
-- Live timing, telemetry, tires, weather, messages, track data, and reliability views use the same panel system.
-- Compact desktop rendering has no clipped button labels.
-- The supplied reference and current implementation were reviewed together. The information hierarchy, dense timing treatment, thin circuit line, restrained borders, and persistent race-control rail remain aligned.
-- Duplicated destinations were removed rather than shown twice; the leaderboard carries the timing detail and the map owns the right-hand column.
-
-## P3 - Accepted
-
-- The reference uses an aerial circuit backdrop; the simulator keeps a clean dark map so all 24 circuit layouts remain lightweight and consistently legible.
-- Brand artwork is intentionally represented by the app's own broadcast mark rather than copied commercial artwork.
+# Qualifying cards design QA
 
 final result: passed
+
+Scope: translate the supplied F1 broadcast timing-card reference into three
+interactive cards in the existing simulator's lower map space. Preserve the
+existing map, controls and application styling. The supplied Fuji screenshot
+defines placement; the live browser used the current Madrid qualifying session,
+so course geometry, drivers and timing values are intentionally different.
+
+Evidence (workspace outputs, not committed images):
+- `../../outputs/qualifying-cards-desktop.png`: three active timing cards.
+- `../../outputs/qualifying-cards-finish.png`: actual Q3 finish and two flying laps.
+- `../../outputs/qualifying-cards-comparison.png`: reference card crops and
+  implementation cards together in one comparison image, reviewed visually.
+
+The reference and implementation share the dark rectangular card, position /
+driver header, team-colour rule, tyre compound, large running clock or final
+delta, right-aligned reference time and driver, and three sector bars. Three
+cards replace the reference's two as requested. Measured split values and a
+small confirmed final lap time add readable timing context. No decorative logo
+or raster asset is needed for this text/data overlay.
+
+Layout checks at 1440×900 and 1280×720 found three cards entirely inside the
+map panel, no horizontal overflow, and no clipped numeric text. Map/elevation
+controls remain above the separate card row. Actual running and finished states,
+expiry to the next driver, and click-to-focus were exercised. Error logs: empty.
+
+No actionable P0/P1/P2 visual discrepancy was found in the final comparison.
+Editorial scope difference: this SIM has three automatic slots and an explicit
+three-second hold, rather than reproducing an unverified broadcast direction
+algorithm. The exact F1 typeface and team logos are not included; existing app
+fonts and team colours are used.

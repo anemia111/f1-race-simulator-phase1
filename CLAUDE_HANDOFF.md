@@ -655,3 +655,22 @@ The 18-case passing reproduction now passes. Continue the user's short-check
 publication exception (`-SkipFullTestSuite -SkipPlaytest`); no long tests.
 Focused traffic, lap preparation, driver decision, lateral dynamics and historical
 timing-audit checks passed 69 tests across six files. Lint and diff checks passed.
+
+## Three F1 qualifying broadcast cards, 2026-10-11
+
+The lower map area now has three live timing slots in F1 SIM Q/SQ. Direction
+uses flying-lap finish ETA; displayed finishers remain for three wall-clock
+seconds before switching to the next approaching car. Compare safe drivers to
+the top and outside/no-time drivers to the last configured safe place. The
+leader uses their prior best. References remain frozen through each displayed
+attempt and final result. Sector deltas are measured, not predictions. Deleted
+laps are explicitly labelled. Optional LapRecord.completedAtSeconds records
+the physical timed-lap crossing for reliable finish detection.
+See docs/QUALIFYING_BROADCAST_CARDS.md for source/editorial boundaries. Exact FOM
+selection/duration rules were not verified; the supplied photo and user policy
+define this overlay. Nine direction tests plus related checks pass 22 tests;
+lint/types pass. Native browser Q2/Q3 checks exercised three live cards, final
+delta, expiry and focus. Width checks at 1440/1280 had no clipped numeric text
+or horizontal overflow; browser errors were empty. design-qa.md records the
+joint reference/implementation visual comparison. Continue the user's short
+publication exception; do not restart long audits or the full playtest suite.

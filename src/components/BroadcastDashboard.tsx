@@ -1,4 +1,5 @@
 import { CompoundUsageChart } from './CompoundUsageChart'
+import { QualifyingTimingCards } from './QualifyingTimingCards'
 import { TelemetryComparison } from './TelemetryComparison'
 import { trackCornerTelemetry } from '../data/cornerReferences'
 import {
@@ -117,6 +118,7 @@ export type BroadcastDataDetail = {
 
 
 type BroadcastDashboardProps = {
+  qualifyingSegments?: readonly { name: string; advanceCount: number | null }[]
   categoryPresentation?: { seriesValue: string; systemsLabel: string; tyreUsage: ReactNode; tyreLegend: ReactNode; speeds: number[]; telemetryCorners?: {label: string; progress: number}[] }
   applicationMode: ApplicationMode
   cameraMode: CameraMode
@@ -637,6 +639,7 @@ function CenterView({
 }
 
 export function BroadcastDashboard({
+  qualifyingSegments = [],
   categoryPresentation,
   applicationMode,
   cameraMode,
@@ -895,7 +898,7 @@ export function BroadcastDashboard({
 
         <div className="broadcast-center-column">
           {activeView === 'map' ? (
-          <section className="broadcast-panel broadcast-track-panel">
+          <section className={`broadcast-panel broadcast-track-panel${isQualifyingStage && seriesId === 'f1-custom' && !categoryPresentation && dataMode === 'SIM' ? ' with-quali-cards' : ''}`}>
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
               eyebrow={`${track.lengthKm.toFixed(3)} KM / ${categoryPresentation?.systemsLabel ?? trackOvertakeStatus}`}
@@ -924,6 +927,12 @@ export function BroadcastDashboard({
                 )}
               </div>
             </div>
+            {isQualifyingStage && seriesId === 'f1-custom' && !categoryPresentation && dataMode === 'SIM' && (
+              <QualifyingTimingCards key={`${track.id}/${stage}`}
+                snapshot={snapshot} segment={snapshot.timedSegmentLabel ?? ''}
+                advanceCount={qualifyingSegments.find(segment => segment.name === snapshot.timedSegmentLabel)?.advanceCount ?? null}
+                onFocusDriver={onFocusDriver} />
+            )}
           </section>
           ) : activeView === 'telemetry' ? (
           <section className="broadcast-panel broadcast-telemetry-panel" aria-label="Telemetry workspace">

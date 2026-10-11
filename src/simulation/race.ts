@@ -7686,6 +7686,7 @@ export function advanceRace(
               ...next.lapHistory,
               {
                 lap: completedTimedLap,
+                completedAtSeconds: crossedAtSeconds,
                 lapTimeSeconds: recordedLapTime,
                 sectors: completedSectors,
                 miniSectors: completedMeasuredMiniSectors(

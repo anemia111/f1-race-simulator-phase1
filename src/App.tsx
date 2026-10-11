@@ -4204,6 +4204,7 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
+        qualifyingSegments={classificationSegments}
         applicationMode={applicationMode}
         cameraMode={cameraMode}
         dataControl={broadcastDataControl}
