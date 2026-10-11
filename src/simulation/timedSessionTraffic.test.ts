@@ -34,25 +34,27 @@ function timedCar(options: {
   practiceProgram?: CarSnapshot['practiceProgram']
   progress: number
   speedKph?: number
+  projectedLapTime?: number
 }) {
   return {
     driverId: options.driverId,
     practiceProgram: options.practiceProgram ?? null,
     progress: options.progress,
     speedKph: options.speedKph ?? 200,
+    projectedLapTime: options.projectedLapTime,
     status: 'running' as const,
     timedRunPhase: options.phase,
   }
 }
 
 describe('timed-session traffic etiquette', () => {
-  const gapDecision = (frontGapSeconds: number, overrides: { remainingSessionSeconds?: number; frontSpeed?: number; phase?: CarSnapshot['timedRunPhase']; rearAttack?: boolean; progress?: number } = {}) => {
+  const gapDecision = (frontGapSeconds: number, overrides: { remainingSessionSeconds?: number; frontSpeed?: number; phase?: CarSnapshot['timedRunPhase']; rearAttack?: boolean; progress?: number; ownLapSeconds?: number; frontLapSeconds?: number } = {}) => {
     const track = tracks[0]
     const progress = overrides.progress ?? 0.5
     const speed = trackDynamicsAt(track, progress).referenceSpeedKph
-    const car = timedCar({ driverId: 'preparing', phase: overrides.phase ?? 'out-lap', progress, speedKph: speed * 0.84 })
+    const car = timedCar({ driverId: 'preparing', phase: overrides.phase ?? 'out-lap', progress, speedKph: speed * 0.84, projectedLapTime: overrides.ownLapSeconds })
     const frontProgress = (progress + frontGapSeconds * speed / 3.6 / (track.lengthKm * 1000)) % 1
-    const front = timedCar({ driverId: 'front', phase: 'out-lap', progress: frontProgress, speedKph: trackDynamicsAt(track, frontProgress).referenceSpeedKph * (overrides.frontSpeed ?? 0.84) })
+    const front = timedCar({ driverId: 'front', phase: 'out-lap', progress: frontProgress, speedKph: trackDynamicsAt(track, frontProgress).referenceSpeedKph * (overrides.frontSpeed ?? 0.84), projectedLapTime: overrides.frontLapSeconds })
     const rear = timedCar({ driverId: 'flying', phase: 'attack-lap', progress: (progress - 100 / (track.lengthKm * 1000) + 1) % 1, speedKph: 240 })
     return timedOutLapGapDecision({ car, cars: [car, front, ...(overrides.rearAttack ? [rear] : [])], track, stage: 'qualifying', seed: 'air-gap', runIndex: 0, remainingSessionSeconds: overrides.remainingSessionSeconds ?? 500 })
   }
@@ -69,6 +71,32 @@ describe('timed-session traffic etiquette', () => {
     expect(gapDecision(2, { remainingSessionSeconds: 10 }).speedScale).toBe(1)
     expect(gapDecision(2, { phase: 'attack-lap' }).speedScale).toBe(1)
     expect(gapDecision(2, { progress: 0.999 }).speedScale).toBe(1)
+  })
+
+  it('reserves additional launch space for the expected flying-lap pace closure', () => {
+    const baseline = gapDecision(9)
+    const slowerAhead = gapDecision(9, { ownLapSeconds: 80, frontLapSeconds: 85 })
+    expect(slowerAhead.targetGapSeconds).toBeCloseTo(baseline.targetGapSeconds + 5)
+    expect(slowerAhead.speedScale).toBeLessThan(baseline.speedScale)
+    expect(gapDecision(9, { ownLapSeconds: 85, frontLapSeconds: 80 }).targetGapSeconds).toBe(baseline.targetGapSeconds)
+    expect(gapDecision(9, { ownLapSeconds: 60, frontLapSeconds: 100 }).targetGapSeconds).toBe(20)
+  })
+
+  it('clears qualifying corner sequences early without waiting for a straight', () => {
+    const track = tracks.find(candidate => candidate.id === 'hungaroring-approx')!
+    const progress = Array.from({ length: 500 }, (_, index) => 0.15 + index / 1000).find(at => {
+      const dynamics = trackDynamicsAt(track, at)
+      return dynamics.straightness < 0.6 && dynamics.referenceSpeedKph < 175
+    })!
+    const car = timedCar({ driverId: 'preparing', phase: 'in-lap', progress })
+    const rear = timedCar({ driverId: 'flying', phase: 'attack-lap', speedKph: 170,
+      progress: (progress - 12 * 170 / 3.6 / (track.lengthKm * 1000) + 1) % 1 })
+    for (const stage of ['qualifying', 'qualifying2', 'sprintQualifying'] as const) {
+      const decision = timedSessionYieldDecision({ car, cars: [car, rear], stage, track })
+      expect(decision.safePassingPoint).toBe(false)
+      expect(decision.shouldYield).toBe(true)
+    }
+    expect(timedSessionYieldDecision({ car, cars: [car, rear], stage: 'fp2', track }).shouldYield).toBe(false)
   })
 
   it('ranks attack above out above in in both qualifying formats', () => {

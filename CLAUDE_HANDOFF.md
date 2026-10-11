@@ -688,3 +688,21 @@ the red tint. Other segments/session types have no knockout tint. The existing
 live display position drives the range; no fixed 16/10 assumption is introduced.
 Native browser Q1 verification showed exactly P17-P22 tinted at rgba(224,35,52,.18)
 for the 22-car field; lint/diff checks pass. Keep the user's shortened publish.
+
+## Earlier qualifying clearance through corner sequences, 2026-10-11
+
+The remaining blocking report reproduced a late-yield failure at Hungaroring:
+transit cars waited for a straight throughout a corner sequence. Q/Q2/SQ now
+recognize priority traffic within 16 s and start moving aside through corners.
+Use the local reference line and retain the refuge side while yielding, rather
+than chase the trailing car's offset in a previous corner. Apply the additional
+strong throttle cap only after physical lateral clearance exists. Preserve
+footprint/collision constraints and the final-corner out-lap launch exception.
+Out-lap spacing adds predicted lap-pace closure to the 6-9 s baseline, capped
+at 20 s. No timing/position rewriting is introduced.
+Short integration coverage now exercises 42 scenarios: the existing 18 straight
+cases plus four corner tracks, out/in phases and three initial lateral offsets.
+All reproduce physical passage of two attackers. Focused unit cases cover early
+corner clearance, pace-aware spacing and the unchanged final-corner exception.
+Continue publishing with -SkipFullTestSuite -SkipPlaytest; the user explicitly
+does not want long tests or a repeat of the historical all-course timing audit.

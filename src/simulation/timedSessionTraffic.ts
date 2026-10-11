@@ -18,7 +18,7 @@ type TimedTrafficCar = Pick<
   | 'status'
   | 'timedRunPhase'
 >
- & Partial<Pick<CarSnapshot, 'timedTrafficYield' | 'lateralOffsetM'>>
+ & Partial<Pick<CarSnapshot, 'timedTrafficYield' | 'lateralOffsetM' | 'projectedLapTime'>>
 
 /**
  * Who has the right to the road in a timed session, highest first.
@@ -117,7 +117,12 @@ export function timedOutLapGapDecision(options: {
   const aheadReferenceMps = Math.max(20, trackDynamicsAt(track, ahead.car.progress, physics).referenceSpeedKph / 3.6)
   const ownPaceRatio = Math.min(1.1, Math.max(0.65, car.speedKph / 3.6 / referenceSpeedMps))
   const aheadPaceRatio = Math.min(1.1, Math.max(0.65, ahead.car.speedKph / 3.6 / aheadReferenceMps))
-  const targetGapSeconds = 6 + hashChance(`${options.seed}:qualifying-air-gap:${car.driverId}:${options.runIndex}`) * 3
+  // A fixed 6-9 s gap still closes during a flying lap when the car ahead is
+  // materially slower. Reserve the expected lap-pace closure before launch.
+  const paceClosureSeconds = Number.isFinite(car.projectedLapTime) && Number.isFinite(ahead.car.projectedLapTime)
+    ? Math.max(0, ahead.car.projectedLapTime! - car.projectedLapTime!)
+    : 0
+  const targetGapSeconds = Math.min(20, 6 + hashChance(`${options.seed}:qualifying-air-gap:${car.driverId}:${options.runIndex}`) * 3 + paceClosureSeconds)
   const gapSeconds = ahead.distanceM / referenceSpeedMps
   const projectedGapSeconds = gapSeconds - Math.max(0, ownPaceRatio - aheadPaceRatio) * Math.min(30, remainingOutLapSeconds)
   // Begin opening the gap well before launch. Small, continuous corrections
@@ -139,6 +144,7 @@ export function timedSessionYieldDecision(options: {
   track: TrackDefinition
 }) {
   const { car, cars, physics, stage, track } = options
+  const qualifying = stage === 'qualifying' || stage === 'qualifying2' || stage === 'sprintQualifying'
   const priority = timedSessionTrafficPriority(car, stage)
   // Once the out lap launches from the final corner, protect the run to the
   // timing line. This also releases an existing courtesy hold for a train.
@@ -179,7 +185,7 @@ export function timedSessionYieldDecision(options: {
     })
     // A car still behind needs clearance even inside the last tenth of a
     // second. Dropping it here cancels the yield before its nose gets past.
-    .filter(({ gapMeters, gapSeconds }) => gapMeters > 0 && gapSeconds <= (car.timedTrafficYield ? 12 : 8))
+    .filter(({ gapMeters, gapSeconds }) => gapMeters > 0 && gapSeconds <= (qualifying ? 16 : car.timedTrafficYield ? 12 : 8))
     .sort(
       (left, right) =>
         left.gapSeconds - right.gapSeconds ||
@@ -203,6 +209,9 @@ export function timedSessionYieldDecision(options: {
     safePassingPoint,
     approachingDriverIds: priorityTraffic.filter(candidate =>
       forwardProgress(candidate.progress, car.progress) * trackLengthMeters / Math.max(5, candidate.speedKph / 3.6) <= 8).map(candidate => candidate.driverId),
-    shouldYield: (approaching !== undefined && safePassingPoint) || shouldHoldAside,
+    // In qualifying, move aside before the next straight rather than wait in
+    // the attacker's path throughout a corner sequence. Pedal lifting waits
+    // for actual lateral clearance in the live controller.
+    shouldYield: (approaching !== undefined && (safePassingPoint || qualifying)) || shouldHoldAside,
   }
 }

@@ -36,4 +36,31 @@ describe('live timed-session passing courtesy', () => {
       for (const flying of state.cars.filter(car => car.driverId !== preparingId)) expect(flying.totalDistance).toBeGreaterThan(preparing.totalDistance)
     }, 30_000,
   )
+  it.each(['monaco-approx', 'suzuka-approx', 'hungaroring-approx', 'bahrain-approx'].flatMap(trackId =>
+    (['out-lap', 'in-lap'] as const).flatMap(phase => [0, -3, 3].map(offset => ({trackId, phase, offset})))))(
+    '$trackId clears a slow $phase car in corners at offset $offset', ({trackId, phase, offset}) => {
+      const track = { ...tracks.find(track => track.id === trackId)!, rainProbability: 0 }
+      const config: RaceConfig = { drivers: initialDrivers.slice(0, 3), teams: initialTeams, track, seed: 'corner-passing', weekendStage: 'qualifying', sessionDurationSeconds: 900 }
+      let state = createInitialRace(config)
+      const progress = Array.from({ length: 500 }, (_, index) => 0.15 + index / 1000).find(progress => {
+        const dynamics = trackDynamicsAt(track, progress)
+        return dynamics.straightness < 0.6 && dynamics.referenceSpeedKph < 175
+      })!
+      expect(progress).toBeDefined()
+      const preparingId = config.drivers[0].id
+      state = { ...state, elapsedSeconds: 200, cars: state.cars.map((car, index) => {
+        const distance = 2 + progress - index * 35 / (track.lengthKm * 1000)
+        return { ...car, status: 'running', pitPhase: 'none', pitUntilSeconds: null, hiddenFromTrack: false, offTrackSinceSeconds: null, incidentTrackState: 'clear', totalDistance: distance, progress: distance % 1, processedLap: 2, speedKph: index === 0 ? 90 : 170, gear: 4, lateralOffsetM: offset, lateralVelocityMps: 0, timedRunPhase: index === 0 ? phase : 'attack-lap', timedRunStartedAtSeconds: 190, lapStartedAtSeconds: index === 0 ? null : 190, practiceProgram: null }
+      }) }
+      let gaveWayEarly = false
+      for (let tick = 0; tick < 400; tick++) {
+        state = advanceRace(state, 0.05, config)
+        const preparing = state.cars.find(car => car.driverId === preparingId)!
+        if (tick < 60 && preparing.timedTrafficYield) gaveWayEarly = true
+      }
+      expect(gaveWayEarly).toBe(true)
+      const preparing = state.cars.find(car => car.driverId === preparingId)!
+      for (const flying of state.cars.filter(car => car.driverId !== preparingId)) expect(flying.totalDistance).toBeGreaterThan(preparing.totalDistance)
+    }, 30_000,
+  )
 })

@@ -5302,8 +5302,12 @@ export function advanceRace(
                 active: true,
                 reason: 'timed-session',
                 approachingId: timedYieldTarget?.driverId,
-                approachingLateralOffsetM: timedYieldTarget?.lateralOffsetM ?? dynamics.referenceLineOffsetM,
-                preferredSide: Math.abs(car.lateralOffsetM - dynamics.referenceLineOffsetM) > 1
+                // Clear the line at our own location. A following car may
+                // still be at the opposite side of the preceding corner.
+                approachingLateralOffsetM: dynamics.referenceLineOffsetM,
+                preferredSide: car.timedTrafficYield
+                  ? car.desiredLateralOffsetM >= 0 ? 1 : -1
+                  : Math.abs(car.lateralOffsetM - dynamics.referenceLineOffsetM) > 1
                   ? car.lateralOffsetM > dynamics.referenceLineOffsetM ? 1 : -1
                   : dynamics.referenceLineOffsetM > 0 ? -1 : 1,
                 requiredSeparationM: requiredLateralCentreSeparationM(undefined, undefined),
@@ -6335,7 +6339,9 @@ export function advanceRace(
       timedRunPhase: timedRun.physicsPhase,
       timedPreparationSpeedScale: outLapGap?.speedScale,
       timedTrafficYield:
-        (timedTrafficYield?.shouldYield ?? false) ||
+        ((timedTrafficYield?.shouldYield ?? false) &&
+          Math.abs(car.lateralOffsetM - trackDynamicsAt(config.track, car.progress, categoryPhysics).referenceLineOffsetM) >=
+            requiredLateralCentreSeparationM(undefined, undefined)) ||
         (blueFlag && !ignoresBlueFlag),
       standingStartLaunchActive,
       standingStartMguKRestricted,
