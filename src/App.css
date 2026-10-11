@@ -1693,6 +1693,9 @@
 }
 
 .leaderboard-rows button:hover { background: #0d2233; }
+.leaderboard-rows li.qualifying-knockout-zone { background: rgba(224, 35, 52, 0.18); }
+.leaderboard-rows li.qualifying-knockout-zone.selected { background: rgba(224, 35, 52, 0.28); }
+.leaderboard-rows li.qualifying-knockout-zone button:hover { background: rgba(224, 35, 52, 0.12); }
 
 .leaderboard-position {
   display: grid;

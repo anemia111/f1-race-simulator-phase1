@@ -414,6 +414,7 @@ function TireUsage({
 }
 
 function LeftLeaderboard({
+  knockoutCutoff = null,
   labels,
   mode,
   onFocusDriver,
@@ -425,6 +426,7 @@ function LeftLeaderboard({
   stage,
   title,
 }: {
+  knockoutCutoff?: number | null
   labels: Record<TireCompound, string>
   mode: 'live' | 'gap'
   onFocusDriver: (driverId: string) => void
@@ -488,10 +490,12 @@ function LeftLeaderboard({
               className={[
                 row.car.driverId === selectedDriverId ? 'selected' : '',
                 row.car.blueFlag ? 'blue-flag-active' : '',
+                knockoutCutoff !== null && row.displayPosition > knockoutCutoff ? 'qualifying-knockout-zone' : '',
               ].filter(Boolean).join(' ') || undefined}
               key={row.car.driverId}
             >
-              <button onClick={() => onFocusDriver(row.car.driverId)} type="button">
+              <button onClick={() => onFocusDriver(row.car.driverId)} type="button"
+                title={knockoutCutoff !== null && row.displayPosition > knockoutCutoff ? '脱落圏内' : undefined}>
                 <span className="leaderboard-position" style={{ backgroundColor: row.car.teamColor }}>
                   {row.displayPosition}
                 </span>
@@ -873,6 +877,10 @@ export function BroadcastDashboard({
             selectedDriverId={selectedCar.driverId} showCarNumbers showClassLabels stage={stage} title={`${classId.toUpperCase()} Leaderboard`}
           />)}</div> : (
           <LeftLeaderboard
+            knockoutCutoff={seriesId === 'f1-custom' && !categoryPresentation && dataMode === 'SIM' &&
+              isQualifyingStage && /^(?:Q|SQ)[12]$/.test(snapshot.timedSegmentLabel ?? '')
+              ? qualifyingSegments.find(segment => segment.name === snapshot.timedSegmentLabel)?.advanceCount ?? null
+              : null}
             labels={tireLabels}
             mode={leaderboardMode}
             onFocusDriver={onFocusDriver}

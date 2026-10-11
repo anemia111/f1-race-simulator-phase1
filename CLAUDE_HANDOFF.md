@@ -679,3 +679,12 @@ per-file limit by 581 bytes. Lazy extraction increased the main bundle because
 of shared-module regrouping, so retain the direct overlay import and increase
 the bounded per-file cache allowance to 2,600,000 bytes. This preserves offline
 availability; keep production publication verification.
+
+## Knockout-zone tint, 2026-10-11
+
+F1 SIM Q1/Q2 (also SQ1/SQ2) leaderboard rows below the configured advancement
+cutoff now have a translucent red background. Selected and hovered rows retain
+the red tint. Other segments/session types have no knockout tint. The existing
+live display position drives the range; no fixed 16/10 assumption is introduced.
+Native browser Q1 verification showed exactly P17-P22 tinted at rgba(224,35,52,.18)
+for the 22-car field; lint/diff checks pass. Keep the user's shortened publish.
