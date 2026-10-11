@@ -117,4 +117,9 @@ active-aero zones. `--baseline=c2a6750` replays the previous runtime source for
 before/after comparison against the same reference snapshot. Every JSON row
 retains target status, coefficient, actual valid-lap count and residual; missing
 times and out-of-envelope targets are failures or explicit limitations, never
-silently dropped. The normal unskipped publish gate remains mandatory.
+silently dropped. For this batch the user explicitly declined long-running
+tests. The in-progress full suite was stopped; publication uses the already
+completed 104 focused tests, 147 actual-lap runs and native desktop preflight,
+with the full-suite and repeated publication-playtest stages skipped. The
+normal repository policy remains an unskipped gate for future batches unless
+the user directs otherwise.

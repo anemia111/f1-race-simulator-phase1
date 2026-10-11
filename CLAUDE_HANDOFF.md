@@ -611,7 +611,12 @@ removed rather than relabelled as current measurements.
 Final actual-lap audits use calibration seed 0 plus independent seeds 1 and 2
 over all 49 layouts. Their production-input fingerprint is checked by a
 regression test, so later production changes require fresh measurements. The
-normal full publication gate remains required before this batch is complete.
+The user subsequently instructed that long-running tests are unnecessary.
+The in-progress full suite was stopped at their request. Publish this batch
+with `-SkipFullTestSuite -SkipPlaytest`, using the completed focused checks,
+147 actual-lap runs and native desktop preflight. This is an explicit user
+exception to the repository's usual unskipped completion gate, not a claim
+that the full suite or all publication playtests passed.
 
 The final 147 layout/seed runs all recorded a valid timed lap. Thirty targeted
 layouts improved from 3.763 s before mean absolute error to 0.201 s for the
