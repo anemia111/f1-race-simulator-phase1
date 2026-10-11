@@ -674,3 +674,8 @@ delta, expiry and focus. Width checks at 1440/1280 had no clipped numeric text
 or horizontal overflow; browser errors were empty. design-qa.md records the
 joint reference/implementation visual comparison. Continue the user's short
 publication exception; do not restart long audits or the full playtest suite.
+The initial publication build exceeded the existing 2,500,000-byte precache
+per-file limit by 581 bytes. Lazy extraction increased the main bundle because
+of shared-module regrouping, so retain the direct overlay import and increase
+the bounded per-file cache allowance to 2,600,000 bytes. This preserves offline
+availability; keep production publication verification.

@@ -48,7 +48,9 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{css,html,js,json}'],
-        maximumFileSizeToCacheInBytes: 2_500_000,
+        // The qualifying overlay brings the main bundle just above 2.5 MB.
+        // Keep it available offline with a small, bounded precache allowance.
+        maximumFileSizeToCacheInBytes: 2_600_000,
         navigateFallback: 'index.html',
       },
     }),
