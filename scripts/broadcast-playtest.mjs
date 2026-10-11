@@ -406,6 +406,9 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await page.waitForSelector('.setup-panel')
   const setupVisible = await page.locator('.setup-panel').isVisible()
   const driverTunePanel = page.locator('.setup-section').filter({ hasText: 'Driver tune' })
+  // The selected race car can change as the running order changes. Check the
+  // authored limit-break profile by identity rather than assuming it is selected.
+  await driverTunePanel.getByRole('combobox').selectOption('yuki_nakayama')
   const driverAbilitySliders = driverTunePanel.locator('input[type="range"]')
   const driverAbilityMaxes = await driverAbilitySliders.evaluateAll((inputs) => inputs.map((input) => input.getAttribute('max')))
   const driverAbilityValues = await driverTunePanel.locator('.slider-row strong').allInnerTexts()
