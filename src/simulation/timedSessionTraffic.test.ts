@@ -114,6 +114,20 @@ describe('timed-session traffic etiquette', () => {
     expect(decide([]).shouldYield).toBe(false)
   })
 
+  it('keeps the road clear when the attacker is less than a tenth of a second behind', () => {
+    const track = tracks[0]
+    const progress = safeStraightProgress()
+    for (const phase of ['out-lap', 'in-lap', 'cooldown'] as const) {
+      const car = { ...timedCar({driverId:'preparing', phase, progress}), timedTrafficYield:true }
+      const attacker = timedCar({driverId:'flying', phase:'attack-lap', speedKph:240,
+        progress:(progress - 3 / (track.lengthKm*1000) + 1) % 1})
+      const decision = timedSessionYieldDecision({car, cars:[car, attacker], stage:'qualifying', track})
+      expect(decision.gapSeconds).toBeLessThan(0.1)
+      expect(decision.approachingDriverId).toBe('flying')
+      expect(decision.shouldYield).toBe(true)
+    }
+  })
+
   it('orders attack, long-run and preparation traffic correctly', () => {
     expect(
       timedSessionTrafficPriority(

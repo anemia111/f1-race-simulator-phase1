@@ -6,8 +6,10 @@ import { advanceRace, createInitialRace } from './race'
 import { trackDynamicsAt } from './trackDynamics'
 
 describe('live timed-session passing courtesy', () => {
-  it.each(['fp2', 'qualifying', 'sprintQualifying'] as const)(
-    '%s clears the line for two flying cars without stopping', stage => {
+  it.each((['fp2', 'qualifying', 'sprintQualifying'] as const).flatMap(stage =>
+    (['in-lap', 'out-lap'] as const).flatMap(phase =>
+      [0, -3, 3].map(offset => ({stage, phase, offset})))))(
+    '$stage passes a $phase train starting at lateral offset $offset', ({stage, phase, offset}) => {
       const track = { ...tracks.find(track => track.id === 'monza-approx')!, rainProbability: 0 }
       const config: RaceConfig = { drivers: initialDrivers.slice(0, 3), teams: initialTeams, track, seed: 'timed-passing-train', weekendStage: stage, sessionDurationSeconds: 900 }
       let state = createInitialRace(config)
@@ -18,7 +20,7 @@ describe('live timed-session passing courtesy', () => {
       const preparingId = config.drivers[0].id
       state = { ...state, elapsedSeconds: 200, cars: state.cars.map((car, index) => {
         const distance = 2 + progress - index * 70 / (track.lengthKm * 1000)
-        return { ...car, status: 'running', pitPhase: 'none', pitUntilSeconds: null, hiddenFromTrack: false, offTrackSinceSeconds: null, incidentTrackState: 'clear', totalDistance: distance, progress: distance % 1, processedLap: 2, speedKph: index === 0 ? 160 : 280, gear: 6, lateralOffsetM: 0, lateralVelocityMps: 0, timedRunPhase: index === 0 ? 'in-lap' : 'attack-lap', timedRunStartedAtSeconds: 190, lapStartedAtSeconds: index === 0 ? null : 190, practiceProgram: null }
+        return { ...car, status: 'running', pitPhase: 'none', pitUntilSeconds: null, hiddenFromTrack: false, offTrackSinceSeconds: null, incidentTrackState: 'clear', totalDistance: distance, progress: distance % 1, processedLap: 2, speedKph: index === 0 ? 160 : 280, gear: 6, lateralOffsetM: offset, lateralVelocityMps: 0, timedRunPhase: index === 0 ? phase : 'attack-lap', timedRunStartedAtSeconds: 190, lapStartedAtSeconds: index === 0 ? null : 190, practiceProgram: null }
       }) }
       let movedAside = false
       let minimumSpeed = Infinity

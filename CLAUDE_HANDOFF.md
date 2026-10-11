@@ -640,3 +640,18 @@ The prior 147-run timing audit now explicitly records source revision 6cc4e08.
 Its test verifies that immutable Git revision's production fingerprint. It is
 historical evidence, not a claim that a later runtime was fully remeasured.
 Fresh reports without a recorded revision still check current production inputs.
+
+## Passing transit traffic without following its refuge, 2026-10-11
+
+The user's report of getting stuck behind out/in laps was reproduced in three
+of 18 short FP/Q/SQ integration cases. Attackers followed the transit car's
+lateral tow/wake alignment into its refuge, closing the passing corridor.
+Higher-priority timed-session traffic now retains its line instead of aligning
+laterally with lower-priority traffic. Physical aero effects, vehicle footprint
+constraints and flag priorities remain active; race/sprint battles are unchanged.
+Courtesy detection also keeps a still-behind attacker inside 0.1 s instead of
+dropping it before it passes. Preserve the final-corner out-lap launch exception.
+The 18-case passing reproduction now passes. Continue the user's short-check
+publication exception (`-SkipFullTestSuite -SkipPlaytest`); no long tests.
+Focused traffic, lap preparation, driver decision, lateral dynamics and historical
+timing-audit checks passed 69 tests across six files. Lint and diff checks passed.

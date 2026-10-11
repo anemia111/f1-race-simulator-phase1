@@ -228,7 +228,7 @@ import {
 } from './practicePrograms'
 import { timedLapLaunchBlend } from './timedLapPreparation'
 import { liveTimedLapAdjudication } from './timedSessionAdjudication'
-import { timedOutLapGapDecision, timedSessionYieldDecision } from './timedSessionTraffic'
+import { timedOutLapGapDecision, timedSessionYieldDecision, timedSessionTrafficPriority } from './timedSessionTraffic'
 import {
   createSuperFormulaRuntimeSystems,
   type F1RuntimeSystems,
@@ -5198,6 +5198,10 @@ export function advanceRace(
     const timedYieldTarget = timedYield?.shouldYield
       ? frameCarById.get(timedYield.approachingDriverId ?? '')
       : undefined
+    // Transit traffic clears the physical racing line. Following its tow or
+    // wake sideways chases it into the refuge and closes the passing corridor.
+    const passingTimedTransit = isTimedSession && aheadCar !== undefined &&
+      timedSessionTrafficPriority(car, weekendStage) > timedSessionTrafficPriority(aheadCar, weekendStage)
     if (timedYield) timedTrafficYieldById.set(car.driverId, timedYield)
     const yieldingTo = !localControlPhase
       ? blueFlagTrainApproaches.get(car.driverId)
@@ -5261,7 +5265,7 @@ export function advanceRace(
         aheadCar?.status === 'running'
           ? {
               active:
-                gapAheadSeconds < 2.5 && dynamics.curvature >= 0.025,
+                !passingTimedTransit && gapAheadSeconds < 2.5 && dynamics.curvature >= 0.025,
               gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
@@ -5272,7 +5276,7 @@ export function advanceRace(
         aheadCar?.status === 'running'
           ? {
               active:
-                gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72,
+                !passingTimedTransit && gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72,
               gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,

@@ -177,7 +177,9 @@ export function timedSessionYieldDecision(options: {
         gapSeconds: gapMeters / representativeSpeedMps,
       }
     })
-    .filter(({ gapSeconds }) => gapSeconds > 0.1 && gapSeconds <= (car.timedTrafficYield ? 12 : 8))
+    // A car still behind needs clearance even inside the last tenth of a
+    // second. Dropping it here cancels the yield before its nose gets past.
+    .filter(({ gapMeters, gapSeconds }) => gapMeters > 0 && gapSeconds <= (car.timedTrafficYield ? 12 : 8))
     .sort(
       (left, right) =>
         left.gapSeconds - right.gapSeconds ||
