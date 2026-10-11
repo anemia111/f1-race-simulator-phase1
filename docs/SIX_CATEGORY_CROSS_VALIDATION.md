@@ -9,7 +9,9 @@ rules when drivers and courses are selected in Free Mode.
 
 - All 348 authored people retain their ratings and expanded decision skills
   through the shared driver adapter. Nakayama Yuki (`yuki_nakayama`, NAK #31)
-  now has 110 on all 14 authored axes. Values above 100 are intentional.
+  has 120 on all 14 authored axes after the 2026-10-11 user update. Values
+  above 100 are intentional. Untouched saved 105/110 defaults migrate to 120;
+  individually edited profiles remain unchanged.
 - F1/SF course selection and its start validator now include the registered
   additional-category courses. Common physical layouts are deduplicated.
   The additional four categories already import the F1/SF course pool.

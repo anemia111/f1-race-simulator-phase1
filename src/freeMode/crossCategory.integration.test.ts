@@ -27,7 +27,7 @@ describe('six-category course and driver interchange', () => {
         physicalReferenceLineOffsetM: 0 }
       expect(decideDriverBehavior(decisionContext)).toEqual(decideDriverBehavior(decisionContext))
     }
-    expect(freeDrivers.find(driver => driver.id === 'yuki_nakayama')?.overall).toBe(110)
+    expect(freeDrivers.find(driver => driver.id === 'yuki_nakayama')?.overall).toBe(120)
   })
 
   it.each(['f1-custom', 'super-formula'] as const)('%s runs every shared physical course with an imported driver', categoryId => {
@@ -67,7 +67,7 @@ describe('six-category course and driver interchange', () => {
       expect(state.cars[0].distanceM, course.id).toBeGreaterThan(initial.cars[0].distanceM)
       expect(state.cars[0].driverIntent, course.id).toBeDefined()
       expect(config.entries[0].classId).toBe(draft.entries[0].classId)
-      expect(config.entries[0].drivers[0].overall).toBe(110)
+      expect(config.entries[0].drivers[0].overall).toBe(120)
     }
   })
 

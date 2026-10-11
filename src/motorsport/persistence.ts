@@ -35,11 +35,11 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
     if (!finiteTree(save) || save.schemaVersion !== 1 || save.state.schemaVersion !== 1 || save.config.schemaVersion !== 1) return null
     for (const entry of save.config.entries) {
       entry.drivers = entry.drivers.map(driver => {
-        if (driver.id !== 'yuki_nakayama' || ![105, 120].includes(driver.overall ?? 0)) return driver
+        if (driver.id !== 'yuki_nakayama' || ![105, 110].includes(driver.overall ?? 0)) return driver
         const old = driver.overall! / 100
         if (![driver.racePace, driver.consistency, driver.tyreManagement, driver.qualifyingPace ?? old].every(value => value === old)) return driver
         const currentDriver = catalogPoolDriverById.get(driver.id)
-        return currentDriver?.overall === 110 ? { ...driver, overall: 110,
+        return currentDriver?.overall === 120 ? { ...driver, overall: 120,
           racePace: currentDriver.ratings.racePace, consistency: currentDriver.ratings.consistency,
           tyreManagement: currentDriver.ratings.tyreManagement, qualifyingPace: currentDriver.ratings.qualifyingPace } : driver
       })
