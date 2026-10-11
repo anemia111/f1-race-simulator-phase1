@@ -211,13 +211,14 @@ const superFormulaOperational = resolveSuperFormulaOperational()
 const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
     combustionPowerKw: 400,
+    // Preserve the independently checked straight-line drag baseline.
     dragAreaScale: 1,
     drivetrainEfficiency: 0.94,
     gearCount: 8,
     hybridDeploymentPowerLimitKw: 350,
     id: 'f1-custom',
     maximumBrakeDecelerationMps2: 49.05,
-    liftAreaM2: 5.0,
+    liftAreaM2: 5.6,
     peakTyreFrictionCoefficient: 1.75,
     wheelRadiusM: 0.36,
     gearSpread: 4.0,

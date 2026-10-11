@@ -34,6 +34,17 @@ const superFormula = categoryPhysicsFor('super-formula')
 const trackById = (id: string) => tracks.find((track) => track.id === id)!
 
 describe('trackGeometry', () => {
+  it('counts a local turn once and keeps opposite turns outside its corner arc', () => {
+    const track = tracks.find(track => track.id === 'suzuka-approx')!
+    const square = trackGeometry({...track,lengthKm:1,centerline:[[0,0,0],[100,0,0],[100,0,100],[0,0,100]]})
+    // One closed same-direction circuit has exactly one full turn, even when
+    // the two neighbourhood walks meet at the opposite vertex.
+    for (const point of square) expect(point.cornerArcRadians).toBeCloseTo(Math.PI*2,10)
+    const chicane = trackGeometry({...track,lengthKm:.6,
+      centerline:[[0,0,0],[100,0,0],[120,0,20],[140,0,0],[240,0,0],[240,0,100],[0,0,100]]})
+    // The central right angle must not absorb the adjacent left turns.
+    expect(chicane[2].cornerArcRadians).toBeCloseTo(Math.PI/2,10)
+  })
   it('measures a lap that adds up to the published distance', () => {
     for (const track of tracks) {
       const total = trackGeometry(track).reduce(

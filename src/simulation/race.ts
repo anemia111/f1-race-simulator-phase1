@@ -1,4 +1,5 @@
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { decideTeamInstruction, applyTeamInstruction } from './teamDecision'
 import { phaseOneConfig } from '../data/phaseOne'
 import { MAX_STRATEGY_DECISIONS, settleStrategyDecisions, type StrategyDecision } from './decisionLog'
@@ -137,7 +138,6 @@ import { followingDemand } from './following'
 import { recordTelemetry } from './telemetryHistory'
 import { advanceSfOts, createSfOtsSimulation } from './sfOtsRuntime'
 import {
-  categoryPhysicsFor,
   resolveOperationalVehicleMass,
 } from './categoryPhysics'
 import {
@@ -2491,7 +2491,7 @@ const weekendOrderFor = (config: RaceConfig): WeekendStage[] =>
 export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnapshot {
   const teams = byId(config.teams)
   const categoryPhysics = config.seriesId === 'super-formula'
-    ? superFormulaPhysicsForTrack(config.track) : categoryPhysicsFor(config.seriesId)
+    ? superFormulaPhysicsForTrack(config.track) : f1PhysicsForTrack(config.track)
   const driverPolicy = resolveCategoryDrivingPolicy(
     config.seriesId,
     config.vehicleEraId,
@@ -3218,7 +3218,7 @@ export function advanceRace(
   const raceLaps = snapshot.raceLaps
   const baseLapTime = config.track.baseLapTime
   const categoryPhysics = config.seriesId === 'super-formula'
-    ? superFormulaPhysicsForTrack(config.track) : categoryPhysicsFor(config.seriesId)
+    ? superFormulaPhysicsForTrack(config.track) : f1PhysicsForTrack(config.track)
   const driverPolicy = resolveCategoryDrivingPolicy(
     config.seriesId,
     config.vehicleEraId,

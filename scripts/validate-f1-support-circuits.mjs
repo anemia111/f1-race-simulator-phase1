@@ -70,6 +70,9 @@ const ACCEPTANCE = process.argv.includes('--acceptance')
 const ACCEPTANCE_SEEDS = positiveInteger('acceptance-seeds', 100)
 const ENFORCE = process.argv.includes('--enforce')
 const WRITE_VALIDATION = process.argv.includes('--write-validation')
+if (CALIBRATE || WRITE_VALIDATION) {
+  throw new Error('Legacy controller-scale writes are retired. Use calibrate:f1-contact and validate:f1-course-times, which include Fuji/Motegi/SUGO/Autopolis.')
+}
 const WORKER_COURSE = argument('worker-course')
 const WORKER_SEED_FROM = Number.parseInt(argument('worker-seed-from', ''), 10)
 const WORKER_SEED_COUNT = positiveInteger('worker-seed-count', 0)

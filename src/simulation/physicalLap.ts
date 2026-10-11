@@ -298,9 +298,11 @@ const CORNER_RADIUS_LIMIT_M = 900
  * measured 10 % a lap.
  *
  * This is a correction for the resolution of the source data, not a property
- * of the car. Higher-resolution centrelines would let it go to 1.
+ * of the car. With local turn counted once and opposite turns separated,
+ * 0.14 replaces the old 0.28 convention. See F1_ALL_COURSE_TIMES.md.
+ * Higher-resolution centrelines would let it go to 1.
  */
-const RACING_LINE_REALISATION = 0.28
+const RACING_LINE_REALISATION = 0.14
 
 /**
  * Fraction of the theoretical friction limit a real lap sustains.
@@ -476,24 +478,31 @@ export function trackGeometry(track: TrackDefinition): TrackGeometryPoint[] {
       return 0
     }
 
-    let arc = 0
+    // Count the local turn once. The old two walks both started at step zero,
+    // and added abs(curvature) through opposite-turn chicanes. That described
+    // several corners as one long hairpin and suppressed available line width.
+    let arc = Math.abs(signedTurns[index])
+    const visited = new Set([index])
+    const directionSign = Math.sign(signedTurns[index])
 
     // Walk both ways while the road is still turning about as tightly, so a
     // long constant-radius corner is measured whole rather than per point.
     for (const direction of [1, -1]) {
-      for (let step = 0; step < count / 2; step += 1) {
-        const at = index + direction * step
-        const neighbour = centrelineRadii[((at % count) + count) % count]
+      for (let step = 1; step <= Math.floor(count / 2); step += 1) {
+        const neighbourIndex = (index + direction * step + count) % count
+        const neighbour = centrelineRadii[neighbourIndex]
 
         if (
+          visited.has(neighbourIndex) ||
+          Math.sign(signedTurns[neighbourIndex]) !== directionSign ||
           !Number.isFinite(neighbour) ||
           neighbour > Math.min(CORNER_RADIUS_LIMIT_M, radius * 3)
         ) {
           break
         }
 
-        arc +=
-          segmentLengths[((at % count) + count) % count] / Math.max(1, neighbour)
+        visited.add(neighbourIndex)
+        arc += Math.abs(signedTurns[neighbourIndex])
       }
     }
 

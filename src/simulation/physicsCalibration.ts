@@ -7,9 +7,12 @@ import type { EventPaceCalibration } from '../types'
  *
  * This module deliberately contains no optimiser and writes no parameters. It
  * compares model outputs with observations after the fact. In particular, a
- * circuit identifier is never accepted as a calibration dimension: the road
- * geometry, banking and measured width may differ by circuit, but the car does
- * not gain a hidden lap-time or pace multiplier when it crosses a border.
+ * circuit identifier is never accepted as a vehicle calibration dimension.
+ * The separate, explicitly SIM-labelled `f1CourseCalibration` contact model
+ * compensates for unresolved road geometry/contact in the observer runtime.
+ * That inverse timing fit is not measured friction or independent holdout
+ * evidence. This module audits the unmodified category profile; neither path
+ * applies lap-time, travelled-distance or pace multipliers.
  */
 
 export type PhysicsCalibrationParameterClass =

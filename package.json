@@ -11,6 +11,8 @@
     "generate:course-elevations": "node scripts/export-elevation-targets.mjs && python scripts/generate-course-elevations.py",
     "generate:road-profiles": "node scripts/generate-measured-road-profiles.mjs",
     "update:pace-calibration": "node scripts/update-pace-calibration.mjs",
+    "calibrate:f1-contact": "node scripts/calibrate-f1-course-contact.mjs",
+    "validate:f1-course-times": "node scripts/validate-f1-course-times.mjs",
     "validate:series-scope": "node scripts/generate-phase1-series-audit.mjs --enforce",
     "validate:f1-current-generation": "node scripts/generate-f1-current-generation-gate.mjs --enforce",
     "validate:active-aero-zones": "node scripts/generate-active-aero-zone-audit.mjs --enforce",

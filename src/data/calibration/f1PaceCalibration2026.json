@@ -136,21 +136,7 @@
       "expectedGreenRaceDeltaSeconds": 4.623,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.43,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 78.463,
-        "top3MedianSeconds": 78.811,
-        "fieldMedianDeltaSeconds": 0.864,
-        "raceGreenMedianSeconds": 83.456,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.022,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 78.678,
-        "liveQualifyingReferenceErrorSeconds": -0.133
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -291,21 +277,7 @@
       "expectedGreenRaceDeltaSeconds": 5.106,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.52,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 91.847,
-        "top3MedianSeconds": 92.286,
-        "fieldMedianDeltaSeconds": 1.019,
-        "raceGreenMedianSeconds": 97.375,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.017,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 91.956,
-        "liveQualifyingReferenceErrorSeconds": -0.33
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -439,21 +411,7 @@
       "expectedGreenRaceDeltaSeconds": 5.299,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.438,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 88.642,
-        "top3MedianSeconds": 89.076,
-        "fieldMedianDeltaSeconds": 0.964,
-        "raceGreenMedianSeconds": 94.258,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.116,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 87.416,
-        "liveQualifyingReferenceErrorSeconds": -1.66
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -606,21 +564,7 @@
       "expectedGreenRaceDeltaSeconds": 5.578,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.469,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 87.546,
-        "top3MedianSeconds": 87.964,
-        "fieldMedianDeltaSeconds": 0.893,
-        "raceGreenMedianSeconds": 93.74,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.198,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 88.067,
-        "liveQualifyingReferenceErrorSeconds": 0.103
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -779,21 +723,7 @@
       "expectedGreenRaceDeltaSeconds": 3.781,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.696,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 72.303,
-        "top3MedianSeconds": 72.646,
-        "fieldMedianDeltaSeconds": 0.734,
-        "raceGreenMedianSeconds": 76.427,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 73.507,
-        "liveQualifyingReferenceErrorSeconds": 0.861
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -934,21 +864,7 @@
       "expectedGreenRaceDeltaSeconds": 6.029,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.352,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 71.701,
-        "top3MedianSeconds": 72.094,
-        "fieldMedianDeltaSeconds": 0.817,
-        "raceGreenMedianSeconds": 78.233,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.11,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 70.718,
-        "liveQualifyingReferenceErrorSeconds": -1.376
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1121,21 +1037,7 @@
       "expectedGreenRaceDeltaSeconds": 7.586,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.6,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 74.432,
-        "top3MedianSeconds": 74.743,
-        "fieldMedianDeltaSeconds": 0.775,
-        "raceGreenMedianSeconds": 82.402,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.073,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 77.443,
-        "liveQualifyingReferenceErrorSeconds": 2.7
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1300,21 +1202,7 @@
       "expectedGreenRaceDeltaSeconds": 5.379,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.63,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:40:45.604Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 66.073,
-        "top3MedianSeconds": 66.349,
-        "fieldMedianDeltaSeconds": 0.677,
-        "raceGreenMedianSeconds": 71.662,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": -0.066,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 66.173,
-        "liveQualifyingReferenceErrorSeconds": -0.176
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1467,21 +1355,7 @@
       "expectedGreenRaceDeltaSeconds": 6.49,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.641,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 87.89,
-        "top3MedianSeconds": 88.286,
-        "fieldMedianDeltaSeconds": 0.965,
-        "raceGreenMedianSeconds": 94.866,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.09,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 89.77,
-        "liveQualifyingReferenceErrorSeconds": 1.484
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1640,21 +1514,7 @@
       "expectedGreenRaceDeltaSeconds": 5.565,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.46,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 104.221,
-        "top3MedianSeconds": 104.678,
-        "fieldMedianDeltaSeconds": 1.134,
-        "raceGreenMedianSeconds": 110.254,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.011,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 104.136,
-        "liveQualifyingReferenceErrorSeconds": -0.542
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1758,21 +1618,7 @@
       "expectedGreenRaceDeltaSeconds": 4.196,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 76.866,
-        "top3MedianSeconds": 77.219,
-        "fieldMedianDeltaSeconds": 0.859,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 79.439,
-        "liveQualifyingReferenceErrorSeconds": 2.22
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1819,7 +1665,7 @@
   },
   {
     "schemaVersion": 1,
-    "calibrationVersion": "2026.07.26.1",
+    "calibrationVersion": "2026.10.11.1",
     "series": "f1-custom",
     "season": 2026,
     "eventId": "dutch-grand-prix-2026",
@@ -1828,23 +1674,19 @@
     "round": 12,
     "eventDate": "2026-08-23",
     "qualifying": {
-      "poleSeconds": null,
-      "top3MedianSeconds": null,
-      "top5MedianSeconds": null,
+      "poleSeconds": 71.163,
+      "top3MedianSeconds": 71.265,
+      "top5MedianSeconds": 71.296,
       "theoreticalBestSeconds": null,
-      "selectedReferenceSeconds": 71.534,
-      "selectedMethod": "2025 same-circuit result adjusted by the observed 2026 balanced circuit-group median",
+      "selectedReferenceSeconds": 71.265,
+      "selectedMethod": "Median of the fastest three official Q3 result times",
       "fieldP10DeltaSeconds": null,
       "fieldMedianDeltaSeconds": null,
       "fieldP90DeltaSeconds": null,
       "validLapCount": 0,
       "deletedOrInvalidRate": null,
-      "status": "estimated",
-      "confidence": 0.54,
-      "referenceRangeSeconds": [
-        70.701,
-        72.367
-      ]
+      "status": "official",
+      "confidence": 0.96
     },
     "race": {
       "cleanLapReferenceSeconds": 75.417,
@@ -1878,21 +1720,7 @@
       "expectedGreenRaceDeltaSeconds": 3.883,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 71.213,
-        "top3MedianSeconds": 71.534,
-        "fieldMedianDeltaSeconds": 0.795,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 72.155,
-        "liveQualifyingReferenceErrorSeconds": 0.621
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -1930,18 +1758,24 @@
         "retrievedAt": "2026-07-26T12:22:08.191Z",
         "documentHash": "sha256:84aae977e4a50dd58521065801c60889ac0d56f04d24c5b1d4e8326db54b8ce7",
         "sessionKey": 9578
+      },
+      {
+        "provider": "Formula 1",
+        "label": "Official 2026 qualifying classification (October snapshot)",
+        "url": "https://www.formula1.com/en/results/2026/races/1292/netherlands/qualifying",
+        "retrievedAt": "2026-10-11T03:55:00.000Z"
       }
     ],
     "notes": [
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
-      "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 balanced comparison events; another dry historical year is used for uncertainty where available.",
-      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 balanced comparison events."
+      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 balanced comparison events.",
+      "Qualifying classification refreshed on 2026-10-11. Race distributions retain their separately dated evidence; result-table lap counts are not classified clean-lap sample counts."
     ]
   },
   {
     "schemaVersion": 1,
-    "calibrationVersion": "2026.07.26.1",
+    "calibrationVersion": "2026.10.11.1",
     "series": "f1-custom",
     "season": 2026,
     "eventId": "italian-grand-prix-2026",
@@ -1950,23 +1784,19 @@
     "round": 13,
     "eventDate": "2026-09-06",
     "qualifying": {
-      "poleSeconds": null,
-      "top3MedianSeconds": null,
-      "top5MedianSeconds": null,
+      "poleSeconds": 81.786,
+      "top3MedianSeconds": 81.846,
+      "top5MedianSeconds": 81.966,
       "theoreticalBestSeconds": null,
-      "selectedReferenceSeconds": 81.923,
-      "selectedMethod": "2025 same-circuit result adjusted by the observed 2026 high-speed circuit-group median",
+      "selectedReferenceSeconds": 81.846,
+      "selectedMethod": "Median of the fastest three official Q3 result times",
       "fieldP10DeltaSeconds": null,
       "fieldMedianDeltaSeconds": null,
       "fieldP90DeltaSeconds": null,
       "validLapCount": 0,
       "deletedOrInvalidRate": null,
-      "status": "estimated",
-      "confidence": 0.54,
-      "referenceRangeSeconds": [
-        81.373,
-        82.473
-      ]
+      "status": "official",
+      "confidence": 0.96
     },
     "race": {
       "cleanLapReferenceSeconds": 85.167,
@@ -2000,21 +1830,7 @@
       "expectedGreenRaceDeltaSeconds": 3.244,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 81.546,
-        "top3MedianSeconds": 81.923,
-        "fieldMedianDeltaSeconds": 0.83,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 79.766,
-        "liveQualifyingReferenceErrorSeconds": -2.157
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2052,18 +1868,24 @@
         "retrievedAt": "2026-07-26T12:22:08.191Z",
         "documentHash": "sha256:0a48622cc9cfe0c5f03fc19dc5b824583dc381f61c475beef908bb3495f922f1",
         "sessionKey": 9586
+      },
+      {
+        "provider": "Formula 1",
+        "label": "Official 2026 qualifying classification (October snapshot)",
+        "url": "https://www.formula1.com/en/results/2026/races/1293/italy/qualifying",
+        "retrievedAt": "2026-10-11T03:55:00.000Z"
       }
     ],
     "notes": [
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
-      "Qualifying forecast uses the 2025 same-circuit dry result and 3 completed 2026 high-speed comparison events; another dry historical year is used for uncertainty where available.",
-      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 3 completed 2026 high-speed comparison events."
+      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 3 completed 2026 high-speed comparison events.",
+      "Qualifying classification refreshed on 2026-10-11. Race distributions retain their separately dated evidence; result-table lap counts are not classified clean-lap sample counts."
     ]
   },
   {
     "schemaVersion": 1,
-    "calibrationVersion": "2026.07.26.1",
+    "calibrationVersion": "2026.10.11.1",
     "series": "f1-custom",
     "season": 2026,
     "eventId": "spanish-grand-prix-madring-2026",
@@ -2072,23 +1894,19 @@
     "round": 14,
     "eventDate": "2026-09-13",
     "qualifying": {
-      "poleSeconds": null,
-      "top3MedianSeconds": null,
-      "top5MedianSeconds": null,
+      "poleSeconds": 91.824,
+      "top3MedianSeconds": 91.835,
+      "top5MedianSeconds": 91.964,
       "theoreticalBestSeconds": null,
-      "selectedReferenceSeconds": 92,
-      "selectedMethod": "Pre-event estimate from recent same-circuit performance and track profile",
+      "selectedReferenceSeconds": 91.835,
+      "selectedMethod": "Median of the fastest three official Q3 result times",
       "fieldP10DeltaSeconds": null,
       "fieldMedianDeltaSeconds": null,
       "fieldP90DeltaSeconds": null,
-      "referenceRangeSeconds": [
-        90,
-        94
-      ],
       "validLapCount": 0,
       "deletedOrInvalidRate": null,
-      "status": "estimated",
-      "confidence": 0.16
+      "status": "official",
+      "confidence": 0.96
     },
     "race": {
       "cleanLapReferenceSeconds": 99.5,
@@ -2122,21 +1940,7 @@
       "expectedGreenRaceDeltaSeconds": 7.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 91.583,
-        "top3MedianSeconds": 92,
-        "fieldMedianDeltaSeconds": 1.014,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 93.344,
-        "liveQualifyingReferenceErrorSeconds": 1.344
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2150,17 +1954,24 @@
         "label": "Spanish Grand Prix at MADRING official event documents index",
         "url": "https://www.fia.com/documents/championships/fia-formula-one-world-championship-14/season/season-2026-2072",
         "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "Formula 1",
+        "label": "Official 2026 qualifying classification (October snapshot)",
+        "url": "https://www.formula1.com/en/results/2026/races/1294/spain/qualifying",
+        "retrievedAt": "2026-10-11T03:55:00.000Z"
       }
     ],
     "notes": [
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
-      "New MADRING circuit: no completed F1 timing exists, so the estimate retains a wide range and low confidence."
+      "New MADRING circuit: no completed F1 timing exists, so the estimate retains a wide range and low confidence.",
+      "Qualifying classification refreshed on 2026-10-11. Race distributions retain their separately dated evidence; result-table lap counts are not classified clean-lap sample counts."
     ]
   },
   {
     "schemaVersion": 1,
-    "calibrationVersion": "2026.07.26.1",
+    "calibrationVersion": "2026.10.11.1",
     "series": "f1-custom",
     "season": 2026,
     "eventId": "azerbaijan-grand-prix-2026",
@@ -2169,23 +1980,19 @@
     "round": 15,
     "eventDate": "2026-09-27",
     "qualifying": {
-      "poleSeconds": null,
-      "top3MedianSeconds": null,
-      "top5MedianSeconds": null,
+      "poleSeconds": 102.526,
+      "top3MedianSeconds": 103.363,
+      "top5MedianSeconds": 103.364,
       "theoreticalBestSeconds": null,
-      "selectedReferenceSeconds": 104.159,
-      "selectedMethod": "2025 same-circuit result adjusted by the observed 2026 street circuit-group median",
+      "selectedReferenceSeconds": 103.363,
+      "selectedMethod": "Median of the fastest three official Q3 result times",
       "fieldP10DeltaSeconds": null,
       "fieldMedianDeltaSeconds": null,
       "fieldP90DeltaSeconds": null,
       "validLapCount": 0,
       "deletedOrInvalidRate": null,
-      "status": "estimated",
-      "confidence": 0.51,
-      "referenceRangeSeconds": [
-        103.308,
-        105.01
-      ]
+      "status": "official",
+      "confidence": 0.96
     },
     "race": {
       "cleanLapReferenceSeconds": 108.638,
@@ -2219,21 +2026,7 @@
       "expectedGreenRaceDeltaSeconds": 4.479,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 103.726,
-        "top3MedianSeconds": 104.159,
-        "fieldMedianDeltaSeconds": 1.142,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 104.174,
-        "liveQualifyingReferenceErrorSeconds": 0.015
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2263,18 +2056,24 @@
         "retrievedAt": "2026-07-26T12:22:08.191Z",
         "documentHash": "sha256:09c438ab5db5082d8cb734d91140ece159e10e10047e051b67f36e259785e343",
         "sessionKey": 9594
+      },
+      {
+        "provider": "Formula 1",
+        "label": "Official 2026 qualifying classification (October snapshot)",
+        "url": "https://www.formula1.com/en/results/2026/races/1295/azerbaijan/qualifying",
+        "retrievedAt": "2026-10-11T03:55:00.000Z"
       }
     ],
     "notes": [
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
-      "Qualifying forecast uses the 2024 same-circuit dry result and 2 completed 2026 street comparison events; another dry historical year is used for uncertainty where available.",
-      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 street comparison events."
+      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 street comparison events.",
+      "Qualifying classification refreshed on 2026-10-11. Race distributions retain their separately dated evidence; result-table lap counts are not classified clean-lap sample counts."
     ]
   },
   {
     "schemaVersion": 1,
-    "calibrationVersion": "2026.07.26.1",
+    "calibrationVersion": "2026.10.11.1",
     "series": "f1-custom",
     "season": 2026,
     "eventId": "singapore-grand-prix-2026",
@@ -2283,23 +2082,19 @@
     "round": 16,
     "eventDate": "2026-10-11",
     "qualifying": {
-      "poleSeconds": null,
-      "top3MedianSeconds": null,
-      "top5MedianSeconds": null,
+      "poleSeconds": 91.373,
+      "top3MedianSeconds": 91.427,
+      "top5MedianSeconds": 91.496,
       "theoreticalBestSeconds": null,
-      "selectedReferenceSeconds": 91.513,
-      "selectedMethod": "2025 same-circuit result adjusted by the observed 2026 street circuit-group median",
+      "selectedReferenceSeconds": 91.427,
+      "selectedMethod": "Median of the fastest three official Q3 result times",
       "fieldP10DeltaSeconds": null,
       "fieldMedianDeltaSeconds": null,
       "fieldP90DeltaSeconds": null,
       "validLapCount": 0,
       "deletedOrInvalidRate": null,
-      "status": "estimated",
-      "confidence": 0.51,
-      "referenceRangeSeconds": [
-        90.765,
-        92.261
-      ]
+      "status": "official",
+      "confidence": 0.96
     },
     "race": {
       "cleanLapReferenceSeconds": 99.575,
@@ -2333,21 +2128,7 @@
       "expectedGreenRaceDeltaSeconds": 8.062,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 91.103,
-        "top3MedianSeconds": 91.513,
-        "fieldMedianDeltaSeconds": 1.022,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 93.768,
-        "liveQualifyingReferenceErrorSeconds": 2.255
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2385,13 +2166,19 @@
         "retrievedAt": "2026-07-26T12:22:08.191Z",
         "documentHash": "sha256:dc44168bf2ac7592d3ec19a251b1625220e705d37ef288e729d64afa403afc5f",
         "sessionKey": 9602
+      },
+      {
+        "provider": "Formula 1",
+        "label": "Official 2026 qualifying classification (October snapshot)",
+        "url": "https://www.formula1.com/en/results/2026/races/1296/singapore/qualifying",
+        "retrievedAt": "2026-10-11T03:55:00.000Z"
       }
     ],
     "notes": [
       "Qualifying has not been observed; the displayed value is an estimate.",
       "Race has not been observed; clean pace and event average are estimates.",
-      "Qualifying forecast uses the 2025 same-circuit dry result and 2 completed 2026 street comparison events; another dry historical year is used for uncertainty where available.",
-      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 street comparison events."
+      "Race forecast uses a classified 2025 same-circuit clean-lap sample and 2 completed 2026 street comparison events.",
+      "Qualifying classification refreshed on 2026-10-11. Race distributions retain their separately dated evidence; result-table lap counts are not classified clean-lap sample counts."
     ]
   },
   {
@@ -2455,21 +2242,7 @@
       "expectedGreenRaceDeltaSeconds": 3.207,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 96.269,
-        "top3MedianSeconds": 96.665,
-        "fieldMedianDeltaSeconds": 1.075,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 98.894,
-        "liveQualifyingReferenceErrorSeconds": 2.229
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2577,21 +2350,7 @@
       "expectedGreenRaceDeltaSeconds": 5.242,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 77.214,
-        "top3MedianSeconds": 77.542,
-        "fieldMedianDeltaSeconds": 0.797,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 77.596,
-        "liveQualifyingReferenceErrorSeconds": 0.054
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2699,21 +2458,7 @@
       "expectedGreenRaceDeltaSeconds": 2.017,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 72.256,
-        "top3MedianSeconds": 72.587,
-        "fieldMedianDeltaSeconds": 0.748,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 74.861,
-        "liveQualifyingReferenceErrorSeconds": 2.274
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2813,21 +2558,7 @@
       "expectedGreenRaceDeltaSeconds": 3.675,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 94.243,
-        "top3MedianSeconds": 94.657,
-        "fieldMedianDeltaSeconds": 1.04,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 95.193,
-        "liveQualifyingReferenceErrorSeconds": 0.536
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -2927,21 +2658,7 @@
       "expectedGreenRaceDeltaSeconds": 4.733,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 82.185,
-        "top3MedianSeconds": 82.573,
-        "fieldMedianDeltaSeconds": 0.904,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 82.223,
-        "liveQualifyingReferenceErrorSeconds": -0.35
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -3049,21 +2766,7 @@
       "expectedGreenRaceDeltaSeconds": 3.338,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.9,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-29T13:24:43.058Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 0,
-        "poleMedianSeconds": 85.465,
-        "top3MedianSeconds": 85.84,
-        "fieldMedianDeltaSeconds": 0.919,
-        "raceGreenMedianSeconds": null,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": null,
-        "liveQualifyingSeedCount": 3,
-        "liveQualifyingTop3MedianSeconds": 88.53,
-        "liveQualifyingReferenceErrorSeconds": 2.69
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -3172,21 +2875,7 @@
       "expectedGreenRaceDeltaSeconds": 6.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.7,
-      "calibrationSeedCount": 30,
-      "validation": {
-        "validatedAt": "2026-07-30T07:28:06.538Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 30,
-        "poleMedianSeconds": 85.595,
-        "top3MedianSeconds": 86,
-        "fieldMedianDeltaSeconds": null,
-        "raceGreenMedianSeconds": 93.085,
-        "qualifyingReferenceErrorSeconds": 0,
-        "raceReferenceErrorSeconds": 0.585,
-        "liveQualifyingSeedCount": 100,
-        "liveQualifyingTop3MedianSeconds": 86,
-        "liveQualifyingReferenceErrorSeconds": 0
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -3270,21 +2959,7 @@
       "expectedGreenRaceDeltaSeconds": 6,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.7,
-      "calibrationSeedCount": 100,
-      "validation": {
-        "validatedAt": "2026-07-30T07:28:06.538Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 100,
-        "poleMedianSeconds": 76.63,
-        "top3MedianSeconds": 77.212,
-        "fieldMedianDeltaSeconds": null,
-        "raceGreenMedianSeconds": 83.423,
-        "qualifyingReferenceErrorSeconds": 0.212,
-        "raceReferenceErrorSeconds": 0.423,
-        "liveQualifyingSeedCount": 100,
-        "liveQualifyingTop3MedianSeconds": 77.212,
-        "liveQualifyingReferenceErrorSeconds": 0.212
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -3368,21 +3043,7 @@
       "expectedGreenRaceDeltaSeconds": 6.5,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.7,
-      "calibrationSeedCount": 50,
-      "validation": {
-        "validatedAt": "2026-07-30T07:28:06.538Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 50,
-        "poleMedianSeconds": 60.162,
-        "top3MedianSeconds": 60.664,
-        "fieldMedianDeltaSeconds": null,
-        "raceGreenMedianSeconds": 66.6,
-        "qualifyingReferenceErrorSeconds": 0.164,
-        "raceReferenceErrorSeconds": -0.4,
-        "liveQualifyingSeedCount": 100,
-        "liveQualifyingTop3MedianSeconds": 60.664,
-        "liveQualifyingReferenceErrorSeconds": 0.164
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {
@@ -3466,21 +3127,7 @@
       "expectedGreenRaceDeltaSeconds": 6.2,
       "raceModelCorrectionSeconds": 0,
       "residualSigmaSeconds": 0.7,
-      "calibrationSeedCount": 20,
-      "validation": {
-        "validatedAt": "2026-07-30T07:28:06.538Z",
-        "qualifyingSeedCount": 100,
-        "raceSeedCount": 20,
-        "poleMedianSeconds": 79.889,
-        "top3MedianSeconds": 80.393,
-        "fieldMedianDeltaSeconds": null,
-        "raceGreenMedianSeconds": 87.004,
-        "qualifyingReferenceErrorSeconds": -0.007,
-        "raceReferenceErrorSeconds": 0.404,
-        "liveQualifyingSeedCount": 100,
-        "liveQualifyingTop3MedianSeconds": 80.393,
-        "liveQualifyingReferenceErrorSeconds": -0.007
-      }
+      "calibrationSeedCount": 0
     },
     "sources": [
       {

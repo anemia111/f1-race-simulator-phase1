@@ -24,11 +24,12 @@ import {
   practiceSetupRecommendation,
 } from './engineering'
 import {
-  categoryPhysicsFor,
   resolveOperationalVehicleMass,
 } from './categoryPhysics'
 import { decideDriverBehaviorForPath } from './categoryDriverAgent'
 import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
+import { freshCompoundGripFor } from './tireCompoundPace'
 import { DRIVER_DECISION_WINDOWS_PER_LAP } from './driverDecision'
 import { effectiveMachineReliability } from './machinePerformance'
 import {
@@ -302,7 +303,7 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     weather,
   } = options
   const categoryPhysics = config.seriesId === 'super-formula'
-    ? superFormulaPhysicsForTrack(config.track) : categoryPhysicsFor(config.seriesId)
+    ? superFormulaPhysicsForTrack(config.track) : f1PhysicsForTrack(config.track)
   const operationalMass = resolveOperationalVehicleMass({
     f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
     physics: categoryPhysics,
@@ -353,7 +354,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
       team,
       categoryTyreGrip === null
         ? surfaceGrip
-        : surfaceGrip * categoryTyreGrip,
+        : surfaceGrip * categoryTyreGrip *
+          (tire.kind === 'f1-pirelli-session-tire' ? freshCompoundGripFor(config.track, tire.compound) : 1),
     ),
     massKg: operationalMass.operationalMassKg + Math.max(0, fuelLoadKg),
     physics,

@@ -8,7 +8,7 @@ import { createInitialRace } from './race'
 import { calculateCarTelemetry } from './telemetry'
 import { trackDynamicsAt } from './trackDynamics'
 import { simulatePhysicalLap } from './physicalLap'
-import { compoundReferenceLapOptions, freshCompoundGripFor } from './tireCompoundPace'
+import { compoundReferenceLapOptionsFor, freshCompoundGripFor } from './tireCompoundPace'
 import { freshTireOffsetSeconds, tireDeltaSeconds } from './tires'
 
 describe('user-authored fresh compound pace targets', () => {
@@ -24,7 +24,7 @@ describe('user-authored fresh compound pace targets', () => {
   it.each(tracks.filter(track => track.tirePaceGaps))('$id fits the isolated reference lap without overwriting live timing', (track) => {
     const gaps = track.tirePaceGaps!
     const lapAt = (compound: 'H' | 'M' | 'S') => simulatePhysicalLap(track, {
-      ...compoundReferenceLapOptions, gripMultiplier: freshCompoundGripFor(track, compound),
+      ...compoundReferenceLapOptionsFor(track), gripMultiplier: freshCompoundGripFor(track, compound),
     }).lapTimeSeconds
     const medium = lapAt('M')
     expect(lapAt('H') - medium).toBeCloseTo(gaps.hardToMedium, 2)
@@ -50,7 +50,7 @@ describe('user-authored fresh compound pace targets', () => {
     const track = crossCategoryCoursePacks.find(pack => pack.id === 'imola')!.track
     expect(track.tirePaceGaps).toEqual(tirePaceGapsByTrack['imola-approx'])
     const seconds = (compound: 'H' | 'M' | 'S') => simulatePhysicalLap(track, {
-      ...compoundReferenceLapOptions, gripMultiplier: freshCompoundGripFor(track, compound),
+      ...compoundReferenceLapOptionsFor(track), gripMultiplier: freshCompoundGripFor(track, compound),
     }).lapTimeSeconds
     expect(seconds('H') - seconds('M')).toBeCloseTo(0.3, 2)
     expect(seconds('M') - seconds('S')).toBeCloseTo(0.125, 2)

@@ -1,4 +1,5 @@
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { advancePedals } from './pedalControl'
 import { raceTyreGrip } from './raceTyres'
 import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
@@ -255,7 +256,9 @@ export function calculateCarTelemetry(options: {
     vehicleEraId,
   } = options
   const categoryPhysics = providedCategoryPhysics === categoryPhysicsFor('super-formula')
-    ? superFormulaPhysicsForTrack(track) : providedCategoryPhysics
+    ? superFormulaPhysicsForTrack(track)
+    : providedCategoryPhysics === categoryPhysicsFor('f1-custom')
+      ? f1PhysicsForTrack(track) : providedCategoryPhysics
   const f1Runtime =
     car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
   const f1Tires = f1Runtime?.tires ?? null

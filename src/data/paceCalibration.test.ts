@@ -194,30 +194,11 @@ describe('pace calibration data', () => {
     }
   })
 
-  it('keeps every F1 live Q1 measurement within three seconds of its reference', () => {
+  it('retires stale controller-scale measurements after the contact-model update', () => {
     expect(f1PaceCalibration2026).toHaveLength(26)
 
     for (const record of f1PaceCalibration2026) {
-      const validation = record.simulation.validation
-
-      expect(validation).toBeDefined()
-
-      if (!validation) {
-        throw new Error(`Missing live Q1 validation for ${record.trackId}`)
-      }
-
-      expect(
-        validation.liveQualifyingSeedCount,
-      ).toBeGreaterThanOrEqual(3)
-      expect(
-        validation.liveQualifyingTop3MedianSeconds,
-      ).toBeTypeOf('number')
-      expect(
-        Math.abs(
-          validation.liveQualifyingReferenceErrorSeconds ??
-            Number.POSITIVE_INFINITY,
-        ),
-      ).toBeLessThanOrEqual(3)
+      expect(record.simulation.validation).toBeUndefined()
     }
   })
 })

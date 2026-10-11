@@ -1,5 +1,6 @@
 import type { TireCompound, TrackDefinition } from '../types'
 import { categoryPhysicsFor } from './categoryPhysics'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { simulatePhysicalLap } from './physicalLap'
 import { freshTireOffsetSeconds, isDryCompound } from './tires'
 
@@ -10,6 +11,10 @@ export const compoundReferenceLapOptions = {
   deploymentEnergyBudgetMj: null,
   physics: categoryPhysicsFor('f1-custom'),
 } as const
+
+export function compoundReferenceLapOptionsFor(track: TrackDefinition) {
+  return { ...compoundReferenceLapOptions, physics: f1PhysicsForTrack(track) }
+}
 
 /**
  * Fit a grip coefficient to each user-authored isolated-lap target, once per
@@ -22,7 +27,7 @@ export function freshCompoundGripFor(track: TrackDefinition, compound: TireCompo
   let fitted = cache.get(track)
   if (!fitted) {
     const lapAt = (gripMultiplier: number) => simulatePhysicalLap(track, {
-      ...compoundReferenceLapOptions, gripMultiplier,
+      ...compoundReferenceLapOptionsFor(track), gripMultiplier,
     }).lapTimeSeconds
     const mediumLap = lapAt(1)
     const fit = (dry: 'H' | 'S') => {

@@ -582,3 +582,42 @@ Untouched saved 105/110 profiles migrate to 120 in F1/SF and additional-category
 saves, preserving custom skill edits and seat/crew metadata. Existing 120 saves
 remain 120. The focused source/migration/cross-category checks passed (34 tests)
 and lint passed. The normal full publish gate is required for this batch.
+
+## F1 all-course timing follow-up, 2026-10-11
+
+The requested scope includes all 49 selectable layouts, including Fuji,
+Motegi, SUGO, Autopolis, Imola and both Monza geometries. See
+`docs/F1_ALL_COURSE_TIMES.md` for provenance and reproduction. Imported Free
+Mode courses use the native generator's 156 equal-distance samples. The shared
+geometry stencil counts each local heading change once and separates
+opposite-turn chicanes. F1 lift area is 5.6 m²; drag remains at scale 1.0 after
+independent straight-speed checks rejected the larger drag.
+
+`f1CourseCalibration.ts` supplies an explicit SIM effective-contact profile to
+live driving, simplified qualifying and compound fitting. Thirty layouts use
+reference targets (17 official-reference layouts, 13 estimates); 19 have no
+suitable F1 reference and retain the common physical estimate. This contact fit
+is not measured tyre/road friction or independent validation of the original
+vehicle holdout. It never scales clocks, distance, fuel or battery accounting.
+Fresh tyre targets, driver 120, traffic, weather, thermal degradation, elevation
+and fuel/energy effects remain active. SF retains its own grip calibration.
+
+Five later official Q3 observations replace estimates. Sakhir, Jeddah and Imola
+use explicitly labelled 2025-based estimates; the October Bahrain-named event
+at Sepang is not a Sakhir timing reference. Obsolete script writers that could
+restore hidden lap-time scales have been retired. Stale stored validation was
+removed rather than relabelled as current measurements.
+
+Final actual-lap audits use calibration seed 0 plus independent seeds 1 and 2
+over all 49 layouts. Their production-input fingerprint is checked by a
+regression test, so later production changes require fresh measurements. The
+normal full publication gate remains required before this batch is complete.
+
+The final 147 layout/seed runs all recorded a valid timed lap. Thirty targeted
+layouts improved from 3.763 s before mean absolute error to 0.201 s for the
+three-seed median (maximum 0.602 s); independent seeds 1 and 2 achieved 0.244 s
+mean and 0.820 s maximum error. No coefficient was bounded. The 19 unreferenced
+layouts remain estimates. These are isolated dry qualifying results, not
+independent validation of fuel-heavy races. See `docs/validation/F1_COURSE_TIMES.md`.
+Focused physics/tyre/speed/data/geometry checks passed 102 tests; the persisted
+source-fingerprint and three-seed audit checks passed another two tests.
