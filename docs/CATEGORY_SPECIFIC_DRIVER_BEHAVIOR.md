@@ -34,10 +34,10 @@ with causal delay, bounded sensor uncertainty, expiry, deduplication and finite
 retention. The operational closure subsequently connects it to live decisions,
 category experience, decision records and checkpoints.
 
-The next Phase 7.8B slice intentionally resolves DA-11: every named raw,
-performance, and direct energy-skill input saturates at 100, while the existing bounded
-limit-break aggregate remains the only runtime owner of authored excess up to
-120. It does not refit a coefficient or use an observed/validation target.
+Phase 7.8B originally resolved DA-11 by saturating named abilities at 100.
+The user's 2026-10-12 maximum-120 request supersedes that policy: named runtime
+abilities now retain the excess and offline aggregate recovery is removed.
+The original 0..100 mapping and physical hardware limits are preserved.
 
 DA-08 is closed without behavior change: the 12 decision windows own local
 execution loss, and the unchanged once-per-run `lap-execution` draw owns only a

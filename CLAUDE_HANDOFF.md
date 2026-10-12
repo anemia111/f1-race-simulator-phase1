@@ -742,7 +742,9 @@ short publication checks; no full suite or long simulation is needed.
 
 The user explicitly requested maximum 120 after finding Nakayama's live
 abilities saturated at 100. This supersedes the DA-11 saturation contract.
-All driver tune sliders now allow 120 and the heading reports MAX 120.
+All driver tune sliders now allow 120 and the heading reports MAX 120. The
+series data manager's individual abilities, bulk edit and potential also allow
+120; machine and pit-crew scales remain their separate existing ranges.
 Named raw abilities and execution traits retain up to 1.2; performance blends
 extend the existing slope to 1.09 without changing any 0..100 input mapping.
 Energy intent outputs, style traits and physical tyre utilisation stay bounded.

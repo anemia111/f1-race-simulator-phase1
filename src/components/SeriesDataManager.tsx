@@ -18,6 +18,7 @@ import {
 } from 'react'
 import {
   DRIVER_ABILITY_GROUPS,
+  CURRENT_DRIVER_ABILITY_CEILING,
   clampDriverAbility,
   driverAbilityGroupValue,
   driverOverallAbilityPoints,
@@ -1015,7 +1016,7 @@ export function SeriesDataManager({
                 <select aria-label="Bulk edit mode" onChange={(event) => setBulkMode(event.target.value as 'adjust' | 'set')} value={bulkMode}>
                   <option value="adjust">Adjust</option><option value="set">Set</option>
                 </select>
-                <input aria-label="Bulk ability value" max={100} min={bulkMode === 'set' ? 0 : -20} onChange={(event) => setBulkValue(Number(event.target.value))} step={1} type="number" value={bulkValue} />
+                <input aria-label="Bulk ability value" max={CURRENT_DRIVER_ABILITY_CEILING} min={bulkMode === 'set' ? 0 : -20} onChange={(event) => setBulkValue(Number(event.target.value))} step={1} type="number" value={bulkValue} />
                 <button
                   disabled={activeFilteredIds.size === 0}
                   onClick={() => {
@@ -1095,7 +1096,7 @@ export function SeriesDataManager({
                         }} type="number" value={selectedDriver.carNumber} /></label>
                         <label><span>Team</span><select onChange={(event) => updateDriver({ teamId: event.target.value }, `${selectedDriver.code} seat updated`)} value={selectedDriver.teamId}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
                         <label><span>Role</span><select onChange={(event) => updateDriver({ seatRole: event.target.value as NonNullable<Driver['seatRole']> }, `${selectedDriver.code} role updated`)} value={selectedDriver.seatRole ?? 'regular'}>{Object.entries(driverRoleLabels).filter(([role]) => role !== 'free_agent').map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select></label>
-                        <label><span>Potential</span><input max={100} min={0} onChange={(event) => updateDriver({ potential: Number(event.target.value) / 100 }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
+                        <label><span>Potential</span><input max={CURRENT_DRIVER_ABILITY_CEILING} min={0} onChange={(event) => updateDriver({ potential: clampDriverAbility(Number(event.target.value) / 100) }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
                         <label><span>Source</span><output>{selectedDriver.performanceSource?.fileName ?? 'series registry'}</output></label>
                       </div>
                       <div className="seat-signing seat-swap">
@@ -1122,7 +1123,7 @@ export function SeriesDataManager({
                           return (
                             <label key={group.key}>
                               <span>{group.label}</span>
-                              <input max={100} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
+                              <input max={CURRENT_DRIVER_ABILITY_CEILING} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
                               <strong>{value}</strong>
                             </label>
                           )
