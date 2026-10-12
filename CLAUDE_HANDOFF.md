@@ -725,3 +725,15 @@ that working diagnosis, not a fresh all-course or complete-weekend audit.
 The tower now labels each driver's attained qualifying segment so older Q1/Q2
 times cannot be mistaken for Q3 ranking times. No strength-based position or
 clock correction is applied. Keep the user's short publication exception.
+
+## Live qualifying cutoff references, 2026-10-12
+
+The user requested the displayed knockout reference follow changing Q1/Q2
+positions. Active cards now resolve the reference from the latest segment
+ranking every update, including a new cutoff driver, a new best by the same
+driver and transitions between safe/outside positions. Use configured quotas
+(standard 22-car Q1 P16 / Q2 P10); do not change advancement rules based on the
+user's illustrative mention of P11. The last live reference remains fixed only
+for the completed result's three-second hold, preventing self-comparison after
+promotion. This supersedes the earlier full-attempt reference freeze. Preserve
+short publication checks; no full suite or long simulation is needed.

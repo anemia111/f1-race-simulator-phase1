@@ -11,14 +11,14 @@ function lap(time = 90, completedAt = 100, segment = 'Q1', valid = true): LapRec
     tireRun: { kind: 'f1-pirelli', compound: 'S', ageLaps: 1 },
     weather: 'clear', trackGrip: 1, position: 1, pitStop: false }
 }
-function fixture(): RaceSnapshot {
-  const state = createInitialRace({ drivers: initialDrivers.slice(0, 5), teams: initialTeams,
+function fixture(size = 5, segment = 'Q1'): RaceSnapshot {
+  const state = createInitialRace({ drivers: initialDrivers.slice(0, size), teams: initialTeams,
     track: tracks[0], seed: 'broadcast', weekendStage: 'qualifying' })
   return { ...state, elapsedSeconds: 240, timedParticipantDriverIds: state.cars.map(car => car.driverId),
     cars: state.cars.map((car, index) => ({ ...car, status: 'running', hiddenFromTrack: false,
       projectedLapTime: 90, progress: 0.9 - index * 0.1, lapStartedAtSeconds: 180,
       timedRunPhase: 'attack-lap', currentLapSectorTimes: [29, 30, null],
-      lapHistory: [lap(90 + index)], timedSegmentBestSetAtSeconds: { Q1: 100 + index } })) }
+      lapHistory: [lap(90 + index, 100, segment)], timedSegmentBestSetAtSeconds: { [segment]: 100 + index } })) }
 }
 const update = (state: RaceSnapshot, now = 0, previous: Parameters<typeof updateQualifyingCards>[0] = [], advance: number | null = 2) =>
   updateQualifyingCards(previous, state, 'Q1', advance, now)
@@ -27,6 +27,36 @@ const finish = (car: CarSnapshot, time: number, valid = true): CarSnapshot => ({
   lapHistory: [...car.lapHistory, lap(time, 270, 'Q1', valid)] })
 
 describe('qualifying broadcast direction', () => {
+  it.each([{ segment: 'Q1', advance: 16 }, { segment: 'Q2', advance: 10 }])(
+    'updates the $segment cutoff driver, lap and split delta while the same card stays live', ({ segment, advance }) => {
+      const state = fixture(22, segment)
+      const attacking = state.cars[advance + 1]
+      state.cars.forEach(car => { car.timedRunPhase = car === attacking ? 'attack-lap' : 'garage' })
+      const refresh = (previous: Parameters<typeof updateQualifyingCards>[0] = []) =>
+        updateQualifyingCards(previous, state, segment, advance, 0)
+      const before = refresh()
+      expect(before[0].reference?.driverId).toBe(state.cars[advance - 1].driverId)
+      const challenger = state.cars.at(-1)!
+      const newTime = 90 + advance - 1.5
+      challenger.lapHistory.push(lap(newTime, 230, segment))
+      const changed = refresh(before)
+      expect(changed[0].driverId).toBe(attacking.driverId)
+      expect(changed[0].reference).toMatchObject({ kind: 'cutoff', position: advance, driverId: challenger.driverId })
+      expect(changed[0].reference?.lap.lapTimeSeconds).toBe(newTime)
+      expect(changed[0].deltaSeconds).toBeCloseTo(59 - newTime * 2 / 3)
+      // A new best from the same cutoff driver must also replace the lap.
+      challenger.lapHistory.push(lap(newTime - 0.1, 235, segment))
+      expect(refresh(changed)[0].reference?.lap.lapTimeSeconds).toBe(newTime - 0.1)
+    },
+  )
+
+  it('switches a displaced safe driver from the leader to the current cutoff', () => {
+    const state = fixture(), before = update(state)
+    expect(before[1].reference?.kind).toBe('leader')
+    state.cars[4].lapHistory.push(lap(89, 230))
+    const cards = update(state, 0, before)
+    expect(cards[1].reference).toMatchObject({ kind: 'cutoff', driverId: state.cars[0].driverId, position: 2 })
+  })
   it('selects the nearest three finishes, never out/in laps or inactive drivers', () => {
     const state = fixture()
     state.cars[0].timedRunPhase = 'out-lap'

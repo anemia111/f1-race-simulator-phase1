@@ -107,8 +107,10 @@ export function updateQualifyingCards(
       a.driverId.localeCompare(b.driverId))
   const live = active.slice(0, Math.max(0, 3 - held.length)).map(car => {
     const startedAt = car.lapStartedAtSeconds!
-    const existing = previous.find(card => card.segment === segment && card.driverId === car.driverId && card.startedAt === startedAt)
-    return build(car, startedAt, existing?.reference ?? referenceFor(car))
+    // The live qualifying order can change during an attack. Resolve both
+    // the comparison driver and their current best lap on every update.
+    // Finished cards still keep the comparison shown at the timing line.
+    return build(car, startedAt, referenceFor(car))
   })
   // Keep finished cards in their physical slot; replace free slots in finish order.
   const cards: QualifyingCard[] = []

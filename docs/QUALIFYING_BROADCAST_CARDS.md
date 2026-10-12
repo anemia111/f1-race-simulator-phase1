@@ -15,8 +15,13 @@ not a change to vehicle physics, timing or classification. Cards can focus a car
   compares with their own prior best. The final segment compares with the leader.
 - If the cutoff has no recorded lap yet, fall back to the recorded leader. With
   no reference, show NO TIME and no invented delta.
-- Freeze the reference lap for the displayed attempt; beating it must not
-  replace the reference with the same new lap and produce a zero delta.
+- While a card is live, refresh the reference driver, their best lap and the
+  measured split delta from the current segment ranking on every update.
+  A cutoff driver changing or improving their own time updates the same card;
+  crossing the advancement boundary switches between cutoff/top comparison.
+- At the finish, retain the last live reference for the three-second result
+  display. Beating it must not replace it with the same new lap and produce a
+  zero delta. Completed results remain stable while the next cars finish.
 - Running clocks use the actual lap-start clock. S1/S2 deltas use completed
   cumulative measured sectors. There is no invented continuous predicted delta.
 - At the actual timing-line crossing, show the final difference prominently,
