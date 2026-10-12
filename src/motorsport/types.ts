@@ -62,6 +62,7 @@ export type MotorsportCar = {
   tyreState?: import('../simulation/raceTyres').RaceTyreState
   telemetryHistory?: import('../simulation/telemetryHistory').TelemetryPoint[]
   throttlePercent?: number; brakePercent?: number; rpm?: number
+  clutchEngagementFraction?: number; turboSpoolFraction?: number
   hybridPowerKw?: number; regenerationPowerKw?: number; hybridRecoveredMj?: number
   entryId: string; distanceM: number; speedMps: number; lateralM: number; gear: number
   fuelKg: number; virtualEnergyMj: number | null; hybridEnergyMj: number

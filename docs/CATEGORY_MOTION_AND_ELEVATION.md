@@ -63,7 +63,12 @@ The UI gate checks every available calendar event in six categories at
 cover slower-traffic approach, lateral acceleration, pit braking and release,
 finish-line interpolation, pause/reset, map registration and official anchors.
 
-The 24-hour full-field endurance tests remain mandatory in `npm run publish`;
-short checks do not replace them. The short full-field race test has a 30s
-wall-clock budget because it shares machines with browser/long-run QA; its
-completion and all-car finishing assertions are unchanged.
+The user subsequently declined long tests. Current publication therefore uses
+`-SkipFullTestSuite -SkipPlaytest` with targeted short checks. Historical
+endurance results are not a fresh validation of the current solver.
+
+As of 2026-10-12 the additional four categories use the actual shared F1/SF
+vehicle force solver for track and pit movement. Their speed planner also
+uses the shared tyre cornering and axle brake model. See
+[the solver migration](SHARED_SIX_CATEGORY_VEHICLE_SOLVER.md) for retained
+category operations, explicit SIM assumptions and short validation scope.

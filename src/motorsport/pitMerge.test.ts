@@ -25,7 +25,7 @@ describe('pit exit joining clearance', () => {
         }
       }
     }
-    expect(joined.size).toBe(2)
+    expect(joined.size, JSON.stringify(state.cars.map(car => ({ status: car.status, speed: car.speedMps, pit: car.pitPathM, distance: car.distanceM })))).toBe(2)
   })
   it.each(['super-gt', 'wec', 'indycar'] as const)('%s waits before joining occupied track, then releases when clear', category => {
     const base = createMotorsportConfig(category), config = { ...base, entries: base.entries.slice(0, 2) }

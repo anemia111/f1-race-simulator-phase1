@@ -1,6 +1,8 @@
 import { airDensityKgM3 } from '../simulation/roadEnvironment'
 import { elevationProfileFor, elevationAt } from '../data/courseElevation'
-import { remainingEllipseForceN } from '../simulation/tyreForces'
+import { remainingEllipseForceN, tyreGripAt, corneringSpeedLimitMps, longitudinalTyreForceCapacityAt } from '../simulation/tyreForces'
+import { motorsportPhysicsFor } from './sharedVehiclePhysics'
+import { lateralTyreForceDemandN } from '../simulation/vehicleDynamics'
 import type { MotorsportCourse, MotorsportMachine } from './types'
 
 export const MOTORSPORT_STEP_SECONDS = 0.1
@@ -49,17 +51,18 @@ export function courseStations(course: MotorsportCourse): CourseStation[] {
   return stations
 }
 
-/** Point-mass tyre/aero force balance, with banking and a backward braking pass. */
+/** Shared F1/SF tyre force balance, with banking and a backward braking pass. */
 export type DrivingConditions = { massKg: number; gripScale: number; liftScale?: number; dragScale?: number; airDensityKgM3?: number }
 
 /** Shared grip budget: braking/traction and cornering cannot each use 100%. */
 export function tyreForceBudget(machine: MotorsportMachine, station: CourseStation, speed: number, conditions: DrivingConditions) {
   const { massKg: mass, gripScale, liftScale = 1 } = conditions
-  const gravity = 9.80665
-  const load = mass * gravity * Math.cos(station.bankingRadians) + 0.5 * (conditions.airDensityKgM3 ?? station.airDensityKgM3) * machine.liftAreaM2.value * liftScale * speed ** 2
-  const available = machine.tyreMu.value * gripScale * load
-  const lateral = Math.max(0, mass * speed ** 2 / station.radiusM - mass * gravity * Math.sin(station.bankingRadians))
-  return { available, lateral, longitudinal: remainingEllipseForceN({availableForceN: available, usedForceN: lateral}) }
+  const physics = motorsportPhysicsFor(machine)
+  const options = { massKg: mass, physics, speedMps: speed, airDensityKgM3: conditions.airDensityKgM3 ?? station.airDensityKgM3, downforceMultiplier: liftScale, gripMultiplier: gripScale }
+  const available = tyreGripAt(options).availableForceN
+  const lateral = lateralTyreForceDemandN({ massKg: mass, speedMps: speed, radiusMeters: station.radiusM, bankingDegrees: station.bankingRadians * 180 / Math.PI })
+  const capacity = longitudinalTyreForceCapacityAt({ ...options, longitudinalAccelerationMps2: 0, lateralForceN: lateral })
+  return { available, lateral, longitudinal: Math.min(capacity.brakeForceCapacityN, remainingEllipseForceN({availableForceN: available, usedForceN: lateral})) }
 }
 
 export function stationAt(course: MotorsportCourse, distanceM: number) {
@@ -80,14 +83,12 @@ export function speedEnvelope(course: MotorsportCourse, machine: MotorsportMachi
   const key = `${mass}:${grip}:${liftScale}:${dragScale}:${conditions?.airDensityKgM3 ?? "profile"}`
   const cached = variants.get(key)
   if (cached) return cached
-  const mu = machine.tyreMu.value * grip
+  const physics = motorsportPhysicsFor(machine)
   const maximumPower = machine.powerKw.value + (machine.classId === 'indycar' ? machine.hybridPowerKw.value + (course.kind === 'road' || course.kind === 'street' ? 44.74 : 0) : 0)
   const speeds = courseStations(course).map(({ radiusM, bankingRadians: angle, airDensityKgM3 }) => {
     const density = conditions?.airDensityKgM3 ?? airDensityKgM3
     const terminal = Math.cbrt(maximumPower * 1000 * 0.94 / (0.5 * density * machine.dragAreaM2.value * dragScale))
-    const bankGrip = (mu * Math.cos(angle) + Math.sin(angle)) / Math.max(0.1, Math.cos(angle) - mu * Math.sin(angle))
-    const denominator = 1 - bankGrip * radiusM * 0.5 * density * machine.liftAreaM2.value * liftScale / mass
-    const corner = denominator <= 0 ? terminal : Math.sqrt(bankGrip * 9.80665 * radiusM / denominator)
+    const corner = corneringSpeedLimitMps({ physics, massKg: mass, gripMultiplier: grip, downforceMultiplier: liftScale, airDensityKgM3: density, bankingDegrees: angle * 180 / Math.PI, radiusMeters: radiusM, ceilingMps: terminal })
     return Math.max(8, Math.min(terminal, corner))
   })
   const ds = course.lengthM / SAMPLE_COUNT
@@ -98,7 +99,7 @@ export function speedEnvelope(course: MotorsportCourse, machine: MotorsportMachi
     // force law is used here and during integration, including bank support.
     speeds[current] *= index >= SAMPLE_COUNT ? 0.975 : 1
     const forces = tyreForceBudget(machine, courseStations(course)[current], speeds[current], { massKg: mass, gripScale: grip, liftScale, airDensityKgM3: conditions?.airDensityKgM3 })
-    const deceleration = Math.max(0.5, Math.min(35, forces.longitudinal / mass + 9.80665 * courseStations(course)[current].grade))
+    const deceleration = Math.max(0.5, Math.min(physics.maximumBrakeDecelerationMps2, forces.longitudinal / mass + 9.80665 * courseStations(course)[current].grade))
     speeds[current] = Math.min(speeds[current], Math.sqrt(speeds[next] ** 2 + 2 * deceleration * ds))
   }
   if (variants.size >= 64) variants.delete(variants.keys().next().value!)

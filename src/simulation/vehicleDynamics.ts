@@ -109,6 +109,8 @@ export type LongitudinalStepInput = {
   dirtyAirDownforceMultiplier?: number
   dynamics: LongitudinalDynamicsInput
   ersPowerKw: number
+  /** Optional front-axle assist within ersPowerKw (LMH); default is rear drive. */
+  frontAxleDrivePowerKw?: number
   /** Combustion boost such as Super Formula OTS. */
   extraCombustionPowerKw?: number
   /** @deprecated Use `extraCombustionPowerKw`; retained for call compatibility. */
@@ -384,9 +386,23 @@ const ACTIVE_AERO_CATEGORY_PRIORS = {
     },
   },
 } as const satisfies Record<
-  CategoryPhysicsProfile['id'],
+  'f1-custom' | 'super-formula',
   ActiveAeroCategoryPrior
 >
+
+function activeAeroPriorFor(physics: CategoryPhysicsProfile): ActiveAeroCategoryPrior {
+  if (physics.id === 'f1-custom' || physics.id === 'super-formula') return ACTIVE_AERO_CATEGORY_PRIORS[physics.id]
+  return {
+    ...ACTIVE_AERO_CATEGORY_PRIORS['super-formula'],
+    provenance: {
+      ...ACTIVE_AERO_CATEGORY_PRIORS['super-formula'].provenance,
+      assumptionSetId: 'motorsport-fixed-aero-simulation-prior-v1',
+      confidence: 'low',
+      sourceIds: [],
+      statement: 'Fixed bodywork with shared bounded aero sensitivities; coefficients are simulation assumptions, not category measurements.',
+    },
+  }
+}
 
 export type ActiveAeroForceResult = Readonly<{
   activeAeroAvailable: boolean
@@ -467,7 +483,7 @@ export function activeAeroReferenceAreaMultipliers(options: {
   activeAeroState: ActiveAeroStructuralInput
   categoryPhysics: CategoryPhysicsProfile
 }): ActiveAeroReferenceAreaMultipliers {
-  const prior = ACTIVE_AERO_CATEGORY_PRIORS[options.categoryPhysics.id]
+  const prior = activeAeroPriorFor(options.categoryPhysics)
   const assumptions = prior.assumptions
   const structuralInput = {
     frontStraightFraction: prior.activeAeroAvailable
@@ -538,6 +554,9 @@ function baseVehicleDragAreaM2(options: {
   setup?: CarSetup
   team: Team
 }) {
+  if (options.categoryPhysics.referenceDragAreaM2 !== undefined) {
+    return Math.max(0.01, options.categoryPhysics.referenceDragAreaM2) * setupDragAreaMultiplier(options.setup)
+  }
   const machine = options.team.machine
   const baseDragArea =
     1.18 -
@@ -571,7 +590,7 @@ export function activeAeroForceComponents(options: {
   towDragReduction?: number
   yawDegrees?: number
 }): ActiveAeroForceResult {
-  const prior = ACTIVE_AERO_CATEGORY_PRIORS[options.categoryPhysics.id]
+  const prior = activeAeroPriorFor(options.categoryPhysics)
   const assumptions = prior.assumptions
   const activeAeroAvailable = prior.activeAeroAvailable
   const structuralInput = {
@@ -1103,7 +1122,7 @@ export function liveCorneringSpeedLimitKph(options: {
   return limitKph
 }
 
-function lateralTyreForceDemandN(options: {
+export function lateralTyreForceDemandN(options: {
   bankingDegrees?: number
   massKg: number
   radiusMeters?: number
@@ -1380,8 +1399,10 @@ function integrateVehicleLongitudinalStepWithBudget(
         brakeHardwareCapacity.maximumBrakeDecelerationMps2 * massKg,
       )
 
-      tractionLimitN = capacity.drivenAxleForceCapacityN
-      driveForceN = Math.min(requestedDriveForceN, tractionLimitN)
+      const frontRequestN = Math.min(requestedDriveForceN, Math.max(0, input.frontAxleDrivePowerKw ?? 0) * 1000 * transmissionEfficiency / Math.max(8, speedMps) * clamp(input.throttlePercent / 100, 0, 1))
+      const frontCapacityN = capacity.frontAxleForceCapacityN
+      tractionLimitN = capacity.drivenAxleForceCapacityN + (frontRequestN > 0 ? frontCapacityN : 0)
+      driveForceN = Math.min(requestedDriveForceN - frontRequestN, capacity.drivenAxleForceCapacityN) + Math.min(frontRequestN, frontCapacityN)
       const requestedServiceBrakeForceN =
         input.requestedBrakeDecelerationMps2 === undefined
           ? serviceBrakeCapacityN *
@@ -1494,7 +1515,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       transmissionEfficiency,
       turboSpoolFraction,
     })
-    turboSpoolFraction = advanceTurboState({
+    turboSpoolFraction = categoryPhysics.turbocharged === false ? 1 : advanceTurboState({
       deltaSeconds: stepSeconds,
       physics: categoryPhysics,
       previousState: { spoolFraction: turboSpoolFraction },

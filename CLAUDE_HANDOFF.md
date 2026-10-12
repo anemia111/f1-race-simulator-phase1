@@ -786,3 +786,20 @@ long tests. Seven focused suites pass 74 tests, lint/types pass. Browser checks
 showed NAK rear wing 3 while HAM retained 8, NAK's manual mode held on driver
 switches, and Q parc ferme disabled every editing control. Screenshot:
 outputs/driver-setup-ui.png. Keep shortened publication checks.
+
+## Shared six-category live vehicle solver, 2026-10-12
+
+The user explicitly requested the remaining four categories use F1/SF driving
+calculations. Additional categories now call the actual shared longitudinal
+solver for road and pit movement. Their planner uses shared load-sensitive
+cornering and axle brake capacities. Remove the legacy display gearbox; live
+gear/RPM and optional persisted clutch/spool come from the force calculation.
+Absolute machine specifications, fuel, course grade/bank/density, tyre state
+and wake feed the shared model. Keep fixed bodywork, Hypercar combined power,
+gated LMH front assist, LMDh rear drive, INDYCAR hybrid/P2P and category
+operations. F1/SF defaults retain their existing behavior. See
+docs/SHARED_SIX_CATEGORY_VEHICLE_SOLVER.md for SIM parameter boundaries.
+Old all-course timing results predate this change. Keep the user's shortened
+publish exception and do not run complete weekends or endurance simulations.
+Five focused suites pass 89 tests. An additional 33 short driving checks pass;
+seven complete flying-lap cases were deliberately excluded. Types/lint pass.

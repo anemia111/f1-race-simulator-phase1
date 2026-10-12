@@ -1,5 +1,10 @@
 # Six-category integration, 2026-10-10
 
+2026-10-12 follow-up: KYOJO/SUPER GT/WEC/INDYCAR now use the actual F1/SF
+live force solver. [Migration details](SHARED_SIX_CATEGORY_VEHICLE_SOLVER.md).
+The historical timing and integration results below predate this migration;
+they do not establish current category lap-time accuracy.
+
 The pit-wall/tyre/environment work is integrated with the six-category runtime
 from `feat/all-category-elevation-motion` (`5ce08c4`). F1, SUPER FORMULA,
 KYOJO CUP, SUPER GT, FIA WEC and INDYCAR retain their category hardware and

@@ -200,6 +200,7 @@ export function axleLoadsN(options: {
 export type LongitudinalTyreForceCapacity = {
   brakeForceCapacityN: number
   drivenAxleForceCapacityN: number
+  frontAxleForceCapacityN: number
   frontAxleLoadN: number
   rearAxleLoadN: number
   totalVerticalLoadN: number
@@ -299,6 +300,7 @@ export function longitudinalTyreForceCapacityAt(options: {
 
   return {
     brakeForceCapacityN: Math.max(0, finiteOr(brakeForceCapacityN, 0)),
+    frontAxleForceCapacityN: Math.max(0, finiteOr(frontLongitudinalCapacityN, 0)),
     drivenAxleForceCapacityN: Math.max(
       0,
       finiteOr(rearLongitudinalCapacityN, 0),
