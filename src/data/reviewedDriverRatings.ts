@@ -10,10 +10,12 @@ import {clampPersonAbility,driverAbilityCeiling} from '../simulation/driverAbili
 export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.2'
 export const driverRatingReview = review
 export const DRIVER_DISPLAY_NAME_OVERRIDES: Readonly<Record<string, string>> = {
-  yuki_nakayama: 'yukinakayama',
+  yuki_nakayama: 'Yuki Nakayama',
 }
 export const driverDisplayName = (id: string, fallback: string) =>
   DRIVER_DISPLAY_NAME_OVERRIDES[id] ?? fallback
+export const driverDisplayCode = (id: string, fallback: string) =>
+  id === 'yuki_nakayama' ? 'NAK' : fallback
 const authored = new Map(imported.drivers.map(row => [row.id, row]))
 const revised = new Map(review.drivers.map(row => [row.id, row]))
 const previousReviewed = new Map(previousReview.drivers.map(row => [row.id, row]))
@@ -30,6 +32,7 @@ export function reviewedRating(id: string) {
 }
 
 export function reviewFactoryDriver(driver: Driver): Driver {
+  driver = {...driver, code: driverDisplayCode(driver.id, driver.code)}
   previousNative.set(driver.id, [...(previousNative.get(driver.id)??[]),driver])
   const row = reviewedRating(driver.id)
   if (!row) return {...driver, name: driverDisplayName(driver.id, driver.name)}
@@ -42,7 +45,7 @@ export function reviewPoolDriver(driver: DriverPoolRecord): DriverPoolRecord {
   if (!row) return driver
   const revision = revised.get(driver.id)
   const id = `rating-review:${DRIVER_RATING_REVIEW_VERSION}:${driver.id}`
-  return {...driver, name: driverDisplayName(driver.id, driver.name), overall: row.overall, potential: row.potential ?? row.overall, ratings: {...row.ratings},
+  return {...driver, name: driverDisplayName(driver.id, driver.name), code: driverDisplayCode(driver.id, driver.code), overall: row.overall, potential: row.potential ?? row.overall, ratings: {...row.ratings},
     ratingSourceProvenanceId: id, provenance: [...driver.provenance, {
       id, sourceType: 'editorial', sourceDate: '2026-10-13', sourceSeason: 2026,
       sourceSeriesId: driver.provenance[0].sourceSeriesId, sourceFile: revision ? 'src/data/driverRatingsReview2026.json' : 'src/data/importedDriverRatings2026.json',
@@ -53,6 +56,8 @@ export function reviewPoolDriver(driver: DriverPoolRecord): DriverPoolRecord {
 
 /** Upgrade only a whole, recognizable factory profile; keep any manual tune. */
 export function migrateFactoryDriverRating(driver: Driver): Driver {
+  const code = driverDisplayCode(driver.id, driver.code)
+  if (code !== driver.code) driver = {...driver, code}
   const row = reviewedRating(driver.id)
   const name = driverDisplayName(driver.id, driver.name)
   if (!row) return name === driver.name ? driver : {...driver, name}

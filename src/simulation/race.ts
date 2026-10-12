@@ -2866,9 +2866,9 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
         vehicleEraId: driverPolicy.vehicleEraId,
       }),
       teamId: team.id,
-      code: driver.code,
+      code: driverDisplayCode(driver.id, driver.code),
       carNumber: driver.carNumber,
-      driverName: driver.name,
+      driverName: driverDisplayName(driver.id, driver.name),
       teamName: team.name,
       teamColor: team.color,
       progress: clamp01(totalDistance - lap),
@@ -9615,3 +9615,4 @@ export function advanceRace(
     eventMessage,
   }
 }
+import {driverDisplayName, driverDisplayCode} from '../data/reviewedDriverRatings'

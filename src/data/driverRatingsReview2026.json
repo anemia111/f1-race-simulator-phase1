@@ -6,7 +6,7 @@
   "drivers": [
     {
       "id": "yuki_nakayama",
-      "name": "yukinakayama",
+      "name": "Yuki Nakayama",
       "overall": 120.0,
       "potential": 120,
       "ratings": {
@@ -31,7 +31,7 @@
       "sources": [
         "user-custom-120"
       ],
-      "reason": "User-defined exception; display name is yukinakayama; every axis and potential remains 120. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "User-defined exception; display name is Yuki Nakayama, timing code NAK; every axis and potential remains 120. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
     },
     {
       "id": "max_verstappen",

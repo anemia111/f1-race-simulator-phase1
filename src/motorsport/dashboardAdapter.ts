@@ -1,4 +1,5 @@
 import { courseAssetsFor } from '../series/expansionAssets'
+import { driverDisplayCode } from '../data/reviewedDriverRatings'
 import { projectPointToArcProgress } from '../data/sectorBoundaries'
 import { phaseOneConfig } from '../data/phaseOne'
 import { expansionCourseTiming } from '../data/expansionTiming'
@@ -73,7 +74,7 @@ export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRa
     const pitFraction = car.status.startsWith('pit-')
       ? Math.max(0, Math.min(1, car.pitPathM / pitTransition, (pitLength - car.pitPathM) / pitTransition)) : 0
     const pitBlend = pitFraction * pitFraction * (3 - 2 * pitFraction)
-    return { ...empty.cars[0], driverId: entry.id, teamId: entry.id, code: driver.name.split(/\s+/).at(-1)!.slice(0,3).toUpperCase(),
+    return { ...empty.cars[0], driverId: entry.id, teamId: entry.id, code: driverDisplayCode(driver.id, driver.name.split(/\s+/).at(-1)!.slice(0,3).toUpperCase()),
       carNumber: Number(entry.number), driverName: driver.name, teamName: entry.team, teamColor: entry.color,
       position: overallPosition, gridPosition: config.entries.indexOf(entry) + 1, lap: car.laps + 1,
       totalDistance: distance / config.course.lengthM, progress: ((distance / config.course.lengthM) % 1 + 1) % 1,

@@ -1011,3 +1011,18 @@ This is user-requested SIM policy, not an assertion of official start regulation
 Existing in-progress saves preserve their positions; reset/new race uses the new
 grid. Three focused suites pass 47 tests plus one short formation regression.
 Types/lint pass. Keep the shortened publication and no-long-tests exception.
+
+## Yuki Nakayama display name and NAK code, 2026-10-13
+
+User superseded `yukinakayama` with `Yuki Nakayama`, timing code `NAK`.
+The stable identity remains `yuki_nakayama`; all ability axes remain 120.
+Canonical names/codes apply to factory/pool profiles, saved driver settings,
+new F1/SF snapshots and recovered checkpoints. The additional-category timing
+adapter explicitly resolves NAK by identity. Historical result snapshots retain
+their stored names. Original authored import evidence remains unchanged.
+Focused name/profile and compatible-checkpoint checks pass (16 tests).
+A broader raceSession run exposed existing optional engineeringPlan undefined
+property equality differences and a 5.79 MB checkpoint against its 4 MB test
+limit; that unrelated long storage test was not repeated. Keep shortened publish.
+Team-principal UI work is unfinished and preserved separately in
+`../team-principal-wip.patch`; it is not part of this display-name release.

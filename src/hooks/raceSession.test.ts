@@ -164,11 +164,15 @@ describe('race session continuity', () => {
       elapsedLabel: '00:02:03',
       elapsedSeconds: 123,
     }
+    const nakayama = snapshot.cars.find(car => car.driverId === 'yuki_nakayama')!
+    nakayama.driverName = 'yukinakayama'
+    nakayama.code = 'YUK'
     const raw = serializeRaceCheckpoint('session-a', snapshot, now)
     const restored = parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
 
     expect(restored?.elapsedSeconds).toBe(123)
     expect(restored?.cars).toHaveLength(initialDrivers.length)
+    expect(restored?.cars.find(car => car.driverId === 'yuki_nakayama')).toMatchObject({driverName:'Yuki Nakayama',code:'NAK'})
     expect(f1Runtime(restored!.cars[0]).activeAeroState).toEqual(
       f1Runtime(snapshot.cars[0]).activeAeroState,
     )
