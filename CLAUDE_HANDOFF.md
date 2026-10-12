@@ -1026,3 +1026,33 @@ property equality differences and a 5.79 MB checkpoint against its 4 MB test
 limit; that unrelated long storage test was not repeated. Keep shortened publish.
 Team-principal UI work is unfinished and preserved separately in
 `../team-principal-wip.patch`; it is not part of this display-name release.
+
+## Detailed execution, difficulty and shared measured gaps, 2026-10-13
+
+User requested stronger exit/tow skill differences, granular race abilities,
+category machine demands with large deficits for inadequate skill, and common
+F1/SF timing UI for all categories. See docs/DRIVER_EXECUTION_AND_DIFFICULTY.md.
+The existing 30 skills now have common independent editors in all six category
+settings, and a readout in Engineer. Extra categories optionally persist a
+complete detailed skills object; manual edits survive review migration and
+old saves still derive their profile from the pool. Existing ratings, normal
+100 ceiling and Yuki Nakayama's 120 ceiling are unchanged.
+
+Shared pedals consume separate throttle and braking precision. Traction pickup
+and correction now express skill; tow skill changes physical alignment and
+pull-out timing without changing drag coefficients. SIM machine thresholds
+conservatively reduce used grip and pickup rate when required control axes are
+insufficient. This is intentionally a substantial live pace penalty; old course
+timing audits are not evidence of current accuracy.
+
+F1/SF measured mini-sector gaps are extracted to a shared domain helper. Extra
+tower and classification no longer divide distance by current speed. Missing
+measurements or old-order checkpoints after a pass show -- until a common valid
+crossing is available. Class leader/ahead references, previous-lap timing,
+lap deficits, timed-session best laps and final penalties remain distinct.
+Instantaneous physical gaps used for driving remain independent of UI timing.
+
+56 focused checks and six-category browser slider/independent-edit checks pass;
+lint/types/build pass. No long/full-session tests. Keep shortened publish with
+-SkipFullTestSuite -SkipPlaytest. The separate unfinished team-principal patch
+remains outside this batch.

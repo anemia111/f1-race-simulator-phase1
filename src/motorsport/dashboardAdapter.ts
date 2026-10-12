@@ -9,6 +9,7 @@ import type { RaceConfig, RaceSnapshot, TrackDefinition } from '../types'
 import { coursePosition } from './coursePhysics'
 import { motorsportStandings } from './race'
 import { timingDurations } from './sectorTiming'
+import {motorsportTimingGap} from './timingGap'
 import { bestSectorTime, classifySectorTime } from '../domain/sectorTiming'
 import type { MotorsportRaceConfig, MotorsportRaceState } from './types'
 
@@ -62,12 +63,8 @@ export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRa
     const classCars = standings.filter(row => row.entry.classId === entry.classId)
     const classIndex = classCars.findIndex(row => row.entry.id === entry.id)
     const classLeader = classCars[0].car
-    const interval = (ahead: typeof car) => {
-      if (config.sessionKind === 'practice' || config.sessionKind === 'qualifying') return car.bestLapSeconds === null || ahead.bestLapSeconds === null ? '—' : `+${Math.max(0,car.bestLapSeconds-ahead.bestLapSeconds).toFixed(3)}`
-      if (car.finishTime !== null && ahead.finishTime !== null) return `+${Math.max(0,car.finishTime+car.penaltySeconds-ahead.finishTime-ahead.penaltySeconds).toFixed(1)}`
-      const lapGap = Math.floor(Math.max(0,ahead.distanceM-car.distanceM)/config.course.lengthM)
-      return lapGap > 0 ? `+${lapGap}L` : `+${(Math.max(0,ahead.distanceM-car.distanceM)/Math.max(1,car.speedMps)).toFixed(1)}`
-    }
+    const gap=motorsportTimingGap(classLeader,car,config)
+    const interval=classIndex===0?{seconds:0,label:'0.0s'}:motorsportTimingGap(classCars[classIndex-1].car,car,config)
     const distance = car.distanceM + (state.phase === 'formation' ? state.formationSeconds * 80 / 3.6 : 0)
     const pitLength = config.course.pitLengthM.value
     const pitTransition = Math.min(30, pitLength * 0.1)
@@ -83,8 +80,9 @@ export function dashboardFrame(config: MotorsportRaceConfig, state: MotorsportRa
       courseMotion: { rate: state.flag === 'red' || state.phase === 'finished' ? 0 : motionRate, pitBlend },
       lastLapTimeSeconds: car.lastLapSeconds, bestLapTimeSeconds: car.bestLapSeconds, telemetryHistory: car.telemetryHistory,
       currentLapSectorTimes: timing.get(entry.id)!.current.sectors, currentLapMiniSectorTimes: timing.get(entry.id)!.current.minis, lapHistory: [],
-      gapToLeaderLabel: classIndex === 0 ? 'LEADER' : interval(classLeader),
-      gapToAheadLabel: classIndex === 0 ? 'LEADER' : interval(classCars[classIndex-1].car),
+      gapToLeader:gap.seconds??0,gapToAhead:interval.seconds??0,
+      gapToLeaderLabel: gap.label,
+      gapToAheadLabel: interval.label,
       status: car.status.startsWith('pit-') ? 'pit' as const : car.status === 'finished' ? 'finished' as const : car.status === 'retired' ? 'retired' as const : 'running' as const,
       speedKph: car.speedMps * 3.6, gear: car.gear, fuelLoadKg: car.fuelKg, racePaceMode: car.paceMode ?? 'standard',
       pitStops: car.pits, pitPhase: 'none' as const, penaltySeconds: car.penaltySeconds,

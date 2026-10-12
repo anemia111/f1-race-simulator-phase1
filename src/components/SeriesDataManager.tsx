@@ -1,4 +1,5 @@
 import {DriverRatingEvidence} from './DriverRatingEvidence'
+import {DriverSkillEditor} from './DriverSkillEditor'
 import {
   Database,
   Download,
@@ -1132,6 +1133,7 @@ export function SeriesDataManager({
                           )
                         })}
                       </div>
+                      <DriverSkillEditor driver={selectedDriver} category={series.id} onChange={(stat,value)=>updateDriver({skills:{...selectedDriver.skills,[stat]:clampPersonAbility(selectedDriver.id,value)}},`${selectedDriver.code} ${stat} updated`)}/>
                     </>
                   ) : (
                     <>

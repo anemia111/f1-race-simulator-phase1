@@ -1,5 +1,15 @@
 import { expansionCourseTiming } from '../data/expansionTiming'
 import type { MotorsportCar, MotorsportCourse, MotorsportSectorTiming } from './types'
+import type {MeasuredMiniSectorTimeline} from '../domain/measuredTimingGap'
+
+export function motorsportMeasuredTimeline(car:MotorsportCar):MeasuredMiniSectorTimeline|null {
+  const timing=car.timing
+  if(!timing||timing.startedAt===null)return null
+  const previous=timing.lastLap
+  return {currentLap:timing.lap,currentLapStartedAtSeconds:timing.startedAt,
+    currentMiniSectorTimes:timingDurations(timing.crossings,timing.bestSectors.length).minis,
+    lapHistory:previous?[{lap:previous.lap,lapTimeSeconds:previous.miniSectors.reduce((sum,n)=>sum+n,0),miniSectors:previous.miniSectors,sectors:previous.sectors}]:[]}
+}
 
 const cache = new WeakMap<MotorsportCourse, number[]>()
 const boundaryCache = new WeakMap<MotorsportCourse, number[]>()

@@ -2,6 +2,8 @@ export type ChampionshipId = 'kyojo' | 'super-gt' | 'wec' | 'indycar'
 export type MotorsportClass = 'kyojo' | 'gt500' | 'gt300' | 'hypercar' | 'lmgt3' | 'lmp2' | 'indycar'
 export type EvidenceValue = { value: number; basis: 'published' | 'manufacturer-reference' | 'simulation'; source: string }
 export type MotorsportDriver = {
+  /** Optional detailed edit; absent in old saves and unedited source profiles. */
+  skills?: import('../types').DriverSkillProfile
   setup?: import('../types').CarSetup
   id: string; name: string; overall: number | null
   racePace: number | null; consistency: number | null; tyreManagement: number | null

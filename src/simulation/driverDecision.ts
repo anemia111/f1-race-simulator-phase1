@@ -374,6 +374,13 @@ function activeWakeCue(cue: DriverWakeCue | undefined): boolean {
   return cue?.active === true && clamp01(finiteOr(cue.intensity, 0)) > 0
 }
 
+/** Line accuracy and traffic reading govern use of the same physical wake. */
+function towExecutionQuality(driver: Driver): number {
+  return abilityMean([[skill(driver,'trafficManagement'),0.35],
+    [skill(driver,'racecraft'),0.25],[skill(driver,'raceAwareness'),0.2],
+    [skill(driver,'precision'),0.2]]) / DRIVER_ABILITY_INTERNAL_MAX
+}
+
 function controlledFlag(
   flagState: DriverDecisionContext['flagState'],
 ): flagState is Exclude<FlagState, 'clear'> | 'double-yellow' {
@@ -398,6 +405,13 @@ function chooseBattleIntent(
   }
 
   if (attack && !defend) {
+    const tow = context.tow
+    const pullOutGap = 1.05 - 0.45 * towExecutionQuality(context.driver)
+    if (activeWakeCue(tow) && tow!.opponentId === context.attack!.opponentId &&
+      Number.isFinite(tow!.gapSeconds) && tow!.gapSeconds! > pullOutGap &&
+      Math.abs(context.currentLateralOffsetM - tow!.opponentLateralOffsetM) < 0.9) {
+      return {intent:'tow-alignment',role:'tow',opponentId:tow!.opponentId}
+    }
     return {
       intent: 'attack',
       role: 'attack',
@@ -703,7 +717,7 @@ function nominalLineFor(
         usableHalfWidthM,
       )
       const intensity = clamp01(finiteOr(context.tow?.intensity, 0))
-      const alignment = clamp(0.55 + intensity * 0.35, 0.55, 0.9)
+      const alignment = clamp(0.42 + towExecutionQuality(context.driver) * 0.38 + intensity * 0.18, 0.42, 0.98)
 
       return opponent * alignment + reference * (1 - alignment)
     }

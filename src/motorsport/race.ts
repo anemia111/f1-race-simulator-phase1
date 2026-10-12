@@ -5,7 +5,7 @@ import {makeEngineeringPlan,settleEngineeringPlan,strategyScenarios} from '../do
 import { decideTeamInstruction, applyTeamInstruction, delayTeammatePit } from '../simulation/teamDecision'
 import { behaviorDriverFor } from './driverBehavior'
 import { advancePedals } from '../simulation/pedalControl'
-import { driverTyreEnvelopeUtilisation } from '../simulation/driverAbility'
+import { driverTyreEnvelopeUtilisation,DRIVER_ABILITY_STATS,driverAbilityCeiling } from '../simulation/driverAbility'
 import { selectGear } from '../simulation/drivetrain'
 import { handlingSlip, replaceHandlingTyres } from '../simulation/vehicleHandling'
 import { airDensityKgM3 } from '../simulation/roadEnvironment'
@@ -54,6 +54,7 @@ export function validateMotorsportConfig(config: MotorsportRaceConfig) {
     if (typeof entry.id !== 'string' || !entry.id || typeof entry.number !== 'string' || typeof entry.team !== 'string' || typeof entry.machine.name !== 'string' || !['kyojo', 'gt500', 'gt300', 'hypercar', 'lmgt3', 'lmp2', 'indycar'].includes(entry.classId) || entry.machine.classId !== entry.classId) throw new Error('Invalid car identity')
     if (!entry.drivers.length || new Set(entry.drivers.map(driver => driver.id)).size !== entry.drivers.length) throw new Error(`Invalid crew for ${entry.id}`)
     for (const driver of entry.drivers) {
+      if(driver.skills&&(Object.keys(driver.skills).length!==DRIVER_ABILITY_STATS.length||DRIVER_ABILITY_STATS.some(stat=>!Number.isFinite(driver.skills![stat])||driver.skills![stat]<0||driver.skills![stat]>driverAbilityCeiling(driver.id)/100)))throw new Error('Invalid detailed driver skills')
       if (driver.qualifyingPace !== undefined && driver.qualifyingPace !== null && (!Number.isFinite(driver.qualifyingPace) || driver.qualifyingPace < 0 || driver.qualifyingPace > 1.2)) throw new Error('Invalid qualifying skill')
       if (typeof driver.id !== 'string' || typeof driver.name !== 'string' || (driver.overall !== null && (!Number.isFinite(driver.overall) || driver.overall < 0 || driver.overall > 120))) throw new Error('Invalid driver')
       for (const rating of [driver.racePace, driver.consistency, driver.tyreManagement]) if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 1.2)) throw new Error('Invalid driver skill')
@@ -396,9 +397,10 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.driverSeconds[car.driverIndex] += dt; car.stintSeconds += dt
       if (car.activeDrivingStart === null) car.activeDrivingStart = previous.raceSeconds
       car.activeDrivingEnd = state.raceSeconds
-      const paceSkill = config.sessionKind === 'qualifying' ? driver.qualifyingPace ?? driver.racePace ?? 0.75 : driver.racePace ?? 0.75
-      const tyreSkill = driver.tyreManagement ?? 0.75
-      const surfaceGrip = tyreGripScale(car, config.weather, entry.classId, config.course.kind === 'short-oval' || config.course.kind === 'speedway') * clamp(1 - environment.water * 0.025, 0.55, 1) * driverTyreEnvelopeUtilisation(paceSkill)
+      const paceSkill = config.sessionKind === 'qualifying' ? driver.skills?.qualifyingPace ?? driver.qualifyingPace ?? driver.racePace ?? 0.75 : driver.skills?.racePace ?? driver.racePace ?? 0.75
+      const tyreSkill = driver.skills?.tireManagement ?? driver.tyreManagement ?? 0.75
+      const difficulty = driverMachineDifficulty(behaviorDriverFor(driver),entry.classId)
+      const surfaceGrip = tyreGripScale(car, config.weather, entry.classId, config.course.kind === 'short-oval' || config.course.kind === 'speedway') * clamp(1 - environment.water * 0.025, 0.55, 1) * driverTyreEnvelopeUtilisation(paceSkill) * difficulty.gripUtilisation
       const mass = machine.massKg.value + machine.driverMassKg.value + car.fuelKg
       const ahead = nearestAhead.get(car.entryId), behind=nearestBehind.get(car.entryId)
       const station = { ...stationAt(config.course,car.distanceM), airDensityKgM3: environment.density }
@@ -454,7 +456,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         dirtyAir:ahead?{active:ahead.gap/Math.max(5,car.speedMps)<2.5 && station.radiusM<500,
           opponentId:ahead.car.entryId,opponentLateralOffsetM:ahead.car.lateralM,intensity:0.5}:undefined,
         tow:ahead?{active:ahead.gap/Math.max(5,car.speedMps)<1.8 && station.radiusM>500,
-          opponentId:ahead.car.entryId,opponentLateralOffsetM:ahead.car.lateralM,intensity:0.5}:undefined,
+          opponentId:ahead.car.entryId,opponentLateralOffsetM:ahead.car.lateralM,gapSeconds:ahead.gap/Math.max(5,car.speedMps),intensity:0.5}:undefined,
         yield:car.blueFlag?{active:true,preferredSide:1 as const,approachingLateralOffsetM:-2.2,requiredSeparationM:2.25}:undefined,
       }
       if (config.sessionKind!=='practice' && config.sessionKind!=='qualifying') context=applyTeamInstruction(context,instruction,
@@ -510,8 +512,9 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       // Reference-speed hardware sizing is SIM pending supplier brake maps.
       const brakeCapacity = machine.tyreMu.value * ((machine.massKg.value + machine.driverMassKg.value) * 9.80665 + 0.5 * station.airDensityKgM3 * machine.liftAreaM2.value * 85 ** 2)
       const pedal = advancePedals({
+        pickupRateScale:difficulty.pedalRateScale,
         style:signature,
-        feedback: { lateralUse: clamp(tyreForces.lateral / Math.max(1, tyreForces.available), 0, 1), driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake, skill: paceSkill },
+        feedback: { lateralUse: clamp(tyreForces.lateral / Math.max(1, tyreForces.available), 0, 1), driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake, skill: decision.traits.throttlePrecision,brakeSkill:decision.traits.brakingPrecision },
         throttle: Math.max(0, Math.min(desiredForce, tyreForces.longitudinal * drivenShare * 0.95)) / Math.max(1, wheelPowerForce) * 100 * decision.throttleOpeningScale,
         brake: Math.max(0, -desiredForce) / Math.max(1, brakeCapacity) * 100 * decision.brakePressureScale,
         previousThrottle: car.throttlePercent ?? 0, previousBrake: car.brakePercent ?? 0,
@@ -703,3 +706,4 @@ export function motorsportStandings(state: MotorsportRaceState, config: Motorspo
       return { car, entry, overallPosition: index + 1, classPosition: position }
     })
 }
+import {driverMachineDifficulty} from '../simulation/driverMachineDifficulty'

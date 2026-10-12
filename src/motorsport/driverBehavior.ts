@@ -16,7 +16,7 @@ export function behaviorDriverFor(person: MotorsportDriver): Driver {
     qualifyingPace:person.qualifyingPace??person.racePace??0.75,racePace:person.racePace??0.75,
     raceStart:0.75,technicalFeedback:0.75,tyreManagement:person.tyreManagement??0.75,wetSkill:0.75}
   const driver: Driver={id:person.id,name:person.name,code:pool?.code??person.name.slice(0,3),
-    teamId:'behavior-only',carNumber:0,startOffset:0,tire:'M',skills:expandedDriverSkills(pool?.ratings??fallback),
+    teamId:'behavior-only',carNumber:0,startOffset:0,tire:'M',skills:person.skills??expandedDriverSkills(pool?.ratings??fallback),
     style:{brakingAggression:0.5,cornerShapePreference:0,frontEndPreference:0,
       oversteerTolerance:0.5,rearStabilityNeed:0,understeerTolerance:0.5}}
   cache.set(person,driver)

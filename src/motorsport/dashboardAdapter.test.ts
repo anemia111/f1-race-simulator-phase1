@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { dashboardCourse, dashboardFrame } from './dashboardAdapter'
 import { createMotorsportConfig } from './packages'
 import { createMotorsportRace } from './race'
+import {initialSectorTiming} from './sectorTiming'
 
 describe('existing dashboard category presentation', () => {
   it.each(['kyojo','super-gt','wec','indycar'] as const)('%s presents the actual physical lane and continuous pit position',category=>{
@@ -37,18 +38,21 @@ describe('existing dashboard category presentation', () => {
     leader.distanceM = 1000; leader.speedMps = 50
     const next = state.cars.find(car => car.entryId === gt300[1].id)!
     next.distanceM = 900; next.speedMps = 50; next.fuelKg = 23.5
+    leader.timing={...initialSectorTiming(config.course),startedAt:0}
+    next.timing={...initialSectorTiming(config.course),startedAt:2}
+    leader.timing.crossings[0]=4;next.timing.crossings[0]=4
     const frame = dashboardFrame(config,state,dashboardCourse(config))
     const row = frame.timingRows.find(row => row.car.driverId === next.entryId)!
     expect(row.categoryDisplay?.classPosition).toBe(2)
-    expect(row.displayGapToLeaderLabel).toBe('+2.0')
-    expect(row.displayIntervalLabel).toBe('+2.0')
+    expect(row.displayGapToLeaderLabel).toBe('+2.0s')
+    expect(row.displayIntervalLabel).toBe('+2.0s')
     expect(row.car.fuelLoadKg).toBe(23.5)
     expect(frame.timingRows.find(row => row.car.driverId === leader.entryId)!.displayGapToLeaderLabel).toBe('LEADER')
     expect(row.sectors).toEqual([null,null,null])
     expect(frame.snapshot.cars).toHaveLength(43)
     leader.finishTime = 100; next.finishTime = 110; next.penaltySeconds = 5
     const finished = dashboardFrame(config,state,dashboardCourse(config))
-    expect(finished.timingRows.find(row => row.car.driverId === next.entryId)!.displayGapToLeaderLabel).toBe('+15.0')
+    expect(finished.timingRows.find(row => row.car.driverId === next.entryId)!.displayGapToLeaderLabel).toBe('+15.0s')
   })
   it('maps Le Mans crews and all three classes without changing engine state', () => {
     const config = createMotorsportConfig('wec','wec:3')

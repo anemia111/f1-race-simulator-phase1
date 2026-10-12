@@ -90,7 +90,7 @@ export function migrateMotorsportDriverRating(driver:MotorsportDriver):Motorspor
     overall:d.performanceSource?.overall,racePace:d.skills.racePace,qualifyingPace:d.skills.qualifyingPace,
     consistency:d.skills.consistency,tyreManagement:d.skills.tireManagement,
   }))]
-  const factory=row&&previous.some(old=>driver.overall===old.overall && keys.every(key=>driver[key]!==undefined&&driver[key]!==null&&Math.abs(driver[key]!-old[key])<1e-9))
+  const factory=!driver.skills&&row&&previous.some(old=>driver.overall===old.overall && keys.every(key=>driver[key]!==undefined&&driver[key]!==null&&Math.abs(driver[key]!-old[key])<1e-9))
   if(factory)return {...driver,overall:row.overall,racePace:row.ratings.racePace,consistency:row.ratings.consistency,
     tyreManagement:row.ratings.tyreManagement,qualifyingPace:row.ratings.qualifyingPace,ratingSource:'src/data/driverRatingsReview2026.json'}
   return {...driver,overall:driver.overall===null?null:Math.min(driverAbilityCeiling(driver.id),driver.overall),

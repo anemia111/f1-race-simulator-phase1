@@ -162,6 +162,15 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
     if (worker.current) worker.current.postMessage({ type: 'pit', generation: generation.current, request } satisfies MotorsportWorkerCommand)
     else { try { setState(current => requestMotorsportPit(current, request, config)) } catch (error) { setMessage(String(error)) } }
   }
+  const updateDriverSkill=(stat:DriverTunableStat,value:number)=>{
+    if(!paused)return
+    const person=selected.entry.drivers[selected.car.driverIndex]
+    const behavior=behaviorDriverFor(person),skills={...behavior.skills,[stat]:clampPersonAbility(person.id,value)}
+    const next={...config,entries:config.entries.map(entry=>({...entry,drivers:entry.drivers.map(driver=>driver.id!==person.id?driver:{...driver,skills,overall:driverOverallAbilityPoints({...behavior,skills}),racePace:skills.racePace,qualifyingPace:skills.qualifyingPace,consistency:skills.consistency,tyreManagement:skills.tireManagement,ratingSource:'User detailed SIM edit'})}))}
+    generation.current++;busy.current=false;latest.current={...latest.current,config:next}
+    worker.current?.postMessage({type:'init',generation:generation.current,config:next,state:latest.current.state} satisfies MotorsportWorkerCommand)
+    setConfig(next)
+  }
   const exportSave = () => {
     const url = URL.createObjectURL(new Blob([serializeMotorsportSave(config, state)], { type: 'application/json' }))
     const link = document.createElement('a'); link.href = url; link.download = `${config.championship}-${config.eventId.replaceAll(':', '-')}-race.json`; link.click(); URL.revokeObjectURL(url)
@@ -219,7 +228,11 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
       <label className="field-block"><span>Race distance</span><input aria-label="Motorsport race distance" type="number" min="1" max={config.format.kind === 'laps' ? 1000 : 24} step={config.format.kind === 'laps' ? 1 : 0.5} disabled={!paused} value={config.format.kind === 'laps' ? config.format.laps : config.format.seconds / 3600} onChange={event => { const value = Number(event.target.value); if (value > 0 && value <= (config.format.kind === 'laps' ? 1000 : 24)) reset({ ...config, format: config.format.kind === 'laps' ? { kind: 'laps', laps: Math.round(value), basis: 'User SIM distance' } : { kind: 'time', seconds: value * 3600, basis: 'User SIM duration' } }) }} />
       </label><label className="field-block"><span>Weather</span><select aria-label="Motorsport weather" value={config.weather} disabled={!paused} onChange={event => reset({ ...config, weather: event.target.value as 'dry' | 'wet' })}><option value="dry">ドライ</option><option value="wet">ウェット</option></select></label>
       <label className="field-block"><span>Race control</span><select aria-label="Motorsport race director flag" value={state.flag} onChange={event => flag(event.target.value as MotorsportRaceState['flag'])}>{['green', 'yellow', 'fcy', 'sc', 'red'].map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select>
-      </label><div className="preset-row"><button onClick={exportSave}>JSON保存</button>
+      </label>
+      <label className="field-block"><span>Driver tune</span><select aria-label="能力を調整するドライバー" value={selected.entry.id} onChange={event=>focusDriver(event.target.value)}>{config.entries.map(entry=><option key={entry.id} value={entry.id}>#{entry.number} {entry.drivers[state.cars.find(car=>car.entryId===entry.id)?.driverIndex??0].name}</option>)}</select></label>
+      <DriverSkillEditor driver={behaviorDriverFor(selected.entry.drivers[selected.car.driverIndex])} category={selected.entry.classId} onChange={paused?updateDriverSkill:undefined}/>
+      <small>能力の個別調整は一時停止中に行えます。</small>
+      <div className="preset-row"><button onClick={exportSave}>JSON保存</button>
       <label className="motorsport-import">保存を読込<input aria-label="Import motorsport race" type="file" accept=".json" onChange={async event => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 4_000_000) { setMessage('保存ファイルが大きすぎます。'); event.target.value = ''; return } const save = parseMotorsportSave(await file.text()); if (!save) { setMessage('保存データの形式・整合性を確認できません。'); return } generation.current++; busy.current = false; debt.current = 0; worker.current?.postMessage({ type: 'init', generation: generation.current, config: save.config, state: save.state } satisfies MotorsportWorkerCommand); latest.current = { ...latest.current, ...save, paused: true }; setPaused(true); setConfig(save.config); setState(save.state); setSelectedId(save.config.entries[0].id); setClassFilter('all'); setMessage(''); event.target.value = '' }} /></label>
       </div><strong className={`motorsport-phase flag-${state.flag}`}>{state.phase === 'formation' ? `FORMATION ${clock(state.formationSeconds)}` : state.phase === 'finished' ? 'FINISHED' : state.leaderFinished ? 'CHEQUERED' : state.flag.toUpperCase()} · {clock(state.raceSeconds)}</strong>
     </section>
@@ -229,3 +242,7 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
     </section>}
   </div>
 }
+import {DriverSkillEditor} from '../components/DriverSkillEditor'
+import {behaviorDriverFor} from './driverBehavior'
+import {clampPersonAbility,driverOverallAbilityPoints} from '../simulation/driverAbility'
+import type {DriverTunableStat} from '../types'

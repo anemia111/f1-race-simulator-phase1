@@ -431,8 +431,9 @@ export function calculateCarTelemetry(options: {
   )
   // Skill controls how much of the physical tyre envelope the driver can use;
   // it never raises the tyre above its modelled maximum.
+  const difficulty = driverMachineDifficulty(driver,categoryPhysics.id)
   const utilisedGrip =
-    localGrip * driverTyreEnvelopeUtilisation(behaviorTraits.tyreLimitUtilisation)
+    localGrip * driverTyreEnvelopeUtilisation(behaviorTraits.tyreLimitUtilisation) * difficulty.gripUtilisation
   // This exact ceiling is also passed to the Energy Store. It prevents a
   // cold/hot brake from crediting recovery against a nominal 5.1 g stop that
   // the live vehicle solver will subsequently reject.
@@ -630,11 +631,12 @@ export function calculateCarTelemetry(options: {
     ),
   )
   const pedals = advancePedals({
+    pickupRateScale:difficulty.pedalRateScale,
     style: signaturePedalControl(signature,Number.isFinite(corneringSpeedLimitKph)?clamp((car.speedKph/Math.max(1,corneringSpeedLimitKph))**2,0,1):0,
       car.runtimeSystems.kind==='f1'?1-car.runtimeSystems.tires.tireWearPercent/100:car.runtimeSystems.liveTires.simulatedPerformance?.life??1),
     feedback: { lateralUse: Number.isFinite(corneringSpeedLimitKph) ? clamp((car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 2, 0, 1) : 0,
       driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake,
-      skill: behaviorTraits.tyreLimitUtilisation },
+      skill: behaviorTraits.throttlePrecision,brakeSkill:behaviorTraits.brakingPrecision },
     throttle: timedTrafficYield ? Math.min(38, behaviorManagedThrottlePercent) : behaviorManagedThrottlePercent,
     brake: requestedBrakePercent,
     previousThrottle: car.throttlePercent,
@@ -1143,3 +1145,4 @@ export function calculateCarTelemetry(options: {
     clutchEngagementFraction: longitudinalStep.clutchEngagementFraction,
   }
 }
+import {driverMachineDifficulty} from './driverMachineDifficulty'

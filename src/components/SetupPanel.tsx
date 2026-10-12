@@ -1,4 +1,5 @@
 import {DriverRatingEvidence} from './DriverRatingEvidence'
+import {DriverSkillEditor} from './DriverSkillEditor'
 import { SetupPanelHeader } from './SessionChrome'
 import { Dices, RotateCcw, Wrench } from 'lucide-react'
 import type {
@@ -792,6 +793,7 @@ export function SetupPanel({
           </small>
         </div>
         <DriverRatingEvidence driver={selectedDriver}/>
+        <DriverSkillEditor driver={selectedDriver} category={weekendContext.seriesId} onChange={(stat,value)=>onDriverStatChange(selectedDriver.id,stat,value)}/>
         <div className="driver-ability-grid">
           {DRIVER_ABILITY_GROUPS.map((group) => (
             <SliderRow
