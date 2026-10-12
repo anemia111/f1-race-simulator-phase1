@@ -1,15 +1,17 @@
 import imported from './importedDriverRatings2026.json'
 import review from './driverRatingsReview2026.json'
+import previousReview from './driverRatingsReviewPrevious20261013.json'
 import {expandedDriverSkills, type CompactDriverRatings} from './driverProfiles'
 import type {Driver} from '../types'
 import type {DriverPoolRecord} from '../series/driverPool'
 import type {MotorsportDriver} from '../motorsport/types'
 import {clampPersonAbility,driverAbilityCeiling} from '../simulation/driverAbility'
 
-export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.1'
+export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.2'
 export const driverRatingReview = review
 const authored = new Map(imported.drivers.map(row => [row.id, row]))
 const revised = new Map(review.drivers.map(row => [row.id, row]))
+const previousReviewed = new Map(previousReview.drivers.map(row => [row.id, row]))
 const previousNative = new Map<string, Driver[]>()
 const columns: Record<keyof CompactDriverRatings, string> = {qualifyingPace:'Qualifying pace',racePace:'Race pace',consistency:'Consistency',tyreManagement:'Tyre management',wetSkill:'Wet skill',raceStart:'Race start',overtaking:'Overtaking',defending:'Defending',technicalFeedback:'Technical feedback',adaptability:'Adaptability',experience:'Experience',errorControl:'Error control'}
 function performanceSource(row: NonNullable<ReturnType<typeof reviewedRating>>) {
@@ -52,8 +54,9 @@ export function migrateFactoryDriverRating(driver: Driver): Driver {
     Math.abs(driver.skills[key as keyof typeof skills] - skills[key as keyof typeof skills]) < 1e-9)
   const old = previousNative.get(driver.id)
   const source = authored.get(driver.id)
-  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings)))) return driver
-  const defaultPotential=old?.some(d=>d.potential===driver.potential) || driver.potential===(source?.potential??source?.overall??NaN)/100
+  const prior = previousReviewed.get(driver.id)
+  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings))) && !(prior && same(expandedDriverSkills(prior.ratings)))) return driver
+  const defaultPotential=old?.some(d=>d.potential===driver.potential) || driver.potential===(source?.potential??source?.overall??NaN)/100 || driver.potential===(prior?.potential??NaN)/100
   return {...driver, skills: expandedDriverSkills(row.ratings), potential: defaultPotential?(row.potential ?? row.overall) / 100:driver.potential,
     performanceSource: performanceSource(row)}
 }
@@ -69,8 +72,9 @@ export const reviewedDriverPreviousOverall = (id: string) => authored.get(id)?.o
 export function migrateMotorsportDriverRating(driver:MotorsportDriver):MotorsportDriver {
   const row=reviewedRating(driver.id)
   const source=authored.get(driver.id)
+  const prior=previousReviewed.get(driver.id)
   const keys=['racePace','consistency','tyreManagement','qualifyingPace'] as const
-  const previous=[...(source?[{overall:source.overall,...source.ratings}]:[]),...(previousNative.get(driver.id)??[]).map(d=>({
+  const previous=[...(source?[{overall:source.overall,...source.ratings}]:[]),...(prior?[{overall:prior.overall,...prior.ratings}]:[]),...(previousNative.get(driver.id)??[]).map(d=>({
     overall:d.performanceSource?.overall,racePace:d.skills.racePace,qualifyingPace:d.skills.qualifyingPace,
     consistency:d.skills.consistency,tyreManagement:d.skills.tireManagement,
   }))]

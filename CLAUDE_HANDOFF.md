@@ -1,5 +1,12 @@
 # Formula Race Simulator Handoff
 
+## Latest: KYOJO evidence correction and Juju67 (2026-10-13)
+
+- User challenged unsupported KYOJO ordering and requested correction; Juju now67 explicitly. Prior64 and older KYOJO ordering are superseded.
+- Confirmed official2026 standings through Rd3 and2025 final standings; reported Rd4 qualifying/Sprint/Final provide recent context. FSW apparent Rd4 PDF points to Rd2 sheet; excluded as mismatched evidence.
+- Tomishita/Saito/Shimono70; Onaga/Ciconte69; Sato67; Miura66; Sasaki65; Matsui64; Raddatz/Kanemoto63; Burton/Shiraishi62; Hirakawa61. Other KYOJO priors remain, no unsupported large downgrade. Absolute scale and inherited axis splits remain editorial priors, not measured skill.
+- Revision2026-10-13.2 includes21 v1 default snapshots for safe save migration across seats; preserve manual axes/potential/setup.106 focused tests across nine suites pass. No long tests. See docs/DRIVER_RATING_REVIEW.md for limits and evidence.
+
 ## Latest: Shared absolute driver ratings (2026-10-13)
 
 - User prioritized ratings over the pending team-principal upgrade. All six categories share one absolute person scale; ordinary maximum100, yuki_nakayama alone120.

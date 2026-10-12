@@ -14,6 +14,18 @@ try {
    await page.getByRole('button',{name:'Engineer',exact:true}).click();
    await page.locator('.driver-rating-evidence').waitFor();
    assert.match(await page.locator('.driver-rating-evidence').innerText(),/全カテゴリー共通/);
+   if(id==='motorsport:kyojo'){
+    const select=page.locator('.engineer-heading select');
+    const options=await select.locator('option').evaluateAll(items=>items.map(o=>({value:o.value,label:o.textContent})));
+    for(const [name,rating] of [['Riona Tomishita',70],['Joanne Ciconte',69],['Kokoro Sato',67]]){
+     const option=options.find(o=>o.label.includes(name));
+     assert.ok(option,`KYOJO entry ${name}`);
+     await select.selectOption(option.value);
+     assert.ok((await page.locator('.driver-rating-evidence').innerText()).includes(`${rating} / 100`));
+    }
+    await page.locator('.driver-rating-evidence').scrollIntoViewIfNeeded();
+    await page.screenshot({path:'../../outputs/driver-rating-kyojo.png'});
+   }
    console.log(id+': rating visible in Engineer');
    await page.getByRole('button',{name:'Close race engineer',exact:true}).click();
    continue;
@@ -33,7 +45,7 @@ try {
   }
   if(id==='super-formula'){
    await select.selectOption('juju_noda');
-   assert.match(await panel.locator('.driver-rating-evidence').innerText(),/64 \/ 100/);
+   assert.match(await panel.locator('.driver-rating-evidence').innerText(),/67 \/ 100/);
    await panel.locator('.driver-rating-evidence').scrollIntoViewIfNeeded();
    await page.screenshot({path:'../../outputs/driver-rating-sf.png'});
   }

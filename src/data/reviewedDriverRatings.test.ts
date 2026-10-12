@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import {describe,it,expect} from 'vitest'
+import previousReview from './driverRatingsReviewPrevious20261013.json'
 import {writeFileSync} from 'node:fs'
 import {driverPool2026,seriesPackages,seatedDriverFrom} from '../series/seriesRegistry'
 import {driverRatingReview,reviewedRating,migrateFactoryDriverRating,legacyCompactRating} from './reviewedDriverRatings'
@@ -39,10 +40,10 @@ describe('shared current-strength driver review',()=>{
       expect(behaviorDriverFor(person).skills).toEqual(expandedDriverSkills(row.ratings))
     }
   })
-  it('anchors SF near 85 and Juju in the KYOJO midfield, without changing ability on transfer',()=>{
+  it('anchors SF near 85 and Juju at the user-requested67, without changing ability on transfer',()=>{
     expect(reviewedRating('kakunoshin_ohta')?.overall).toBe(87)
     expect(reviewedRating('tomoki_nojiri')?.overall).toBe(85)
-    expect(reviewedRating('juju_noda')?.overall).toBe(64)
+    expect(reviewedRating('juju_noda')?.overall).toBe(67)
     expect(reviewedRating('expansion_rio_shimono')?.overall).toBe(70)
     const kyojo=driverRatingReview.drivers.filter(d=>d.seriesIds.some(s=>s.includes('kyojo')))
     expect(kyojo.every(d=>d.overall<=70)).toBe(true)
@@ -72,6 +73,44 @@ describe('shared current-strength driver review',()=>{
     expect(driverAbilityValue({...driver,skills:{...driver.skills,racePace:1.2}},'racePace')).toBe(1)
     expect(clampPersonAbility(driver.id,1.2)).toBe(1)
     expect(clampPersonAbility('yuki_nakayama',1.2)).toBe(1.2)
+  })
+  it('reflects current KYOJO title contenders and repeated race results',()=>{
+    const expected={riona_tomishita:70,aimi_saito:70,joanne_ciconte:69,kokoro_sato:67,rami_sasaki:65,sara_matsui:64,paige_raddatz:63,itsumo_shiraishi:62}
+    for(const [id,overall] of Object.entries(expected)){
+      const row=driverRatingReview.drivers.find(r=>r.id===`expansion_${id}`)!
+      expect(row.overall).toBe(overall)
+      expect(row.sources).toContain('https://toyotagazooracing.com/jp/kyojocup/ranking/2026/')
+    }
+    for(const p of driverPool2026){
+      if(!reviewedRating(p.id))continue
+      expect(driverOverallAbilityPoints(seatedDriverFrom(p,{seriesId:'f1-custom',teamId:'audit',carNumber:1}))).toBe(p.overall)
+    }
+  })
+  it('updates published v1 default profiles in any native seat without overwriting manual skill or potential',()=>{
+    for(const prior of previousReview.drivers){
+      const pool=driverPool2026.find(p=>p.id===prior.id)!
+      const current=seatedDriverFrom(pool,{seriesId:'f1-custom',teamId:'audit',carNumber:1})
+      const old={...current,skills:expandedDriverSkills(prior.ratings),potential:prior.potential/100}
+      expect(migrateFactoryDriverRating(old).skills).toEqual(current.skills)
+      expect(parsePersistedDriverRatings(JSON.stringify(serializeDriverRatings([old])),[current])[0].skills).toEqual(current.skills)
+      const custom={...old,skills:{...old.skills,qualifyingPace:0.51}}
+      expect(migrateFactoryDriverRating(custom).skills).toEqual(custom.skills)
+      expect(migrateFactoryDriverRating({...old,potential:0.99}).potential).toBe(0.99)
+    }
+  })
+  it('upgrades published v1 extra-category saves and preserves a manually changed driving axis',()=>{
+    const config=createMotorsportConfig('kyojo')
+    for(const entry of config.entries)for(let i=0;i<entry.drivers.length;i++){
+      const person=entry.drivers[i],prior=previousReview.drivers.find(p=>p.id===person.id)!
+      entry.drivers[i]={...person,overall:prior.overall,racePace:prior.ratings.racePace,qualifyingPace:prior.ratings.qualifyingPace,consistency:prior.ratings.consistency,tyreManagement:prior.ratings.tyreManagement}
+    }
+    const state=createMotorsportRace(config),saved=parseMotorsportSave(serializeMotorsportSave(config,state))!
+    for(const entry of saved.config.entries)for(const person of entry.drivers){
+      expect(person.overall).toBe(reviewedRating(person.id)!.overall)
+      expect(person.racePace).toBe(reviewedRating(person.id)!.ratings.racePace)
+    }
+    config.entries[0].drivers[0].qualifyingPace=0.51
+    expect(parseMotorsportSave(serializeMotorsportSave(config,state))!.config.entries[0].drivers[0].qualifyingPace).toBe(0.51)
   })
   it('exports a complete inspectable audit with inherited evidence separated',()=>{
     const lines=['# Driver rating review · 2026-10-13','', 'All values are SIM editorial priors. Same identity uses the same ability in every category. Official results do not measure isolated driver skill. Retained rows are not individually revalidated.','', '| Driver | Common OVR | Runtime group mean | Status | Categories |','|---|---:|---:|---|---|']

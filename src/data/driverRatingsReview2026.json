@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewedOn": "2026-10-13",
-  "method": "shared-absolute-editorial-scale-v1",
+  "method": "shared-absolute-editorial-scale-v2-kyojo-results",
   "policy": "Same person, same current ability in every category. Ordinary maximum 100; user-defined yuki_nakayama maximum 120. Category bands are calibration priors, never runtime penalties. Exact scores and inherited axis splits are SIM judgements, not official ratings. The weighted 12-group execution mean is aligned to OVR; inherited relative axis differences remain editorial priors.",
   "drivers": [
     {
@@ -7461,31 +7461,35 @@
     {
       "id": "expansion_aimi_saito",
       "name": "Aimi Saito",
-      "overall": 68,
-      "potential": 68,
+      "overall": 70,
+      "potential": 70,
       "ratings": {
-        "adaptability": 0.693375,
-        "consistency": 0.673375,
-        "defending": 0.683375,
-        "errorControl": 0.673375,
-        "experience": 0.603375,
-        "overtaking": 0.693375,
-        "qualifyingPace": 0.703375,
-        "racePace": 0.693375,
-        "raceStart": 0.693375,
-        "technicalFeedback": 0.663375,
-        "tyreManagement": 0.673375,
-        "wetSkill": 0.683375
+        "adaptability": 0.713375,
+        "consistency": 0.693375,
+        "defending": 0.703375,
+        "errorControl": 0.693375,
+        "experience": 0.623375,
+        "overtaking": 0.713375,
+        "qualifyingPace": 0.723375,
+        "racePace": 0.713375,
+        "raceStart": 0.713375,
+        "technicalFeedback": 0.683375,
+        "tyreManagement": 0.693375,
+        "wetSkill": 0.703375
       },
       "previousOverall": 77.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 Rd2 pole/Final win; second in official Rd3 standings. Retain recent title-fighting form despite a later retirement. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 68
     },
     {
       "id": "brando_badoer",
@@ -7751,31 +7755,35 @@
     {
       "id": "expansion_riona_tomishita",
       "name": "Riona Tomishita",
-      "overall": 67,
-      "potential": 67,
+      "overall": 70,
+      "potential": 70,
       "ratings": {
-        "adaptability": 0.683375,
-        "consistency": 0.663375,
-        "defending": 0.673375,
-        "errorControl": 0.663375,
-        "experience": 0.593375,
-        "overtaking": 0.683375,
-        "qualifyingPace": 0.693375,
-        "racePace": 0.683375,
-        "raceStart": 0.683375,
-        "technicalFeedback": 0.653375,
-        "tyreManagement": 0.663375,
-        "wetSkill": 0.673375
+        "adaptability": 0.713375,
+        "consistency": 0.693375,
+        "defending": 0.703375,
+        "errorControl": 0.693375,
+        "experience": 0.623375,
+        "overtaking": 0.713375,
+        "qualifyingPace": 0.723375,
+        "racePace": 0.713375,
+        "raceStart": 0.713375,
+        "technicalFeedback": 0.683375,
+        "tyreManagement": 0.693375,
+        "wetSkill": 0.703375
       },
       "previousOverall": 77.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 Rd1 pole and both wins; Rd3 pole/Sprint win and championship lead. Prior 67 underweighted current form. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 67
     },
     {
       "id": "expansion_ryota_horachi",
@@ -8128,31 +8136,35 @@
     {
       "id": "expansion_joanne_ciconte",
       "name": "Joanne Ciconte",
-      "overall": 64,
-      "potential": 64,
+      "overall": 69,
+      "potential": 69,
       "ratings": {
-        "adaptability": 0.653375,
-        "consistency": 0.633375,
-        "defending": 0.643375,
-        "errorControl": 0.633375,
-        "experience": 0.563375,
-        "overtaking": 0.653375,
-        "qualifyingPace": 0.663375,
-        "racePace": 0.653375,
-        "raceStart": 0.653375,
-        "technicalFeedback": 0.623375,
-        "tyreManagement": 0.633375,
-        "wetSkill": 0.643375
+        "adaptability": 0.703375,
+        "consistency": 0.683375,
+        "defending": 0.693375,
+        "errorControl": 0.683375,
+        "experience": 0.613375,
+        "overtaking": 0.703375,
+        "qualifyingPace": 0.713375,
+        "racePace": 0.703375,
+        "raceStart": 0.703375,
+        "technicalFeedback": 0.673375,
+        "tyreManagement": 0.683375,
+        "wetSkill": 0.693375
       },
       "previousOverall": 75.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 Rd1 qualifying/Sprint/Final second, third in Rd3 standings and Rd4 Final second. Prior midfield64 was unsupported. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 64
     },
     {
       "id": "expansion_kazuhisa_urabe",
@@ -8206,11 +8218,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 champion with four Final wins; 2026 Rd3 wet Final winner. Retain multi-season strength rather than rank solely by current points. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 70
     },
     {
       "id": "expansion_yuta_fujiwara",
@@ -8264,11 +8280,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 Rd2 Sprint win; seventh in Rd3 standings. Retain prior66; current results do not justify a large downgrade. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 66
     },
     {
       "id": "cian_shields",
@@ -8380,11 +8400,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 runner-up; 2026 Rd4 pole, Sprint win and Final podium. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 69
     },
     {
       "id": "expansion_rintaro_kubo",
@@ -8592,31 +8616,35 @@
     {
       "id": "expansion_kokoro_sato",
       "name": "Kokoro Sato",
-      "overall": 63,
-      "potential": 63,
+      "overall": 67,
+      "potential": 67,
       "ratings": {
-        "adaptability": 0.643375,
-        "consistency": 0.623375,
-        "defending": 0.633375,
-        "errorControl": 0.623375,
-        "experience": 0.553375,
-        "overtaking": 0.643375,
-        "qualifyingPace": 0.653375,
-        "racePace": 0.643375,
-        "raceStart": 0.643375,
-        "technicalFeedback": 0.613375,
-        "tyreManagement": 0.623375,
-        "wetSkill": 0.633375
+        "adaptability": 0.683375,
+        "consistency": 0.663375,
+        "defending": 0.673375,
+        "errorControl": 0.663375,
+        "experience": 0.593375,
+        "overtaking": 0.683375,
+        "qualifyingPace": 0.693375,
+        "racePace": 0.683375,
+        "raceStart": 0.683375,
+        "technicalFeedback": 0.653375,
+        "tyreManagement": 0.663375,
+        "wetSkill": 0.673375
       },
       "previousOverall": 73.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 fourth; tied fifth in Rd3 standings, Rd4 qualifying third/Sprint second/Final win. Raise current race competitiveness. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 63
     },
     {
       "id": "expansion_masaki_kano",
@@ -8795,21 +8823,21 @@
     {
       "id": "juju_noda",
       "name": "Juju Noda",
-      "overall": 64,
-      "potential": 64,
+      "overall": 67,
+      "potential": 67,
       "ratings": {
-        "adaptability": 0.643208,
-        "consistency": 0.633208,
-        "defending": 0.633208,
-        "errorControl": 0.633208,
-        "experience": 0.663208,
-        "overtaking": 0.633208,
-        "qualifyingPace": 0.643208,
-        "racePace": 0.643208,
-        "raceStart": 0.633208,
-        "technicalFeedback": 0.643208,
-        "tyreManagement": 0.633208,
-        "wetSkill": 0.633208
+        "adaptability": 0.673208,
+        "consistency": 0.663208,
+        "defending": 0.663208,
+        "errorControl": 0.663208,
+        "experience": 0.693208,
+        "overtaking": 0.663208,
+        "qualifyingPace": 0.673208,
+        "racePace": 0.673208,
+        "raceStart": 0.663208,
+        "technicalFeedback": 0.673208,
+        "tyreManagement": 0.663208,
+        "wetSkill": 0.663208
       },
       "previousOverall": 72.0,
       "seriesIds": [
@@ -8817,10 +8845,10 @@
       ],
       "status": "user-calibration",
       "sources": [
-        "https://superformula.net/sf3/driver_taxonomy/2026/?standings=",
-        "https://superformula.net/sf2/race2025/standings"
+        "user-calibration-2026-10-13-juju-67"
       ],
-      "reason": "User places Juju in the KYOJO midfield at 64; not an observed cross-series measurement. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "User explicitly requests Juju approximately67. Shared current-ability override; not a verified equivalence to KYOJO drivers.",
+      "supersedesOverall": 64
     },
     {
       "id": "kanato_le",
@@ -9057,31 +9085,35 @@
     {
       "id": "expansion_sara_matsui",
       "name": "Sara Matsui",
-      "overall": 62,
-      "potential": 62,
+      "overall": 64,
+      "potential": 64,
       "ratings": {
-        "adaptability": 0.633375,
-        "consistency": 0.613375,
-        "defending": 0.623375,
-        "errorControl": 0.613375,
-        "experience": 0.543375,
-        "overtaking": 0.633375,
-        "qualifyingPace": 0.643375,
-        "racePace": 0.633375,
-        "raceStart": 0.633375,
-        "technicalFeedback": 0.603375,
-        "tyreManagement": 0.613375,
-        "wetSkill": 0.623375
+        "adaptability": 0.653375,
+        "consistency": 0.633375,
+        "defending": 0.643375,
+        "errorControl": 0.633375,
+        "experience": 0.563375,
+        "overtaking": 0.653375,
+        "qualifyingPace": 0.663375,
+        "racePace": 0.653375,
+        "raceStart": 0.653375,
+        "technicalFeedback": 0.623375,
+        "tyreManagement": 0.633375,
+        "wetSkill": 0.643375
       },
       "previousOverall": 71.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 debut season; eighth in Rd3 standings and Rd4 qualifying sixth. Raise current pace; future potential is not current ability. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 62
     },
     {
       "id": "expansion_tom_van_rompuy",
@@ -9260,31 +9292,35 @@
     {
       "id": "expansion_hana_burton",
       "name": "Hana Burton",
-      "overall": 61,
-      "potential": 61,
+      "overall": 62,
+      "potential": 62,
       "ratings": {
-        "adaptability": 0.623375,
-        "consistency": 0.603375,
-        "defending": 0.613375,
-        "errorControl": 0.603375,
-        "experience": 0.533375,
-        "overtaking": 0.623375,
-        "qualifyingPace": 0.633375,
-        "racePace": 0.623375,
-        "raceStart": 0.623375,
-        "technicalFeedback": 0.593375,
-        "tyreManagement": 0.603375,
-        "wetSkill": 0.613375
+        "adaptability": 0.633375,
+        "consistency": 0.613375,
+        "defending": 0.623375,
+        "errorControl": 0.613375,
+        "experience": 0.543375,
+        "overtaking": 0.633375,
+        "qualifyingPace": 0.643375,
+        "racePace": 0.633375,
+        "raceStart": 0.633375,
+        "technicalFeedback": 0.603375,
+        "tyreManagement": 0.613375,
+        "wetSkill": 0.623375
       },
       "previousOverall": 70.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 ninth; joint ninth in 2026 Rd3 standings. Modest revision reflects repeated points. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 61
     },
     {
       "id": "expansion_ian_james",
@@ -9347,35 +9383,6 @@
     {
       "id": "expansion_paige_raddatz",
       "name": "Paige Raddatz",
-      "overall": 60,
-      "potential": 60,
-      "ratings": {
-        "adaptability": 0.613375,
-        "consistency": 0.593375,
-        "defending": 0.603375,
-        "errorControl": 0.593375,
-        "experience": 0.523375,
-        "overtaking": 0.613375,
-        "qualifyingPace": 0.623375,
-        "racePace": 0.613375,
-        "raceStart": 0.613375,
-        "technicalFeedback": 0.583375,
-        "tyreManagement": 0.593375,
-        "wetSkill": 0.603375
-      },
-      "previousOverall": 70.0,
-      "seriesIds": [
-        "kyojo"
-      ],
-      "status": "editorial-scale",
-      "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
-      ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
-    },
-    {
-      "id": "expansion_rami_sasaki",
-      "name": "Rami Sasaki",
       "overall": 63,
       "potential": 63,
       "ratings": {
@@ -9396,11 +9403,48 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "Joint ninth in Rd3 standings with two Final sixth places. Prior60 undervalued repeated points finishes. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 60
+    },
+    {
+      "id": "expansion_rami_sasaki",
+      "name": "Rami Sasaki",
+      "overall": 65,
+      "potential": 65,
+      "ratings": {
+        "adaptability": 0.663375,
+        "consistency": 0.643375,
+        "defending": 0.653375,
+        "errorControl": 0.643375,
+        "experience": 0.573375,
+        "overtaking": 0.663375,
+        "qualifyingPace": 0.673375,
+        "racePace": 0.663375,
+        "raceStart": 0.663375,
+        "technicalFeedback": 0.633375,
+        "tyreManagement": 0.643375,
+        "wetSkill": 0.653375
+      },
+      "previousOverall": 70.0,
+      "seriesIds": [
+        "kyojo"
+      ],
+      "status": "editorial-review",
+      "sources": [
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
+      ],
+      "reason": "2025 fifth; 2026 Rd4 qualifying second. Raise qualifying competitiveness without equating a single front-row with overall title level. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 63
     },
     {
       "id": "ricardo_escotto",
@@ -9579,31 +9623,35 @@
     {
       "id": "expansion_kilei_kanemoto",
       "name": "Kilei Kanemoto",
-      "overall": 61,
-      "potential": 61,
+      "overall": 63,
+      "potential": 63,
       "ratings": {
-        "adaptability": 0.623375,
-        "consistency": 0.603375,
-        "defending": 0.613375,
-        "errorControl": 0.603375,
-        "experience": 0.533375,
-        "overtaking": 0.623375,
-        "qualifyingPace": 0.633375,
-        "racePace": 0.623375,
-        "raceStart": 0.623375,
-        "technicalFeedback": 0.593375,
-        "tyreManagement": 0.603375,
-        "wetSkill": 0.613375
+        "adaptability": 0.643375,
+        "consistency": 0.623375,
+        "defending": 0.633375,
+        "errorControl": 0.623375,
+        "experience": 0.553375,
+        "overtaking": 0.643375,
+        "qualifyingPace": 0.653375,
+        "racePace": 0.643375,
+        "raceStart": 0.643375,
+        "technicalFeedback": 0.613375,
+        "tyreManagement": 0.623375,
+        "wetSkill": 0.633375
       },
       "previousOverall": 68.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 joint10th; 2026 Rd4 Final fifth. Raise modestly, no one-race leap into title group. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 61
     },
     {
       "id": "nandhavud_bhirombhakdi",
@@ -9666,60 +9714,68 @@
     {
       "id": "expansion_itsumo_shiraishi",
       "name": "Itsumo Shiraishi",
-      "overall": 59,
-      "potential": 59,
+      "overall": 62,
+      "potential": 62,
       "ratings": {
-        "adaptability": 0.603375,
-        "consistency": 0.583375,
-        "defending": 0.593375,
-        "errorControl": 0.583375,
-        "experience": 0.513375,
-        "overtaking": 0.603375,
-        "qualifyingPace": 0.613375,
-        "racePace": 0.603375,
-        "raceStart": 0.603375,
-        "technicalFeedback": 0.573375,
-        "tyreManagement": 0.583375,
-        "wetSkill": 0.593375
+        "adaptability": 0.633375,
+        "consistency": 0.613375,
+        "defending": 0.623375,
+        "errorControl": 0.613375,
+        "experience": 0.543375,
+        "overtaking": 0.633375,
+        "qualifyingPace": 0.643375,
+        "racePace": 0.633375,
+        "raceStart": 0.633375,
+        "technicalFeedback": 0.603375,
+        "tyreManagement": 0.613375,
+        "wetSkill": 0.623375
       },
       "previousOverall": 67.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 eighth; 2026 Rd4 Final seventh. Previous59 understated demonstrated results. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 59
     },
     {
       "id": "expansion_mako_hirakawa",
       "name": "Mako Hirakawa",
-      "overall": 60,
-      "potential": 60,
+      "overall": 61,
+      "potential": 61,
       "ratings": {
-        "adaptability": 0.613375,
-        "consistency": 0.593375,
-        "defending": 0.603375,
-        "errorControl": 0.593375,
-        "experience": 0.523375,
-        "overtaking": 0.613375,
-        "qualifyingPace": 0.623375,
-        "racePace": 0.613375,
-        "raceStart": 0.613375,
-        "technicalFeedback": 0.583375,
-        "tyreManagement": 0.593375,
-        "wetSkill": 0.603375
+        "adaptability": 0.623375,
+        "consistency": 0.603375,
+        "defending": 0.613375,
+        "errorControl": 0.603375,
+        "experience": 0.533375,
+        "overtaking": 0.623375,
+        "qualifyingPace": 0.633375,
+        "racePace": 0.623375,
+        "raceStart": 0.623375,
+        "technicalFeedback": 0.593375,
+        "tyreManagement": 0.603375,
+        "wetSkill": 0.613375
       },
       "previousOverall": 67.0,
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 sixth; partial 2026 attendance (Rd3 absent). Missing starts are not evidence of low ability; modest correction only. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 60
     },
     {
       "id": "expansion_kelsey_pinkowski",
@@ -9744,11 +9800,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 59
     },
     {
       "id": "expansion_marie_iwaoka",
@@ -9773,11 +9833,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 58
     },
     {
       "id": "expansion_rina_ito",
@@ -9802,11 +9866,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 59
     },
     {
       "id": "expansion_ryu_yamamoto",
@@ -9831,11 +9899,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 57
     },
     {
       "id": "expansion_sitarvee_limnantharak",
@@ -9860,11 +9932,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 57
     },
     {
       "id": "expansion_zhao_yun_qing",
@@ -9889,11 +9965,15 @@
       "seriesIds": [
         "kyojo"
       ],
-      "status": "editorial-scale",
+      "status": "editorial-review",
       "sources": [
-        "https://ms.bridgestone.co.jp/4/kyojocup/about/"
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2026/",
+        "https://toyotagazooracing.com/jp/kyojocup/ranking/2025/",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-qualifying-result",
+        "https://www.fmotor.jp/2026-kyojo-cup-round-4-fuji-final-result"
       ],
-      "reason": "Common-scale SIM band 56-70. 2025 title/top-three supports leading prior; remaining order inherits supplied assessment, not verified 2026 ranking. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "No points through official Rd3 table; Rd4 qualifying/result checked. Retain provisional prior, insufficient evidence for precise isolated ability or a large revision. Overall is an editorial SIM judgement; within-profile axis differences remain inherited, not measured. Cross-category absolute placement remains a prior.",
+      "supersedesOverall": 56
     }
   ]
 }
