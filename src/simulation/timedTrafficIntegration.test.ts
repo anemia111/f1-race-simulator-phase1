@@ -3,7 +3,7 @@ import { initialDrivers, initialTeams } from '../data/grid2026'
 import { tracks } from '../data/tracks'
 import type { RaceConfig } from '../types'
 import { advanceRace, createInitialRace } from './race'
-import { trackDynamicsAt } from './trackDynamics'
+import { trackDynamicsAt, profileDistanceMAt, profileProgressAtDistanceM } from './trackDynamics'
 
 describe('live timed-session passing courtesy', () => {
   it.each((['fp2', 'qualifying', 'sprintQualifying'] as const).flatMap(stage =>
@@ -19,7 +19,7 @@ describe('live timed-session passing courtesy', () => {
       })!
       const preparingId = config.drivers[0].id
       state = { ...state, elapsedSeconds: 200, cars: state.cars.map((car, index) => {
-        const distance = 2 + progress - index * 70 / (track.lengthKm * 1000)
+        const distance = profileProgressAtDistanceM(track, profileDistanceMAt(track, 2 + progress) - index * 70)
         return { ...car, status: 'running', pitPhase: 'none', pitUntilSeconds: null, hiddenFromTrack: false, offTrackSinceSeconds: null, incidentTrackState: 'clear', totalDistance: distance, progress: distance % 1, processedLap: 2, speedKph: index === 0 ? 160 : 280, gear: 6, lateralOffsetM: offset, lateralVelocityMps: 0, timedRunPhase: index === 0 ? phase : 'attack-lap', timedRunStartedAtSeconds: 190, lapStartedAtSeconds: index === 0 ? null : 190, practiceProgram: null }
       }) }
       let movedAside = false
@@ -49,7 +49,7 @@ describe('live timed-session passing courtesy', () => {
       expect(progress).toBeDefined()
       const preparingId = config.drivers[0].id
       state = { ...state, elapsedSeconds: 200, cars: state.cars.map((car, index) => {
-        const distance = 2 + progress - index * 35 / (track.lengthKm * 1000)
+        const distance = profileProgressAtDistanceM(track, profileDistanceMAt(track, 2 + progress) - index * 35)
         return { ...car, status: 'running', pitPhase: 'none', pitUntilSeconds: null, hiddenFromTrack: false, offTrackSinceSeconds: null, incidentTrackState: 'clear', totalDistance: distance, progress: distance % 1, processedLap: 2, speedKph: index === 0 ? 90 : 170, gear: 4, lateralOffsetM: offset, lateralVelocityMps: 0, timedRunPhase: index === 0 ? phase : 'attack-lap', timedRunStartedAtSeconds: 190, lapStartedAtSeconds: index === 0 ? null : 190, practiceProgram: null }
       }) }
       let gaveWayEarly = false

@@ -1,5 +1,33 @@
 # Formula Race Simulator Handoff
 
+## Latest: Six-category abrupt traffic stops (2026-10-12)
+
+- User interrupted the authorized team-principal/season upgrade to prioritize
+  abrupt traffic stops, then clarified these occur during ordinary running too.
+  Team-principal implementation remains on hold; no files were changed for it.
+- Reproduced GT/WEC/INDYCAR 90–180 km/h -> 0 in 0.1 s and large native occupancy
+  speed drops. All six now check occupied corridors, anticipate closing merges,
+  and synchronize accepted lateral constraints into retained handling state.
+- Extra execution proposes a full immutable field then resolves lateral and
+  longitudinal occupancy before travel-dependent bookkeeping/timing. Removed
+  stale-neighbour movement projection and trapezoidal speed inversion after caps.
+- Native traffic/occupancy/grid staging now use physical arc metres, including
+  nonuniform centreline points and timing-line wraps. Preserve physical passing,
+  stopped obstacles, flags and class-start 500 m separation. Launch allowance is
+  4.5 s; following no longer remains blind for 10 s.
+- 109 focused tests across 12 suites pass; short six-category start/mid-race
+  fixtures include nonoverlap, motion and merge/escape guards. Extra timing tests
+  also exposed/fixed pre-existing negative-zero telemetry save divergence.
+- All 47 FP/Q/SQ passing/blue-flag tests pass (156 focused checks total); final
+  extra road-edge synchronization passes the affected 61-test subset. TypeScript,
+  lint and diff whitespace checks pass; publication builds production output.
+- Baseline launch speed guards already failed at HEAD after prior pedal changes;
+  adjusted broad minimum-speed guards to existing physical pace, preserving
+  no-instant-stop checks. The coarse SF equal-car qualifying spread test already
+  fails at HEAD (~43 s), remains a separate unresolved issue. No full suite,
+  endurance, all-course pace or browser FPS claim. See docs/TRAFFIC_CONTINUITY_FIX.md.
+- Standing publication exception remains `-SkipFullTestSuite -SkipPlaytest`.
+
 ## Latest: Race Engineer upgrade (2026-10-12)
 
 - User accepted upgrade items 1–4 and explicitly excluded item 5 (lap collection).

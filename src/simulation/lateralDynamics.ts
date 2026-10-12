@@ -80,12 +80,16 @@ export type RelativeTrafficVehicle = LateralVehicle & {
 }
 
 export type LateralReservationRequest = LateralVehicle & {
+  /** Profile coordinate when physical arc position uses a different scale. */
+  trackProgress?: number
   desiredLateralOffsetM: number
   /** Higher values reserve their intended corridor first. */
   priority: number
 }
 
 export type LongitudinalOccupancyCandidate = LateralVehicle & {
+  /** Optional road speed for anticipating a closing car before a merge. */
+  speedMps?: number
   candidateLateralOffsetM?: number
   candidateTotalDistanceM: number
   /** Used only to break an exact same-position tie deterministically. */
@@ -542,7 +546,7 @@ export function reserveDesiredLateralOffsets(options: {
       request,
       options.track,
       options.edgeSafetyMarginM,
-      positiveModulo(request.totalDistanceM, options.lapLengthM) /
+      request.trackProgress ?? positiveModulo(request.totalDistanceM, options.lapLengthM) /
         options.lapLengthM,
     )
     const offsetM =
@@ -607,7 +611,7 @@ export function resolveLateralOccupancy(options: {
       const finalLongitudinalM = initialLongitudinalM +
         Math.max(0, second.car.candidateTotalDistanceM - second.car.totalDistanceM) -
         Math.max(0, first.car.candidateTotalDistanceM - first.car.totalDistanceM)
-      const requiredLongitudinalM = requiredLongitudinalCentreSeparationM(
+      const bodySeparationM = requiredLongitudinalCentreSeparationM(
         first.car.footprint,
         second.car.footprint,
         finiteSafetyMargin(
@@ -615,6 +619,17 @@ export function resolveLateralOccupancy(options: {
           LONGITUDINAL_VEHICLE_SAFETY_MARGIN_M,
         ),
       )
+      const rear = initialLongitudinalM >= 0 ? first : second
+      const front = initialLongitudinalM >= 0 ? second : first
+      const closingMps = Math.max(0, (rear.car.speedMps ?? 0) - (front.car.speedMps ?? 0))
+      const separateCorridors = Math.abs(first.current-second.current) >=
+        requiredLateralCentreSeparationM(first.car.footprint,second.car.footprint,
+          finiteSafetyMargin(options.margins?.lateralSafetyMarginM,OVERTAKE_LATERAL_SAFETY_MARGIN_M))
+      // Keep the passing corridor until a closing neighbour can slow normally.
+      // This only restricts inward steering; a clear lane remains passable.
+      const requiredLongitudinalM = bodySeparationM +
+        (separateCorridors ? Math.max(rear.car.speedMps ?? 0,front.car.speedMps ?? 0) * 0.35 +
+          closingMps * 0.6 + closingMps ** 2 / 8 : 0)
 
       // Check the whole longitudinal sweep, including a pass across the line.
       if (

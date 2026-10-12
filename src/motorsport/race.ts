@@ -1,4 +1,5 @@
 import { decideDriverBehavior, type DriverDecisionContext } from '../simulation/driverDecision'
+import {resolveLateralOccupancy,resolveLongitudinalOccupancy} from '../simulation/lateralDynamics'
 import {engineeringMachine,extraControlSetup,extraSignature,motorsportEngineerSession} from './engineering'
 import {makeEngineeringPlan,settleEngineeringPlan,strategyScenarios} from '../domain/raceEngineer'
 import { decideTeamInstruction, applyTeamInstruction, delayTeammatePit } from '../simulation/teamDecision'
@@ -268,6 +269,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
     .map(car=>entries.get(car.entryId)!.team))
   const leadLapBefore = Math.max(...previous.cars.map(car => car.laps))
   const crossings: { entryId: string; time: number; laps: number }[] = []
+  const completeMotion = new Map<string, (car: MotorsportCar) => MotorsportCar>()
   state.cars = previous.cars.map(old => {
     if (!RUNNING.has(old.status)) return old
     const car: MotorsportCar = { ...old, driverSeconds: [...old.driverSeconds], driverLastOutSeconds: [...old.driverLastOutSeconds], driverDistanceM: [...old.driverDistanceM], warnings: [...old.warnings] }
@@ -458,7 +460,10 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         side:Math.abs(car.lateralM)>=1?(car.lateralM<0?-1:1):opponent.lateralM< -0.8?1:-1,startedAt:state.raceSeconds}
       const desiredLateral=car.battle&&overtaking?car.battle.side*Math.min(2.4,config.course.widthM.value/2-1.5):decision.desiredLateralOffsetM
       // Intent supplies a steering target; only the handling integration moves the car.
-      if (ahead && (state.flag!=='green' || Math.abs(car.lateralM-ahead.car.lateralM)<2.1)) {
+      for (const front of physicalOrder) {
+        if(front.entryId===car.entryId) continue
+        const ahead={car:front,gap:modulo(front.distanceM-car.distanceM,length)}
+        if(ahead.gap>200 || (state.flag==='green' && Math.abs(car.lateralM-front.lateralM)>=2.2)) continue
         const closing=Math.max(0,car.speedMps-ahead.car.speedMps)
         const braking=tyreForceBudget(machine,station,car.speedMps,conditions).longitudinal/mass
         const brakingGap=7+closing*0.5+closing**2/Math.max(1,2*braking*0.8)
@@ -536,13 +541,14 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       const unconstrainedStep = (car.speedMps + nextSpeed) * 0.5 * dt
       // Neutralisation applies regardless of lateral lane. Integrate up to the
       // preceding car's safe rear envelope without changing lap identity.
-      const distanceStep = ahead && (state.flag !== 'green' || Math.abs(car.lateralM-ahead.car.lateralM)<2.1)
-        ? Math.min(unconstrainedStep, Math.max(0, ahead.gap + ahead.car.speedMps * dt - 6))
-        : unconstrainedStep
       car.throttlePercent = pedal.throttle
       car.brakePercent = pedal.brake
-      car.speedMps = distanceStep < unconstrainedStep - 1e-8 ? Math.max(0, 2 * distanceStep / dt - old.speedMps) : nextSpeed
-      car.distanceM += distanceStep
+      car.speedMps = nextSpeed
+      car.distanceM += unconstrainedStep
+      // Settle the entire field first. A neighbour's old speed is not its
+      // movement this tick, and a late lane cut must not be repaired by parking.
+      completeMotion.set(car.entryId, car => {
+      const distanceStep = Math.max(0, car.distanceM - beforeDistance)
       car.driverDistanceM[car.driverIndex] += distanceStep
       const fuelUsed = machine.fuelKgPerKm.value * distanceStep / 1000 * (acceleration < -1 ? 0.35 : 0.85 + 0.15 * Math.min(1, Math.max(0, acceleration) / 4)) * (entry.classId === 'hypercar' ? Math.max(0,(powerKw-hybrid)/powerKw) : 1) * (car.paceMode === 'save' ? 0.85 : car.paceMode === 'push' ? 1.05 : 1)
       car.fuelKg = Math.max(0, car.fuelKg - fuelUsed)
@@ -582,7 +588,44 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         closeDrivingStint(car)
         appendEvent(state, car.entryId, 'Retired: fuel exhausted.')
       }
+      return car
+      })
     }
+    return car
+  })
+  const oldById = new Map(previous.cars.map(car => [car.entryId,car]))
+  const candidates = state.cars.flatMap(car => {
+    const old = oldById.get(car.entryId)!
+    return old.status === 'running' && car.status === 'running' ? [{
+      driverId:car.entryId,speedMps:old.speedMps,totalDistanceM:old.distanceM,candidateTotalDistanceM:car.distanceM,
+      lateralOffsetM:old.lateralM,candidateLateralOffsetM:car.lateralM,
+    }] : []
+  })
+  const lateral = resolveLateralOccupancy({candidates,lapLengthM:length})
+  const longitudinal = resolveLongitudinalOccupancy({lapLengthM:length,candidates:candidates.map(car=>({
+    ...car,candidateLateralOffsetM:state.flag==='green'?lateral.get(car.driverId):0,
+    // Flags require a single queue even where physical lanes are separate.
+    ...(state.flag!=='green'?{lateralOffsetM:0}:{}),
+  }))})
+  state.cars = state.cars.map(proposed => {
+    const old = oldById.get(proposed.entryId)!
+    if (!RUNNING.has(old.status)) return old
+    let car = proposed
+    const offset = lateral.get(car.entryId)
+    const distance = longitudinal.get(car.entryId)
+    if(offset!==undefined && distance!==undefined){
+      const clipped = distance < car.distanceM - 1e-8
+      car = {...car,lateralM:offset,distanceM:distance,
+        // The accepted displacement is an average speed. Inverting a
+        // trapezoid after a geometric cap caused alternating zero-speed ticks.
+        speedMps:clipped?Math.min(car.speedMps,Math.max(0,(distance-old.distanceM)/dt)):car.speedMps}
+      if(car.handlingState && Math.abs(car.handlingState.lateralOffset-offset)>1e-6){
+        car.lateralVelocityMps=0
+        car.handlingState={...car.handlingState,lateralOffset:offset,lateralSpeed:0,headingError:0}
+      }
+    }
+    car=completeMotion.get(car.entryId)?.(car)??car
+    const beforeDistance=old.distanceM
     advanceSectorTiming(car, beforeDistance, previous.raceSeconds, dt, config.course, state.flag === 'green')
     const completedBefore = Math.max(0, Math.floor(beforeDistance / length))
     const completedAfter = Math.max(0, Math.floor(car.distanceM / length))

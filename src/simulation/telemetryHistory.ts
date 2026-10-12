@@ -19,7 +19,7 @@ export function recordTelemetry(history: TelemetryPoint[] | undefined, point: Te
   const last = previous.at(-1)
   if (last && last.lap === point.lap && Math.floor(last.progress * 512) === Math.floor(point.progress * 512)) return previous
   point = {...point,progress:Math.min(0.999999,Number(point.progress.toFixed(6))),seconds:Number(point.seconds.toFixed(2)),speedKph:Number(point.speedKph.toFixed(2)),throttlePercent:Number(point.throttlePercent.toFixed(1)),brakePercent:Number(point.brakePercent.toFixed(1)),rpm:Math.round(point.rpm)}
-  for(const key of extraKeys)if(point[key]!==undefined)point[key]=Number(point[key]!.toFixed(2))
+  for(const key of extraKeys)if(point[key]!==undefined)point[key]=Number(point[key]!.toFixed(2)) || 0
   // Recorded laps are chronological. Prune once at a lap transition rather
   // than scanning and copying all 1536 points for every spatial sample.
   const retained = previous[0]?.lap < point.lap-2 ? previous.filter(sample=>sample.lap>=point.lap-2) : previous

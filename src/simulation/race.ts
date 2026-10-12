@@ -180,6 +180,8 @@ import {
   speedForProfileTravelKph,
   trackDynamicsAt,
   profileDistanceKmBetween,
+  profileDistanceMAt,
+  profileProgressAtDistanceM,
 } from './trackDynamics'
 import { trackWidthMeters } from './physicalLap'
 import {
@@ -554,10 +556,16 @@ export function reformFieldForRedRestart(
   })
 }
 
+function physicalStartingGridProgress(track: RaceConfig['track'], index: number) {
+  const lengthM = track.lengthKm * 1000
+  return profileProgressAtDistanceM(track, startingGridDistance(index, lengthM) * lengthM)
+}
+
 export function reformFieldForStandingRestart(
   cars: CarSnapshot[],
   lapLengthM: number,
   standingStartMguKGateApplies = true,
+  track?: RaceConfig['track'],
 ): CarSnapshot[] {
   const leader = cars.find((car) => car.status === 'running')
 
@@ -581,7 +589,7 @@ export function reformFieldForStandingRestart(
     const totalDistance =
       leaderLap -
       lapsDown +
-      startingGridDistance(index, lapLengthM) -
+      (track ? physicalStartingGridProgress(track, index) : startingGridDistance(index, lapLengthM)) -
       0.0001
     gridIndex += 1
     const runtimeSystems =
@@ -2788,7 +2796,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
     const totalDistance = startsFromPitLane
       ? 1 + pitBoxProgressForTeam(config.track, config.teams, driver.teamId)
       : isRaceDistance
-        ? startingGridDistance(gridIndex, config.track.lengthKm * 1000)
+        ? physicalStartingGridProgress(config.track, gridIndex)
       : (config.track.pitLane?.exitProgress ?? 0.13)
     const lap = Math.floor(totalDistance)
     const gridLateralOffsetM =
@@ -3729,7 +3737,7 @@ export function advanceRace(
         (elapsedSeconds + 1e-9) / Math.max(1, snapshot.formationLapDurationSeconds),
       )
       const formationDistance =
-        startingGridDistance(index, config.track.lengthKm * 1000) +
+        physicalStartingGridProgress(config.track, index) +
         formationProgress
       const stagedDistance =
         nextProcedure === 'formation'
@@ -3739,7 +3747,7 @@ export function advanceRace(
             // integer lap only from the race ledger; physical progress is unchanged.
             ? formationDistance - (rollingStart && !snapshot.formationBehindSafetyCar
                 ? snapshot.formationLapsPlanned : 0)
-          : startingGridDistance(index, config.track.lengthKm * 1000)
+          : physicalStartingGridProgress(config.track, index)
       const stagedLap = Math.floor(stagedDistance)
       return {
         ...car,
@@ -4816,6 +4824,7 @@ export function advanceRace(
             strategicallyPreparedCars,
             config.track.lengthKm * 1000,
             categoryPhysics.id === 'f1-custom',
+            config.track,
           )
         : reformFieldForRedRestart(
             strategicallyPreparedCars,
@@ -5061,7 +5070,7 @@ export function advanceRace(
     .map((car) => ({
       driverId: car.driverId,
       lateralOffsetM: car.lateralOffsetM,
-      totalDistanceM: car.totalDistance * lapLengthM,
+      totalDistanceM: profileDistanceMAt(config.track, car.totalDistance),
     }))
   const driverDecisionById = new Map<string, DriverDecision>()
   const driverObservationInboxById = new Map<
@@ -5073,6 +5082,7 @@ export function advanceRace(
   const timedTrafficYieldById = new Map<string, ReturnType<typeof timedSessionYieldDecision>>()
   const timedTrafficYieldSideById = new Map<string, -1 | 1>()
   const physicalGapSecondsById = new Map<string, number>()
+  const followingById = new Map<string, ReturnType<typeof followingDemand>>()
   const avoidingObstructionIds = new Set<string>()
   const blueFlagTrainApproaches = isRaceDistance
     ? blueFlagTrainApproachesFor(
@@ -5117,6 +5127,16 @@ export function advanceRace(
     const nearestBehind = nearby.find(
       (candidate) => candidate.signedLongitudinalDistanceM < 0,
     )
+    const laneAhead = nearby.filter(other => other.signedLongitudinalDistanceM > 0 &&
+      Math.abs(other.lateralOffsetM-car.lateralOffsetM)<2.2)
+    for (const other of laneAhead) {
+      const demand = followingDemand({speedKph:car.speedKph,
+        aheadSpeedKph:frameCarById.get(other.driverId)!.speedKph,
+        distanceM:other.signedLongitudinalDistanceM,
+        lateralSeparationM:other.lateralOffsetM-car.lateralOffsetM})
+      const current=followingById.get(car.driverId)
+      if(!current || demand.decelerationMps2>current.decelerationMps2) followingById.set(car.driverId,demand)
+    }
     const aheadCar = nearestAhead
       ? frameCarById.get(nearestAhead.driverId)
       : undefined
@@ -5498,6 +5518,7 @@ export function advanceRace(
         ? [
             {
               ...vehicle,
+              trackProgress: frameCarById.get(vehicle.driverId)?.progress,
               desiredLateralOffsetM: decision.desiredLateralOffsetM,
               priority: reservationPriority(decision),
             },
@@ -6281,8 +6302,7 @@ export function advanceRace(
     const standingStartLaunchActive =
       standingLaunchAtSeconds !== null &&
       elapsedSeconds >= standingLaunchAtSeconds &&
-      elapsedSeconds - standingLaunchAtSeconds < 4.5 &&
-      (car.progress >= 0.88 || car.progress <= 0.1)
+      elapsedSeconds - standingLaunchAtSeconds < 4.5
     const blueFlagApproachingCar =
       isRaceDistance &&
       !localControlPhase &&
@@ -6330,17 +6350,7 @@ export function advanceRace(
             car.incidentTrackState === 'on-track-stopped',
           )
     const telemetry = calculateCarTelemetry({
-      following: physicalAhead && physicalGapSeconds !== undefined &&
-        !avoidingObstructionIds.has(car.driverId) &&
-        (standingLaunchAtSeconds === null || elapsedSeconds - standingLaunchAtSeconds > 10 ||
-          physicalAhead.incidentTrackState !== 'clear')
-        ? followingDemand({
-            speedKph: car.speedKph,
-            aheadSpeedKph: physicalAhead.speedKph,
-            distanceM: physicalGapSeconds * Math.max(5, car.speedKph / 3.6),
-            lateralSeparationM: car.lateralOffsetM - physicalAhead.lateralOffsetM,
-          })
-        : undefined,
+      following: !standingStartLaunchActive && !avoidingObstructionIds.has(car.driverId) ? followingById.get(car.driverId) : undefined,
       car: telemetryCar,
       aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
       battlePaceScale: battleTravel.paceScale,
@@ -6791,6 +6801,11 @@ export function advanceRace(
       desiredLateralOffsetM: lateralState.desiredLateralOffsetM,
       lateralOffsetM: motion.lateralOffsetM,
       lateralVelocityMps: motion.lateralVelocityMps,
+    }
+    if(displayTelemetry.handlingState &&
+      Math.abs(displayTelemetry.handlingState.lateralOffset-motion.lateralOffsetM)>1e-6){
+      displayTelemetry={...displayTelemetry,handlingState:{...displayTelemetry.handlingState,
+        lateralOffset:motion.lateralOffsetM,lateralSpeed:0,headingError:0}}
     }
     const actualTravelSpeedKph = speedForProfileTravelKph(
       config.track,
@@ -8883,8 +8898,9 @@ export function advanceRace(
       ? [
           {
             driverId: car.driverId,
-            totalDistanceM: previous.totalDistance * lapLengthM,
-            candidateTotalDistanceM: car.totalDistance * lapLengthM,
+            speedMps: previous.speedKph / 3.6,
+            totalDistanceM: profileDistanceMAt(config.track, previous.totalDistance),
+            candidateTotalDistanceM: profileDistanceMAt(config.track, car.totalDistance),
             lateralOffsetM: previous.lateralOffsetM,
             candidateLateralOffsetM: car.lateralOffsetM,
             // A driver who has conceded is not defending the road, so the
@@ -8965,12 +8981,12 @@ export function advanceRace(
     if (
       !previous ||
       resolvedDistanceM === undefined ||
-      resolvedDistanceM >= car.totalDistance * lapLengthM - 1e-6
+      resolvedDistanceM >= profileDistanceMAt(config.track, car.totalDistance) - 1e-6
     ) {
       return car
     }
 
-    const totalDistance = resolvedDistanceM / lapLengthM
+    const totalDistance = profileProgressAtDistanceM(config.track, resolvedDistanceM)
     // Road speed is arc distance over time, not a lap-fraction difference
     // scaled by lap length. Centerline points are not evenly spaced, so the two
     // only agree where they happen to be uniform. Baku is the worst case: its

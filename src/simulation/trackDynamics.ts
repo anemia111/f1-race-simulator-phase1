@@ -320,6 +320,17 @@ export function profileDistanceKmBetween(
   )
 }
 
+/** Signed, unwrapped physical position, including the grid before the line. */
+export function profileDistanceMAt(track: TrackDefinition, progress: number) {
+  return profileArcProgressAt(geometryFor(track), progress) * track.lengthKm * 1000
+}
+
+export function profileProgressAtDistanceM(track: TrackDefinition, distanceM: number) {
+  const start = Math.floor(distanceM / (track.lengthKm * 1000))
+  return start + progressForProfileSpeed(track, 0,
+    (distanceM / (track.lengthKm * 1000) - start) * track.lengthKm * 3600, 1)
+}
+
 export function speedForProfileTravelKph(
   track: TrackDefinition,
   startProgress: number,
