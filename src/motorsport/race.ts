@@ -550,7 +550,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.tyreLife = car.tyreState.life; car.tyreTemperatureC = car.tyreState.surfaceC
       car.gear = motion.gear; car.rpm = motion.rpm
       car.clutchEngagementFraction = motion.clutchEngagementFraction; car.turboSpoolFraction = motion.turboSpoolFraction
-      if (car.status === 'running') car.telemetryHistory = recordTelemetry(car.telemetryHistory,{...handlingTelemetry(car.handlingState),lap:Math.floor(car.distanceM/length),progress:modulo(car.distanceM,length)/length,seconds:state.raceSeconds,speedKph:car.speedMps*3.6,throttlePercent:car.throttlePercent ?? 0,brakePercent:car.brakePercent ?? 0,gear:car.gear,rpm:car.rpm})
+      if (car.status === 'running') car.telemetryHistory = recordTelemetry(car.telemetryHistory,{...handlingTelemetry(car.handlingState),fuelKg:car.fuelKg,tyreLifePercent:car.tyreLife*100,...(machine.hybridCapacityMj.value>0?{energyPercent:car.hybridEnergyMj/machine.hybridCapacityMj.value*100,deploymentKw:car.hybridPowerKw ?? 0,recoveryKw:car.regenerationPowerKw ?? 0}:{}),lap:Math.floor(car.distanceM/length),progress:modulo(car.distanceM,length)/length,seconds:state.raceSeconds,speedKph:car.speedMps*3.6,throttlePercent:car.throttlePercent ?? 0,brakePercent:car.brakePercent ?? 0,gear:car.gear,rpm:car.rpm})
       if (car.pitRequest) {
         const entryLine = (Math.floor(beforeDistance / length) + config.course.pitEntry.value) * length
         const nextEntryLine = entryLine <= beforeDistance ? entryLine + length : entryLine

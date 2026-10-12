@@ -192,7 +192,7 @@ export function RaceInsightsPanel({
         </>}
       </div>
 
-      <TelemetryComparison selectedId={car.driverId} lengthM={track.lengthKm*1000} traces={snapshot.cars.map(item=>({id:item.driverId,name:`#${item.carNumber} ${item.driverName}`,color:item.teamColor,samples:item.telemetryHistory ?? []}))} corners={trackCornerTelemetry(track)}/>
+      <TelemetryComparison selectedId={car.driverId} lengthM={track.lengthKm*1000} centerline={track.centerline} traces={snapshot.cars.map(item=>({id:item.driverId,name:`#${item.carNumber} ${item.driverName}`,color:item.teamColor,samples:item.telemetryHistory ?? []}))} corners={trackCornerTelemetry(track)}/>
       <section className="insight-section">
         <h2><Gauge aria-hidden="true" size={13} /> Tyres & surface</h2>
         {f1Runtime && tireCondition ? (

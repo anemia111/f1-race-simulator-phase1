@@ -950,7 +950,7 @@ export function BroadcastDashboard({
             <PanelHeader title="Telemetry comparison" action={<button aria-label="Close telemetry comparison" className="panel-close" onClick={()=>setActiveView('map')} type="button"><X size={13}/></button>}/>
             <div className="telemetry-workspace">
               <label className="telemetry-primary-car">車両A<select aria-label="Telemetry primary car" value={selectedCar.driverId} onChange={event=>onFocusDriver(event.target.value)}>{snapshot.cars.map(car=><option key={car.driverId} value={car.driverId}>#{car.carNumber} {car.driverName}</option>)}</select></label>
-              <TelemetryComparison selectedId={selectedCar.driverId} lengthM={track.lengthKm*1000} traces={snapshot.cars.map(car=>({id:car.driverId,name:`#${car.carNumber} ${car.driverName}`,color:car.teamColor,samples:car.telemetryHistory ?? []}))} corners={telemetryCorners}/>
+              <TelemetryComparison selectedId={selectedCar.driverId} lengthM={track.lengthKm*1000} centerline={track.centerline} traces={snapshot.cars.map(car=>({id:car.driverId,name:`#${car.carNumber} ${car.driverName}`,color:car.teamColor,samples:car.telemetryHistory ?? []}))} corners={telemetryCorners}/>
             </div>
           </section>
           ) : (

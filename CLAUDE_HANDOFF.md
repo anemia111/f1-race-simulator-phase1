@@ -1,5 +1,25 @@
 # Formula Race Simulator Handoff
 
+## Latest: Telemetry Lab (2026-10-12)
+
+- Shared six-category telemetry UI now has independent A/B lap selection,
+  self/previous-lap comparison, distance-aligned observed clock delta, clickable
+  speed-colored circuit, shared/pinned cursor and keyboard slider, corner zoom,
+  distance-weighted pedal summaries, sampled corner comparisons and CSV export.
+- Four channel groups expose up to 24 values. Record four wheel surface heat,
+  average core heat, brake heat, signed longitudinal G, yaw/roll/pitch, fuel,
+  category tyre life and hardware-owned hybrid state alongside existing traces.
+  No fake SF ERS; unavailable/legacy values remain absent. Three-lap/1,536-point
+  bounds and GT/WEC delta worker snapshots remain unchanged.
+- Add t3/t3z extended histories, level-1 zlib for larger saves and bounded
+  decompression. t1/t2 remain readable. fflate 0.8.3 is now a direct dependency.
+  See `docs/TELEMETRY_LAB.md` for units, interpolation, thresholds and limits.
+- 41 focused tests pass, including actual short recording in all six categories
+  and save/worker/compression compatibility. A short isolated synthetic browser
+  fixture passed tabs/map/keyboard/zoom/self-compare/CSV checks at 1280x900;
+  screenshots were visually inspected. This is not a full application playtest
+  or sustained FPS/pace validation. Standing no-long-tests exception applies.
+
 ## Latest: GT/WEC performance (2026-10-12)
 
 - Share 512-station speed plans across value-identical hardware. Plan density
