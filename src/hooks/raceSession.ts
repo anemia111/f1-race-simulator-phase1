@@ -1,5 +1,6 @@
 import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
 import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
+import { validVehicleHandling } from '../simulation/vehicleHandling'
 import { createSfOtsSimulation } from '../simulation/sfOtsRuntime'
 import type {
   CarSnapshot,
@@ -1106,7 +1107,8 @@ function isCompatibleCarSnapshot(
       : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id, config.track.id)
 
   return (
-    (value.telemetryHistory === undefined || (Array.isArray(value.telemetryHistory) && value.telemetryHistory.length<=768 && value.telemetryHistory.every(point=>isRecord(point) && ['lap','progress','seconds','speedKph','throttlePercent','brakePercent','gear','rpm'].every(key=>isFiniteNumber(point[key])) && Number.isInteger(point.lap) && (point.lap as number)>=0 && (point.progress as number)>=0 && (point.progress as number)<1 && (point.speedKph as number)>=0 && (point.throttlePercent as number)>=0 && (point.throttlePercent as number)<=100 && (point.brakePercent as number)>=0 && (point.brakePercent as number)<=100))) &&
+    (value.handlingState === undefined || validVehicleHandling(value.handlingState)) &&
+    (value.telemetryHistory === undefined || (Array.isArray(value.telemetryHistory) && value.telemetryHistory.length<=1536 && value.telemetryHistory.every(point=>isRecord(point) && ['lap','progress','seconds','speedKph','throttlePercent','brakePercent','gear','rpm'].every(key=>isFiniteNumber(point[key])) && Number.isInteger(point.lap) && (point.lap as number)>=0 && (point.progress as number)>=0 && (point.progress as number)<1 && (point.speedKph as number)>=0 && (point.throttlePercent as number)>=0 && (point.throttlePercent as number)<=100 && (point.brakePercent as number)>=0 && (point.brakePercent as number)<=100))) &&
     typeof value.code === 'string' &&
     typeof value.status === 'string' &&
     carStatuses.has(value.status) &&

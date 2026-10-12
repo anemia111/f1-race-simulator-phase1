@@ -42,6 +42,7 @@ export type MotorsportRaceConfig = {
   schemaVersion: 1; seed: string; championship: ChampionshipId; eventId: string
   course: MotorsportCourse; entries: MotorsportEntry[]; format: MotorsportRaceFormat
   start: 'standing' | 'rolling'; weather: 'dry' | 'wet'
+  environment?: { airTemperatureC: number; trackTemperatureC: number; windSpeedMps: number; windDirectionRad: number; surfaceWaterMm: number }
   /** Race director inputs, not randomly generated official decisions. */
   startFuelFraction: number; maximumStintSeconds: number | null
   minimumDriverSeconds: number | null; maximumDriverSeconds: number | null
@@ -63,6 +64,7 @@ export type MotorsportCar = {
   telemetryHistory?: import('../simulation/telemetryHistory').TelemetryPoint[]
   throttlePercent?: number; brakePercent?: number; rpm?: number
   clutchEngagementFraction?: number; turboSpoolFraction?: number
+  handlingState?: import('../simulation/vehicleHandling').VehicleHandlingState
   hybridPowerKw?: number; regenerationPowerKw?: number; hybridRecoveredMj?: number
   entryId: string; distanceM: number; speedMps: number; lateralM: number; gear: number
   fuelKg: number; virtualEnergyMj: number | null; hybridEnergyMj: number

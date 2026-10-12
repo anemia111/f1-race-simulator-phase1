@@ -7,7 +7,7 @@ import type { MotorsportCourse, MotorsportMachine } from './types'
 
 export const MOTORSPORT_STEP_SECONDS = 0.1
 const SAMPLE_COUNT = 512
-export type CourseStation = { x: number; y: number; nx: number; ny: number; radiusM: number; bankingRadians: number; grade: number; elevationM: number; airDensityKgM3: number }
+export type CourseStation = { x: number; y: number; nx: number; ny: number; radiusM: number; signedCurvature?: number; bankingRadians: number; grade: number; elevationM: number; airDensityKgM3: number }
 const stationCache = new WeakMap<MotorsportCourse, CourseStation[]>()
 const envelopeCache = new WeakMap<MotorsportCourse, WeakMap<MotorsportMachine, Map<string, number[]>>>()
 export const modulo = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor
@@ -44,7 +44,8 @@ export function courseStations(course: MotorsportCourse): CourseStation[] {
     const radiusM = twiceArea < 0.01 ? 100_000 : clamp(a * b * c / (2 * twiceArea), 8, 100_000)
     const dx = after[0] - before[0], dy = after[1] - before[1], norm = Math.max(0.001, Math.hypot(dx, dy))
     const road=elevation?elevationAt(elevation,index/SAMPLE_COUNT):{grade:0,elevationM:0}
-    return { ...road, airDensityKgM3: airDensityKgM3({ altitudeMeters: elevation ? road.elevationM : 100, temperatureC: 25 }), x, y, nx: -dy / norm / scaleToMetres, ny: dx / norm / scaleToMetres, radiusM,
+    const turn = Math.sign((x - before[0]) * (after[1] - y) - (y - before[1]) * (after[0] - x))
+    return { ...road, signedCurvature: turn / radiusM, airDensityKgM3: airDensityKgM3({ altitudeMeters: elevation ? road.elevationM : 100, temperatureC: 25 }), x, y, nx: -dy / norm / scaleToMetres, ny: dx / norm / scaleToMetres, radiusM,
       bankingRadians: radiusM < 1000 ? course.bankingDegrees.value * Math.PI / 180 : 0 }
   })
   stationCache.set(course, stations)

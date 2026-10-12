@@ -6,6 +6,7 @@ import { validateMotorsportConfig } from './race'
 import type { MotorsportRaceConfig, MotorsportRaceState } from './types'
 import { validSectorTiming } from './sectorTiming'
 import { validRaceTyre } from '../simulation/raceTyres'
+import { validVehicleHandling } from '../simulation/vehicleHandling'
 
 export const MOTORSPORT_SAVE_KEY = 'race-sim-motorsport-2026-v1'
 export type MotorsportSave = { schemaVersion: 1; config: MotorsportRaceConfig; state: MotorsportRaceState }
@@ -59,16 +60,17 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
     if (save.state.cars.length !== save.config.entries.length || new Set(save.state.cars.map(car => car.entryId)).size !== save.state.cars.length) return null
     migrateCourseRegistration(save.config, save.state)
     for (const car of save.state.cars) {
+      if (car.handlingState !== undefined && !validVehicleHandling(car.handlingState)) return null
       for (const value of [car.clutchEngagementFraction, car.turboSpoolFraction]) {
         if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) return null
       }
     }
     for (const car of save.state.cars) {
-      if (car.lateralVelocityMps !== undefined && (!Number.isFinite(car.lateralVelocityMps) || Math.abs(car.lateralVelocityMps)>2.5)) return null
+      if (car.lateralVelocityMps !== undefined && (!Number.isFinite(car.lateralVelocityMps) || Math.abs(car.lateralVelocityMps)>50)) return null
       if (car.tyreState !== undefined && (!validRaceTyre(car.tyreState) || Math.abs(car.tyreState.life - car.tyreLife) > 1e-8 || Math.abs(car.tyreState.surfaceC - car.tyreTemperatureC) > 1e-8)) return null
       if (car.timing !== undefined && !validSectorTiming(car.timing, save.config.course)) return null
       if (car.telemetryHistory !== undefined) {
-        if (!Array.isArray(car.telemetryHistory) || car.telemetryHistory.length>768) return null
+        if (!Array.isArray(car.telemetryHistory) || car.telemetryHistory.length>1536) return null
         car.telemetryHistory = car.telemetryHistory.map(point=>Array.isArray(point)?{lap:point[0],progress:point[1],seconds:point[2],speedKph:point[3],throttlePercent:point[4],brakePercent:point[5],gear:point[6],rpm:point[7]}:point)
         if(car.telemetryHistory.some(point=>![point.lap,point.progress,point.seconds,point.speedKph,point.throttlePercent,point.brakePercent,point.gear,point.rpm].every(Number.isFinite) || point.progress<0 || point.progress>=1 || point.speedKph<0 || point.throttlePercent<0 || point.throttlePercent>100 || point.brakePercent<0 || point.brakePercent>100)) return null
       }

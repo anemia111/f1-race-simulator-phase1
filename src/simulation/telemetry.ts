@@ -1,6 +1,7 @@
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { advancePedals } from './pedalControl'
+import { handlingSlip, type VehicleHandlingState } from './vehicleHandling'
 import { raceTyreGrip } from './raceTyres'
 import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
 import { advanceSfOts } from './sfOtsRuntime'
@@ -155,6 +156,7 @@ export function overtakeAllowanceBoundedDcPowerLimitKw(options: {
 }
 
 type CalculatedTelemetry = {
+  handlingState?: VehicleHandlingState
   brakePercent: number
   /** Frame-averaged contact-patch work dissipated by service-brake friction. */
   frictionServiceBrakePowerKw: number
@@ -208,6 +210,7 @@ export function calculateCarTelemetry(options: {
   trackCondition?: TireTrackCondition
   setup?: CarSetup
   headwindMps?: number
+  crosswindMps?: number
   categoryPhysics?: CategoryPhysicsProfile
   track: TrackDefinition
   team: Team
@@ -247,6 +250,7 @@ export function calculateCarTelemetry(options: {
     trackCondition: providedTrackCondition,
     setup,
     headwindMps = 0,
+    crosswindMps = 0,
     track,
     team,
     trackGrip,
@@ -626,6 +630,9 @@ export function calculateCarTelemetry(options: {
     ),
   )
   const pedals = advancePedals({
+    feedback: { lateralUse: Number.isFinite(corneringSpeedLimitKph) ? clamp((car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 2, 0, 1) : 0,
+      driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake,
+      skill: behaviorTraits.tyreLimitUtilisation },
     throttle: timedTrafficYield ? Math.min(38, behaviorManagedThrottlePercent) : behaviorManagedThrottlePercent,
     brake: requestedBrakePercent,
     previousThrottle: car.throttlePercent,
@@ -896,6 +903,9 @@ export function calculateCarTelemetry(options: {
       ? Math.min(targetSpeedKph, brakingTargetSpeedKph) * 0.98
       : undefined)
   const longitudinalInputWithoutEnergy: LongitudinalStepInput = {
+    handling: { state: car.handlingState, lateralOffset: car.lateralOffsetM, desiredOffset: car.desiredLateralOffsetM,
+      driverSkill: behaviorTraits.tyreLimitUtilisation, trackC: trackTemperatureC, airC: airTemperatureC, wet: lowGripConditions, crosswindMps,
+      tyreTemperatureC: f1Tires?.tireTemperatureC ?? (superFormulaRuntime ? superFormulaSimulatedTyreFor(superFormulaRuntime.liveTires, track.lengthKm).surfaceC : undefined) },
     activeAeroMode,
     activeAeroState,
     airDensityKgM3: ambientAirDensityKgM3,
@@ -1117,6 +1127,7 @@ export function calculateCarTelemetry(options: {
       : superFormulaRuntime && otsSimulation ? { ...superFormulaRuntime, otsSimulation } : car.runtimeSystems
 
   return {
+    handlingState: longitudinalStep.handlingState,
     brakePercent,
     frictionServiceBrakePowerKw,
     gear,

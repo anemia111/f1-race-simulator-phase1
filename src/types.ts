@@ -1360,6 +1360,7 @@ export type CarSnapshot = {
   turboSpoolFraction?: number
   /** Driveline clutch connection carried between ticks, 0=open and 1=locked. */
   clutchEngagementFraction?: number
+  handlingState?: import('./simulation/vehicleHandling').VehicleHandlingState
   /** Generic category-level overtake display state (F1 Overtake or SF OTS). */
   overtakeStatus: OvertakeStatus
   /**

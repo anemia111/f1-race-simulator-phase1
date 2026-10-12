@@ -3,8 +3,10 @@ import { decideTeamInstruction, applyTeamInstruction, delayTeammatePit } from '.
 import { behaviorDriverFor } from './driverBehavior'
 import { advancePedals } from '../simulation/pedalControl'
 import { selectGear } from '../simulation/drivetrain'
+import { handlingSlip, replaceHandlingTyres } from '../simulation/vehicleHandling'
+import { airDensityKgM3 } from '../simulation/roadEnvironment'
 import { advanceRaceTyre, initialRaceTyre } from '../simulation/raceTyres'
-import { recordTelemetry } from '../simulation/telemetryHistory'
+import { recordTelemetry, handlingTelemetry } from '../simulation/telemetryHistory'
 import { clamp, modulo, MOTORSPORT_STEP_SECONDS, targetSpeedMps, stationAt, tyreForceBudget } from './coursePhysics'
 import { trafficAero, tyreGripScale } from './vehicleDynamics'
 import { integrateMotorsportVehicle, motorsportPhysicsFor } from './sharedVehiclePhysics'
@@ -16,7 +18,18 @@ function appendEvent(state: MotorsportRaceState, entryId: string | null, message
   state.events.push({ tick: state.tick, seconds: state.raceSeconds, entryId, message })
   if (state.events.length > 500) state.events.splice(0, state.events.length - 500)
 }
+function environmentAt(config: MotorsportRaceConfig, distance: number) {
+  const station = stationAt(config.course, distance), e = config.environment
+  const airC = e?.airTemperatureC ?? (config.weather === 'wet' ? 20 : 25)
+  const trackC = e?.trackTemperatureC ?? (config.weather === 'wet' ? 22 : 32)
+  const heading = Math.atan2(-station.nx, station.ny)
+  const angle = (e?.windDirectionRad ?? 0) - heading
+  return { airC, trackC, water: e?.surfaceWaterMm ?? (config.weather === 'wet' ? 1 : 0),
+    density: airDensityKgM3({ altitudeMeters: station.elevationM, temperatureC: airC }),
+    headwind: (e?.windSpeedMps ?? 0) * Math.cos(angle), crosswind: (e?.windSpeedMps ?? 0) * Math.sin(angle) }
+}
 export function validateMotorsportConfig(config: MotorsportRaceConfig) {
+  if (config.environment && (['airTemperatureC','trackTemperatureC','windSpeedMps','windDirectionRad','surfaceWaterMm'].some(key => !Number.isFinite(config.environment![key as keyof NonNullable<MotorsportRaceConfig['environment']>])) || config.environment.airTemperatureC < -40 || config.environment.airTemperatureC > 60 || config.environment.trackTemperatureC < -40 || config.environment.trackTemperatureC > 90 || config.environment.windSpeedMps < 0 || config.environment.windSpeedMps > 60 || config.environment.surfaceWaterMm < 0 || config.environment.surfaceWaterMm > 30)) throw new Error('Invalid physical environment')
   if (config.sessionKind !== undefined && !['race', 'practice', 'qualifying'].includes(config.sessionKind)) throw new Error('Invalid session kind')
   if (config.sessionKind && config.sessionKind !== 'race' && config.format.kind !== 'time') throw new Error('Timed sessions require a duration')
   if (config.schemaVersion !== 1 || !['kyojo', 'super-gt', 'wec', 'indycar'].includes(config.championship) || typeof config.seed !== 'string' || typeof config.eventId !== 'string') throw new Error('Invalid championship configuration')
@@ -254,6 +267,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
     const car: MotorsportCar = { ...old, driverSeconds: [...old.driverSeconds], driverLastOutSeconds: [...old.driverLastOutSeconds], driverDistanceM: [...old.driverDistanceM], warnings: [...old.warnings] }
     const entry = entries.get(car.entryId)!, machine = entry.machine, driver = entry.drivers[car.driverIndex]
     const beforeDistance = car.distanceM
+    const environment = environmentAt(config, car.distanceM)
     car.hybridPowerKw = 0; car.regenerationPowerKw = 0
     if (car.status !== 'running' || state.flag !== 'green') car.lapInvalid = true
     if (car.status !== 'running') {
@@ -263,7 +277,9 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.throttlePercent = car.status === 'pit-service' ? 0 : clamp((pitTarget - old.speedMps) * 25, 0, 100)
       car.brakePercent = car.status === 'pit-service' ? 0 : clamp((old.speedMps - pitTarget) / 0.3 / motorsportPhysicsFor(machine).maximumBrakeDecelerationMps2 * 100, 0, 100)
       const pitMotion = integrateMotorsportVehicle(machine, {
-        activeAeroMode: 'corner', airDensityKgM3: stationAt(config.course, car.distanceM).airDensityKgM3,
+        handling: { state: car.handlingState, lateralOffset: 0, desiredOffset: 0, driverSkill: driver.racePace ?? 0.75, airC: environment.airC, trackC: environment.trackC, wet: environment.water > 0.1, tyreTemperatureC:car.tyreTemperatureC },
+        brakeTemperatureC: car.handlingState?.brakeTemperatureC ?? 460,
+        activeAeroMode: 'corner', airDensityKgM3: environment.density,
         currentSpeedKph: old.speedMps * 3.6, deltaSeconds: dt,
         fuelLoadKg: car.fuelKg, gripMultiplier: tyreGripScale(car, config.weather, entry.classId),
         dynamics: { roadGradeFraction: stationAt(config.course, car.distanceM).grade, straightness: 1 },
@@ -274,6 +290,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.speedMps = car.status === 'pit-service' ? 0 : pitMotion.speedKph / 3.6
       car.gear = pitMotion.gear; car.rpm = pitMotion.rpm
       car.clutchEngagementFraction = pitMotion.clutchEngagementFraction; car.turboSpoolFraction = pitMotion.turboSpoolFraction
+      car.handlingState = pitMotion.handlingState
       car.tyreState = advanceRaceTyre(car.tyreState ?? initialRaceTyre(car.tyreTemperatureC, car.tyreLife), {
         category: entry.classId, compound: car.tyreSets.at(-1)?.compound ?? 'primary', seconds: dt, distanceM: 0, speedMps: car.speedMps,
         demand: 0, massRatio: 1, management: driver.tyreManagement ?? 0.75, pace: 'standard', trackC: config.weather === 'wet' ? 22 : 32, wet: config.weather === 'wet',
@@ -295,6 +312,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
           if (request.changeTyres) {
             car.tyreLife = 1; car.tyreTemperatureC = config.weather === 'wet' ? 18 : 25
             car.tyreState = initialRaceTyre(car.tyreTemperatureC)
+            car.handlingState = replaceHandlingTyres(car.handlingState, car.tyreTemperatureC)
             const needsAlternate = config.championship === 'indycar' && (config.course.kind === 'road' || config.course.kind === 'street' || config.course.id === 'nashville') && car.tyreSets.filter(set => set.compound === 'alternate' && set.completedLaps >= 2).length < (config.course.kind === 'street' || config.course.id === 'nashville' ? 2 : 1)
             car.tyreSets = [...car.tyreSets, { compound: config.weather === 'wet' ? 'wet' : needsAlternate ? 'alternate' : 'primary', completedLaps: 0 }]
           }
@@ -355,14 +373,14 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.activeDrivingEnd = state.raceSeconds
       const paceSkill = config.sessionKind === 'qualifying' ? driver.qualifyingPace ?? driver.racePace ?? 0.75 : driver.racePace ?? 0.75
       const tyreSkill = driver.tyreManagement ?? 0.75
-      const surfaceGrip = tyreGripScale(car, config.weather, entry.classId, config.course.kind === 'short-oval' || config.course.kind === 'speedway')
+      const surfaceGrip = tyreGripScale(car, config.weather, entry.classId, config.course.kind === 'short-oval' || config.course.kind === 'speedway') * clamp(1 - environment.water * 0.025, 0.55, 1)
       const mass = machine.massKg.value + machine.driverMassKg.value + car.fuelKg
       const ahead = nearestAhead.get(car.entryId), behind=nearestBehind.get(car.entryId)
-      const station = stationAt(config.course,car.distanceM)
+      const station = { ...stationAt(config.course,car.distanceM), airDensityKgM3: environment.density }
       const aero = ahead ? trafficAero(ahead.gap,car.lateralM-ahead.car.lateralM,car.speedMps,station.radiusM) : {dragScale:1,liftScale:1}
-      const conditions = {massKg:mass,gripScale:surfaceGrip,...aero}
+      const conditions = {massKg:mass,gripScale:surfaceGrip,airDensityKgM3:environment.density,...aero}
       const paceFactor = car.paceMode==='push'?1.015:car.paceMode==='save'?0.96:car.paceMode==='defend'?0.99:1
-      const skillFactor=Math.min(1,(0.95+paceSkill*0.05)*paceFactor)
+      const skillFactor=Math.min(1,Math.sqrt(0.82+0.18*clamp(paceSkill,0,1.2)/1.2)*paceFactor)
       const freeTarget=targetSpeedMps(config.course,machine,car.distanceM,{massKg:mass,gripScale:surfaceGrip})*skillFactor
       let target=targetSpeedMps(config.course,machine,car.distanceM,conditions)*skillFactor
       if (car.pitRequest) {
@@ -416,14 +434,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       if (overtaking && !car.battle && opponent) car.battle={opponentId:opponent.entryId,
         side:Math.abs(car.lateralM)>=1?(car.lateralM<0?-1:1):opponent.lateralM< -0.8?1:-1,startedAt:state.raceSeconds}
       const desiredLateral=car.battle&&overtaking?car.battle.side*Math.min(2.4,config.course.widthM.value/2-1.5):decision.desiredLateralOffsetM
-      const lateralError=desiredLateral-car.lateralM
-      const lateralLimit=car.speedMps>60?1.8:2.5
-      const desiredLateralVelocity=clamp(lateralError*2.5,-lateralLimit,lateralLimit)
-      car.lateralVelocityMps=(car.lateralVelocityMps??0)+clamp(desiredLateralVelocity-(car.lateralVelocityMps??0),-4*dt,4*dt)
-      const lateralStep=car.lateralVelocityMps*dt
-      if (lateralStep*lateralError>=0 && Math.abs(lateralStep)>=Math.abs(lateralError)) {
-        car.lateralM=desiredLateral;car.lateralVelocityMps=0
-      } else car.lateralM+=lateralStep
+      // Intent supplies a steering target; only the handling integration moves the car.
       if (ahead && (state.flag!=='green' || Math.abs(car.lateralM-ahead.car.lateralM)<2.1)) {
         const closing=Math.max(0,car.speedMps-ahead.car.speedMps)
         const braking=tyreForceBudget(machine,station,car.speedMps,conditions).longitudinal/mass
@@ -454,7 +465,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       // Feed forward the braking slope of the upcoming speed envelope. A finite
       // response time avoids trying to erase every speed error in a single tick.
       const previewM = Math.max(3, car.speedMps * 0.25)
-      const futureTarget = targetSpeedMps(config.course, machine, car.distanceM + previewM, conditions) * Math.min(1, (0.95 + paceSkill * 0.05) * paceFactor)
+      const futureTarget = targetSpeedMps(config.course, machine, car.distanceM + previewM, conditions) * skillFactor
       const plannedAcceleration = Math.min(0, (futureTarget ** 2 - target ** 2) / (2 * previewM))
       const desiredForce = mass * (plannedAcceleration + (target - car.speedMps) / 0.55) + drag + rolling + slopeForce
       // Driven-axle shares are SIM; LMH front assist uses its deployment gate.
@@ -464,12 +475,16 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       // Reference-speed hardware sizing is SIM pending supplier brake maps.
       const brakeCapacity = machine.tyreMu.value * ((machine.massKg.value + machine.driverMassKg.value) * 9.80665 + 0.5 * station.airDensityKgM3 * machine.liftAreaM2.value * 85 ** 2)
       const pedal = advancePedals({
+        feedback: { lateralUse: clamp(tyreForces.lateral / Math.max(1, tyreForces.available), 0, 1), driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake, skill: paceSkill },
         throttle: Math.max(0, Math.min(desiredForce, tyreForces.longitudinal * drivenShare * 0.95)) / Math.max(1, wheelPowerForce) * 100 * decision.throttleOpeningScale,
         brake: Math.max(0, -desiredForce) / Math.max(1, brakeCapacity) * 100 * decision.brakePressureScale,
         previousThrottle: car.throttlePercent ?? 0, previousBrake: car.brakePercent ?? 0,
         seconds: dt, carbonBrakes: entry.classId === 'hypercar' || entry.classId === 'lmp2' || entry.classId === 'indycar',
       })
       const motion = integrateMotorsportVehicle(machine, {
+        handling: { state: car.handlingState, lateralOffset: old.lateralM, desiredOffset: desiredLateral, driverSkill: paceSkill,
+          airC: environment.airC, trackC: environment.trackC, wet: environment.water > 0.1, crosswindMps: environment.crosswind, tyreTemperatureC:car.tyreTemperatureC },
+        brakeTemperatureC: car.handlingState?.brakeTemperatureC ?? 460, headwindMps: environment.headwind,
         activeAeroMode: 'corner', airDensityKgM3: station.airDensityKgM3,
         currentSpeedKph: car.speedMps * 3.6, deltaSeconds: dt, fuelLoadKg: car.fuelKg,
         gripMultiplier: surfaceGrip, dirtyAirDownforceMultiplier: aero.liftScale, towDragReduction: 1 - aero.dragScale,
@@ -478,10 +493,15 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         frontAxleDrivePowerKw: entry.classId === 'hypercar' && (machine.hybridMinimumSpeedKph?.value ?? 0) > 0 ? hybrid : 0,
         throttlePercent: pedal.throttle, brakePercent: pedal.brake,
         requestedBrakeDecelerationMps2: pedal.brake / 100 * brakeCapacity / mass,
-        dynamics: { roadGradeFraction: station.grade, bankingDegrees: station.bankingRadians * 180 / Math.PI, effectiveCornerRadiusM: station.radiusM, straightness: clamp(station.radiusM / 1000, 0, 1) },
+        dynamics: { signedCurvaturePerMeter: station.signedCurvature, roadGradeFraction: station.grade, bankingDegrees: station.bankingRadians * 180 / Math.PI, effectiveCornerRadiusM: station.radiusM, straightness: clamp(station.radiusM / 1000, 0, 1) },
         clutchEngagementFraction: car.clutchEngagementFraction, turboSpoolFraction: car.turboSpoolFraction,
       })
       const { driveForceN: driveForce, brakeForceN: brakeForce, accelerationMps2: acceleration } = motion
+      car.handlingState = motion.handlingState
+      if (motion.handlingState) {
+        car.lateralM = clamp(motion.handlingState.lateralOffset, -config.course.widthM.value/2+1.5, config.course.widthM.value/2-1.5)
+        car.lateralVelocityMps = clamp(motion.handlingState.lateralSpeed + car.speedMps * Math.sin(motion.handlingState.headingError), -50, 50)
+      }
       const throttleFraction = clamp(driveForce * car.speedMps / Math.max(1, motion.wheelDrivePowerKw * 1000), 0, pedal.throttle / 100)
       hybrid *= throttleFraction
       car.hybridPowerKw = hybrid
@@ -525,7 +545,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       car.tyreLife = car.tyreState.life; car.tyreTemperatureC = car.tyreState.surfaceC
       car.gear = motion.gear; car.rpm = motion.rpm
       car.clutchEngagementFraction = motion.clutchEngagementFraction; car.turboSpoolFraction = motion.turboSpoolFraction
-      if (car.status === 'running') car.telemetryHistory = recordTelemetry(car.telemetryHistory,{lap:Math.floor(car.distanceM/length),progress:modulo(car.distanceM,length)/length,seconds:state.raceSeconds,speedKph:car.speedMps*3.6,throttlePercent:car.throttlePercent ?? 0,brakePercent:car.brakePercent ?? 0,gear:car.gear,rpm:car.rpm})
+      if (car.status === 'running') car.telemetryHistory = recordTelemetry(car.telemetryHistory,{...handlingTelemetry(car.handlingState),lap:Math.floor(car.distanceM/length),progress:modulo(car.distanceM,length)/length,seconds:state.raceSeconds,speedKph:car.speedMps*3.6,throttlePercent:car.throttlePercent ?? 0,brakePercent:car.brakePercent ?? 0,gear:car.gear,rpm:car.rpm})
       if (car.pitRequest) {
         const entryLine = (Math.floor(beforeDistance / length) + config.course.pitEntry.value) * length
         const nextEntryLine = entryLine <= beforeDistance ? entryLine + length : entryLine

@@ -803,3 +803,44 @@ Old all-course timing results predate this change. Keep the user's shortened
 publish exception and do not run complete weekends or endurance simulations.
 Five focused suites pass 89 tests. An additional 33 short driving checks pass;
 seven complete flying-lap cases were deliberately excluded. Types/lint pass.
+
+## Coupled handling, wheel slip and driver pedals, 2026-10-12
+
+The user authorized the physics audit improvements and specifically requested
+human throttle/brake/traction control. Live paths in all six categories now own
+optional persisted VehicleHandlingState: steering, yaw, body lateral velocity,
+four-wheel slip/load/heat/local wear, damped roll/pitch/heave, brake temperature
+and finite gearbox shifts. Intent supplies a steering target; the former extra-
+category lateral position controller no longer moves the car. Existing safety
+and qualifying occupancy constraints retain authority. Steering feedback must
+include body slip and yaw damping: omitting them caused runaway yaw in the short
+Suzuka courtesy regression and was corrected before publication.
+
+Pedals use lateral utilisation and previous wheel slip for pickup/lift/pressure
+release. Brake demand uses hardware pressure then tyre clipping; unclipped demand
+feeds lock detection. Differential locking and brake bias affect wheel demand.
+Engine braking does not receive regenerative credit. Shift torque interruption
+affects delivered force and requested tyre torque. F1 final-speed gear/RPM remain
+consistent after occupancy clipping. Tyre changes reset wheel state, and stopped
+F1 pit release resets yaw/steering and first gear.
+
+Additional categories accept optional temperature, wind and water configuration,
+resolve local density/head/crosswind and retain brake temperature. Old saves omit
+handling safely; new state and all environment fields are validated. Telemetry
+optionally adds drive/brake slip, lateral G and steering, with 512 bins/lap,
+three laps and legacy t1/new t2 compact history. A full-field maximum-history
+checkpoint still passes the 5 MiB quota check.
+
+Read docs/COUPLED_VEHICLE_HANDLING.md before extending this model. It is explicitly
+reduced-order: slip demand relaxation, not independent wheel angular inertia;
+bounded suspension/aero responses, not measured multibody geometry or CFD maps.
+Global compound thermal/wear grip remains authoritative, with bounded local
+corrections. No closed thermodynamic budget, supplier curves or measured road
+roughness is claimed. Offline planning is not the full live transient model.
+Historical all-course timing audits are invalid as current pace evidence. Keep
+the user's no-long-tests exception: shortened publish, no full weekends,
+endurance, all-course recalibration or complete flying-lap test collection.
+
+Final focused checks: seven suites/86 tests, 12 selected FP2/Suzuka courtesy
+cases and 33 short additional-category driving cases pass (131 total). The
+remaining courtesy variants and seven complete flying-lap cases were excluded.

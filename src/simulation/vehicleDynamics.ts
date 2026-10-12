@@ -1,4 +1,5 @@
 import { wakeDownforceMultiplier, wakeDragReduction } from './wakeModel'
+import { advanceVehicleHandling, handlingGrip, initialVehicleHandling, type VehicleHandlingState } from './vehicleHandling'
 import type {
   ActiveAeroMode,
   ActiveFlagPhase,
@@ -24,6 +25,8 @@ import {
   advanceClutchState,
   advanceTurboState,
   selectGear,
+  powerUnitForceInGear,
+  powerUnitRpmFor,
   type GearSelection,
 } from './drivetrain'
 import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
@@ -55,6 +58,7 @@ export type TrackLoadProfile = {
 }
 
 export type LongitudinalDynamicsInput = {
+  signedCurvaturePerMeter?: number
   bankingDegrees?: number
   brakingDistanceAheadMeters?: number
   brakingTargetSpeedKph?: number
@@ -79,6 +83,8 @@ export type ActiveAeroStructuralInput = Readonly<{
 }>
 
 export type LongitudinalStepInput = {
+  /** Live callers opt into the coupled planar/tyre/thermal model. */
+  handling?: { state?: VehicleHandlingState; lateralOffset: number; desiredOffset: number; driverSkill: number; trackC: number; airC: number; wet: boolean; tyreTemperatureC?: number; crosswindMps?: number; roadBumpM?: number }
   activeAeroMode: ActiveAeroMode
   /** Continuous wing positions. `activeAeroMode` is a compatibility fallback. */
   activeAeroState?: ActiveAeroStructuralInput
@@ -148,6 +154,7 @@ export type LongitudinalStepInput = {
 }
 
 export type LongitudinalStepResult = {
+  handlingState?: VehicleHandlingState
   accelerationMps2: number
   /** Service-brake hardware availability applied before tyre-force limiting. */
   brakeHardwareCapacityMultiplier: number
@@ -1237,16 +1244,18 @@ function integrateVehicleLongitudinalStepWithBudget(
   const gripMultiplier = vehicleTyreGripMultiplierForTeam(
     input.team,
     input.gripMultiplier,
-  )
+  ) * handlingGrip(input.handling?.state)
   const rollingResistanceForceN =
     massKg * GRAVITY_MPS2 * categoryPhysics.rollingResistanceCoefficient
+  const engineBrakeForceN = input.handling && input.throttlePercent < 5 && input.currentSpeedKph > 20
+    ? Math.min(massKg * 1.2, combustionPowerKw * 1000 * 0.04 / Math.max(8, input.currentSpeedKph / 3.6)) : 0
   // Road grade is a direct physical rise/run fraction. Render-centreline Y is
   // deliberately not a force input; unavailable road data resolves neutrally.
   const gradeForceN = roadGradeForceN(massKg, input.dynamics.roadGradeFraction)
   const activeAeroState =
     input.activeAeroState ?? activeAeroStateForMode(input.activeAeroMode)
   const inferredPitchDegrees =
-    input.aeroPitchDegrees ??
+    input.aeroPitchDegrees ?? (input.handling?.state ? input.handling.state.pitchRad * 180 / Math.PI : undefined) ??
     clamp(
       clamp(finiteOr(input.brakePercent, 0) / 100, 0, 1) * 1.2 -
         clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1) * 0.35,
@@ -1254,7 +1263,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       3,
     )
   const inferredYawDegrees =
-    input.aeroYawDegrees ??
+    input.aeroYawDegrees ?? (input.handling?.state ? input.handling.state.headingError * 180 / Math.PI : undefined) ??
     clamp(
       (1 - clamp(finiteOr(input.dynamics.straightness, 1), 0, 1)) * 2.5 +
         Math.abs(finiteOr(input.dynamics.referenceLineOffsetM ?? 0, 0)) *
@@ -1310,7 +1319,10 @@ function integrateVehicleLongitudinalStepWithBudget(
   const serviceBrakeMechanicalEnergyProfileMJ: number[] = []
   const brakingRegenerativeMechanicalEnergyProfileMJ: number[] = []
   const frictionBrakeMechanicalEnergyProfileMJ: number[] = []
-  let lastSelection: GearSelection = defaultGearSelection({
+  const liveGearSelection = (options: Parameters<typeof defaultGearSelection>[0]) => input.handling?.state
+    ? powerUnitForceInGear({ ...options, gear: clamp(input.handling.state.gear, 1, categoryPhysics.gearCount) })
+    : defaultGearSelection(options)
+  let lastSelection: GearSelection = liveGearSelection({
     clutchEngagementFraction,
     combustionPowerKw,
     deploymentPowerKw,
@@ -1324,6 +1336,7 @@ function integrateVehicleLongitudinalStepWithBudget(
     clutchEngagementFraction = lastSelection.clutchEngagementFraction
   }
 
+  let lastDownforceN = 0
   const evaluateForcesAt = (
     speedMps: number,
     selection: GearSelection,
@@ -1333,7 +1346,8 @@ function integrateVehicleLongitudinalStepWithBudget(
     const speedKph = speedMps * 3.6
     const requestedDriveForceN =
       selection.driveForceN *
-      clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1)
+      clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1) *
+      ((input.handling?.state?.shiftRemaining ?? 0) > 0 ? 0.15 : 1)
     const airSpeedMps = Math.max(
       0,
       speedMps + finiteOr(input.headwindMps ?? 0, 0),
@@ -1343,7 +1357,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       airDensityKgM3: input.airDensityKgM3,
       airSpeedMps,
       categoryPhysics,
-      dirtyAirDownforceMultiplier: input.dirtyAirDownforceMultiplier,
+      dirtyAirDownforceMultiplier: (input.dirtyAirDownforceMultiplier ?? 1) * clamp(1 - Math.max(0, -(input.handling?.state?.heaveM ?? 0) - 0.018) * 10, 0.7, 1),
       pitchDegrees: inferredPitchDegrees,
       setup: input.setup,
       team: input.team,
@@ -1351,6 +1365,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       yawDegrees: inferredYawDegrees,
     })
     const dragForceN = aeroForces.totalDragN
+    lastDownforceN = aeroForces.totalDownforceN
     const staticWeightN = massKg * GRAVITY_MPS2
     const staticFrontShare = clamp(
       (staticWeightN * 0.45 + aeroForces.frontDownforceN) /
@@ -1358,12 +1373,12 @@ function integrateVehicleLongitudinalStepWithBudget(
       0.35,
       0.6,
     )
-    const lateralForceN = lateralTyreForceDemandN({
+    const lateralForceN = Math.max(Math.abs(input.handling?.state?.lateralAcceleration ?? 0) * massKg, lateralTyreForceDemandN({
       bankingDegrees: input.dynamics.bankingDegrees,
       massKg,
       radiusMeters: input.dynamics.effectiveCornerRadiusM,
       speedMps,
-    })
+    }))
     const brakeModulation =
       input.brakeReleaseSpeedKph === undefined
         ? 1
@@ -1405,9 +1420,9 @@ function integrateVehicleLongitudinalStepWithBudget(
       driveForceN = Math.min(requestedDriveForceN - frontRequestN, capacity.drivenAxleForceCapacityN) + Math.min(frontRequestN, frontCapacityN)
       const requestedServiceBrakeForceN =
         input.requestedBrakeDecelerationMps2 === undefined
-          ? serviceBrakeCapacityN *
+          ? Math.min(serviceBrakeCapacityN, (input.handling ? brakeHardwareCapacity.maximumBrakeDecelerationMps2 * massKg : serviceBrakeCapacityN) *
             clamp(finiteOr(input.brakePercent, 0) / 100, 0, 1) *
-            brakeModulation
+            brakeModulation)
           : Math.min(
               serviceBrakeCapacityN,
               Math.max(
@@ -1474,6 +1489,7 @@ function integrateVehicleLongitudinalStepWithBudget(
           brakeForceN -
           dragForceN -
           rollingResistanceForceN -
+          engineBrakeForceN -
           gradeForceN) /
         massKg
     }
@@ -1506,7 +1522,7 @@ function integrateVehicleLongitudinalStepWithBudget(
     )
 
   for (let step = 0; step < integrationSteps; step += 1) {
-    const preliminarySelection = defaultGearSelection({
+    const preliminarySelection = liveGearSelection({
       clutchEngagementFraction,
       combustionPowerKw,
       deploymentPowerKw,
@@ -1529,7 +1545,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       speedMps: nextMps,
       throttleFraction: clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1),
     }).engagementFraction
-    lastSelection = defaultGearSelection({
+    lastSelection = liveGearSelection({
       clutchEngagementFraction,
       combustionPowerKw,
       deploymentPowerKw,
@@ -1602,7 +1618,7 @@ function integrateVehicleLongitudinalStepWithBudget(
   // State advances exactly once per substep. Re-evaluate the drivetrain and
   // force budgets at the resulting road speed without advancing either state,
   // keeping returned speed, gear, RPM and contact-patch force on one instant.
-  lastSelection = defaultGearSelection({
+  lastSelection = liveGearSelection({
     clutchEngagementFraction,
     combustionPowerKw,
     deploymentPowerKw,
@@ -1665,7 +1681,43 @@ function integrateVehicleLongitudinalStepWithBudget(
     ),
   )
 
+  const optimalSelection = defaultGearSelection({ clutchEngagementFraction, combustionPowerKw, deploymentPowerKw, physics: categoryPhysics, speedMps: nextMps, transmissionEfficiency, turboSpoolFraction })
+  const handlingState = input.handling ? advanceVehicleHandling(
+    input.handling.state ?? initialVehicleHandling(input.handling.lateralOffset, input.handling.tyreTemperatureC ?? input.handling.trackC + 35), {
+      seconds: elapsedSeconds, speedMps: nextMps, massKg, physics: categoryPhysics,
+      curvature: input.dynamics.signedCurvaturePerMeter ?? 0,
+      actualOffset: input.handling.lateralOffset, desiredOffset: input.handling.desiredOffset,
+      grip: gripMultiplier, downforceN: lastDownforceN,
+      driveForceN: lastDriveForceN, brakeForceN: lastBrakeForceN,
+      requestedDriveN: lastSelection.driveForceN * input.throttlePercent / 100 * ((input.handling.state?.shiftRemaining ?? 0) > 0 ? 0.15 : 1),
+      tractionLimitN: lastTractionLimitN, accelerationMps2: lastAccelerationMps2,
+      requestedBrakeN: input.requestedBrakeDecelerationMps2 === undefined ? brakeHardwareCapacity.maximumBrakeDecelerationMps2 * massKg * clamp(input.brakePercent / 100, 0, 1) : Math.max(0, input.requestedBrakeDecelerationMps2) * massKg,
+      brakeBiasPercent: input.setup?.brakeBiasPercent,
+      brakeWorkMJ: frictionBrakeMechanicalEnergyMJ, trackC: input.handling.trackC, airC: input.handling.airC,
+      wet: input.handling.wet, differentialPercent: input.setup?.differentialPercent ?? 55,
+      frontDriveFraction: deploymentPowerKw + combustionPowerKw > 0 ? (input.frontAxleDrivePowerKw ?? 0) / (deploymentPowerKw + combustionPowerKw) : 0,
+      crosswindMps: input.handling.crosswindMps, roadBumpM: input.handling.roadBumpM,
+    }) : undefined
+  let returnedGear = lastSelection.gear
+  let returnedRpm = lastSelection.rpm
+  if (handlingState) {
+    const previous = input.handling?.state
+    if (!previous) handlingState.gear = lastSelection.gear
+    else {
+      const remaining = Math.max(0, previous.shiftRemaining - elapsedSeconds)
+      const shift = previous.shiftRemaining > 0 && remaining === 0
+      handlingState.gear = shift ? previous.shiftTarget : previous.gear
+      handlingState.shiftRemaining = remaining
+      if (remaining === 0 && !shift && handlingState.gear !== optimalSelection.gear) {
+        handlingState.shiftTarget = clamp(handlingState.gear + Math.sign(optimalSelection.gear - handlingState.gear), 1, categoryPhysics.gearCount)
+        handlingState.shiftRemaining = 0.055 + (1.2 - input.handling!.driverSkill) * 0.025
+      }
+    }
+    returnedGear = handlingState.gear
+    returnedRpm = powerUnitRpmFor({ physics: categoryPhysics, gear: returnedGear, speedMps: nextMps, clutchEngagementFraction })
+  }
   const result: LongitudinalStepResult = {
+    ...(handlingState ? { handlingState } : {}),
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
     brakeHardwareCapacityMultiplier: brakeHardwareCapacity.capacityMultiplier,
     brakeForceN: Math.max(0, finiteOr(lastBrakeForceN, 0)),
@@ -1678,7 +1730,7 @@ function integrateVehicleLongitudinalStepWithBudget(
     dragForceN: Math.max(0, finiteOr(lastDragForceN, 0)),
     driveForceN: Math.max(0, finiteOr(lastDriveForceN, 0)),
     frictionBrakeMechanicalEnergyMJ,
-    gear: lastSelection.gear,
+    gear: returnedGear,
     generatorMechanicalPowerKw,
     gradeForceN: finiteOr(gradeForceN, 0),
     netPowerUnitWheelPowerKw:
@@ -1691,7 +1743,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       0,
       finiteOr(rollingResistanceForceN, 0),
     ),
-    rpm: Math.max(0, finiteOr(lastSelection.rpm, 0)),
+    rpm: Math.max(0, finiteOr(returnedRpm, 0)),
     serviceBrakeMechanicalEnergyMJ,
     speedKph,
     tractionLimitN: Math.max(0, finiteOr(lastTractionLimitN, 0)),

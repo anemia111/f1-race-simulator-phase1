@@ -135,7 +135,8 @@ import { startingGridDistance, startingGridLateralOffsetM } from './startingGrid
 import { f1StandingStartMguKDecision } from './f1StandingStart'
 import { calculateCarTelemetry } from './telemetry'
 import { followingDemand } from './following'
-import { recordTelemetry } from './telemetryHistory'
+import { recordTelemetry, handlingTelemetry } from './telemetryHistory'
+import { replaceHandlingTyres } from './vehicleHandling'
 import { advanceSfOts, createSfOtsSimulation } from './sfOtsRuntime'
 import {
   resolveOperationalVehicleMass,
@@ -387,6 +388,7 @@ function pitLaneSpeedLimitKphFor(
 function simulatedHeadwindMpsAt(
   config: RaceConfig,
   progress: number,
+  lateral = false,
 ) {
   const points = config.track.centerline
 
@@ -404,7 +406,7 @@ function simulatedHeadwindMpsAt(
   const windSpeedMps =
     1.4 + hashChance(`${config.seed}:wind:${config.track.id}`) * 5.6
 
-  return windSpeedMps * Math.cos(windFromHeading - travelHeading)
+  return windSpeedMps * (lateral ? Math.sin(windFromHeading - travelHeading) : Math.cos(windFromHeading - travelHeading))
 }
 
 export function blueFlagApproachingCarFor(
@@ -5941,6 +5943,7 @@ export function advanceRace(
           rpm: 5200,
           gear: 1,
           brakeTemperatureC: Math.max(380, car.brakeTemperatureC - 120),
+          handlingState: car.handlingState ? { ...(servesProceduralPenalty ? car.handlingState : replaceHandlingTyres(car.handlingState, 78)!), yawRate: 0, lateralSpeed: 0, headingError: 0, steeringRad: 0, gear: 1, shiftTarget: 1, shiftRemaining: 0, brakeTemperatureC: Math.max(380, car.brakeTemperatureC - 120) } : undefined,
         }
       }
 
@@ -6308,6 +6311,7 @@ export function advanceRace(
     const physicalGapSeconds = physicalGapSecondsById.get(car.driverId)
     const telemetryCar = {
       ...paceManagedCar,
+      desiredLateralOffsetM: lateralState.desiredLateralOffsetM,
       gapToAhead: physicalGapSeconds ?? Number.POSITIVE_INFINITY,
     }
     const battleTravel =
@@ -6372,6 +6376,7 @@ export function advanceRace(
         config.weekendContext?.setupByDriver?.[driver.id] ??
         baselineSetupForTrack(config.track),
       headwindMps: simulatedHeadwindMpsAt(config, car.progress),
+      crosswindMps: simulatedHeadwindMpsAt(config, car.progress, true),
       trackGrip: localTrackGrip,
       airTemperatureC,
       trackTemperatureC,
@@ -6381,6 +6386,11 @@ export function advanceRace(
       regulatoryMassIncreaseKg: heatHazardMassIncreaseKg,
     })
     let displayTelemetry = telemetry
+    if (telemetry.handlingState && car.status === 'running' && !waitingForSafeRejoin) {
+      const bounds = lateralBoundsForTrack(config.track, { trackProgress: car.progress })
+      lateralState = { ...lateralState, lateralOffsetM: Math.max(bounds.minOffsetM, Math.min(bounds.maxOffsetM, telemetry.handlingState.lateralOffset)),
+        lateralVelocityMps: Math.max(-2.8, Math.min(2.8, telemetry.handlingState.lateralSpeed + car.speedKph / 3.6 * Math.sin(telemetry.handlingState.headingError))) }
+    }
 
     if (waitingForSafeRejoin) {
       const stationaryEnergyStore = f1Runtime?.energyStore ?? null
@@ -6810,8 +6820,8 @@ export function advanceRace(
             turboSpoolFraction: displayTelemetry.turboSpoolFraction,
           })
         : null
-    const actualTravelGear = actualTravelPowerUnit?.gear ?? 0
-    const actualTravelRpm = actualTravelPowerUnit?.rpm ?? 0
+    const actualTravelGear = powerUnitExplicitlyStopped ? 0 : displayTelemetry.handlingState?.gear ?? actualTravelPowerUnit?.gear ?? 0
+    const actualTravelRpm = powerUnitExplicitlyStopped ? 0 : displayTelemetry.handlingState ? powerUnitRpmFor({ physics: categoryPhysics, gear: actualTravelGear, speedMps: actualTravelSpeedKph / 3.6, clutchEngagementFraction: displayTelemetry.clutchEngagementFraction }) : actualTravelPowerUnit?.rpm ?? 0
     const overtakeEligibility =
       f1Runtime !== null && isRaceDistance
       ? updateOvertakeEligibilityAfterTravel({
@@ -9499,7 +9509,7 @@ export function advanceRace(
     overtakeEnableTargetsByDriver,
     cars: classifiedCars.map(car => {
       if (car.runtimeSystems.kind==='super-formula' && car.runtimeSystems.otsSimulation && (car.status!=='running' || car.pitPhase!=='none' || nextFlag!=='clear')) car={...car,overtakeStatus:'disabled',runtimeSystems:{...car.runtimeSystems,otsSimulation:advanceSfOts(car.runtimeSystems.otsSimulation,false,false,elapsedSeconds,0)}}
-      return car.status === 'running' && car.pitPhase === 'none' ? { ...car, telemetryHistory: recordTelemetry(car.telemetryHistory, { lap: Math.floor(car.totalDistance), progress: profileDistanceKmBetween(config.track, 0, car.progress)/config.track.lengthKm, seconds: elapsedSeconds, speedKph: car.speedKph, throttlePercent: car.throttlePercent, brakePercent: car.brakePercent, gear: car.gear, rpm: car.rpm }) } : car
+      return car.status === 'running' && car.pitPhase === 'none' ? { ...car, telemetryHistory: recordTelemetry(car.telemetryHistory, { ...handlingTelemetry(car.handlingState), lap: Math.floor(car.totalDistance), progress: profileDistanceKmBetween(config.track, 0, car.progress)/config.track.lengthKm, seconds: elapsedSeconds, speedKph: car.speedKph, throttlePercent: car.throttlePercent, brakePercent: car.brakePercent, gear: car.gear, rpm: car.rpm }) } : car
     }),
     eventMessage: '',
     flag: nextFlag,

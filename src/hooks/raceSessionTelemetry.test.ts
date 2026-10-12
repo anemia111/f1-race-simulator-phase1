@@ -9,7 +9,7 @@ describe('telemetry and SF OTS checkpoint compatibility',()=>{
   it('round-trips maximum recorder history without consuming a browser quota',()=>{
     const snapshot=createInitialRace(phaseOneConfig)
     let history: TelemetryPoint[]=[]
-    for(let lap=0;lap<3;lap++) for(let bin=0;bin<256;bin++) history=recordTelemetry(history,{lap,progress:bin/256,seconds:lap*90+bin/3,speedKph:230.12,throttlePercent:82.4,brakePercent:0,gear:6,rpm:12000})
+    for(let lap=0;lap<3;lap++) for(let bin=0;bin<512;bin++) history=recordTelemetry(history,{lap,progress:bin/512,seconds:lap*90+bin/6,speedKph:230.12,throttlePercent:82.4,brakePercent:0,gear:6,rpm:12000,driveSlipPercent:8.12,brakeSlipPercent:0,lateralG:1.23,steeringDegrees:-4.56})
     snapshot.cars=snapshot.cars.map(car=>({...car,telemetryHistory:history}))
     const now=Date.now(),raw=serializeRaceCheckpoint('trace',snapshot,now)!
     expect(raw.length*2).toBeLessThan(5*1024*1024)

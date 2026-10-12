@@ -9,7 +9,7 @@ describe('independent motorsport checkpoints', () => {
     expect(parseMotorsportSave(serializeMotorsportSave(config,state))).not.toBeNull()
     state.cars[0].lateralVelocityMps=0.4
     expect(parseMotorsportSave(serializeMotorsportSave(config,state))?.state.cars[0].lateralVelocityMps).toBe(0.4)
-    for(const value of [Number.NaN,Number.POSITIVE_INFINITY,3]){
+    for(const value of [Number.NaN,Number.POSITIVE_INFINITY,51]){
       state.cars[0].lateralVelocityMps=value
       expect(parseMotorsportSave(serializeMotorsportSave(config,state))).toBeNull()
     }
