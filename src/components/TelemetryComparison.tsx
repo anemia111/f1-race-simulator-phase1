@@ -15,8 +15,8 @@ const fmt=(n:number|undefined,digits=1)=>n===undefined?'—':n.toFixed(digits)
 const signed=(n:number|undefined)=>n===undefined?'—':`${n>0?'+':''}${n.toFixed(3)}`
 const bounded=(n:number,low:number,high:number)=>Math.max(low,Math.min(high,n))
 
-export function TelemetryComparison({traces,selectedId,lengthM,corners=[],centerline=[]}:{traces:TelemetryTrace[];selectedId:string;lengthM:number;corners?:{label:string;progress:number}[];centerline?:readonly (readonly number[])[]}) {
-  const [comparisonId,setComparisonId]=useState(''),[lapA,setLapA]=useState('latest'),[lapB,setLapB]=useState('latest')
+export function TelemetryComparison({traces,selectedId,lengthM,corners=[],centerline=[],initialComparisonId}:{initialComparisonId?:string;traces:TelemetryTrace[];selectedId:string;lengthM:number;corners?:{label:string;progress:number}[];centerline?:readonly (readonly number[])[]}) {
+  const [comparisonId,setComparisonId]=useState(initialComparisonId??''),[lapA,setLapA]=useState('latest'),[lapB,setLapB]=useState('latest')
   const [selfCompare,setSelfCompare]=useState(traces.length<2),[group,setGroup]=useState('driving')
   const [cursor,setCursor]=useState(0.5),[pinned,setPinned]=useState(false),[range,setRange]=useState<[number,number]>([0,1])
   const first=traces.find(t=>t.id===selectedId)??traces[0]

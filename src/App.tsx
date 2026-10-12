@@ -1,3 +1,4 @@
+import {formulaEngineerSession} from './domain/engineerAdapters'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import {
@@ -2189,6 +2190,7 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
     engineMode,
     snapshot,
     requestPitStop,
+    setEngineeringPlan,
     setDriverPaceMode,
     skipFormationLap,
     snapshotIsCurrent,
@@ -4188,6 +4190,7 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
+        engineering={{session:formulaEngineerSession(raceConfig,snapshot),onPlan:setEngineeringPlan,onSetup:updateCarSetup}}
         qualifyingSegments={classificationSegments}
         applicationMode={applicationMode}
         cameraMode={cameraMode}

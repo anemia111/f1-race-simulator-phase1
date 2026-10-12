@@ -19,6 +19,8 @@ import {
   type RaceWorkerOutboundMessage,
 } from './raceWorkerProtocol'
 
+import {applyFormulaEngineeringPlan} from '../domain/engineeringCommands'
+
 const workerScope: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope
 
 let config: RaceConfig | null = null
@@ -67,6 +69,10 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
     return
   }
 
+  if(message.type==='engineering-plan'){
+    if(config&&snapshot){snapshot=applyFormulaEngineeringPlan(snapshot,config,message.driverId,message.plan);publish({type:'snapshot',snapshot})}
+    return
+  }
   manualPaceModes.set(message.driverId, message.mode)
 })
 

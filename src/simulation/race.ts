@@ -1,8 +1,10 @@
+import {settleEngineeringPlan} from '../domain/raceEngineer'
+import {sfPitSimulation} from './sfPitSimulation'
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { decideTeamInstruction, applyTeamInstruction } from './teamDecision'
 import { phaseOneConfig } from '../data/phaseOne'
-import { MAX_STRATEGY_DECISIONS, settleStrategyDecisions, type StrategyDecision } from './decisionLog'
+import { MAX_STRATEGY_DECISIONS, settleStrategyDecisions,decisionReasonLabels, type StrategyDecision } from './decisionLog'
 import { advanceRaceTyre } from './raceTyres'
 import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
 import {
@@ -8426,8 +8428,9 @@ export function advanceRace(
 
       // Pit strategy.
       const pitF1Runtime = f1RuntimeFor(next)
+      const dueEngineeringPlan=next.engineeringPlan?.status==='scheduled'&&lap>=next.engineeringPlan.dueDistance
       const requestedCompound = pitF1Runtime
-        ? manualPitRequests?.get(driver.id)
+        ? manualPitRequests?.get(driver.id)??(dueEngineeringPlan?next.engineeringPlan?.compound:undefined)
         : undefined
       const manualCompoundAvailable =
         requestedCompound !== undefined &&
@@ -8436,6 +8439,7 @@ export function advanceRace(
 
       if (requestedCompound && !manualCompoundAvailable) {
         manualPitRequests?.delete(driver.id)
+        if(dueEngineeringPlan&&next.engineeringPlan)next={...next,engineeringPlan:{...next.engineeringPlan,status:'cancelled',reason:'No available requested tyre set'}}
         newEvents.push(
           makeEvent(
             `manual-pit-refused-${driver.id}-${lap}`,
@@ -8539,7 +8543,7 @@ export function advanceRace(
         break
       }
 
-      const decision =
+      let decision =
         !pitF1Runtime || !isRaceDistance || lap <= 2 || !pitLaneOpen
           ? null
           : proceduralPenalty && !controlPhase
@@ -8595,7 +8599,10 @@ export function advanceRace(
               trackCondition: localTireTrackCondition,
             })
 
+      if(decision&&next.engineeringPlan?.status==='scheduled'&&!dueEngineeringPlan&&!manualPitRequests?.has(driver.id)&&['undercut','overcut','traffic','safety-car'].includes(decision.reason))decision=null
+
       if (decision && pitF1Runtime) {
+        if(next.engineeringPlan?.status==='scheduled'&&!dueEngineeringPlan)next={...next,engineeringPlan:{...next.engineeringPlan,reason:`Earlier stop: ${decisionReasonLabels[decision.reason]}`}}
         teamsPittingThisFrame.add(next.teamId)
 
         if (decision.reason === 'manual') {
@@ -8824,6 +8831,15 @@ export function advanceRace(
                   { ...next.lapHistory.at(-1)!, pitStop: true },
                 ],
         }
+      }
+      const sf=next.runtimeSystems.kind==='super-formula'?next.runtimeSystems:null
+      if(sf&&isRaceDistance&&lap>2&&pitLaneOpen&&pitLaneSpeedLimitKphFor(next,config)!==null&&config.track.pitLane&&next.status==='running'&&next.pitPhase==='none'&&(dueEngineeringPlan||(sf.liveTires.simulatedPerformance?.life??1)<0.28)){
+        const surface=rainIntensityMmH>0||averageSurfaceWaterMm>0?'wet':'dry'
+        if(sf.controlTires.sets[surface].remainingSets>0){
+          const estimate=sfPitSimulation(config.track,baseLapTime)
+          next={...next,status:'pit',pitStops:next.pitStops+1,pitPhase:'entry',pitServiceKind:'tire-stop',pitLaneProgress:config.track.pitLane.entryProgress,pitStartedAtSeconds:elapsedSeconds,pitUntilSeconds:elapsedSeconds+estimate.duration,pitExitUntilSeconds:null,lapHistory:next.lapHistory.length?[...next.lapHistory.slice(0,-1),{...next.lapHistory.at(-1)!,pitStop:true}]:next.lapHistory}
+          newEvents.push(makeEvent(`sf-sim-stop-${driver.id}-${lap}`,'pit',elapsedSeconds,`${driver.code}: SIM control-tyre stop (${dueEngineeringPlan?'scheduled box instruction':'tyre-life safety threshold'}); no refuelling.`))
+        }else if(dueEngineeringPlan&&next.engineeringPlan)next={...next,engineeringPlan:{...next.engineeringPlan,status:'cancelled',reason:'No control-tyre set for current conditions'}}
       }
     }
 
@@ -9508,6 +9524,7 @@ export function advanceRace(
     overtakeEnableAtLeaderDistance,
     overtakeEnableTargetsByDriver,
     cars: classifiedCars.map(car => {
+      if(car.engineeringPlan)car={...car,engineeringPlan:settleEngineeringPlan(car.engineeringPlan,{pitStops:car.pitStops,inPit:car.pitPhase!=='none',position:car.position,running:car.status==='running'||car.status==='pit'})}
       if (car.runtimeSystems.kind==='super-formula' && car.runtimeSystems.otsSimulation && (car.status!=='running' || car.pitPhase!=='none' || nextFlag!=='clear')) car={...car,overtakeStatus:'disabled',runtimeSystems:{...car.runtimeSystems,otsSimulation:advanceSfOts(car.runtimeSystems.otsSimulation,false,false,elapsedSeconds,0)}}
       return car.status === 'running' && car.pitPhase === 'none' ? { ...car, telemetryHistory: recordTelemetry(car.telemetryHistory, { ...handlingTelemetry(car.handlingState), fuelKg:car.fuelLoadKg,...(car.runtimeSystems.kind==='f1'?{tyreLifePercent:100-car.runtimeSystems.tires.tireWearPercent,energyPercent:car.runtimeSystems.ersBatteryPercent,deploymentKw:car.runtimeSystems.energyStore.actualDeploymentPowerKw,recoveryKw:car.runtimeSystems.energyStore.actualRecoveryPowerKw}:car.runtimeSystems.liveTires.simulatedPerformance?{tyreLifePercent:car.runtimeSystems.liveTires.simulatedPerformance.life*100}:{}), lap: Math.floor(car.totalDistance), progress: profileDistanceKmBetween(config.track, 0, car.progress)/config.track.lengthKm, seconds: elapsedSeconds, speedKph: car.speedKph, throttlePercent: car.throttlePercent, brakePercent: car.brakePercent, gear: car.gear, rpm: car.rpm }) } : car
     }),

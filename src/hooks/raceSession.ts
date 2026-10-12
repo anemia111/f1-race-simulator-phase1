@@ -1,3 +1,4 @@
+import {validEngineeringPlan} from '../domain/raceEngineer'
 import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
 import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
 import { validVehicleHandling } from '../simulation/vehicleHandling'
@@ -1342,6 +1343,7 @@ function migrateRaceSnapshot(
 
       return {
         ...car,
+        engineeringPlan:validEngineeringPlan(car.engineeringPlan)&&car.engineeringPlan.positionHigh<=value.cars.length&&car.engineeringPlan.createdSeconds<=value.elapsedSeconds?car.engineeringPlan:undefined,
         runtimeSystems:
           car.runtimeSystems.kind === 'super-formula' &&
           car.runtimeSystems.otsSimulation === undefined

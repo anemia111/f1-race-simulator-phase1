@@ -3,6 +3,7 @@
 export function advancePedals(input: {
   throttle: number; brake: number; previousThrottle: number; previousBrake: number
   seconds: number; carbonBrakes?: boolean; stop?: boolean
+  style?: {brakeReleaseScale:number;throttleRiseScale:number;throttleCeiling:number}
   feedback?: { lateralUse: number; driveSlip: number; brakeSlip: number; skill: number }
 }): { throttle: number; brake: number } {
   const bound = (v: number) => Math.max(0, Math.min(100, Number.isFinite(v) ? v : 0))
@@ -14,12 +15,12 @@ export function advancePedals(input: {
   const skill = Math.max(0, Math.min(1.2, feedback?.skill ?? 1))
   const lateralUse = Math.max(0, Math.min(1, feedback?.lateralUse ?? 0))
   const brakeTarget = bound(input.brake) * (feedback ? Math.max(0.35, 1 - Math.max(0, feedback.brakeSlip - 0.11) * (2.4 + skill)) : 1)
-  const brake = move(bound(input.previousBrake), brakeTarget, input.carbonBrakes ? 650 : 450, feedback ? 130 + 110 * skill : 260)
+  const brake = move(bound(input.previousBrake), brakeTarget, input.carbonBrakes ? 650 : 450, (feedback ? 130 + 110 * skill : 260)*(input.style?.brakeReleaseScale??1))
   // A lift is faster than opening the throttle. Brake release and traction
   // demand govern pickup rather than alternating full pedals every tick.
   const tractionCorrection = feedback ? Math.max(0.2, 1 - Math.max(0, feedback.driveSlip - 0.085) * (2.8 + skill)) : 1
-  const throttleTarget = input.brake > 3 || brake > 3 ? 0 : bound(input.throttle) * tractionCorrection
+  const throttleTarget = input.brake > 3 || brake > 3 ? 0 : Math.min(bound(input.throttle),input.style?.throttleCeiling??100) * tractionCorrection
   const throttle = move(bound(input.previousThrottle), throttleTarget,
-    feedback ? (70 + 110 * skill) * Math.max(0.25, 1 - lateralUse * 0.75) : 200, 1200)
+    (feedback ? (70 + 110 * skill) * Math.max(0.25, 1 - lateralUse * 0.75) : 200)*(input.style?.throttleRiseScale??1), 1200)
   return { throttle, brake }
 }

@@ -1,3 +1,4 @@
+import {RaceEngineerWorkspace,type EngineeringControls} from './RaceEngineerWorkspace'
 import { CompoundUsageChart } from './CompoundUsageChart'
 import { QualifyingTimingCards } from './QualifyingTimingCards'
 import { TelemetryComparison } from './TelemetryComparison'
@@ -46,7 +47,7 @@ import type { SeriesId } from '../series/types'
 import type { ApplicationMode } from '../freeMode/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
-type DashboardView = 'map' | 'data' | 'telemetry'
+type DashboardView = 'map' | 'data' | 'telemetry' | 'engineer'
 
 const practiceProgramLabels: Record<
   NonNullable<CarSnapshot['practiceProgram']>,
@@ -118,6 +119,7 @@ export type BroadcastDataDetail = {
 
 
 type BroadcastDashboardProps = {
+  engineering?:EngineeringControls
   qualifyingSegments?: readonly { name: string; advanceCount: number | null }[]
   categoryPresentation?: { seriesValue: string; systemsLabel: string; tyreUsage: ReactNode; tyreLegend: ReactNode; speeds: number[]; telemetryCorners?: {label: string; progress: number}[] }
   applicationMode: ApplicationMode
@@ -209,6 +211,7 @@ const dashboardViews: Array<{
   id: DashboardView
   label: string
 }> = [
+  {Icon:Activity,id:'engineer',label:'Engineer'},
   { Icon: Database, id: 'data', label: 'Data' },
   { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
 ]
@@ -646,6 +649,7 @@ function CenterView({
 }
 
 export function BroadcastDashboard({
+  engineering,
   qualifyingSegments = [],
   categoryPresentation,
   applicationMode,
@@ -691,6 +695,7 @@ export function BroadcastDashboard({
   weekendStages,
 }: BroadcastDashboardProps) {
   const [activeView, setActiveView] = useState<DashboardView>('map')
+  const [comparisonTarget,setComparisonTarget]=useState<string|undefined>(undefined)
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
   const classIds = categoryPresentation ? ['gt500','gt300','hypercar','lmp2','lmgt3','kyojo','indycar'].filter(id => timingRows.some(row => row.categoryDisplay?.classId === id)) : []
@@ -855,7 +860,7 @@ export function BroadcastDashboard({
       <aside className="broadcast-sidebar" aria-label="dashboard navigation">
         <div className="broadcast-mark"><Radio aria-hidden="true" size={21} /></div>
         <nav>
-          {dashboardViews.map(({ Icon, id, label }) => (
+          {dashboardViews.filter(view=>view.id!=='engineer'||!!engineering&&dataMode==='SIM').map(({ Icon, id, label }) => (
             <button
               aria-current={activeView === id ? 'page' : undefined}
               key={id}
@@ -945,12 +950,14 @@ export function BroadcastDashboard({
                 onFocusDriver={onFocusDriver} />
             )}
           </section>
+          ) : activeView==='engineer'&&engineering&&dataMode==='SIM' ? (
+          <section className="broadcast-panel broadcast-telemetry-panel"><PanelHeader title="Race engineer" action={<button aria-label="Close race engineer" onClick={()=>setActiveView('map')}><X size={13}/></button>}/><RaceEngineerWorkspace {...engineering} selectedId={selectedCar.driverId} paused={isPaused} onFocus={onFocusDriver} onWatch={id=>{onFocusDriver(id);setActiveView('map')}} onCompare={(id,opponent)=>{onFocusDriver(id);setComparisonTarget(opponent);setActiveView('telemetry')}}/></section>
           ) : activeView === 'telemetry' ? (
           <section className="broadcast-panel broadcast-telemetry-panel" aria-label="Telemetry workspace">
             <PanelHeader title="Telemetry comparison" action={<button aria-label="Close telemetry comparison" className="panel-close" onClick={()=>setActiveView('map')} type="button"><X size={13}/></button>}/>
             <div className="telemetry-workspace">
               <label className="telemetry-primary-car">車両A<select aria-label="Telemetry primary car" value={selectedCar.driverId} onChange={event=>onFocusDriver(event.target.value)}>{snapshot.cars.map(car=><option key={car.driverId} value={car.driverId}>#{car.carNumber} {car.driverName}</option>)}</select></label>
-              <TelemetryComparison selectedId={selectedCar.driverId} lengthM={track.lengthKm*1000} centerline={track.centerline} traces={snapshot.cars.map(car=>({id:car.driverId,name:`#${car.carNumber} ${car.driverName}`,color:car.teamColor,samples:car.telemetryHistory ?? []}))} corners={telemetryCorners}/>
+              <TelemetryComparison key={`${selectedCar.driverId}:${comparisonTarget??''}`} initialComparisonId={comparisonTarget} selectedId={selectedCar.driverId} lengthM={track.lengthKm*1000} centerline={track.centerline} traces={snapshot.cars.map(car=>({id:car.driverId,name:`#${car.carNumber} ${car.driverName}`,color:car.teamColor,samples:car.telemetryHistory ?? []}))} corners={telemetryCorners}/>
             </div>
           </section>
           ) : (

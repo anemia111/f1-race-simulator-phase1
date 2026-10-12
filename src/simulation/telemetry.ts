@@ -22,6 +22,7 @@ import type {
   WeatherState,
   WeekendStage,
 } from '../types'
+import {drivingSignature,signaturePedalControl} from './drivingSignature'
 import {
   activeAeroDisplayModeForState,
   advanceActiveAeroState,
@@ -294,6 +295,7 @@ export function calculateCarTelemetry(options: {
         (options.performanceSession === 'qualifying' ? 'qualifying' : 'race'),
     })
   const behaviorTraits = driverDecision?.traits ?? driverBehaviorTraits(driver)
+  const signature=drivingSignature(driver)
   const lateralSeparationM =
     aheadLateralOffsetM === undefined
       ? undefined
@@ -512,7 +514,7 @@ export function calculateCarTelemetry(options: {
   const brakingDistanceWithDriverTimingM = Math.max(
     1,
     dynamics.brakingDistanceAheadMeters -
-      currentSpeedMps * (driverDecision?.brakeOnsetDeltaSeconds ?? 0),
+      currentSpeedMps * ((driverDecision?.brakeOnsetDeltaSeconds ?? 0)+signaturePedalControl(signature,0).brakeTimingSeconds),
   )
   const liveRequiredBrakingDecelerationMps2 =
     dynamics.brakingDistanceAheadMeters > 0
@@ -628,6 +630,8 @@ export function calculateCarTelemetry(options: {
     ),
   )
   const pedals = advancePedals({
+    style: signaturePedalControl(signature,Number.isFinite(corneringSpeedLimitKph)?clamp((car.speedKph/Math.max(1,corneringSpeedLimitKph))**2,0,1):0,
+      car.runtimeSystems.kind==='f1'?1-car.runtimeSystems.tires.tireWearPercent/100:car.runtimeSystems.liveTires.simulatedPerformance?.life??1),
     feedback: { lateralUse: Number.isFinite(corneringSpeedLimitKph) ? clamp((car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 2, 0, 1) : 0,
       driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake,
       skill: behaviorTraits.tyreLimitUtilisation },

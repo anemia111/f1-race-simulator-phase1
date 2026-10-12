@@ -1,3 +1,6 @@
+import {motorsportEngineerSession} from './engineering'
+import {applyMotorsportEngineeringPlan} from '../domain/engineeringCommands'
+import {normalizeCarSetup,defaultCarSetup} from '../simulation/engineering'
 import { SetupPanelHeader } from '../components/SessionChrome'
 import { CompoundUsageChart } from '../components/CompoundUsageChart'
 import { BarChart3, X } from 'lucide-react'
@@ -172,6 +175,7 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
 
   return <div className="race-shell" data-testid="motorsport-app">
     <BroadcastDashboard
+      engineering={{session:motorsportEngineerSession(config,state),onPlan:(entryId,plan)=>{if(worker.current)worker.current.postMessage({type:'engineering-plan',generation:generation.current,entryId,plan} satisfies MotorsportWorkerCommand);else setState(current=>applyMotorsportEngineeringPlan(current,config,entryId,plan))},onSetup:(id,key,value)=>{if(!paused||config.sessionKind!=='practice')return;const next={...config,entries:config.entries.map(entry=>entry.id!==id?entry:{...entry,drivers:entry.drivers.map((driver,index)=>index!==state.cars.find(c=>c.entryId===id)?.driverIndex?driver:{...driver,setup:normalizeCarSetup({...defaultCarSetup,...driver.setup,[key]:value})})})};generation.current++;busy.current=false;latest.current={...latest.current,config:next};worker.current?.postMessage({type:'init',generation:generation.current,config:next,state:latest.current.state} satisfies MotorsportWorkerCommand);setConfig(next)}}}
       applicationMode={applicationMode} cameraMode={cameraMode} dataControl={<div className="broadcast-data-control"><strong>{applicationMode === 'free' ? 'FREE · ' : ''}{label} · SIM</strong><span>{config.format.kind === 'laps' ? `${config.format.laps} laps` : `${config.format.seconds / 3600} hours`}</span><button type="button" onClick={()=>applicationMode === 'free' ? openFree() : setPanel('setup')}>{applicationMode === 'free' ? 'Edit Free Mode session' : 'Race setup'}</button></div>}
       dataDetails={[{label:'Selected car',value:`#${selected.entry.number} ${selected.entry.team}`,source:'SIM'}, {label:'Class',value:`${selected.entry.classId.toUpperCase()} P${selected.classPosition}`,source:'SIM'}, {label:'Fuel',value:`${selected.car.fuelKg.toFixed(1)} kg`,source:'SIM'}, {label:'Timing sections',value:track.sectorTimingUnavailableReason ?? `${track.sectorMarks.length} sections`,source:track.sectorBoundaryReference ? 'SIM' : 'UNAVAILABLE'}]}
       dataMode="SIM" dataModeAvailability={{SIM:true,HIST:false,LIVE:false}} engineLabel="SIM"

@@ -1,4 +1,6 @@
 import { decideDriverBehavior, type DriverDecisionContext } from '../simulation/driverDecision'
+import {engineeringMachine,extraControlSetup,extraSignature,motorsportEngineerSession} from './engineering'
+import {makeEngineeringPlan,settleEngineeringPlan,strategyScenarios} from '../domain/raceEngineer'
 import { decideTeamInstruction, applyTeamInstruction, delayTeammatePit } from '../simulation/teamDecision'
 import { behaviorDriverFor } from './driverBehavior'
 import { advancePedals } from '../simulation/pedalControl'
@@ -99,7 +101,7 @@ export function createMotorsportRace(config: MotorsportRaceConfig): MotorsportRa
     events: [{ tick: 0, seconds: 0, entryId: null, message: timed ? `SIM ${config.sessionKind}: timed best-lap session; category knockout/group formats are not inferred.` : `SIM formation. ${new Set(config.entries.map(entry=>entry.classId)).size > 1 ? `Each following class starts ${CLASS_START_GAP_M} m behind the preceding class's last car. ` : ''}Source references and every estimated physical input are retained in this race configuration.` }] }
 }
 
-function pitWork(config: MotorsportRaceConfig, car: MotorsportCar, entry: MotorsportEntry, request: MotorsportPitRequest) {
+export function pitWork(config: MotorsportRaceConfig, car: MotorsportCar, entry: MotorsportEntry, request: MotorsportPitRequest) {
   const fraction = clamp(request.fuelFraction, 0, 1)
   const fuelAddedKg = Math.max(0, entry.machine.fuelCapacityKg.value * fraction - car.fuelKg)
   const energyAdded = car.virtualEnergyMj === null ? 0 : Math.max(0, (entry.machine.virtualEnergyCapacityMj?.value ?? 0) * fraction - car.virtualEnergyMj)
@@ -119,7 +121,7 @@ function pitWork(config: MotorsportRaceConfig, car: MotorsportCar, entry: Motors
     : Math.max(fuelSeconds + tyreSeconds, driverSeconds)
   return { fuelAddedKg, energyAdded, fuelSeconds, tyreSeconds, driverSeconds, total: Math.max(2, total) }
 }
-function requestForStrategy(config: MotorsportRaceConfig, entry: MotorsportEntry, car: MotorsportCar): MotorsportPitRequest | null {
+export function requestForStrategy(config: MotorsportRaceConfig, entry: MotorsportEntry, car: MotorsportCar): MotorsportPitRequest | null {
   if (config.championship === 'kyojo' && config.applicationMode !== 'free') return null
   const fuelReserve = entry.machine.fuelKgPerKm.value * config.course.lengthM / 1000 * 1.8
   // A request immediately after the pit entry still needs nearly a full lap
@@ -269,7 +271,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
   state.cars = previous.cars.map(old => {
     if (!RUNNING.has(old.status)) return old
     const car: MotorsportCar = { ...old, driverSeconds: [...old.driverSeconds], driverLastOutSeconds: [...old.driverLastOutSeconds], driverDistanceM: [...old.driverDistanceM], warnings: [...old.warnings] }
-    const entry = entries.get(car.entryId)!, machine = entry.machine, driver = entry.drivers[car.driverIndex]
+    const entry = entries.get(car.entryId)!, driver = entry.drivers[car.driverIndex],machine=engineeringMachine(entry.machine,driver)
     const beforeDistance = car.distanceM
     const environment = environmentAt(config, car.distanceM)
     car.hybridPowerKw = 0; car.regenerationPowerKw = 0
@@ -365,12 +367,28 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       }
     } else {
       if (!car.pitRequest) {
-        const planned=requestForStrategy(config,entry,car)
+        let planned=requestForStrategy(config,entry,car)
+        const raceSession=!config.sessionKind||config.sessionKind==='race'
+        const planDue=raceSession&&car.engineeringPlan?.status==='scheduled'&&car.distanceM/length>=car.engineeringPlan.dueDistance
+        if(planned&&car.engineeringPlan?.status==='scheduled'&&!planDue)car.engineeringPlan={...car.engineeringPlan,reason:'Safety or category conditions require an earlier stop'}
+        if(planDue&&!planned)planned={entryId:entry.id,fuelFraction:config.championship==='kyojo'?0:1,changeTyres:true,nextDriverIndex:null}
+        if(planned)car.strategyReason=car.fuelKg<entry.machine.fuelKgPerKm.value*length/1000*1.8?'燃料の安全余裕':car.tyreLife<0.28?'タイヤ残寿命':planDue?'指定した停止周回':'カテゴリーのスティント・エネルギー・タイヤ条件'
+        if(raceSession&&car.strategyEvaluatedLap!==car.laps){
+          car.strategyEvaluatedLap=car.laps
+          if(!planned&&car.tyreLife<0.55&&state.flag!=='red'&&car.engineeringPlan?.status!=='scheduled'){
+            const session=motorsportEngineerSession(config,previous),view=session.cars.find(c=>c.id===entry.id)!
+            const choices=strategyScenarios(session,view).filter(c=>c.allowed),now=choices.find(c=>c.delay===0)
+            if(now&&choices.length>=2&&choices.every(c=>c.delay===0||now.cost+now.uncertainty<c.cost)){
+              car.engineeringPlan=makeEngineeringPlan(session,view,now);car.strategyReason=`AI: ${now.reason}・復帰予測 P${now.low}–${now.high}`
+              planned={entryId:entry.id,fuelFraction:config.championship==='kyojo'?0:1,changeTyres:true,nextDriverIndex:null}
+            }
+          }
+        }
         const fuelLaps=car.fuelKg/Math.max(0.001,machine.fuelKgPerKm.value*length/1000)
         const delay=delayTeammatePit({teammateBusy:reservedPitTeams.has(entry.team),fuelLaps,tyreLife:car.tyreLife,
           mandatoryStopDue:planned?.nextDriverIndex!==null && planned?.nextDriverIndex!==undefined,
           weatherEmergency:config.weather==='wet' && car.tyreSets.at(-1)?.compound!=='wet'})
-        if (planned && !delay) {car.pitRequest=planned;reservedPitTeams.add(entry.team)}
+        if (planned && !delay) {car.pitRequest=planned;reservedPitTeams.add(entry.team);appendEvent(state,entry.id,`BOX: ${car.strategyReason??'燃料・タイヤ・スティントの管理'}`)}
       }
       car.driverSeconds[car.driverIndex] += dt; car.stintSeconds += dt
       if (car.activeDrivingStart === null) car.activeDrivingStart = previous.raceSeconds
@@ -469,7 +487,8 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       }).driveForceN
       // Feed forward the braking slope of the upcoming speed envelope. A finite
       // response time avoids trying to erase every speed error in a single tick.
-      const previewM = Math.max(3, car.speedMps * 0.25)
+      const signature=extraSignature(driver,clamp(tyreForces.lateral/Math.max(1,tyreForces.available),0,1),car.tyreLife)
+      const previewM = Math.max(3, car.speedMps * (0.25+signature.brakeTimingSeconds))
       const futureTarget = targetSpeedMps(config.course, machine, car.distanceM + previewM, conditions) * skillFactor
       const plannedAcceleration = Math.min(0, (futureTarget ** 2 - target ** 2) / (2 * previewM))
       const desiredForce = mass * (plannedAcceleration + (target - car.speedMps) / 0.55) + drag + rolling + slopeForce
@@ -480,6 +499,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       // Reference-speed hardware sizing is SIM pending supplier brake maps.
       const brakeCapacity = machine.tyreMu.value * ((machine.massKg.value + machine.driverMassKg.value) * 9.80665 + 0.5 * station.airDensityKgM3 * machine.liftAreaM2.value * 85 ** 2)
       const pedal = advancePedals({
+        style:signature,
         feedback: { lateralUse: clamp(tyreForces.lateral / Math.max(1, tyreForces.available), 0, 1), driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake, skill: paceSkill },
         throttle: Math.max(0, Math.min(desiredForce, tyreForces.longitudinal * drivenShare * 0.95)) / Math.max(1, wheelPowerForce) * 100 * decision.throttleOpeningScale,
         brake: Math.max(0, -desiredForce) / Math.max(1, brakeCapacity) * 100 * decision.brakePressureScale,
@@ -487,6 +507,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         seconds: dt, carbonBrakes: entry.classId === 'hypercar' || entry.classId === 'lmp2' || entry.classId === 'indycar',
       })
       const motion = integrateMotorsportVehicle(machine, {
+        setup:extraControlSetup(driver.setup),
         handling: { state: car.handlingState, lateralOffset: old.lateralM, desiredOffset: desiredLateral, driverSkill: paceSkill,
           airC: environment.airC, trackC: environment.trackC, wet: environment.water > 0.1, crosswindMps: environment.crosswind, tyreTemperatureC:car.tyreTemperatureC },
         brakeTemperatureC: car.handlingState?.brakeTemperatureC ?? 460, headwindMps: environment.headwind,
@@ -606,6 +627,10 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
   }
   if (state.cars.every(car => !RUNNING.has(car.status))) {
     state.phase = 'finished'; appendEvent(state, null, 'Race finished. Class standings and driver times are available.')
+  }
+  if(state.cars.some(car=>car.engineeringPlan&&['scheduled','in-pit'].includes(car.engineeringPlan.status))){
+  const classOrder=new Map(motorsportStandings(state,config).map(row=>[row.car.entryId,row.classPosition]))
+  state.cars=state.cars.map(car=>car.engineeringPlan?{...car,engineeringPlan:settleEngineeringPlan(car.engineeringPlan,{pitStops:car.pits,inPit:car.status.startsWith('pit-'),position:classOrder.get(car.entryId)??1,running:RUNNING.has(car.status)})}:car)
   }
   return state
 }

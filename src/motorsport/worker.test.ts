@@ -4,6 +4,8 @@ import { createMotorsportRace } from './race'
 import { parseMotorsportSave } from './persistence'
 import { restoreSnapshotTelemetry, type MotorsportSnapshotMessage } from './workerSnapshots'
 import type { MotorsportWorkerCommand } from './worker'
+import {motorsportEngineerSession} from './engineering'
+import {makeEngineeringPlan,strategyScenarios} from '../domain/raceEngineer'
 
 it('keeps complete telemetry in worker saves and resets delta history with the generation',async()=>{
   const packets: unknown[]=[]
@@ -20,6 +22,11 @@ it('keeps complete telemetry in worker saves and resets delta history with the g
     expect(restored).toEqual(state)
     send({type:'advance',generation:7,ticks:2})
     restored=restoreSnapshotTelemetry(restored,packets.at(-1) as MotorsportSnapshotMessage)
+    const engineering=motorsportEngineerSession(config,restored),selected=engineering.cars[0]
+    const plan=makeEngineeringPlan(engineering,selected,strategyScenarios(engineering,selected)[0])
+    send({type:'engineering-plan',generation:7,entryId:selected.id,plan})
+    restored=restoreSnapshotTelemetry(restored,packets.at(-1) as MotorsportSnapshotMessage)
+    expect(restored.cars.find(car=>car.entryId===selected.id)?.engineeringPlan).toEqual(plan)
     send({type:'save',generation:7})
     const saved=packets.at(-1) as {type:string;generation:number;payload:string}
     expect(saved.type).toBe('save')

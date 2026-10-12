@@ -1,3 +1,5 @@
+import {validEngineeringPlan} from '../domain/raceEngineer'
+import {normalizeCarSetup} from '../simulation/engineering'
 import { migrateCourseRegistration } from './courseMigration'
 import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
 import { motorsportMachine } from './packages'
@@ -36,6 +38,7 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
     if (!finiteTree(save) || save.schemaVersion !== 1 || save.state.schemaVersion !== 1 || save.config.schemaVersion !== 1) return null
     for (const entry of save.config.entries) {
       entry.drivers = entry.drivers.map(driver => {
+        if(driver.setup){if(Object.values(driver.setup).length!==6||!Object.values(driver.setup).every(n=>typeof n==='number'&&Number.isFinite(n))||Object.entries(normalizeCarSetup(driver.setup)).some(([key,value])=>driver.setup![key as keyof typeof driver.setup]!==value))throw new Error('Invalid driver setup')}
         if (driver.id !== 'yuki_nakayama' || ![105, 110].includes(driver.overall ?? 0)) return driver
         const old = driver.overall! / 100
         if (![driver.racePace, driver.consistency, driver.tyreManagement, driver.qualifyingPace ?? old].every(value => value === old)) return driver
@@ -74,6 +77,9 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
         car.telemetryHistory = car.telemetryHistory.map(point=>Array.isArray(point)?{lap:point[0],progress:point[1],seconds:point[2],speedKph:point[3],throttlePercent:point[4],brakePercent:point[5],gear:point[6],rpm:point[7]}:point)
         if(car.telemetryHistory.some(point=>![point.lap,point.progress,point.seconds,point.speedKph,point.throttlePercent,point.brakePercent,point.gear,point.rpm].every(Number.isFinite) || point.progress<0 || point.progress>=1 || point.speedKph<0 || point.throttlePercent<0 || point.throttlePercent>100 || point.brakePercent<0 || point.brakePercent>100)) return null
       }
+      if(car.engineeringPlan!==undefined&&(!validEngineeringPlan(car.engineeringPlan)||car.engineeringPlan.createdSeconds>save.state.raceSeconds||car.engineeringPlan.positionHigh>save.config.entries.filter(e=>e.classId===save.config.entries.find(e=>e.id===car.entryId)?.classId).length))return null
+      if(car.strategyEvaluatedLap!==undefined&&(!Number.isSafeInteger(car.strategyEvaluatedLap)||car.strategyEvaluatedLap<0))return null
+      if(car.strategyReason!==undefined&&(typeof car.strategyReason!=='string'||car.strategyReason.length>200))return null
       if (car.paceMode !== undefined && !['push','standard','save','defend'].includes(car.paceMode)) return null
       if (car.lapInvalid !== undefined && typeof car.lapInvalid !== 'boolean') return null
       if (car.lapHistory !== undefined && (!Array.isArray(car.lapHistory) || car.lapHistory.length > 1000 || car.lapHistory.some(lap => !Number.isSafeInteger(lap.lap) || lap.lap < 1 || !Number.isFinite(lap.seconds) || lap.seconds <= 0 || !Number.isInteger(lap.driverIndex) || lap.driverIndex < 0 || typeof lap.compound !== 'string' || typeof lap.pit !== 'boolean'))) return null

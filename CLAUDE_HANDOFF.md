@@ -1,5 +1,34 @@
 # Formula Race Simulator Handoff
 
+## Latest: Race Engineer upgrade (2026-10-12)
+
+- User accepted upgrade items 1–4 and explicitly excluded item 5 (lap collection).
+  Shared SIM Engineer view now covers persistent person-specific pedal preferences,
+  measured FP setup experiments, watch moments and strategy comparison/instructions.
+- Explicit styles win; neutral profiles use versioned person-ID SIM preferences,
+  identical across categories. These are labelled unmeasured, separate from ability.
+  Nakayama 120 and authored axes remain. Pedals feed actual forces, with safety,
+  slip and combined-load limits preserved.
+- FP captures only aggregates from fresh complete valid non-pit timing records
+  after stable setup/conditions. Before/after has condition/fuel/tyre disclosures.
+  F1/SF retain six setup fields and parc ferme; extra drivers gain saved per-person
+  brake/differential and supported wing adjustments (SIM coefficients, no KYOJO wing).
+- Watch moments identify conditional closure, tyre differences, approaching mixed
+  classes, PB and observed loss; buttons open map or paired Telemetry Lab.
+- Now/+3/+5 forecasts expose class rejoin range, traffic, fuel safety and labelled
+  heuristic uncertainty. Worker/fallback plans persist, cancel and settle on actual
+  release. Existing F1 AI reasons/outcomes are shown; extra AI evaluates tyre
+  economics once/lap, with hard fuel/crew/energy/compound constraints preserved.
+- SF control-tyre-only SIM stops use operational SF speed and explicit path/7s crew
+  estimate; no refuelling, F1 compounds or ERS. Tyre inventory is consumed once at
+  release; SIM safety threshold is 28% life. This adds no official stop mandate.
+- 51 focused tests pass across seven suites. Short synthetic interaction checks and
+  actual paused-app six-category Engineer/FP navigation plus independent F1/GT
+  setup edits pass; screenshots inspected, no page errors in successful checks.
+  See docs/RACE_ENGINEER_UPGRADE.md for formulas and limitations. No full race,
+  sustained FPS, all-course calibration or long test is claimed. Standing publish
+  exception: npm run publish -- -SkipFullTestSuite -SkipPlaytest.
+
 ## Latest: Telemetry Lab (2026-10-12)
 
 - Shared six-category telemetry UI now has independent A/B lap selection,

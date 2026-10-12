@@ -2,6 +2,7 @@ export type ChampionshipId = 'kyojo' | 'super-gt' | 'wec' | 'indycar'
 export type MotorsportClass = 'kyojo' | 'gt500' | 'gt300' | 'hypercar' | 'lmgt3' | 'lmp2' | 'indycar'
 export type EvidenceValue = { value: number; basis: 'published' | 'manufacturer-reference' | 'simulation'; source: string }
 export type MotorsportDriver = {
+  setup?: import('../types').CarSetup
   id: string; name: string; overall: number | null
   racePace: number | null; consistency: number | null; tyreManagement: number | null
   ratingSource: string | null; fiaGrade?: 'P' | 'G' | 'S' | 'B'
@@ -55,6 +56,9 @@ export type MotorsportPitRequest = {
   entryId: string; fuelFraction: number; changeTyres: boolean; nextDriverIndex: number | null
 }
 export type MotorsportCar = {
+  engineeringPlan?: import('../domain/raceEngineer').EngineeringPlan
+  strategyEvaluatedLap?: number
+  strategyReason?: string
   /** Optional for old saves; integrated lateral motion, in source XY metres. */
   lateralVelocityMps?: number
   battle?: { opponentId: string; side: -1 | 1; startedAt: number }

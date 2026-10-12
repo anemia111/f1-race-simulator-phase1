@@ -4,12 +4,15 @@ import type { MotorsportPitRequest, MotorsportRaceConfig, MotorsportRaceState } 
 import { createSnapshotEncoder } from './workerSnapshots'
 import { serializeMotorsportSave } from './persistence'
 
+import {applyMotorsportEngineeringPlan} from '../domain/engineeringCommands'
+
 export type MotorsportWorkerCommand =
   | { type: 'init'; generation: number; config: MotorsportRaceConfig; state: MotorsportRaceState }
   | { type: 'advance'; generation: number; ticks: number }
   | { type: 'flag'; generation: number; flag: MotorsportRaceState['flag'] }
   | { type: 'pit'; generation: number; request: MotorsportPitRequest }
   | { type: 'skip-formation'; generation: number }
+  | {type:'engineering-plan';generation:number;entryId:string;plan:import('../domain/raceEngineer').EngineeringPlan|null}
   | { type: 'save'; generation: number }
   | { type: 'pace'; generation: number; entryId: string; mode: NonNullable<MotorsportRaceState['cars'][number]['paceMode']> }
 let config: MotorsportRaceConfig | null = null
@@ -25,6 +28,7 @@ self.onmessage = ({ data }: MessageEvent<MotorsportWorkerCommand>) => {
     else if (data.type === 'flag') state = setMotorsportFlag(state, data.flag)
     else if (data.type === 'pit') state = requestMotorsportPit(state, data.request, config)
     else if (data.type === 'skip-formation' && state.phase === 'formation') state = { ...state, phase: 'racing' }
+    else if (data.type === 'engineering-plan') state=applyMotorsportEngineeringPlan(state,config,data.entryId,data.plan)
     else if (data.type === 'pace' && ['push','standard','save','defend'].includes(data.mode)) state = { ...state,cars:state.cars.map(car=>car.entryId===data.entryId ? {...car,paceMode:data.mode} : car) }
     self.postMessage(encodeSnapshot(state,generation))
   } catch (error) { self.postMessage({ type: 'error', generation, message: error instanceof Error ? error.message : String(error) }) }
