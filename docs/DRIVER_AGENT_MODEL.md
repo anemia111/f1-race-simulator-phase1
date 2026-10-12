@@ -94,12 +94,17 @@ calculation and returned field and the redundant returned
 intent outputs. The internal type/runtime surface narrows without changing SOC,
 energy authority, seeds, random evaluation, saved state, or simulation results.
 
-DA-11 is the first intentional sensitivity correction. Named raw/performance
-paths and the direct F1 energy blend now saturate every input at 100. Authored values
-through 120 remain valid and displayed, while only the existing bounded
-`driverLimitBreakFraction` consumes their excess. The 0..100 field,
-coefficients, seeds, random cadence, authority, and saved shape are unchanged;
-no observed or validation target is used to compensate for the removed edge.
+DA-11 originally saturated named inputs at 100. The user's 2026-10-12 request
+explicitly supersedes that cap: named raw abilities and behavioural execution
+traits now retain 0..120; the performance mapping extends its existing slope
+from 0.55..1.00 to 0.55..1.09. Every value at or below 100 keeps its previous
+mapping. Energy preferences and driving styles remain bounded at 0..1, and
+physical tyre utilisation cannot exceed the tyre envelope. Control/line-error
+envelopes floor at zero so extended precision cannot reverse their signs.
+Offline execution consumes the same named abilities; the former aggregate
+limit-break lap-time recovery is removed to avoid a second bonus. The editor
+allows all drivers through 120, including previously ordinary-scale drivers.
+No hardware, classification or crossing-time override accompanies this change.
 
 DA-08 is then closed with a behavior-neutral executable contract. The existing
 12 decision windows retain local execution losses, while the unchanged

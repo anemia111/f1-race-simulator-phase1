@@ -142,10 +142,23 @@ describe('seeded driver decisions', () => {
     ).toEqual(decideDriverBehavior(contextFor({ driver: aceMetadata })))
   })
 
-  it('saturates generic named behavior at the published ceiling', () => {
-    expect(driverBehaviorTraits(driverAt(1.2))).toEqual(
-      driverBehaviorTraits(driverAt(1)),
-    )
+  it('improves named execution through 120 without reversing error envelopes', () => {
+    for (const rating of [1.1, 1.2]) {
+      const traits = driverBehaviorTraits(driverAt(rating))
+      expect(traits.brakingPrecision).toBeCloseTo(rating)
+      expect(traits.awareness).toBeCloseTo(rating)
+      expect(traits.errorProbability).toBeLessThan(driverBehaviorTraits(driverAt(1)).errorProbability)
+      for (let window = 0; window < 12; window += 1) {
+        const context = contextFor({ trackProgress: (window + 0.5) / 12 })
+        const standard = decideDriverBehavior({ ...context, driver: driverAt(1) })
+        const improved = decideDriverBehavior({ ...context, driver: driverAt(rating) })
+        expect(Math.abs(improved.controlError)).toBeLessThanOrEqual(Math.abs(standard.controlError))
+        expect(Math.abs(improved.lineErrorM)).toBeLessThanOrEqual(Math.abs(standard.lineErrorM))
+        expect(improved.throttleOpeningScale).toBeGreaterThanOrEqual(0)
+        expect(improved.throttleOpeningScale).toBeLessThanOrEqual(1)
+      }
+    }
+    expect(driverBehaviorTraits(driverAt(2))).toEqual(driverBehaviorTraits(driverAt(1.2)))
   })
 
   it('applies flag, pit, emergency, battle, wake, tow, then reference priority', () => {

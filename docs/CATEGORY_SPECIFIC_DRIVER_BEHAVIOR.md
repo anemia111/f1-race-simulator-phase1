@@ -327,10 +327,12 @@ energy authority, seeds, random evaluations, saved state, or simulation results;
 DA-03 remained unresolved at that point and is closed by the later
 single-ability-owner slice.
 
-DA-11 is resolved separately by saturating every named raw, performance, and
-direct energy-skill input at 100. Values up to 120 remain valid and displayed; only the
-existing `driverLimitBreakFraction` consumes the excess. The normal field,
-coefficients, seeds, random cadence, authority, and saved shape remain unchanged.
+DA-11's original 100 saturation is superseded by the user's 2026-10-12 maximum
+120 request. Named abilities and execution traits now retain up to 120; the
+existing performance slope extends to 1.09. Inputs at or below 100 are unchanged.
+The separate offline aggregate recovery is removed, so named execution owns
+the excess directly. Physical tyre limits, energy authority and bounded intent
+outputs remain enforced. See `DRIVER_AGENT_MODEL.md` for the current contract.
 
 DA-08 is closed by its two-cadence executable contract, and DA-04 is closed by
 making `wetSkill` the sole ability owner of the timed-session rain overlay.

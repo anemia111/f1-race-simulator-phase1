@@ -737,3 +737,21 @@ user's illustrative mention of P11. The last live reference remains fixed only
 for the completed result's three-second hold, preventing self-comparison after
 promotion. This supersedes the earlier full-attempt reference freeze. Preserve
 short publication checks; no full suite or long simulation is needed.
+
+## Runtime and editor ability ceiling 120, 2026-10-12
+
+The user explicitly requested maximum 120 after finding Nakayama's live
+abilities saturated at 100. This supersedes the DA-11 saturation contract.
+All driver tune sliders now allow 120 and the heading reports MAX 120.
+Named raw abilities and execution traits retain up to 1.2; performance blends
+extend the existing slope to 1.09 without changing any 0..100 input mapping.
+Energy intent outputs, style traits and physical tyre utilisation stay bounded.
+Error envelopes floor at zero. Remove the separate offline aggregate recovery
+so the extended abilities are not counted twice. Nakayama's authored 120 stays.
+Six focused suites pass 69 tests; the final live/offline paired regression
+was rerun after adding non-negative offline loss and improved execution checks.
+The solo Fuji comparison measured 100 at 77.054711 s and 120 at 77.088607 s:
+it proves live sensitivity, not guaranteed lap-time improvement. Thermal and
+control effects can outweigh reduced errors on an individual lap. Do not claim
+120 makes the car 20% faster or guarantees pole. Lint/types pass. Retain the
+user-authorized -SkipFullTestSuite -SkipPlaytest publication exception.

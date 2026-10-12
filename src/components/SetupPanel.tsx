@@ -22,9 +22,7 @@ import {
 import {
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
-  DRIVER_ABILITY_SCALE_INTERNAL_MAX,
-  DRIVER_ABILITY_STATS,
-  DRIVER_ABILITY_SCALE_MAX,
+  CURRENT_DRIVER_ABILITY_CEILING,
   driverAbilityGroupValue,
   driverAbilityPoints,
   driverConfiguredOverallAbilityPoints,
@@ -219,25 +217,6 @@ export function timedSessionTireSummaryFor(tire: TimedSessionTire) {
   }
 
   return `${tire.surface.toUpperCase()} CONTROL / PHYSICAL MODEL ${tire.physicalModel.availability.toUpperCase()}`
-}
-
-/**
- * Upper bound for this driver's ability sliders.
- *
- * The published scale for everyone, except for a driver whose source data
- * already places them past it: they keep their authored ceiling so the editor
- * does not silently pull them back onto the scale. It never lets a driver be
- * raised past where their data already sits.
- */
-function driverEditableAbilityCeiling(driver: Driver) {
-  const highest = Math.max(
-    ...DRIVER_ABILITY_STATS.map((stat) => driver.skills[stat] ?? 0),
-  )
-
-  return Math.min(
-    DRIVER_ABILITY_INTERNAL_MAX,
-    Math.max(DRIVER_ABILITY_SCALE_INTERNAL_MAX, highest),
-  )
 }
 
 export function SetupPanel({
@@ -760,7 +739,7 @@ export function SetupPanel({
           <span>Driver tune</span>
           <small>
             {DRIVER_ABILITY_GROUPS.length} GROUPS / MAX{' '}
-            {DRIVER_ABILITY_SCALE_MAX}
+            {CURRENT_DRIVER_ABILITY_CEILING}
           </small>
         </div>
         <label className="field-block">
@@ -789,12 +768,7 @@ export function SetupPanel({
             <SliderRow
               key={group.key}
               label={group.label}
-              // The editor works on the published scale, so a slider cannot be
-              // used to push a driver past it. A driver already authored past
-              // the scale keeps their own headroom, otherwise opening the
-              // panel would quietly clip them back to 100 the moment anything
-              // was dragged.
-              max={driverEditableAbilityCeiling(selectedDriver)}
+              max={DRIVER_ABILITY_INTERNAL_MAX}
               onChange={(value) => {
                 for (const stat of group.stats) {
                   onDriverStatChange(selectedDriver.id, stat, value)

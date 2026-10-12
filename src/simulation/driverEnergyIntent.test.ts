@@ -61,7 +61,7 @@ describe('F1 driver energy intent', () => {
     expect(first).not.toHaveProperty('qualifyingSpendBias')
   })
 
-  it('saturates each named energy skill at the published ceiling', () => {
+  it('uses energy ability through 120 while bounding energy requests', () => {
     const atScale = {
       ...driver,
       skills: {
@@ -79,7 +79,10 @@ describe('F1 driver energy intent', () => {
       },
     }
 
-    expect(intent({ driver: limitBreak })).toEqual(intent({ driver: atScale }))
+    const enhanced = intent({ driver: limitBreak })
+    expect(enhanced).not.toEqual(intent({ driver: atScale }))
+    expect(Object.values(enhanced).every(value => value >= 0 && value <= 1)).toBe(true)
+    expect(intent({ driver: { ...limitBreak, skills: { ...limitBreak.skills, ersManagement: 2 } } })).toEqual(enhanced)
   })
 
   it('owns the driver-ability sensitivity for the downstream energy chain', () => {

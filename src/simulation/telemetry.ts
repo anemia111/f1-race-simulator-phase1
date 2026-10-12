@@ -426,7 +426,7 @@ export function calculateCarTelemetry(options: {
   // Skill controls how much of the physical tyre envelope the driver can use;
   // it never raises the tyre above its modelled maximum.
   const utilisedGrip =
-    localGrip * (0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
+    localGrip * Math.min(1, 0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
   // This exact ceiling is also passed to the Energy Store. It prevents a
   // cold/hot brake from crediting recovery against a nominal 5.1 g stop that
   // the live vehicle solver will subsequently reject.

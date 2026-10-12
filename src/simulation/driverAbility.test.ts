@@ -28,20 +28,22 @@ describe('driver ability scale', () => {
   it('uses the specification-wide 0-100 source and editor scale', () => {
     // The published scale is unchanged. Only the ceiling a rating may be
     // authored past moves, so every driver on the scale normalises exactly as
-    // before. Authored excess is retained for the dedicated limit-break owner.
+    // before. Named execution consumers also retain the authored excess.
     expect(DRIVER_ABILITY_SCALE_MAX).toBe(100)
     expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.2)
     expect(clampDriverAbility(2)).toBe(1.2)
     expect(clampDriverAbility(1)).toBe(1)
     expect(driverAbilityPoints(1)).toBe(100)
-    expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBe(1)
+    expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBeCloseTo(1.09)
     expect(driverPerformanceValue(0)).toBe(0.55)
     expect(driverPerformanceValue(0.55)).toBeCloseTo(0.7975, 10)
     expect(driverPerformanceValue(1)).toBe(1)
-    expect(driverPerformanceValue(1.2)).toBe(1)
+    expect(driverPerformanceValue(1.1)).toBeCloseTo(1.045)
+    expect(driverPerformanceValue(1.2)).toBeCloseTo(1.09)
+    expect(driverPerformanceValue(2)).toBe(driverPerformanceValue(1.2))
   })
 
-  it('gives ratings above 100 exactly one runtime owner', () => {
+  it('retains ratings through 120 in named runtime consumers', () => {
     const atScale = {
       ...initialDrivers[0],
       skills: Object.fromEntries(driverStats.map((stat) => [stat, 1])) as Record<
@@ -56,15 +58,15 @@ describe('driver ability scale', () => {
       ) as Record<DriverTunableStat, number>,
     }
 
-    expect(driverPerformanceAbility(limitBreak, 'rawPace')).toBe(
+    expect(driverPerformanceAbility(limitBreak, 'rawPace')).toBeGreaterThan(
       driverPerformanceAbility(atScale, 'rawPace'),
     )
-    expect(driverPublishedAbilityValue(limitBreak, 'tireManagement')).toBe(
+    expect(driverPublishedAbilityValue(limitBreak, 'tireManagement')).toBeGreaterThan(
       driverPublishedAbilityValue(atScale, 'tireManagement'),
     )
     expect(
       driverSkillBlend(limitBreak, { rawPace: 0.4, raceAwareness: 0.6 }),
-    ).toBe(driverSkillBlend(atScale, { rawPace: 0.4, raceAwareness: 0.6 }))
+    ).toBeGreaterThan(driverSkillBlend(atScale, { rawPace: 0.4, raceAwareness: 0.6 }))
     expect(driverLimitBreakFraction(atScale)).toBe(0)
     expect(driverLimitBreakFraction(limitBreak)).toBeCloseTo(0.2, 10)
   })
