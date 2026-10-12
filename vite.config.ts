@@ -48,9 +48,9 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{css,html,js,json}'],
-        // The qualifying overlay brings the main bundle just above 2.5 MB.
-        // Keep it available offline with a small, bounded precache allowance.
-        maximumFileSizeToCacheInBytes: 2_600_000,
+        // Shared driver profiles and their review evidence are bundled offline.
+        // Keep a bounded allowance above the current 2.81 MB main asset.
+        maximumFileSizeToCacheInBytes: 3_000_000,
         navigateFallback: 'index.html',
       },
     }),

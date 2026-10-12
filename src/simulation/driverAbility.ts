@@ -7,7 +7,9 @@ export const DRIVER_ABILITY_SCALE_MAX = 100
  * make the whole grid slower rather than one driver faster.
  */
 export const DRIVER_ABILITY_LIMIT_BREAK_MAX = 120
-export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_LIMIT_BREAK_MAX
+export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_SCALE_MAX
+export const driverAbilityCeiling = (id: string) => id === 'yuki_nakayama' ? DRIVER_ABILITY_LIMIT_BREAK_MAX : DRIVER_ABILITY_SCALE_MAX
+export const clampPersonAbility = (id: string, value: number) => Math.min(driverAbilityCeiling(id) / 100, clampDriverAbility(value))
 export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_LIMIT_BREAK_MAX / 100
 export const DRIVER_ABILITY_SCALE_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0
@@ -164,7 +166,7 @@ export function driverAbilityValue(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  return clampDriverAbility(driver.skills[stat])
+  return clampPersonAbility(driver.id, driver.skills[stat])
 }
 
 /** Named raw-scale consumers retain authored ability through 120. */
@@ -230,7 +232,7 @@ export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
 
   // Display the same 0–120 range used by named runtime consumers.
   return Math.round(
-    Math.min(DRIVER_ABILITY_LIMIT_BREAK_MAX, Math.max(0, configuredOverall)),
+    Math.min(driverAbilityCeiling(driver.id), Math.max(0, configuredOverall)),
   )
 }
 

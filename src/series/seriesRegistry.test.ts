@@ -153,7 +153,7 @@ describe('Phase 1 series registry boundary', () => {
     expect(provenanceCount(originalDriverPool2026)).toBe(111)
     expect(driverPool2026).toHaveLength(348)
     expect(new Set(driverPool2026.map((driver) => driver.id)).size).toBe(348)
-    expect(provenanceCount(driverPool2026)).toBe(468)
+    expect(provenanceCount(driverPool2026)).toBe(806)
     expect(
       driverPool2026.every(
         (driver) =>
@@ -166,7 +166,7 @@ describe('Phase 1 series registry boundary', () => {
     ).toBe(true)
     expect(seriesRegistryAudit).toMatchObject({
       driverPoolCount: 348,
-      provenanceCount: 468,
+      provenanceCount: 806,
       f2HistoricalDriverCount: 22,
       f3HistoricalDriverCount: 30,
     })

@@ -1,3 +1,5 @@
+import {migrateFactoryDriverRating} from './reviewedDriverRatings'
+import {clampPersonAbility} from '../simulation/driverAbility'
 import {
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
@@ -565,24 +567,24 @@ function parseStoredDrivers(
       ? { ...base.skills }
       : skills
 
-    return migrateLegacyNakayamaAbility({
+    return migrateFactoryDriverRating(migrateLegacyNakayamaAbility({
       ...base,
       carNumber,
       code: requiredText(candidate.code, `${id}.code`, 5).toUpperCase(),
       id,
       name: requiredText(candidate.name, `${id}.name`),
       nationality: optionalText(candidate.nationality, `${id}.nationality`),
-      potential: boundedNumber(
+      potential: clampPersonAbility(id, boundedNumber(
         candidate.potential ?? 0,
         `${id}.potential`,
         0,
         DRIVER_ABILITY_INTERNAL_MAX,
-      ),
+      )),
       seatRole: role as DriverRole,
-      skills: migratedSkills,
+      skills: Object.fromEntries(Object.entries(migratedSkills).map(([key,value])=>[key,clampPersonAbility(id,value)])) as DriverSkillProfile,
       style: { ...base.style },
       teamId,
-    }, base)
+    }, base))
   })
 
   const numbers = drivers.map((driver) => driver.carNumber)

@@ -1,3 +1,4 @@
+import {DriverRatingEvidence} from './DriverRatingEvidence'
 import {
   Database,
   Download,
@@ -19,7 +20,8 @@ import {
 import {
   DRIVER_ABILITY_GROUPS,
   CURRENT_DRIVER_ABILITY_CEILING,
-  clampDriverAbility,
+  clampPersonAbility,
+  driverAbilityCeiling,
   driverAbilityGroupValue,
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
@@ -754,7 +756,7 @@ export function SeriesDataManager({
     const group = DRIVER_ABILITY_GROUPS.find((item) => item.key === groupKey)
     if (!group) return
     const skills = { ...selectedDriver.skills }
-    for (const stat of group.stats) skills[stat] = clampDriverAbility(value)
+    for (const stat of group.stats) skills[stat] = clampPersonAbility(selectedDriver.id, value)
     updateDriver({ skills }, `${selectedDriver.code} ${group.label} updated`)
   }
 
@@ -1027,7 +1029,7 @@ export function SeriesDataManager({
                       const current = driverAbilityGroupValue(driver, group.stats) * 100
                       const target = (bulkMode === 'set' ? bulkValue : current + bulkValue) / 100
                       const skills = { ...driver.skills }
-                      for (const stat of group.stats) skills[stat] = clampDriverAbility(target)
+                      for (const stat of group.stats) skills[stat] = clampPersonAbility(driver.id, target)
                       return { ...driver, skills }
                     })
                     applyConfiguration(teams, next, `Bulk ${group.label}: ${activeFilteredIds.size} drivers`, true)
@@ -1086,6 +1088,7 @@ export function SeriesDataManager({
                   </div>
                   {selectedDriver ? (
                     <>
+                      <DriverRatingEvidence driver={selectedDriver}/>
                       <div className="driver-metadata-grid">
                         <label><span>Name</span><input onChange={(event) => { if (event.target.value.trim()) updateDriver({ name: event.target.value }, `${selectedDriver.code} name updated`) }} value={selectedDriver.name} /></label>
                         <label><span>Code</span><input maxLength={5} onChange={(event) => { if (event.target.value.trim()) updateDriver({ code: event.target.value.toUpperCase() }, `${selectedDriver.code} code updated`) }} value={selectedDriver.code} /></label>
@@ -1096,7 +1099,7 @@ export function SeriesDataManager({
                         }} type="number" value={selectedDriver.carNumber} /></label>
                         <label><span>Team</span><select onChange={(event) => updateDriver({ teamId: event.target.value }, `${selectedDriver.code} seat updated`)} value={selectedDriver.teamId}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
                         <label><span>Role</span><select onChange={(event) => updateDriver({ seatRole: event.target.value as NonNullable<Driver['seatRole']> }, `${selectedDriver.code} role updated`)} value={selectedDriver.seatRole ?? 'regular'}>{Object.entries(driverRoleLabels).filter(([role]) => role !== 'free_agent').map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select></label>
-                        <label><span>Potential</span><input max={CURRENT_DRIVER_ABILITY_CEILING} min={0} onChange={(event) => updateDriver({ potential: clampDriverAbility(Number(event.target.value) / 100) }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
+                        <label><span>Potential</span><input max={driverAbilityCeiling(selectedDriver.id)} min={0} onChange={(event) => updateDriver({ potential: clampPersonAbility(selectedDriver.id, Number(event.target.value) / 100) }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
                         <label><span>Source</span><output>{selectedDriver.performanceSource?.fileName ?? 'series registry'}</output></label>
                       </div>
                       <div className="seat-signing seat-swap">
@@ -1123,7 +1126,7 @@ export function SeriesDataManager({
                           return (
                             <label key={group.key}>
                               <span>{group.label}</span>
-                              <input max={CURRENT_DRIVER_ABILITY_CEILING} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
+                              <input max={driverAbilityCeiling(selectedDriver.id)} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
                               <strong>{value}</strong>
                             </label>
                           )

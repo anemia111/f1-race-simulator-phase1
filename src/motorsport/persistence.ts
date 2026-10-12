@@ -1,3 +1,4 @@
+import {migrateMotorsportDriverRating} from '../data/reviewedDriverRatings'
 import {validEngineeringPlan} from '../domain/raceEngineer'
 import {normalizeCarSetup} from '../simulation/engineering'
 import { migrateCourseRegistration } from './courseMigration'
@@ -39,6 +40,7 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
     for (const entry of save.config.entries) {
       entry.drivers = entry.drivers.map(driver => {
         if(driver.setup){if(Object.values(driver.setup).length!==6||!Object.values(driver.setup).every(n=>typeof n==='number'&&Number.isFinite(n))||Object.entries(normalizeCarSetup(driver.setup)).some(([key,value])=>driver.setup![key as keyof typeof driver.setup]!==value))throw new Error('Invalid driver setup')}
+        driver=migrateMotorsportDriverRating(driver)
         if (driver.id !== 'yuki_nakayama' || ![105, 110].includes(driver.overall ?? 0)) return driver
         const old = driver.overall! / 100
         if (![driver.racePace, driver.consistency, driver.tyreManagement, driver.qualifyingPace ?? old].every(value => value === old)) return driver

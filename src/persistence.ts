@@ -1,3 +1,5 @@
+import {migrateFactoryDriverRating} from './data/reviewedDriverRatings'
+import {clampPersonAbility} from './simulation/driverAbility'
 import type {
   Driver,
   DriverSkillProfile,
@@ -16,7 +18,6 @@ import type {
 import { normalizeF1CarComponents } from './simulation/components'
 import {
   DRIVER_ABILITY_STATS,
-  clampDriverAbility,
   driverAbilityValue,
   migrateLegacyNakayamaAbility,
 } from './simulation/driverAbility'
@@ -455,7 +456,7 @@ export function parsePersistedDriverRatings(
           return typeof value === 'number' && Number.isFinite(value)
             ? [[
                 stat,
-                clampDriverAbility(
+                clampPersonAbility(driver.id,
                   usesLegacy150Scale ? value / 1.5 : value,
                 ),
               ]]
@@ -463,11 +464,11 @@ export function parsePersistedDriverRatings(
         }),
       ) as Partial<Record<DriverTunableStat, number>>
 
-      return migrateLegacyNakayamaAbility({
+      return migrateFactoryDriverRating(migrateLegacyNakayamaAbility({
         ...driver,
         skills: { ...driver.skills, ...ratings },
         style: { ...driver.style },
-      }, driver)
+      }, driver))
     })
   } catch {
     return baseDrivers.map((driver) => ({

@@ -4257,3 +4257,5 @@
 .free-mode-crew > div select { width: 100%; }
 .free-mode-crew > div button { margin-right: 5px; }
 .free-mode-presets > input[hidden] { display: none; }
+
+.driver-rating-evidence{font-size:12px;line-height:1.7;color:#b5c9d8;margin:12px 0}.driver-rating-evidence strong{color:#e5f1f8}.driver-rating-evidence a{color:#66dccc;text-decoration:underline;text-underline-offset:3px}

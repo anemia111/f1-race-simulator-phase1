@@ -1,5 +1,12 @@
 # Formula Race Simulator Handoff
 
+## Latest: Shared absolute driver ratings (2026-10-13)
+
+- User prioritized ratings over the pending team-principal upgrade. All six categories share one absolute person scale; ordinary maximum100, yuki_nakayama alone120.
+- Explicit338-person review overlay,72 changed targetOVRs; ten legacy profiles retained (348 total). SF main83–87, KYOJO leaders67–70/midfield62–65, Juju64 per user, F1 elite95–98. Exact scores are editorial, not official or isolated-car skill estimates. Unverified inherited rows are labelled.
+- Expanded runtime12-group mean aligns to reviewedOVR. Same person keeps axes across seats. Editors and saved inputs enforce identity limits. Whole old defaults migrate, manual edits/potential/setup remain. Original imported artifacts/history are preserved.
+-103 focused checks pass across nine suites, TypeScript/lint pass. See docs/DRIVER_RATING_REVIEW.md. Standing user exception: publish with -SkipFullTestSuite -SkipPlaytest; no long tests. Existing SF coarse qualifying spread remains unresolved.
+
 ## Latest: Unassisted passing and category wake response
 
 - User requested realistic passing for categories without F1 ERS. Extra four

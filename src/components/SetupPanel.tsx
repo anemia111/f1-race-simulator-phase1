@@ -1,3 +1,4 @@
+import {DriverRatingEvidence} from './DriverRatingEvidence'
 import { SetupPanelHeader } from './SessionChrome'
 import { Dices, RotateCcw, Wrench } from 'lucide-react'
 import type {
@@ -21,8 +22,7 @@ import {
 } from '../simulation/engineering'
 import {
   DRIVER_ABILITY_GROUPS,
-  DRIVER_ABILITY_INTERNAL_MAX,
-  CURRENT_DRIVER_ABILITY_CEILING,
+  driverAbilityCeiling,
   driverAbilityGroupValue,
   driverAbilityPoints,
   driverConfiguredOverallAbilityPoints,
@@ -767,7 +767,7 @@ export function SetupPanel({
           <span>Driver tune</span>
           <small>
             {DRIVER_ABILITY_GROUPS.length} GROUPS / MAX{' '}
-            {CURRENT_DRIVER_ABILITY_CEILING}
+            {driverAbilityCeiling(selectedDriver.id)}
           </small>
         </div>
         <label className="field-block">
@@ -791,12 +791,13 @@ export function SetupPanel({
             12-group mean
           </small>
         </div>
+        <DriverRatingEvidence driver={selectedDriver}/>
         <div className="driver-ability-grid">
           {DRIVER_ABILITY_GROUPS.map((group) => (
             <SliderRow
               key={group.key}
               label={group.label}
-              max={DRIVER_ABILITY_INTERNAL_MAX}
+              max={driverAbilityCeiling(selectedDriver.id)/100}
               onChange={(value) => {
                 for (const stat of group.stats) {
                   onDriverStatChange(selectedDriver.id, stat, value)

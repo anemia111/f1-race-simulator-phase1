@@ -1,3 +1,4 @@
+import {reviewFactoryDriver, reviewPoolDriver} from '../data/reviewedDriverRatings'
 import seriesDataJson from '../data/motorsportSeries2026.json'
 import { expandedDriverSkills, type CompactDriverRatings } from '../data/driverProfiles'
 import { initialDrivers, initialTeams } from '../data/grid2026'
@@ -1072,7 +1073,7 @@ export const seriesPackages: SeriesPackage[] = rawData.series.map((definition) =
   const pkg: SeriesPackage = {
     calendar: definition.calendar,
     carCount: definition.carCount,
-    drivers: field.drivers,
+    drivers: field.drivers.map(reviewFactoryDriver),
     id: definition.id,
     label: definition.label,
     rules: definition.rules,
@@ -1353,7 +1354,7 @@ export const originalDriverPool2026 = validateDriverPool([...poolById.values()],
   expectedProvenanceCount: 111,
 })
 
-export const driverPool2026 = validateDriverPool(appendImportedDriverRatings(originalDriverPool2026))
+export const driverPool2026 = validateDriverPool(appendImportedDriverRatings(originalDriverPool2026).map(reviewPoolDriver))
 
 export type SeatAssignment = {
   carNumber: number

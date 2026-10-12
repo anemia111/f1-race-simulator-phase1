@@ -1,3 +1,4 @@
+import {clampPersonAbility} from './simulation/driverAbility'
 import {formulaEngineerSession} from './domain/engineerAdapters'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import './App.css'
@@ -142,7 +143,6 @@ import type {
   WeekendStage,
 } from './types'
 import {
-  clampDriverAbility,
   driverConfiguredOverallAbilityPoints,
   driverPublishedAbilityValue,
 } from './simulation/driverAbility'
@@ -3406,7 +3406,7 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
               ...driver,
               skills: {
                 ...driver.skills,
-                [stat]: clampDriverAbility(value),
+                [stat]: clampPersonAbility(driverId, value),
               },
             }
           : driver,

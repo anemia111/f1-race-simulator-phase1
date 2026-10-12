@@ -1,3 +1,4 @@
+import {reviewFactoryDriver} from './reviewedDriverRatings'
 import type { RaceConfig } from '../types'
 import { initialDrivers, initialTeams } from './grid2026'
 import { defaultTrack } from './tracks'
@@ -7,6 +8,6 @@ import { defaultTrack } from './tracks'
 export const phaseOneConfig: RaceConfig = {
   track: defaultTrack,
   teams: initialTeams,
-  drivers: initialDrivers,
+  drivers: initialDrivers.map(reviewFactoryDriver),
   seed: 'phase-2-default',
 }

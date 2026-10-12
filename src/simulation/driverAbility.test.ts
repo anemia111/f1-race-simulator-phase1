@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers } from '../data/grid2026'
 import type { DriverTunableStat } from '../types'
 import {
-  CURRENT_DRIVER_ABILITY_CEILING,
+  driverAbilityCeiling,
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
@@ -52,9 +52,10 @@ describe('driver ability scale', () => {
     expect(driverPerformanceValue(2)).toBe(driverPerformanceValue(1.2))
   })
 
-  it('retains ratings through 120 in named runtime consumers', () => {
+  it('retains the explicitly authorized Nakayama 120 in named runtime consumers', () => {
     const atScale = {
       ...initialDrivers[0],
+      id: 'yuki_nakayama',
       skills: Object.fromEntries(driverStats.map((stat) => [stat, 1])) as Record<
         DriverTunableStat,
         number
@@ -84,11 +85,11 @@ describe('driver ability scale', () => {
     for (const driver of initialDrivers) {
       for (const stat of driverStats) {
         expect(driverAbilityPoints(driverAbilityValue(driver, stat))).toBeLessThanOrEqual(
-          CURRENT_DRIVER_ABILITY_CEILING,
+          driverAbilityCeiling(driver.id),
         )
       }
       expect(driverOverallAbilityPoints(driver)).toBeLessThanOrEqual(
-        CURRENT_DRIVER_ABILITY_CEILING,
+        driverAbilityCeiling(driver.id),
       )
     }
   })

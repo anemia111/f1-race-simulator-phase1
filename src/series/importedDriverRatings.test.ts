@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { importedDriverRatings, importedDriverRatingById } from './importedDriverRatings'
+import { importedDriverRatings, importedDriverRatingById, appendImportedDriverRatings } from './importedDriverRatings'
 import { driverPool2026, originalDriverPool2026 } from './seriesRegistry'
 import { materializeAssignedDriver } from './driverPool'
 import { driverHistorySearchTerms } from '../components/FreeModeBuilder'
@@ -16,15 +16,16 @@ describe('user-authored cross-category driver import', () => {
     }
   })
 
-  it('preserves every original authored ability and uses CSV axes for new people', () => {
+  it('preserves the original import artifact before the explicitly authorized rating review', () => {
+    const importedPool = appendImportedDriverRatings(originalDriverPool2026)
     for (const driver of originalDriverPool2026) {
-      const actual = driverPool2026.find((candidate) => candidate.id === driver.id)!
+      const actual = importedPool.find((candidate) => candidate.id === driver.id)!
       expect(actual.ratings).toEqual(driver.ratings)
       expect(actual.overall).toBe(driver.overall)
       expect(actual.potential).toBe(driver.potential)
     }
     const source = importedDriverRatings.drivers.find((row) => row.name === 'Riona Tomishita')!
-    const driver = driverPool2026.find((candidate) => candidate.id === source.id)!
+    const driver = importedPool.find((candidate) => candidate.id === source.id)!
     expect(driver.overall).toBe(77)
     expect(driver.ratings).toEqual(source.ratings)
     expect(driver.potential).toBe(77)
