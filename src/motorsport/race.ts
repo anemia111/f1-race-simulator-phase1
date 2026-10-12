@@ -13,6 +13,7 @@ import { advanceRaceTyre, initialRaceTyre } from '../simulation/raceTyres'
 import { recordTelemetry, handlingTelemetry } from '../simulation/telemetryHistory'
 import { clamp, modulo, MOTORSPORT_STEP_SECONDS, targetSpeedMps, stationAt, tyreForceBudget } from './coursePhysics'
 import { trafficAero, tyreGripScale } from './vehicleDynamics'
+import {hasOvertakingOpportunity} from './overtaking'
 import { integrateMotorsportVehicle, motorsportPhysicsFor } from './sharedVehiclePhysics'
 import { initialSectorTiming, advanceSectorTiming } from './sectorTiming'
 import { startingGridPositions, CLASS_START_GAP_M } from './startingGrid'
@@ -401,7 +402,8 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       const mass = machine.massKg.value + machine.driverMassKg.value + car.fuelKg
       const ahead = nearestAhead.get(car.entryId), behind=nearestBehind.get(car.entryId)
       const station = { ...stationAt(config.course,car.distanceM), airDensityKgM3: environment.density }
-      const aero = ahead ? trafficAero(ahead.gap,car.lateralM-ahead.car.lateralM,car.speedMps,station.radiusM) : {dragScale:1,liftScale:1}
+      const aero = ahead ? trafficAero(ahead.gap,car.lateralM-ahead.car.lateralM,car.speedMps,station.radiusM,
+        entry.classId,config.course.kind==='short-oval'||config.course.kind==='speedway') : {dragScale:1,liftScale:1}
       const conditions = {massKg:mass,gripScale:surfaceGrip,airDensityKgM3:environment.density,airTemperatureC:environment.airC,...aero}
       const paceFactor = car.paceMode==='push'?1.015:car.paceMode==='save'?0.96:car.paceMode==='defend'?0.99:1
       // Ability already constrains tyre forces; do not add a second speed bonus.
@@ -432,9 +434,13 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         (car.tyreSets.at(-1)?.completedLaps??0)+4<(opponent.tyreSets.at(-1)?.completedLaps??0)
       const publicAccelerationAdvantage=opponentEntry?machine.powerKw.value/(machine.massKg.value+machine.driverMassKg.value)-
         opponentEntry.machine.powerKw.value/(opponentEntry.machine.massKg.value+opponentEntry.machine.driverMassKg.value):0
-      const candidate=Boolean(opponent && !car.blueFlag && state.flag==='green' && gap<Math.max(90,car.speedMps*3) && hasPaceCase &&
-        (car.battle || car.speedMps>opponent.speedMps+0.5 ||
-          (freeTarget>opponent.speedMps+0.75 && publicAccelerationAdvantage>0.003) || car.distanceM-opponent.distanceM>=length*0.8))
+      const candidate=Boolean(opponent && !car.blueFlag && state.flag==='green' && hasPaceCase &&
+        hasOvertakingOpportunity({speedMps:car.speedMps,opponentSpeedMps:opponent.speedMps,
+          freeTargetMps:freeTarget,gapM:gap,continuing:Boolean(car.battle),
+          powerToMassAdvantage:publicAccelerationAdvantage,lapping:car.distanceM-opponent.distanceM>=length*0.8,
+          ownBestLap:car.bestLapSeconds,opponentBestLap:opponent.bestLapSeconds,
+          ownTyreLaps:car.tyreSets.at(-1)?.completedLaps??0,opponentTyreLaps:opponent.tyreSets.at(-1)?.completedLaps??0,
+          opponentBrakePercent:opponent.brakePercent??0,opponentThrottlePercent:opponent.throttlePercent??100}))
       const ownObservation=teamObservations.find(other=>other.id===car.entryId)!
       const instruction=decideTeamInstruction(ownObservation,teamObservations.filter(other=>other.teamId===entry.team),length)
       car.teamInstruction=instruction

@@ -1,5 +1,25 @@
 # Formula Race Simulator Handoff
 
+## Latest: Unassisted passing and category wake response
+
+- User requested realistic passing for categories without F1 ERS. Extra four
+  championships now consider observed braking/exit behaviour, public pace/tyre
+  age and their own physical envelope when trapped at the leader's speed, rather
+  than requiring greater public power/mass. Equal-car simultaneous acceleration
+  still does not force an attack. No added grip/power/distance or automatic pass.
+- Separate wake drag/downforce SIM priors for KYOJO, GT500, GT300, Hypercar,
+  LMGT3, LMP2 and INDYCAR road/oval; low-speed ramp, gap/lateral/turn attenuation
+  remain. Shared wake helper gets an explicit optional cap; native F1/SF defaults
+  remain. Existing SF OTS, Indy hybrid/P2P and WEC combined caps are preserved.
+- 99 focused tests pass across seven suites, including zero-power actual force
+  response, four actual engine attack decisions with no boost, all six abrupt
+  stop regressions and traffic/pit/grid/force constraints. TypeScript/lint pass.
+- Additional 27 selected wake/driver/tyre/brake/gear checks pass across three
+  suites, excluding full flying-lap cases (126 total focused checks).
+- Official sources establish sporting/qualitative context, not measured wake
+  coefficients. See docs/UNASSISTED_OVERTAKING.md for explicit SIM priors/limits.
+  Team-principal upgrade remains on hold. Skip full tests/playtest per user.
+
 ## Latest: Six-category abrupt traffic stops (2026-10-12)
 
 - User interrupted the authorized team-principal/season upgrade to prioritize
