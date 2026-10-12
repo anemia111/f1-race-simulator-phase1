@@ -3,7 +3,7 @@ import {describe,it,expect} from 'vitest'
 import previousReview from './driverRatingsReviewPrevious20261013.json'
 import {writeFileSync} from 'node:fs'
 import {driverPool2026,seriesPackages,seatedDriverFrom} from '../series/seriesRegistry'
-import {driverRatingReview,reviewedRating,migrateFactoryDriverRating,legacyCompactRating} from './reviewedDriverRatings'
+import {driverRatingReview,reviewedRating,migrateFactoryDriverRating,legacyCompactRating,reviewedDriverPreviousOverall} from './reviewedDriverRatings'
 import {expandedDriverSkills} from './driverProfiles'
 import {driverAbilityCeiling,driverAbilityValue,clampPersonAbility,driverOverallAbilityPoints} from '../simulation/driverAbility'
 import {createMotorsportConfig,motorsportDriver} from '../motorsport/packages'
@@ -22,6 +22,14 @@ describe('shared current-strength driver review',()=>{
       expect(Object.values(person.ratings).every(n=>n>=0&&n<=driverAbilityCeiling(person.id)/100)).toBe(true)
     }
     expect(driverPool2026.find(p=>p.id==='yuki_nakayama')?.ratings).toEqual(Object.fromEntries(Object.keys(driverPool2026[0].ratings).map(k=>[k,1.2])))
+  })
+  it('uses the requested yukinakayama display name and keeps ability120 in all categories',()=>{
+    expect(seriesPackages.flatMap(s=>s.drivers).find(d=>d.id==='yuki_nakayama')?.name).toBe('yukinakayama')
+    expect(driverPool2026.find(d=>d.id==='yuki_nakayama')?.name).toBe('yukinakayama')
+    expect(clampPersonAbility('yuki_nakayama',1.2)).toBe(1.2)
+    expect(reviewedDriverPreviousOverall('yuki_nakayama')).toBe(120)
+    const historicalSaveName={...seriesPackages[0].drivers.find(d=>d.id==='yuki_nakayama')!,name:'中山裕樹'}
+    expect(migrateFactoryDriverRating(historicalSaveName).name).toBe('yukinakayama')
   })
   it('uses identical detailed axes for native seats and seats in another category',()=>{
     for(const series of seriesPackages)for(const driver of series.drivers){

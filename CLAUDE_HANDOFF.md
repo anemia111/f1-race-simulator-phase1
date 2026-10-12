@@ -7,6 +7,11 @@
 - Tomishita/Saito/Shimono70; Onaga/Ciconte69; Sato67; Miura66; Sasaki65; Matsui64; Raddatz/Kanemoto63; Burton/Shiraishi62; Hirakawa61. Other KYOJO priors remain, no unsupported large downgrade. Absolute scale and inherited axis splits remain editorial priors, not measured skill.
 - Revision2026-10-13.2 includes21 v1 default snapshots for safe save migration across seats; preserve manual axes/potential/setup.106 focused tests across nine suites pass. No long tests. See docs/DRIVER_RATING_REVIEW.md for limits and evidence.
 
+## Latest: Yukinakayama display name (2026-10-13)
+
+- User requested 中山裕樹 be shown as `yukinakayama`. Runtime display identity now normalizes the same stable ID in F1, SF and the extra four categories, including old saves; ability120 and custom setup are preserved.
+- Authored source CSV/import records and historical result snapshots retain their original spelling. Only current roster/profile labels change. Six focused suites123 tests pass, build/lint pass. No long tests. This change is included with the team-principal upgrade currently in progress.
+
 ## Latest: Shared absolute driver ratings (2026-10-13)
 
 - User prioritized ratings over the pending team-principal upgrade. All six categories share one absolute person scale; ordinary maximum100, yuki_nakayama alone120.

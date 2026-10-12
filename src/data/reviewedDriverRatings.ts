@@ -9,6 +9,11 @@ import {clampPersonAbility,driverAbilityCeiling} from '../simulation/driverAbili
 
 export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.2'
 export const driverRatingReview = review
+export const DRIVER_DISPLAY_NAME_OVERRIDES: Readonly<Record<string, string>> = {
+  yuki_nakayama: 'yukinakayama',
+}
+export const driverDisplayName = (id: string, fallback: string) =>
+  DRIVER_DISPLAY_NAME_OVERRIDES[id] ?? fallback
 const authored = new Map(imported.drivers.map(row => [row.id, row]))
 const revised = new Map(review.drivers.map(row => [row.id, row]))
 const previousReviewed = new Map(previousReview.drivers.map(row => [row.id, row]))
@@ -27,8 +32,8 @@ export function reviewedRating(id: string) {
 export function reviewFactoryDriver(driver: Driver): Driver {
   previousNative.set(driver.id, [...(previousNative.get(driver.id)??[]),driver])
   const row = reviewedRating(driver.id)
-  if (!row) return driver
-  return {...driver, skills: expandedDriverSkills(row.ratings), potential: (row.potential ?? row.overall) / 100,
+  if (!row) return {...driver, name: driverDisplayName(driver.id, driver.name)}
+  return {...driver, name: driverDisplayName(driver.id, driver.name), skills: expandedDriverSkills(row.ratings), potential: (row.potential ?? row.overall) / 100,
     performanceSource: performanceSource(row)}
 }
 
@@ -37,7 +42,7 @@ export function reviewPoolDriver(driver: DriverPoolRecord): DriverPoolRecord {
   if (!row) return driver
   const revision = revised.get(driver.id)
   const id = `rating-review:${DRIVER_RATING_REVIEW_VERSION}:${driver.id}`
-  return {...driver, overall: row.overall, potential: row.potential ?? row.overall, ratings: {...row.ratings},
+  return {...driver, name: driverDisplayName(driver.id, driver.name), overall: row.overall, potential: row.potential ?? row.overall, ratings: {...row.ratings},
     ratingSourceProvenanceId: id, provenance: [...driver.provenance, {
       id, sourceType: 'editorial', sourceDate: '2026-10-13', sourceSeason: 2026,
       sourceSeriesId: driver.provenance[0].sourceSeriesId, sourceFile: revision ? 'src/data/driverRatingsReview2026.json' : 'src/data/importedDriverRatings2026.json',
@@ -49,15 +54,16 @@ export function reviewPoolDriver(driver: DriverPoolRecord): DriverPoolRecord {
 /** Upgrade only a whole, recognizable factory profile; keep any manual tune. */
 export function migrateFactoryDriverRating(driver: Driver): Driver {
   const row = reviewedRating(driver.id)
-  if (!row) return driver
+  const name = driverDisplayName(driver.id, driver.name)
+  if (!row) return name === driver.name ? driver : {...driver, name}
   const same = (skills: Driver['skills']) => Object.keys(skills).every(key =>
     Math.abs(driver.skills[key as keyof typeof skills] - skills[key as keyof typeof skills]) < 1e-9)
   const old = previousNative.get(driver.id)
   const source = authored.get(driver.id)
   const prior = previousReviewed.get(driver.id)
-  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings))) && !(prior && same(expandedDriverSkills(prior.ratings)))) return driver
+  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings))) && !(prior && same(expandedDriverSkills(prior.ratings)))) return name === driver.name ? driver : {...driver, name}
   const defaultPotential=old?.some(d=>d.potential===driver.potential) || driver.potential===(source?.potential??source?.overall??NaN)/100 || driver.potential===(prior?.potential??NaN)/100
-  return {...driver, skills: expandedDriverSkills(row.ratings), potential: defaultPotential?(row.potential ?? row.overall) / 100:driver.potential,
+  return {...driver, name, skills: expandedDriverSkills(row.ratings), potential: defaultPotential?(row.potential ?? row.overall) / 100:driver.potential,
     performanceSource: performanceSource(row)}
 }
 
@@ -70,6 +76,7 @@ export const reviewedDriverPreviousOverall = (id: string) => authored.get(id)?.o
 /** Older extra-category saves used either the imported row or the old native
  * pool winner. Match all stored driving axes and OVR, never a surname or rank. */
 export function migrateMotorsportDriverRating(driver:MotorsportDriver):MotorsportDriver {
+  driver={...driver,name:driverDisplayName(driver.id,driver.name)}
   const row=reviewedRating(driver.id)
   const source=authored.get(driver.id)
   const prior=previousReviewed.get(driver.id)
