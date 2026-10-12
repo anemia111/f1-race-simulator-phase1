@@ -22,6 +22,7 @@ import { advanceMotorsportRace, createMotorsportRace, motorsportStandings, reque
 import { MOTORSPORT_SAVE_KEY, parseMotorsportSave, serializeMotorsportSave } from './persistence'
 import type { ChampionshipId, MotorsportPitRequest, MotorsportRaceConfig, MotorsportRaceState } from './types'
 import type { MotorsportWorkerCommand } from './worker'
+import { restoreSnapshotTelemetry, type MotorsportSnapshotMessage } from './workerSnapshots'
 import './motorsport.css'
 
 function initialSession(championship: ChampionshipId) {
@@ -67,11 +68,11 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
     let runtime: Worker | null = null
     try {
       runtime = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
-      runtime.onmessage = ({ data }: MessageEvent<{ type: string; generation: number; state?: MotorsportRaceState; message?: string }>) => {
+      runtime.onmessage = ({ data }: MessageEvent<MotorsportSnapshotMessage | { type:'save';generation:number;payload:string;applicationMode?:string } | {type:'error';generation:number;message?:string}>) => {
         if (data.generation !== generation.current) return
-        busy.current = false
-        if (data.type === 'snapshot' && data.state) { latest.current.state = data.state; setState(data.state) }
-        if (data.type === 'error') { setPaused(true); setMessage(data.message ?? '走行エンジンでエラーが発生しました。') }
+        if (data.type === 'snapshot') { busy.current = false; const next=restoreSnapshotTelemetry(latest.current.state,data); latest.current.state = next; setState(next) }
+        if (data.type === 'save') { try {localStorage.setItem(data.applicationMode==='free'?MOTORSPORT_FREE_SAVE_KEY:MOTORSPORT_SAVE_KEY,data.payload)} catch {setMessage('ブラウザーへの自動保存ができません。JSON保存を利用してください。')} }
+        if (data.type === 'error') { busy.current = false; setPaused(true); setMessage(data.message ?? '走行エンジンでエラーが発生しました。') }
       }
       runtime.onerror = event => { setPaused(true); setMessage(event.message || '走行用の処理を開始できませんでした。'); runtime?.terminate(); worker.current = null; busy.current = false }
       worker.current = runtime
@@ -87,16 +88,17 @@ export function MotorsportApp({ onBack, initialChampionship = 'kyojo', initialFr
       if (current.paused || current.state.phase === 'finished') { debt.current = 0; return }
       debt.current = Math.min(6000, debt.current + elapsed * current.speed * 10)
       if (busy.current) return
-      const ticks = Math.min(600, Math.floor(debt.current))
+      const ticks = Math.min(worker.current ? 30 : 2, Math.floor(debt.current))
       if (ticks < 1) return
       debt.current -= ticks
       if (worker.current) { busy.current = true; worker.current.postMessage({ type: 'advance', generation: generation.current, ticks } satisfies MotorsportWorkerCommand) }
       else { const next = advanceMotorsportRace(current.state, ticks, current.config); latest.current.state = next; setState(next) }
-    }, 50)
+    }, 100)
     return () => window.clearInterval(timer)
   }, [])
   useEffect(() => {
     const timer = window.setInterval(() => {
+      if(worker.current){worker.current.postMessage({type:'save',generation:generation.current} satisfies MotorsportWorkerCommand);return}
       try { localStorage.setItem(latest.current.config.applicationMode === 'free' ? MOTORSPORT_FREE_SAVE_KEY : MOTORSPORT_SAVE_KEY, serializeMotorsportSave(latest.current.config, latest.current.state)) } catch { setMessage('ブラウザーへの自動保存ができません。JSON保存を利用してください。') }
     }, 3000)
     return () => window.clearInterval(timer)

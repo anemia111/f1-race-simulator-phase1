@@ -1,5 +1,24 @@
 # Formula Race Simulator Handoff
 
+## Latest: GT/WEC performance (2026-10-12)
+
+- Share 512-station speed plans across value-identical hardware. Plan density
+  follows local altitude at each station with current ambient temperature,
+  avoiding a whole-course rebuild whenever a car changes elevation. Live force
+  density and the 0.1 s physics step remain exact/current.
+- Send incremental telemetry in worker snapshots; reconstruct identical bounded
+  history on the UI. Worker-side automatic save serialization preserves the
+  existing save format. Snapshot scheduling is 10 Hz with bounded work batches
+  (30 worker ticks / 2 fallback ticks), which limits very high effective playback
+  speed while improving command responsiveness.
+- Short full-field compute measurements: GT43 warm five ticks 1,231.7 -> 88.9 ms;
+  WEC62 454.5 -> 46.4 ms. These measure planner optimization, not browser FPS.
+  See `docs/MOTORSPORT_PERFORMANCE.md` for method and limits.
+- 101 focused tests pass (65 cache/snapshot/shared-physics/grid/ability/handling,
+  33 short driving checks, 3 worker/save/performance checks); seven full flying
+  lap cases excluded. TypeScript and lint pass. Publish uses the user's standing
+  exception `-SkipFullTestSuite -SkipPlaytest`; no long test/browser playtest.
+
 ## Project
 
 - Path: `C:\Users\yuuki\Documents\Codex\2026-07-09\files-mentioned-by-the-user-f1\outputs\f1-race-simulator-phase1`

@@ -9,7 +9,7 @@ export const MOTORSPORT_STEP_SECONDS = 0.1
 const SAMPLE_COUNT = 512
 export type CourseStation = { x: number; y: number; nx: number; ny: number; radiusM: number; signedCurvature?: number; bankingRadians: number; grade: number; elevationM: number; airDensityKgM3: number }
 const stationCache = new WeakMap<MotorsportCourse, CourseStation[]>()
-const envelopeCache = new WeakMap<MotorsportCourse, WeakMap<MotorsportMachine, Map<string, number[]>>>()
+const envelopeCache = new WeakMap<MotorsportCourse, Map<string, Map<string, number[]>>>()
 export const modulo = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor
 export const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value))
 
@@ -53,7 +53,7 @@ export function courseStations(course: MotorsportCourse): CourseStation[] {
 }
 
 /** Shared F1/SF tyre force balance, with banking and a backward braking pass. */
-export type DrivingConditions = { massKg: number; gripScale: number; liftScale?: number; dragScale?: number; airDensityKgM3?: number }
+export type DrivingConditions = { massKg: number; gripScale: number; liftScale?: number; dragScale?: number; airDensityKgM3?: number; airTemperatureC?: number }
 
 /** Shared grip budget: braking/traction and cornering cannot each use 100%. */
 export function tyreForceBudget(machine: MotorsportMachine, station: CourseStation, speed: number, conditions: DrivingConditions) {
@@ -72,22 +72,33 @@ export function stationAt(course: MotorsportCourse, distanceM: number) {
 
 export function speedEnvelope(course: MotorsportCourse, machine: MotorsportMachine, conditions?: DrivingConditions): number[] {
   let byMachine = envelopeCache.get(course)
-  if (!byMachine) { byMachine = new WeakMap(); envelopeCache.set(course, byMachine) }
-  let variants = byMachine.get(machine)
-  if (!variants) { variants = new Map(); byMachine.set(machine, variants) }
+  if (!byMachine) { byMachine = new Map(); envelopeCache.set(course, byMachine) }
+  // Equal physical specifications share a plan even when entries have separate
+  // machine objects. Include every machine input consumed by this planner.
+  const machineKey=[machine.classId,machine.powerKw.value,machine.dragAreaM2.value,machine.liftAreaM2.value,machine.tyreMu.value,machine.massKg.value,machine.driverMassKg.value,machine.fuelCapacityKg.value,machine.hybridPowerKw.value].join(':')
+  let variants = byMachine.get(machineKey)
+  if (!variants) {
+    variants = new Map()
+    if (byMachine.size >= 64) byMachine.delete(byMachine.keys().next().value!)
+    byMachine.set(machineKey, variants)
+  }
   // Conservative finite bins bound cache size and avoid a 512-station solve
   // for every 100ms tick. Forces themselves use the unquantized current state.
   const mass = conditions ? Math.ceil(conditions.massKg / 10) * 10 : machine.massKg.value + machine.driverMassKg.value + machine.fuelCapacityKg.value * 0.5
   const grip = conditions ? Math.max(0.2, Math.floor(conditions.gripScale * 20 + 1e-8) / 20) : 1
   const liftScale = Math.floor((conditions?.liftScale ?? 1) * 10 + 1e-8) / 10
   const dragScale = Math.ceil((conditions?.dragScale ?? 1) * 20 - 1e-8) / 20
-  const key = `${mass}:${grip}:${liftScale}:${dragScale}:${conditions?.airDensityKgM3 ?? "profile"}`
+  const atmosphereKey=conditions?.airTemperatureC === undefined ? conditions?.airDensityKgM3 ?? 'profile' : `temperature:${conditions.airTemperatureC}`
+  const key = `${mass}:${grip}:${liftScale}:${dragScale}:${atmosphereKey}`
   const cached = variants.get(key)
   if (cached) return cached
   const physics = motorsportPhysicsFor(machine)
   const maximumPower = machine.powerKw.value + (machine.classId === 'indycar' ? machine.hybridPowerKw.value + (course.kind === 'road' || course.kind === 'street' ? 44.74 : 0) : 0)
-  const speeds = courseStations(course).map(({ radiusM, bankingRadians: angle, airDensityKgM3 }) => {
-    const density = conditions?.airDensityKgM3 ?? airDensityKgM3
+  const stations=courseStations(course)
+  const densityAt=(station:CourseStation)=>conditions?.airTemperatureC === undefined ? conditions?.airDensityKgM3 ?? station.airDensityKgM3 : airDensityKgM3({altitudeMeters:station.elevationM,temperatureC:conditions.airTemperatureC})
+  const speeds = stations.map(station => {
+    const {radiusM,bankingRadians:angle}=station
+    const density = densityAt(station)
     const terminal = Math.cbrt(maximumPower * 1000 * 0.94 / (0.5 * density * machine.dragAreaM2.value * dragScale))
     const corner = corneringSpeedLimitMps({ physics, massKg: mass, gripMultiplier: grip, downforceMultiplier: liftScale, airDensityKgM3: density, bankingDegrees: angle * 180 / Math.PI, radiusMeters: radiusM, ceilingMps: terminal })
     return Math.max(8, Math.min(terminal, corner))
@@ -99,11 +110,11 @@ export function speedEnvelope(course: MotorsportCourse, machine: MotorsportMachi
     // Reserve 5% lateral headroom for a drivable line. The same combined
     // force law is used here and during integration, including bank support.
     speeds[current] *= index >= SAMPLE_COUNT ? 0.975 : 1
-    const forces = tyreForceBudget(machine, courseStations(course)[current], speeds[current], { massKg: mass, gripScale: grip, liftScale, airDensityKgM3: conditions?.airDensityKgM3 })
-    const deceleration = Math.max(0.5, Math.min(physics.maximumBrakeDecelerationMps2, forces.longitudinal / mass + 9.80665 * courseStations(course)[current].grade))
+    const forces = tyreForceBudget(machine, stations[current], speeds[current], { massKg: mass, gripScale: grip, liftScale, airDensityKgM3: densityAt(stations[current]) })
+    const deceleration = Math.max(0.5, Math.min(physics.maximumBrakeDecelerationMps2, forces.longitudinal / mass + 9.80665 * stations[current].grade))
     speeds[current] = Math.min(speeds[current], Math.sqrt(speeds[next] ** 2 + 2 * deceleration * ds))
   }
-  if (variants.size >= 64) variants.delete(variants.keys().next().value!)
+  if (variants.size >= 256) variants.delete(variants.keys().next().value!)
   variants.set(key, speeds)
   return speeds
 }

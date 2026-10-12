@@ -382,11 +382,11 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       const ahead = nearestAhead.get(car.entryId), behind=nearestBehind.get(car.entryId)
       const station = { ...stationAt(config.course,car.distanceM), airDensityKgM3: environment.density }
       const aero = ahead ? trafficAero(ahead.gap,car.lateralM-ahead.car.lateralM,car.speedMps,station.radiusM) : {dragScale:1,liftScale:1}
-      const conditions = {massKg:mass,gripScale:surfaceGrip,airDensityKgM3:environment.density,...aero}
+      const conditions = {massKg:mass,gripScale:surfaceGrip,airDensityKgM3:environment.density,airTemperatureC:environment.airC,...aero}
       const paceFactor = car.paceMode==='push'?1.015:car.paceMode==='save'?0.96:car.paceMode==='defend'?0.99:1
       // Ability already constrains tyre forces; do not add a second speed bonus.
       const skillFactor=Math.min(1,paceFactor)
-      const freeTarget=targetSpeedMps(config.course,machine,car.distanceM,{massKg:mass,gripScale:surfaceGrip})*skillFactor
+      const freeTarget=targetSpeedMps(config.course,machine,car.distanceM,{massKg:mass,gripScale:surfaceGrip,airTemperatureC:environment.airC})*skillFactor
       let target=targetSpeedMps(config.course,machine,car.distanceM,conditions)*skillFactor
       if (car.pitRequest) {
         const pitDistance=modulo(config.course.pitEntry.value*length-car.distanceM,length)
