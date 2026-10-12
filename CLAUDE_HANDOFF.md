@@ -861,3 +861,18 @@ Canonical Nakayama pool axes and additional-category free selection retain 120.
 Existing untouched 105/110 save migration remains; manually edited ratings are
 preserved. Four short focused suites pass 63 tests, including 19 cross-category
 force-routing/pool/save checks. No long or complete-lap tests were run.
+
+## Mixed-class start separation, 2026-10-12
+
+The user requested each lower class's first car start 500 m behind the last car
+of the preceding class. startingGridPositions groups WEC as Hypercar/LMP2/LMGT3
+and SUPER GT as GT500/GT300, preserving configured order within each class and
+9 m per-car spacing. Missing classes add no empty group. Each class resets its
+two-column pole side. Positions are actual signed road distances, not a visual
+offset or timing bonus. Configuration and car identity order remain unchanged.
+Formation completion/skip retain those positions; spacing can evolve after green.
+Single-class grids retain their spacing, and FP/qualifying still use pit release.
+This is user-requested SIM policy, not an assertion of official start regulations.
+Existing in-progress saves preserve their positions; reset/new race uses the new
+grid. Three focused suites pass 47 tests plus one short formation regression.
+Types/lint pass. Keep the shortened publication and no-long-tests exception.

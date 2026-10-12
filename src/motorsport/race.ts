@@ -12,6 +12,7 @@ import { clamp, modulo, MOTORSPORT_STEP_SECONDS, targetSpeedMps, stationAt, tyre
 import { trafficAero, tyreGripScale } from './vehicleDynamics'
 import { integrateMotorsportVehicle, motorsportPhysicsFor } from './sharedVehiclePhysics'
 import { initialSectorTiming, advanceSectorTiming } from './sectorTiming'
+import { startingGridPositions, CLASS_START_GAP_M } from './startingGrid'
 import type { MotorsportCar, MotorsportEntry, MotorsportPitRequest, MotorsportRaceConfig, MotorsportRaceState } from './types'
 
 const RUNNING = new Set(['running', 'pit-entry', 'pit-service', 'pit-exit'])
@@ -63,9 +64,12 @@ export function validateMotorsportConfig(config: MotorsportRaceConfig) {
 }
 export function createMotorsportRace(config: MotorsportRaceConfig): MotorsportRaceState {
   validateMotorsportConfig(config)
+  const timed = config.sessionKind === 'practice' || config.sessionKind === 'qualifying'
+  const grid = timed ? null : startingGridPositions(config)
   const cars: MotorsportCar[] = config.entries.map((entry, index) => ({
-    entryId: entry.id, distanceM: index === 0 ? 0 : -index * 9, speedMps: config.start === 'rolling' ? 80 / 3.6 : 0,
-    lateralM: index % 2 ? 1.5 : -1.5, gear: config.start === 'rolling' ? 2 : 1,
+    entryId: entry.id, distanceM: grid?.get(entry.id)?.distanceM ?? -index * 9,
+    lateralM: grid?.get(entry.id)?.lateralM ?? (index % 2 ? 1.5 : -1.5), speedMps: config.start === 'rolling' ? 80 / 3.6 : 0,
+    gear: config.start === 'rolling' ? 2 : 1,
     fuelKg: entry.machine.fuelCapacityKg.value * clamp(config.startFuelFraction, 0, 1),
     virtualEnergyMj: entry.machine.virtualEnergyCapacityMj?.value ?? null,
     hybridEnergyMj: entry.machine.hybridCapacityMj.value, tyreLife: 1, tyreTemperatureC: 65, tyreState: initialRaceTyre(),
@@ -79,7 +83,6 @@ export function createMotorsportRace(config: MotorsportRaceConfig): MotorsportRa
     hybridDeployedMj: 0,
     timing: initialSectorTiming(config.course, !config.sessionKind || config.sessionKind === 'race'),
   }))
-  const timed = config.sessionKind === 'practice' || config.sessionKind === 'qualifying'
   if (timed) cars.forEach((car, index) => {
     // Independent SIM pit releases, spaced along the exit queue. The first
     // partial out lap is excluded from best-lap classification below.
@@ -93,7 +96,7 @@ export function createMotorsportRace(config: MotorsportRaceConfig): MotorsportRa
   })
   return { schemaVersion: 1, tick: 0, raceSeconds: 0, formationSeconds: 0, phase: timed ? 'racing' : 'formation', cars,
     flag: 'green', flagUntil: null, leaderFinished: false, winnerId: null,
-    events: [{ tick: 0, seconds: 0, entryId: null, message: timed ? `SIM ${config.sessionKind}: timed best-lap session; category knockout/group formats are not inferred.` : 'SIM formation. Source references and every estimated physical input are retained in this race configuration.' }] }
+    events: [{ tick: 0, seconds: 0, entryId: null, message: timed ? `SIM ${config.sessionKind}: timed best-lap session; category knockout/group formats are not inferred.` : `SIM formation. ${new Set(config.entries.map(entry=>entry.classId)).size > 1 ? `Each following class starts ${CLASS_START_GAP_M} m behind the preceding class's last car. ` : ''}Source references and every estimated physical input are retained in this race configuration.` }] }
 }
 
 function pitWork(config: MotorsportRaceConfig, car: MotorsportCar, entry: MotorsportEntry, request: MotorsportPitRequest) {
