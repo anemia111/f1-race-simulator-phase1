@@ -6,6 +6,12 @@ SIM model with bounded parameters, not a measured tyre map or a full multibody
 vehicle model. Category-specific machine specifications and sporting operations
 remain in their existing adapters.
 
+All six categories share driver tyre-envelope utilisation through ability 120:
+100 retains a 3% reserve, and 120 reaches the existing physical maximum. F1/SF
+use named handling traits; additional-category practice/race/qualifying use the
+active driver's relevant pace axis. The additional-category planner and live
+forces consume this grip once, without a second ability speed multiplier.
+
 ## Control and forces
 
 - Driver intent supplies a lateral target. Steering, yaw rate, heading error,

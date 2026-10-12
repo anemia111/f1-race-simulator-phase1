@@ -148,15 +148,17 @@ export function driverAbilityPoints(value: number): number {
 }
 
 /**
- * F1 driver execution reserves part of the existing tyre envelope. The full
+ * Shared driver execution reserves part of the existing tyre envelope. The full
  * supported ability range reaches the envelope at 120, rather than saturating
  * at 100. A 100-rated execution retains a 3% transient reserve; 120 can use
  * the full envelope. This scales available forces, never the tyre's maximum,
  * power, measured lap time or classification.
  */
-export function f1DriverTyreEnvelopeUtilisation(ability: number): number {
+export function driverTyreEnvelopeUtilisation(ability: number): number {
   return 0.82 + 0.18 * clampDriverAbility(ability) / DRIVER_ABILITY_INTERNAL_MAX
 }
+/** Compatibility export; all categories use the shared execution policy. */
+export const f1DriverTyreEnvelopeUtilisation = driverTyreEnvelopeUtilisation
 
 export function driverAbilityValue(
   driver: Driver,

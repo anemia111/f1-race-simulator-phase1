@@ -844,3 +844,20 @@ endurance, all-course recalibration or complete flying-lap test collection.
 Final focused checks: seven suites/86 tests, 12 selected FP2/Suzuka courtesy
 cases and 33 short additional-category driving cases pass (131 total). The
 remaining courtesy variants and seven complete flying-lap cases were excluded.
+
+## Ability 120 reflected in all six categories, 2026-10-12
+
+The user requested Nakayama's 120 apply across every category. SF still used a
+tyre-utilisation function saturating at 100; replace it with the shared
+driverTyreEnvelopeUtilisation used by F1. Additional categories now apply the
+same utilisation to live grip/force capacity and planning, rather than only a
+square-root target-speed factor. Remove that separate ability speed factor to
+avoid double counting. Ability 100 uses 0.97 of the physical tyre envelope;
+120 reaches 1.0. Hardware maxima stay unchanged. This is a SIM execution policy
+and also affects ordinary SF/additional-category drivers; historical course
+pace audits still do not establish current lap-time accuracy.
+
+Canonical Nakayama pool axes and additional-category free selection retain 120.
+Existing untouched 105/110 save migration remains; manually edited ratings are
+preserved. Four short focused suites pass 63 tests, including 19 cross-category
+force-routing/pool/save checks. No long or complete-lap tests were run.
