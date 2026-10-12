@@ -100,6 +100,8 @@ import { buildSynchronizedCarData } from './services/openF1Sync'
 import { buildOpenF1TimelineFrame } from './services/openF1Timeline'
 import { sessionCompletionDestinationFor } from './sessionCompletionScope'
 import { buildWeekendTirePlan } from './simulation/weekendTires'
+import { updateDriverCarSetup, setDriverAutomaticSetup } from './simulation/driverSetups'
+import { baselineSetupForTrack } from './simulation/engineering'
 import {
   applySeasonGarageToWeekend,
   eligibleSuperFormulaDriversForNextEvent,
@@ -3415,25 +3417,7 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
     key: keyof CarSetup,
     value: number,
   ) => {
-    setWeekendContext((current) => {
-      if (current.parcFermeLockedByDriver[driverId]) {
-        return current
-      }
-
-      const setup = current.setupByDriver[driverId]
-
-      if (!setup) {
-        return current
-      }
-
-      return {
-        ...current,
-        setupByDriver: {
-          ...current.setupByDriver,
-          [driverId]: { ...setup, [key]: value },
-        },
-      }
-    })
+    setWeekendContext(current => updateDriverCarSetup(current, driverId, { [key]: value }))
   }
 
   const replaceComponent = (
@@ -4329,6 +4313,10 @@ export default function App({ onOpenMotorsport, requestedSeriesId, requestedFree
         knockoutQualifying={knockoutQualifying}
         onApplyTeamPreset={applyTeamPreset}
         onCarSetupChange={updateCarSetup}
+        onCarSetupReset={driverId => setWeekendContext(current =>
+          updateDriverCarSetup(current, driverId, baselineSetupForTrack(calibratedTrack)))}
+        onCarSetupAutomaticChange={(driverId, automatic) => setWeekendContext(current =>
+          setDriverAutomaticSetup(current, driverId, automatic))}
         onComponentReplace={replaceComponent}
         onDriverChange={focusDriver}
         onDriverStatChange={updateDriverStat}

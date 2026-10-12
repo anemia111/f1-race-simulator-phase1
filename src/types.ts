@@ -1104,6 +1104,8 @@ export type WeekendContextBase = {
   gridByStage: Partial<Record<'sprint' | 'race' | 'race2', string[]>>
   setupBonusByDriver: Record<string, number>
   setupByDriver: Record<string, CarSetup>
+  /** Manually tuned cars retain their setup when practice recommendations arrive. */
+  manualSetupByDriver?: Record<string, boolean>
   setupConfidenceByDriver: Record<string, number>
   parcFermeLockedByDriver: Record<string, boolean>
   gridPenaltyByDriver: Record<string, number>

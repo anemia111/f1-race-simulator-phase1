@@ -1,5 +1,11 @@
 # F1 all-course lap-time calibration — 2026-10-11
 
+The live measurements below are historical. The 2026-10-12 driver-execution
+follow-up changes F1 force-envelope utilisation to retain performance headroom
+through ability 120. Only a short equal-car Fuji comparison was rerun; these
+49-course results are not a fresh audit of the current live engine. Course
+contact coefficients and reference provenance remain the same.
+
 Scope is every one of the 49 selectable Free Mode layouts, including Fuji,
 Motegi, SUGO, Autopolis, Okayama, Imola, both Monza geometries, Le Mans and the
 IndyCar roads/streets/ovals. Native F1 courses are not the coverage boundary.

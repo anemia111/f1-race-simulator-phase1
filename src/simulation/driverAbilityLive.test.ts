@@ -42,12 +42,13 @@ it('reflects ability 120 in a measured solo qualifying lap with unchanged hardwa
     }
     throw new Error('Solo qualifying did not complete an attack lap')
   }
+  const topDriver = timeAt(0.95)
   const standard = timeAt(1)
   const enhanced = timeAt(1.2)
-  console.info('Fuji solo ability comparison (seconds)', { standard, enhanced })
-  // Thermal preparation and braking signs can change a single lap either way;
-  // require a real live-path difference, not a forced rating-based finish time.
-  expect(enhanced.lapTime).not.toBe(standard.lapTime)
-  expect(Math.abs(enhanced.lapTime - standard.lapTime)).toBeLessThan(0.5)
+  console.info('Fuji solo ability comparison (seconds)', { topDriver, standard, enhanced })
+  expect(enhanced.lapTime).toBeLessThan(topDriver.lapTime)
+  expect(topDriver.lapTime - enhanced.lapTime).toBeGreaterThan(0.5)
+  expect(enhanced.lapTime).toBeLessThan(standard.lapTime)
+  expect(standard.lapTime - enhanced.lapTime).toBeLessThan(2)
   expect(enhanced.executionLoss).toBeLessThan(standard.executionLoss)
 }, 30_000)

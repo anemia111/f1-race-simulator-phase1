@@ -106,6 +106,15 @@ limit-break lap-time recovery is removed to avoid a second bonus. The editor
 allows all drivers through 120, including previously ordinary-scale drivers.
 No hardware, classification or crossing-time override accompanies this change.
 
+The subsequent user request for a realistic dominant 120-rated driver also
+changes F1 tyre-envelope execution: 100 retains a 3% transient reserve and 120
+can use the full physical envelope. This replaces the early saturation at 100.
+The source/performance conversion is unchanged, but ordinary F1 drivers' force
+utilisation changes. The policy is SIM-authored and is not measured human data.
+SF retains its earlier utilisation policy. One fixed-seed, equal-Ferrari Fuji
+first-attack comparison measured 95 at 77.626466 s and 120 at 77.088607 s.
+The historical all-course timing audit has not been repeated for this policy.
+
 DA-08 is then closed with a behavior-neutral executable contract. The existing
 12 decision windows retain local execution losses, while the unchanged
 `lap-execution` hash is sampled once per run and contributes only a bounded

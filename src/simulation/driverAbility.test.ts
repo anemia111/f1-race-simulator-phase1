@@ -20,11 +20,20 @@ import {
   driverPerformanceValue,
   driverPublishedAbilityValue,
   driverSkillBlend,
+  f1DriverTyreEnvelopeUtilisation,
 } from './driverAbility'
 
 const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
 
 describe('driver ability scale', () => {
+  it('leaves force execution headroom through 120 without exceeding the tyre envelope', () => {
+    const values = [0, 0.95, 1, 1.1, 1.2].map(f1DriverTyreEnvelopeUtilisation)
+    for (let i = 1; i < values.length; i++) expect(values[i]).toBeGreaterThan(values[i - 1])
+    expect(values.at(-1)).toBe(1)
+    expect(f1DriverTyreEnvelopeUtilisation(2)).toBe(1)
+    expect(f1DriverTyreEnvelopeUtilisation(1)).toBeCloseTo(0.97)
+    expect(f1DriverTyreEnvelopeUtilisation(-1)).toBe(0.82)
+  })
   it('uses the specification-wide 0-100 source and editor scale', () => {
     // The published scale is unchanged. Only the ceiling a rating may be
     // authored past moves, so every driver on the scale normalises exactly as

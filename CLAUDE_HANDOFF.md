@@ -757,3 +757,32 @@ it proves live sensitivity, not guaranteed lap-time improvement. Thermal and
 control effects can outweigh reduced errors on an individual lap. Do not claim
 120 makes the car 20% faster or guarantees pole. Lint/types pass. Retain the
 user-authorized -SkipFullTestSuite -SkipPlaytest publication exception.
+
+## Individual car setup and visible 120 pace advantage, 2026-10-12
+
+The user requested independent driver setups, then clarified that Nakayama
+120 should have a realistic but dominant advantage. Setup now names the target
+driver in its own section. Six engineering sliders, a course-baseline reset
+and FP automatic-setup toggle affect only that driver. Manual edits persist via
+optional manualSetupByDriver, survive save/load and are not replaced by FP
+recommendations. Old saves default to automatic. Parc ferme blocks edits,
+resets and mode changes; practice completion also preserves locked setups.
+
+The earlier ability ceiling change still saturated physical tyre utilisation
+at 100. F1 now reserves 3% of the existing force envelope at ability 100 and
+reaches the full envelope at 120: 0.82 + 0.18 * clampedAbility / 1.2. It is a
+SIM driver-execution policy, not observed human performance data. It changes
+ordinary F1 driver utilisation too, while retaining the source/performance
+mapping and all physical maximums. SF retains its previous utilisation policy.
+The same utilisation feeds cornering, braking and the longitudinal force
+ellipse. No hardware, lap-clock or position bonus is introduced.
+
+Short equal-car dry solo Fuji qualifying measured 95: 77.626466 s, 100:
+77.224601 s, 120: 77.088607 s (one fixed seed, first attack, identical Ferrari).
+This verifies a 0.537860 s advantage over 95 in that scenario, not every circuit
+or guaranteed pole. The old 147-run course audit remains historical; do not
+present it as a current live-pace audit after this change. The user declined
+long tests. Seven focused suites pass 74 tests, lint/types pass. Browser checks
+showed NAK rear wing 3 while HAM retained 8, NAK's manual mode held on driver
+switches, and Q parc ferme disabled every editing control. Screenshot:
+outputs/driver-setup-ui.png. Keep shortened publication checks.

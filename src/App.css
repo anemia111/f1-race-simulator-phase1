@@ -925,6 +925,33 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.driver-car-setup-controls {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.driver-car-setup-controls > small {
+  display: block;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.driver-car-setup-controls .binary-setting { margin-top: 0; }
+
+.driver-car-setup-controls > button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  background: var(--panel-bg);
+  color: var(--text-main);
+  white-space: normal;
+  cursor: pointer;
+}
+
+.driver-car-setup-controls > button:disabled { opacity: 0.5; cursor: default; }
+
 .section-title {
   justify-content: space-between;
   gap: 10px;

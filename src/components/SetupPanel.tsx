@@ -58,6 +58,8 @@ type SetupPanelProps = {
     key: keyof CarSetup,
     value: number,
   ) => void
+  onCarSetupReset: (driverId: string) => void
+  onCarSetupAutomaticChange: (driverId: string, automatic: boolean) => void
   onComponentReplace: (
     driverId: string,
     key: keyof CarComponents,
@@ -226,6 +228,8 @@ export function SetupPanel({
   onDriverChange,
   onDriverStatChange,
   onCarSetupChange,
+  onCarSetupReset,
+  onCarSetupAutomaticChange,
   onComponentReplace,
   onPitLaneStartChange,
   componentReplacementDisabled,
@@ -711,8 +715,32 @@ export function SetupPanel({
 
       <div className="setup-section">
         <div className="section-title">
-          <span>Car setup</span>
+          <span>Car setup · {selectedDriver.code}</span>
           <small>{parcFermeLocked ? 'PARC FERME' : `confidence ${Math.round((weekendContext.setupConfidenceByDriver[selectedDriver.id] ?? 0) * 100)}%`}</small>
+        </div>
+        <div className="driver-car-setup-controls">
+        <label className="field-block">
+          <span>セッティング対象ドライバー</span>
+          <select aria-label="セッティング対象ドライバー" value={selectedDriver.id}
+            onChange={event => onDriverChange(event.target.value)}>
+            {drivers.map(driver => <option key={driver.id} value={driver.id}>
+              {driver.code} - {driver.name}
+            </option>)}
+          </select>
+        </label>
+        <small>変更はこのドライバーの車に保存され、各セッションの走行に反映されます。</small>
+        <label className="binary-setting">
+          <input type="checkbox" disabled={parcFermeLocked}
+            checked={!weekendContext.manualSetupByDriver?.[selectedDriver.id]}
+            onChange={event => onCarSetupAutomaticChange(selectedDriver.id, event.target.checked)} />
+          <span>FP終了時に自動調整</span>
+        </label>
+        <small>{parcFermeLocked ? 'パルクフェルメ中はセッティングが固定されます。'
+          : weekendContext.manualSetupByDriver?.[selectedDriver.id]
+            ? '手動設定を保持中。FPの推奨値で上書きしません。'
+            : 'スライダーを変更すると手動設定に切り替わります。'}</small>
+        <button type="button" disabled={parcFermeLocked}
+          onClick={() => onCarSetupReset(selectedDriver.id)}>このドライバーをコース標準値に戻す</button>
         </div>
         <div className="setup-completeness">
           <span>Setup completeness</span>

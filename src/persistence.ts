@@ -602,6 +602,8 @@ function normalizeWeekendContext(
   const sourceSetupByDriver = isRecord(source.setupByDriver)
     ? source.setupByDriver
     : {}
+  const sourceManualSetupByDriver = isRecord(source.manualSetupByDriver) ? source.manualSetupByDriver : {}
+  const manualSetupByDriver: Record<string, boolean> = {}
   const sourceSetupBonusByDriver = isRecord(source.setupBonusByDriver)
     ? source.setupBonusByDriver
     : {}
@@ -685,6 +687,7 @@ function normalizeWeekendContext(
       0.35,
       Math.max(0, finiteNumber(sourceSetupBonusByDriver[id], 0)),
     )
+    manualSetupByDriver[id] = sourceManualSetupByDriver[id] === true
     setupConfidenceByDriver[id] = Math.min(
       1,
       Math.max(0, finiteNumber(sourceSetupConfidenceByDriver[id], 0)),
@@ -725,6 +728,7 @@ function normalizeWeekendContext(
     setupBonusByDriver,
     setupByDriver,
     setupConfidenceByDriver,
+    manualSetupByDriver,
     trackSurfaceCarry,
   }
 
