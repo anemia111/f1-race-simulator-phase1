@@ -1,5 +1,28 @@
 # SF OTS location and continuous use - 2026-10-13
 
+## Screenshot specification integration
+
+User requested applying the supplied 200-second/track-cooldown/~50 PS screenshot.
+Rechecked the manufacturer page below: 200 s per race, Suzuka/Autopolis 100 s,
+SUGO 110 s, Fuji/Motegi 120 s are explicitly published. These values were already
+in the runtime and remain; allocation and boost now have named shared constants.
+The 37 kW (~50 PS) boost remains a SIM estimate, not a measured manufacturer value.
+
+Race fuel accounting now also debits extra combustion fuel when OTS is consumed:
+actual consumed OTS seconds * current ordinary kg/lap / nominal lap seconds *
+boost kW / ordinary combustion kW * throttle fraction. This assumes equal engine
+efficiency and uses the existing averaged fuel model; it is a SIM estimate, not
+an official fuel-flow figure. Partial budget exhaustion consumes only the actual
+remaining duration; no use, cooldown or closed throttle adds no boost fuel.
+The existing ordinary distance-based burn still applies. This adds no battery
+or charge mechanism to SF, and does not alter F1 fuel accounting.
+
+Pit Wall Overview and Systems now show remaining /200 s, remaining cooldown plus
+the circuit's configured interval, and the combustion power increase (~50 PS).
+22 focused checks in four suites pass, including an actual race tick which
+exhausts the final 0.04 s budget and verifies additional fuel consumption.
+No long tests. Publication uses the standing shortened flags.
+
 User clarified that OTS can be used anywhere on the circuit within its available
 allocation. Manufacturer reference rechecked:
 https://toyotagazooracing.com/jp/superformula/cars/2026/

@@ -12,6 +12,7 @@ import {
   UNMEASURED_SECTOR_TIME,
 } from '../../domain/timingFormat'
 import { MiniSectorStrip } from '../MiniSectorStrip'
+import { SF_OTS_ALLOCATION_SECONDS } from '../../simulation/sfOtsRuntime'
 import { PitWallGroup, PitWallMetric, PitWallSourceTag } from './PitWallShared'
 import type { PitWallTabProps } from './types'
 import type { SectorTimingStatus } from '../../types'
@@ -366,7 +367,7 @@ export function PitWallOverview({
                   : 'UNAVAILABLE'
               }
               title={
-                superFormulaRuntime.otsSimulation ? `${superFormulaRuntime.otsSimulation.source} · allocation/cooldown published; 37 kW boost SIM` : superFormulaRuntime.ots.availability === 'verified-event-rule'
+                superFormulaRuntime.otsSimulation ? `${superFormulaRuntime.otsSimulation.source} · allocation/cooldown published; ${superFormulaRuntime.otsSimulation.boostPowerKw} kW boost SIM` : superFormulaRuntime.ots.availability === 'verified-event-rule'
                   ? `${superFormulaRuntime.ots.activationConditions}; runtime condition evaluation pending`
                   : superFormulaRuntime.ots.reason
               }
@@ -379,8 +380,9 @@ export function PitWallOverview({
               }
             />
             {superFormulaRuntime.otsSimulation && <>
-              <PitWallMetric label="OTS remaining" source="SIM" value={`${superFormulaRuntime.otsSimulation.remainingSeconds.toFixed(1)}s`} />
-              <PitWallMetric label="OTS cooldown" source="SIM" value={`WAIT ${Math.max(0,superFormulaRuntime.otsSimulation.cooldownUntilSeconds-snapshot.elapsedSeconds).toFixed(1)}s`} />
+              <PitWallMetric label="OTS remaining / race budget" source="SIM" value={`${superFormulaRuntime.otsSimulation.remainingSeconds.toFixed(1)} / ${SF_OTS_ALLOCATION_SECONDS}s`} />
+              <PitWallMetric label="OTS cooldown" source="SIM" value={`WAIT ${Math.max(0,superFormulaRuntime.otsSimulation.cooldownUntilSeconds-snapshot.elapsedSeconds).toFixed(1)}s / ${superFormulaRuntime.otsSimulation.cooldownSeconds}s interval`} />
+              <PitWallMetric label="OTS power boost" source="SIM" title="Estimated combustion power increase; extra fuel follows actual OTS use and throttle. No circuit activation zone." value={`+${superFormulaRuntime.otsSimulation.boostPowerKw} kW (~${Math.round(superFormulaRuntime.otsSimulation.boostPowerKw / 0.73549875)} PS)`} />
             </>}
             <PitWallMetric
               label="Refuelling safety"

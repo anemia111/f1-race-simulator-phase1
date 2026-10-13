@@ -1,5 +1,19 @@
 # Formula Race Simulator Handoff
 
+## Latest: SF OTS screenshot specification integration (2026-10-13)
+
+User asked to apply the supplied 200 s / 100-110-120 s cooldown / ~50 PS screenshot.
+Manufacturer page rechecked; existing allocation and circuit cooldown values match.
+Read docs/SF_OTS_LOCATION_FIX.md. Added missing extra combustion fuel to actual
+race accounting using consumed OTS seconds, throttle and boost/base power ratio
+against nominal averaged kg/s. This equal-efficiency estimate and 37 kW boost
+remain explicitly SIM, not published exact fuel flow or measured boost. Partial
+final ticks debit only remaining budget; closed throttle adds no boost fuel.
+Pit Wall Overview/Systems show remaining /200 s, wait plus configured circuit
+interval, and +37 kW (~50 PS). 22 focused checks in four suites pass including
+actual short race tick / partial exhaustion / fuel debit. Preserve no-long-tests
+and shortened publish -SkipFullTestSuite -SkipPlaytest.
+
 ## Latest: KYOJO evidence correction and Juju67 (2026-10-13)
 
 - User challenged unsupported KYOJO ordering and requested correction; Juju now67 explicitly. Prior64 and older KYOJO ordering are superseded.

@@ -143,7 +143,7 @@ import { calculateCarTelemetry } from './telemetry'
 import { followingDemand } from './following'
 import { recordTelemetry, handlingTelemetry } from './telemetryHistory'
 import { replaceHandlingTyres } from './vehicleHandling'
-import { advanceSfOts, createSfOtsSimulation } from './sfOtsRuntime'
+import { advanceSfOts, createSfOtsSimulation, sfOtsAdditionalFuelKg } from './sfOtsRuntime'
 import {
   resolveOperationalVehicleMass,
 } from './categoryPhysics'
@@ -6734,17 +6734,27 @@ export function advanceRace(
         })
       : null
     const distanceDelta = Math.max(0, totalDistance - car.totalDistance)
+    const fuelPerLapKg = fuelBurnKgPerLap({
+      paceMode: racePaceMode,
+      phase: localControlPhase,
+      team,
+      track: config.track,
+      weather: localWeather,
+    }) * fuelUseMultiplier
+    const otsFuelKg = car.runtimeSystems.kind === 'super-formula' &&
+      displayTelemetry.runtimeSystems.kind === 'super-formula' &&
+      car.runtimeSystems.otsSimulation && displayTelemetry.runtimeSystems.otsSimulation
+      ? sfOtsAdditionalFuelKg({
+          before: car.runtimeSystems.otsSimulation,
+          after: displayTelemetry.runtimeSystems.otsSimulation,
+          baseFuelKgPerSecond: fuelPerLapKg / config.track.baseLapTime,
+          combustionPowerKw: combustionPowerKwFor(team, categoryPhysics),
+          throttlePercent: displayTelemetry.throttlePercent,
+        })
+      : 0
     const fuelLoadKg = Math.max(
       FUEL_SAMPLE_RESERVE_KG,
-      car.fuelLoadKg -
-        distanceDelta *
-          fuelBurnKgPerLap({
-            paceMode: racePaceMode,
-            phase: localControlPhase,
-            team,
-            track: config.track,
-            weather: localWeather,
-          }) * fuelUseMultiplier,
+      car.fuelLoadKg - distanceDelta * fuelPerLapKg - otsFuelKg,
     )
     const components = f1Runtime
       ? advanceComponentWear({
