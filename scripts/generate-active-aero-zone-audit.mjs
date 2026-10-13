@@ -33,11 +33,23 @@ try {
   const { officialTrackOperations2026 } = await server.ssrLoadModule(
     '/src/data/officialTrackOperations2026.ts',
   )
-  const { isGeometryDerivedAeroActivationZone } = await server.ssrLoadModule(
+  const { isGeometryDerivedAeroActivationZone, aeroZoneLengthMeters } = await server.ssrLoadModule(
     '/src/data/aeroZoneGeometry.ts',
   )
 
   const invariantFailures = []
+  const lengthsFor = (track) => (track.aeroActivationZones ?? []).map((zone, index, zones) => {
+    const span = (zone.end - zone.start + 1) % 1
+    const normalMeters = aeroZoneLengthMeters(track.centerline, track.lengthKm * 1000, zone.start, zone.end)
+    const lowGripMeters = zone.lowGripMode === 'disabled' ? null : aeroZoneLengthMeters(track.centerline, track.lengthKm * 1000, zone.lowGripStart ?? zone.start, zone.end)
+    const id = `${track.id}:zone-${index + 1}`
+    failure(invariantFailures, Number.isFinite(normalMeters) && normalMeters > 0 && span > 0 && span < 0.5, `${id}:physical-length`)
+    failure(invariantFailures, lowGripMeters === null || (lowGripMeters > 0 && lowGripMeters <= normalMeters + 0.1), `${id}:low-grip-length`)
+    failure(invariantFailures, zones.every((other, i) => i === index || ((other.start - zone.start + 1) % 1) >= span), `${id}:overlap`)
+    if (zone.basis) failure(invariantFailures, Math.abs(normalMeters - zone.basis.usableZoneMeters) < 1, `${id}:basis-length`)
+    return { label: zone.label, normalMeters: Math.round(normalMeters), lowGripMeters: lowGripMeters === null ? null : Math.round(lowGripMeters),
+      projectedEndTurn: officialTrackOperations2026[track.id]?.straightMode[index]?.brakingTurn ?? null }
+  })
   const f1Tracks = tracks.map((track) => {
     const official = officialTrackOperations2026[track.id]
     const zones = track.aeroActivationZones ?? []
@@ -88,6 +100,7 @@ try {
       sourceClassification,
       sourceUrl: official?.sourceUrl ?? null,
       detectionLines,
+      lengths: lengthsFor(track),
       trackId: track.id,
       zoneCount: zones.length,
       zones,
@@ -163,6 +176,7 @@ try {
     })
 
     return {
+      lengths: track ? lengthsFor(track) : [],
       lengthKm: track?.lengthKm ?? null,
       trackId,
       zoneCount: zones.length,
@@ -170,8 +184,20 @@ try {
     }
   })
 
+  const { crossCategoryCoursePacks } = await server.ssrLoadModule('/src/freeMode/crossCategoryTracks.ts')
+  const { freeModeEstimatedAeroZones } = await server.ssrLoadModule('/src/freeMode/freeModeRegistry.ts')
+  const alreadyAudited = new Set([...tracks, ...supportSeriesTracks].map(track => track.id))
+  const expansionTracks = []
+  for (const { track } of crossCategoryCoursePacks) {
+    if (alreadyAudited.has(track.id)) continue
+    alreadyAudited.add(track.id)
+    const runtimeTrack = { ...track, aeroActivationZones: freeModeEstimatedAeroZones(track) }
+    expansionTracks.push({ trackId: track.id, zoneCount: runtimeTrack.aeroActivationZones.length,
+      lengths: lengthsFor(runtimeTrack), zones: runtimeTrack.aeroActivationZones,
+      sourceClassification: 'geometry-derived-estimate' })
+  }
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: repoRoot,
@@ -193,9 +219,12 @@ try {
       requiredTransitionSeconds: REQUIRED_TRANSITION_SECONDS,
       transitionSpeedKphIsScreeningOnly: true,
     },
+    expansionPhysicalTracksForF1FreeMode: expansionTracks,
     officialF1Tracks: f1Tracks,
     japanesePhysicalTracksForF1FreeMode: japaneseTracks,
     summary: {
+      totalPhysicalTrackCount: f1Tracks.length + japaneseTracks.length + expansionTracks.length,
+      expansionTrackCount: expansionTracks.length,
       f1TrackCount: f1Tracks.length,
       geometryEstimatedF1TrackCount: f1Tracks.filter(
         (track) => track.sourceClassification === 'geometry-derived-estimate',
@@ -222,6 +251,11 @@ try {
     join(repoRoot, 'artifacts/active-aero-zone-audit.json'),
     `${JSON.stringify(report, null, 2)}\n`,
   )
+  const rows = [...f1Tracks, ...japaneseTracks, ...expansionTracks].flatMap(track => track.lengths.length
+    ? track.lengths.map(zone => `| ${track.trackId} | ${zone.label} | ${zone.normalMeters} | ${zone.lowGripMeters ?? 'disabled'} | ${zone.projectedEndTurn ?? 'geometry'} |`)
+    : [`| ${track.trackId} | unavailable | - | - | - |`])
+  writeFileSync(join(repoRoot, 'artifacts/active-aero-zone-lengths.md'),
+    '# Straight Mode physical length review - 2026-10-13\n\nLengths follow the centerline scaled to published lap distance. FIA maps supply starts; turn entry/end projections remain SIM estimates. Expansion courses are geometry estimates; unavailable means no safe run met the screening criteria.\n\n| Course | Zone | Normal (m) | Low Grip (m) | Projected end turn |\n| --- | --- | ---: | ---: | --- |\n' + rows.join('\n') + '\n')
   console.log(
     JSON.stringify(
       {

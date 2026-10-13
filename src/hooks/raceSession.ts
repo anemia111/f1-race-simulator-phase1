@@ -378,16 +378,19 @@ function authoritativeRechargeRulesFor(
   },
 ) {
   try {
-    return [
-      resolveF1RechargeRule({
+    const currentRule = resolveF1RechargeRule({
         ...context,
         allowUnverifiedSessionDefault: config.freeMode === true,
         eventId: config.eventId ?? undefined,
         eventInput: config.fiaPuEventInput,
         stage: config.weekendStage ?? 'race',
         trackId: config.track.id,
-      }),
-    ]
+      })
+    // Older saves keep their stricter 8.5 MJ budget for the current lap only.
+    const legacyRule = config.freeMode === true && currentRule.ruleId === 'sim-free-mode-default' && currentRule.additionalAllowanceMJ === 0.5
+      ? { ...currentRule, additionalAllowanceMJ: 0, limit: { kind: 'finite' as const, maxCuKBusRechargeMj: currentRule.baseLimitMJ! } }
+      : null
+    return legacyRule ? [currentRule, legacyRule] : [currentRule]
   } catch {
     // An invalid supplied event input cannot authorize a checkpoint.
     return []

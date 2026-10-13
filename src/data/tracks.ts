@@ -6,6 +6,8 @@ import type {
 import {
   aeroActivationZonesWithOfficialOverride,
   deriveAeroActivationZones,
+  centerlineDistanceAtProgressMeters,
+  centerlineProgressAtDistanceMeters,
   pointDistance,
   straightnessAt,
 } from './aeroZoneGeometry'
@@ -740,16 +742,6 @@ const fallbackTrackWidth = (track: Pick<TrackDefinition, 'id' | 'kind'>) => {
   return 2.85
 }
 
-const wrapProgress = (value: number) => ((value % 1) + 1) % 1
-
-const progressWithin = (progress: number, start: number, end: number) =>
-  start <= end
-    ? progress >= start && progress <= end
-    : progress >= start || progress <= end
-
-const forwardProgress = (from: number, to: number) =>
-  wrapProgress(to - from)
-
 const anchorProgress = (
   centerline: TrackDefinition['centerline'],
   corners: NonNullable<TrackDefinition['corners']>,
@@ -789,47 +781,28 @@ const anchorProgress = (
   let referenceOffsetMeters = 0
   if (anchor.reference !== 'apex') {
     const direction = anchor.reference === 'entry' ? -1 : 1
-    const metersPerSample = lengthKm * 1000 / centerline.length
     let spanMeters = 30
-    for (let step = 1; step * metersPerSample <= referenceSpanLimitMeters; step += 1) {
-      spanMeters = Math.max(30, step * metersPerSample)
+    const apexMeters = centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, nearestIndex / centerline.length)
+    for (let step = 1; step < centerline.length; step += 1) {
+      const progress = (nearestIndex + direction * step) / centerline.length
+      const traveled = Math.abs(centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, progress) - apexMeters)
+      if (traveled > referenceSpanLimitMeters) break
+      spanMeters = Math.max(30, traveled)
       const index = (nearestIndex + direction * step + centerline.length) % centerline.length
-      if (spanMeters >= 30 && straightnessAt(centerline, index) >= 0.97) break
+      if (traveled >= 30 && straightnessAt(centerline, index) >= 0.97) break
     }
     referenceOffsetMeters = direction * spanMeters
   }
 
-  return wrapProgress(
-    nearestIndex / centerline.length +
-      (referenceOffsetMeters + anchor.offsetMeters) / (lengthKm * 1000),
-  )
-}
-
-const officialZoneEnd = (
-  start: number,
-  derivedZones: AeroActivationZone[],
-) => {
-  const containing = derivedZones.find((zone) =>
-    progressWithin(start, zone.start, zone.end),
-  )
-
-  if (containing && forwardProgress(start, containing.end) >= 0.012) {
-    return containing.end
-  }
-
-  const next = derivedZones
-    .map((zone) => ({ distance: forwardProgress(start, zone.start), zone }))
-    .filter(({ distance }) => distance <= 0.16)
-    .sort((left, right) => left.distance - right.distance)[0]?.zone
-
-  return next?.end ?? Number(wrapProgress(start + 0.08).toFixed(3))
+  return centerlineProgressAtDistanceMeters(centerline, lengthKm * 1000,
+    centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, nearestIndex / centerline.length) +
+      referenceOffsetMeters + anchor.offsetMeters)
 }
 
 const officialAeroActivationZones = (
   centerline: TrackDefinition['centerline'],
   corners: TrackDefinition['corners'],
   operations: OfficialTrackOperations,
-  derivedZones: AeroActivationZone[],
 ): AeroActivationZone[] | null => {
   if (!corners) {
     return null
@@ -846,24 +819,16 @@ const officialAeroActivationZones = (
         ? zone.lowGrip.offsetMeters - 30 : 120,
     )
 
-    if (start === null) {
-      return []
-    }
-
+    if (start === null) return []
     const lowGripStart = zone.lowGrip
-      ? anchorProgress(
-          centerline,
-          corners,
-          operations.centerlineLengthKm,
-          zone.lowGrip,
-        )
+      ? anchorProgress(centerline, corners, operations.centerlineLengthKm, zone.lowGrip)
       : null
-
+    const end = anchorProgress(centerline, corners, operations.centerlineLengthKm,
+      { turn: zone.brakingTurn, reference: 'entry', offsetMeters: 0 })
+    if (end === null || (zone.lowGrip !== null && lowGripStart === null)) return []
     return [
       {
-        end: zone.brakingTurn === undefined ? officialZoneEnd(start, derivedZones) :
-          anchorProgress(centerline, corners, operations.centerlineLengthKm,
-            { turn: zone.brakingTurn, reference: 'entry', offsetMeters: 0 }) ?? officialZoneEnd(start, derivedZones),
+        end,
         endSource: 'derived' as const,
         label: `SM A${index + 1}`,
         ...(lowGripStart === null ? {} : { lowGripStart }),
@@ -978,7 +943,6 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
         centerline,
         realLayout?.corners,
         officialOperations,
-        derivedAeroActivationZones,
       )
     : null
   const aeroActivationZones = aeroActivationZonesWithOfficialOverride(

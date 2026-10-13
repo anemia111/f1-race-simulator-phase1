@@ -1121,3 +1121,22 @@ idempotence. Short built-browser regression confirms legacy localStorage reload
 restores Race and correct first/final lap counts; all 12 stored distances and
 edited team survive with no JS errors. Build/lint/diff checks pass. No race laps
 or full sessions run. Re-run with node scripts/sf-saved-calendar-playtest.mjs.
+
+
+## All-course Straight Mode lengths and Free Mode recovery, 2026-10-13
+
+Read docs/STRAIGHT_MODE_LENGTH_REVIEW.md. All 49 selectable physical course IDs
+now appear in the enforced audit and its Markdown distance table. All 16 FIA
+maps were rechecked visually. Every nonempty official zone has its next mapped
+corner; remove reliance on the old 8%-lap endpoint fallback. Anchor metre
+offsets now follow arc length; estimated start/end precision is six decimals.
+Expansion Free Mode uses shared geometry screening instead of sector+10%-lap
+zones; Monaco unavailable status is preserved. No safe estimated run returns
+unavailable. Do not describe derived bend-entry endpoints as official braking
+coordinates or estimates on rough/oval layouts as verified F1 operations.
+
+Free Mode race/sprint recharge adds 0.5 MJ only for Overtake at lap start;
+verified event inputs retain precedence. Legacy stricter 8.5 MJ Free Mode ledger
+is accepted for its current lap. No retroactive energy credit or power boost.
+130 focused tests, all-course audit, lint/build/diff pass. No long tests. Preserve
+shortened publish -SkipFullTestSuite -SkipPlaytest and separate principal WIP.

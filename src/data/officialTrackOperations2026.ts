@@ -8,7 +8,7 @@ export type OfficialTrackAnchor = {
 
 export type OfficialStraightModeZone = {
   /** Next braking corner identified on the map; its entry projection is SIM. */
-  brakingTurn?: number
+  brakingTurn: number
   lowGrip: OfficialTrackAnchor | null
   normal: OfficialTrackAnchor
 }
@@ -65,11 +65,11 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_australian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_quarantine_zone.pdf',
     straightMode: [
-      { lowGrip: after(14, 100), normal: after(14, 50) },
-      { lowGrip: after(2, 45), normal: after(2, 20) },
-      { lowGrip: after(5, 125), normal: after(5, 85) },
-      { lowGrip: null, normal: after(8, 35) },
-      { lowGrip: null, normal: after(10, 60) },
+      { brakingTurn: 1, lowGrip: after(14, 100), normal: after(14, 50) },
+      { brakingTurn: 3, lowGrip: after(2, 45), normal: after(2, 20) },
+      { brakingTurn: 6, lowGrip: after(5, 125), normal: after(5, 85) },
+      { brakingTurn: 9, lowGrip: null, normal: after(8, 35) },
+      { brakingTurn: 11, lowGrip: null, normal: after(10, 60) },
     ],
   },
   'shanghai-approx': {
@@ -82,10 +82,10 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_chinese_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_battery_containment_area_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(16, 150), normal: after(16, 100) },
-      { lowGrip: after(4, 100), normal: after(4, 60) },
-      { lowGrip: after(10, 140), normal: after(10, 100) },
-      { lowGrip: after(13, 130), normal: after(13, 60) },
+      { brakingTurn: 1, lowGrip: after(16, 150), normal: after(16, 100) },
+      { brakingTurn: 6, lowGrip: after(4, 100), normal: after(4, 60) },
+      { brakingTurn: 11, lowGrip: after(10, 140), normal: after(10, 100) },
+      { brakingTurn: 14, lowGrip: after(13, 130), normal: after(13, 60) },
     ],
   },
   'suzuka-approx': {
@@ -98,8 +98,8 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_japanese_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_battery_containment_area_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(18, 100), normal: at(18, 'exit') },
-      { lowGrip: after(14, 70), normal: at(14, 'exit') },
+      { brakingTurn: 1, lowGrip: after(18, 100), normal: at(18, 'exit') },
+      { brakingTurn: 15, lowGrip: after(14, 70), normal: at(14, 'exit') },
     ],
   },
   'miami-approx': {
@@ -112,9 +112,9 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_miami_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(19, 70), normal: at(19, 'exit') },
-      { lowGrip: null, normal: after(8, 165) },
-      { lowGrip: after(16, 150), normal: after(16, 90) },
+      { brakingTurn: 1, lowGrip: after(19, 70), normal: at(19, 'exit') },
+      { brakingTurn: 11, lowGrip: null, normal: after(8, 165) },
+      { brakingTurn: 17, lowGrip: after(16, 150), normal: after(16, 90) },
     ],
   },
   'montreal-approx': {
@@ -127,10 +127,10 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_canadian_grand_prix_-_competition_notes_-_circuit_map_v2.pdf',
     straightMode: [
-      { lowGrip: after(14, 160), normal: after(14, 100) },
-      { lowGrip: after(7, 110), normal: after(7, 50) },
-      { lowGrip: null, normal: after(9, 60) },
-      { lowGrip: after(11, 120), normal: after(11, 30) },
+      { brakingTurn: 1, lowGrip: after(14, 160), normal: after(14, 100) },
+      { brakingTurn: 8, lowGrip: after(7, 110), normal: after(7, 50) },
+      { brakingTurn: 10, lowGrip: null, normal: after(9, 60) },
+      { brakingTurn: 13, lowGrip: after(11, 120), normal: after(11, 30) },
     ],
   },
   'monaco-approx': {
@@ -154,10 +154,10 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_barcelona-catalunya_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_and_emergency_exits_map.pdf',
     straightMode: [
-      { lowGrip: after(14, 85), normal: after(14, 45) },
-      { lowGrip: at(3, 'exit'), normal: at(3, 'exit', -40) },
-      { lowGrip: after(5, 90), normal: after(5, 90) },
-      { lowGrip: after(9, 90), normal: after(9, 40) },
+      { brakingTurn: 1, lowGrip: after(14, 85), normal: after(14, 45) },
+      { brakingTurn: 4, lowGrip: at(3, 'exit'), normal: at(3, 'exit', -40) },
+      { brakingTurn: 7, lowGrip: after(5, 90), normal: after(5, 90) },
+      { brakingTurn: 10, lowGrip: after(9, 90), normal: after(9, 40) },
     ],
   },
   'red-bull-ring-approx': {
@@ -170,10 +170,10 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_austrian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(10, 160), normal: after(10, 110) },
-      { lowGrip: after(1, 170), normal: after(1, 110) },
-      { lowGrip: after(3, 160), normal: after(3, 90) },
-      { lowGrip: after(8, 60), normal: after(8, 10) },
+      { brakingTurn: 1, lowGrip: after(10, 160), normal: after(10, 110) },
+      { brakingTurn: 3, lowGrip: after(1, 170), normal: after(1, 110) },
+      { brakingTurn: 4, lowGrip: after(3, 160), normal: after(3, 90) },
+      { brakingTurn: 9, lowGrip: after(8, 60), normal: after(8, 10) },
     ],
   },
   'silverstone-approx': {
@@ -186,10 +186,10 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_british_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(18, 115), normal: after(18, 65) },
-      { lowGrip: after(5, 115), normal: after(5, 55) },
-      { lowGrip: null, normal: after(7, 155) },
-      { lowGrip: after(14, 125), normal: after(14, 65) },
+      { brakingTurn: 1, lowGrip: after(18, 115), normal: after(18, 65) },
+      { brakingTurn: 6, lowGrip: after(5, 115), normal: after(5, 55) },
+      { brakingTurn: 9, lowGrip: null, normal: after(7, 155) },
+      { brakingTurn: 15, lowGrip: after(14, 125), normal: after(14, 65) },
     ],
   },
   'spa-approx': {
@@ -202,11 +202,11 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_belgian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(19, 240), normal: after(19, 190) },
-      { lowGrip: after(1, 195), normal: after(1, 140) },
-      { lowGrip: after(4, 360), normal: after(4, 60) },
-      { lowGrip: after(15, 190), normal: after(15, 140) },
-      { lowGrip: after(17, 110), normal: after(17, 80) },
+      { brakingTurn: 1, lowGrip: after(19, 240), normal: after(19, 190) },
+      { brakingTurn: 2, lowGrip: after(1, 195), normal: after(1, 140) },
+      { brakingTurn: 5, lowGrip: after(4, 360), normal: after(4, 60) },
+      { brakingTurn: 16, lowGrip: after(15, 190), normal: after(15, 140) },
+      { brakingTurn: 18, lowGrip: after(17, 110), normal: after(17, 80) },
     ],
   },
   'hungaroring-approx': {
@@ -219,13 +219,13 @@ export const officialTrackOperations2026: Readonly<
     sourceUrl:
       'https://www.fia.com/system/files/decision-document/2026_hungarian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
     straightMode: [
-      { lowGrip: after(14, 100), normal: after(14, 40) },
-      {
+      { brakingTurn: 1, lowGrip: after(14, 100), normal: after(14, 40) },
+      { brakingTurn: 2,
         lowGrip: atOccurrence(1, 1, 'entry', 100),
         normal: atOccurrence(1, 1, 'entry', 30),
       },
-      { lowGrip: after(3, 80), normal: after(3, 50) },
-      { lowGrip: after(11, 90), normal: after(11, 60) },
+      { brakingTurn: 4, lowGrip: after(3, 80), normal: after(3, 50) },
+      { brakingTurn: 12, lowGrip: after(11, 90), normal: after(11, 60) },
     ],
   },
   'zandvoort-approx': {

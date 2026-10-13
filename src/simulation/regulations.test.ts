@@ -496,3 +496,14 @@ describe('FIA 2026 MGU-K DC power gate', () => {
     ).toBe(0)
   })
 })
+
+ it('adds the Free Mode allowance only for Overtake latched at race/sprint lap start', () => {
+   for (const stage of ['race','sprint','fp1','qualifying'] as const) {
+     for (const active of [true,false]) {
+       const rule = resolveF1RechargeRule({allowUnverifiedSessionDefault:true,stage,overtakeAtLapStart:active})
+       const extra = active && (stage==='race'||stage==='sprint') ? 0.5 : 0
+       expect(rule.additionalAllowanceMJ).toBe(extra)
+       expect(rule.limit).toEqual({kind:'finite',maxCuKBusRechargeMj:8.5+extra})
+     }
+   }
+ })

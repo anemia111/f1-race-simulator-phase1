@@ -1476,3 +1476,17 @@ describe('race session continuity', () => {
     expect(storage.getItem(RACE_CHECKPOINT_STORAGE_KEY)).not.toBeNull()
   })
 })
+
+it('restores the previous stricter Free Mode Overtake budget without granting energy mid-lap', () => {
+  const now = 1_800_000_000_000
+  const freeConfig: RaceConfig = { ...config, freeMode:true, drivers:config.drivers.slice(0,1), weekendStage:'race' }
+  const snapshot = createInitialRace(freeConfig)
+  const runtime = f1Runtime(snapshot.cars[0])
+  runtime.overtakeRechargeAllowanceActiveThisLap = true
+  const saved = serializeRaceCheckpoint('legacy-free-overtake',snapshot,now)
+  const restored = parseRaceCheckpoint(saved,'legacy-free-overtake',freeConfig,now)
+  expect(restored).not.toBeNull()
+  expect(f1Runtime(restored!.cars[0]).energyStore.rechargeRule).toMatchObject({
+    additionalAllowanceMJ:0,limit:{kind:'finite',maxCuKBusRechargeMj:8.5},ruleId:'sim-free-mode-default',
+  })
+})

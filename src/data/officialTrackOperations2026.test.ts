@@ -124,3 +124,20 @@ describe('official FIA 2026 circuit operations', () => {
     })
   })
 })
+
+ it('ends every official run before the mapped next corner without overlap', () => {
+   for (const track of tracks.filter(t => officialTrackOperations2026[t.id])) {
+     const zones = track.aeroActivationZones!
+     zones.forEach((zone,index) => {
+       expect(officialTrackOperations2026[track.id].straightMode[index].brakingTurn).toBeGreaterThan(0)
+       const span = forwardProgress(zone.start,zone.end)
+       expect(span).toBeLessThan(0.5)
+       zones.forEach((other,i) => {
+         if (i !== index) expect(forwardProgress(zone.start,other.start),track.id).toBeGreaterThanOrEqual(span)
+       })
+     })
+   }
+   const australia = tracks.find(t=>t.id==='albert-park-approx')!
+   expect(australia.aeroActivationZones![0].start).toBeGreaterThan(australia.aeroActivationZones![0].end)
+   expect(forwardProgress(australia.aeroActivationZones![3].start,australia.aeroActivationZones![3].end)*australia.lengthKm*1000).toBeGreaterThan(800)
+ })
