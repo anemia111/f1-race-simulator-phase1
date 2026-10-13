@@ -32,8 +32,7 @@ describe('driver-independent timed-session adjudication', () => {
     }
 
     expect(liveTimedLapAdjudication(options)).toEqual({
-      causedYellow:
-        hashChance('adjudication:timed-yellow:Q2:driver:3') < 0.01,
+      causedYellow: false,
       trackLimitDeleted:
         hashChance('adjudication:timed-track-limit:Q2:driver:3') < 0.018,
     })

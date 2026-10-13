@@ -1,3 +1,4 @@
+import {applyFormulaEngineeringPlan} from '../domain/engineeringCommands'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { phaseOneConfig } from '../data/phaseOne'
 import {
@@ -275,6 +276,11 @@ export function useRaceSimulation({
     )
   }, [checkpointStorageKey, sessionKey, snapshot, snapshotSessionKey])
 
+  const setEngineeringPlan=useCallback((driverId:string,plan:import('../domain/raceEngineer').EngineeringPlan|null)=>{
+    if(workerRef.current)workerRef.current.postMessage({type:'engineering-plan',driverId,plan} satisfies RaceWorkerInboundMessage)
+    else {const next=applyFormulaEngineeringPlan(snapshotRef.current,activeConfig,driverId,plan);snapshotRef.current=next;setSnapshot(next)}
+  },[activeConfig])
+
   const requestPitStop = useCallback(
     (driverId: string, compound: TireCompound) => {
       const message: RaceWorkerInboundMessage = {
@@ -330,6 +336,7 @@ export function useRaceSimulation({
     engineError,
     engineMode: workerSupported ? ('worker' as const) : ('main' as const),
     requestPitStop,
+    setEngineeringPlan,
     setDriverPaceMode,
     skipFormationLap,
     snapshot,

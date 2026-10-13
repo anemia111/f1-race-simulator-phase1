@@ -8,6 +8,16 @@ broadcast-video renderer.
 
 ## Current Features
 
+- Phase 2 pit-wall foundations: TEAM shows every car entered by the selected
+  team with individual box and pace commands and pit-occupancy warnings.
+  DECISIONS records executed F1 pit calls directly in the engine, including
+  reason, chosen compound, position before the call, predicted rejoin,
+  estimated pit loss, double-stack risk, and the first ranked position after
+  physical pit exit. These SIM records survive checkpoint restoration and are
+  capped at 240 per session. Rejoin position is an observation, not a causal
+  measurement of net strategy gain. Branch simulation and multi-plan strategy
+  comparison are future work. SF retains its explicit unavailable box model.
+
 - Two executable 2026 series—F1 and SUPER FORMULA—with independent fields,
   calendars, qualifying, points, tyre rules, overtake systems, and saved
   championships. The relational driver pool contains 110 unique people,

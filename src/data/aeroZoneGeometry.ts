@@ -113,6 +113,39 @@ export const runDistance = (
   return distance
 }
 
+/** Physical distance uses segment lengths, not the index fraction of the lap. */
+export function centerlineDistanceAtProgressMeters(
+  centerline: TrackDefinition['centerline'], lapMeters: number, progress: number,
+) {
+  const perimeter = runDistance(centerline, 0, centerline.length)
+  if (perimeter <= 0) return 0
+  const sample = wrapProgress(progress) * centerline.length
+  const index = Math.floor(sample)
+  const distance = runDistance(centerline, 0, index) + (sample - index) *
+    pointDistance(centerline[index], centerline[(index + 1) % centerline.length])
+  return (Math.floor(progress) + distance / perimeter) * lapMeters
+}
+
+export function centerlineProgressAtDistanceMeters(
+  centerline: TrackDefinition['centerline'], lapMeters: number, meters: number,
+) {
+  const perimeter = runDistance(centerline, 0, centerline.length)
+  let remaining = wrapProgress(meters / lapMeters) * perimeter
+  for (let index = 0; index < centerline.length; index += 1) {
+    const segment = pointDistance(centerline[index], centerline[(index + 1) % centerline.length])
+    if (segment > 0 && remaining < segment) return (index + remaining / segment) / centerline.length
+    remaining -= segment
+  }
+  return 0
+}
+
+export function aeroZoneLengthMeters(
+  centerline: TrackDefinition['centerline'], lapMeters: number, start: number, end: number,
+) {
+  return centerlineDistanceAtProgressMeters(centerline, lapMeters, end <= start ? end + 1 : end) -
+    centerlineDistanceAtProgressMeters(centerline, lapMeters, start)
+}
+
 export type AeroZoneDerivationOptions = {
   /** Conservative speed used only to reserve the 400 ms transition distance. */
   expectedTransitionSpeedKph?: number
@@ -560,10 +593,10 @@ export const deriveAeroActivationZones = (
           trackWidthModelUnits,
           usableZoneMeters,
         }),
-        end: rounded(end),
+        end: rounded(end, 6),
         lowGripMode,
         runtimeScope: options.runtimeScope ?? 'f1-current',
-        start: rounded(start),
+        start: rounded(start, 6),
       },
     ]
   })

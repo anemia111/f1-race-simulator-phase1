@@ -395,3 +395,10 @@ describe('crew ratings against observed team stationary times', () => {
     expect(modelledSpread).toBeCloseTo(observedSpread, 1)
   })
 })
+
+it('rejects cached garage dwell and invalid pit transit values instead of inflating race pit loss', () => {
+  const normal=pitLaneLossSecondsForTrack({id:'albert-park-approx'})
+  for(const pitLaneTransitSeconds of [900,1200,NaN,Infinity,-1,0,2]) {
+    expect(pitLaneLossSecondsForTrack({id:'albert-park-approx',observedCalibration:{pitLaneTransitSeconds}})).toBe(normal)
+  }
+})

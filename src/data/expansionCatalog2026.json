@@ -1,0 +1,2068 @@
+{
+  "schemaVersion": 1,
+  "season": 2026,
+  "verifiedOn": "2026-10-07",
+  "sources": [
+    {
+      "id": "super-gt-gt500",
+      "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026",
+      "verifiedOn": "2026-10-07",
+      "sha256": "39849dcabe6ae2118e19bd4c5524013e8e312832715ac7c8248ece61e2d03441",
+      "scope": "2026 series entry; event substitutions are separate"
+    },
+    {
+      "id": "super-gt-gt300",
+      "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026",
+      "verifiedOn": "2026-10-07",
+      "sha256": "4d39e0adc6030416360642a2af7d96f62ddfa0694ef909dce2b8980e5f74d5b0",
+      "scope": "2026 series entry; event substitutions are separate"
+    },
+    {
+      "id": "kyojo-directory",
+      "url": "https://kyojocup.jp/profile/",
+      "verifiedOn": "2026-10-07",
+      "sha256": "eb78c3708ba4a000a2fbb0f59b5823f9cc26c075afc7bb35d9b727f6664aab93",
+      "scope": "2026 official directory snapshot"
+    },
+    {
+      "id": "kyojo-car-3",
+      "url": "https://kyojocup.jp/profile/87.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "9932344ffd8e2498bb88b313ff9c67d1efdae6fef4fdf6786e6e3e8dcb3ae1a5",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-4",
+      "url": "https://kyojocup.jp/profile/86.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "e79125439a0d3979cf51da60c90bf48e8414d41a8d1fa44208f32a071b7a574e",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-7",
+      "url": "https://kyojocup.jp/profile/85.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "fecdf3fdd635202c8ec8816de4b9c720e274a8886526094fca7d903a01ba01b8",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-8",
+      "url": "https://kyojocup.jp/profile/84.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "c5ce07fffc72ca1c9d7360eab1a3a1226500323ef4b681b01122883956cad488",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-9",
+      "url": "https://kyojocup.jp/profile/83.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "32524e497950cf010b0dfdb145e487268db5522369ceeb15ceb848ab7b664f1f",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-10",
+      "url": "https://kyojocup.jp/profile/82.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "4378de83a77e21f25329c1f9ca05999fd42631cac94f6c0d429d26905cf028b0",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-11",
+      "url": "https://kyojocup.jp/profile/81.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "d510c9f374f9f6f1d17e1aa6c98552435d551f6e4aaa0cef97cae9d716ab11fd",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-12",
+      "url": "https://kyojocup.jp/profile/80.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "3463ed5f38a511ebccd61ce385b2f501281c3c4ba9671ba8a966d82401cde265",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-17",
+      "url": "https://kyojocup.jp/profile/79.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "b1f758383fdc97b517e278570d32d343e38088aa45108252f089b1dc810f7688",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-18",
+      "url": "https://kyojocup.jp/profile/78.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "b1e321bfb1440a06bd6b6f79c131def4f0c6be0c1bb767fcc9c7260d9690c636",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-32",
+      "url": "https://kyojocup.jp/profile/77.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "ead99c7b360d8e1962e8ec5bd564096f5f804b8b8bd93a06e81ec35e99fc61b1",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-33",
+      "url": "https://kyojocup.jp/profile/76.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "d5768917c2decd625065348deeeecb834d8d620ef82f8652ab058dd6288588dd",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-35",
+      "url": "https://kyojocup.jp/profile/75.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "5b85f0f7e6361493de10c4c88899dad1f0c89917cc7b7a803dccda22285dd331",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-36",
+      "url": "https://kyojocup.jp/profile/74.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "225edf4661d32c8ab55ba55166463a5a3f9b00b3fa3eea0bea083c42d7432aa6",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-37",
+      "url": "https://kyojocup.jp/profile/73.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "04aa425ce95f7c67883a18c93361a809ff57cf56e48359e3c1acda5a0be186be",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-38",
+      "url": "https://kyojocup.jp/profile/72.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "10e3839783a1f7b68caeea592e4539a0b51f4f39e6ce04d69eb0c9330af42e5e",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-39",
+      "url": "https://kyojocup.jp/profile/71.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "d15590202a027c53276bb754e7964e4af7d9b41638a1f3ea6dcd111565d1b909",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-57",
+      "url": "https://kyojocup.jp/profile/69.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "0624828e4dec18ddd6a3173d5d3e418ee7c9c8dcdba61d819adb1285399417d9",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-86",
+      "url": "https://kyojocup.jp/profile/68.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "0a432c432ac3f6e59dc6dcae6291ae9cec371118e1e75608b7ca44711b033f0b",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "kyojo-car-87",
+      "url": "https://kyojocup.jp/profile/67.html",
+      "verifiedOn": "2026-10-07",
+      "sha256": "e4b0a1423e909a64a6ed3f9bc5f7ef7b91cf336ac7bdcfea88eb78068473ab5a",
+      "scope": "2026 driver profile"
+    },
+    {
+      "id": "indycar-directory",
+      "url": "https://www.indycar.com/Drivers",
+      "verifiedOn": "2026-10-07",
+      "sha256": "791a1102679f0aa9d80b210004ac6a16024b67597e0b06dc0f2fc727e308ed7e",
+      "scope": "2026 driver directory, including Indianapolis-only drivers; not one simultaneous field"
+    },
+    {
+      "id": "wec-imola-v1",
+      "url": "https://www.fiawec.com/umbrella_media/2026-fia-wec-6-hours-of-imola-provisional-entry-list-v1-69d4e4cb3605b287966807.pdf",
+      "verifiedOn": "2026-10-07",
+      "sha256": "6a9c76c70292942cc394837b9e9a43a2a07c7b90173b7c643747e735b460905a",
+      "scope": "Imola provisional entry list v1, 2026-04-07; event snapshot, not all season or Le Mans"
+    },
+    {
+      "id": "super-gt-calendar",
+      "url": "https://supergt.net/calendar",
+      "verifiedOn": "2026-10-07",
+      "sha256": "9cc75bb809304f4993db3c41c2c879a548265ec4b9fec9f106d200d5a2863af5",
+      "scope": "2026 amended calendar; Round 3 relocated to Motegi"
+    },
+    {
+      "id": "kyojo-calendar",
+      "url": "https://kyojocup.jp/schedule/",
+      "verifiedOn": "2026-10-07",
+      "sha256": "f640277d96d5102efa52f32449ca51518a583546bced93af7ab192d8a94623ea",
+      "scope": "2026 five meetings / ten races, all Fuji"
+    },
+    {
+      "id": "indycar-calendar",
+      "url": "https://www.indycar.com/Schedule",
+      "verifiedOn": "2026-10-07",
+      "sha256": "aa25f3d699ecfc52dbc3e6ada5d59c3cd0d6b010543dda82a908378ddbde2c22",
+      "scope": "2026 full schedule; duplicated responsive cards deduplicated by event URL"
+    },
+    {
+      "id": "wec-calendar-base",
+      "url": "https://press.fiawec.com/assets/fileuploads/69/ba/69baaf5e53d53.pdf",
+      "verifiedOn": "2026-10-07",
+      "sha256": "bad185725fabd6cdd5971a17877f60160729f5d6fcbc4bb637b2f925d3024ed5",
+      "scope": "2026 spring calendar; final two rounds superseded by July 28 notice"
+    },
+    {
+      "id": "wec-calendar-amendment",
+      "url": "https://www.fiawec.com/en/news/fia-wec-and-fia-confirm-venues-for-final-two-rounds-of-2026/13698",
+      "verifiedOn": "2026-10-07",
+      "sha256": "691d5244682c6dcb8d83c450b9925f3b260c1c6fe74af6bdbede0284cd893fed",
+      "scope": "2026-07-28 official amendment: Barcelona and Monza replace Qatar and Bahrain; reflected in current navigation"
+    }
+  ],
+  "categories": [
+    {
+      "id": "kyojo",
+      "label": "KYOJO CUP",
+      "entries": [
+        {
+          "number": "3",
+          "team": "KeePer KONDO RACING",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Sara Matsui"
+          ],
+          "sourceId": "kyojo-car-3"
+        },
+        {
+          "number": "4",
+          "team": "NTT docomo Business ROOKIE",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Mako Hirakawa"
+          ],
+          "sourceId": "kyojo-car-4"
+        },
+        {
+          "number": "7",
+          "team": "nat KDDP",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Miki Onaga"
+          ],
+          "sourceId": "kyojo-car-7"
+        },
+        {
+          "number": "8",
+          "team": "nat KDDP",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Rami Sasaki"
+          ],
+          "sourceId": "kyojo-car-8"
+        },
+        {
+          "number": "9",
+          "team": "VINIA KDDP",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Kelsey Pinkowski"
+          ],
+          "sourceId": "kyojo-car-9"
+        },
+        {
+          "number": "10",
+          "team": "FLEET KDDP",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Joanne Ciconte"
+          ],
+          "sourceId": "kyojo-car-10"
+        },
+        {
+          "number": "11",
+          "team": "富士山静岡レーシング",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Paige Raddatz"
+          ],
+          "sourceId": "kyojo-car-11"
+        },
+        {
+          "number": "12",
+          "team": "富士山静岡レーシング",
+          "machine": "KC-MG01",
+          "drivers": [
+            "RINA ITO"
+          ],
+          "sourceId": "kyojo-car-12"
+        },
+        {
+          "number": "17",
+          "team": "Team ReFa Aira",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Itsumo Shiraishi"
+          ],
+          "sourceId": "kyojo-car-17"
+        },
+        {
+          "number": "18",
+          "team": "Team ReFa",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Ai Miura"
+          ],
+          "sourceId": "kyojo-car-18"
+        },
+        {
+          "number": "32",
+          "team": "ミハラ自動車エムクラフト",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Kilei Kanemoto"
+          ],
+          "sourceId": "kyojo-car-32"
+        },
+        {
+          "number": "33",
+          "team": "FUKUDA racing",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Marie Iwaoka"
+          ],
+          "sourceId": "kyojo-car-33"
+        },
+        {
+          "number": "35",
+          "team": "INGING 2W Singha Sittipol Nexzter",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Sitarvee Limnantharak"
+          ],
+          "sourceId": "kyojo-car-35"
+        },
+        {
+          "number": "36",
+          "team": "SCS TOM'S KYOJO",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Aimi Saito"
+          ],
+          "sourceId": "kyojo-car-36"
+        },
+        {
+          "number": "37",
+          "team": "SCS TOM'S KYOJO",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Hana Burton"
+          ],
+          "sourceId": "kyojo-car-37"
+        },
+        {
+          "number": "38",
+          "team": "OPTIMUS CERUMO・INGING",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Kokoro Sato"
+          ],
+          "sourceId": "kyojo-car-38"
+        },
+        {
+          "number": "39",
+          "team": "OPTIMUS CERUMO ・INGING",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Riona Tomishita"
+          ],
+          "sourceId": "kyojo-car-39"
+        },
+        {
+          "number": "57",
+          "team": "ATEAM Buzz Racing",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Zhao Yun Qing"
+          ],
+          "sourceId": "kyojo-car-57"
+        },
+        {
+          "number": "86",
+          "team": "Dr.Dry with Team IMPUL",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Rio Shimono"
+          ],
+          "sourceId": "kyojo-car-86"
+        },
+        {
+          "number": "87",
+          "team": "ARF⭐︎お先にどうぞ⭐︎",
+          "machine": "KC-MG01",
+          "drivers": [
+            "Ryu Yamamoto"
+          ],
+          "sourceId": "kyojo-car-87"
+        }
+      ]
+    },
+    {
+      "id": "super-gt-gt500",
+      "label": "SUPER GT GT500",
+      "entries": [
+        {
+          "number": "8",
+          "team": "Team HRC ARTA MUGEN",
+          "machine": "Honda HRC PRELUDE-GT",
+          "drivers": [
+            "太田 格之進",
+            "大津 弘樹"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "#8 ARTA MUGEN HRC PRELUDE-GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "12",
+          "team": "TEAM IMPUL",
+          "machine": "Nissan Z NISMO GT500",
+          "drivers": [
+            "平峰 一貴",
+            "ベルトラン・バゲット"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "TRS IMPUL with SDG Z",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "14",
+          "team": "TGR TEAM ENEOS ROOKIE",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "福住 仁嶺",
+            "大嶋 和也"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "ENEOS X PRIME GR Supra",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "16",
+          "team": "ARTA MUGEN",
+          "machine": "Honda HRC PRELUDE-GT",
+          "drivers": [
+            "野尻 智紀",
+            "佐藤 蓮"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "#16 ARTA MUGEN HRC PRELUDE-GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "17",
+          "team": "Astemo REAL RACING",
+          "machine": "Honda HRC PRELUDE-GT",
+          "drivers": [
+            "塚越 広大",
+            "野村 勇斗"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "Astemo HRC PRELUDE-GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "19",
+          "team": "TGR TEAM WedsSport BANDOH",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "国本 雄資",
+            "阪口 晴南"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "WedsSport BANDOH GR Supra",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "23",
+          "team": "NISMO",
+          "machine": "Nissan Z NISMO GT500",
+          "drivers": [
+            "千代 勝正",
+            "高星 明誠",
+            "佐々木 大樹"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "MOTUL Niterra Z",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "24",
+          "team": "KONDO RACING",
+          "machine": "Nissan Z NISMO GT500",
+          "drivers": [
+            "名取 鉄平",
+            "三宅 淳詞"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "リアライズコーポレーション Z",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "36",
+          "team": "TGR TEAM au TOM’S",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "坪井 翔",
+            "山下 健太"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "au TOM'S GR Supra",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "37",
+          "team": "TGR TEAM Deloitte TOM’S",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "笹原 右京",
+            "ジュリアーノ・アレジ"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "Deloitte TOM'S GR Supra",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "38",
+          "team": "TGR TEAM KeePer CERUMO",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "大湯 都史樹",
+            "小林 利徠斗"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "KeePer CERUMO GR Supra",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "39",
+          "team": "TGR TEAM SARD",
+          "machine": "TOYOTA GR Supra GT500",
+          "drivers": [
+            "関口 雄飛",
+            "サッシャ・フェネストラズ"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "DENSO KOBELCO SARD GR Supra",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "64",
+          "team": "Modulo Nakajima Racing",
+          "machine": "Honda HRC PRELUDE-GT",
+          "drivers": [
+            "大草 りき",
+            "イゴール・オオムラ・フラガ"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "Modulo HRC PRELUDE-GT",
+          "tyreSupplier": "dunlop"
+        },
+        {
+          "number": "100",
+          "team": "STANLEY TEAM KUNIMITSU",
+          "machine": "Honda HRC PRELUDE-GT",
+          "drivers": [
+            "山本 尚貴",
+            "牧野 任祐"
+          ],
+          "sourceId": "super-gt-gt500",
+          "displayMachine": "STANLEY HRC PRELUDE-GT",
+          "tyreSupplier": "bridgestone"
+        }
+      ]
+    },
+    {
+      "id": "super-gt-gt300",
+      "label": "SUPER GT GT300",
+      "entries": [
+        {
+          "number": "2",
+          "team": "HYPER WATER Racing INGING",
+          "machine": "TOYOTA GR86",
+          "drivers": [
+            "堤 優威",
+            "卜部 和久"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "HYPER WATER INGING GR86 GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "4",
+          "team": "GOODSMILE RACING & TeamUKYO",
+          "machine": "Mercedes AMG GT3",
+          "drivers": [
+            "谷口 信輝",
+            "片岡 龍也"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "グッドスマイル 初音ミク AMG",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "5",
+          "team": "TEAM MACH",
+          "machine": "TOYOTA 86 MC",
+          "drivers": [
+            "塩津 佑介",
+            "荒尾 創大"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "マッハ車検 エアバスター MC86 マッハ号",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "6",
+          "team": "VELOREX",
+          "machine": "FERRARI 296 GT3 EVO",
+          "drivers": [
+            "片山 義章",
+            "ニクラス・クルッテン"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "UNI-ROBO BLUEGRASS FERRARI",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "7",
+          "team": "CARGUY MKS RACING",
+          "machine": "FERRARI 296 GT3 EVO",
+          "drivers": [
+            "ザック・オサリバン",
+            "梅垣 清",
+            "伊東 黎明"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "CARGUY Ferrari 296 GT3 EVO",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "9",
+          "team": "PACIFIC RACING TEAM",
+          "machine": "BMW M4 GT3 EVO",
+          "drivers": [
+            "冨林 勇佑",
+            "藤原 優汰",
+            "久保 凜太郎"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "PACIFIC ウマ娘 NAC BMW",
+          "tyreSupplier": "michelin"
+        },
+        {
+          "number": "11",
+          "team": "GAINER",
+          "machine": "Nissan Fairlady Z",
+          "drivers": [
+            "富田 竜一郎",
+            "大木 一輝"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "GAINER TANAX Z",
+          "tyreSupplier": "dunlop"
+        },
+        {
+          "number": "18",
+          "team": "TEAM UPGARAGE",
+          "machine": "Mercedes AMG GT3",
+          "drivers": [
+            "小林 崇志",
+            "新原 光太郎"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "UPGARAGE AMG GT3",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "20",
+          "team": "SHADE RACING",
+          "machine": "LEXUS RC F GT3",
+          "drivers": [
+            "平中 克幸",
+            "清水 英志郎"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "シェイドレーシング RC F GT3",
+          "tyreSupplier": "michelin"
+        },
+        {
+          "number": "22",
+          "team": "R’Qs MOTOR SPORTS",
+          "machine": "Mercedes AMG GT3",
+          "drivers": [
+            "和田 久",
+            "加納 政樹",
+            "城内 政樹"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "アールキューズ AMG GT3",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "25",
+          "team": "HOPPY team TSUCHIYA",
+          "machine": "TOYOTA GR Supra",
+          "drivers": [
+            "松井 孝允",
+            "洞地 遼大"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "HOPPY Schatz GR Supra GT",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "26",
+          "team": "ANEST IWATA Racing",
+          "machine": "Nissan Fairlady Z",
+          "drivers": [
+            "安田 裕信",
+            "リ・ジョンウ"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "ANEST IWATA GAINER Z",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "30",
+          "team": "apr",
+          "machine": "TOYOTA GR86",
+          "drivers": [
+            "永井 宏明",
+            "平良 響",
+            "織戸 学"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "apr GR86 GT",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "31",
+          "team": "apr",
+          "machine": "LEXUS LC500h",
+          "drivers": [
+            "小高 一斗",
+            "小山 美姫",
+            "チャーリー・ブルツ"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "apr LC500h GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "32",
+          "team": "TEAM ENEOS ROOKIE",
+          "machine": "Mercedes AMG GT3",
+          "drivers": [
+            "石浦 宏明",
+            "鈴木 斗輝哉",
+            "小林 可夢偉"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "ENEOS X PRIME AMG GT3",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "45",
+          "team": "PONOS RACING",
+          "machine": "FERRARI 296 GT3 EVO",
+          "drivers": [
+            "篠原 拓朗",
+            "川端 伸太朗"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "PONOS FERRARI 296 EVO",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "48",
+          "team": "NILZZ Racing",
+          "machine": "NISSAN GT-R NISMO GT3",
+          "drivers": [
+            "井田 太陽",
+            "ジェームス・プル",
+            "藤原 大暉"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "健康ケーズフロンティアWMニルズGT-R",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "52",
+          "team": "埼玉Green Brave",
+          "machine": "TOYOTA GR Supra",
+          "drivers": [
+            "吉田 広樹",
+            "野中 誠太"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "Green Brave GR Supra GT",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "56",
+          "team": "KONDO RACING",
+          "machine": "NISSAN GT-R NISMO GT3",
+          "drivers": [
+            "ジョアオ・パオロ・デ・オリベイラ",
+            "木村 偉織"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "リアライズ日産メカニックチャレンジGT-R",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "60",
+          "team": "LM corsa",
+          "machine": "LEXUS LC500",
+          "drivers": [
+            "吉本 大樹",
+            "河野 駿佑"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "Syntium LMcorsa LC500 GT",
+          "tyreSupplier": "dunlop"
+        },
+        {
+          "number": "61",
+          "team": "R&D SPORT",
+          "machine": "SUBARU BRZ GT300",
+          "drivers": [
+            "井口 卓人",
+            "山内 英輝"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "SUBARU BRZ R&D SPORT",
+          "tyreSupplier": "dunlop"
+        },
+        {
+          "number": "62",
+          "team": "HELM MOTORSPORTS",
+          "machine": "NISSAN GT-R NISMO GT3",
+          "drivers": [
+            "平木 湧也",
+            "平木 玲次"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "HELM MOTORSPORTS GT-R",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "65",
+          "team": "K2 R&D LEON RACING",
+          "machine": "Mercedes AMG GT3",
+          "drivers": [
+            "蒲生 尚弥",
+            "菅波 冬悟"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "LEON PYRAMID AMG",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "87",
+          "team": "JLOC",
+          "machine": "LAMBORGHINI HURACAN GT3 EVO2",
+          "drivers": [
+            "元嶋 佑弥",
+            "松浦 孝亮",
+            "川合 孝汰"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "OPEN HOUSE Lamborghini GT3",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "88",
+          "team": "JLOC",
+          "machine": "LAMBORGHINI HURACAN GT3 EVO2",
+          "drivers": [
+            "小暮 卓史",
+            "ダニール・クビアト",
+            "坂口 夏月"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "VENTENY Lamborghini GT3",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "96",
+          "team": "K-tunes Racing",
+          "machine": "LEXUS RC F GT3",
+          "drivers": [
+            "新田 守男",
+            "高木 真一"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "K-tunes RC F GT3",
+          "tyreSupplier": "bridgestone"
+        },
+        {
+          "number": "360",
+          "team": "TOMEI SPORTS",
+          "machine": "NISSAN GT-R NISMO GT3",
+          "drivers": [
+            "荒川 麟",
+            "金丸 ユウ",
+            "田中 篤"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "RUNUP × SOL GT-R",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "666",
+          "team": "seven x seven Racing",
+          "machine": "PORSCHE 911 GT3R EVO",
+          "drivers": [
+            "スヴェン・ミューラー",
+            "藤波 清斗",
+            "渡会 太一"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "seven x seven PORSCHE GT3R EVO",
+          "tyreSupplier": "yokohama"
+        },
+        {
+          "number": "777",
+          "team": "D’station Racing",
+          "machine": "Aston Martin Vantage GT3 EVO",
+          "drivers": [
+            "藤井 誠暢",
+            "チャーリー・ファグ"
+          ],
+          "sourceId": "super-gt-gt300",
+          "displayMachine": "D'station Vantage GT3",
+          "tyreSupplier": "dunlop"
+        }
+      ]
+    },
+    {
+      "id": "indycar",
+      "label": "NTT INDYCAR SERIES",
+      "entries": [
+        {
+          "number": "10",
+          "team": "Chip Ganassi Racing",
+          "machine": null,
+          "drivers": [
+            "Alex Palou"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Alex-Palou"
+        },
+        {
+          "number": "27",
+          "team": "Andretti Global",
+          "machine": null,
+          "drivers": [
+            "Kyle Kirkwood"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Kyle-Kirkwood"
+        },
+        {
+          "number": "7",
+          "team": "Arrow McLaren",
+          "machine": null,
+          "drivers": [
+            "Christian Lundgaard"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Christian-Lundgaard"
+        },
+        {
+          "number": "5",
+          "team": "Arrow McLaren",
+          "machine": null,
+          "drivers": [
+            "Pato O'Ward"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Pato-OWard"
+        },
+        {
+          "number": "12",
+          "team": "Team Penske",
+          "machine": null,
+          "drivers": [
+            "David Malukas"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/David-Malukas"
+        },
+        {
+          "number": "3",
+          "team": "Team Penske",
+          "machine": null,
+          "drivers": [
+            "Scott McLaughlin"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Scott-McLaughlin"
+        },
+        {
+          "number": "28",
+          "team": "Andretti Global",
+          "machine": null,
+          "drivers": [
+            "Marcus Ericsson"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Marcus-Ericsson"
+        },
+        {
+          "number": "2",
+          "team": "Team Penske",
+          "machine": null,
+          "drivers": [
+            "Josef Newgarden"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Josef-Newgarden"
+        },
+        {
+          "number": "60",
+          "team": "Meyer Shank Racing",
+          "machine": null,
+          "drivers": [
+            "Felix Rosenqvist"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Felix-Rosenqvist"
+        },
+        {
+          "number": "76",
+          "team": "Juncos Hollinger Racing",
+          "machine": null,
+          "drivers": [
+            "Rinus VeeKay"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Rinus-VeeKay"
+        },
+        {
+          "number": "26",
+          "team": "Andretti Global",
+          "machine": null,
+          "drivers": [
+            "Will Power"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Will-Power"
+        },
+        {
+          "number": "9",
+          "team": "Chip Ganassi Racing",
+          "machine": null,
+          "drivers": [
+            "Scott Dixon"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Scott-Dixon"
+        },
+        {
+          "number": "8",
+          "team": "Chip Ganassi Racing",
+          "machine": null,
+          "drivers": [
+            "Kyffin Simpson"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Kyffin-Simpson"
+        },
+        {
+          "number": "66",
+          "team": "Meyer Shank Racing",
+          "machine": null,
+          "drivers": [
+            "Marcus Armstrong"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Marcus-Armstrong"
+        },
+        {
+          "number": "20",
+          "team": "ECR",
+          "machine": null,
+          "drivers": [
+            "Alexander Rossi"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Alexander-Rossi"
+        },
+        {
+          "number": "15",
+          "team": "Rahal Letterman Lanigan Racing",
+          "machine": null,
+          "drivers": [
+            "Graham Rahal"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Graham-Rahal"
+        },
+        {
+          "number": "14",
+          "team": "A.J. Foyt Enterprises",
+          "machine": null,
+          "drivers": [
+            "Santino Ferrucci"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Santino-Ferrucci"
+        },
+        {
+          "number": "45",
+          "team": "Rahal Letterman Lanigan Racing",
+          "machine": null,
+          "drivers": [
+            "Louis Foster"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Louis-Foster"
+        },
+        {
+          "number": "18",
+          "team": "Dale Coyne Racing",
+          "machine": null,
+          "drivers": [
+            "Romain Grosjean"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Romain-Grosjean"
+        },
+        {
+          "number": "6",
+          "team": "Arrow McLaren",
+          "machine": null,
+          "drivers": [
+            "Nolan Siegel"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Nolan-Siegel"
+        },
+        {
+          "number": "21",
+          "team": "ECR",
+          "machine": null,
+          "drivers": [
+            "Christian Rasmussen"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Christian-Rasmussen"
+        },
+        {
+          "number": "19",
+          "team": "Dale Coyne Racing",
+          "machine": null,
+          "drivers": [
+            "Dennis Hauger"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Dennis-Hauger"
+        },
+        {
+          "number": "47",
+          "team": "Rahal Letterman Lanigan Racing",
+          "machine": null,
+          "drivers": [
+            "Mick Schumacher"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Mick-Schumacher"
+        },
+        {
+          "number": "4",
+          "team": "A.J. Foyt Enterprises",
+          "machine": null,
+          "drivers": [
+            "Caio Collet"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Caio-Collet"
+        },
+        {
+          "number": "77",
+          "team": "Juncos Hollinger Racing",
+          "machine": null,
+          "drivers": [
+            "Sting Ray Robb"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Sting-Ray-Robb"
+        },
+        {
+          "number": "23",
+          "team": "Dreyer & Reinbold Racing",
+          "machine": null,
+          "drivers": [
+            "Conor Daly"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Conor-Daly"
+        },
+        {
+          "number": "75",
+          "team": "Rahal Letterman Lanigan Racing",
+          "machine": null,
+          "drivers": [
+            "Takuma Sato"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Takuma-Sato"
+        },
+        {
+          "number": "24",
+          "team": "Dreyer & Reinbold Racing",
+          "machine": null,
+          "drivers": [
+            "Jack Harvey"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Jack-Harvey"
+        },
+        {
+          "number": "51",
+          "team": "Abel Motorsports",
+          "machine": null,
+          "drivers": [
+            "Jacob Abel"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Jacob-Abel"
+        },
+        {
+          "number": "06",
+          "team": "Meyer Shank Racing",
+          "machine": null,
+          "drivers": [
+            "Helio Castroneves"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Honda",
+          "driverUrl": "https://www.indycar.com/Drivers/Helio-Castroneves"
+        },
+        {
+          "number": "33",
+          "team": "ECR",
+          "machine": null,
+          "drivers": [
+            "Ed Carpenter"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Ed-Carpenter"
+        },
+        {
+          "number": "31",
+          "team": "Arrow McLaren",
+          "machine": null,
+          "drivers": [
+            "Ryan Hunter-Reay"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Ryan-Hunter-Reay"
+        },
+        {
+          "number": "11",
+          "team": "HMD Motorsports w/ AJ Foyt Racing",
+          "machine": null,
+          "drivers": [
+            "Katherine Legge"
+          ],
+          "sourceId": "indycar-directory",
+          "engine": "Chevrolet",
+          "driverUrl": "https://www.indycar.com/Drivers/Katherine-Legge"
+        }
+      ]
+    },
+    {
+      "id": "wec-hypercar",
+      "label": "WEC HYPERCAR",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "drivers": [
+            "Harry TINCKNELL",
+            "Tom GAMBLE"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "drivers": [
+            "Alex RIBERAS",
+            "Marco SØRENSEN"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "drivers": [
+            "Mike CONWAY",
+            "Kamui KOBAYASHI",
+            "Nyck DE VRIES"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "drivers": [
+            "Sébastien BUEMI",
+            "Brendon HARTLEY",
+            "Ryō HIRAKAWA"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "drivers": [
+            "Alex LYNN",
+            "Will STEVENS",
+            "Norman NATO"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "drivers": [
+            "Kevin MAGNUSSEN",
+            "Raffaele MARCIELLO"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "drivers": [
+            "André LOTTERER",
+            "Luis Felipe DERANI",
+            "Mathys JAUBERT"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "drivers": [
+            "Mathieu JAMINET",
+            "Paul-Loup CHATIN",
+            "Daniel JUNCADELLA"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "drivers": [
+            "Robin FRIJNS",
+            "René RAST"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "drivers": [
+            "António FÉLIX DA COSTA",
+            "Charles MILESI",
+            "Ferdinand HABSBURG"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "drivers": [
+            "Frédéric MAKOWIECKI",
+            "Jules GOUNON",
+            "Victor MARTINS"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "drivers": [
+            "Earl BAMBER",
+            "Sébastien BOURDAIS"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "drivers": [
+            "Antonio FUOCO",
+            "Miguel MOLINA",
+            "Nicklas NIELSEN"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "drivers": [
+            "Alessandro PIER GUIDI",
+            "James CALADO",
+            "Antonio GIOVINAZZI"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "drivers": [
+            "Yifei YE",
+            "Robert KUBICA",
+            "Philip HANSON"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "drivers": [
+            "Paul DI RESTA",
+            "Stoffel VANDOORNE",
+            "Nick CASSIDY"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "drivers": [
+            "Loïc DUVAL",
+            "Malthe JAKOBSEN",
+            "Théo POURCHAIRE"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Michelin"
+        }
+      ]
+    },
+    {
+      "id": "wec-lmgt3",
+      "label": "WEC LMGT3",
+      "entries": [
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "drivers": [
+            "Antares AU",
+            "Thomas FLEMING",
+            "Marvin KIRCHHÖFER"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "drivers": [
+            "François HÉRIAU",
+            "Simon MANN",
+            "Alessio ROVERA"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "drivers": [
+            "Gray NEWELL",
+            "Kobe PAUWELLS",
+            "Jonny ADAM"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "drivers": [
+            "Ian JAMES",
+            "Zacharie ROBICHON",
+            "Mattia DRUDI"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "drivers": [
+            "Darren LEUNG",
+            "Sean GELAEL",
+            "Augusto FARFUS"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "drivers": [
+            "Blake MCDONALD",
+            "Jonny EDGAR",
+            "Nicky CATSBURG"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "drivers": [
+            "Peter DEMPSEY",
+            "Salih YOLUÇ",
+            "Charlie EASTWOOD"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "drivers": [
+            "Thomas FLOHR",
+            "Francesco CASTELLACCI",
+            "Davide RIGON"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "drivers": [
+            "Alexander WEST",
+            "Finn GEHRSITZ",
+            "Benjamin GOETHE"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "drivers": [
+            "Martin BERRY",
+            "Rui ANDRADE",
+            "Maxime MARTIN"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "drivers": [
+            "Anthony MCINTOSH",
+            "Parker THOMPSON",
+            "Daniel HARPER"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "drivers": [
+            "Eric POWELL",
+            "Ben TUCK",
+            "Sebastian PRIAULX"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "drivers": [
+            "Tom VAN ROMPUY",
+            "Hadrien DAVID",
+            "Esteban MASSON"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "drivers": [
+            "Johannes ZELGER",
+            "Matteo CRESSONI",
+            "Lin HODENIUS"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "drivers": [
+            "Petru UMBRĂRESCU",
+            "Clemens SCHMID",
+            "José María LÓPEZ"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "drivers": [
+            "Stefano GATTUSO",
+            "Giammarco LEVORATO",
+            "Logan SARGEANT"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "drivers": [
+            "James COTTINGHAM",
+            "Timur BOGUSLAVSKIY",
+            "Ayhancan GÜVEN"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "drivers": [
+            "Yasser SHAHIN",
+            "Riccardo PERA",
+            "Richard LIETZ"
+          ],
+          "sourceId": "wec-imola-v1",
+          "tyreSupplier": "Goodyear"
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "super-gt": [
+      {
+        "round": 1,
+        "trackName": "岡山国際サーキット",
+        "trackKey": "okayama",
+        "dateLabel": "4 11-12",
+        "raceName": "2026 AUTOBACS SUPER GT Round1 OKAYAMA GT 300km RACE",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 2,
+        "trackName": "富士スピードウェイ",
+        "trackKey": "fuji",
+        "dateLabel": "5 03-04",
+        "raceName": "2026 AUTOBACS SUPER GT Round2 FUJI GT 3Hours RACE GW SPECIAL",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 4,
+        "trackName": "富士スピードウェイ",
+        "trackKey": "fuji",
+        "dateLabel": "8 01-02",
+        "raceName": "2026 AUTOBACS SUPER GT Round4 FUJI GT 300km RACE",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 5,
+        "trackName": "鈴鹿サーキット",
+        "trackKey": "suzuka",
+        "dateLabel": "8 22-23",
+        "raceName": "2026 AUTOBACS SUPER GT Round5 SUZUKA GT 300km RACE",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 6,
+        "trackName": "スポーツランドSUGO",
+        "trackKey": "sugo",
+        "dateLabel": "9 19-20",
+        "raceName": "2026 AUTOBACS SUPER GT Round6 SUGO GT 300km RACE",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 7,
+        "trackName": "オートポリス",
+        "trackKey": "autopolis",
+        "dateLabel": "10 17-18",
+        "raceName": "2026 AUTOBACS SUPER GT Round7 AUTOPOLIS GT 3Hours RACE",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 8,
+        "trackName": "モビリティリゾートもてぎ",
+        "trackKey": "motegi",
+        "dateLabel": "11 06-08",
+        "raceName": "2026 AUTOBACS SUPER GT Round8 MOTEGI GT 250km RACE GRAND FINAL",
+        "sourceId": "super-gt-calendar"
+      },
+      {
+        "round": 3,
+        "trackName": "モビリティリゾートもてぎ",
+        "trackKey": "motegi",
+        "dateLabel": "11 06-07",
+        "raceName": "2026 AUTOBACS SUPER GT Round3 MOTEGI GT 250km RACE",
+        "sourceId": "super-gt-calendar"
+      }
+    ],
+    "kyojo": [
+      {
+        "round": 1,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-05-09 / 2026-05-10",
+        "sourceId": "kyojo-calendar"
+      },
+      {
+        "round": 2,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-07-18 / 2026-07-19",
+        "sourceId": "kyojo-calendar"
+      },
+      {
+        "round": 3,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-09-05 / 2026-09-06",
+        "sourceId": "kyojo-calendar"
+      },
+      {
+        "round": 4,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-10-10 / 2026-10-11",
+        "sourceId": "kyojo-calendar"
+      },
+      {
+        "round": 5,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-10-31 / 2026-11-01",
+        "sourceId": "kyojo-calendar"
+      }
+    ],
+    "indycar": [
+      {
+        "round": 1,
+        "trackName": "Streets of St. Petersburg",
+        "trackKey": "st-petersburg",
+        "dateLabel": "Mar 1",
+        "raceName": "Firestone Grand Prix of St. Petersburg",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/St-Petersburg"
+      },
+      {
+        "round": 2,
+        "trackName": "Phoenix Raceway",
+        "trackKey": "phoenix",
+        "dateLabel": "Mar 7",
+        "raceName": "Good Ranchers 250",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Phoenix"
+      },
+      {
+        "round": 3,
+        "trackName": "Streets of Arlington",
+        "trackKey": "arlington",
+        "dateLabel": "Mar 15",
+        "raceName": "Java House Grand Prix of Arlington",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Arlington"
+      },
+      {
+        "round": 4,
+        "trackName": "Barber Motorsports Park",
+        "trackKey": "barber",
+        "dateLabel": "Mar 29",
+        "raceName": "Children's of Alabama Indy Grand Prix",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Barber"
+      },
+      {
+        "round": 5,
+        "trackName": "Streets of Long Beach",
+        "trackKey": "long-beach",
+        "dateLabel": "Apr 19",
+        "raceName": "Acura Grand Prix of Long Beach",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Long-Beach"
+      },
+      {
+        "round": 6,
+        "trackName": "IMS Road Course",
+        "trackKey": "indianapolis",
+        "dateLabel": "May 9",
+        "raceName": "Sonsio Grand Prix",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Indianapolis"
+      },
+      {
+        "round": 7,
+        "trackName": "Indianapolis Motor Speedway",
+        "trackKey": "indianapolis-500",
+        "dateLabel": "May 24",
+        "raceName": "110th Running of the Indianapolis 500",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Indianapolis-500"
+      },
+      {
+        "round": 8,
+        "trackName": "Streets of Detroit",
+        "trackKey": "detroit",
+        "dateLabel": "May 31",
+        "raceName": "Chevrolet Detroit Grand Prix",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Detroit"
+      },
+      {
+        "round": 9,
+        "trackName": "World Wide Technology Raceway",
+        "trackKey": "wwtr",
+        "dateLabel": "Jun 7",
+        "raceName": "Bommarito Automotive Group 500",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/WWTR"
+      },
+      {
+        "round": 10,
+        "trackName": "Road America",
+        "trackKey": "road-america",
+        "dateLabel": "Jun 21",
+        "raceName": "XPEL Grand Prix at Road America",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Road-America"
+      },
+      {
+        "round": 11,
+        "trackName": "Mid-Ohio Sports Car Course",
+        "trackKey": "mid-ohio",
+        "dateLabel": "Jul 5",
+        "raceName": "Honda Indy 200 at Mid-Ohio",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Mid-Ohio"
+      },
+      {
+        "round": 12,
+        "trackName": "Nashville Superspeedway",
+        "trackKey": "nashville",
+        "dateLabel": "Jul 20",
+        "raceName": "Borchetta Bourbon Music City Grand Prix",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Nashville"
+      },
+      {
+        "round": 13,
+        "trackName": "Portland International Raceway",
+        "trackKey": "portland",
+        "dateLabel": "Aug 9",
+        "raceName": "OnlyBulls Grand Prix of Portland",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Portland"
+      },
+      {
+        "round": 14,
+        "trackName": "Streets of Markham",
+        "trackKey": "markham",
+        "dateLabel": "Aug 16",
+        "raceName": "Ontario Honda Dealers Indy at Markham",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Markham"
+      },
+      {
+        "round": 15,
+        "trackName": "Streets of Washington",
+        "trackKey": "washington-dc",
+        "dateLabel": "Aug 23",
+        "raceName": "Freedom 250 Grand Prix of Washington DC",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Washington-DC"
+      },
+      {
+        "round": 16,
+        "trackName": "Milwaukee Mile",
+        "trackKey": "milwaukee-race2",
+        "dateLabel": "Aug 30",
+        "raceName": "Snap-on Milwaukee Mile 250",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Milwaukee-Race2"
+      },
+      {
+        "round": 17,
+        "trackName": "Milwaukee Mile",
+        "trackKey": "milwaukee-race1",
+        "dateLabel": "Aug 30",
+        "raceName": "Snap-on Makers and Fixers 250",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Milwaukee-Race1"
+      },
+      {
+        "round": 18,
+        "trackName": "WeatherTech Raceway Laguna Seca",
+        "trackKey": "laguna-seca",
+        "dateLabel": "Sep 6",
+        "raceName": "Mission Foods Grand Prix of Monterey",
+        "sourceId": "indycar-calendar",
+        "url": "https://www.indycar.com/Schedule/2026/Laguna-Seca"
+      }
+    ],
+    "wec": [
+      {
+        "round": 1,
+        "trackName": "Autodromo Enzo e Dino Ferrari",
+        "trackKey": "imola",
+        "dateLabel": "2026-04-19",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 2,
+        "trackName": "Circuit de Spa-Francorchamps",
+        "trackKey": "spa",
+        "dateLabel": "2026-05-09",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 3,
+        "trackName": "Circuit de la Sarthe",
+        "trackKey": "le-mans",
+        "dateLabel": "2026-06-13 / 2026-06-14",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 4,
+        "trackName": "Autodromo Jose Carlos Pace",
+        "trackKey": "interlagos",
+        "dateLabel": "2026-07-12",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 5,
+        "trackName": "Circuit of the Americas",
+        "trackKey": "cota",
+        "dateLabel": "2026-09-06",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 6,
+        "trackName": "Fuji Speedway",
+        "trackKey": "fuji",
+        "dateLabel": "2026-09-27",
+        "sourceId": "wec-calendar-base"
+      },
+      {
+        "round": 7,
+        "trackName": "Circuit de Barcelona-Catalunya",
+        "trackKey": "barcelona",
+        "dateLabel": "2026-10-18",
+        "sourceId": "wec-calendar-amendment"
+      },
+      {
+        "round": 8,
+        "trackName": "Autodromo Nazionale Monza",
+        "trackKey": "monza",
+        "dateLabel": "2026-11-08",
+        "sourceId": "wec-calendar-amendment"
+      }
+    ]
+  }
+}

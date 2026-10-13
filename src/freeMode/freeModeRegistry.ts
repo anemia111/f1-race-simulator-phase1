@@ -1,3 +1,5 @@
+import { deriveAeroActivationZones } from '../data/aeroZoneGeometry'
+import { crossCategoryCoursePacks } from './crossCategoryTracks'
 import {
   baseLapTimeSourceForPaceReference,
   paceReference2026For,
@@ -42,6 +44,9 @@ import type {
 } from './types'
 
 const physicalTracks = [...f1Tracks, ...supportSeriesTracks]
+for (const pack of crossCategoryCoursePacks) {
+  if (!physicalTracks.some(track => track.id === pack.id)) physicalTracks.push(pack.track)
+}
 const physicalTrackById = new Map(physicalTracks.map((track) => [track.id, track]))
 
 const cloneTeam = (team: Team): Team => ({
@@ -89,7 +94,7 @@ export function freeModeTrackOptions(
   const sfIds = new Set(
     (seriesById.get('super-formula')?.tracks ?? []).map((track) => track.id),
   )
-  const ids = [...new Set([...f1Ids, ...sfIds])]
+  const ids = [...new Set([...f1Ids, ...sfIds, ...crossCategoryCoursePacks.map(pack => pack.id)])]
 
   return ids
     .map((id): FreeModeTrackOption | null => {
@@ -102,6 +107,7 @@ export function freeModeTrackOptions(
       const sources: FreeModeTrackSource[] = [
         ...(f1Ids.has(id) ? (['F1'] as const) : []),
         ...(sfIds.has(id) ? (['SF'] as const) : []),
+        ...new Set(crossCategoryCoursePacks.filter(pack => pack.id === id).map(pack => pack.source)),
       ]
 
       return {
@@ -378,18 +384,17 @@ function derivedControlLines(track: TrackDefinition) {
   }))
 }
 
-function derivedAeroZones(track: TrackDefinition) {
-  const starts =
-    track.overtakeControlLines?.map((line) => line.activationProgress) ??
-    [track.sectorMarks[1] ?? 0.34, track.sectorMarks[2] ?? 0.68]
-
-  return starts.slice(0, 3).map((start, index) => ({
-    end: (start + 0.1) % 1,
-    label: `SIM ZONE ${index + 1}`,
-    lowGripMode: 'disabled' as const,
-    source: 'fallback' as const,
-    start,
-  }))
+export function freeModeEstimatedAeroZones(track: TrackDefinition) {
+  return deriveAeroActivationZones(track.centerline, track.kind, {
+    lapMeters: track.lengthKm * 1000,
+    expectedTransitionSpeedKph: 300,
+    minimumStraightMeters: 300,
+    runtimeScope: 'f1-free-mode',
+    lowGripMode: 'disabled',
+    trackWidthModelUnits: track.width,
+    pitEntryProgress: track.pitLane?.entryProgress,
+    pitExitProgress: track.pitLane?.exitProgress,
+  })
 }
 
 function trackForConfiguration(
@@ -435,18 +440,12 @@ function trackForConfiguration(
     }
   }
 
-  if (
-    series.rules.overtakeSystem === 'active-aero' &&
-    !track.overtakeControlLines?.length
-  ) {
-    track.overtakeControlLines = derivedControlLines(track)
-  }
-
-  if (
-    series.rules.overtakeSystem === 'active-aero' &&
-    !track.aeroActivationZones?.length
-  ) {
-    track.aeroActivationZones = derivedAeroZones(track)
+  if (series.rules.overtakeSystem === 'active-aero') {
+    if (!track.activeAeroUnavailable && !track.aeroActivationZones?.length) {
+      track.aeroActivationZones = freeModeEstimatedAeroZones(track)
+      track.activeAeroUnavailable = track.aeroActivationZones.length === 0
+    }
+    if (!track.overtakeControlLines?.length) track.overtakeControlLines = derivedControlLines(track)
   }
 
   track.freeModeProvenance = {
@@ -602,6 +601,7 @@ export function buildFreeModeRaceConfig(
         'super-formula',
       )
   const config: RaceConfig = {
+    raceStartMode: configuration.raceStartMode ?? 'standing',
     categoryRaceFormat: rules.race,
     drivers,
     overtakeSystem: rules.overtakeSystem,

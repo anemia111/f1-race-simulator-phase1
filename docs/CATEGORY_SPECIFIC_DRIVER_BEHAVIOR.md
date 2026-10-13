@@ -34,10 +34,10 @@ with causal delay, bounded sensor uncertainty, expiry, deduplication and finite
 retention. The operational closure subsequently connects it to live decisions,
 category experience, decision records and checkpoints.
 
-The next Phase 7.8B slice intentionally resolves DA-11: every named raw,
-performance, and direct energy-skill input saturates at 100, while the existing bounded
-limit-break aggregate remains the only runtime owner of authored excess up to
-120. It does not refit a coefficient or use an observed/validation target.
+Phase 7.8B originally resolved DA-11 by saturating named abilities at 100.
+The user's 2026-10-12 maximum-120 request supersedes that policy: named runtime
+abilities now retain the excess and offline aggregate recovery is removed.
+The original 0..100 mapping and physical hardware limits are preserved.
 
 DA-08 is closed without behavior change: the 12 decision windows own local
 execution loss, and the unchanged once-per-run `lap-execution` draw owns only a
@@ -327,10 +327,12 @@ energy authority, seeds, random evaluations, saved state, or simulation results;
 DA-03 remained unresolved at that point and is closed by the later
 single-ability-owner slice.
 
-DA-11 is resolved separately by saturating every named raw, performance, and
-direct energy-skill input at 100. Values up to 120 remain valid and displayed; only the
-existing `driverLimitBreakFraction` consumes the excess. The normal field,
-coefficients, seeds, random cadence, authority, and saved shape remain unchanged.
+DA-11's original 100 saturation is superseded by the user's 2026-10-12 maximum
+120 request. Named abilities and execution traits now retain up to 120; the
+existing performance slope extends to 1.09. Inputs at or below 100 are unchanged.
+The separate offline aggregate recovery is removed, so named execution owns
+the excess directly. Physical tyre limits, energy authority and bounded intent
+outputs remain enforced. See `DRIVER_AGENT_MODEL.md` for the current contract.
 
 DA-08 is closed by its two-cadence executable contract, and DA-04 is closed by
 making `wetSkill` the sole ability owner of the timed-session rain overlay.

@@ -6,11 +6,15 @@ import type {
 import {
   aeroActivationZonesWithOfficialOverride,
   deriveAeroActivationZones,
+  centerlineDistanceAtProgressMeters,
+  centerlineProgressAtDistanceMeters,
   pointDistance,
+  straightnessAt,
 } from './aeroZoneGeometry'
 import { realTrackLayouts } from './realTrackLayouts'
 import { sectorBoundaryReferences, sourcedSectorData } from './sectorBoundaries'
 import { tireNominationForTrack } from './tireNominations2026'
+import { tirePaceGapsByTrack } from './tirePaceGaps'
 import { calendar2026ByTrackId } from './calendar2026'
 import {
   baseLapTimeSourceForPaceReference,
@@ -738,21 +742,12 @@ const fallbackTrackWidth = (track: Pick<TrackDefinition, 'id' | 'kind'>) => {
   return 2.85
 }
 
-const wrapProgress = (value: number) => ((value % 1) + 1) % 1
-
-const progressWithin = (progress: number, start: number, end: number) =>
-  start <= end
-    ? progress >= start && progress <= end
-    : progress >= start || progress <= end
-
-const forwardProgress = (from: number, to: number) =>
-  wrapProgress(to - from)
-
 const anchorProgress = (
   centerline: TrackDefinition['centerline'],
   corners: NonNullable<TrackDefinition['corners']>,
   lengthKm: number,
   anchor: OfficialTrackAnchor,
+  referenceSpanLimitMeters = 120,
 ) => {
   const corner = corners.filter(({ number }) => number === anchor.turn)[
     anchor.occurrence ?? 0
@@ -762,52 +757,52 @@ const anchorProgress = (
     return null
   }
 
+  // Preserve corner order at nearby parallel/overlapping road sections.
+  // Baku T20 lies beside T6: unconstrained nearest-point projection chose
+  // the earlier branch and put its low-grip marker half a lap away.
   let nearestIndex = 0
-  let nearestDistance = Number.POSITIVE_INFINITY
-
-  centerline.forEach((point, index) => {
-    const distance = pointDistance(point, corner.position)
-
-    if (distance < nearestDistance) {
-      nearestDistance = distance
-      nearestIndex = index
+  const targetCornerIndex = corners.indexOf(corner)
+  for (const orderedCorner of corners.slice(0, targetCornerIndex + 1)) {
+    let nearestDistance = Number.POSITIVE_INFINITY
+    let selectedIndex = nearestIndex
+    for (let index = nearestIndex; index < centerline.length; index += 1) {
+      const distance = pointDistance(centerline[index], orderedCorner.position)
+      if (distance < nearestDistance) {
+        nearestDistance = distance
+        selectedIndex = index
+      }
     }
-  })
-
-  const referenceOffsetMeters =
-    anchor.reference === 'entry' ? -15 : anchor.reference === 'exit' ? 15 : 0
-
-  return wrapProgress(
-    nearestIndex / centerline.length +
-      (referenceOffsetMeters + anchor.offsetMeters) / (lengthKm * 1000),
-  )
-}
-
-const officialZoneEnd = (
-  start: number,
-  derivedZones: AeroActivationZone[],
-) => {
-  const containing = derivedZones.find((zone) =>
-    progressWithin(start, zone.start, zone.end),
-  )
-
-  if (containing && forwardProgress(start, containing.end) >= 0.012) {
-    return containing.end
+    nearestIndex = selectedIndex
   }
 
-  const next = derivedZones
-    .map((zone) => ({ distance: forwardProgress(start, zone.start), zone }))
-    .filter(({ distance }) => distance <= 0.16)
-    .sort((left, right) => left.distance - right.distance)[0]?.zone
+  // Entry/exit are projected from the visible bend, not a fixed 15 m from
+  // the apex. The old 30 m-wide corner made Hungary's detection and its
+  // activation 30 m before exit coincide. This remains a SIM projection.
+  let referenceOffsetMeters = 0
+  if (anchor.reference !== 'apex') {
+    const direction = anchor.reference === 'entry' ? -1 : 1
+    let spanMeters = 30
+    const apexMeters = centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, nearestIndex / centerline.length)
+    for (let step = 1; step < centerline.length; step += 1) {
+      const progress = (nearestIndex + direction * step) / centerline.length
+      const traveled = Math.abs(centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, progress) - apexMeters)
+      if (traveled > referenceSpanLimitMeters) break
+      spanMeters = Math.max(30, traveled)
+      const index = (nearestIndex + direction * step + centerline.length) % centerline.length
+      if (traveled >= 30 && straightnessAt(centerline, index) >= 0.97) break
+    }
+    referenceOffsetMeters = direction * spanMeters
+  }
 
-  return next?.end ?? Number(wrapProgress(start + 0.08).toFixed(3))
+  return centerlineProgressAtDistanceMeters(centerline, lengthKm * 1000,
+    centerlineDistanceAtProgressMeters(centerline, lengthKm * 1000, nearestIndex / centerline.length) +
+      referenceOffsetMeters + anchor.offsetMeters)
 }
 
 const officialAeroActivationZones = (
   centerline: TrackDefinition['centerline'],
   corners: TrackDefinition['corners'],
   operations: OfficialTrackOperations,
-  derivedZones: AeroActivationZone[],
 ): AeroActivationZone[] | null => {
   if (!corners) {
     return null
@@ -819,24 +814,22 @@ const officialAeroActivationZones = (
       corners,
       operations.centerlineLengthKm,
       zone.normal,
+      zone.normal.reference === 'exit' && zone.lowGrip?.turn === zone.normal.turn &&
+        zone.lowGrip.reference === 'apex' && zone.lowGrip.offsetMeters > 30
+        ? zone.lowGrip.offsetMeters - 30 : 120,
     )
 
-    if (start === null) {
-      return []
-    }
-
+    if (start === null) return []
     const lowGripStart = zone.lowGrip
-      ? anchorProgress(
-          centerline,
-          corners,
-          operations.centerlineLengthKm,
-          zone.lowGrip,
-        )
+      ? anchorProgress(centerline, corners, operations.centerlineLengthKm, zone.lowGrip)
       : null
-
+    const end = anchorProgress(centerline, corners, operations.centerlineLengthKm,
+      { turn: zone.brakingTurn, reference: 'entry', offsetMeters: 0 })
+    if (end === null || (zone.lowGrip !== null && lowGripStart === null)) return []
     return [
       {
-        end: officialZoneEnd(start, derivedZones),
+        end,
+        endSource: 'derived' as const,
         label: `SM A${index + 1}`,
         ...(lowGripStart === null ? {} : { lowGripStart }),
         lowGripMode: lowGripStart === null ? ('disabled' as const) : ('partial' as const),
@@ -950,7 +943,6 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
         centerline,
         realLayout?.corners,
         officialOperations,
-        derivedAeroActivationZones,
       )
     : null
   const aeroActivationZones = aeroActivationZonesWithOfficialOverride(
@@ -971,7 +963,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     activeAeroUnavailable: officialOperations?.straightMode.length === 0,
     calendar2026: calendar2026ByTrackId[id],
     centerline,
-    corners: realLayout?.corners,
+    corners: realLayout?.corners.map((corner, index, all) => ({...corner, label: `${corner.number}${all.slice(0,index).some(previous => previous.number === corner.number) ? 'A' : ''}`})),
     aeroActivationZones,
     layoutSource: realLayout
       ? {
@@ -1007,6 +999,7 @@ export const tracks: TrackDefinition[] = calendarTrackIds.map((id) => {
     safetyCarLines: deriveSafetyCarLines({ ...track, pitLane }),
     ...sourcedSectorData({ id, centerline, corners: realLayout?.corners }),
     tireNomination: tireNominationForTrack(track),
+    tirePaceGaps: tirePaceGapsByTrack[id],
     width: trackWidth,
   }
 })

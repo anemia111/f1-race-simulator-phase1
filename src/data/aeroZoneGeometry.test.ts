@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAeroActivationZones, runDistance } from './aeroZoneGeometry'
+import { deriveAeroActivationZones, runDistance, centerlineDistanceAtProgressMeters, centerlineProgressAtDistanceMeters, aeroZoneLengthMeters } from './aeroZoneGeometry'
 import { supportSeriesTracks } from './supportSeriesTracks'
 import { supportSeriesTrackLayouts } from './supportSeriesTrackLayouts'
 import type { TrackDefinition } from '../types'
@@ -156,3 +156,12 @@ describe('domestic circuit activation zones', () => {
     })
   })
 })
+
+ it('measures and offsets metres on unequal segments across start/finish', () => {
+   const line: TrackDefinition['centerline'] = [[0,0,0],[10,0,0],[100,0,0],[100,0,100],[0,0,100]]
+   expect(centerlineDistanceAtProgressMeters(line,400,0.2)).toBeCloseTo(10)
+   expect(centerlineProgressAtDistanceMeters(line,400,55)).toBeCloseTo(0.3)
+   expect(centerlineProgressAtDistanceMeters(line,400,410)).toBeCloseTo(0.2)
+   expect(centerlineDistanceAtProgressMeters(line,400,-0.2)).toBeCloseTo(-100)
+   expect(aeroZoneLengthMeters(line,400,0.8,0.2)).toBeCloseTo(110)
+ })

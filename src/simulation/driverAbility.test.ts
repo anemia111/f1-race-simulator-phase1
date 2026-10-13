@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers } from '../data/grid2026'
 import type { DriverTunableStat } from '../types'
 import {
-  CURRENT_DRIVER_ABILITY_CEILING,
+  driverAbilityCeiling,
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_SCALE_MAX,
@@ -20,30 +20,42 @@ import {
   driverPerformanceValue,
   driverPublishedAbilityValue,
   driverSkillBlend,
+  f1DriverTyreEnvelopeUtilisation,
 } from './driverAbility'
 
 const driverStats: DriverTunableStat[] = [...DRIVER_ABILITY_STATS]
 
 describe('driver ability scale', () => {
+  it('leaves force execution headroom through 120 without exceeding the tyre envelope', () => {
+    const values = [0, 0.95, 1, 1.1, 1.2].map(f1DriverTyreEnvelopeUtilisation)
+    for (let i = 1; i < values.length; i++) expect(values[i]).toBeGreaterThan(values[i - 1])
+    expect(values.at(-1)).toBe(1)
+    expect(f1DriverTyreEnvelopeUtilisation(2)).toBe(1)
+    expect(f1DriverTyreEnvelopeUtilisation(1)).toBeCloseTo(0.97)
+    expect(f1DriverTyreEnvelopeUtilisation(-1)).toBe(0.82)
+  })
   it('uses the specification-wide 0-100 source and editor scale', () => {
     // The published scale is unchanged. Only the ceiling a rating may be
     // authored past moves, so every driver on the scale normalises exactly as
-    // before. Authored excess is retained for the dedicated limit-break owner.
+    // before. Named execution consumers also retain the authored excess.
     expect(DRIVER_ABILITY_SCALE_MAX).toBe(100)
     expect(DRIVER_ABILITY_INTERNAL_MAX).toBe(1.2)
     expect(clampDriverAbility(2)).toBe(1.2)
     expect(clampDriverAbility(1)).toBe(1)
     expect(driverAbilityPoints(1)).toBe(100)
-    expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBe(1)
+    expect(DRIVER_PERFORMANCE_INTERNAL_MAX).toBeCloseTo(1.09)
     expect(driverPerformanceValue(0)).toBe(0.55)
     expect(driverPerformanceValue(0.55)).toBeCloseTo(0.7975, 10)
     expect(driverPerformanceValue(1)).toBe(1)
-    expect(driverPerformanceValue(1.2)).toBe(1)
+    expect(driverPerformanceValue(1.1)).toBeCloseTo(1.045)
+    expect(driverPerformanceValue(1.2)).toBeCloseTo(1.09)
+    expect(driverPerformanceValue(2)).toBe(driverPerformanceValue(1.2))
   })
 
-  it('gives ratings above 100 exactly one runtime owner', () => {
+  it('retains the explicitly authorized Nakayama 120 in named runtime consumers', () => {
     const atScale = {
       ...initialDrivers[0],
+      id: 'yuki_nakayama',
       skills: Object.fromEntries(driverStats.map((stat) => [stat, 1])) as Record<
         DriverTunableStat,
         number
@@ -56,15 +68,15 @@ describe('driver ability scale', () => {
       ) as Record<DriverTunableStat, number>,
     }
 
-    expect(driverPerformanceAbility(limitBreak, 'rawPace')).toBe(
+    expect(driverPerformanceAbility(limitBreak, 'rawPace')).toBeGreaterThan(
       driverPerformanceAbility(atScale, 'rawPace'),
     )
-    expect(driverPublishedAbilityValue(limitBreak, 'tireManagement')).toBe(
+    expect(driverPublishedAbilityValue(limitBreak, 'tireManagement')).toBeGreaterThan(
       driverPublishedAbilityValue(atScale, 'tireManagement'),
     )
     expect(
       driverSkillBlend(limitBreak, { rawPace: 0.4, raceAwareness: 0.6 }),
-    ).toBe(driverSkillBlend(atScale, { rawPace: 0.4, raceAwareness: 0.6 }))
+    ).toBeGreaterThan(driverSkillBlend(atScale, { rawPace: 0.4, raceAwareness: 0.6 }))
     expect(driverLimitBreakFraction(atScale)).toBe(0)
     expect(driverLimitBreakFraction(limitBreak)).toBeCloseTo(0.2, 10)
   })
@@ -73,11 +85,11 @@ describe('driver ability scale', () => {
     for (const driver of initialDrivers) {
       for (const stat of driverStats) {
         expect(driverAbilityPoints(driverAbilityValue(driver, stat))).toBeLessThanOrEqual(
-          CURRENT_DRIVER_ABILITY_CEILING,
+          driverAbilityCeiling(driver.id),
         )
       }
       expect(driverOverallAbilityPoints(driver)).toBeLessThanOrEqual(
-        CURRENT_DRIVER_ABILITY_CEILING,
+        driverAbilityCeiling(driver.id),
       )
     }
   })

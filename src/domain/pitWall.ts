@@ -38,6 +38,8 @@ export type PitWallTabId =
   | 'systems'
   | 'weather'
   | 'race-control'
+  | 'team'
+  | 'decisions'
 
 export const pitWallTabs: Array<{ id: PitWallTabId; label: string }> = [
   { id: 'overview', label: 'OVERVIEW' },
@@ -45,6 +47,8 @@ export const pitWallTabs: Array<{ id: PitWallTabId; label: string }> = [
   { id: 'strategy', label: 'STRATEGY' },
   { id: 'systems', label: 'CAR SYSTEMS' },
   { id: 'weather', label: 'WEATHER & TRACK' },
+  { id: 'team', label: 'TEAM' },
+  { id: 'decisions', label: 'DECISIONS' },
   { id: 'race-control', label: 'RACE CONTROL' },
 ]
 

@@ -1,3 +1,13 @@
+import { towEnergyDeployment, type TowEnergyPlan } from './towEnergyTactics'
+import { straightAttackDeployment } from './wheelBattle'
+import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
+import { advancePedals } from './pedalControl'
+import { handlingSlip, type VehicleHandlingState } from './vehicleHandling'
+import { raceTyreGrip } from './raceTyres'
+import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
+import { advanceSfOts, SF_OTS_ALLOCATION_SECONDS } from './sfOtsRuntime'
+import { repairUnavailableSimRecharge } from './simulationRechargePolicy'
 import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
@@ -10,11 +20,13 @@ import type {
   Driver,
   DriverDecisionPath,
   OvertakeStatus,
+  RechargeRuleDefinition,
   Team,
   TrackDefinition,
   WeatherState,
   WeekendStage,
 } from '../types'
+import {drivingSignature,signaturePedalControl} from './drivingSignature'
 import {
   activeAeroDisplayModeForState,
   advanceActiveAeroState,
@@ -28,7 +40,7 @@ import {
   type CategoryPhysicsProfile,
   type OperationalVehicleMassResolution,
 } from './categoryPhysics'
-import { driverSkillBlend } from './driverAbility'
+import { driverSkillBlend, driverTyreEnvelopeUtilisation } from './driverAbility'
 import {
   driverBehaviorTraits,
   type DriverDecision,
@@ -62,9 +74,10 @@ import {
 } from './tires'
 import { brakeHardwareCapacityFor } from './brakeDynamics'
 import { trackDynamicsAt } from './trackDynamics'
+import { freshCompoundGripFor } from './tireCompoundPace'
+import { trackAtmosphereAt } from './roadEnvironment'
 import { gripForSurfaceWater } from './trackWater'
 import {
-  airDensityKgM3,
   combustionWheelPowerKwAt,
   dirtyAirDownforceMultiplier,
   fuelMassEffects,
@@ -148,6 +161,7 @@ export function overtakeAllowanceBoundedDcPowerLimitKw(options: {
 }
 
 type CalculatedTelemetry = {
+  handlingState?: VehicleHandlingState
   brakePercent: number
   /** Frame-averaged contact-patch work dissipated by service-brake friction. */
   frictionServiceBrakePowerKw: number
@@ -169,6 +183,8 @@ export function calculateCarTelemetry(options: {
   car: CarSnapshot
   /** Physical lateral position of the nearest car ahead, when one exists. */
   aheadLateralOffsetM?: number
+  aheadSpeedKph?: number
+  towEnergyPlan?: TowEnergyPlan
   /** Temporary, bounded pace concession from a resolved racing battle. */
   battlePaceScale?: number
   deltaSeconds: number
@@ -179,6 +195,7 @@ export function calculateCarTelemetry(options: {
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
   lowGripConditions: boolean
+  simulationRechargeRule?: RechargeRuleDefinition
   isFinalLap?: boolean
   /** Authoritative FIA event input; null/omission keeps it unavailable. */
   fiaNominalTyreMassKg?: number | null
@@ -190,9 +207,12 @@ export function calculateCarTelemetry(options: {
   regulatoryMassIncreaseKg?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number
+  /** Current finish target, including an early checkered flag. */
+  raceLaps?: number
   sessionType?: 'race-distance' | 'limited-time'
   timedRunPhase?: CarSnapshot['timedRunPhase']
   timedTrafficYield?: boolean
+  timedPreparationSpeedScale?: number
   standingStartLaunchActive?: boolean
   standingStartMguKRestricted?: boolean
   specifiedErsPowerSector?: boolean
@@ -200,6 +220,7 @@ export function calculateCarTelemetry(options: {
   trackCondition?: TireTrackCondition
   setup?: CarSetup
   headwindMps?: number
+  crosswindMps?: number
   categoryPhysics?: CategoryPhysicsProfile
   track: TrackDefinition
   team: Team
@@ -214,7 +235,7 @@ export function calculateCarTelemetry(options: {
     car,
     aheadLateralOffsetM,
     battlePaceScale = 1,
-    categoryPhysics = categoryPhysicsFor(undefined),
+    categoryPhysics: providedCategoryPhysics = categoryPhysicsFor(options.seriesId),
     deltaSeconds,
     driver,
     driverDecision,
@@ -239,6 +260,7 @@ export function calculateCarTelemetry(options: {
     trackCondition: providedTrackCondition,
     setup,
     headwindMps = 0,
+    crosswindMps = 0,
     track,
     team,
     trackGrip,
@@ -247,6 +269,10 @@ export function calculateCarTelemetry(options: {
     weather,
     vehicleEraId,
   } = options
+  const categoryPhysics = providedCategoryPhysics === categoryPhysicsFor('super-formula')
+    ? superFormulaPhysicsForTrack(track)
+    : providedCategoryPhysics === categoryPhysicsFor('f1-custom')
+      ? f1PhysicsForTrack(track) : providedCategoryPhysics
   const f1Runtime =
     car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
   const f1Tires = f1Runtime?.tires ?? null
@@ -262,12 +288,11 @@ export function calculateCarTelemetry(options: {
       ? resolveSuperFormulaOperational()
       : null
   const superFormulaOts = superFormulaRuntime?.ots
-  // Article 24.3.8 delegates OTS operation to an event source. With no
-  // verified event pack (or no evaluated event conditions), this is false and
-  // the runtime must neither activate OTS nor preserve a legacy allocation.
+  // Keep official event resolution separate from the manufacturer-backed SIM
+  // model. Unknown courses retain the unavailable event-rule boundary.
   const otsRuntimeCanActivate =
-    superFormulaOts?.availability === 'verified-event-rule' &&
-    superFormulaOts.runtimeEligibility.canActivate
+    (superFormulaOts?.availability === 'verified-event-rule' &&
+    superFormulaOts.runtimeEligibility.canActivate) || superFormulaRuntime?.otsSimulation !== undefined
   const operationalVehicleMass =
     options.operationalVehicleMass ??
     resolveOperationalVehicleMass({
@@ -279,6 +304,7 @@ export function calculateCarTelemetry(options: {
         (options.performanceSession === 'qualifying' ? 'qualifying' : 'race'),
     })
   const behaviorTraits = driverDecision?.traits ?? driverBehaviorTraits(driver)
+  const signature=drivingSignature(driver)
   const lateralSeparationM =
     aheadLateralOffsetM === undefined
       ? undefined
@@ -305,10 +331,7 @@ export function calculateCarTelemetry(options: {
       rainIntensityMmH: 0,
       surfaceWaterMm,
     } satisfies TireTrackCondition)
-  const ambientAirDensityKgM3 = airDensityKgM3({
-    altitudeMeters: track.altitudeMeters,
-    temperatureC: airTemperatureC,
-  })
+  const ambientAirDensityKgM3 = trackAtmosphereAt(track, car.progress, airTemperatureC).airDensityKgM3
   const dynamics = trackDynamicsAt(
     track,
     standingStartLaunchActive && car.progress >= 0.88 ? 0 : car.progress,
@@ -316,7 +339,9 @@ export function calculateCarTelemetry(options: {
   )
   const energyStoreAtFrameStart = f1Runtime
     ? normalizeEnergyStoreState(
-        f1Runtime.energyStore,
+        options.simulationRechargeRule
+          ? repairUnavailableSimRecharge(f1Runtime.energyStore, options.simulationRechargeRule)
+          : f1Runtime.energyStore,
         team,
         f1Runtime.ersBatteryPercent,
       )
@@ -369,12 +394,15 @@ export function calculateCarTelemetry(options: {
         team,
       })
   const compoundGrip = f1Tires
-    ? tireTrackGripMultiplier(f1Tires.tire, trackCondition)
-    : 1
-  // The F1 Pirelli runtime carries the state needed to resolve a live tyre
-  // force envelope. SUPER FORMULA deliberately has no equivalent coefficient
-  // state: its control-tire branch remains unavailable rather than borrowing
-  // an F1 zero-loss compatibility value.
+    ? tireTrackGripMultiplier(f1Tires.tire, trackCondition) *
+      (categoryPhysics.id === 'f1-custom' ? freshCompoundGripFor(track, f1Tires.tire) : 1)
+    : superFormulaRuntime
+      ? superFormulaRuntime.liveTires.activeSurface === 'wet'
+        ? trackCondition.surfaceWaterMm > 0.1 ? 1 : 0.78
+        : trackCondition.surfaceWaterMm > 0.28 ? 0.65 : 1
+      : 1
+  // F1 retains its Pirelli envelope. SF uses a separate control-tyre SIM
+  // envelope; unavailable supplier coefficients never become F1 compounds.
   const f1TireForceEnvelope =
     f1Tires !== null && categoryPhysics.id === 'f1-custom'
       ? f1TireForceEnvelopeFor({
@@ -401,7 +429,10 @@ export function calculateCarTelemetry(options: {
   const localGrip = clamp(
     surfaceGrip *
       compoundGrip *
-      (f1TireForceEnvelope?.gripMultiplier ?? 1),
+      (f1TireForceEnvelope?.gripMultiplier ?? (superFormulaRuntime ? raceTyreGrip(
+        superFormulaSimulatedTyreFor(superFormulaRuntime.liveTires, track.lengthKm), 'super-formula',
+        superFormulaRuntime.liveTires.activeSurface === 'wet' ? 'wet' : 'primary',
+      ) : 1)),
     // `tyreForces` is numerically stable down to 0.05. Keeping the same
     // lower boundary here ensures a wet/mismatched F1 tyre's dynamic-state
     // loss remains visible instead of being flattened by a compatibility
@@ -411,8 +442,9 @@ export function calculateCarTelemetry(options: {
   )
   // Skill controls how much of the physical tyre envelope the driver can use;
   // it never raises the tyre above its modelled maximum.
+  const difficulty = driverMachineDifficulty(driver,categoryPhysics.id)
   const utilisedGrip =
-    localGrip * (0.94 + behaviorTraits.tyreLimitUtilisation * 0.06)
+    localGrip * driverTyreEnvelopeUtilisation(behaviorTraits.tyreLimitUtilisation) * difficulty.gripUtilisation
   // This exact ceiling is also passed to the Energy Store. It prevents a
   // cold/hot brake from crediting recovery against a nominal 5.1 g stop that
   // the live vehicle solver will subsequently reject.
@@ -479,7 +511,7 @@ export function calculateCarTelemetry(options: {
     ? dynamics.referenceSpeedKph * clamp(localFlagPaceScale, 0.42, 1)
     : Number.POSITIVE_INFINITY
   const preparationSpeedCeilingKph = isPreparationLap
-    ? dynamics.referenceSpeedKph * preparationPaceScale
+    ? dynamics.referenceSpeedKph * preparationPaceScale * clamp(options.timedPreparationSpeedScale ?? 1, 0.65, 1)
     : Number.POSITIVE_INFINITY
   const targetSpeedKph = Math.min(
     corneringSpeedLimitKph * battlePace,
@@ -494,7 +526,7 @@ export function calculateCarTelemetry(options: {
   const brakingDistanceWithDriverTimingM = Math.max(
     1,
     dynamics.brakingDistanceAheadMeters -
-      currentSpeedMps * (driverDecision?.brakeOnsetDeltaSeconds ?? 0),
+      currentSpeedMps * ((driverDecision?.brakeOnsetDeltaSeconds ?? 0)+signaturePedalControl(signature,0).brakeTimingSeconds),
   )
   const liveRequiredBrakingDecelerationMps2 =
     dynamics.brakingDistanceAheadMeters > 0
@@ -548,7 +580,7 @@ export function calculateCarTelemetry(options: {
       (options.following?.decelerationMps2 ?? 0) /
         Math.max(1, categoryPhysics.maximumBrakeDecelerationMps2)) * 100 +
     pitLaneBrakeDemand
-  const brakePercent = Math.round(
+  const requestedBrakePercent = Math.round(
     clamp(
       phase?.flag === 'red' || immobilizedIncident
         ? 100
@@ -567,12 +599,14 @@ export function calculateCarTelemetry(options: {
           : car.speedKph < pitLaneSpeedLimitKph + 1
             ? 8
             : 0
-    : brakePercent > 3
+    : requestedBrakePercent > 3
       ? 0
       : dynamics.fullThrottle
         ? 100
-        : 34 + dynamics.straightness * 62 +
-          Math.max(0, targetSpeedKph - car.speedKph) * 0.24
+        : Number.isFinite(corneringSpeedLimitKph)
+          ? 100 * Math.sqrt(Math.max(0, 1 - Math.min(1, car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 4)) +
+            Math.max(0, targetSpeedKph - car.speedKph) * 0.24
+          : 100
   const controlThrottleScale = phase?.flag === 'red' ? 0 : phase ? 0.84 : 1
   const requestedThrottlePercent = Math.round(
     // A straight can have an unbounded target. Bound pedal demand before
@@ -591,6 +625,14 @@ export function calculateCarTelemetry(options: {
   const phaseManagedThrottlePercent = Math.min(
     requestedThrottlePercent,
     preparationThrottleCeiling,
+    // Preparation laps deliberately lift before braking to harvest. Preserve
+    // the final out-lap launch, flags and the separate traffic-yield controller.
+    hasHybridEnergyStore && isPreparationLap && energyStoreAtFrameStart &&
+      energyStoreAtFrameStart.stateOfCharge < 0.98 && car.pitPhase === 'none' &&
+      !phase && !timedTrafficYield && !(timedRunPhase === 'out-lap' && car.progress > 0.92) &&
+      requestedBrakePercent <= 3 && dynamics.brakingDistanceAheadMeters > 0 &&
+      dynamics.brakingDistanceAheadMeters < car.speedKph / 3.6 * 2.2 + 30
+      ? 35 : 100,
   )
   const throttleTimingScale =
     driverDecision === undefined
@@ -607,13 +649,30 @@ export function calculateCarTelemetry(options: {
       100,
     ),
   )
-  const throttlePercent = timedTrafficYield
-    ? Math.min(38, behaviorManagedThrottlePercent)
-    : behaviorManagedThrottlePercent
+  const pedals = advancePedals({
+    pickupRateScale:difficulty.pedalRateScale,
+    style: signaturePedalControl(signature,Number.isFinite(corneringSpeedLimitKph)?clamp((car.speedKph/Math.max(1,corneringSpeedLimitKph))**2,0,1):0,
+      car.runtimeSystems.kind==='f1'?1-car.runtimeSystems.tires.tireWearPercent/100:car.runtimeSystems.liveTires.simulatedPerformance?.life??1),
+    feedback: { lateralUse: Number.isFinite(corneringSpeedLimitKph) ? clamp((car.speedKph / Math.max(1, corneringSpeedLimitKph)) ** 2, 0, 1) : 0,
+      driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake,
+      skill: behaviorTraits.throttlePrecision,brakeSkill:behaviorTraits.brakingPrecision },
+    throttle: timedTrafficYield ? Math.min(38, behaviorManagedThrottlePercent) : behaviorManagedThrottlePercent,
+    brake: requestedBrakePercent,
+    previousThrottle: car.throttlePercent,
+    previousBrake: car.brakePercent,
+    seconds: deltaSeconds,
+    carbonBrakes: categoryPhysics.id === 'f1-custom',
+    stop: phase?.flag === 'red' || immobilizedIncident,
+  })
+  const throttlePercent = car.pitPhase === 'box' ? 0 : pedals.throttle
+  const brakePercent = pedals.brake
   const otsAvailable =
     overtakeSystem === 'ots' &&
     otsRuntimeCanActivate &&
     !isPreparationLap &&
+    !lowGripConditions &&
+    (!superFormulaRuntime?.otsSimulation || (superFormulaRuntime.otsSimulation.remainingSeconds > 0 && elapsedSeconds >= superFormulaRuntime.otsSimulation.cooldownUntilSeconds)) &&
+    car.pitPhase === 'none' &&
     sessionType === 'race-distance' &&
     raceControlOvertakeEnabled &&
     !phase &&
@@ -623,6 +682,7 @@ export function calculateCarTelemetry(options: {
   const sfOtsUseRequested = otsAvailable
     ? sfOtsUseRequestedForPath({
         options: {
+          alreadyActive: superFormulaRuntime?.otsSimulation?.active ?? false,
           battlePhase: car.battlePhase,
           brakePercent,
           gapToAheadSeconds: car.gapToAhead,
@@ -630,13 +690,25 @@ export function calculateCarTelemetry(options: {
           paceMode: car.racePaceMode,
           straightness: dynamics.straightness,
           throttlePercent,
+          raceBudget: options.raceLaps !== undefined && superFormulaRuntime?.otsSimulation
+            ? {
+                allocationSeconds: SF_OTS_ALLOCATION_SECONDS,
+                remainingSeconds: superFormulaRuntime.otsSimulation.remainingSeconds,
+                cooldownSeconds: superFormulaRuntime.otsSimulation.cooldownSeconds,
+                remainingRaceSeconds: Math.max(0, options.raceLaps - car.totalDistance) * track.baseLapTime,
+                raceFractionRemaining: Math.max(0, options.raceLaps - car.totalDistance) / Math.max(1, options.raceLaps),
+              }
+            : undefined,
         },
         path: driverDecisionPath,
-        seriesId,
+        seriesId: seriesId ?? (categoryPhysics.id === 'super-formula' ? 'super-formula' : undefined),
         vehicleEraId,
       })
     : false
+  const otsSimulation = superFormulaRuntime?.otsSimulation
+    ? advanceSfOts(superFormulaRuntime.otsSimulation, sfOtsUseRequested, otsAvailable, elapsedSeconds, deltaSeconds) : undefined
   const otsActive = otsAvailable && sfOtsUseRequested
+  const otsUsedSeconds = otsActive ? Math.min(deltaSeconds, superFormulaRuntime?.otsSimulation?.remainingSeconds ?? deltaSeconds) : 0
   const f1ElectricalOvertakeRequest =
     !isPreparationLap &&
     overtakeSystem !== 'ots' &&
@@ -755,6 +827,27 @@ export function calculateCarTelemetry(options: {
       })
     : ('balanced' as const)
   const isQualifyingAttack = timedRunPhase === 'attack-lap'
+  const towDragReduction = phase || car.gapToAhead <= 0
+    ? 0
+    : towDragReductionFor({
+        dynamics,
+        gapSeconds: car.gapToAhead,
+        lateralSeparationM,
+        team,
+      })
+  const towTactics = towEnergyDeployment({
+    plan: options.towEnergyPlan, towDragReduction,
+    speedDeficitKph: (options.aheadSpeedKph ?? car.speedKph) - car.speedKph,
+    straightness: dynamics.straightness, throttlePercent, brakePercent,
+    enabled: hasHybridEnergyStore && sessionType === 'race-distance' && phase === null && !lowGripConditions &&
+      car.pitPhase === 'none' && !standingStartMguKRestricted && !timedTrafficYield && !car.wheelBattle?.conceding,
+  })
+  const straightAttackRequest = Math.max(towTactics.attack, straightAttackDeployment({
+    intent: driverDecision?.intent, straightness: dynamics.straightness,
+    throttlePercent, brakePercent, stateOfCharge: energyStoreAtFrameStart?.stateOfCharge ?? 0,
+    skill: driver.skills.ersManagement, enabled: sessionType === 'race-distance' && phase === null &&
+      !isPreparationLap && !timedTrafficYield && car.pitPhase === 'none' && !car.wheelBattle?.conceding,
+  })) * towTactics.cap
   const ersMode = !hasHybridEnergyStore || standingStartMguKRestricted
     ? ('balanced' as const)
     : isPreparationLap ||
@@ -763,9 +856,14 @@ export function calculateCarTelemetry(options: {
       ? ('harvest' as const)
       : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
         ? ('deploy' as const)
-      : requestedErsMode
+      : towTactics.cap < 1 ? ('balanced' as const)
+      : straightAttackRequest > 0 ? ('deploy' as const) : requestedErsMode
+  // FIA-F1-DOC-111's event-specific wet curve is unavailable. Use an
+  // explicitly SIM-only, half-normal envelope rather than disabling ERS.
+  // Traction, battery/thermal and race-control gates remain independent.
+  const lowGripDeploymentScale = lowGripConditions ? 0.5 : 1
   const ersCurve: MguKPowerCurve | null =
-    !hasHybridEnergyStore || lowGripConditions
+    !hasHybridEnergyStore
     ? null
     : specifiedErsPowerSector
       ? 'race-sprint-power-limited'
@@ -783,9 +881,9 @@ export function calculateCarTelemetry(options: {
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
         declaredDeploymentPowerKw,
-      )
+      ) * lowGripDeploymentScale
   const standardDeploymentDcLimitKw =
-    !hasHybridEnergyStore || lowGripConditions
+    !hasHybridEnergyStore
     ? 0
     : permittedMguKDcPowerKwForSpeed({
         curve: specifiedErsPowerSector
@@ -798,7 +896,7 @@ export function calculateCarTelemetry(options: {
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
         standardDeploymentDcLimitKw,
-      )
+      ) * lowGripDeploymentScale
   const overtakeCurveActive = ersCurve === 'overtake'
   const regulatoryDeploymentPowerLimitKw =
     overtakeAllowanceBoundedDcPowerLimitKw({
@@ -812,7 +910,7 @@ export function calculateCarTelemetry(options: {
     })
   const deploymentRequest = energyStoreAtFrameStart
     ? energyDeploymentRequestFor({
-        battlePhase: car.battlePhase,
+        battlePhase: straightAttackRequest > 0 ? 'attacking' : car.battlePhase,
         isFinalLap,
         lapProgress: car.progress,
         overtakeActive: overtakeStatus === 'active',
@@ -829,8 +927,8 @@ export function calculateCarTelemetry(options: {
       })
     : 0
   const intentScheduledDeploymentRequest =
-    deploymentRequest *
-    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5)
+    Math.min(towTactics.cap, Math.max(straightAttackRequest, deploymentRequest *
+    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5)))
   const effectiveDeploymentRequest =
     !hasHybridEnergyStore ||
     standingStartMguKRestricted ||
@@ -840,9 +938,7 @@ export function calculateCarTelemetry(options: {
         ? intentScheduledDeploymentRequest * 0.72
         : intentScheduledDeploymentRequest
   const extraCombustionPowerKw =
-    otsActive && superFormulaOts?.availability === 'verified-event-rule'
-      ? superFormulaOts.boostPowerKw
-      : 0
+    otsActive ? (superFormulaRuntime?.otsSimulation?.boostPowerKw ?? (superFormulaOts?.availability === 'verified-event-rule' ? superFormulaOts.boostPowerKw : 0)) * (deltaSeconds > 0 ? otsUsedSeconds / deltaSeconds : 0) : 0
   const combustionWheelPowerKw = combustionWheelPowerKwAt({
     categoryPhysics,
     clutchEngagementFraction: car.clutchEngagementFraction,
@@ -852,20 +948,15 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
     turboSpoolFraction: car.turboSpoolFraction,
   })
-  const towDragReduction = phase || car.gapToAhead <= 0
-    ? 0
-    : towDragReductionFor({
-        dynamics,
-        gapSeconds: car.gapToAhead,
-        lateralSeparationM,
-        team,
-      })
   const brakeReleaseSpeedKph =
     pitLaneSpeedLimitKph ??
     (brakePercent > 3
       ? Math.min(targetSpeedKph, brakingTargetSpeedKph) * 0.98
       : undefined)
   const longitudinalInputWithoutEnergy: LongitudinalStepInput = {
+    handling: { state: car.handlingState, lateralOffset: car.lateralOffsetM, desiredOffset: car.desiredLateralOffsetM,
+      driverSkill: behaviorTraits.tyreLimitUtilisation, trackC: trackTemperatureC, airC: airTemperatureC, wet: lowGripConditions, crosswindMps,
+      tyreTemperatureC: f1Tires?.tireTemperatureC ?? (superFormulaRuntime ? superFormulaSimulatedTyreFor(superFormulaRuntime.liveTires, track.lengthKm).surfaceC : undefined) },
     activeAeroMode,
     activeAeroState,
     airDensityKgM3: ambientAirDensityKgM3,
@@ -921,7 +1012,7 @@ export function calculateCarTelemetry(options: {
           gripMultiplier: localGrip,
           rechargeRule: energyStoreAtFrameStart.rechargeRule,
           recoveryRequestScale:
-            qualifyingRecoveryRequestScale *
+            (isPreparationLap ? 1.25 : qualifyingRecoveryRequestScale) *
             (0.65 + energyIntent.harvestPreference * 0.35),
           speedKph: car.speedKph,
           state: energyStoreAtFrameStart,
@@ -1084,9 +1175,10 @@ export function calculateCarTelemetry(options: {
           superClippingStartedAtProgress,
           superClippingStartedAtSeconds,
         }
-      : car.runtimeSystems
+      : superFormulaRuntime && otsSimulation ? { ...superFormulaRuntime, otsSimulation } : car.runtimeSystems
 
   return {
+    handlingState: longitudinalStep.handlingState,
     brakePercent,
     frictionServiceBrakePowerKw,
     gear,
@@ -1100,3 +1192,4 @@ export function calculateCarTelemetry(options: {
     clutchEngagementFraction: longitudinalStep.clutchEngagementFraction,
   }
 }
+import {driverMachineDifficulty} from './driverMachineDifficulty'

@@ -8,6 +8,12 @@ type OpenF1DataState =
   | { status: 'ready'; data: OpenF1Bundle; error: null }
   | { status: 'error'; data: OpenF1Bundle | null; error: string }
 
+/** Never expose the previous session while the next stage is loading. */
+export function openF1StateForStage(state: OpenF1DataState, stage: WeekendStage, year: number): OpenF1DataState {
+  return state.data && (state.data.requestedStage !== stage || state.data.year !== year)
+    ? {status:'loading',data:null,error:null} : state
+}
+
 export type CachedBundle = { bundle: OpenF1Bundle; fetchedAt: number }
 
 const bundleCache = new Map<string, CachedBundle>()
@@ -186,6 +192,8 @@ export function useOpenF1Data(
 
     if (cached) {
       setState({ status: 'ready', data: cached.bundle, error: null })
+    } else {
+      setState({ status: 'loading', data: null, error: null })
     }
 
     const controller = new AbortController()
@@ -258,5 +266,5 @@ export function useOpenF1Data(
     }
   }, [accessToken, enabled, stage, trackId, year])
 
-  return state
+  return openF1StateForStage(state, stage, year)
 }

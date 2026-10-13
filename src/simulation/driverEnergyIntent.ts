@@ -11,6 +11,8 @@ import type {
   TimedRunPhase,
 } from '../types'
 
+import { clampDriverAbility } from './driverAbility'
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 export type F1EnergyIntentOptions = {
@@ -108,10 +110,10 @@ export function f1EnergyIntentFor(
     straightness,
     timedRunPhase,
   } = options
-  const skill = clamp01(
-    clamp01(driver.skills.ersManagement) * 0.58 +
-      clamp01(driver.skills.raceAwareness) * 0.24 +
-      clamp01(driver.skills.precision) * 0.18,
+  const skill = clampDriverAbility(
+    clampDriverAbility(driver.skills.ersManagement) * 0.58 +
+      clampDriverAbility(driver.skills.raceAwareness) * 0.24 +
+      clampDriverAbility(driver.skills.precision) * 0.18,
   )
   const progress = clamp01(lapProgress)
   const straightOpportunity = clamp01(
@@ -160,7 +162,7 @@ export function f1EnergyIntentFor(
       (0.6 + straightOpportunity * 0.4) *
       (0.35 + highSocFreedom * 0.65),
   )
-  const harvestPreference = clamp01(
+  const harvestPreference = preparationLap ? 1 : clamp01(
     0.18 +
       lowSocPressure * (0.56 + skill * 0.12) +
       (paceMode === 'save' ? 0.24 : 0) +
@@ -168,7 +170,7 @@ export function f1EnergyIntentFor(
       (phaseActive ? 0.2 : 0) -
       (qualifyingAttack ? 0.28 : 0),
   )
-  const liftCoastPreference = clamp01(
+  const liftCoastPreference = preparationLap ? 1 : clamp01(
     harvestPreference * (0.55 + skill * 0.28) +
       (1 - straightOpportunity) * 0.08,
   )

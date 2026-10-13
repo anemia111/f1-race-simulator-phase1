@@ -130,7 +130,11 @@ export type CategoryPhysicsProfile = {
   drivetrainEfficiency: number
   gearCount: number
   hybridDeploymentPowerLimitKw: number
-  id: ExecutableSeriesId
+  id: ExecutableSeriesId | 'kyojo' | 'gt500' | 'gt300' | 'hypercar' | 'lmgt3' | 'lmp2' | 'indycar'
+  /** Absolute machine CdA; omitted by the existing F1/SF rating-based model. */
+  referenceDragAreaM2?: number
+  /** Defaults to the existing turbo power-unit policy; false bypasses spool lag. */
+  turbocharged?: boolean
   maximumBrakeDecelerationMps2: number
   /**
    * Downforce coefficient times reference area, in m^2. Vertical aerodynamic
@@ -211,13 +215,14 @@ const superFormulaOperational = resolveSuperFormulaOperational()
 const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
   'f1-custom': {
     combustionPowerKw: 400,
+    // Preserve the independently checked straight-line drag baseline.
     dragAreaScale: 1,
     drivetrainEfficiency: 0.94,
     gearCount: 8,
     hybridDeploymentPowerLimitKw: 350,
     id: 'f1-custom',
     maximumBrakeDecelerationMps2: 49.05,
-    liftAreaM2: 5.0,
+    liftAreaM2: 5.6,
     peakTyreFrictionCoefficient: 1.75,
     wheelRadiusM: 0.36,
     gearSpread: 4.0,
@@ -423,6 +428,9 @@ export function resolveF1MinimumMass(
 export function resolveOperationalVehicleMass(
   request: OperationalVehicleMassRequest,
 ): OperationalVehicleMassResolution {
+  if (request.physics.id !== 'f1-custom' && request.physics.id !== 'super-formula') {
+    throw new Error('Additional categories must supply their explicit vehicle and driver mass')
+  }
   const minimumMassResolution =
     request.physics.id === 'f1-custom'
       ? resolveMinimumVehicleMass({

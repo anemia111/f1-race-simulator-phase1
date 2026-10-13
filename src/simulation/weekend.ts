@@ -359,7 +359,9 @@ export function completePracticeSession(
       0.35,
       (setupBonusByDriver[result.driverId] ?? 0) + result.setupScore / 900,
     )
-    setupByDriver[result.driverId] = result.setupRecommendation
+    if (!previous.manualSetupByDriver?.[result.driverId] && !previous.parcFermeLockedByDriver[result.driverId]) {
+      setupByDriver[result.driverId] = result.setupRecommendation
+    }
     setupConfidenceByDriver[result.driverId] = Math.max(
       setupConfidenceByDriver[result.driverId] ?? 0,
       result.setupConfidence,

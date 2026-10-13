@@ -1,0 +1,404 @@
+{
+  "version": "2026-10-13.1",
+  "drivers": [
+    {
+      "id": "expansion_aimi_saito",
+      "overall": 68,
+      "potential": 68,
+      "ratings": {
+        "adaptability": 0.693375,
+        "consistency": 0.673375,
+        "defending": 0.683375,
+        "errorControl": 0.673375,
+        "experience": 0.603375,
+        "overtaking": 0.693375,
+        "qualifyingPace": 0.703375,
+        "racePace": 0.693375,
+        "raceStart": 0.693375,
+        "technicalFeedback": 0.663375,
+        "tyreManagement": 0.673375,
+        "wetSkill": 0.683375
+      }
+    },
+    {
+      "id": "expansion_riona_tomishita",
+      "overall": 67,
+      "potential": 67,
+      "ratings": {
+        "adaptability": 0.683375,
+        "consistency": 0.663375,
+        "defending": 0.673375,
+        "errorControl": 0.663375,
+        "experience": 0.593375,
+        "overtaking": 0.683375,
+        "qualifyingPace": 0.693375,
+        "racePace": 0.683375,
+        "raceStart": 0.683375,
+        "technicalFeedback": 0.653375,
+        "tyreManagement": 0.663375,
+        "wetSkill": 0.673375
+      }
+    },
+    {
+      "id": "expansion_joanne_ciconte",
+      "overall": 64,
+      "potential": 64,
+      "ratings": {
+        "adaptability": 0.653375,
+        "consistency": 0.633375,
+        "defending": 0.643375,
+        "errorControl": 0.633375,
+        "experience": 0.563375,
+        "overtaking": 0.653375,
+        "qualifyingPace": 0.663375,
+        "racePace": 0.653375,
+        "raceStart": 0.653375,
+        "technicalFeedback": 0.623375,
+        "tyreManagement": 0.633375,
+        "wetSkill": 0.643375
+      }
+    },
+    {
+      "id": "expansion_rio_shimono",
+      "overall": 70,
+      "potential": 70,
+      "ratings": {
+        "adaptability": 0.713375,
+        "consistency": 0.693375,
+        "defending": 0.703375,
+        "errorControl": 0.693375,
+        "experience": 0.623375,
+        "overtaking": 0.713375,
+        "qualifyingPace": 0.723375,
+        "racePace": 0.713375,
+        "raceStart": 0.713375,
+        "technicalFeedback": 0.683375,
+        "tyreManagement": 0.693375,
+        "wetSkill": 0.703375
+      }
+    },
+    {
+      "id": "expansion_ai_miura",
+      "overall": 66,
+      "potential": 66,
+      "ratings": {
+        "adaptability": 0.673375,
+        "consistency": 0.653375,
+        "defending": 0.663375,
+        "errorControl": 0.653375,
+        "experience": 0.583375,
+        "overtaking": 0.673375,
+        "qualifyingPace": 0.683375,
+        "racePace": 0.673375,
+        "raceStart": 0.673375,
+        "technicalFeedback": 0.643375,
+        "tyreManagement": 0.653375,
+        "wetSkill": 0.663375
+      }
+    },
+    {
+      "id": "expansion_miki_onaga",
+      "overall": 69,
+      "potential": 69,
+      "ratings": {
+        "adaptability": 0.703375,
+        "consistency": 0.683375,
+        "defending": 0.693375,
+        "errorControl": 0.683375,
+        "experience": 0.613375,
+        "overtaking": 0.703375,
+        "qualifyingPace": 0.713375,
+        "racePace": 0.703375,
+        "raceStart": 0.703375,
+        "technicalFeedback": 0.673375,
+        "tyreManagement": 0.683375,
+        "wetSkill": 0.693375
+      }
+    },
+    {
+      "id": "expansion_kokoro_sato",
+      "overall": 63,
+      "potential": 63,
+      "ratings": {
+        "adaptability": 0.643375,
+        "consistency": 0.623375,
+        "defending": 0.633375,
+        "errorControl": 0.623375,
+        "experience": 0.553375,
+        "overtaking": 0.643375,
+        "qualifyingPace": 0.653375,
+        "racePace": 0.643375,
+        "raceStart": 0.643375,
+        "technicalFeedback": 0.613375,
+        "tyreManagement": 0.623375,
+        "wetSkill": 0.633375
+      }
+    },
+    {
+      "id": "juju_noda",
+      "overall": 64,
+      "potential": 64,
+      "ratings": {
+        "adaptability": 0.643208,
+        "consistency": 0.633208,
+        "defending": 0.633208,
+        "errorControl": 0.633208,
+        "experience": 0.663208,
+        "overtaking": 0.633208,
+        "qualifyingPace": 0.643208,
+        "racePace": 0.643208,
+        "raceStart": 0.633208,
+        "technicalFeedback": 0.643208,
+        "tyreManagement": 0.633208,
+        "wetSkill": 0.633208
+      }
+    },
+    {
+      "id": "expansion_sara_matsui",
+      "overall": 62,
+      "potential": 62,
+      "ratings": {
+        "adaptability": 0.633375,
+        "consistency": 0.613375,
+        "defending": 0.623375,
+        "errorControl": 0.613375,
+        "experience": 0.543375,
+        "overtaking": 0.633375,
+        "qualifyingPace": 0.643375,
+        "racePace": 0.633375,
+        "raceStart": 0.633375,
+        "technicalFeedback": 0.603375,
+        "tyreManagement": 0.613375,
+        "wetSkill": 0.623375
+      }
+    },
+    {
+      "id": "expansion_hana_burton",
+      "overall": 61,
+      "potential": 61,
+      "ratings": {
+        "adaptability": 0.623375,
+        "consistency": 0.603375,
+        "defending": 0.613375,
+        "errorControl": 0.603375,
+        "experience": 0.533375,
+        "overtaking": 0.623375,
+        "qualifyingPace": 0.633375,
+        "racePace": 0.623375,
+        "raceStart": 0.623375,
+        "technicalFeedback": 0.593375,
+        "tyreManagement": 0.603375,
+        "wetSkill": 0.613375
+      }
+    },
+    {
+      "id": "expansion_paige_raddatz",
+      "overall": 60,
+      "potential": 60,
+      "ratings": {
+        "adaptability": 0.613375,
+        "consistency": 0.593375,
+        "defending": 0.603375,
+        "errorControl": 0.593375,
+        "experience": 0.523375,
+        "overtaking": 0.613375,
+        "qualifyingPace": 0.623375,
+        "racePace": 0.613375,
+        "raceStart": 0.613375,
+        "technicalFeedback": 0.583375,
+        "tyreManagement": 0.593375,
+        "wetSkill": 0.603375
+      }
+    },
+    {
+      "id": "expansion_rami_sasaki",
+      "overall": 63,
+      "potential": 63,
+      "ratings": {
+        "adaptability": 0.643375,
+        "consistency": 0.623375,
+        "defending": 0.633375,
+        "errorControl": 0.623375,
+        "experience": 0.553375,
+        "overtaking": 0.643375,
+        "qualifyingPace": 0.653375,
+        "racePace": 0.643375,
+        "raceStart": 0.643375,
+        "technicalFeedback": 0.613375,
+        "tyreManagement": 0.623375,
+        "wetSkill": 0.633375
+      }
+    },
+    {
+      "id": "expansion_kilei_kanemoto",
+      "overall": 61,
+      "potential": 61,
+      "ratings": {
+        "adaptability": 0.623375,
+        "consistency": 0.603375,
+        "defending": 0.613375,
+        "errorControl": 0.603375,
+        "experience": 0.533375,
+        "overtaking": 0.623375,
+        "qualifyingPace": 0.633375,
+        "racePace": 0.623375,
+        "raceStart": 0.623375,
+        "technicalFeedback": 0.593375,
+        "tyreManagement": 0.603375,
+        "wetSkill": 0.613375
+      }
+    },
+    {
+      "id": "expansion_itsumo_shiraishi",
+      "overall": 59,
+      "potential": 59,
+      "ratings": {
+        "adaptability": 0.603375,
+        "consistency": 0.583375,
+        "defending": 0.593375,
+        "errorControl": 0.583375,
+        "experience": 0.513375,
+        "overtaking": 0.603375,
+        "qualifyingPace": 0.613375,
+        "racePace": 0.603375,
+        "raceStart": 0.603375,
+        "technicalFeedback": 0.573375,
+        "tyreManagement": 0.583375,
+        "wetSkill": 0.593375
+      }
+    },
+    {
+      "id": "expansion_mako_hirakawa",
+      "overall": 60,
+      "potential": 60,
+      "ratings": {
+        "adaptability": 0.613375,
+        "consistency": 0.593375,
+        "defending": 0.603375,
+        "errorControl": 0.593375,
+        "experience": 0.523375,
+        "overtaking": 0.613375,
+        "qualifyingPace": 0.623375,
+        "racePace": 0.613375,
+        "raceStart": 0.613375,
+        "technicalFeedback": 0.583375,
+        "tyreManagement": 0.593375,
+        "wetSkill": 0.603375
+      }
+    },
+    {
+      "id": "expansion_kelsey_pinkowski",
+      "overall": 59,
+      "potential": 59,
+      "ratings": {
+        "adaptability": 0.603375,
+        "consistency": 0.583375,
+        "defending": 0.593375,
+        "errorControl": 0.583375,
+        "experience": 0.513375,
+        "overtaking": 0.603375,
+        "qualifyingPace": 0.613375,
+        "racePace": 0.603375,
+        "raceStart": 0.603375,
+        "technicalFeedback": 0.573375,
+        "tyreManagement": 0.583375,
+        "wetSkill": 0.593375
+      }
+    },
+    {
+      "id": "expansion_marie_iwaoka",
+      "overall": 58,
+      "potential": 58,
+      "ratings": {
+        "adaptability": 0.593375,
+        "consistency": 0.573375,
+        "defending": 0.583375,
+        "errorControl": 0.573375,
+        "experience": 0.503375,
+        "overtaking": 0.593375,
+        "qualifyingPace": 0.603375,
+        "racePace": 0.593375,
+        "raceStart": 0.593375,
+        "technicalFeedback": 0.563375,
+        "tyreManagement": 0.573375,
+        "wetSkill": 0.583375
+      }
+    },
+    {
+      "id": "expansion_rina_ito",
+      "overall": 59,
+      "potential": 59,
+      "ratings": {
+        "adaptability": 0.603375,
+        "consistency": 0.583375,
+        "defending": 0.593375,
+        "errorControl": 0.583375,
+        "experience": 0.513375,
+        "overtaking": 0.603375,
+        "qualifyingPace": 0.613375,
+        "racePace": 0.603375,
+        "raceStart": 0.603375,
+        "technicalFeedback": 0.573375,
+        "tyreManagement": 0.583375,
+        "wetSkill": 0.593375
+      }
+    },
+    {
+      "id": "expansion_ryu_yamamoto",
+      "overall": 57,
+      "potential": 57,
+      "ratings": {
+        "adaptability": 0.583375,
+        "consistency": 0.563375,
+        "defending": 0.573375,
+        "errorControl": 0.563375,
+        "experience": 0.493375,
+        "overtaking": 0.583375,
+        "qualifyingPace": 0.593375,
+        "racePace": 0.583375,
+        "raceStart": 0.583375,
+        "technicalFeedback": 0.553375,
+        "tyreManagement": 0.563375,
+        "wetSkill": 0.573375
+      }
+    },
+    {
+      "id": "expansion_sitarvee_limnantharak",
+      "overall": 57,
+      "potential": 57,
+      "ratings": {
+        "adaptability": 0.583375,
+        "consistency": 0.563375,
+        "defending": 0.573375,
+        "errorControl": 0.563375,
+        "experience": 0.493375,
+        "overtaking": 0.583375,
+        "qualifyingPace": 0.593375,
+        "racePace": 0.583375,
+        "raceStart": 0.583375,
+        "technicalFeedback": 0.553375,
+        "tyreManagement": 0.563375,
+        "wetSkill": 0.573375
+      }
+    },
+    {
+      "id": "expansion_zhao_yun_qing",
+      "overall": 56,
+      "potential": 56,
+      "ratings": {
+        "adaptability": 0.573375,
+        "consistency": 0.553375,
+        "defending": 0.563375,
+        "errorControl": 0.553375,
+        "experience": 0.483375,
+        "overtaking": 0.573375,
+        "qualifyingPace": 0.583375,
+        "racePace": 0.573375,
+        "raceStart": 0.573375,
+        "technicalFeedback": 0.543375,
+        "tyreManagement": 0.553375,
+        "wetSkill": 0.563375
+      }
+    }
+  ]
+}

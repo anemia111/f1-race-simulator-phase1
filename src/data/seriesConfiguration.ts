@@ -1,9 +1,12 @@
+import {migrateFactoryDriverRating} from './reviewedDriverRatings'
+import {clampPersonAbility} from '../simulation/driverAbility'
 import {
   DRIVER_ABILITY_GROUPS,
   DRIVER_ABILITY_INTERNAL_MAX,
   DRIVER_ABILITY_STATS,
   clampDriverAbility,
   driverAbilityGroupValue,
+  migrateLegacyNakayamaAbility,
 } from '../simulation/driverAbility'
 import {
   driverPool2026,
@@ -564,24 +567,24 @@ function parseStoredDrivers(
       ? { ...base.skills }
       : skills
 
-    return {
+    return migrateFactoryDriverRating(migrateLegacyNakayamaAbility({
       ...base,
       carNumber,
       code: requiredText(candidate.code, `${id}.code`, 5).toUpperCase(),
       id,
       name: requiredText(candidate.name, `${id}.name`),
       nationality: optionalText(candidate.nationality, `${id}.nationality`),
-      potential: boundedNumber(
+      potential: clampPersonAbility(id, boundedNumber(
         candidate.potential ?? 0,
         `${id}.potential`,
         0,
         DRIVER_ABILITY_INTERNAL_MAX,
-      ),
+      )),
       seatRole: role as DriverRole,
-      skills: migratedSkills,
+      skills: Object.fromEntries(Object.entries(migratedSkills).map(([key,value])=>[key,clampPersonAbility(id,value)])) as DriverSkillProfile,
       style: { ...base.style },
       teamId,
-    }
+    }, base))
   })
 
   const numbers = drivers.map((driver) => driver.carNumber)
@@ -641,6 +644,22 @@ function parseConfigurationValue(
           )
           return candidate
         })()
+  const restoredRaceDistanceEventIds: string[] = []
+  if (series.id === 'super-formula') {
+    for (const event of calendar) {
+      const current = series.calendar.find(candidate => candidate.id === event.id)
+      const distance = current?.eventOperations?.raceDistance
+      // Upgrade old saved calendars only when the exact active event still
+      // refers to its original venue. Preserve explicit user operations.
+      if (!event.cancelled && current && !current.cancelled &&
+          event.trackId === current.trackId && event.round === current.round &&
+          event.eventOperations?.raceDistance === undefined &&
+          distance?.availability === 'verified-event-override') {
+        event.eventOperations = { ...event.eventOperations, raceDistance: cloneJson(distance) }
+        restoredRaceDistanceEventIds.push(event.id)
+      }
+    }
+  }
   let removedLegacyBaseLapTimeMultiplier = false
   const rules =
     value.rules === undefined
@@ -673,6 +692,10 @@ function parseConfigurationValue(
 
   if (removedLegacyBaseLapTimeMultiplier) {
     migrationHistory.push('removed legacy baseLapTimeMultiplier')
+  }
+
+  if (restoredRaceDistanceEventIds.length > 0) {
+    migrationHistory.push(`restored missing SF event race distances: ${restoredRaceDistanceEventIds.join(', ')}`)
   }
 
   return { calendar, drivers, migrationHistory, rules, teams }

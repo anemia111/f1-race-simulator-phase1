@@ -1,3 +1,5 @@
+import {DriverRatingEvidence} from './DriverRatingEvidence'
+import {DriverSkillEditor} from './DriverSkillEditor'
 import {
   Database,
   Download,
@@ -18,7 +20,9 @@ import {
 } from 'react'
 import {
   DRIVER_ABILITY_GROUPS,
-  clampDriverAbility,
+  CURRENT_DRIVER_ABILITY_CEILING,
+  clampPersonAbility,
+  driverAbilityCeiling,
   driverAbilityGroupValue,
   driverOverallAbilityPoints,
 } from '../simulation/driverAbility'
@@ -34,6 +38,7 @@ import type {
   SuperFormulaSeriesRules,
 } from '../series/types'
 import { isF1SeriesRules } from '../series/types'
+import { importedDriverRatingById } from '../series/importedDriverRatings'
 import {
   isExecutableSeriesId,
   type DriverSourceSeriesId,
@@ -111,6 +116,12 @@ const historySeriesLabels: Record<DriverSourceSeriesId, string> = {
   f3: 'F3 history',
   'super-formula': 'SF history',
   external: 'External history',
+  kyojo: 'KYOJO CUP history',
+  'super-gt-gt500': 'SUPER GT GT500 history',
+  'super-gt-gt300': 'SUPER GT GT300 history',
+  indycar: 'INDYCAR history',
+  'wec-hypercar': 'WEC Hypercar history',
+  'wec-lmgt3': 'WEC LMGT3 history',
 }
 
 const driverRoleLabels: Record<Exclude<DriverRoleFilter, 'all'>, string> = {
@@ -746,7 +757,7 @@ export function SeriesDataManager({
     const group = DRIVER_ABILITY_GROUPS.find((item) => item.key === groupKey)
     if (!group) return
     const skills = { ...selectedDriver.skills }
-    for (const stat of group.stats) skills[stat] = clampDriverAbility(value)
+    for (const stat of group.stats) skills[stat] = clampPersonAbility(selectedDriver.id, value)
     updateDriver({ skills }, `${selectedDriver.code} ${group.label} updated`)
   }
 
@@ -1008,7 +1019,7 @@ export function SeriesDataManager({
                 <select aria-label="Bulk edit mode" onChange={(event) => setBulkMode(event.target.value as 'adjust' | 'set')} value={bulkMode}>
                   <option value="adjust">Adjust</option><option value="set">Set</option>
                 </select>
-                <input aria-label="Bulk ability value" max={100} min={bulkMode === 'set' ? 0 : -20} onChange={(event) => setBulkValue(Number(event.target.value))} step={1} type="number" value={bulkValue} />
+                <input aria-label="Bulk ability value" max={CURRENT_DRIVER_ABILITY_CEILING} min={bulkMode === 'set' ? 0 : -20} onChange={(event) => setBulkValue(Number(event.target.value))} step={1} type="number" value={bulkValue} />
                 <button
                   disabled={activeFilteredIds.size === 0}
                   onClick={() => {
@@ -1019,7 +1030,7 @@ export function SeriesDataManager({
                       const current = driverAbilityGroupValue(driver, group.stats) * 100
                       const target = (bulkMode === 'set' ? bulkValue : current + bulkValue) / 100
                       const skills = { ...driver.skills }
-                      for (const stat of group.stats) skills[stat] = clampDriverAbility(target)
+                      for (const stat of group.stats) skills[stat] = clampPersonAbility(driver.id, target)
                       return { ...driver, skills }
                     })
                     applyConfiguration(teams, next, `Bulk ${group.label}: ${activeFilteredIds.size} drivers`, true)
@@ -1050,6 +1061,16 @@ export function SeriesDataManager({
                         ))
                       : <span>FREE AGENT</span>}
                   </div>
+                  <div className="driver-source-history">
+                  {(() => {
+                    const source = importedDriverRatingById.get(selectedDirectoryDriver.id)
+                    if (!source) return null
+                    return <p className="imported-driver-source" aria-label="Imported driver rating source">
+                      能力表CSV：Overall {source.overall} · {source.raw.Confidence} · {source.raw['Axis status']}。
+                      {source.potential === null && ' Potentialは未記入。新規選手のみ暫定的にOverallを使用。'}
+                      {' 既存選手の能力設定は保持しています。'}
+                    </p>
+                  })()}
                   <div
                     aria-label="Career history"
                     className="assignment-strip career-history-strip"
@@ -1065,8 +1086,10 @@ export function SeriesDataManager({
                       ),
                     )}
                   </div>
+                  </div>
                   {selectedDriver ? (
                     <>
+                      <DriverRatingEvidence driver={selectedDriver}/>
                       <div className="driver-metadata-grid">
                         <label><span>Name</span><input onChange={(event) => { if (event.target.value.trim()) updateDriver({ name: event.target.value }, `${selectedDriver.code} name updated`) }} value={selectedDriver.name} /></label>
                         <label><span>Code</span><input maxLength={5} onChange={(event) => { if (event.target.value.trim()) updateDriver({ code: event.target.value.toUpperCase() }, `${selectedDriver.code} code updated`) }} value={selectedDriver.code} /></label>
@@ -1077,7 +1100,7 @@ export function SeriesDataManager({
                         }} type="number" value={selectedDriver.carNumber} /></label>
                         <label><span>Team</span><select onChange={(event) => updateDriver({ teamId: event.target.value }, `${selectedDriver.code} seat updated`)} value={selectedDriver.teamId}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
                         <label><span>Role</span><select onChange={(event) => updateDriver({ seatRole: event.target.value as NonNullable<Driver['seatRole']> }, `${selectedDriver.code} role updated`)} value={selectedDriver.seatRole ?? 'regular'}>{Object.entries(driverRoleLabels).filter(([role]) => role !== 'free_agent').map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select></label>
-                        <label><span>Potential</span><input max={100} min={0} onChange={(event) => updateDriver({ potential: Number(event.target.value) / 100 }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
+                        <label><span>Potential</span><input max={driverAbilityCeiling(selectedDriver.id)} min={0} onChange={(event) => updateDriver({ potential: clampPersonAbility(selectedDriver.id, Number(event.target.value) / 100) }, `${selectedDriver.code} potential updated`)} type="number" value={Math.round((selectedDriver.potential ?? 0) * 100)} /></label>
                         <label><span>Source</span><output>{selectedDriver.performanceSource?.fileName ?? 'series registry'}</output></label>
                       </div>
                       <div className="seat-signing seat-swap">
@@ -1104,12 +1127,13 @@ export function SeriesDataManager({
                           return (
                             <label key={group.key}>
                               <span>{group.label}</span>
-                              <input max={100} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
+                              <input max={driverAbilityCeiling(selectedDriver.id)} min={0} onChange={(event) => updateDriverGroup(group.key, Number(event.target.value) / 100)} step={1} type="range" value={value} />
                               <strong>{value}</strong>
                             </label>
                           )
                         })}
                       </div>
+                      <DriverSkillEditor driver={selectedDriver} category={series.id} onChange={(stat,value)=>updateDriver({skills:{...selectedDriver.skills,[stat]:clampPersonAbility(selectedDriver.id,value)}},`${selectedDriver.code} ${stat} updated`)}/>
                     </>
                   ) : (
                     <>

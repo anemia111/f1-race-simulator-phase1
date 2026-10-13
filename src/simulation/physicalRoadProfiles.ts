@@ -1,3 +1,4 @@
+import { elevationProfileFor, elevationAt } from '../data/courseElevation'
 import type { TrackDefinition } from '../types'
 import {
   measuredRoadProfiles,
@@ -429,6 +430,16 @@ function zandvoortInputsAt(
   })
 }
 
+const expandedElevationCache=new WeakMap<TrackDefinition, ReturnType<typeof elevationProfileFor>>()
+function expandedElevationInputs(track: TrackDefinition,progress: number): SourcedPhysicalRoadInputs | null {
+  let profile=expandedElevationCache.get(track)
+  if (profile===undefined) {profile=elevationProfileFor(track.id,track.centerline.map(([x,,z])=>[x,-z]),track.lengthKm*1000);expandedElevationCache.set(track,profile)}
+  if (!profile) return null
+  const road=elevationAt(profile,progress)
+  const provenance: PhysicalTrackFieldProvenance={confidence:'low',method:profile.basis==='digitized-official-road-elevation-profile'?'digitized-official-road-profile':'public-elevation-grid-interpolation',source:'derived',sourceDate:{precision:'unavailable',value:null},sourceLabel:profile.basis,sourceUrl:profile.sourceUrl}
+  return {bankingDegrees:null,usableWidthMeters:null,elevationMeters:{value:road.elevationM,provenance},gradeFraction:{value:road.grade,provenance:{...provenance,method:'public-elevation-grid-gradient'}}}
+}
+
 export function sourcedPhysicalRoadInputsAt(
   track: TrackDefinition,
   progress: number,
@@ -436,7 +447,9 @@ export function sourcedPhysicalRoadInputsAt(
   if (track.id === 'madrid-approx') {
     const stationing = stationingFor(track)
     if (!stationing) return null
-    return madridInputsAt(progress, stationing)
+    const official=madridInputsAt(progress, stationing)
+    const expanded=expandedElevationInputs(track,progress)
+    return {...official,elevationMeters:official.elevationMeters??expanded?.elevationMeters??null,gradeFraction:official.gradeFraction??expanded?.gradeFraction??null}
   }
   if (track.id === 'zandvoort-approx') {
     const stationing = stationingFor(track)
@@ -451,7 +464,8 @@ export function sourcedPhysicalRoadInputsAt(
       usableWidthMeters: measured?.usableWidthMeters ?? null,
     })
   }
-  return measuredInputsAt(track.id, progress + (track.measuredRoadProgressOffset ?? 0))
+  if (track.id==='suzuka-approx') return expandedElevationInputs(track,progress)
+  return measuredInputsAt(track.id, progress + (track.measuredRoadProgressOffset ?? 0)) ?? expandedElevationInputs(track,progress)
 }
 
 export function sourcedPhysicalRoadFieldProvenance(
@@ -483,6 +497,7 @@ export function sourcedPhysicalRoadFieldProvenance(
       source: ZANDVOORT_BANKING_SOURCE,
     })
   }
+  if (track.id==='suzuka-approx' && (field==='elevationMeters' || field==='grade')) return expandedElevationInputs(track,0)?.[field==='grade'?'gradeFraction':'elevationMeters']?.provenance ?? null
   const measuredField = measuredRoadProfiles[track.id]?.fields[field]
-  return measuredField ? measuredFieldProvenance(measuredField) : null
+  return measuredField ? measuredFieldProvenance(measuredField) : expandedElevationInputs(track,0)?.[field==='grade'?'gradeFraction':field]?.provenance ?? null
 }

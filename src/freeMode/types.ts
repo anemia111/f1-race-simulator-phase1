@@ -45,13 +45,15 @@ export type FreeModeConfiguration = {
   gridMode: FreeModeGridMode
   weatherMode: FreeModeWeatherMode
   raceLaps: number
+  /** Optional for existing version-1 saves, which keep standing starts. */
+  raceStartMode?: 'standing' | 'rolling'
   practiceDurationMinutes: number
   seed: string
   equalCars: boolean
   entrants: FreeModeEntrant[]
 }
 
-export type FreeModeTrackSource = 'F1' | 'SF'
+export type FreeModeTrackSource = 'F1' | 'SF' | 'KYOJO' | 'SUPER GT' | 'WEC' | 'INDYCAR'
 
 export type FreeModeTrackOption = {
   id: string

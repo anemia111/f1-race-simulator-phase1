@@ -192,6 +192,16 @@ describe('multi-axis vehicle dynamics', () => {
     expect(straight).toBeLessThan(corner)
   })
 
+  it('does not share corner limits between different physics profiles with the same category id', () => {
+    const base = categoryPhysicsFor('super-formula')
+    const higherGrip = { ...base, peakTyreFrictionCoefficient: base.peakTyreFrictionCoefficient * 1.2 }
+    const common = { airDensityKgM3: 1.2, bankingDegrees: 0, evaluationSpeedKph: 160,
+      fuelLoadKg: 7, gripMultiplier: 1, radiusMeters: 90, team: initialTeams[0] }
+    const first = liveCorneringSpeedLimitKph({ ...common, categoryPhysics: base })
+    expect(liveCorneringSpeedLimitKph({ ...common, categoryPhysics: higherGrip })).toBeGreaterThan(first)
+    expect(liveCorneringSpeedLimitKph({ ...common, categoryPhysics: base })).toBe(first)
+  })
+
   it('keeps fuel planning independent of the compatibility lap-time target', () => {
     const track = tracks[0]
     const changedObservation = {
@@ -1070,7 +1080,7 @@ describe('multi-axis vehicle dynamics', () => {
     const level = stepAtGrade(0)
     const uphill = stepAtGrade(0.01)
     const downhill = stepAtGrade(-0.01)
-    const cappedUphill = stepAtGrade(0.035)
+    const cappedUphill = stepAtGrade(0.2)
     const overLimitUphill = stepAtGrade(0.35)
     const unavailable = stepAtGrade(Number.NaN)
 

@@ -1,0 +1,4749 @@
+{
+  "schemaVersion": 1,
+  "scope": "2026 event race records and starting positions from official INDYCAR Results API; directory is retained independently",
+  "verifiedOn": "2026-10-07",
+  "events": [
+    {
+      "courseId": "st-petersburg",
+      "round": 1,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6732",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/St-Petersburg",
+      "sha256": "54f0d3255b773658ee89a281af93bb7cf1866e4775f06329c0de4cc943a62e9e",
+      "entries": [
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:03.2360",
+          "laps": 100
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:03.3813",
+          "laps": 100
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:03.4539",
+          "laps": 100
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:02.8281",
+          "laps": 100
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:02.6414",
+          "laps": 100
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:03.3674",
+          "laps": 100
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:03.3390",
+          "laps": 100
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:03.1246",
+          "laps": 100
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:02.9062",
+          "laps": 100
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:03.2146",
+          "laps": 100
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:03.2588",
+          "laps": 100
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:02.9678",
+          "laps": 100
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Retired",
+          "bestLapTime": "01:02.8951",
+          "laps": 55
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:03.3938",
+          "laps": 100
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:02.2131",
+          "laps": 100
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Off Course",
+          "bestLapTime": "01:02.9182",
+          "laps": 39
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Contact",
+          "bestLapTime": "No Time",
+          "laps": 0
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:03.1718",
+          "laps": 100
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:02.8599",
+          "laps": 100
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:02.8282",
+          "laps": 93
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Contact",
+          "bestLapTime": "No Time",
+          "laps": 0
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:03.1803",
+          "laps": 99
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:03.0398",
+          "laps": 100
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:03.1404",
+          "laps": 100
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:03.0374",
+          "laps": 100
+        }
+      ]
+    },
+    {
+      "courseId": "phoenix",
+      "round": 2,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6735",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Phoenix",
+      "sha256": "76df286657b25affce57e811c22314cf1e20aefd08623798f4dafdae87147706",
+      "entries": [
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:21.9784",
+          "laps": 250
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:22.3134",
+          "laps": 250
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "00:22.4344",
+          "laps": 250
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:23.1155",
+          "laps": 248
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:22.5091",
+          "laps": 250
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "00:22.3103",
+          "laps": 250
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:22.1306",
+          "laps": 250
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:22.7136",
+          "laps": 245
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:22.8857",
+          "laps": 247
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Contact",
+          "bestLapTime": "00:22.5125",
+          "laps": 21
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:22.2597",
+          "laps": 250
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:23.0077",
+          "laps": 246
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:22.2718",
+          "laps": 250
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:22.9366",
+          "laps": 249
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "00:22.2554",
+          "laps": 250
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Contact",
+          "bestLapTime": "00:22.8736",
+          "laps": 140
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:22.4058",
+          "laps": 250
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:22.3818",
+          "laps": 250
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:22.7675",
+          "laps": 250
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Mechanical",
+          "bestLapTime": "No Time",
+          "laps": 0
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:22.5297",
+          "laps": 250
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "00:22.4488",
+          "laps": 250
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "00:23.1441",
+          "laps": 248
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:22.5499",
+          "laps": 250
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:21.8686",
+          "laps": 249
+        }
+      ]
+    },
+    {
+      "courseId": "arlington",
+      "round": 3,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6734",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Arlington",
+      "sha256": "f7e60a2e01bf5db884ebbea250bc608dc9185613e2c22fc846c63792b2d0ab25",
+      "entries": [
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:34.5814",
+          "laps": 70
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:34.5092",
+          "laps": 70
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:34.7994",
+          "laps": 70
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:34.6327",
+          "laps": 70
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:34.9619",
+          "laps": 70
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:34.8037",
+          "laps": 70
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:34.0129",
+          "laps": 70
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Off Course",
+          "bestLapTime": "01:35.6236",
+          "laps": 66
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:34.6505",
+          "laps": 70
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:35.8658",
+          "laps": 70
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:34.7808",
+          "laps": 70
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:35.6736",
+          "laps": 70
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:34.7397",
+          "laps": 70
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:34.8206",
+          "laps": 70
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Contact",
+          "bestLapTime": "01:35.3639",
+          "laps": 68
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:34.8102",
+          "laps": 70
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:34.2738",
+          "laps": 69
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:34.8330",
+          "laps": 70
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:35.7980",
+          "laps": 70
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:33.9902",
+          "laps": 70
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:35.1094",
+          "laps": 70
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "01:35.3839",
+          "laps": 68
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:35.9349",
+          "laps": 69
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:35.5769",
+          "laps": 70
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:35.2319",
+          "laps": 70
+        }
+      ]
+    },
+    {
+      "courseId": "barber",
+      "round": 4,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6745",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Barber",
+      "sha256": "f9601795dcf85893d405fbf63d871b231fbd0b0d0dd01901455d0fb10a4acfb1",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:08.6922",
+          "laps": 90
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:08.9047",
+          "laps": 90
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:08.7766",
+          "laps": 90
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:08.7133",
+          "laps": 90
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:08.9622",
+          "laps": 90
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:09.0633",
+          "laps": 90
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:09.1191",
+          "laps": 90
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:08.7184",
+          "laps": 90
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:09.2240",
+          "laps": 90
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:08.6127",
+          "laps": 90
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:09.1054",
+          "laps": 90
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:08.9005",
+          "laps": 90
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:09.2064",
+          "laps": 90
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:09.4364",
+          "laps": 90
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:09.2752",
+          "laps": 90
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:08.7713",
+          "laps": 90
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:09.3330",
+          "laps": 90
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:09.4533",
+          "laps": 90
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:09.4309",
+          "laps": 90
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:09.3515",
+          "laps": 89
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:09.4146",
+          "laps": 90
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:09.3301",
+          "laps": 89
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:09.0121",
+          "laps": 90
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:09.5448",
+          "laps": 89
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:09.4990",
+          "laps": 89
+        }
+      ]
+    },
+    {
+      "courseId": "long-beach",
+      "round": 5,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6746",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Long-Beach",
+      "sha256": "b325040541206b09bac55efe2c1c4a63fe605d0a7056f7802db7937f8ac26ca3",
+      "entries": [
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:09.8707",
+          "laps": 90
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:09.9942",
+          "laps": 90
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:09.8211",
+          "laps": 90
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:09.6013",
+          "laps": 90
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:09.2883",
+          "laps": 90
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:09.4579",
+          "laps": 90
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:09.6047",
+          "laps": 90
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:09.7898",
+          "laps": 90
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:09.5954",
+          "laps": 90
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:10.0024",
+          "laps": 90
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:09.2642",
+          "laps": 90
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:09.2124",
+          "laps": 90
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:09.7220",
+          "laps": 89
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:08.8328",
+          "laps": 90
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Mechanical",
+          "bestLapTime": "01:10.0229",
+          "laps": 38
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:09.6134",
+          "laps": 90
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:10.0814",
+          "laps": 90
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:09.9206",
+          "laps": 90
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:09.7817",
+          "laps": 90
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:10.1391",
+          "laps": 90
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:09.8699",
+          "laps": 90
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:09.6452",
+          "laps": 90
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:09.4012",
+          "laps": 90
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:09.6904",
+          "laps": 90
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:10.1582",
+          "laps": 90
+        }
+      ]
+    },
+    {
+      "courseId": "indianapolis",
+      "round": 6,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6744",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Indianapolis",
+      "sha256": "3c7dd1b6f6fde205ff38b66114733f0bf81996a8c95e8d6b5a889f143ed55604",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:12.1221",
+          "laps": 85
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:12.8352",
+          "laps": 85
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Contact",
+          "bestLapTime": "01:12.6481",
+          "laps": 28
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:12.2852",
+          "laps": 85
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:12.2177",
+          "laps": 85
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:12.5953",
+          "laps": 85
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:12.5289",
+          "laps": 85
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:12.4165",
+          "laps": 85
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:12.5533",
+          "laps": 85
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:12.7920",
+          "laps": 85
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:12.9530",
+          "laps": 84
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:13.1719",
+          "laps": 85
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Mechanical",
+          "bestLapTime": "01:13.2822",
+          "laps": 20
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Mechanical",
+          "bestLapTime": "01:12.7592",
+          "laps": 61
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:12.7568",
+          "laps": 85
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:12.7143",
+          "laps": 85
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:13.2061",
+          "laps": 85
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:12.9311",
+          "laps": 85
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Mechanical",
+          "bestLapTime": "01:13.0737",
+          "laps": 28
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:12.3695",
+          "laps": 85
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:12.7056",
+          "laps": 85
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:13.0032",
+          "laps": 85
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:12.6747",
+          "laps": 85
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:12.9797",
+          "laps": 85
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:13.2362",
+          "laps": 85
+        }
+      ]
+    },
+    {
+      "courseId": "indianapolis-500",
+      "round": 7,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6743",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Indianapolis-500",
+      "sha256": "a8dca6e619c8c8519f833d5124c0d0a0d0ceef1bebac4142df22c008f0971890",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:40.2073",
+          "laps": 200
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Mechanical",
+          "bestLapTime": "00:40.1704",
+          "laps": 91
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "00:40.2585",
+          "laps": 200
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:40.0087",
+          "laps": 200
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:40.8646",
+          "laps": 200
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "00:40.2151",
+          "laps": 200
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:40.4394",
+          "laps": 200
+        },
+        {
+          "number": "23",
+          "name": "Conor Daly",
+          "team": "Dreyer & Reinbold Racing",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:39.9777",
+          "laps": 200
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:40.1558",
+          "laps": 200
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:40.2838",
+          "laps": 200
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:40.4850",
+          "laps": 200
+        },
+        {
+          "number": "75",
+          "name": "Takuma Sato",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:40.1204",
+          "laps": 200
+        },
+        {
+          "number": "33",
+          "name": "Ed Carpenter",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Contact",
+          "bestLapTime": "00:41.1090",
+          "laps": 26
+        },
+        {
+          "number": "06",
+          "name": "Helio Castroneves",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Mechanical",
+          "bestLapTime": "00:40.2457",
+          "laps": 194
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Mechanical",
+          "bestLapTime": "00:40.7395",
+          "laps": 144
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:40.0146",
+          "laps": 200
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:40.4297",
+          "laps": 200
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:40.3024",
+          "laps": 200
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Mechanical",
+          "bestLapTime": "00:40.9497",
+          "laps": 91
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "00:40.0496",
+          "laps": 200
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:40.3469",
+          "laps": 199
+        },
+        {
+          "number": "31",
+          "name": "Ryan Hunter-Reay",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "00:41.2317",
+          "laps": 17
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Contact",
+          "bestLapTime": "00:40.7826",
+          "laps": 124
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:40.7014",
+          "laps": 200
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:40.3069",
+          "laps": 200
+        },
+        {
+          "number": "11",
+          "name": "Katherine Legge",
+          "team": "HMD Motorsports w/ AJ Foyt Racing",
+          "engine": "Chevrolet",
+          "grid": 26,
+          "status": "Contact",
+          "bestLapTime": "00:41.1655",
+          "laps": 17
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 27,
+          "status": "Running",
+          "bestLapTime": "00:40.0898",
+          "laps": 200
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 28,
+          "status": "Running",
+          "bestLapTime": "00:40.0777",
+          "laps": 199
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 29,
+          "status": "Running",
+          "bestLapTime": "00:40.0954",
+          "laps": 199
+        },
+        {
+          "number": "51",
+          "name": "Jacob Abel",
+          "team": "Abel Motorsports",
+          "engine": "Chevrolet",
+          "grid": 30,
+          "status": "Running",
+          "bestLapTime": "00:40.3382",
+          "laps": 198
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 31,
+          "status": "Running",
+          "bestLapTime": "00:40.5709",
+          "laps": 199
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 32,
+          "status": "Contact",
+          "bestLapTime": "00:40.8490",
+          "laps": 191
+        },
+        {
+          "number": "24",
+          "name": "Jack Harvey",
+          "team": "Dreyer & Reinbold Racing",
+          "engine": "Chevrolet",
+          "grid": 33,
+          "status": "Running",
+          "bestLapTime": "00:40.6232",
+          "laps": 199
+        }
+      ]
+    },
+    {
+      "courseId": "detroit",
+      "round": 8,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6742",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Detroit",
+      "sha256": "555d891bef4034525ddb6305467e8af4f9a0dcc18206e91a1061201a9e03e4e3",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:03.0794",
+          "laps": 100
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Contact",
+          "bestLapTime": "01:03.2767",
+          "laps": 79
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:03.2230",
+          "laps": 96
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Mechanical",
+          "bestLapTime": "01:03.3693",
+          "laps": 69
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:03.4478",
+          "laps": 100
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:03.5304",
+          "laps": 100
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:03.6070",
+          "laps": 100
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:03.6133",
+          "laps": 100
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Contact",
+          "bestLapTime": "01:03.8838",
+          "laps": 9
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:03.6425",
+          "laps": 100
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:03.6270",
+          "laps": 100
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:03.5597",
+          "laps": 100
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:03.6689",
+          "laps": 100
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:03.9387",
+          "laps": 100
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:04.2293",
+          "laps": 100
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:04.0969",
+          "laps": 100
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:03.9832",
+          "laps": 100
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:04.3560",
+          "laps": 100
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:04.0939",
+          "laps": 100
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Contact",
+          "bestLapTime": "01:04.4087",
+          "laps": 91
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:04.3736",
+          "laps": 100
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Mechanical",
+          "bestLapTime": "01:03.8871",
+          "laps": 78
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:04.1171",
+          "laps": 91
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:04.6861",
+          "laps": 100
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:03.6776",
+          "laps": 96
+        }
+      ]
+    },
+    {
+      "courseId": "wwtr",
+      "round": 9,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6741",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/WWTR",
+      "sha256": "95c80ff842a01becd5046845f9c288a242f8003881c951a8b803174e099dee64",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:26.7885",
+          "laps": 258
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:26.8276",
+          "laps": 260
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "00:26.8210",
+          "laps": 260
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:26.9947",
+          "laps": 260
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:26.8924",
+          "laps": 260
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "00:26.6642",
+          "laps": 260
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:26.9649",
+          "laps": 260
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:26.5257",
+          "laps": 260
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:26.7641",
+          "laps": 260
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:27.0240",
+          "laps": 258
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Contact",
+          "bestLapTime": "00:27.4638",
+          "laps": 112
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:26.6258",
+          "laps": 260
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:26.7454",
+          "laps": 260
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:27.2680",
+          "laps": 236
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "00:27.1336",
+          "laps": 260
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:26.8361",
+          "laps": 260
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:27.3137",
+          "laps": 250
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:26.7488",
+          "laps": 259
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:26.7441",
+          "laps": 260
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Mechanical",
+          "bestLapTime": "00:26.6393",
+          "laps": 226
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:26.7011",
+          "laps": 260
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "00:27.2286",
+          "laps": 53
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "00:27.0151",
+          "laps": 259
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Mechanical",
+          "bestLapTime": "No Time",
+          "laps": 0
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:27.1462",
+          "laps": 257
+        }
+      ]
+    },
+    {
+      "courseId": "road-america",
+      "round": 10,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6747",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Road-America",
+      "sha256": "2555e51eca0e43f2f99c0ab06d5489becbc603ade9ed52be05bb897886ed0ed7",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:46.2845",
+          "laps": 55
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:46.2308",
+          "laps": 55
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Mechanical",
+          "bestLapTime": "01:45.9160",
+          "laps": 52
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:45.9130",
+          "laps": 55
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:46.6572",
+          "laps": 55
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:46.4694",
+          "laps": 55
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:46.3121",
+          "laps": 55
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:46.9537",
+          "laps": 55
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:46.0214",
+          "laps": 55
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:46.3693",
+          "laps": 55
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:46.2619",
+          "laps": 55
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:45.5659",
+          "laps": 55
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:46.6688",
+          "laps": 55
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:46.2938",
+          "laps": 55
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:46.5544",
+          "laps": 55
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Mechanical",
+          "bestLapTime": "01:46.9719",
+          "laps": 28
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:46.1025",
+          "laps": 55
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:47.1510",
+          "laps": 55
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:46.2769",
+          "laps": 55
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Contact",
+          "bestLapTime": "01:46.2599",
+          "laps": 54
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:46.8825",
+          "laps": 55
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:47.2048",
+          "laps": 55
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:46.9689",
+          "laps": 55
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:46.8878",
+          "laps": 55
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:46.4338",
+          "laps": 55
+        }
+      ]
+    },
+    {
+      "courseId": "mid-ohio",
+      "round": 11,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6740",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Mid-Ohio",
+      "sha256": "d12eab015cd06f62bcc5957c3f5fb3477807e64ca6900e4d90a32b0108cb6f61",
+      "entries": [
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:06.9406",
+          "laps": 90
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:06.9309",
+          "laps": 90
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:06.7441",
+          "laps": 90
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:06.9099",
+          "laps": 90
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:06.8591",
+          "laps": 90
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:06.7024",
+          "laps": 90
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:07.6340",
+          "laps": 90
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:07.1362",
+          "laps": 90
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:06.5323",
+          "laps": 90
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:06.9230",
+          "laps": 90
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:07.2516",
+          "laps": 90
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:07.1140",
+          "laps": 90
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:06.9281",
+          "laps": 90
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:07.2587",
+          "laps": 90
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:07.6862",
+          "laps": 90
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:07.6519",
+          "laps": 90
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:07.4193",
+          "laps": 90
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:07.1444",
+          "laps": 90
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:07.2777",
+          "laps": 90
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:07.9173",
+          "laps": 90
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:07.7306",
+          "laps": 90
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:07.3523",
+          "laps": 90
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:07.1526",
+          "laps": 90
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:07.4018",
+          "laps": 90
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:07.2804",
+          "laps": 89
+        }
+      ]
+    },
+    {
+      "courseId": "nashville",
+      "round": 12,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6748",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Nashville",
+      "sha256": "76e4587b656499637c18fa92b4fe51da86ea2e6d87708a8e393801bad20b5d71",
+      "entries": [
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:24.3752",
+          "laps": 225
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:24.3162",
+          "laps": 225
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "00:24.1178",
+          "laps": 225
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:24.2804",
+          "laps": 225
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:24.3830",
+          "laps": 218
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Contact",
+          "bestLapTime": "00:24.5398",
+          "laps": 121
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Retired",
+          "bestLapTime": "00:24.4255",
+          "laps": 127
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Mechanical",
+          "bestLapTime": "00:24.5881",
+          "laps": 104
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:24.3688",
+          "laps": 225
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:24.4260",
+          "laps": 225
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:24.4348",
+          "laps": 225
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:24.4016",
+          "laps": 225
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:24.4674",
+          "laps": 225
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:24.4635",
+          "laps": 209
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Contact",
+          "bestLapTime": "00:24.9438",
+          "laps": 17
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:24.3968",
+          "laps": 225
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:24.2015",
+          "laps": 225
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:24.4527",
+          "laps": 225
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:24.8576",
+          "laps": 223
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "00:24.7381",
+          "laps": 225
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:24.6012",
+          "laps": 225
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "00:24.7596",
+          "laps": 178
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Retired",
+          "bestLapTime": "00:25.0409",
+          "laps": 209
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:24.6733",
+          "laps": 225
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:24.1512",
+          "laps": 225
+        }
+      ]
+    },
+    {
+      "courseId": "portland",
+      "round": 13,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6733",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Portland",
+      "sha256": "b42b9f62960c785c70a299146f40143d8ef1ffee79271c0ce92098fcc41d2ba8",
+      "entries": [
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:00.3902",
+          "laps": 110
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:00.3590",
+          "laps": 110
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:00.7267",
+          "laps": 110
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:00.3070",
+          "laps": 110
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:00.4926",
+          "laps": 110
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:00.8121",
+          "laps": 110
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:00.4604",
+          "laps": 110
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:01.0635",
+          "laps": 109
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:00.9822",
+          "laps": 110
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:01.0582",
+          "laps": 110
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:00.9927",
+          "laps": 110
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:00.7794",
+          "laps": 110
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:00.9020",
+          "laps": 110
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:00.6037",
+          "laps": 110
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:00.7566",
+          "laps": 110
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:00.6221",
+          "laps": 110
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:00.4840",
+          "laps": 110
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:01.1476",
+          "laps": 110
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:01.0473",
+          "laps": 106
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Mechanical",
+          "bestLapTime": "01:01.4282",
+          "laps": 33
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:01.1949",
+          "laps": 109
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:00.8139",
+          "laps": 110
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:00.6201",
+          "laps": 109
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:01.1580",
+          "laps": 109
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:00.9125",
+          "laps": 110
+        }
+      ]
+    },
+    {
+      "courseId": "markham",
+      "round": 14,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6737",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Markham",
+      "sha256": "7eada5a0b3e383d9ab3657a7fb97206d3c14df2a6bff6bb1f22e45c51b890845",
+      "entries": [
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Contact",
+          "bestLapTime": "01:15.6118",
+          "laps": 42
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:15.8562",
+          "laps": 90
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:15.8971",
+          "laps": 90
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:14.2690",
+          "laps": 90
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Off Course",
+          "bestLapTime": "01:16.5424",
+          "laps": 89
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:16.5719",
+          "laps": 90
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:16.0516",
+          "laps": 89
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:15.2977",
+          "laps": 84
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:16.7032",
+          "laps": 90
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Contact",
+          "bestLapTime": "01:16.9648",
+          "laps": 14
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:16.1874",
+          "laps": 90
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:16.4090",
+          "laps": 90
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:16.4577",
+          "laps": 90
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Mechanical",
+          "bestLapTime": "01:16.1966",
+          "laps": 66
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:16.8512",
+          "laps": 90
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Mechanical",
+          "bestLapTime": "01:16.7439",
+          "laps": 18
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:16.2057",
+          "laps": 90
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:16.6899",
+          "laps": 90
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Retired",
+          "bestLapTime": "01:16.1918",
+          "laps": 67
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:17.1732",
+          "laps": 90
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Contact",
+          "bestLapTime": "01:15.5641",
+          "laps": 35
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "01:15.7841",
+          "laps": 53
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:16.3900",
+          "laps": 90
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "01:16.4074",
+          "laps": 89
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:15.8216",
+          "laps": 90
+        }
+      ]
+    },
+    {
+      "courseId": "washington-dc",
+      "round": 15,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6796",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Washington-DC",
+      "sha256": "158a6742ab2fcb80bd421c168943d6e6fffcde4f21fe0ad63039310843de69f6",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:58.5175",
+          "laps": 144
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:58.2879",
+          "laps": 147
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Contact",
+          "bestLapTime": "00:58.7462",
+          "laps": 128
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:59.1282",
+          "laps": 146
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:59.1687",
+          "laps": 146
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 6,
+          "status": "Contact",
+          "bestLapTime": "00:59.4677",
+          "laps": 35
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:59.3916",
+          "laps": 146
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:59.0191",
+          "laps": 146
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:58.4052",
+          "laps": 147
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:59.1886",
+          "laps": 146
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:59.2109",
+          "laps": 147
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:57.9495",
+          "laps": 147
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:58.8756",
+          "laps": 147
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:59.1804",
+          "laps": 147
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "00:59.0011",
+          "laps": 147
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:59.2556",
+          "laps": 146
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Contact",
+          "bestLapTime": "00:59.5898",
+          "laps": 43
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:58.9947",
+          "laps": 147
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:59.1661",
+          "laps": 147
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "00:58.8872",
+          "laps": 147
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:59.0114",
+          "laps": 147
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Contact",
+          "bestLapTime": "00:59.9331",
+          "laps": 35
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "00:58.8042",
+          "laps": 147
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:58.8516",
+          "laps": 147
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Retired",
+          "bestLapTime": "00:59.3017",
+          "laps": 132
+        }
+      ]
+    },
+    {
+      "courseId": "milwaukee-race2",
+      "round": 16,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6738",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Milwaukee-Race2",
+      "sha256": "ace787d312abcd91275b0b23628ebd17c634d172905bd7993648c166d218ee9c",
+      "entries": [
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:23.4287",
+          "laps": 250
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:23.8133",
+          "laps": 250
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 3,
+          "status": "Contact",
+          "bestLapTime": "00:23.7750",
+          "laps": 150
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:24.1012",
+          "laps": 249
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:23.7107",
+          "laps": 249
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "00:24.0195",
+          "laps": 250
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:24.1654",
+          "laps": 248
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:24.0278",
+          "laps": 250
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:24.2222",
+          "laps": 249
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:24.3913",
+          "laps": 249
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:23.8127",
+          "laps": 250
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:23.9864",
+          "laps": 250
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:24.1647",
+          "laps": 250
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:23.8236",
+          "laps": 250
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "00:24.3263",
+          "laps": 248
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:23.9364",
+          "laps": 249
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:24.0731",
+          "laps": 250
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:24.4706",
+          "laps": 248
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:24.2513",
+          "laps": 247
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 20,
+          "status": "Contact",
+          "bestLapTime": "00:24.0914",
+          "laps": 155
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:24.6747",
+          "laps": 246
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "00:23.9912",
+          "laps": 249
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "00:24.3354",
+          "laps": 248
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:24.2739",
+          "laps": 250
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:24.4433",
+          "laps": 249
+        }
+      ]
+    },
+    {
+      "courseId": "milwaukee-race1",
+      "round": 17,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6739",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Milwaukee-Race1",
+      "sha256": "c5e082948ebdc00d8b55981ba4f43f29d2e3379c879009b98ac68434cfe42c93",
+      "entries": [
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "00:22.9156",
+          "laps": 250
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "00:23.2410",
+          "laps": 250
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Contact",
+          "bestLapTime": "00:23.7557",
+          "laps": 199
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "00:23.9285",
+          "laps": 248
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "00:23.3442",
+          "laps": 250
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "00:23.9266",
+          "laps": 250
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "00:23.7368",
+          "laps": 250
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "00:23.8447",
+          "laps": 250
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "00:23.6435",
+          "laps": 249
+        },
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "00:23.7788",
+          "laps": 250
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "00:23.4720",
+          "laps": 250
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "00:23.6280",
+          "laps": 250
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "00:23.8124",
+          "laps": 250
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "00:23.9023",
+          "laps": 250
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "00:23.9593",
+          "laps": 249
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "00:24.1911",
+          "laps": 250
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "00:24.0460",
+          "laps": 250
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "00:23.7404",
+          "laps": 250
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "00:24.4196",
+          "laps": 246
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Contact",
+          "bestLapTime": "00:24.2825",
+          "laps": 211
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "00:24.1269",
+          "laps": 250
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "00:23.8916",
+          "laps": 248
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "00:24.0558",
+          "laps": 250
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 24,
+          "status": "Running",
+          "bestLapTime": "00:23.8770",
+          "laps": 250
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "00:23.7990",
+          "laps": 248
+        }
+      ]
+    },
+    {
+      "courseId": "laguna-seca",
+      "round": 18,
+      "sourceUrl": "https://www.indycar.com/api/results/EventsSessionDetails?id=6736",
+      "eventUrl": "https://www.indycar.com/Schedule/2026/Laguna-Seca",
+      "sha256": "951169ad202373413d98a75d1462c2b25198c4e619e338950e75e2118cf16d4e",
+      "entries": [
+        {
+          "number": "3",
+          "name": "Scott McLaughlin",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 1,
+          "status": "Running",
+          "bestLapTime": "01:11.7233",
+          "laps": 95
+        },
+        {
+          "number": "10",
+          "name": "Alex Palou",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 2,
+          "status": "Running",
+          "bestLapTime": "01:11.8433",
+          "laps": 95
+        },
+        {
+          "number": "60",
+          "name": "Felix Rosenqvist",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 3,
+          "status": "Running",
+          "bestLapTime": "01:12.1089",
+          "laps": 95
+        },
+        {
+          "number": "20",
+          "name": "Alexander Rossi",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 4,
+          "status": "Running",
+          "bestLapTime": "01:12.1538",
+          "laps": 95
+        },
+        {
+          "number": "12",
+          "name": "David Malukas",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 5,
+          "status": "Running",
+          "bestLapTime": "01:12.1923",
+          "laps": 95
+        },
+        {
+          "number": "27",
+          "name": "Kyle Kirkwood",
+          "team": "Andretti Global w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 6,
+          "status": "Running",
+          "bestLapTime": "01:11.8636",
+          "laps": 95
+        },
+        {
+          "number": "8",
+          "name": "Kyffin Simpson",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 7,
+          "status": "Running",
+          "bestLapTime": "01:12.3399",
+          "laps": 95
+        },
+        {
+          "number": "66",
+          "name": "Marcus Armstrong",
+          "team": "Meyer Shank w/ Curb-Agajanian",
+          "engine": "Honda",
+          "grid": 8,
+          "status": "Running",
+          "bestLapTime": "01:12.5443",
+          "laps": 95
+        },
+        {
+          "number": "45",
+          "name": "Louis Foster",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 9,
+          "status": "Running",
+          "bestLapTime": "01:12.7290",
+          "laps": 95
+        },
+        {
+          "number": "5",
+          "name": "Pato O'Ward",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 10,
+          "status": "Running",
+          "bestLapTime": "01:12.6425",
+          "laps": 95
+        },
+        {
+          "number": "7",
+          "name": "Christian Lundgaard",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 11,
+          "status": "Running",
+          "bestLapTime": "01:12.4297",
+          "laps": 95
+        },
+        {
+          "number": "26",
+          "name": "Will Power",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 12,
+          "status": "Running",
+          "bestLapTime": "01:12.6580",
+          "laps": 95
+        },
+        {
+          "number": "47",
+          "name": "Mick Schumacher",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 13,
+          "status": "Running",
+          "bestLapTime": "01:12.5405",
+          "laps": 95
+        },
+        {
+          "number": "28",
+          "name": "Marcus Ericsson",
+          "team": "Andretti Global",
+          "engine": "Honda",
+          "grid": 14,
+          "status": "Running",
+          "bestLapTime": "01:12.5819",
+          "laps": 95
+        },
+        {
+          "number": "6",
+          "name": "Nolan Siegel",
+          "team": "Arrow McLaren",
+          "engine": "Chevrolet",
+          "grid": 15,
+          "status": "Running",
+          "bestLapTime": "01:12.5097",
+          "laps": 94
+        },
+        {
+          "number": "9",
+          "name": "Scott Dixon",
+          "team": "Chip Ganassi Racing",
+          "engine": "Honda",
+          "grid": 16,
+          "status": "Running",
+          "bestLapTime": "01:11.8153",
+          "laps": 95
+        },
+        {
+          "number": "21",
+          "name": "Christian Rasmussen",
+          "team": "ECR",
+          "engine": "Chevrolet",
+          "grid": 17,
+          "status": "Running",
+          "bestLapTime": "01:12.0907",
+          "laps": 95
+        },
+        {
+          "number": "4",
+          "name": "Caio Collet",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 18,
+          "status": "Running",
+          "bestLapTime": "01:12.3361",
+          "laps": 95
+        },
+        {
+          "number": "76",
+          "name": "Rinus VeeKay",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 19,
+          "status": "Running",
+          "bestLapTime": "01:11.6544",
+          "laps": 95
+        },
+        {
+          "number": "2",
+          "name": "Josef Newgarden",
+          "team": "Team Penske",
+          "engine": "Chevrolet",
+          "grid": 20,
+          "status": "Running",
+          "bestLapTime": "01:12.4379",
+          "laps": 95
+        },
+        {
+          "number": "14",
+          "name": "Santino Ferrucci",
+          "team": "A.J. Foyt Enterprises",
+          "engine": "Chevrolet",
+          "grid": 21,
+          "status": "Running",
+          "bestLapTime": "01:12.6609",
+          "laps": 95
+        },
+        {
+          "number": "15",
+          "name": "Graham Rahal",
+          "team": "Rahal Letterman Lanigan Racing",
+          "engine": "Honda",
+          "grid": 22,
+          "status": "Running",
+          "bestLapTime": "01:12.6579",
+          "laps": 95
+        },
+        {
+          "number": "18",
+          "name": "Romain Grosjean",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 23,
+          "status": "Running",
+          "bestLapTime": "01:12.9916",
+          "laps": 95
+        },
+        {
+          "number": "19",
+          "name": "Dennis Hauger",
+          "team": "Dale Coyne Racing",
+          "engine": "Honda",
+          "grid": 24,
+          "status": "Contact",
+          "bestLapTime": "No Time",
+          "laps": 0
+        },
+        {
+          "number": "77",
+          "name": "Sting Ray Robb",
+          "team": "Juncos Hollinger Racing",
+          "engine": "Chevrolet",
+          "grid": 25,
+          "status": "Running",
+          "bestLapTime": "01:11.8261",
+          "laps": 94
+        }
+      ]
+    }
+  ]
+}

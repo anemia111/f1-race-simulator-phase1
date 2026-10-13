@@ -1,3 +1,4 @@
+import { crossCategoryCoursePacks } from './crossCategoryTracks'
 import { MAX_SIMULATION_SEED_LENGTH } from '../simulation/random'
 import { isExecutableSeriesId } from '../series/seriesIds'
 import type { SeriesId } from '../series/types'
@@ -53,6 +54,7 @@ export function validateFreeModeConfiguration(
   const series = context.seriesById.get(configuration.categoryId)
   const driverIds = new Set(context.driverPool.map((driver) => driver.id))
   const trackIds = new Set([
+    ...crossCategoryCoursePacks.map(pack => pack.id),
     ...(context.seriesById.get('f1-custom')?.tracks ?? []).map(
       (track) => track.id,
     ),
@@ -68,11 +70,15 @@ export function validateFreeModeConfiguration(
       message: 'Select a supported category.',
     })
   }
+  if (configuration.raceStartMode !== undefined &&
+    configuration.raceStartMode !== 'standing' && configuration.raceStartMode !== 'rolling') {
+    issues.push({ code: 'start-mode', field: 'raceStartMode', message: 'Select standing or rolling start.' })
+  }
   if (!trackIds.has(configuration.trackId)) {
     issues.push({
       code: 'unknown-track',
       field: 'trackId',
-      message: 'Select a track from the F1 / SUPER FORMULA pool.',
+      message: 'Select a track from the shared six-category course pool.',
     })
   }
   if (
@@ -233,6 +239,7 @@ export function parseFreeModeConfiguration(
   if (
     !isRecord(value) ||
     value.version !== 1 ||
+    (value.raceStartMode !== undefined && value.raceStartMode !== 'standing' && value.raceStartMode !== 'rolling') ||
     !isExecutableSeriesId(value.categoryId) ||
     typeof value.trackId !== 'string' ||
     value.trackId.length < 1 ||
@@ -263,6 +270,7 @@ export function parseFreeModeConfiguration(
   }
 
   const configuration: FreeModeConfiguration = {
+    ...(value.raceStartMode === undefined ? {} : { raceStartMode: value.raceStartMode as 'standing' | 'rolling' }),
     categoryId: value.categoryId as SeriesId,
     entrants: entrants as FreeModeEntrant[],
     equalCars: value.equalCars,

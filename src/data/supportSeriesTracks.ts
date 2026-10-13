@@ -1,3 +1,4 @@
+import { registeredCourseCorners } from './cornerReferences'
 import type { TrackDefinition } from '../types'
 import { deriveAeroActivationZones } from './aeroZoneGeometry'
 import { supportSeriesTrackLayouts } from './supportSeriesTrackLayouts'
@@ -15,6 +16,7 @@ const layoutFor = (trackId: string) => {
 
   return {
     ...supportTimingFor(trackId),
+    corners: registeredCourseCorners(trackId),
     layoutSource: {
       detail: 'real' as const,
       label: `Surveyed centerline, ${layout.measuredKm} km measured (${layout.source.attribution})`,

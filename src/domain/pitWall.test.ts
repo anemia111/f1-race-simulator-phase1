@@ -61,13 +61,15 @@ const lapStub = (overrides: Partial<LapRecord>): LapRecord =>
   }) as LapRecord
 
 describe('pit wall tabs', () => {
-  it('exposes the six operational sections in order', () => {
+  it('exposes operational sections including team and decision evidence', () => {
     expect(pitWallTabs.map((tab) => tab.id)).toEqual([
       'overview',
       'lap-log',
       'strategy',
       'systems',
       'weather',
+      'team',
+      'decisions',
       'race-control',
     ])
   })

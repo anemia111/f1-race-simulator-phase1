@@ -27,6 +27,7 @@ export type RaceWorkerInboundMessage =
   | { type: 'control'; isPaused: boolean; speed: SpeedMultiplier }
   | { type: 'skip-formation' }
   | { type: 'pit-request'; driverId: string; compound: TireCompound }
+  | {type:'engineering-plan';driverId:string;plan:import('../domain/raceEngineer').EngineeringPlan|null}
   | { type: 'pace-mode'; driverId: string; mode: RacePaceMode }
 
 export type RaceWorkerOutboundMessage =

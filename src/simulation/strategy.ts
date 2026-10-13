@@ -14,6 +14,7 @@ import type {
 import {
   F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
   observedPitLaneTransitSeconds,
+  validObservedPitLaneTransitSeconds,
 } from '../data/f1PitLaneObservations2026'
 import { averageTrackWidthMeters } from './physicalLap'
 import { hashChance } from './random'
@@ -203,8 +204,9 @@ export function pitLaneLossSecondsForTrack(track: {
   pitLane?: { speedLimitKph?: number }
 }) {
   const observedTransitSeconds =
-    track.observedCalibration?.pitLaneTransitSeconds ??
-    observedPitLaneTransitSeconds(track.id)
+    validObservedPitLaneTransitSeconds(track.observedCalibration?.pitLaneTransitSeconds)
+      ? track.observedCalibration.pitLaneTransitSeconds
+      : observedPitLaneTransitSeconds(track.id)
 
   if (observedTransitSeconds !== null && observedTransitSeconds !== undefined) {
     return (

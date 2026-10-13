@@ -6,6 +6,28 @@ import { tracks } from './tracks'
 const forwardProgress = (from: number, to: number) => ((to - from) % 1 + 1) % 1
 
 describe('official FIA 2026 circuit operations', () => {
+  it('covers every selectable F1 course with detection independently of Straight Mode',()=>{
+    expect(tracks).toHaveLength(24)
+    for(const track of tracks){
+      expect(track.overtakeControlLines?.length,track.id).toBeGreaterThan(0)
+      for(const line of track.overtakeControlLines!){
+        expect(line.detectionProgress,track.id).toBeGreaterThanOrEqual(0)
+        expect(line.detectionProgress,track.id).toBeLessThan(1)
+        expect(line.activationProgress,track.id).not.toBe(line.detectionProgress)
+        expect(line.detectionGapSeconds,track.id).toBe(1)
+      }
+    }
+  })
+  it('retains the five newly checked maps and their different low-grip markers',()=>{
+    expect(Object.keys(officialTrackOperations2026)).toHaveLength(16)
+    expect(officialTrackOperations2026['baku-approx'].straightMode[0]).toMatchObject({normal:{turn:19,offsetMeters:45},lowGrip:{turn:20,offsetMeters:45}})
+    expect(officialTrackOperations2026['singapore-approx'].straightMode[1].lowGrip).toBeNull()
+    const baku=tracks.find(t=>t.id==='baku-approx')!
+    const zone=baku.aeroActivationZones![0]
+    expect(forwardProgress(zone.start,zone.lowGripStart!)).toBeLessThan(0.2)
+    expect(forwardProgress(zone.start,zone.end)*baku.lengthKm*1000).toBeGreaterThan(900)
+    expect(zone.endSource).toBe('derived')
+  })
   it('uses published sector distances and source tags for every available map', () => {
     for (const [trackId, operations] of Object.entries(
       officialTrackOperations2026,
@@ -102,3 +124,20 @@ describe('official FIA 2026 circuit operations', () => {
     })
   })
 })
+
+ it('ends every official run before the mapped next corner without overlap', () => {
+   for (const track of tracks.filter(t => officialTrackOperations2026[t.id])) {
+     const zones = track.aeroActivationZones!
+     zones.forEach((zone,index) => {
+       expect(officialTrackOperations2026[track.id].straightMode[index].brakingTurn).toBeGreaterThan(0)
+       const span = forwardProgress(zone.start,zone.end)
+       expect(span).toBeLessThan(0.5)
+       zones.forEach((other,i) => {
+         if (i !== index) expect(forwardProgress(zone.start,other.start),track.id).toBeGreaterThanOrEqual(span)
+       })
+     })
+   }
+   const australia = tracks.find(t=>t.id==='albert-park-approx')!
+   expect(australia.aeroActivationZones![0].start).toBeGreaterThan(australia.aeroActivationZones![0].end)
+   expect(forwardProgress(australia.aeroActivationZones![3].start,australia.aeroActivationZones![3].end)*australia.lengthKm*1000).toBeGreaterThan(800)
+ })

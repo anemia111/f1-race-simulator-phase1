@@ -12,6 +12,7 @@ import {
   UNMEASURED_SECTOR_TIME,
 } from '../../domain/timingFormat'
 import { MiniSectorStrip } from '../MiniSectorStrip'
+import { SF_OTS_ALLOCATION_SECONDS } from '../../simulation/sfOtsRuntime'
 import { PitWallGroup, PitWallMetric, PitWallSourceTag } from './PitWallShared'
 import type { PitWallTabProps } from './types'
 import type { SectorTimingStatus } from '../../types'
@@ -361,21 +362,28 @@ export function PitWallOverview({
             <PitWallMetric
               label="OTS"
               source={
-                superFormulaRuntime.ots.availability === 'verified-event-rule'
+                superFormulaRuntime.otsSimulation ? 'SIM' : superFormulaRuntime.ots.availability === 'verified-event-rule'
                   ? 'EVENT'
                   : 'UNAVAILABLE'
               }
               title={
-                superFormulaRuntime.ots.availability === 'verified-event-rule'
+                superFormulaRuntime.otsSimulation ? `${superFormulaRuntime.otsSimulation.source} · allocation/cooldown published; ${superFormulaRuntime.otsSimulation.boostPowerKw} kW boost SIM` : superFormulaRuntime.ots.availability === 'verified-event-rule'
                   ? `${superFormulaRuntime.ots.activationConditions}; runtime condition evaluation pending`
                   : superFormulaRuntime.ots.reason
               }
               value={
-                superFormulaRuntime.ots.availability === 'verified-event-rule'
+                superFormulaRuntime.otsSimulation
+                  ? car.overtakeStatus.toUpperCase()
+                  : superFormulaRuntime.ots.availability === 'verified-event-rule'
                   ? `CONFIGURED / ${superFormulaRuntime.ots.allocationSeconds}s`
                   : PIT_WALL_UNAVAILABLE
               }
             />
+            {superFormulaRuntime.otsSimulation && <>
+              <PitWallMetric label="OTS remaining / race budget" source="SIM" value={`${superFormulaRuntime.otsSimulation.remainingSeconds.toFixed(1)} / ${SF_OTS_ALLOCATION_SECONDS}s`} />
+              <PitWallMetric label="OTS cooldown" source="SIM" value={`WAIT ${Math.max(0,superFormulaRuntime.otsSimulation.cooldownUntilSeconds-snapshot.elapsedSeconds).toFixed(1)}s / ${superFormulaRuntime.otsSimulation.cooldownSeconds}s interval`} />
+              <PitWallMetric label="OTS power boost" source="SIM" title="Estimated combustion power increase; extra fuel follows actual OTS use and throttle. No circuit activation zone." value={`+${superFormulaRuntime.otsSimulation.boostPowerKw} kW (~${Math.round(superFormulaRuntime.otsSimulation.boostPowerKw / 0.73549875)} PS)`} />
+            </>}
             <PitWallMetric
               label="Refuelling safety"
               source="JAF"

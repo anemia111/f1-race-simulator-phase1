@@ -27,6 +27,12 @@ describe('series id boundaries', () => {
       'super-formula',
       'f2',
       'f3',
+      'kyojo',
+      'super-gt-gt500',
+      'super-gt-gt300',
+      'indycar',
+      'wec-hypercar',
+      'wec-lmgt3',
       'external',
     ])
 

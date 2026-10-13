@@ -70,3 +70,8 @@ const BY_TRACK_ID = new Map(
 export function observedPitLaneTransitSeconds(trackId: string): number | null {
   return BY_TRACK_ID.get(trackId)?.medianTransitSeconds ?? null
 }
+
+/** Broad SIM data-quality screen: excludes garage dwell and corrupt durations. */
+export function validObservedPitLaneTransitSeconds(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 5 && value <= 90
+}

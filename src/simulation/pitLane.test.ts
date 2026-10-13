@@ -6,6 +6,7 @@ import {
   pitBoxProgress,
   pitBoxProgressForTeam,
   pitLaneMotionAt,
+  pitEntryDrivingRequested,
   wrappedProgressSpan,
 } from './pitLane'
 
@@ -108,3 +109,24 @@ describe('pit-lane geometry', () => {
     expect(released.progress).toBeCloseTo(exit)
   })
 })
+
+ it('releases the pit-entry driving instruction once back on track', () => {
+   expect(pitEntryDrivingRequested({status:'running',pitPhase:'exit'})).toBe(false)
+   expect(pitEntryDrivingRequested({status:'pit',pitPhase:'exit'})).toBe(true)
+   expect(pitEntryDrivingRequested({status:'running',pitPhase:'entry'})).toBe(true)
+   expect(pitEntryDrivingRequested({status:'pit',pitPhase:'lane'})).toBe(true)
+ })
+ it('uses the specified crew service time instead of 48 percent of the whole stop', () => {
+   const durationSeconds=18, serviceSeconds=3
+   const samples=Array.from({length:1800},(_,i)=>pitLaneMotionAt((i+0.5)/1800,0.94,0.98,0.055,{durationSeconds,serviceSeconds}))
+   expect(samples.filter(s=>s.phase==='box').length*0.01).toBeCloseTo(serviceSeconds,1)
+   expect(samples[0].phase).toBe('lane')
+   expect(samples.at(-1)!.phase).toBe('exit')
+   expect(pitLaneMotionAt(1,0.94,0.98,0.055,{durationSeconds,serviceSeconds}).progress).toBeCloseTo(0.055)
+ })
+ it('keeps a drive-through moving and extends service for a stop-go', () => {
+   const drive=Array.from({length:100},(_,i)=>pitLaneMotionAt(i/100,0.94,0.98,0.055,{durationSeconds:16,serviceSeconds:0}))
+   expect(drive.some(s=>s.phase==='box')).toBe(false)
+   const stopGo=Array.from({length:2600},(_,i)=>pitLaneMotionAt((i+0.5)/2600,0.94,0.98,0.055,{durationSeconds:26,serviceSeconds:10}))
+   expect(stopGo.filter(s=>s.phase==='box').length*0.01).toBeCloseTo(10,1)
+ })

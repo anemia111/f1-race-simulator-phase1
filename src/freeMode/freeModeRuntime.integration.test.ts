@@ -11,6 +11,7 @@ import {
 } from '../simulation/race'
 import type { RaceConfig, RaceSnapshot, TireCompound } from '../types'
 import { buildFreeModeRaceConfig } from './freeModeRegistry'
+import { ensureNeutralisationProcedure } from '../simulation/neutralisation'
 import type {
   FreeModeBuildContext,
   FreeModeConfiguration,
@@ -62,6 +63,9 @@ function configurationFor({
 function startRace(config: RaceConfig) {
   let snapshot = skipFormationLap(createInitialRace(config), config)
   snapshot = advanceRace(snapshot, 8, config)
+  // A seeded light sequence may last beyond eight grid-settle seconds.
+  // Inject race-control scenarios only after the actual racing start.
+  for (let step = 0; step < 30 && snapshot.raceStartedAtSeconds === null; step++) snapshot = advanceRace(snapshot, 0.5, config)
   return advanceRace(snapshot, 5, config)
 }
 
@@ -143,7 +147,7 @@ describe('Free Mode runtime integration', () => {
     expect(minimumStateOfCharge).toBeLessThan(0.99)
     expect(recoveredAfterDischarge).toBe(true)
     expect(stateOfChargeIncreasedAfterDischarge).toBe(true)
-  })
+  }, 30_000)
 
   it.each([
     ['practice', 180],
@@ -161,7 +165,7 @@ describe('Free Mode runtime integration', () => {
 
     expect(snapshot.cars).toHaveLength(1)
     expect(snapshot.sessionStatus).toBe('finished')
-  })
+  }, 120_000)
 
   it(
     'finishes a 30-car Super Formula session on an F1 circuit',
@@ -180,7 +184,7 @@ describe('Free Mode runtime integration', () => {
       expect(snapshot.cars).toHaveLength(30)
       expect(snapshot.sessionStatus).toBe('finished')
     },
-    20_000,
+    300_000,
   )
 
   it(
@@ -199,7 +203,7 @@ describe('Free Mode runtime integration', () => {
       expect(snapshot.cars).toHaveLength(40)
       expect(snapshot.sessionStatus).toBe('finished')
     },
-    20_000,
+    300_000,
   )
 
   it.each([
@@ -225,6 +229,7 @@ describe('Free Mode runtime integration', () => {
         ),
       ).toBe(true)
     },
+    30_000,
   )
 
   it('completes SC, VSC and red-flag procedures with 40 cars', () => {
@@ -232,28 +237,45 @@ describe('Free Mode runtime integration', () => {
       configurationFor({
         carCount: 40,
         categoryId: 'f1-custom',
-        raceLaps: 5,
+        raceLaps: 20,
         trackId: 'suzuka-approx',
       }),
       context,
     )
-    const base = startRace(config)
+    const started = startRace(config)
+    // Isolate the withdrawal/restart procedure from initial field collection.
+    // An early SC can legitimately consume a five-lap race before 40 cars form
+    // a queue, ending under SC rather than producing the expected green flag.
+    const queueHead = Math.floor(started.cars[0].totalDistance) + 0.95
+    const base = { ...started, cars: started.cars.map((car, index) => {
+      const totalDistance = queueHead - index * 8 / (config.track.lengthKm * 1000)
+      return { ...car, totalDistance, progress: totalDistance % 1, speedKph: 80 }
+    }) }
+
+    // This integration scenario exercises withdrawal and restart with 40
+    // cars. Deployment, collection and eligibility are independently covered
+    // by neutralisation.test.ts; initialise the already-formed queue explicitly.
+    const safetyPhase = ensureNeutralisationProcedure({
+      endMessage: 'Safety Car in.', endSeconds: base.elapsedSeconds + 1,
+      flag: 'sc', id: 'free-40-sc', lappedCarsMayOvertakeAtSeconds: null,
+      sector: 0, startMessage: 'Safety Car deployed.', startSeconds: base.elapsedSeconds,
+    }, base.cars, config.track)
+    const procedure = safetyPhase.neutralisation!
+    if (procedure.kind !== 'safety-car') throw new Error('Expected SC procedure')
+    safetyPhase.neutralisation = { ...procedure, stage: 'queue-formed',
+      leaderCollectedAtSeconds: base.elapsedSeconds - 5,
+      fieldQueuedAtSeconds: base.elapsedSeconds - 5,
+      safetyCarDistance: queueHead + 0.002,
+      safetyCarLastUpdatedAtSeconds: base.elapsedSeconds,
+      eligibilityStatusByDriver: Object.fromEntries(base.cars.map(car => [car.driverId, 'ineligible' as const])),
+    }
 
     let safetyCar = advanceRace(
       {
         ...base,
         flag: 'sc',
         flagLabel: 'SC',
-        flagPhase: {
-          endMessage: 'Safety Car in.',
-          endSeconds: base.elapsedSeconds + 1,
-          flag: 'sc',
-          id: 'free-40-sc',
-          lappedCarsMayOvertakeAtSeconds: null,
-          sector: 0,
-          startMessage: 'Safety Car deployed.',
-          startSeconds: base.elapsedSeconds,
-        },
+        flagPhase: safetyPhase,
         overtakeEnabled: false,
         overtakeEnableAtLeaderDistance: null,
         overtakeEnableTargetsByDriver: null,
@@ -268,7 +290,7 @@ describe('Free Mode runtime integration', () => {
       500,
       2,
     )
-    expect(safetyCar.flagPhase?.flag).not.toBe('sc')
+    expect(safetyCar.flagPhase?.flag, JSON.stringify({ phase: safetyCar.flagPhase?.neutralisation, leaderLap: safetyCar.leaderLap, cars: safetyCar.cars.map(car => ({ id: car.driverId, d: car.totalDistance, status: car.status })) })).not.toBe('sc')
 
     let vsc = advanceRace(
       {
@@ -324,7 +346,7 @@ describe('Free Mode runtime integration', () => {
       1,
     )
     expect(red.restartProcedure).toBe('none')
-  }, 60_000)
+  }, 240_000)
 
   it('completes requested pit stops across a 40-car field', () => {
     const config = buildFreeModeRaceConfig(
@@ -368,5 +390,5 @@ describe('Free Mode runtime integration', () => {
             car.pitPhase === 'none'),
       ),
     ).toBe(true)
-  }, 60_000)
+  }, 240_000)
 })

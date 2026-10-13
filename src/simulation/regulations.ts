@@ -422,10 +422,13 @@ export function resolveF1RechargeRule(options: {
     FIA_2026_REGULATION_PROFILE.energy.publicRechargeLimitMj
 
   if (options.allowUnverifiedSessionDefault) {
+    const additionalAllowanceMJ =
+      (sessionType === 'race' || sessionType === 'sprint') && options.overtakeAtLapStart === true
+        ? 0.5 : 0
     return {
-      additionalAllowanceMJ: 0,
+      additionalAllowanceMJ,
       baseLimitMJ: maximumRechargeMj,
-      limit: { kind: 'finite', maxCuKBusRechargeMj: maximumRechargeMj },
+      limit: { kind: 'finite', maxCuKBusRechargeMj: maximumRechargeMj + additionalAllowanceMJ },
       measuredAt: 'CU-K-HV-DC-bus',
       resolution: 'technical-default',
       ruleId: 'sim-free-mode-default',

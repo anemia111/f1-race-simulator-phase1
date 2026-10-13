@@ -164,11 +164,15 @@ describe('race session continuity', () => {
       elapsedLabel: '00:02:03',
       elapsedSeconds: 123,
     }
+    const nakayama = snapshot.cars.find(car => car.driverId === 'yuki_nakayama')!
+    nakayama.driverName = 'yukinakayama'
+    nakayama.code = 'YUK'
     const raw = serializeRaceCheckpoint('session-a', snapshot, now)
     const restored = parseRaceCheckpoint(raw, 'session-a', config, now + 1_000)
 
     expect(restored?.elapsedSeconds).toBe(123)
     expect(restored?.cars).toHaveLength(initialDrivers.length)
+    expect(restored?.cars.find(car => car.driverId === 'yuki_nakayama')).toMatchObject({driverName:'Yuki Nakayama',code:'NAK'})
     expect(f1Runtime(restored!.cars[0]).activeAeroState).toEqual(
       f1Runtime(snapshot.cars[0]).activeAeroState,
     )
@@ -1021,6 +1025,17 @@ describe('race session continuity', () => {
     ).toBeNull()
   })
 
+  it('allows only integration roundoff above harvested energy in superclip totals', () => {
+    const now = 1_800_000_000_000
+    for (const recovered of [0, 5e-8, -1e-8, 1e-6]) {
+      const checkpoint = mutableCheckpoint(now)
+      mutableF1Runtime(checkpoint).superClippingRecoveredThisLapMj = recovered
+      const restored = parseRaceCheckpoint(JSON.stringify(checkpoint), 'session-a', config, now)
+      if (recovered >= 0 && recovered <= 1e-7) expect(restored).not.toBeNull()
+      else expect(restored).toBeNull()
+    }
+  })
+
   it('rejects corrupted Phase 4 energy fields and derived displays', () => {
     const now = 1_800_000_000_000
     const corruptions: Array<(checkpoint: MutableCheckpoint) => void> = [
@@ -1183,7 +1198,8 @@ describe('race session continuity', () => {
 
     expect(raw).not.toBeNull()
     // Includes one complete, validated driver-agent replay record per car.
-    expect(raw!.length).toBeLessThan(1_650_000)
+    // UTF-16 storage plus compact three-lap telemetry stays below 4 MB.
+    expect(raw!.length*2).toBeLessThan(4_000_000)
     expect(
       snapshot.cars.some((car) => car.lapHistory.length >= 2),
     ).toBe(true)
@@ -1458,5 +1474,18 @@ describe('race session continuity', () => {
       )?.elapsedSeconds,
     ).toBe(84)
     expect(storage.getItem(RACE_CHECKPOINT_STORAGE_KEY)).not.toBeNull()
+  })
+})
+
+it('restores the previous stricter Free Mode Overtake budget without granting energy mid-lap', () => {
+  const now = 1_800_000_000_000
+  const freeConfig: RaceConfig = { ...config, freeMode:true, drivers:config.drivers.slice(0,1), weekendStage:'race' }
+  const snapshot = createInitialRace(freeConfig)
+  const saved = JSON.parse(serializeRaceCheckpoint('legacy-free-overtake',snapshot,now)!) as MutableCheckpoint
+  mutableF1Runtime(saved).overtakeRechargeAllowanceActiveThisLap = true
+  const restored = parseRaceCheckpoint(JSON.stringify(saved),'legacy-free-overtake',freeConfig,now)
+  expect(restored).not.toBeNull()
+  expect(f1Runtime(restored!.cars[0]).energyStore.rechargeRule).toMatchObject({
+    additionalAllowanceMJ:0,limit:{kind:'finite',maxCuKBusRechargeMj:8.5},ruleId:'sim-free-mode-default',
   })
 })

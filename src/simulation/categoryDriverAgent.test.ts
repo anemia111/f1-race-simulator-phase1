@@ -7,6 +7,7 @@ import {
   decideDriverBehaviorForPath,
   driverDecisionRecordCycleKey,
   evaluateCategoryDriverAgent,
+  latestCausalDriverObservations,
   resolveCategoryDrivingPolicy,
   resolveDriverDecisionPath,
 } from './categoryDriverAgent'
@@ -252,6 +253,17 @@ function evaluateForCategory(
 }
 
 describe('category driver-agent adapter', () => {
+  it('reuses immutable causal reductions while selecting newer observations in a new inbox', () => {
+    const observations = agentInputFor(categoryCases[0], contextFor(), ['old', 'new']).observations
+    const reduced = latestCausalDriverObservations(observations)
+    expect(reduced).toHaveLength(1)
+    expect(reduced[0].observedAtTick).toBe(Math.max(...observations.map(item => item.observedAtTick)))
+    expect(latestCausalDriverObservations(observations)).toBe(reduced)
+    expect(latestCausalDriverObservations(reduced)).toBe(reduced)
+    const newer = { ...reduced[0], observationId: 'observation:newest', observedAtTick: 999 }
+    expect(latestCausalDriverObservations([...observations, newer])).toEqual([newer])
+    expect(observations).toHaveLength(2)
+  })
   it('retains one record cycle per lap unless the intention changes', () => {
     const referenceAtStart = driverDecisionRecordCycleKey({
       absoluteDecisionWindow: 12,

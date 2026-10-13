@@ -1,3 +1,12 @@
+import { validTowEnergyPlan } from '../simulation/towEnergyTactics'
+import { validWheelBattle } from '../simulation/wheelBattle'
+import {validEngineeringPlan} from '../domain/raceEngineer'
+import {driverDisplayName, driverDisplayCode} from '../data/reviewedDriverRatings'
+import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
+import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
+import { validVehicleHandling } from '../simulation/vehicleHandling'
+import { createSfOtsSimulation } from '../simulation/sfOtsRuntime'
+import { simulationRechargeRuleFor, repairUnavailableSimRecharge } from '../simulation/simulationRechargePolicy'
 import type {
   CarSnapshot,
   EnergyStoreState,
@@ -6,6 +15,7 @@ import type {
   RechargeRuleDefinition,
   Team,
 } from '../types'
+import { parseStrategyDecisions } from '../simulation/decisionLog'
 import {
   activeAeroDisplayModeForState,
   createInitialActiveAeroState,
@@ -370,15 +380,19 @@ function authoritativeRechargeRulesFor(
   },
 ) {
   try {
-    return [
-      resolveF1RechargeRule({
+    const currentRule = simulationRechargeRuleFor(config, config.weekendStage ?? 'race', context)
+    const oldUnavailableRule = currentRule.ruleId === 'sim-session-default' ? resolveF1RechargeRule({
         ...context,
         eventId: config.eventId ?? undefined,
         eventInput: config.fiaPuEventInput,
         stage: config.weekendStage ?? 'race',
         trackId: config.track.id,
-      }),
-    ]
+      }) : null
+    // Older saves keep their stricter 8.5 MJ budget for the current lap only.
+    const legacyRule = config.freeMode === true && currentRule.ruleId === 'sim-free-mode-default' && currentRule.additionalAllowanceMJ === 0.5
+      ? { ...currentRule, additionalAllowanceMJ: 0, limit: { kind: 'finite' as const, maxCuKBusRechargeMj: currentRule.baseLimitMJ! } }
+      : null
+    return [currentRule,...(legacyRule?[legacyRule]:[]),...(oldUnavailableRule?.limit.kind==='unavailable'?[oldUnavailableRule]:[])]
   } catch {
     // An invalid supplied event input cannot authorize a checkpoint.
     return []
@@ -498,7 +512,8 @@ function isCompatibleEnergyStoreState(
 ) {
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, ENERGY_STORE_KEYS) ||
+    !hasExactKeys(value, new Set([...ENERGY_STORE_KEYS,...(Object.hasOwn(value,'pitChargedEnergyThisLapMJ')?['pitChargedEnergyThisLapMJ']:[])])) ||
+    (value.pitChargedEnergyThisLapMJ !== undefined && !isFiniteInRange(value.pitChargedEnergyThisLapMJ,0,100)) ||
     !ENERGY_STORE_NUMERIC_FIELDS.every((field) =>
       isFiniteNumber(value[field]),
     ) ||
@@ -621,8 +636,15 @@ function isCompatibleEnergyStoreState(
       state.deployedAtCuKBusThisLapMJ + ENERGY_EPSILON ||
     state.deployedAtCuKBusThisLapMJ >
       state.energyRemovedThisLapMJ + ENERGY_EPSILON ||
-    (state.chargeDcPowerKw > ENERGY_EPSILON &&
-      state.dischargeDcPowerKw > ENERGY_EPSILON) ||
+    // These powers are averages over the integration interval. A transition
+    // from recovery to deployment can legitimately give both positive means;
+    // exclusivity applies to the internal substeps, not to this checkpoint.
+    state.chargeDcPowerKw > state.actualRecoveryPowerKw + ENERGY_EPSILON ||
+    !approximatelyEqual(state.dischargeDcPowerKw, state.actualDeploymentDcPowerKw) ||
+    state.storedChargePowerKw > state.chargeDcPowerKw + ENERGY_EPSILON ||
+    state.dischargeDcPowerKw > state.storedDischargePowerKw + ENERGY_EPSILON ||
+    !approximatelyEqual(state.motorMechanicalPowerKw,
+      state.actualDeploymentPowerKw - state.actualRecoveryPowerKw) ||
     !approximatelyEqual(
       state.conversionLossThisLapMJ,
       state.unattributedConversionLossThisLapMJ +
@@ -633,7 +655,7 @@ function isCompatibleEnergyStoreState(
     !approximatelyEqual(
       state.energyBalanceErrorMJ,
       state.currentEnergyMJ -
-        (state.lapStartEnergyMJ +
+        (state.lapStartEnergyMJ + (isFiniteNumber(state.pitChargedEnergyThisLapMJ)?state.pitChargedEnergyThisLapMJ:0) +
           state.storedEnergyThisLapMJ -
           state.energyRemovedThisLapMJ),
     )
@@ -851,7 +873,9 @@ function isCompatibleF1RuntimeSystems(
     isFiniteInRange(
       value.superClippingRecoveredThisLapMj,
       0,
-      Number(value.energyStore.rechargedAtCuKBusThisLapMJ),
+      // Independent integration/splitting of these cumulative energies can
+      // differ by floating-point roundoff at a timing-line crossing.
+      Number(value.energyStore.rechargedAtCuKBusThisLapMJ) + ENERGY_EPSILON,
     ) &&
     hasCompatibleOvertakeAuthorization &&
     hasCompatibleSuperclipEpisode
@@ -896,7 +920,7 @@ function isCompatibleSuperFormulaLiveTires(
 ) {
   if (
     !isRecord(liveTires) ||
-    !hasExactKeys(liveTires, SUPER_FORMULA_LIVE_TIRE_KEYS) ||
+    !hasExactKeys(liveTires, new Set([...SUPER_FORMULA_LIVE_TIRE_KEYS, ...(Object.hasOwn(liveTires, 'simulatedPerformance') ? ['simulatedPerformance'] : [])])) ||
     !isRecord(liveTires.fitment) ||
     !hasExactKeys(
       liveTires.fitment,
@@ -932,10 +956,11 @@ function isCompatibleSuperFormulaLiveTires(
 function isCompatibleSuperFormulaRuntimeSystems(
   value: unknown,
   teamId: string,
+  trackId: string,
 ) {
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, SUPER_FORMULA_RUNTIME_KEYS) ||
+    !hasExactKeys(value, new Set([...SUPER_FORMULA_RUNTIME_KEYS, ...(Object.hasOwn(value,'otsSimulation') ? ['otsSimulation'] : [])])) ||
     value.kind !== 'super-formula' ||
     !validateSuperFormulaControlTireInventory(value.controlTires).valid ||
     !isCompatibleSuperFormulaLiveTires(value.controlTires, value.liveTires)
@@ -943,6 +968,13 @@ function isCompatibleSuperFormulaRuntimeSystems(
     return false
   }
 
+  if (value.otsSimulation !== undefined) {
+    const expected = createSfOtsSimulation(trackId), ots = value.otsSimulation
+    if (!expected || !isRecord(ots) || !hasExactKeys(ots,new Set(Object.keys(expected))) ||
+      !isFiniteNumber(ots.remainingSeconds) || ots.remainingSeconds<0 || ots.remainingSeconds>200 ||
+      !isFiniteNumber(ots.cooldownUntilSeconds) || ots.cooldownUntilSeconds<0 || typeof ots.active!=='boolean' ||
+      ots.cooldownSeconds!==expected.cooldownSeconds || ots.boostPowerKw!==expected.boostPowerKw || ots.source!==expected.source) return false
+  }
   const engine = validateSuperFormula2026EngineLedger(value.engineLedger)
   if (
     !engine.valid ||
@@ -1081,9 +1113,16 @@ function isCompatibleCarSnapshot(
           value.timedRunPhase,
           value.overtakeStatus,
         )
-      : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id)
+      : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id, config.track.id)
 
   return (
+    validTowEnergyPlan(value.towEnergyPlan, (options.currentObservationTick + 1) * 0.5) &&
+    (value.towEnergyPlan === undefined || (seriesId === 'f1-custom' && isRecord(value.towEnergyPlan) &&
+      value.towEnergyPlan.opponentId !== value.driverId && expectedDriverIds.has(String(value.towEnergyPlan.opponentId)))) &&
+    validWheelBattle(value.wheelBattle, (options.currentObservationTick + 1) * 0.5) &&
+    (value.wheelBattle === undefined || (isRecord(value.wheelBattle) && expectedDriverIds.has(String(value.wheelBattle.opponentId)))) &&
+    (value.handlingState === undefined || validVehicleHandling(value.handlingState)) &&
+    (value.telemetryHistory === undefined || (Array.isArray(value.telemetryHistory) && value.telemetryHistory.length<=1536 && value.telemetryHistory.every(point=>isRecord(point) && ['lap','progress','seconds','speedKph','throttlePercent','brakePercent','gear','rpm'].every(key=>isFiniteNumber(point[key])) && Number.isInteger(point.lap) && (point.lap as number)>=0 && (point.progress as number)>=0 && (point.progress as number)<1 && (point.speedKph as number)>=0 && (point.throttlePercent as number)>=0 && (point.throttlePercent as number)<=100 && (point.brakePercent as number)>=0 && (point.brakePercent as number)<=100))) &&
     typeof value.code === 'string' &&
     typeof value.status === 'string' &&
     carStatuses.has(value.status) &&
@@ -1293,8 +1332,11 @@ function migrateRaceSnapshot(
     config.vehicleEraId,
   )
 
-  return {
+  return repairSafetyCarStartTiming({
     ...value,
+    ...(value.strategyDecisions === undefined
+      ? {}
+      : { strategyDecisions: parseStrategyDecisions(value.strategyDecisions, value) }),
     cars: value.cars.map((car) => {
       const persisted = car as CarSnapshot &
         Partial<
@@ -1311,9 +1353,28 @@ function migrateRaceSnapshot(
       const lateralVelocityMps = persisted.lateralVelocityMps ?? 0
       const desiredLateralOffsetM =
         persisted.desiredLateralOffsetM ?? lateralOffsetM
+      const f1Runtime = car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
+      const repairedEnergyStore = f1Runtime?.energyStore.rechargeRule.limit.kind === 'unavailable'
+        ? repairUnavailableSimRecharge(f1Runtime.energyStore, simulationRechargeRuleFor(config, config.weekendStage ?? 'race', {
+            behindSafetyCar: f1Runtime.energyLapStartedBehindSafetyCar,
+            lowGripConditions: f1Runtime.energyLapStartedInLowGripConditions,
+            overtakeAtLapStart: f1Runtime.overtakeRechargeAllowanceActiveThisLap,
+            timedRunPhase: car.timedRunPhase,
+          })) : null
 
       return {
         ...car,
+        driverName: driverDisplayName(car.driverId, car.driverName),
+        code: driverDisplayCode(car.driverId, car.code),
+        engineeringPlan:validEngineeringPlan(car.engineeringPlan)&&car.engineeringPlan.positionHigh<=value.cars.length&&car.engineeringPlan.createdSeconds<=value.elapsedSeconds?car.engineeringPlan:undefined,
+        runtimeSystems:
+          car.runtimeSystems.kind === 'super-formula' &&
+          car.runtimeSystems.otsSimulation === undefined
+            ? {
+                ...car.runtimeSystems,
+                otsSimulation: createSfOtsSimulation(config.track.id),
+              }
+            : f1Runtime && repairedEnergyStore ? {...f1Runtime,energyStore:repairedEnergyStore} : car.runtimeSystems,
         desiredLateralOffsetM,
         driverAgentRuntime:
           car.driverAgentRuntime ??
@@ -1333,7 +1394,7 @@ function migrateRaceSnapshot(
         trackLateralOffset: lateralOffsetM,
       }
     }),
-  }
+  }, config.track.lengthKm)
 }
 
 function isCompatibleRaceSnapshot(
@@ -1460,7 +1521,7 @@ export function serializeRaceCheckpoint(
       sessionKey,
       snapshot,
       version: RACE_CHECKPOINT_VERSION,
-    } satisfies StoredRaceCheckpoint)
+    } satisfies StoredRaceCheckpoint,(key,value)=>key==='telemetryHistory' && Array.isArray(value)?encodeTelemetryHistory(value):value)
 
     return serialized.length <= MAX_CHECKPOINT_LENGTH ? serialized : null
   } catch {
@@ -1479,7 +1540,7 @@ export function parseRaceCheckpoint(
   }
 
   try {
-    const parsed = JSON.parse(raw) as unknown
+    const parsed = JSON.parse(raw,(key,value)=>key==='telemetryHistory'?decodeTelemetryHistory(value):value) as unknown
 
     if (
       !isRecord(parsed) ||

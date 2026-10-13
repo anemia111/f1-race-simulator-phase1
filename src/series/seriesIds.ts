@@ -16,6 +16,12 @@ export const DRIVER_SOURCE_SERIES_IDS = [
   ...EXECUTABLE_SERIES_IDS,
   'f2',
   'f3',
+  'kyojo',
+  'super-gt-gt500',
+  'super-gt-gt300',
+  'indycar',
+  'wec-hypercar',
+  'wec-lmgt3',
   'external',
 ] as const
 

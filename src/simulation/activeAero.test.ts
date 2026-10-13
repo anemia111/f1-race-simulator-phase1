@@ -593,7 +593,7 @@ describe('2026 F1 active-aero State of Deployment', () => {
     expect(aero.rear).toBe('straight')
   })
 
-  it('fails ERS deployment closed before integration when the low-grip curve is unavailable', () => {
+  it('uses a reduced SIM ERS envelope without enabling low-grip Overtake', () => {
     const snapshot = createInitialRace({
       drivers: initialDrivers,
       seed: 'low-grip-ers-unavailable',
@@ -603,7 +603,7 @@ describe('2026 F1 active-aero State of Deployment', () => {
     const car = {
       ...snapshot.cars[0],
       progress: zone.lowGripStart ?? zone.start,
-      speedKph: 220,
+      speedKph: 220, throttlePercent: 100, brakePercent: 0, clutchEngagementFraction: 1, turboSpoolFraction: 1,
       status: 'running' as const,
     }
     const telemetry = calculateCarTelemetry({
@@ -625,6 +625,8 @@ describe('2026 F1 active-aero State of Deployment', () => {
     if (telemetry.runtimeSystems.kind !== 'f1') {
       throw new Error('Expected F1 runtime telemetry')
     }
-    expect(telemetry.runtimeSystems.ersPowerKw).toBe(0)
+    expect(telemetry.runtimeSystems.ersPowerKw).toBeGreaterThan(0)
+    expect(telemetry.runtimeSystems.ersPowerKw).toBeLessThanOrEqual(175)
+    expect(telemetry.runtimeSystems.energyStore.energyRemovedThisLapMJ).toBeGreaterThan(0)
   })
 })

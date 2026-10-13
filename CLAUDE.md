@@ -17,24 +17,21 @@ Read `CLAUDE_HANDOFF.md` first. It is the canonical project status.
 
 - 24 verified tracks: 23 OpenF1-derived centerlines plus the official 2026
   MADRING organizer vector, with the amended 22-round championship status.
-- The canonical F1 performance CSV supplies 11 teams and a 22-car field,
-  including Cadillac, with two cars per team on a 0-100 scale. Preserve every
-  supplied value, including Ferrari `NAK` #31. Drivers without a seat stay in
-  the file as `reserve` rows so their authored axes survive; they are pooled
-  but never fielded.
-- `motorsportSeries2026.json` supplies the F2/F3/SF fields and rule packages;
-  preserve the 110-person relational pool and never subtract ratings at runtime.
-- Driver `overall` is one absolute scale shared by every category, so a driver
-  keeps their own rating wherever they race. The support-series fields are
-  stored already rebased against F1: F1 78-100, SF 66-79, F2 65-75, F3 54-66.
-  Rebase in the JSON if the ladder needs adjusting, never at runtime.
+- Original performance CSV/JSON artifacts remain evidence inputs. Runtime driver defaults
+  and the 348-person pool apply the authorized shared review overlay in
+  `src/data/driverRatingsReview2026.json`; see `docs/DRIVER_RATING_REVIEW.md`.
+  Ordinary maximum is100; only user-defined Nakayama Yuki may reach120.
+  Same identity keeps the same ability across every category, independently of cars.
+  Whole recognizable old default profiles migrate; preserve manual edits.
+  Exact ratings/skill splits are editorial SIM estimates; retained unverified rows
+  must not be presented as independently reassessed from real results.
 - Any pool driver can take a seat in any category from the data manager. Fields
   are fixed at `carCount`, so signing replaces a seat rather than adding one and
   the incoming driver inherits that seat's car number and team.
 - Complete FP/qualifying/sprint/race weekend surface with persisted setup,
   grids, tire inventory, and local championship state.
 - Free Mode is an independent application mode over the existing F1/F2/F3/SF
-  packages and race engine. It supports 1-40 cars from all 110 people and the
+  packages and race engine. It supports 1-40 cars from all 348 people and the
   F1/SF track union, stays SIM-only, and must not mutate championship progress
   or OpenF1 state.
 - Formation/grid/lights flow, real crossing-time lap records, measured Q/SQ

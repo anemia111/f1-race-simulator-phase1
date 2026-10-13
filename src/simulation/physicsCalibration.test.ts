@@ -151,10 +151,11 @@ describe('2026 observation split', () => {
     )
   })
 
-  it('uses every checked official F1 qualifying result and no estimates', () => {
+  it('keeps the original official holdout split frozen when later results arrive', () => {
     const observations = f1QualifyingLapObservations()
     const official = f1PaceCalibration2026.filter(
-      (record) => record.qualifying.status === 'official',
+      (record) => record.qualifying.status === 'official' &&
+        [...F1_PHYSICS_VALIDATION_SPLIT.calibration, ...F1_PHYSICS_VALIDATION_SPLIT.holdout].some(id => id === record.trackId),
     )
 
     expect(observations).toHaveLength(11)
@@ -171,14 +172,14 @@ describe('2026 observation split', () => {
     expect(summarizePaceCalibrationEvidence(f1PaceCalibration2026)).toEqual({
       compoundMedianRecords: 10,
       courseReferenceRecords: 4,
-      estimatedQualifyingRecords: 15,
+      estimatedQualifyingRecords: 10,
       estimatedRaceRecords: 16,
       eventRecords: 26,
       f1EventRecords: 26,
       observedFuelGainRecords: 0,
       observedRaceRecords: 10,
       observedTyreDegradationRecords: 10,
-      officialQualifyingRecords: 11,
+      officialQualifyingRecords: 16,
     })
   })
 })

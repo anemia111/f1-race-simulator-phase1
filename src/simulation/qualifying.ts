@@ -1,3 +1,4 @@
+import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 // Timed weekend sessions: practice builds setup confidence, qualifying runs
 // pit-release plans and ranks legal flying laps for the race grid.
 
@@ -14,7 +15,6 @@ import type {
 } from '../types'
 import { isF1SeriesRules, type SeriesRules } from '../series/types'
 import {
-  driverLimitBreakFraction,
   driverPerformanceAbility,
   driverSkillBlend,
 } from './driverAbility'
@@ -23,11 +23,11 @@ import {
   practiceSetupRecommendation,
 } from './engineering'
 import {
-  categoryPhysicsFor,
   resolveOperationalVehicleMass,
 } from './categoryPhysics'
 import { decideDriverBehaviorForPath } from './categoryDriverAgent'
-import { DRIVER_TRANSIENT_EFFICIENCY } from './physicalLap'
+import { f1PhysicsForTrack } from './f1CourseCalibration'
+import { freshCompoundGripFor } from './tireCompoundPace'
 import { DRIVER_DECISION_WINDOWS_PER_LAP } from './driverDecision'
 import { effectiveMachineReliability } from './machinePerformance'
 import {
@@ -45,7 +45,6 @@ import { tireTrackGripMultiplier } from './tires'
 import { createSuperFormulaControlTireInventory } from './superFormulaControlTires2026'
 import { gripForSurfaceWater } from './trackWater'
 import {
-  airDensityKgM3,
   baseFuelBurnKgPerLap,
   combustionPowerKwFor,
   vehicleDownforceMultiplier,
@@ -301,7 +300,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     trackGrip,
     weather,
   } = options
-  const categoryPhysics = categoryPhysicsFor(config.seriesId)
+  const categoryPhysics = config.seriesId === 'super-formula'
+    ? superFormulaPhysicsForTrack(config.track) : f1PhysicsForTrack(config.track)
   const operationalMass = resolveOperationalVehicleMass({
     f1NominalTyreMassKg: config.fiaNominalTyreMassKg ?? null,
     physics: categoryPhysics,
@@ -336,10 +336,7 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
     weather,
   )
   const result = simulatePhysicalLap(config.track, {
-    airDensityKgM3: airDensityKgM3({
-      altitudeMeters: config.track.altitudeMeters,
-      temperatureC: temperatures.airTemperatureC,
-    }),
+    airTemperatureC: temperatures.airTemperatureC,
     deploymentPowerKw: categoryPhysics.hybridDeploymentPowerLimitKw,
     eventId: config.eventId,
     fiaPuEventInput: config.fiaPuEventInput,
@@ -355,7 +352,8 @@ function timedPhysicalLap(options: TimedPhysicalLapOptions) {
       team,
       categoryTyreGrip === null
         ? surfaceGrip
-        : surfaceGrip * categoryTyreGrip,
+        : surfaceGrip * categoryTyreGrip *
+          (tire.kind === 'f1-pirelli-session-tire' ? freshCompoundGripFor(config.track, tire.compound) : 1),
     ),
     massKg: operationalMass.operationalMassKg + Math.max(0, fuelLoadKg),
     physics,
@@ -387,7 +385,7 @@ export function timedSessionRunAssemblyShortfallSeconds(options: {
   return (
     Math.abs(options.signedDraw) *
     options.lapTimeSeconds *
-    (0.004 + (1 - options.consistency) * 0.012)
+    Math.max(0, 0.004 + (1 - options.consistency) * 0.012)
   )
 }
 
@@ -412,12 +410,8 @@ export function timedSessionWetExecutionRiskScale(
  * relative to the force-derived lap. It does not read displayed overall
  * ratings or special-driver thresholds.
  *
- * A rating on the published scale can at best execute the reference lap
- * perfectly, so the loss floors at zero. A rating past the scale floors below
- * it, but only by the share of `DRIVER_TRANSIENT_EFFICIENCY` its excess buys:
- * the reference concedes 3 % of the friction limit to transients it cannot
- * model, and this is a claim on part of that, not a free lap-time bonus. At
- * 120 the excess is 0.2, worth 0.2 x 3.09 % of the lap.
+ * Abilities through 120 reduce execution losses through named controls. The
+ * physical reference remains the floor, without a second overall-rating bonus.
  */
 export function timedSessionDriverExecutionLossSeconds(
   options: TimedDriverExecutionOptions,
@@ -490,19 +484,10 @@ export function timedSessionDriverExecutionLossSeconds(
       wetRiskScale
   }
 
-  const limitBreak = driverLimitBreakFraction(options.driver)
-  const recoverableSeconds =
-    limitBreak > 0
-      ? plan.lapTimeSeconds *
-        limitBreak *
-        (1 / DRIVER_TRANSIENT_EFFICIENCY - 1)
-      : 0
-
   // The 12 windows above own local brake, throttle, line and control execution.
   // This separate draw owns only the non-negative whole-run assembly shortfall:
   // it is sampled once per run, folded by magnitude, and cannot improve the
-  // physical reference. Above-100 limit-break recovery remains the only path
-  // that can make the total adjustment negative.
+  // physical reference. Named controls already consume the full 0–120 range.
   const signedAssemblyDraw =
     hashChance(
       `${options.seed}:lap-execution:${options.driver.id}:${options.run}`,
@@ -521,10 +506,7 @@ export function timedSessionDriverExecutionLossSeconds(
       signedDraw: signedAssemblyDraw,
     })
 
-  return Math.max(
-    -recoverableSeconds,
-    lossSeconds + runAssemblyShortfallSeconds - recoverableSeconds,
-  )
+  return Math.max(0, lossSeconds + runAssemblyShortfallSeconds)
 }
 
 export function qualifyingCutSizes(driverCount: number) {

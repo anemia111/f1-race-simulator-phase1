@@ -1,3 +1,4 @@
+import {migrateFactoryDriverRating} from './data/reviewedDriverRatings'
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from './data/grid2026'
 import { tracks } from './data/tracks'
@@ -45,7 +46,7 @@ describe('V2 persistence migration', () => {
       qualifyingPace: 0.97,
       raceAwareness: 0.95,
     })
-    expect(restored[1].skills).toEqual(initialDrivers[1].skills)
+    expect(restored[1].skills).toEqual(migrateFactoryDriverRating(initialDrivers[1]).skills)
   })
 
   it('normalizes a legacy weekend against its saved track', () => {

@@ -5,6 +5,7 @@ import type {
   SectorFlagState,
 } from '../types'
 import { hashChance } from './random'
+import { clampDriverAbility, DRIVER_ABILITY_INTERNAL_MAX } from './driverAbility'
 import {
   FORMULA_VEHICLE_HALF_WIDTH_M,
   OVERTAKE_LATERAL_SAFETY_MARGIN_M,
@@ -49,6 +50,8 @@ export type DriverDecisionIntent =
   | 'dirty-air-avoidance'
   | 'tow-alignment'
   | 'blue-flag-yield'
+  | 'team-order-yield'
+  | 'timed-session-yield'
   | 'physical-reference-line'
 
 export type DriverDecisionRole =
@@ -64,6 +67,8 @@ export type DriverDecisionRole =
 
 export type DriverBattleCue = {
   active: boolean
+  /** An actually active category boost, never merely eligibility. */
+  boostActive?: boolean
   opponentId: string
   opponentLateralOffsetM: number
   /** Perceived longitudinal gap used by the causal observation layer. */
@@ -97,7 +102,10 @@ export type DriverEmergencyCue = {
  * only lifts while holding the racing line blocks the leader indefinitely.
  */
 export type DriverYieldCue = {
+  reason?: 'blue-flag' | 'team-order' | 'timed-session'
   active: boolean
+  /** Shared by a lapped train so adjacent cars clear the same corridor. */
+  preferredSide?: -1 | 1
   approachingId?: string
   /** Lateral offset of the car being let through. */
   approachingLateralOffsetM: number
@@ -164,6 +172,7 @@ function mean(...values: number[]): number {
 
 function weightedMean(
   values: ReadonlyArray<readonly [number, number]>,
+  maximum = 1,
 ): number {
   const weight = values.reduce((total, entry) => total + entry[1], 0)
 
@@ -171,17 +180,20 @@ function weightedMean(
     return 0.5
   }
 
-  return clamp01(
+  return clamp(
     values.reduce(
       (total, [value, entryWeight]) => total + value * entryWeight,
       0,
-    ) / weight,
+    ) / weight, 0, maximum,
   )
 }
 
 function skill(driver: Driver, key: keyof DriverSkillProfile): number {
-  return clamp01(finiteOr(driver.skills[key], 0.5))
+  return clampDriverAbility(finiteOr(driver.skills[key], 0.5))
 }
+
+const abilityMean = (values: ReadonlyArray<readonly [number, number]>) =>
+  weightedMean(values, DRIVER_ABILITY_INTERNAL_MAX)
 
 function unitStyle(value: number, fallback = 0.5): number {
   return clamp01(finiteOr(value, fallback))
@@ -197,20 +209,20 @@ function signedStyle(value: number): number {
  * overall, or any special-driver threshold.
  */
 export function driverBehaviorTraits(driver: Driver): DriverBehaviorTraits {
-  const reaction = weightedMean([
+  const reaction = abilityMean([
     [skill(driver, 'raceAwareness'), 0.34],
     [skill(driver, 'startSkill'), 0.22],
     [skill(driver, 'adaptability'), 0.2],
     [skill(driver, 'precision'), 0.14],
     [skill(driver, 'pressureHandling'), 0.1],
   ])
-  const brakingPrecision = weightedMean([
+  const brakingPrecision = abilityMean([
     [skill(driver, 'brakingSkill'), 0.48],
     [skill(driver, 'precision'), 0.3],
     [skill(driver, 'consistency'), 0.14],
     [skill(driver, 'mistakeResistance'), 0.08],
   ])
-  const throttlePrecision = weightedMean([
+  const throttlePrecision = abilityMean([
     [skill(driver, 'throttleControl'), 0.44],
     [skill(driver, 'tractionControl'), 0.28],
     [skill(driver, 'precision'), 0.16],
@@ -221,31 +233,31 @@ export function driverBehaviorTraits(driver: Driver): DriverBehaviorTraits {
     skill(driver, 'mediumSpeedCornerSkill'),
     skill(driver, 'highSpeedCornerSkill'),
   )
-  const lineAccuracy = weightedMean([
+  const lineAccuracy = abilityMean([
     [skill(driver, 'precision'), 0.4],
     [corneringSkill, 0.28],
     [skill(driver, 'raceAwareness'), 0.17],
     [skill(driver, 'consistency'), 0.15],
   ])
-  const tyreLimitUtilisation = weightedMean([
+  const tyreLimitUtilisation = abilityMean([
     [corneringSkill, 0.34],
     [skill(driver, 'rawPace'), 0.24],
     [skill(driver, 'tireManagement'), 0.2],
     [skill(driver, 'confidence'), 0.12],
     [skill(driver, 'carBalanceAdaptation'), 0.1],
   ])
-  const consistency = weightedMean([
+  const consistency = abilityMean([
     [skill(driver, 'consistency'), 0.48],
     [skill(driver, 'mistakeResistance'), 0.34],
     [skill(driver, 'pressureHandling'), 0.18],
   ])
-  const awareness = weightedMean([
+  const awareness = abilityMean([
     [skill(driver, 'raceAwareness'), 0.42],
     [skill(driver, 'trafficManagement'), 0.25],
     [skill(driver, 'adaptability'), 0.18],
     [skill(driver, 'pressureHandling'), 0.15],
   ])
-  const racecraft = weightedMean([
+  const racecraft = abilityMean([
     [skill(driver, 'racecraft'), 0.34],
     [skill(driver, 'overtakingSkill'), 0.2],
     [skill(driver, 'defendingSkill'), 0.2],
@@ -364,6 +376,13 @@ function activeWakeCue(cue: DriverWakeCue | undefined): boolean {
   return cue?.active === true && clamp01(finiteOr(cue.intensity, 0)) > 0
 }
 
+/** Line accuracy and traffic reading govern use of the same physical wake. */
+function towExecutionQuality(driver: Driver): number {
+  return abilityMean([[skill(driver,'trafficManagement'),0.35],
+    [skill(driver,'racecraft'),0.25],[skill(driver,'raceAwareness'),0.2],
+    [skill(driver,'precision'),0.2]]) / DRIVER_ABILITY_INTERNAL_MAX
+}
+
 function controlledFlag(
   flagState: DriverDecisionContext['flagState'],
 ): flagState is Exclude<FlagState, 'clear'> | 'double-yellow' {
@@ -388,6 +407,14 @@ function chooseBattleIntent(
   }
 
   if (attack && !defend) {
+    const tow = context.tow
+    const pullOutGap = context.attack?.boostActive
+      ? 1.15 : 1.05 - 0.45 * towExecutionQuality(context.driver)
+    if (activeWakeCue(tow) && tow!.opponentId === context.attack!.opponentId &&
+      Number.isFinite(tow!.gapSeconds) && tow!.gapSeconds! > pullOutGap &&
+      Math.abs(context.currentLateralOffsetM - tow!.opponentLateralOffsetM) < 0.9) {
+      return {intent:'tow-alignment',role:'tow',opponentId:tow!.opponentId}
+    }
     return {
       intent: 'attack',
       role: 'attack',
@@ -469,7 +496,7 @@ function chooseIntent(
   // against the very car it is being told to let past.
   if (context.yield?.active === true) {
     return {
-      intent: 'blue-flag-yield',
+      intent: context.yield.reason === 'team-order' ? 'team-order-yield' : context.yield.reason === 'timed-session' ? 'timed-session-yield' : 'blue-flag-yield',
       role: 'yield',
       opponentId: context.yield.approachingId,
     }
@@ -605,10 +632,13 @@ function nominalLineFor(
       // the attack cue opens at 1.8 s, so the whole train drove two metres off
       // the racing line for the entire lap.
       const commitment = clamp01(
-        intensity * 0.72 + traits.overtakeCommitment * 0.28,
+        intensity * 0.58 + traits.overtakeCommitment * 0.42,
       )
+      const closeCommittedMove = (intensity >= 0.6 && traits.overtakeCommitment >= 0.78) ||
+        (context.attack?.boostActive === true && finiteOr(context.attack.gapSeconds, Infinity) <= 1.1 && traits.overtakeCommitment >= 0.68)
       const separation = clamp(
-        1.25 + commitment * (PASSING_LATERAL_SEPARATION_M + 0.3 - 1.25),
+        closeCommittedMove ? PASSING_LATERAL_SEPARATION_M + 0.3 :
+          1.25 + commitment * (PASSING_LATERAL_SEPARATION_M + 0.3 - 1.25),
         1.25,
         PASSING_LATERAL_SEPARATION_M + 0.3,
       )
@@ -620,6 +650,9 @@ function nominalLineFor(
       )
     }
     case 'defend': {
+      // Once the rival occupies a separate lane, do not chase it sideways.
+      if (finiteOr(context.defend?.gapSeconds, Infinity) < 0.2 &&
+          Math.abs(current - finiteOr(context.defend?.opponentLateralOffsetM, current)) >= 1.6) return current
       const opponent = clamp(
         finiteOr(context.defend?.opponentLateralOffsetM, reference),
         -usableHalfWidthM,
@@ -649,7 +682,15 @@ function nominalLineFor(
         usableHalfWidthM,
       )
     }
+    case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield': {
+      // A preparation car keeps one refuge through a corner sequence. If the
+      // racing line bends toward that edge, the attacker shares the clearance
+      // by using the other side; switching refuge would cross its path.
+      if (context.yield?.reason === 'timed-session' && context.yield.preferredSide) {
+        return context.yield.preferredSide * usableHalfWidthM
+      }
       const approaching = clamp(
         finiteOr(context.yield?.approachingLateralOffsetM, reference),
         -usableHalfWidthM,
@@ -663,7 +704,7 @@ function nominalLineFor(
       const negativeFits = approaching - required >= -usableHalfWidthM
       const positiveFits = approaching + required <= usableHalfWidthM
       const side = negativeFits && positiveFits
-        ? openSide(context, chosen.role, chosen.opponentId, approaching)
+        ? (context.yield?.preferredSide ?? openSide(context, chosen.role, chosen.opponentId, approaching))
         : negativeFits
           ? -1
           : positiveFits
@@ -685,7 +726,7 @@ function nominalLineFor(
         usableHalfWidthM,
       )
       const intensity = clamp01(finiteOr(context.tow?.intensity, 0))
-      const alignment = clamp(0.55 + intensity * 0.35, 0.55, 0.9)
+      const alignment = clamp(0.42 + towExecutionQuality(context.driver) * 0.38 + intensity * 0.18, 0.42, 0.98)
 
       return opponent * alignment + reference * (1 - alignment)
     }
@@ -711,6 +752,8 @@ function nominalControls(intent: DriverDecisionIntent): {
         throttleTimingDeltaSeconds: 0,
         throttleOpeningScale: 1,
       }
+    case 'team-order-yield':
+    case 'timed-session-yield':
     case 'blue-flag-yield':
       // The blue-flag speed reduction is applied by the pace controller. What
       // belongs here is only the cost of driving offline while lifting.
@@ -803,11 +846,11 @@ export function decideDriverBehavior(
     chosen.opponentId,
     'line-error',
   )
-  const lineErrorEnvelopeM =
+  const lineErrorEnvelopeM = Math.max(0,
     0.015 +
     usableHalfWidthM *
       (0.035 + (1 - traits.lineAccuracy) * 0.14) *
-      (chosen.intent === 'emergency-avoidance' ? 0.45 : 1)
+      (chosen.intent === 'emergency-avoidance' ? 0.45 : 1))
   const continuousControlNoise = signedDecisionRoll(
     context,
     chosen.role,
@@ -820,8 +863,8 @@ export function decideDriverBehavior(
     traits.throttlePrecision,
     traits.consistency,
   )
-  const controlErrorEnvelope =
-    0.008 + (1 - controlPrecision) * 0.12 + (1 - traits.awareness) * 0.035
+  const controlErrorEnvelope = Math.max(0,
+    0.008 + (1 - controlPrecision) * 0.12 + (1 - traits.awareness) * 0.035)
   const battleIntensity =
     chosen.intent === 'attack'
       ? clamp01(finiteOr(context.attack?.intensity, 0))
@@ -876,7 +919,8 @@ export function decideDriverBehavior(
     desiredLateralOffsetM,
     lineErrorM,
     brakeOnsetDeltaSeconds: clamp(
-      nominalControl.brakeOnsetDeltaSeconds + controlError * 0.18,
+      nominalControl.brakeOnsetDeltaSeconds + controlError * 0.18 -
+        (chosen.intent === 'attack' ? clamp01(traits.brakingPrecision) * clamp01(traits.overtakeCommitment) * 0.045 : 0),
       -0.2,
       0.5,
     ),

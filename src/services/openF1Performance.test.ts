@@ -157,3 +157,18 @@ describe('OpenF1 tire calibration', () => {
     expect(calibration.medianPitStopsPerDriver).toBe(1)
   })
 })
+
+it('uses only race visits with known stationary time for pit transit calibration', () => {
+  const bundle=tireCalibrationBundle()
+  bundle.pit=[
+    {driver_number:1,lap_number:10,lane_duration:19,stop_duration:3},
+    {driver_number:2,lap_number:11,lane_duration:700,stop_duration:null},
+    {driver_number:3,lap_number:12,lane_duration:1200,stop_duration:3},
+    {driver_number:4,lap_number:12,lane_duration:2,stop_duration:5},
+  ]
+  expect(buildOpenF1TrackCalibration(bundle).pitLaneTransitSeconds).toBe(16)
+  const qualifying={...bundle,selectedSession:{...bundle.selectedSession!,session_type:'Qualifying',session_name:'Qualifying'},requestedStage:'qualifying' as const}
+  expect(buildOpenF1TrackCalibration(qualifying).pitLaneTransitSeconds).toBeNull()
+  const practice={...bundle,selectedSession:{...bundle.selectedSession!,session_type:'Practice',session_name:'Practice 1'}}
+  expect(buildOpenF1TrackCalibration(practice).pitLaneTransitSeconds).toBeNull()
+})

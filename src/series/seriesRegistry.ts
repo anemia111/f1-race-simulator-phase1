@@ -1,3 +1,4 @@
+import {reviewFactoryDriver, reviewPoolDriver} from '../data/reviewedDriverRatings'
 import seriesDataJson from '../data/motorsportSeries2026.json'
 import { expandedDriverSkills, type CompactDriverRatings } from '../data/driverProfiles'
 import { initialDrivers, initialTeams } from '../data/grid2026'
@@ -53,6 +54,7 @@ import {
   type DriverSourceRole,
 } from './driverPool'
 import { resolveRuntimeVehicleEra } from './vehicleEraRegistry'
+import { appendImportedDriverRatings } from './importedDriverRatings'
 
 const DATA_FILE = 'src/data/motorsportSeries2026.json'
 
@@ -1071,7 +1073,7 @@ export const seriesPackages: SeriesPackage[] = rawData.series.map((definition) =
   const pkg: SeriesPackage = {
     calendar: definition.calendar,
     carCount: definition.carCount,
-    drivers: field.drivers,
+    drivers: field.drivers.map(reviewFactoryDriver),
     id: definition.id,
     label: definition.label,
     rules: definition.rules,
@@ -1346,11 +1348,13 @@ for (const reserve of rawData.reserves) {
   mergePoolRecord(poolRecordFromReserve(reserve))
 }
 
-export const driverPool2026 = validateDriverPool([...poolById.values()], {
+export const originalDriverPool2026 = validateDriverPool([...poolById.values()], {
   expectedIdentityCount: 110,
   expectedProvenanceBySourceSeries: { f2: 22, f3: 30 },
   expectedProvenanceCount: 111,
 })
+
+export const driverPool2026 = validateDriverPool(appendImportedDriverRatings(originalDriverPool2026).map(reviewPoolDriver))
 
 export type SeatAssignment = {
   carNumber: number

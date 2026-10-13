@@ -31,6 +31,13 @@ const ENERGY_INTEGRATION_STEP_SECONDS = 0.5
 // the ideal endpoint of the existing formulas instead of reading it again.
 const IDEAL_DRIVER_ENERGY_EXECUTION = 1
 
+/** User-selected SIM pit service; preserve the on-track lap recharge cap. */
+export function fullyChargeEnergyStoreInPit(state: EnergyStoreState): EnergyStoreState {
+  const addedEnergyMJ = Math.max(0, state.maximumUsableEnergyMJ - state.currentEnergyMJ)
+  return {...state,currentEnergyMJ:state.maximumUsableEnergyMJ,stateOfCharge:1,
+    pitChargedEnergyThisLapMJ:(state.pitChargedEnergyThisLapMJ??0)+addedEnergyMJ}
+}
+
 export const INITIAL_ENERGY_STORE_STATE_OF_CHARGE = 1
 
 /**
@@ -441,6 +448,7 @@ export function startNextEnergyLap(
     unattributedConversionLossThisLapMJ: 0,
     conversionLossThisLapMJ: 0,
     lapStartEnergyMJ: state.currentEnergyMJ,
+    ...(state.pitChargedEnergyThisLapMJ === undefined ? {} : {pitChargedEnergyThisLapMJ:0}),
     lastStepBalanceErrorMJ: 0,
     energyBalanceErrorMJ: 0,
     deploymentRequest: 0,
@@ -688,6 +696,7 @@ export function rebaseEnergyStoreAtLapCrossing(options: {
       unattributedConversionLossThisLapMJ: 0,
       conversionLossThisLapMJ: acceptedConversionLossMJ,
       lapStartEnergyMJ: interpolatedLapStartEnergyMJ,
+      ...(integratedState.pitChargedEnergyThisLapMJ === undefined ? {} : {pitChargedEnergyThisLapMJ:0}),
       lastStepBalanceErrorMJ: Math.max(
         Math.abs(storeBalanceErrorMJ),
         Math.abs(conversionChainErrorMJ),
@@ -1252,7 +1261,7 @@ function advanceEnergyStoreSubstep(
   const inverterLossThisLapMJ = state.inverterLossThisLapMJ + inverterLossMJ
   const motorLossThisLapMJ = state.motorLossThisLapMJ + motorLossMJ
   const balanceExpectedMJ =
-    state.lapStartEnergyMJ +
+    state.lapStartEnergyMJ + (state.pitChargedEnergyThisLapMJ ?? 0) +
     storedEnergyThisLapMJ -
     energyRemovedThisLapMJ
   const storeBalanceErrorMJ =
@@ -1677,7 +1686,7 @@ export function advanceEnergyStore(
 export function energyBalanceErrorMJ(state: EnergyStoreState) {
   return (
     state.currentEnergyMJ -
-    (state.lapStartEnergyMJ +
+    (state.lapStartEnergyMJ + (state.pitChargedEnergyThisLapMJ ?? 0) +
       state.storedEnergyThisLapMJ -
       state.energyRemovedThisLapMJ)
   )

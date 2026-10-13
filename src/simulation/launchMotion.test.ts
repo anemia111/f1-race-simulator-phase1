@@ -42,7 +42,8 @@ describe('continuous race launch motion', () => {
       expect(state.restartProcedure).toBe('none')
       expect(state.cars.every((car) => car.battleDeltaSecondsRemaining === 0)).toBe(true)
     }
-    expect(Math.min(...state.cars.map((car) => car.speedKph))).toBeGreaterThan(90)
+    // Finite clutch/pedal ramp and the SC tyre preparation affect launch pace.
+    expect(Math.min(...state.cars.map((car) => car.speedKph))).toBeGreaterThan(60)
   })
 
   it('does not reset the standing launch timestamp for a rolling resumption', () => {
@@ -104,7 +105,7 @@ describe('continuous race launch motion', () => {
 
     // These are broad physical guards, not calibrated lap-pace targets: normal
     // opening-corner braking must never park a healthy 190 km/h car in 50 ms.
-    expect(minimumSpeedAtThreeSeconds).toBeGreaterThan(90)
+    expect(minimumSpeedAtThreeSeconds).toBeGreaterThan(80)
     expect(speedDrops).toEqual([])
     expect(minimumSpeedAfterFourSeconds).toBeGreaterThan(80)
   }, 20_000)

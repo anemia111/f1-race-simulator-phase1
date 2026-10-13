@@ -1,4 +1,4 @@
-import type { PitPhase, Team, TrackDefinition } from '../types'
+import type { CarSnapshot, PitPhase, Team, TrackDefinition } from '../types'
 
 export const DEFAULT_PIT_BOX_START_PROGRESS = 0.976
 export const DEFAULT_PIT_BOX_SPACING_PROGRESS = 0.0017
@@ -65,26 +65,37 @@ export function forwardProgressBetween(
   return (start + wrappedProgressSpan(start, end) * fraction) % 1
 }
 
+/** Exit decoration is retained after the car is already back on the course. */
+export function pitEntryDrivingRequested(car: Pick<CarSnapshot, 'status' | 'pitPhase'>) {
+  return car.pitPhase !== 'none' && !(car.status === 'running' && car.pitPhase === 'exit')
+}
+
 export function pitLaneMotionAt(
   pitFraction: number,
   entryProgress: number,
   boxProgress: number,
   exitProgress: number,
+  timing?: { durationSeconds: number; serviceSeconds: number },
 ): { phase: Extract<PitPhase, 'lane' | 'box' | 'exit'>; progress: number } {
   const fraction = Math.min(1, Math.max(0, pitFraction))
 
-  if (fraction < PIT_LANE_ARRIVAL_FRACTION) {
+  const serviceFraction = timing ? Math.min(1, Math.max(0, timing.serviceSeconds / Math.max(0.001, timing.durationSeconds))) : null
+  const entryShare = wrappedProgressSpan(entryProgress, boxProgress) / Math.max(0.000001, wrappedProgressSpan(entryProgress, exitProgress))
+  const arrival = serviceFraction === null ? PIT_LANE_ARRIVAL_FRACTION : (1 - serviceFraction) * Math.min(1, entryShare)
+  const serviceEnd = serviceFraction === null ? PIT_SERVICE_END_FRACTION : arrival + serviceFraction
+
+  if (fraction < arrival) {
     return {
       phase: 'lane',
       progress: forwardProgressBetween(
         entryProgress,
         boxProgress,
-        fraction / PIT_LANE_ARRIVAL_FRACTION,
+        fraction / Math.max(0.000001, arrival),
       ),
     }
   }
 
-  if (fraction < PIT_SERVICE_END_FRACTION) {
+  if (fraction < serviceEnd) {
     return { phase: 'box', progress: boxProgress }
   }
 
@@ -93,8 +104,8 @@ export function pitLaneMotionAt(
     progress: forwardProgressBetween(
       boxProgress,
       exitProgress,
-      (fraction - PIT_SERVICE_END_FRACTION) /
-        (1 - PIT_SERVICE_END_FRACTION),
+      (fraction - serviceEnd) /
+        Math.max(0.000001, 1 - serviceEnd),
     ),
   }
 }

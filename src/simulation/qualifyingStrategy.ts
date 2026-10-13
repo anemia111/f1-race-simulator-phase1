@@ -1,12 +1,9 @@
 import type {
-  Driver,
   QualifyingReleaseStrategy,
   RaceConfig,
-  Team,
   TimedSessionSegmentPlan,
   WeekendStage,
 } from '../types'
-import { effectiveMachineRating } from './machinePerformance'
 import { hashChance } from './random'
 import { weatherForecastFor } from './weather'
 
@@ -26,12 +23,6 @@ type QualifyingReleaseScheduleOptions = {
   stage: Extract<WeekendStage, 'qualifying' | 'sprintQualifying'>
 }
 
-type ReleaseCandidate = {
-  driver: Driver
-  orderScore: number
-  team: Team
-}
-
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
@@ -39,54 +30,10 @@ function qualifyingRunLimit(segmentName: string) {
   return segmentName === 'Q3' || segmentName === 'SQ3' ? 2 : 3
 }
 
-function orderWithoutTeammateStacking(candidates: ReleaseCandidate[]) {
-  const sorted = candidates.slice().sort((left, right) =>
-    left.orderScore === right.orderScore
-      ? left.driver.id.localeCompare(right.driver.id)
-      : left.orderScore - right.orderScore,
-  )
-  const queuesByTeam = new Map<string, ReleaseCandidate[]>()
-
-  for (const candidate of sorted) {
-    const queue = queuesByTeam.get(candidate.team.id) ?? []
-
-    queue.push(candidate)
-    queuesByTeam.set(candidate.team.id, queue)
-  }
-
-  const ordered: ReleaseCandidate[] = []
-
-  while (ordered.length < candidates.length) {
-    const previousTeamId = ordered.at(-1)?.team.id
-    const nonEmptyTeams = [...queuesByTeam.entries()].filter(
-      ([, queue]) => queue.length > 0,
-    )
-    const alternativeTeams = nonEmptyTeams.filter(
-      ([teamId]) => teamId !== previousTeamId,
-    )
-    const candidateTeams =
-      alternativeTeams.length > 0 ? alternativeTeams : nonEmptyTeams
-    candidateTeams.sort((left, right) =>
-      right[1].length === left[1].length
-        ? left[1][0].orderScore - right[1][0].orderScore
-        : right[1].length - left[1].length,
-    )
-    const selected = candidateTeams[0]?.[1].shift()
-
-    if (!selected) {
-      break
-    }
-
-    ordered.push(selected)
-  }
-
-  return ordered
-}
-
 /**
- * Creates one deterministic FIA-style pit release wave for a qualifying run.
- * Teams trade an early banker against later track evolution while a shared
- * slot allocator keeps the expected flying laps out of the same traffic gap.
+ * Independent SIM team readiness windows, with only pit-exit separation shared.
+ * Run-specific decisions preserve seeded replay without prescribing a field-wide
+ * queue ordered by team strength. On-track preparation owns the clean-air gap.
  */
 export function buildQualifyingReleaseSchedule({
   config,
@@ -129,20 +76,25 @@ export function buildQualifyingReleaseSchedule({
       : finalRun
         ? 'track-evolution'
         : 'traffic-gap'
+  const releaseWindowSeconds = Math.min(
+    Math.max(0, latestPitExitAtSeconds - segment.startsAtSeconds - 18),
+    rainThreat ? 45 : finalRun ? 125 : 180,
+  )
+  const earliestWindowStart = segment.startsAtSeconds + (rainThreat ? 10 : 18)
+  const windowStart = rainThreat || runIndex === 0
+    ? earliestWindowStart
+    : finalRun
+      ? Math.max(earliestWindowStart, latestPitExitAtSeconds - releaseWindowSeconds - 12)
+      : Math.max(earliestWindowStart, segment.startsAtSeconds + durationSeconds * runIndex / runLimit - 30)
   const candidates = config.drivers
     .filter((driver) => participants.has(driver.id))
-    .map<ReleaseCandidate>((driver) => {
+    .map((driver) => {
       const team = teams.get(driver.teamId)
 
       if (!team) {
         throw new Error(`Missing team for qualifying release driver ${driver.id}`)
       }
 
-      // Pit release is a team operation. The machine contribution, crew
-      // confidence and existing deterministic planning variation remain; the
-      // removed driver-ability contribution is not reassigned or refitted.
-      const machineCompetitiveness =
-        effectiveMachineRating(team.machine.qualifyingPace) * 0.48
       const teamRisk = hashChance(
         `${config.seed}:qualifying-release-risk:${stage}:${segment.name}:${team.id}:${runIndex}`,
       )
@@ -150,42 +102,20 @@ export function buildQualifyingReleaseSchedule({
         `${config.seed}:qualifying-release-order:${stage}:${segment.name}:${driver.id}:${runIndex}`,
       )
       const operationalConfidence = clamp(team.pitCrewSpeed, 0.5, 1.1)
-      const orderScore = rainThreat
-        ? -operationalConfidence * 0.25 + releaseVariation * 0.2
-        : runIndex === 0
-          ? machineCompetitiveness * 0.56 +
-            teamRisk * 0.2 +
-            releaseVariation * 0.24
-          : machineCompetitiveness * 0.62 +
-            teamRisk * 0.25 +
-            releaseVariation * 0.13
-
-      return { driver, orderScore, team }
+      const readiness = clamp(teamRisk * 0.6 + releaseVariation * 0.4 + (1 - operationalConfidence) * 0.08, 0, 1)
+      return { driver, desiredAt: windowStart + readiness * releaseWindowSeconds }
     })
-  const ordered = orderWithoutTeammateStacking(candidates)
+  const ordered = candidates.sort((left, right) => left.desiredAt - right.desiredAt || left.driver.id.localeCompare(right.driver.id))
   const waveLengthSeconds = Math.max(
     0,
     (ordered.length - 1) * targetTrafficGapSeconds,
   )
-  const earliestWindowStart = segment.startsAtSeconds + (rainThreat ? 10 : 18)
-  let windowStart = earliestWindowStart
-
-  if (!rainThreat && finalRun) {
-    windowStart = latestPitExitAtSeconds - waveLengthSeconds
-  } else if (!rainThreat && runIndex > 0) {
-    const targetCenter =
-      segment.startsAtSeconds + durationSeconds * (runIndex / runLimit + 0.14)
-    windowStart = targetCenter - waveLengthSeconds / 2
-  }
-
-  windowStart = clamp(
-    windowStart,
-    earliestWindowStart,
-    Math.max(earliestWindowStart, latestPitExitAtSeconds - waveLengthSeconds),
-  )
-
+  let previousExit = earliestWindowStart - targetTrafficGapSeconds
   return ordered.map((candidate, index) => {
-    let pitExitAtSeconds = windowStart + index * targetTrafficGapSeconds
+    // Reserve enough space for the remaining cars instead of clamping several
+    // delayed cars onto the same last-second release timestamp.
+    const latestSlot = latestPitExitAtSeconds - waveLengthSeconds + index * targetTrafficGapSeconds
+    let pitExitAtSeconds = Math.min(latestSlot, Math.max(previousExit + targetTrafficGapSeconds, candidate.desiredAt))
 
     if (
       segment.suspensionStartsAtSeconds !== null &&
@@ -197,7 +127,8 @@ export function buildQualifyingReleaseSchedule({
         segment.suspensionEndsAtSeconds + index * targetTrafficGapSeconds
     }
 
-    pitExitAtSeconds = Math.min(latestPitExitAtSeconds, pitExitAtSeconds)
+    pitExitAtSeconds = Math.min(latestSlot, pitExitAtSeconds)
+    previousExit = pitExitAtSeconds
 
     return {
       driverId: candidate.driver.id,

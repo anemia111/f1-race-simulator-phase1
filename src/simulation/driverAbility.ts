@@ -7,12 +7,27 @@ export const DRIVER_ABILITY_SCALE_MAX = 100
  * make the whole grid slower rather than one driver faster.
  */
 export const DRIVER_ABILITY_LIMIT_BREAK_MAX = 120
-export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_LIMIT_BREAK_MAX
+export const CURRENT_DRIVER_ABILITY_CEILING = DRIVER_ABILITY_SCALE_MAX
+export const driverAbilityCeiling = (id: string) => id === 'yuki_nakayama' ? DRIVER_ABILITY_LIMIT_BREAK_MAX : DRIVER_ABILITY_SCALE_MAX
+export const clampPersonAbility = (id: string, value: number) => Math.min(driverAbilityCeiling(id) / 100, clampDriverAbility(value))
 export const DRIVER_ABILITY_INTERNAL_MAX = DRIVER_ABILITY_LIMIT_BREAK_MAX / 100
 export const DRIVER_ABILITY_SCALE_INTERNAL_MAX = DRIVER_ABILITY_SCALE_MAX / 100
 export const DRIVER_ABILITY_INTERNAL_MIN = 0
 export const DRIVER_PERFORMANCE_INTERNAL_MIN = 0.55
-export const DRIVER_PERFORMANCE_INTERNAL_MAX = 1
+// Keep the existing 0–100 mapping; extend its slope through 120.
+export const DRIVER_PERFORMANCE_INTERNAL_MAX =
+  DRIVER_PERFORMANCE_INTERNAL_MIN + (1 - DRIVER_PERFORMANCE_INTERNAL_MIN) * DRIVER_ABILITY_INTERNAL_MAX
+
+/** Upgrade only untouched authored Nakayama defaults, preserving custom tunes. */
+export function migrateLegacyNakayamaAbility(driver: Driver, current: Driver): Driver {
+  if (driver.id !== 'yuki_nakayama' || current.id !== driver.id
+    || !Object.values(current.skills).every(value => value === 1.2)) return driver
+  const values = Object.values(driver.skills)
+  if (values.length !== Object.keys(current.skills).length) return driver
+  if (!values.every(value => value === 1.05) && !values.every(value => value === 1.1)) return driver
+  return { ...driver, skills: { ...current.skills },
+    potential: driver.potential === 1.05 || driver.potential === 1.1 ? current.potential : driver.potential }
+}
 export const DRIVER_ABILITY_STATS = [
   'rawPace',
   'qualifyingPace',
@@ -134,29 +149,36 @@ export function driverAbilityPoints(value: number): number {
   return Math.round(clampDriverAbility(value) * 100)
 }
 
+/**
+ * Shared driver execution reserves part of the existing tyre envelope. The full
+ * supported ability range reaches the envelope at 120, rather than saturating
+ * at 100. A 100-rated execution retains a 3% transient reserve; 120 can use
+ * the full envelope. This scales available forces, never the tyre's maximum,
+ * power, measured lap time or classification.
+ */
+export function driverTyreEnvelopeUtilisation(ability: number): number {
+  return 0.82 + 0.18 * clampDriverAbility(ability) / DRIVER_ABILITY_INTERNAL_MAX
+}
+/** Compatibility export; all categories use the shared execution policy. */
+export const f1DriverTyreEnvelopeUtilisation = driverTyreEnvelopeUtilisation
+
 export function driverAbilityValue(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  return clampDriverAbility(driver.skills[stat])
+  return clampPersonAbility(driver.id, driver.skills[stat])
 }
 
-/** Named raw-scale consumers saturate at the published 100-point ceiling. */
+/** Named raw-scale consumers retain authored ability through 120. */
 export function driverPublishedAbilityValue(
   driver: Driver,
   stat: DriverTunableStat,
 ): number {
-  return Math.min(
-    DRIVER_ABILITY_SCALE_INTERNAL_MAX,
-    driverAbilityValue(driver, stat),
-  )
+  return driverAbilityValue(driver, stat)
 }
 
 export function driverPerformanceValue(value: number): number {
-  const rating = Math.min(
-    DRIVER_ABILITY_SCALE_INTERNAL_MAX,
-    clampDriverAbility(value),
-  )
+  const rating = clampDriverAbility(value)
   const normalized =
     (rating - DRIVER_ABILITY_INTERNAL_MIN) /
     (DRIVER_ABILITY_SCALE_INTERNAL_MAX - DRIVER_ABILITY_INTERNAL_MIN)
@@ -164,7 +186,7 @@ export function driverPerformanceValue(value: number): number {
   return (
     DRIVER_PERFORMANCE_INTERNAL_MIN +
     normalized *
-      (DRIVER_PERFORMANCE_INTERNAL_MAX - DRIVER_PERFORMANCE_INTERNAL_MIN)
+      (1 - DRIVER_PERFORMANCE_INTERNAL_MIN)
   )
 }
 
@@ -208,20 +230,16 @@ export function driverConfiguredOverallAbilityPoints(driver: Driver): number {
     return driverOverallAbilityPoints(driver)
   }
 
-  // Bounded by the limit-break ceiling rather than the published scale, so a
-  // rating deliberately placed past 100 is displayed as authored. Named
-  // performance paths saturate at 100; only driverLimitBreakFraction consumes
-  // the authored excess.
+  // Display the same 0–120 range used by named runtime consumers.
   return Math.round(
-    Math.min(DRIVER_ABILITY_LIMIT_BREAK_MAX, Math.max(0, configuredOverall)),
+    Math.min(driverAbilityCeiling(driver.id), Math.max(0, configuredOverall)),
   )
 }
 
 /**
- * Converts the published 0-100 source/editor scale into the 0.55-1.00
- * execution range used by the physics and strategy models. A rating of 100
- * means ideal execution; values above 100 remain saturated here and cannot add
- * grip, power, tire life, reliability, or a second named-path advantage.
+ * Converts 0–120 ability into the 0.55–1.09 execution range. Values at or
+ * below 100 retain their original mapping. Consumers still enforce physical
+ * actuator, tyre and energy limits independently of driver ability.
  */
 export function driverPerformanceAbility(
   driver: Driver,
@@ -260,13 +278,8 @@ export function driverSkillBlend(
  * How far past the published scale a driver's rating sits, as a fraction of
  * the scale. Zero for every rating up to 100, 0.2 at 120.
  *
- * The quasi-steady reference lap deliberately gives away
- * `DRIVER_TRANSIENT_EFFICIENCY` worth of grip to yaw inertia, load-transfer
- * settling and steering corrections. A rating on the published scale can at
- * best execute that lap perfectly, which is why a driver at 100 already loses
- * nothing and cannot be made faster by raising the number. This fraction is
- * the only handle a rating above the scale has: it recovers part of what the
- * reference conceded, and nothing more.
+ * Diagnostic only: execution uses the named abilities directly, without an
+ * additional overall-rating lap-time bonus.
  */
 export function driverLimitBreakFraction(driver: Driver): number {
   const abilities = DRIVER_ABILITY_STATS.map((stat) =>

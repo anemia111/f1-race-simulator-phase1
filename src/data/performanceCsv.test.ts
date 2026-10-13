@@ -92,7 +92,7 @@ describe('CSV performance source of truth', () => {
     // DRIVER_ABILITY_LIMIT_BREAK_MAX. Everyone else stays on 0-100.
     expect(driverOverallAbilityPoints(nakayama)).toBe(120)
     expect(driverConfiguredOverallAbilityPoints(nakayama)).toBe(120)
-    expect(driverPerformanceAbility(nakayama, 'rawPace')).toBe(1)
+    expect(driverPerformanceAbility(nakayama, 'rawPace')).toBeCloseTo(1.09)
     expect(driverLimitBreakFraction(nakayama)).toBeCloseTo(0.2, 10)
     expect(driverOverallAbilityPoints(verstappen)).toBe(95)
     expect(driverConfiguredOverallAbilityPoints(verstappen)).toBe(95)

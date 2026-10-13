@@ -75,12 +75,12 @@ describe('physical track contract', () => {
 
     expect(physical.fieldProvenance.lapLengthMeters.source).toBe('official')
     expect(physical.fieldProvenance.elevationMeters).toMatchObject({
-      confidence: 'medium',
-      method: 'public-elevation-grid-interpolation',
-      source: 'observed',
+      confidence: 'low',
+      method: 'digitized-official-road-profile',
+      source: 'derived',
     })
     expect(physical.fieldProvenance.elevationMeters.sourceLabel).toContain(
-      'Geospatial Information Authority of Japan',
+      'digitized-official-road-elevation-profile',
     )
     expect(physical.fieldProvenance.grade).toMatchObject({
       confidence: 'low',

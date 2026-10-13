@@ -1,0 +1,1788 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "6cc4e08",
+  "generatedAt": "2026-10-11T04:30:16.476Z",
+  "sourceFingerprint": "sha256:0199d52c51b0e5ae64c8f92cc8c9d739c00daf263a31e1ff9e35413bb807a437",
+  "conditions": "Isolated driver 100, neutral machine axes 0.86, dry Q1, fixed seed per course, first two valid timed laps. SIM setup/temperature/tyre preparation remain active. Not an official top-three classification.",
+  "calibrationSeed": 0,
+  "independentSeeds": [
+    1,
+    2
+  ],
+  "summary": {
+    "layouts": 49,
+    "targetedLayouts": 30,
+    "unavailableLayouts": 19,
+    "beforeMeanAbsoluteErrorSeconds": 3.7634496467448733,
+    "medianMeanAbsoluteErrorSeconds": 0.2011568002283667,
+    "medianMaximumAbsoluteErrorSeconds": 0.6020117280426973,
+    "independentSeedMeanAbsoluteErrorSeconds": 0.24373845405499328,
+    "independentSeedMaximumAbsoluteErrorSeconds": 0.819665975081449
+  },
+  "rows": [
+    {
+      "id": "yas-marina-approx",
+      "name": "Yas Marina Circuit",
+      "native": true,
+      "lengthKm": 5.281,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 85.84,
+      "uncalibratedSeconds": 85.192178187283,
+      "calibratedReferenceSeconds": 84.68533576732315,
+      "effectiveContactCoefficient": 1.7703954776399689,
+      "referenceResidualSeconds": -1.1546642326768506,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 85.0526719240998,
+      "liveReferenceResidualSeconds": -0.6020117280426973,
+      "beforeSeconds": 88.19647358219086,
+      "liveMedianSeconds": 85.2379882719573,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 85.0526719240998,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 85.589458595412,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 85.2379882719573,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "albert-park-approx",
+      "name": "Albert Park",
+      "native": true,
+      "lengthKm": 5.278,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 78.811,
+      "uncalibratedSeconds": 76.78986810215699,
+      "calibratedReferenceSeconds": 75.80932692622673,
+      "effectiveContactCoefficient": 1.796444250292797,
+      "referenceResidualSeconds": -3.0016730737732757,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 78.7441965992108,
+      "liveReferenceResidualSeconds": -0.15903614358862228,
+      "beforeSeconds": 82.65059526906413,
+      "liveMedianSeconds": 78.65196385641138,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 78.7441965992108,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 78.56198304959196,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 78.65196385641138,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "red-bull-ring-approx",
+      "name": "Red Bull Ring",
+      "native": true,
+      "lengthKm": 4.326,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 66.349,
+      "uncalibratedSeconds": 65.24193274941534,
+      "calibratedReferenceSeconds": 65.02554433836735,
+      "effectiveContactCoefficient": 1.763946334077559,
+      "referenceResidualSeconds": -1.32345566163265,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 66.60805664325574,
+      "liveReferenceResidualSeconds": 0.14622839212840688,
+      "beforeSeconds": 67.37308943109895,
+      "liveMedianSeconds": 66.49522839212841,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 66.60805664325574,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 66.46637570162318,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 66.49522839212841,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "baku-approx",
+      "name": "Baku",
+      "native": true,
+      "lengthKm": 6.003,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 103.363,
+      "uncalibratedSeconds": 96.920778652483,
+      "calibratedReferenceSeconds": 97.28302608491141,
+      "effectiveContactCoefficient": 1.7342963437239611,
+      "referenceResidualSeconds": -6.079973915088587,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 103.19875807451899,
+      "liveReferenceResidualSeconds": -0.28419885122730193,
+      "beforeSeconds": 105.6505610055849,
+      "liveMedianSeconds": 103.0788011487727,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 103.19875807451899,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 103.0788011487727,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 102.99672425195905,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "bahrain-approx",
+      "name": "Bahrain International Circuit",
+      "native": true,
+      "lengthKm": 5.412,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 93.159,
+      "uncalibratedSeconds": 86.70081685713515,
+      "calibratedReferenceSeconds": 92.10726072401823,
+      "effectiveContactCoefficient": 1.5168128516401431,
+      "referenceResidualSeconds": -1.0517392759817739,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 93.10194865389394,
+      "liveReferenceResidualSeconds": -0.057051346106064216,
+      "beforeSeconds": 89.0494800244332,
+      "liveMedianSeconds": 93.10194865389394,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 93.10194865389394,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 93.29258909621598,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 93.03919270140773,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "spa-approx",
+      "name": "Spa",
+      "native": true,
+      "lengthKm": 7.004,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 104.678,
+      "uncalibratedSeconds": 99.65525071914658,
+      "calibratedReferenceSeconds": 99.98908620239804,
+      "effectiveContactCoefficient": 1.7380251862730045,
+      "referenceResidualSeconds": -4.6889137976019555,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 104.9740379547502,
+      "liveReferenceResidualSeconds": 0.44722211310761395,
+      "beforeSeconds": 107.95816953773306,
+      "liveMedianSeconds": 105.12522211310761,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 104.9740379547502,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 105.12522211310761,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 105.36483945437112,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "interlagos-approx",
+      "name": "Interlagos",
+      "native": true,
+      "lengthKm": 4.309,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 72.587,
+      "uncalibratedSeconds": 70.54826049387678,
+      "calibratedReferenceSeconds": 71.38914701815769,
+      "effectiveContactCoefficient": 1.7064259534561756,
+      "referenceResidualSeconds": -1.197852981842317,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 72.48876309793678,
+      "liveReferenceResidualSeconds": -0.40972460908660935,
+      "beforeSeconds": 72.75102813688,
+      "liveMedianSeconds": 72.1772753909134,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 72.48876309793678,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 72.1772753909134,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 71.84322364243155,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "montreal-approx",
+      "name": "Montreal",
+      "native": true,
+      "lengthKm": 4.361,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 72.646,
+      "uncalibratedSeconds": 67.33406366999255,
+      "calibratedReferenceSeconds": 74.7296483585524,
+      "effectiveContactCoefficient": 1.3983874868233612,
+      "referenceResidualSeconds": 2.083648358552395,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 72.41059577970532,
+      "liveReferenceResidualSeconds": -0.2354042202946829,
+      "beforeSeconds": 70.22168098983042,
+      "liveMedianSeconds": 72.41059577970532,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 72.41059577970532,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 72.37644899764103,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 72.727783275462,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "shanghai-approx",
+      "name": "Shanghai",
+      "native": true,
+      "lengthKm": 5.451,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 92.286,
+      "uncalibratedSeconds": 96.72911921424618,
+      "calibratedReferenceSeconds": 90.0520480779859,
+      "effectiveContactCoefficient": 2.010333373434892,
+      "referenceResidualSeconds": -2.2339519220141,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 92.12147714756497,
+      "liveReferenceResidualSeconds": -0.09688967349035238,
+      "beforeSeconds": 98.19981577074657,
+      "liveMedianSeconds": 92.18911032650965,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 92.12147714756497,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 92.18911032650965,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 92.28195947132508,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "hungaroring-approx",
+      "name": "Hungaroring",
+      "native": true,
+      "lengthKm": 4.381,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 77.219,
+      "uncalibratedSeconds": 76.30264002348125,
+      "calibratedReferenceSeconds": 77.36175991317073,
+      "effectiveContactCoefficient": 1.706041251549576,
+      "referenceResidualSeconds": 0.14275991317073533,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 77.1033843624881,
+      "liveReferenceResidualSeconds": 0.11937812390664249,
+      "beforeSeconds": 77.87857166914569,
+      "liveMedianSeconds": 77.33837812390664,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 77.1033843624881,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 77.52543845599007,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 77.33837812390664,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "barber",
+      "name": "Barber Motorsports Park",
+      "native": false,
+      "lengthKm": 3.7014912,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 70.26089273711368,
+      "calibratedReferenceSeconds": 70.26089273711368,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 71.33175954633032,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 79.20732991050772,
+      "liveMedianSeconds": 71.21873509477984,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 71.33175954633032,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 71.21873509477984,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 71.19789938661552,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "indianapolis",
+      "name": "IMS Road Course",
+      "native": false,
+      "lengthKm": 3.925190016,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 70.19173093567579,
+      "calibratedReferenceSeconds": 70.19173093567579,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 70.26686952501285,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 77.11461875053809,
+      "liveMedianSeconds": 70.27978451238124,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 70.26686952501285,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 70.27978451238124,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 70.45196787805526,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "indianapolis-500",
+      "name": "Indianapolis Motor Speedway",
+      "native": false,
+      "lengthKm": 4.02336,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 45.99400818368825,
+      "calibratedReferenceSeconds": 45.99400818368825,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 47.15868971061579,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 47.04727811594759,
+      "liveMedianSeconds": 47.08084726963048,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 47.15868971061579,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 47.05902660092323,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 47.08084726963048,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "mid-ohio",
+      "name": "Mid-Ohio Sports Car Course",
+      "native": false,
+      "lengthKm": 3.633898752,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 66.14956993093492,
+      "calibratedReferenceSeconds": 66.14956993093492,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 65.37611684466992,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 73.6792269284656,
+      "liveMedianSeconds": 65.37611684466992,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 65.37611684466992,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 65.46114935705015,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 65.12825268669678,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "milwaukee",
+      "name": "Milwaukee Mile",
+      "native": false,
+      "lengthKm": 1.63348416,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 23.995390263601504,
+      "calibratedReferenceSeconds": 23.995390263601504,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 25.06719456755141,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 26.055896304349318,
+      "liveMedianSeconds": 25.0390879952904,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 25.06719456755141,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 25.03553401327453,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 25.0390879952904,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "nashville",
+      "name": "Nashville Superspeedway",
+      "native": false,
+      "lengthKm": 2.1404275200000002,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 25.84534786391144,
+      "calibratedReferenceSeconds": 25.84534786391144,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 26.928119003190332,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 28.547069342724,
+      "liveMedianSeconds": 26.928119003190332,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 26.928119003190332,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 26.91411642436816,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 27.475118593676825,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "phoenix",
+      "name": "Phoenix Raceway",
+      "native": false,
+      "lengthKm": 1.609344,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 22.382164536824646,
+      "calibratedReferenceSeconds": 22.382164536824646,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 23.229112963291982,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 22.804792363595595,
+      "liveMedianSeconds": 23.229112963291982,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 23.229112963291982,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 23.198275522420857,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 23.23139291740131,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "portland",
+      "name": "Portland International Raceway",
+      "native": false,
+      "lengthKm": 3.1655796480000005,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 56.553824825777205,
+      "calibratedReferenceSeconds": 56.553824825777205,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 55.93673547741432,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 61.05187723658469,
+      "liveMedianSeconds": 55.7890163883944,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 55.93673547741432,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 55.7890163883944,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 55.674547428124185,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "road-america",
+      "name": "Road America",
+      "native": false,
+      "lengthKm": 6.459906816000001,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 94.19868607454467,
+      "calibratedReferenceSeconds": 94.19868607454467,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 101.64904392630427,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 113.39139936460697,
+      "liveMedianSeconds": 101.64904392630427,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 101.64904392630427,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 102.10669208358402,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 101.48069324474385,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "arlington",
+      "name": "Streets of Arlington",
+      "native": false,
+      "lengthKm": 4.39350912,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 88.01716274951995,
+      "calibratedReferenceSeconds": 88.01716274951995,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 1,
+      "liveBestSeconds": 87.11382891826571,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 83.57906044869515,
+      "liveMedianSeconds": 87.09476798850869,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 87.11382891826571,
+          "validLaps": 1
+        },
+        {
+          "seed": 1,
+          "seconds": 86.93485544618409,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 87.09476798850869,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "detroit",
+      "name": "Streets of Detroit",
+      "native": false,
+      "lengthKm": 2.64737088,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 59.6098599730394,
+      "calibratedReferenceSeconds": 59.6098599730394,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 57.30123993171668,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 57.274836064520855,
+      "liveMedianSeconds": 57.26046359816064,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 57.30123993171668,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 57.23469943277371,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 57.26046359816064,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "long-beach",
+      "name": "Streets of Long Beach",
+      "native": false,
+      "lengthKm": 3.167188992,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 65.986151217905,
+      "calibratedReferenceSeconds": 65.986151217905,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 66.87141225421021,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 74.6638871857657,
+      "liveMedianSeconds": 66.87141225421021,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 66.87141225421021,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 66.42085772885224,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 67.10180582205993,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "markham",
+      "name": "Streets of Markham",
+      "native": false,
+      "lengthKm": 3.5244633600000004,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 72.31901507582306,
+      "calibratedReferenceSeconds": 72.31901507582306,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 70.08441625987695,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 73.58926727433743,
+      "liveMedianSeconds": 70.10698261584372,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 70.08441625987695,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 70.15344610959806,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 70.10698261584372,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "st-petersburg",
+      "name": "Streets of St. Petersburg",
+      "native": false,
+      "lengthKm": 2.8968192000000004,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 60.95185147070856,
+      "calibratedReferenceSeconds": 60.95185147070856,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 60.581083047718266,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 62.11032297374379,
+      "liveMedianSeconds": 60.21116777659324,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 60.581083047718266,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 60.210291876861675,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 60.21116777659324,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "washington-dc",
+      "name": "Streets of Washington",
+      "native": false,
+      "lengthKm": 2.7358848,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 53.96948682191862,
+      "calibratedReferenceSeconds": 53.96948682191862,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 53.69156844355388,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 50.208864439072954,
+      "liveMedianSeconds": 53.89067262501186,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 53.69156844355388,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 53.89067262501186,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 53.92302711039693,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "laguna-seca",
+      "name": "WeatherTech Raceway Laguna Seca",
+      "native": false,
+      "lengthKm": 3.601711872,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 69.77199366384085,
+      "calibratedReferenceSeconds": 69.77199366384085,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 70.60993437616864,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 79.61909025433283,
+      "liveMedianSeconds": 70.54099439258243,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 70.60993437616864,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 70.54099439258243,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 70.42523467445619,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "wwtr",
+      "name": "World Wide Technology Raceway",
+      "native": false,
+      "lengthKm": 2.01168,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 28.04548956644584,
+      "calibratedReferenceSeconds": 28.04548956644584,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 29.250380402559003,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 32.01064732988419,
+      "liveMedianSeconds": 29.236774910637934,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 29.250380402559003,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 29.236774910637934,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 29.184668486587555,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "monza-approx",
+      "name": "Monza",
+      "native": true,
+      "lengthKm": 5.793,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 81.846,
+      "uncalibratedSeconds": 74.5255354836643,
+      "calibratedReferenceSeconds": 81.38250337072066,
+      "effectiveContactCoefficient": 1.361844471141199,
+      "referenceResidualSeconds": -0.46349662927934787,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 81.81476143412999,
+      "liveReferenceResidualSeconds": 0.04788123085046436,
+      "beforeSeconds": 77.90825251127228,
+      "liveMedianSeconds": 81.89388123085047,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 81.81476143412999,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 81.89388123085047,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 81.92089592395132,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "autopolis-sf",
+      "name": "Autopolis",
+      "native": false,
+      "lengthKm": 4.674,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 80.4,
+      "uncalibratedSeconds": 82.36605672250472,
+      "calibratedReferenceSeconds": 79.16244166176963,
+      "effectiveContactCoefficient": 1.8816722526158085,
+      "referenceResidualSeconds": -1.2375583382303716,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 80.39903691215511,
+      "liveReferenceResidualSeconds": -0.037322565498953963,
+      "beforeSeconds": 85.29239855596506,
+      "liveMedianSeconds": 80.36267743450105,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 80.39903691215511,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 80.31261124816888,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 80.36267743450105,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "fuji-sf",
+      "name": "Fuji Speedway",
+      "native": false,
+      "lengthKm": 4.563,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 77,
+      "uncalibratedSeconds": 80.47474352242703,
+      "calibratedReferenceSeconds": 74.97051199388775,
+      "effectiveContactCoefficient": 2.0578321618294235,
+      "referenceResidualSeconds": -2.0294880061122456,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 76.95793456523745,
+      "liveReferenceResidualSeconds": -0.12199130008048087,
+      "beforeSeconds": 82.96795264930967,
+      "liveMedianSeconds": 76.87800869991952,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 76.95793456523745,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 76.87800869991952,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 76.76538965719135,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "motegi-sf",
+      "name": "Mobility Resort Motegi",
+      "native": false,
+      "lengthKm": 4.801,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 86,
+      "uncalibratedSeconds": 89.23790620840398,
+      "calibratedReferenceSeconds": 87.02433287616897,
+      "effectiveContactCoefficient": 1.8460861212303736,
+      "referenceResidualSeconds": 1.0243328761689696,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 85.90566417159607,
+      "liveReferenceResidualSeconds": -0.19283505705692505,
+      "beforeSeconds": 89.26669923846248,
+      "liveMedianSeconds": 85.80716494294307,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 85.90566417159607,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 85.69654676319493,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 85.80716494294307,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "sugo-sf",
+      "name": "Sportsland SUGO",
+      "native": false,
+      "lengthKm": 3.586,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 60.5,
+      "uncalibratedSeconds": 67.70702996682131,
+      "calibratedReferenceSeconds": 57.36974931731609,
+      "effectiveContactCoefficient": 2.386021675589325,
+      "referenceResidualSeconds": -3.130250682683908,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 60.27247223210924,
+      "liveReferenceResidualSeconds": -0.2275277678907628,
+      "beforeSeconds": 70.22373095246934,
+      "liveMedianSeconds": 60.27247223210924,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 60.27247223210924,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 60.23947912389508,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 60.47644793556486,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "suzuka-approx",
+      "name": "Suzuka",
+      "native": true,
+      "lengthKm": 5.807,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 89.076,
+      "uncalibratedSeconds": 88.34885984961961,
+      "calibratedReferenceSeconds": 86.89083026874677,
+      "effectiveContactCoefficient": 1.8073757921272544,
+      "referenceResidualSeconds": -2.1851697312532252,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 88.63526604422373,
+      "liveReferenceResidualSeconds": -0.44073395577626684,
+      "beforeSeconds": 93.59256828273737,
+      "liveMedianSeconds": 88.63526604422373,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 88.63526604422373,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 88.52413813545081,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 88.68393441922979,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "mexico-city-approx",
+      "name": "Mexico City",
+      "native": true,
+      "lengthKm": 4.304,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 77.542,
+      "uncalibratedSeconds": 73.37054750923078,
+      "calibratedReferenceSeconds": 80.88622281443624,
+      "effectiveContactCoefficient": 1.4397470243313981,
+      "referenceResidualSeconds": 3.344222814436236,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 77.43222348571214,
+      "liveReferenceResidualSeconds": -0.2047079414496693,
+      "beforeSeconds": 73.20897057417147,
+      "liveMedianSeconds": 77.33729205855033,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 77.43222348571214,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 77.33729205855033,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 76.98617327024033,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "monaco-approx",
+      "name": "Monte Carlo",
+      "native": true,
+      "lengthKm": 3.337,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 72.094,
+      "uncalibratedSeconds": 71.9588578228581,
+      "calibratedReferenceSeconds": 72.64956456931108,
+      "effectiveContactCoefficient": 1.718071359099109,
+      "referenceResidualSeconds": 0.5555645693110876,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 71.90365937135135,
+      "liveReferenceResidualSeconds": -0.0718627565206873,
+      "beforeSeconds": 74.49774164442078,
+      "liveMedianSeconds": 72.0221372434793,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 71.90365937135135,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 72.0221372434793,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 72.23208382034613,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "zandvoort-approx",
+      "name": "Zandvoort",
+      "native": true,
+      "lengthKm": 4.259,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 71.265,
+      "uncalibratedSeconds": 72.1440758700933,
+      "calibratedReferenceSeconds": 73.41739422402549,
+      "effectiveContactCoefficient": 1.696769324912694,
+      "referenceResidualSeconds": 2.1523942240254854,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 71.25082535475622,
+      "liveReferenceResidualSeconds": -0.10987215806314055,
+      "beforeSeconds": 71.68151196194424,
+      "liveMedianSeconds": 71.15512784193686,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 71.25082535475622,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 71.02918492366149,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 71.15512784193686,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "lusail-approx",
+      "name": "Lusail",
+      "native": true,
+      "lengthKm": 5.419,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 82.573,
+      "uncalibratedSeconds": 86.87355986741004,
+      "calibratedReferenceSeconds": 79.15959003760378,
+      "effectiveContactCoefficient": 2.067819304371942,
+      "referenceResidualSeconds": -3.4134099623962157,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 82.55866102536652,
+      "liveReferenceResidualSeconds": -0.06686270105502956,
+      "beforeSeconds": 91.72757320887513,
+      "liveMedianSeconds": 82.50613729894496,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 82.55866102536652,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 82.50613729894496,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 82.41859785451362,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "jeddah-approx",
+      "name": "Jeddah Corniche Circuit",
+      "native": true,
+      "lengthKm": 6.174,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 90.36,
+      "uncalibratedSeconds": 90.29692755550396,
+      "calibratedReferenceSeconds": 85.26964272974925,
+      "effectiveContactCoefficient": 1.9864837044361265,
+      "referenceResidualSeconds": -5.090357270250749,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 90.49640205559083,
+      "liveReferenceResidualSeconds": 0.1364020555908354,
+      "beforeSeconds": 96.74602086231613,
+      "liveMedianSeconds": 90.49640205559083,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 90.49640205559083,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 90.46514033302901,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 90.56726463254506,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "singapore-approx",
+      "name": "Singapore",
+      "native": true,
+      "lengthKm": 4.927,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 91.427,
+      "uncalibratedSeconds": 86.68931921382887,
+      "calibratedReferenceSeconds": 88.70761791542111,
+      "effectiveContactCoefficient": 1.6715915891660929,
+      "referenceResidualSeconds": -2.7193820845788963,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 91.39546082673166,
+      "liveReferenceResidualSeconds": -0.0254973507668268,
+      "beforeSeconds": 92.60580946809739,
+      "liveMedianSeconds": 91.40150264923318,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 91.39546082673166,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 91.45194997844331,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 91.40150264923318,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "barcelona-approx",
+      "name": "Barcelona",
+      "native": true,
+      "lengthKm": 4.657,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 74.743,
+      "uncalibratedSeconds": 75.67052757287838,
+      "calibratedReferenceSeconds": 73.20037147430398,
+      "effectiveContactCoefficient": 1.8523586157965097,
+      "referenceResidualSeconds": -1.542628525696017,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 74.9148733987168,
+      "liveReferenceResidualSeconds": 0.45789525936851305,
+      "beforeSeconds": 78.75265465891005,
+      "liveMedianSeconds": 75.20089525936851,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 74.9148733987168,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 75.20089525936851,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 75.2658597960575,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "madrid-approx",
+      "name": "MADRING",
+      "native": true,
+      "lengthKm": 5.414,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 91.835,
+      "uncalibratedSeconds": 97.19588929778733,
+      "calibratedReferenceSeconds": 105.2818118232589,
+      "effectiveContactCoefficient": 1.512589044830141,
+      "referenceResidualSeconds": 13.446811823258912,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 91.59037611522183,
+      "liveReferenceResidualSeconds": -0.18279238438101686,
+      "beforeSeconds": 90.86995551155803,
+      "liveMedianSeconds": 91.65220761561898,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 91.59037611522183,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 91.66969785602441,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 91.65220761561898,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "okayama",
+      "name": "岡山国際サーキット",
+      "native": false,
+      "lengthKm": 3.703,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 74.5884211298676,
+      "calibratedReferenceSeconds": 74.5884211298676,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 72.01715541330725,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 76.28689217193937,
+      "liveMedianSeconds": 72.36482218492432,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 72.01715541330725,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 72.36482218492432,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 72.36564549455676,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "silverstone-approx",
+      "name": "Silverstone",
+      "native": true,
+      "lengthKm": 5.891,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 88.286,
+      "uncalibratedSeconds": 83.76335749083026,
+      "calibratedReferenceSeconds": 86.38160455085708,
+      "effectiveContactCoefficient": 1.6089172149807724,
+      "referenceResidualSeconds": -1.9043954491429247,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 88.13615580905798,
+      "liveReferenceResidualSeconds": 0.0708467127433039,
+      "beforeSeconds": 87.30237217619378,
+      "liveMedianSeconds": 88.3568467127433,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 88.13615580905798,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 88.3568467127433,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 88.360480721474,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "cota-approx",
+      "name": "COTA",
+      "native": true,
+      "lengthKm": 5.513,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 96.665,
+      "uncalibratedSeconds": 92.2496526043757,
+      "calibratedReferenceSeconds": 96.3345863944535,
+      "effectiveContactCoefficient": 1.6139447076823619,
+      "referenceResidualSeconds": -0.3304136055465108,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 96.6983410919172,
+      "liveReferenceResidualSeconds": 0.23708703719496782,
+      "beforeSeconds": 96.6915491702772,
+      "liveMedianSeconds": 96.90208703719497,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 96.6983410919172,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 96.90208703719497,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 96.9431650511751,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "las-vegas-approx",
+      "name": "Las Vegas",
+      "native": true,
+      "lengthKm": 6.201,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 94.657,
+      "uncalibratedSeconds": 88.16938558484297,
+      "calibratedReferenceSeconds": 93.07961169397376,
+      "effectiveContactCoefficient": 1.5029784445071408,
+      "referenceResidualSeconds": -1.5773883060262364,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 94.69407273678303,
+      "liveReferenceResidualSeconds": 0.037072736783031246,
+      "beforeSeconds": 90.18513955723748,
+      "liveMedianSeconds": 94.69407273678303,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 94.69407273678303,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 94.16001043681507,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 94.87381741313959,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "miami-approx",
+      "name": "Miami",
+      "native": true,
+      "lengthKm": 5.412,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 87.964,
+      "uncalibratedSeconds": 85.88969295716309,
+      "calibratedReferenceSeconds": 89.06490085356107,
+      "effectiveContactCoefficient": 1.614231936206757,
+      "referenceResidualSeconds": 1.1009008535610718,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 87.92541760399092,
+      "liveReferenceResidualSeconds": 0.11214323212016097,
+      "beforeSeconds": 86.0945881195344,
+      "liveMedianSeconds": 88.07614323212016,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 87.92541760399092,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 88.07614323212016,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 88.24293772654707,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "imola",
+      "name": "Autodromo Enzo e Dino Ferrari",
+      "native": false,
+      "lengthKm": 4.909,
+      "referenceStatus": "estimated",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 77.319,
+      "uncalibratedSeconds": 81.62616285886735,
+      "calibratedReferenceSeconds": 74.70029634496984,
+      "effectiveContactCoefficient": 2.145434924819488,
+      "referenceResidualSeconds": -2.61870365503016,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 77.46782613533071,
+      "liveReferenceResidualSeconds": 0.1488261353307081,
+      "beforeSeconds": 94.95014027675882,
+      "liveMedianSeconds": 77.46782613533071,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 77.46782613533071,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 77.55457692849149,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 77.4239595039966,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "monza",
+      "name": "Autodromo Nazionale Monza",
+      "native": false,
+      "lengthKm": 5.793,
+      "referenceStatus": "official",
+      "calibrationKind": "sim-effective-contact-calibration",
+      "targetSeconds": 81.846,
+      "uncalibratedSeconds": 75.36902425214753,
+      "calibratedReferenceSeconds": 79.03782085201162,
+      "effectiveContactCoefficient": 1.5265872529299804,
+      "referenceResidualSeconds": -2.8081791479883833,
+      "bounded": false,
+      "liveValidLaps": 2,
+      "liveBestSeconds": 81.63239007110997,
+      "liveReferenceResidualSeconds": 0.5473984673502628,
+      "beforeSeconds": 81.13672646641055,
+      "liveMedianSeconds": 82.39339846735027,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 81.63239007110997,
+          "validLaps": 2
+        },
+        {
+          "seed": 1,
+          "seconds": 82.66566597508145,
+          "validLaps": 2
+        },
+        {
+          "seed": 2,
+          "seconds": 82.39339846735027,
+          "validLaps": 2
+        }
+      ]
+    },
+    {
+      "id": "le-mans",
+      "name": "Circuit de la Sarthe",
+      "native": false,
+      "lengthKm": 13.626,
+      "referenceStatus": "unavailable",
+      "calibrationKind": "uncalibrated-physical-estimate",
+      "targetSeconds": null,
+      "uncalibratedSeconds": 163.07541887010964,
+      "calibratedReferenceSeconds": 163.07541887010964,
+      "effectiveContactCoefficient": 1.75,
+      "referenceResidualSeconds": null,
+      "bounded": false,
+      "liveValidLaps": 1,
+      "liveBestSeconds": 171.39727748829762,
+      "liveReferenceResidualSeconds": null,
+      "beforeSeconds": 212.16895155153054,
+      "liveMedianSeconds": 171.4609138326153,
+      "seeds": [
+        {
+          "seed": 0,
+          "seconds": 171.39727748829762,
+          "validLaps": 1
+        },
+        {
+          "seed": 1,
+          "seconds": 171.4609138326153,
+          "validLaps": 1
+        },
+        {
+          "seed": 2,
+          "seconds": 171.63751847870859,
+          "validLaps": 1
+        }
+      ]
+    }
+  ]
+}

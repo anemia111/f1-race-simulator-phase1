@@ -1,4 +1,7 @@
-import { Dices, RotateCcw, Wrench, X } from 'lucide-react'
+import {DriverRatingEvidence} from './DriverRatingEvidence'
+import {DriverSkillEditor} from './DriverSkillEditor'
+import { SetupPanelHeader } from './SessionChrome'
+import { Dices, RotateCcw, Wrench } from 'lucide-react'
 import type {
   KnockoutQualifying,
   PracticeSessionResult,
@@ -20,10 +23,7 @@ import {
 } from '../simulation/engineering'
 import {
   DRIVER_ABILITY_GROUPS,
-  DRIVER_ABILITY_INTERNAL_MAX,
-  DRIVER_ABILITY_SCALE_INTERNAL_MAX,
-  DRIVER_ABILITY_STATS,
-  DRIVER_ABILITY_SCALE_MAX,
+  driverAbilityCeiling,
   driverAbilityGroupValue,
   driverAbilityPoints,
   driverConfiguredOverallAbilityPoints,
@@ -59,6 +59,8 @@ type SetupPanelProps = {
     key: keyof CarSetup,
     value: number,
   ) => void
+  onCarSetupReset: (driverId: string) => void
+  onCarSetupAutomaticChange: (driverId: string, automatic: boolean) => void
   onComponentReplace: (
     driverId: string,
     key: keyof CarComponents,
@@ -220,25 +222,6 @@ export function timedSessionTireSummaryFor(tire: TimedSessionTire) {
   return `${tire.surface.toUpperCase()} CONTROL / PHYSICAL MODEL ${tire.physicalModel.availability.toUpperCase()}`
 }
 
-/**
- * Upper bound for this driver's ability sliders.
- *
- * The published scale for everyone, except for a driver whose source data
- * already places them past it: they keep their authored ceiling so the editor
- * does not silently pull them back onto the scale. It never lets a driver be
- * raised past where their data already sits.
- */
-function driverEditableAbilityCeiling(driver: Driver) {
-  const highest = Math.max(
-    ...DRIVER_ABILITY_STATS.map((stat) => driver.skills[stat] ?? 0),
-  )
-
-  return Math.min(
-    DRIVER_ABILITY_INTERNAL_MAX,
-    Math.max(DRIVER_ABILITY_SCALE_INTERNAL_MAX, highest),
-  )
-}
-
 export function SetupPanel({
   drivers,
   isOpen,
@@ -246,6 +229,8 @@ export function SetupPanel({
   onDriverChange,
   onDriverStatChange,
   onCarSetupChange,
+  onCarSetupReset,
+  onCarSetupAutomaticChange,
   onComponentReplace,
   onPitLaneStartChange,
   componentReplacementDisabled,
@@ -313,21 +298,7 @@ export function SetupPanel({
 
   return (
     <section className="hud setup-panel" aria-label="race setup">
-      <div className="setup-header">
-        <div>
-          <span>Weekend engineering</span>
-          <strong>{teams.length} teams / {drivers.length} cars</strong>
-        </div>
-        <button
-          aria-label="close setup"
-          className="plain-icon-button"
-          onClick={onToggle}
-          title="Close setup"
-          type="button"
-        >
-          <X aria-hidden="true" size={18} />
-        </button>
-      </div>
+      <SetupPanelHeader teams={teams.length} cars={drivers.length} onClose={onToggle} closeLabel="close setup"/>
 
       <label className="field-block">
         <span>Championship round</span>
@@ -745,8 +716,32 @@ export function SetupPanel({
 
       <div className="setup-section">
         <div className="section-title">
-          <span>Car setup</span>
+          <span>Car setup · {selectedDriver.code}</span>
           <small>{parcFermeLocked ? 'PARC FERME' : `confidence ${Math.round((weekendContext.setupConfidenceByDriver[selectedDriver.id] ?? 0) * 100)}%`}</small>
+        </div>
+        <div className="driver-car-setup-controls">
+        <label className="field-block">
+          <span>セッティング対象ドライバー</span>
+          <select aria-label="セッティング対象ドライバー" value={selectedDriver.id}
+            onChange={event => onDriverChange(event.target.value)}>
+            {drivers.map(driver => <option key={driver.id} value={driver.id}>
+              {driver.code} - {driver.name}
+            </option>)}
+          </select>
+        </label>
+        <small>変更はこのドライバーの車に保存され、各セッションの走行に反映されます。</small>
+        <label className="binary-setting">
+          <input type="checkbox" disabled={parcFermeLocked}
+            checked={!weekendContext.manualSetupByDriver?.[selectedDriver.id]}
+            onChange={event => onCarSetupAutomaticChange(selectedDriver.id, event.target.checked)} />
+          <span>FP終了時に自動調整</span>
+        </label>
+        <small>{parcFermeLocked ? 'パルクフェルメ中はセッティングが固定されます。'
+          : weekendContext.manualSetupByDriver?.[selectedDriver.id]
+            ? '手動設定を保持中。FPの推奨値で上書きしません。'
+            : 'スライダーを変更すると手動設定に切り替わります。'}</small>
+        <button type="button" disabled={parcFermeLocked}
+          onClick={() => onCarSetupReset(selectedDriver.id)}>このドライバーをコース標準値に戻す</button>
         </div>
         <div className="setup-completeness">
           <span>Setup completeness</span>
@@ -773,7 +768,7 @@ export function SetupPanel({
           <span>Driver tune</span>
           <small>
             {DRIVER_ABILITY_GROUPS.length} GROUPS / MAX{' '}
-            {DRIVER_ABILITY_SCALE_MAX}
+            {driverAbilityCeiling(selectedDriver.id)}
           </small>
         </div>
         <label className="field-block">
@@ -797,17 +792,14 @@ export function SetupPanel({
             12-group mean
           </small>
         </div>
+        <DriverRatingEvidence driver={selectedDriver}/>
+        <DriverSkillEditor driver={selectedDriver} category={weekendContext.seriesId} onChange={(stat,value)=>onDriverStatChange(selectedDriver.id,stat,value)}/>
         <div className="driver-ability-grid">
           {DRIVER_ABILITY_GROUPS.map((group) => (
             <SliderRow
               key={group.key}
               label={group.label}
-              // The editor works on the published scale, so a slider cannot be
-              // used to push a driver past it. A driver already authored past
-              // the scale keeps their own headroom, otherwise opening the
-              // panel would quietly clip them back to 100 the moment anything
-              // was dragged.
-              max={driverEditableAbilityCeiling(selectedDriver)}
+              max={driverAbilityCeiling(selectedDriver.id)/100}
               onChange={(value) => {
                 for (const stat of group.stats) {
                   onDriverStatChange(selectedDriver.id, stat, value)

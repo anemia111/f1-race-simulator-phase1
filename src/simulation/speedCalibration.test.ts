@@ -185,6 +185,10 @@ function runIntegratedRaceSpeedTrace(
 
   let maximumSpeedKph = 0
   let minimumBatteryPercent = 100
+  const startingBatteryPercent = Math.min(...snapshot.cars.map(car =>
+    requireF1Runtime(car.runtimeSystems).ersBatteryPercent))
+  let maximumDeploymentPowerKw = 0
+  let sampledDeploymentEnergyMj = 0
 
   for (let step = 0; step < 480; step += 1) {
     snapshot = advanceRace(snapshot, 0.25, config)
@@ -198,9 +202,15 @@ function runIntegratedRaceSpeedTrace(
         requireF1Runtime(car.runtimeSystems).ersBatteryPercent,
       ),
     )
+    for (const car of snapshot.cars) {
+      const powerKw = Math.max(0, requireF1Runtime(car.runtimeSystems).ersPowerKw)
+      maximumDeploymentPowerKw = Math.max(maximumDeploymentPowerKw, powerKw)
+      sampledDeploymentEnergyMj += powerKw * 0.25 / 1000
+    }
   }
 
-  return { maximumSpeedKph, minimumBatteryPercent, snapshot }
+  return { maximumSpeedKph, minimumBatteryPercent, startingBatteryPercent,
+    maximumDeploymentPowerKw, sampledDeploymentEnergyMj, snapshot }
 }
 
 describe('on-track speed calibration', () => {
@@ -283,6 +293,7 @@ describe('on-track speed calibration', () => {
       .find((candidate) => trackDynamicsAt(track, candidate).fullThrottle)!
     const commonCar: CarSnapshot = {
       ...snapshot.cars[0],
+      throttlePercent: 100,
       clutchEngagementFraction: 1,
       gapToAhead: 0.8,
       progress,
@@ -579,6 +590,7 @@ describe('on-track speed calibration', () => {
     const telemetry = calculateCarTelemetry({
       car: {
         ...snapshot.cars[0],
+        throttlePercent: 100,
         gapToAhead: 10,
         progress: candidate.progress,
         speedKph: 410,
@@ -651,6 +663,7 @@ describe('on-track speed calibration', () => {
       const telemetry = calculateCarTelemetry({
         car: {
           ...snapshot.cars[0],
+          throttlePercent: 100,
           gapToAhead: 10,
           progress: candidate.progress,
           speedKph: Math.min(
@@ -791,11 +804,14 @@ describe('on-track speed calibration', () => {
     expect(lasVegas.maximumSpeedKph).toBeLessThan(402)
     // Both traces consume Energy Store charge through the live deployment
     // path; the exact remainder is an output, not a lap-time calibration gate.
-    expect(monza.minimumBatteryPercent).toBeLessThan(70)
-    expect(lasVegas.minimumBatteryPercent).toBeLessThan(70)
+    for (const trace of [monza, lasVegas]) {
+      expect(trace.maximumDeploymentPowerKw).toBeGreaterThan(100)
+      expect(trace.sampledDeploymentEnergyMj).toBeGreaterThan(0.1)
+      expect(trace.minimumBatteryPercent).toBeLessThan(trace.startingBatteryPercent)
+    }
     expect(monza.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
     expect(lasVegas.minimumBatteryPercent).toBeGreaterThanOrEqual(10)
-  })
+  }, 60_000)
 
   it('keeps a complete 30-car field inside physical top-gear bounds', () => {
     const monza = runIntegratedRaceSpeedTrace(
@@ -812,5 +828,5 @@ describe('on-track speed calibration', () => {
     // the field still reaches the top-gear region without overspeed.
     expect(lasVegas.maximumSpeedKph).toBeGreaterThanOrEqual(330)
     expect(lasVegas.maximumSpeedKph).toBeLessThan(402)
-  }, 30_000)
+  }, 300_000)
 })

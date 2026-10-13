@@ -143,7 +143,7 @@ describe('10,000-run statistical acceptance', () => {
     expect(lowTotal / MONTE_CARLO_SAMPLES).toBeGreaterThan(
       highTotal / MONTE_CARLO_SAMPLES,
     )
-  })
+  }, 30_000)
 
   it('creates real F1 team differences from physical inputs on every circuit', () => {
     const rankings = [
