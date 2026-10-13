@@ -6,7 +6,7 @@ import { advancePedals } from './pedalControl'
 import { handlingSlip, type VehicleHandlingState } from './vehicleHandling'
 import { raceTyreGrip } from './raceTyres'
 import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
-import { advanceSfOts } from './sfOtsRuntime'
+import { advanceSfOts, SF_OTS_ALLOCATION_SECONDS } from './sfOtsRuntime'
 import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
@@ -204,6 +204,8 @@ export function calculateCarTelemetry(options: {
   regulatoryMassIncreaseKg?: number
   performanceSession?: 'qualifying' | 'race'
   raceLap: number
+  /** Current finish target, including an early checkered flag. */
+  raceLaps?: number
   sessionType?: 'race-distance' | 'limited-time'
   timedRunPhase?: CarSnapshot['timedRunPhase']
   timedTrafficYield?: boolean
@@ -675,6 +677,15 @@ export function calculateCarTelemetry(options: {
           paceMode: car.racePaceMode,
           straightness: dynamics.straightness,
           throttlePercent,
+          raceBudget: options.raceLaps !== undefined && superFormulaRuntime?.otsSimulation
+            ? {
+                allocationSeconds: SF_OTS_ALLOCATION_SECONDS,
+                remainingSeconds: superFormulaRuntime.otsSimulation.remainingSeconds,
+                cooldownSeconds: superFormulaRuntime.otsSimulation.cooldownSeconds,
+                remainingRaceSeconds: Math.max(0, options.raceLaps - car.totalDistance) * track.baseLapTime,
+                raceFractionRemaining: Math.max(0, options.raceLaps - car.totalDistance) / Math.max(1, options.raceLaps),
+              }
+            : undefined,
         },
         path: driverDecisionPath,
         seriesId: seriesId ?? (categoryPhysics.id === 'super-formula' ? 'super-formula' : undefined),

@@ -6252,6 +6252,7 @@ export function advanceRace(
       seriesId: config.seriesId,
       operationalVehicleMass,
       raceLap: Math.max(1, Math.min(raceLaps, Math.floor(car.totalDistance))),
+      raceLaps: isRaceDistance ? finishLapTarget : undefined,
       sessionType: isRaceDistance ? 'race-distance' : 'limited-time',
       timedRunPhase: timedRun.physicsPhase,
       timedPreparationSpeedScale: outLapGap?.speedScale,

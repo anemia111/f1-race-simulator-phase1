@@ -1,5 +1,29 @@
 # SF OTS location and continuous use - 2026-10-13
 
+## Race-budget spending policy
+
+User requested using roughly the whole 200 s allocation each race. Previously,
+an isolated standard-pace car had no use intent until the final lap. The actual
+race now passes its finish target into telemetry and the SF decision predicate.
+Remaining physical distance / target defines the planned remaining allocation;
+nominal track lap time estimates time to finish. Scheduled solo uses group the
+budget into 8-25 s bursts derived from race duration and circuit cooldown, with
+separate start/hold thresholds to avoid brief on/off cycles. Existing tactical
+uses can spend earlier; the schedule catches any subsequent underspend.
+When estimated time to finish is below remaining use + cooldown +15 s, the driver
+keeps using rather than risking a late cooldown. It starts on useful throttle,
+continues through bends, and respects existing physical and regulatory gates.
+Explicit save pace does not add scheduled solo use. The finish target follows
+an early checkered flag. No new persistent state or checkpoint migration.
+
+29 focused checks in five suites pass. Fast arithmetic decision-clock fixtures
+at all five SF tracks include a neutralised interval, repeated cooldown checks,
+several separate uses and zero remaining allocation at finish. An actual short
+telemetry tick verifies scheduled solo use reaches the live OTS budget. These
+are not complete physics races. Rain, neutralisation, insufficient remaining
+race time or fuel saving can still leave unused OTS; the policy never overrides
+those conditions or invents consumed time.
+
 ## Screenshot specification integration
 
 User requested applying the supplied 200-second/track-cooldown/~50 PS screenshot.

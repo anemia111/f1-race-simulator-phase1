@@ -25,6 +25,11 @@ it('uses and retains SF OTS on a curved section while debiting the actual time b
   expect(active.overtakeStatus).toBe('active')
   if(active.runtimeSystems.kind!=='super-formula')throw Error('SF expected')
   expect(active.runtimeSystems.otsSimulation!.remainingSeconds).toBeCloseTo(199.9)
+  const scheduled = calculateCarTelemetry({ ...options, raceLaps: 25,
+    car: { ...car, totalDistance: 15 + progress, gapToAhead: 20, battlePhase: 'single-file', racePaceMode: 'standard' } })
+  expect(scheduled.overtakeStatus).toBe('active')
+  if (scheduled.runtimeSystems.kind !== 'super-formula') throw Error('SF expected')
+  expect(scheduled.runtimeSystems.otsSimulation!.remainingSeconds).toBeCloseTo(199.9)
   const held=calculateCarTelemetry({...options,elapsedSeconds:120.1,
     car:{...car,runtimeSystems:active.runtimeSystems,brakePercent:100,throttlePercent:0}})
   expect(held.overtakeStatus).toBe('active')

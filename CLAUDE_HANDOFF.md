@@ -1,5 +1,20 @@
 # Formula Race Simulator Handoff
 
+## Latest: SF race-wide OTS use plan (2026-10-13)
+
+User requested spending roughly all 200 s per race. Isolated standard-pace SF
+cars now request scheduled uses from remaining distance and allocation, grouped
+into 8-25 s bursts using circuit cooldown and nominal race duration. Hysteresis
+holds through curves; tactical uses can spend earlier. Late surplus stays on
+when another cooldown could waste the budget. Actual finish target is supplied
+by race.ts, including early checkered flag. Save pace excludes scheduled solo
+uses; all existing runtime/weather/control/session gates still apply. No state
+or save schema change. Read docs/SF_OTS_LOCATION_FIX.md.
+29 focused checks across five suites pass: five fast decision-clock scenarios
+spend200 s with cooldown/neutralisation, plus actual short scheduled solo telemetry
+and previous fuel/location checks. No full race/long tests. Keep shortened
+publication -SkipFullTestSuite -SkipPlaytest.
+
 ## Latest: SF OTS screenshot specification integration (2026-10-13)
 
 User asked to apply the supplied 200 s / 100-110-120 s cooldown / ~50 PS screenshot.
