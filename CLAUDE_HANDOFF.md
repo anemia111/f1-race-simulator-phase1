@@ -1213,3 +1213,16 @@ synthetic qualifying garage visits establish the failure path. Bounds are SIM
 quality guards, not FIA rules. 26 focused checks plus short Albert stop pass;
 build/lint/diff pass. Preserve shortened publish -SkipFullTestSuite -SkipPlaytest,
 no long tests and the separate unfinished team-principal WIP patch.
+
+
+## SF OTS anywhere on the circuit, 2026-10-13
+
+Read docs/SF_OTS_LOCATION_FIX.md. Removed the straightness >=0.72 restriction
+from SF's driver-use request. New-use pedal threshold is 55% throttle, brake <=3
+(SIM driver preference); an already-active tactical use continues through curves,
+lifts and braking rather than triggering cooldown on every corner. Held use
+consumes actual remaining time; actual boost still follows physical pedals/grip.
+Existing manufacturer-backed 200 s and event cooldowns remain. Other eligibility,
+low-grip, race-control and session gates are unchanged; no qualifying OTS added.
+24 focused checks and lint/build/diff pass. Preserve shortened publish flags,
+no long tests and the separate unfinished team-principal WIP patch.

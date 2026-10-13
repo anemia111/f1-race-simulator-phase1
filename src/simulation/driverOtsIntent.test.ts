@@ -61,12 +61,12 @@ describe('SUPER FORMULA OTS use-intent category ownership seam', () => {
     },
     {
       expected: false,
-      label: 'throttle below threshold',
-      overrides: { throttlePercent: 87 },
+      label: 'throttle below useful acceleration',
+      overrides: { throttlePercent: 54 },
     },
     {
-      expected: false,
-      label: 'straightness below threshold',
+      expected: true,
+      label: 'cornering is not an activation restriction',
       overrides: { straightness: 0.71 },
     },
   ] as const satisfies ReadonlyArray<{
@@ -139,4 +139,10 @@ describe('SUPER FORMULA OTS use-intent category ownership seam', () => {
       }),
     ).toThrow(/Unsupported driver decision path future-sf-ots-agent/)
   })
+})
+
+it('starts in corner exits and holds a requested use through bends without restarting cooldown', () => {
+  expect(sfOtsUseRequestedFor(otsOptions({straightness:0.1,throttlePercent:60}))).toBe(true)
+  expect(sfOtsUseRequestedFor(otsOptions({straightness:0,alreadyActive:true,brakePercent:70,throttlePercent:0}))).toBe(true)
+  expect(sfOtsUseRequestedFor(otsOptions({alreadyActive:true,gapToAheadSeconds:4}))).toBe(false)
 })

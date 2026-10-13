@@ -667,6 +667,7 @@ export function calculateCarTelemetry(options: {
   const sfOtsUseRequested = otsAvailable
     ? sfOtsUseRequestedForPath({
         options: {
+          alreadyActive: superFormulaRuntime?.otsSimulation?.active ?? false,
           battlePhase: car.battlePhase,
           brakePercent,
           gapToAheadSeconds: car.gapToAhead,
