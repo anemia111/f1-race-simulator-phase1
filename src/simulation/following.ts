@@ -1,9 +1,11 @@
-/** SIM anticipatory car-following control; collision resolution is a last resort. */
+/** SIM closing-speed control; final geometric occupancy remains a separate guard. */
 export function followingDemand(options: {
   speedKph: number
   aheadSpeedKph: number
   distanceM: number
   lateralSeparationM: number
+  /** Observed braking, expressed in this category's available deceleration. */
+  aheadDecelerationMps2?: number
 }) {
   if (!Number.isFinite(options.distanceM) || options.distanceM <= 0 ||
       Math.abs(options.lateralSeparationM) >= 2.2) {
@@ -11,20 +13,23 @@ export function followingDemand(options: {
   }
   const speed = Math.max(0, options.speedKph / 3.6)
   const aheadSpeed = Math.max(0, options.aheadSpeedKph / 3.6)
-  const gap = Math.max(0.1, options.distanceM - 5.6)
-  // Retain room to steer around an obstruction, not just to touch its bumper.
-  const desiredGap = 4 + speed * 0.35
+  const clearDistance = Math.max(0.1, options.distanceM - 5.6)
+  // A physical clearance buffer, not the old 0.35-second preferred headway.
+  // Being inside a preferred gap at matched speed must not brake an entire train.
+  const buffer = 2 + speed * 0.04
+  const availableDistance = Math.max(0.25, clearDistance - buffer)
   const closing = Math.max(0, speed - aheadSpeed)
-  const safeSpeed = Math.max(0, aheadSpeed + (gap - desiredGap) / 1.2)
-  const decelerationMps2 = Math.max(
-    0,
-    (speed - safeSpeed) / 0.8,
-    closing * closing / (2 * Math.max(1, gap - 2)),
-  )
+  const closureBrake = closing * closing / (2 * availableDistance)
+  const clearanceBrake = Math.max(0, buffer - clearDistance) / 0.5 ** 2
+  const aheadBraking = Math.max(0, options.aheadDecelerationMps2 ?? 0)
+  // Respond immediately to visible braking. Include the road the front car
+  // still travels while stopping; a distant car braking is not a stationary wall.
+  const frontStoppingDistance = aheadSpeed < 0.5 ? 0
+    : aheadBraking > 0.5 ? aheadSpeed * aheadSpeed / (2 * aheadBraking) : Infinity
+  const stoppingBrake = speed * speed / (2 * (availableDistance + frontStoppingDistance))
+  const decelerationMps2 = Math.max(closureBrake, clearanceBrake, stoppingBrake)
   return {
     decelerationMps2,
-    // At matched speed, maintain the leader's pace instead of repeatedly
-    // lifting to zero at the desired gap. Brake only for a genuine closure.
-    throttleScale: Math.min(1, Math.max(0, 1 - decelerationMps2 / 5)),
+    throttleScale: Math.min(1, Math.max(0, 1 - decelerationMps2 / 8)),
   }
 }

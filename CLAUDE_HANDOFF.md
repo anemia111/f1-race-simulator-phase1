@@ -1160,3 +1160,21 @@ F1 race/sprint only and disabled in low grip; no SF ERS/ledger introduced.
 128 focused tests, including live short ticks and actual energy balance, pass;
 lint/build/diff pass. Keep shortened publish -SkipFullTestSuite -SkipPlaytest,
 no long tests and separate unfinished team-principal patch.
+
+
+## Remove artificial train braking waves, 2026-10-13
+
+User requested fixing the diagnosed severe train slowdown. Read
+ docs/TRAIN_FOLLOWING_FIX.md. Shared native F1/SF following no longer brakes
+matched-speed cars merely for being inside a preferred 0.35-second headway.
+It uses relative closure, clear body distance and observed front braking with
+front stopping travel. Minimal body clearance, stationary-car protection, passing
+lane clearance and final occupancy remain. race.ts supplies front braking using
+the category brake capacity. ERS save/attack/escape is retained without retuning.
+
+35 focused checks pass. The eight short force-comparison scenarios pass; at 30 m
+spacing the historical last-car 246.44 km/h becomes 311.77 without saving or
+305.78 with a forced save request (leader 307.27). This is a component isolation,
+not a full race forecast. Reproduce: node scripts/validate-train-following.mjs.
+Lint/build/diff pass. Preserve shortened publishing -SkipFullTestSuite
+-SkipPlaytest and the separate unfinished team-principal patch.

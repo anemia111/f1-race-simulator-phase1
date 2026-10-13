@@ -4953,6 +4953,7 @@ export function advanceRace(
     for (const other of laneAhead) {
       const demand = followingDemand({speedKph:car.speedKph,
         aheadSpeedKph:frameCarById.get(other.driverId)!.speedKph,
+        aheadDecelerationMps2: frameCarById.get(other.driverId)!.brakePercent / 100 * categoryPhysics.maximumBrakeDecelerationMps2,
         distanceM:other.signedLongitudinalDistanceM,
         lateralSeparationM:other.lateralOffsetM-car.lateralOffsetM})
       const current=followingById.get(car.driverId)

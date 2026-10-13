@@ -1,0 +1,414 @@
+{
+  "trains": [
+    {
+      "initialGapM": 30,
+      "following": false,
+      "save": false,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 311.77,
+      "speeds": [
+        307.27,
+        309.08,
+        309.55,
+        310.51,
+        310.91,
+        310.7,
+        310.7,
+        311.77
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.35645237820895637,
+        0.35348149758407554,
+        0.34584694775568026,
+        0.3410721816625317,
+        0.34096232217113487,
+        0.34012223265278096,
+        0.33176729100176616
+      ]
+    },
+    {
+      "initialGapM": 30,
+      "following": false,
+      "save": true,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 305.78,
+      "speeds": [
+        307.27,
+        306.72,
+        306.17,
+        305.89,
+        305.8,
+        305.77,
+        305.8,
+        305.78
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.3747196118251904,
+        0.37905518813399064,
+        0.381254070240437,
+        0.3819934394307176,
+        0.38201085417891,
+        0.381894697907351,
+        0.3817166240641846
+      ]
+    },
+    {
+      "initialGapM": 30,
+      "following": true,
+      "save": false,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 311.77,
+      "speeds": [
+        307.27,
+        309.08,
+        309.55,
+        310.51,
+        310.91,
+        310.7,
+        310.7,
+        311.77
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.35645237820895637,
+        0.35348149758407554,
+        0.34584694775568026,
+        0.3410721816625317,
+        0.34096232217113487,
+        0.34012223265278096,
+        0.33176729100176616
+      ]
+    },
+    {
+      "initialGapM": 30,
+      "following": true,
+      "save": true,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 305.78,
+      "speeds": [
+        307.27,
+        306.72,
+        306.17,
+        305.89,
+        305.8,
+        305.77,
+        305.8,
+        305.78
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.3747196118251904,
+        0.37905518813399064,
+        0.381254070240437,
+        0.3819934394307176,
+        0.38201085417891,
+        0.381894697907351,
+        0.3817166240641846
+      ]
+    },
+    {
+      "initialGapM": 45,
+      "following": false,
+      "save": false,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 311.57,
+      "speeds": [
+        307.27,
+        309.11,
+        310.31,
+        310.61,
+        310.51,
+        311.65,
+        311.58,
+        311.57
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.35495119473474157,
+        0.3457808143571047,
+        0.34073248908019027,
+        0.34009097944861266,
+        0.33119913886007,
+        0.331394154567359,
+        0.3303778805592824
+      ]
+    },
+    {
+      "initialGapM": 45,
+      "following": false,
+      "save": true,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 305.47,
+      "speeds": [
+        307.27,
+        306.61,
+        306.03,
+        305.74,
+        305.62,
+        305.58,
+        305.58,
+        305.47
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.3742176228777455,
+        0.3790238018499118,
+        0.38114544405549755,
+        0.38154025561489124,
+        0.3815266423588929,
+        0.38166603485192996,
+        0.38131719924879237
+      ]
+    },
+    {
+      "initialGapM": 45,
+      "following": true,
+      "save": false,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 311.57,
+      "speeds": [
+        307.27,
+        309.11,
+        310.31,
+        310.61,
+        310.51,
+        311.65,
+        311.58,
+        311.57
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.35495119473474157,
+        0.3457808143571047,
+        0.34073248908019027,
+        0.34009097944861266,
+        0.33119913886007,
+        0.331394154567359,
+        0.3303778805592824
+      ]
+    },
+    {
+      "initialGapM": 45,
+      "following": true,
+      "save": true,
+      "seconds": 3,
+      "firstFollowDemand": 0,
+      "brakeSamples": 0,
+      "leaderKph": 307.27,
+      "lastKph": 305.47,
+      "speeds": [
+        307.27,
+        306.61,
+        306.03,
+        305.74,
+        305.62,
+        305.58,
+        305.58,
+        305.47
+      ],
+      "soc": [
+        0.35901198052026295,
+        0.3742176228777455,
+        0.3790238018499118,
+        0.38114544405549755,
+        0.38154025561489124,
+        0.3815266423588929,
+        0.38166603485192996,
+        0.38131719924879237
+      ]
+    }
+  ],
+  "date": "2026-10-13",
+  "sourceRevision": "6e7fd568cdc9c31ec0c99c107824289a7cb9bac2",
+  "baseline": {
+    "source": "6e7fd56",
+    "spacingM": 30,
+    "following": true,
+    "save": false,
+    "leaderKph": 307.27,
+    "lastKph": 246.44
+  },
+  "fixture": {
+    "track": "monza-approx",
+    "progress": 0.01282051282051282,
+    "referenceSpeedKph": 325.2545695778702,
+    "straightMeters": 446.07103199060293
+  },
+  "control": [
+    {
+      "distanceM": 15,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 20,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 25,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 30,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 35,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 40,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    },
+    {
+      "distanceM": 50,
+      "decelerationMps2": 0,
+      "throttleScale": 1
+    }
+  ],
+  "rows": [
+    {
+      "distanceM": null,
+      "save": false,
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 93.92696799635821,
+      "speedKph": 279.7,
+      "towReduction": 0
+    },
+    {
+      "distanceM": 20,
+      "save": false,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 93.92696799635821,
+      "speedKph": 279.74,
+      "towReduction": 0.058165714285714286
+    },
+    {
+      "distanceM": 20,
+      "save": true,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 24.04585460277,
+      "speedKph": 279.51,
+      "towReduction": 0.058165714285714286
+    },
+    {
+      "distanceM": 30,
+      "save": false,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 93.92696799635821,
+      "speedKph": 279.74,
+      "towReduction": 0.05331857142857143
+    },
+    {
+      "distanceM": 30,
+      "save": true,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 24.04585460277,
+      "speedKph": 279.51,
+      "towReduction": 0.05331857142857143
+    },
+    {
+      "distanceM": 40,
+      "save": false,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 93.92696799635821,
+      "speedKph": 279.73,
+      "towReduction": 0.04847142857142856
+    },
+    {
+      "distanceM": 40,
+      "save": true,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 24.04585460277,
+      "speedKph": 279.5,
+      "towReduction": 0.04847142857142856
+    },
+    {
+      "distanceM": 60,
+      "save": false,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 93.92696799635821,
+      "speedKph": 279.73,
+      "towReduction": 0.03877714285714285
+    },
+    {
+      "distanceM": 60,
+      "save": true,
+      "following": {
+        "decelerationMps2": 0,
+        "throttleScale": 1
+      },
+      "brake": 0,
+      "throttle": 100,
+      "deploymentKw": 24.04585460277,
+      "speedKph": 279.5,
+      "towReduction": 0.03877714285714285
+    }
+  ],
+  "failures": [],
+  "verdict": "PASS"
+}
