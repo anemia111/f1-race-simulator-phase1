@@ -11,6 +11,7 @@ it('uses the same maximum ability and strongest execution preset in native and e
   for(const driver of [formula,extra]) {
     expect(Object.values(driver.skills).every(value=>value===1.2)).toBe(true)
     expect(drivingSignature(driver).label).toBe('最強・全能力120')
+    expect(drivingSignature(driver)).toMatchObject({entry:1,rotation:1,exit:1,preservation:1,correction:1.2})
     expect(signaturePedalControl(drivingSignature(driver),1).throttleCeiling).toBe(100)
   }
   expect(drivingSignature(formula)).toEqual(drivingSignature(extra))
@@ -36,6 +37,6 @@ it('keeps explicit style edits instead of overriding them with the preset', () =
 it('retains the existing preference reserve for ordinary control abilities', () => {
   const driver = seriesPackageById.get('f1-custom')!.drivers.find(driver=>driver.id==='yuki_nakayama')!
   const signature = {...drivingSignature(driver),correction:1}
-  expect(signaturePedalControl(signature,1).throttleCeiling).toBeCloseTo(95.5)
-  expect(signaturePedalControl({...signature,correction:0.7},1).throttleCeiling).toBeCloseTo(95.5)
+  expect(signaturePedalControl(signature,1).throttleCeiling).toBeCloseTo(95)
+  expect(signaturePedalControl({...signature,correction:0.7},1).throttleCeiling).toBeCloseTo(95)
 })

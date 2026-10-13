@@ -1,5 +1,15 @@
 # Formula Race Simulator Handoff
 
+## Latest: Nakayama signature bars at maximum (2026-10-13)
+
+User supplied Engineer signature screenshot and requested maximum values.
+Shared Nakayama120 neutral-style preset now has entry/rotation/exit/preservation1
+and correction1.2 (all five UI bars100%). Replaces prior0.85/0.85/0.95 preferences;
+actual signature pedal control uses these values in all six categories. Existing
+manual style/ability overrides and physical slip/grip gates still apply. No save
+schema change; existing default120 profiles receive this immediately. Focused
+signature/Engineer tests run; shortened publishing remains authorized.
+
 ## Latest: F2 driver rating and propagation audit (2026-10-13)
 
 User clarified F2 means driver pool evaluation/propagation, not adding a live

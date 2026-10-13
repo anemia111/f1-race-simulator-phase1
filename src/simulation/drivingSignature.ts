@@ -12,8 +12,8 @@ export function drivingSignature(driver:Driver):DrivingSignature {
   // User-authored strongest-driver preset, shared by identity across series.
   // Explicit style or ability edits continue to take precedence.
   if(neutral && driver.id==='yuki_nakayama' && Object.values(s).every(value=>value===1.2)) {
-    const signature:DrivingSignature={entry:0.85,rotation:0.85,exit:0.95,preservation:1,correction:1.2,
-      label:'最強・全能力120',basis:'authored',description:'全カテゴリー共通の裕樹120設定。進入・ブレーキリリース・立ち上がりで高い操作精度を使います。'}
+    const signature:DrivingSignature={entry:1,rotation:1,exit:1,preservation:1,correction:1.2,
+      label:'最強・全能力120',basis:'authored',description:'全カテゴリー共通の裕樹120設定。進入・旋回・脱出・タイヤ管理・操作精度をすべて最大に設定しています。'}
     cache.set(driver,signature);return signature
   }
   const preference=(axis:string)=>0.2+hashChance(`driving-preference-v1:${driver.id}:${axis}`)*0.6
