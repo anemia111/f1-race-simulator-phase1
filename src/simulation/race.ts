@@ -140,6 +140,7 @@ import {
 import { startingGridDistance, startingGridLateralOffsetM } from './startingGrid'
 import { f1StandingStartMguKDecision } from './f1StandingStart'
 import { calculateCarTelemetry } from './telemetry'
+import { simulationRechargeRuleFor } from './simulationRechargePolicy'
 import { followingDemand } from './following'
 import { recordTelemetry, handlingTelemetry } from './telemetryHistory'
 import { replaceHandlingTyres } from './vehicleHandling'
@@ -207,7 +208,6 @@ import {
   compliesWithGrandPrixTireRule,
   FIA_2026_REGULATION_PROFILE,
   nextLowGripCondition,
-  resolveF1RechargeRule,
   sessionDistanceLapsFor,
   shouldDeclareRainHazard,
 } from './regulations'
@@ -2267,17 +2267,7 @@ function rechargeRuleForLapStart(
     timedRunPhase?: CarSnapshot['timedRunPhase']
   } = {},
 ) {
-  return resolveF1RechargeRule({
-    behindSafetyCar: options.behindSafetyCar,
-    eventId: config.eventId ?? undefined,
-    eventInput: config.fiaPuEventInput,
-    lowGripConditions: options.lowGripConditions,
-    overtakeAtLapStart: options.overtakeAtLapStart,
-    stage,
-    timedRunPhase: options.timedRunPhase,
-    trackId: config.track.id,
-    allowUnverifiedSessionDefault: config.freeMode === true,
-  })
+  return simulationRechargeRuleFor(config, stage, options)
 }
 
 /**
@@ -6244,6 +6234,13 @@ export function advanceRace(
       elapsedSeconds,
       phase: localControlPhase,
       localFlagPaceScale,
+      simulationRechargeRule: f1Runtime?.energyStore.rechargeRule.limit.kind === 'unavailable'
+        ? rechargeRuleForLapStart(config, weekendStage, {
+            behindSafetyCar: f1Runtime.energyLapStartedBehindSafetyCar,
+            lowGripConditions: f1Runtime.energyLapStartedInLowGripConditions,
+            overtakeAtLapStart: f1Runtime.overtakeRechargeAllowanceActiveThisLap,
+            timedRunPhase: car.timedRunPhase,
+          }) : undefined,
       lowGripConditions,
       isFinalLap:
         isRaceDistance && Math.floor(car.totalDistance) >= raceLaps - 1,

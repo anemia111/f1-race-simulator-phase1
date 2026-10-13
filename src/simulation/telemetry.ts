@@ -7,6 +7,7 @@ import { handlingSlip, type VehicleHandlingState } from './vehicleHandling'
 import { raceTyreGrip } from './raceTyres'
 import { superFormulaSimulatedTyreFor } from './superFormulaLiveTires'
 import { advanceSfOts, SF_OTS_ALLOCATION_SECONDS } from './sfOtsRuntime'
+import { repairUnavailableSimRecharge } from './simulationRechargePolicy'
 import type {
   ExecutableSeriesId,
   RuntimeVehicleEraId,
@@ -19,6 +20,7 @@ import type {
   Driver,
   DriverDecisionPath,
   OvertakeStatus,
+  RechargeRuleDefinition,
   Team,
   TrackDefinition,
   WeatherState,
@@ -193,6 +195,7 @@ export function calculateCarTelemetry(options: {
   phase: ActiveFlagPhase | null
   localFlagPaceScale?: number
   lowGripConditions: boolean
+  simulationRechargeRule?: RechargeRuleDefinition
   isFinalLap?: boolean
   /** Authoritative FIA event input; null/omission keeps it unavailable. */
   fiaNominalTyreMassKg?: number | null
@@ -336,7 +339,9 @@ export function calculateCarTelemetry(options: {
   )
   const energyStoreAtFrameStart = f1Runtime
     ? normalizeEnergyStoreState(
-        f1Runtime.energyStore,
+        options.simulationRechargeRule
+          ? repairUnavailableSimRecharge(f1Runtime.energyStore, options.simulationRechargeRule)
+          : f1Runtime.energyStore,
         team,
         f1Runtime.ersBatteryPercent,
       )

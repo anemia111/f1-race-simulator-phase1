@@ -1,5 +1,22 @@
 # Formula Race Simulator Handoff
 
+## Latest: F1 ERS recharge unavailable in normal SIM (2026-10-13)
+
+User reported no charging, then `9` (interpreted9% SOC; exact reproduction
+conditions unspecified). Reproduced non-Free Q/SQ braking with zero recovery:
+no event PU input resolved to unavailable, because SIM fallback was Free-only.
+Read docs/F1_RECHARGE_AVAILABILITY_FIX.md. Shared policy now uses the existing
+bounded SIM fallback for no-event unknown contexts under sim-session-default;
+known strict/event limits and all supplied-event unknown/ambiguous rejection
+remain. Restore and next live telemetry tick repair exact old unavailable rules
+without crediting energy or resetting per-lap usage, temperatures or losses.
+117 selected tests pass across5 suites; seven stage braking-from9% fixtures,
+checkpoint/live repair, energy balance, brake work and authoritative boundaries.
+One separate populated checkpoint-size check fails identically with pre-fix
+race.ts (5,685,360 vs4,000,000 bytes); source restored safely. Do not claim that
+storage regression fixed or all checks pass. No endurance/full-suite tests.
+Preserve shortened publish -SkipFullTestSuite -SkipPlaytest.
+
 ## Latest: Nakayama signature bars at maximum (2026-10-13)
 
 User supplied Engineer signature screenshot and requested maximum values.

@@ -6,6 +6,7 @@ import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
 import { encodeTelemetryHistory, decodeTelemetryHistory } from '../simulation/telemetryHistory'
 import { validVehicleHandling } from '../simulation/vehicleHandling'
 import { createSfOtsSimulation } from '../simulation/sfOtsRuntime'
+import { simulationRechargeRuleFor, repairUnavailableSimRecharge } from '../simulation/simulationRechargePolicy'
 import type {
   CarSnapshot,
   EnergyStoreState,
@@ -379,19 +380,19 @@ function authoritativeRechargeRulesFor(
   },
 ) {
   try {
-    const currentRule = resolveF1RechargeRule({
+    const currentRule = simulationRechargeRuleFor(config, config.weekendStage ?? 'race', context)
+    const oldUnavailableRule = currentRule.ruleId === 'sim-session-default' ? resolveF1RechargeRule({
         ...context,
-        allowUnverifiedSessionDefault: config.freeMode === true,
         eventId: config.eventId ?? undefined,
         eventInput: config.fiaPuEventInput,
         stage: config.weekendStage ?? 'race',
         trackId: config.track.id,
-      })
+      }) : null
     // Older saves keep their stricter 8.5 MJ budget for the current lap only.
     const legacyRule = config.freeMode === true && currentRule.ruleId === 'sim-free-mode-default' && currentRule.additionalAllowanceMJ === 0.5
       ? { ...currentRule, additionalAllowanceMJ: 0, limit: { kind: 'finite' as const, maxCuKBusRechargeMj: currentRule.baseLimitMJ! } }
       : null
-    return legacyRule ? [currentRule, legacyRule] : [currentRule]
+    return [currentRule,...(legacyRule?[legacyRule]:[]),...(oldUnavailableRule?.limit.kind==='unavailable'?[oldUnavailableRule]:[])]
   } catch {
     // An invalid supplied event input cannot authorize a checkpoint.
     return []
@@ -1351,6 +1352,14 @@ function migrateRaceSnapshot(
       const lateralVelocityMps = persisted.lateralVelocityMps ?? 0
       const desiredLateralOffsetM =
         persisted.desiredLateralOffsetM ?? lateralOffsetM
+      const f1Runtime = car.runtimeSystems.kind === 'f1' ? car.runtimeSystems : null
+      const repairedEnergyStore = f1Runtime?.energyStore.rechargeRule.limit.kind === 'unavailable'
+        ? repairUnavailableSimRecharge(f1Runtime.energyStore, simulationRechargeRuleFor(config, config.weekendStage ?? 'race', {
+            behindSafetyCar: f1Runtime.energyLapStartedBehindSafetyCar,
+            lowGripConditions: f1Runtime.energyLapStartedInLowGripConditions,
+            overtakeAtLapStart: f1Runtime.overtakeRechargeAllowanceActiveThisLap,
+            timedRunPhase: car.timedRunPhase,
+          })) : null
 
       return {
         ...car,
@@ -1364,7 +1373,7 @@ function migrateRaceSnapshot(
                 ...car.runtimeSystems,
                 otsSimulation: createSfOtsSimulation(config.track.id),
               }
-            : car.runtimeSystems,
+            : f1Runtime && repairedEnergyStore ? {...f1Runtime,energyStore:repairedEnergyStore} : car.runtimeSystems,
         desiredLateralOffsetM,
         driverAgentRuntime:
           car.driverAgentRuntime ??
