@@ -512,7 +512,8 @@ function isCompatibleEnergyStoreState(
 ) {
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, ENERGY_STORE_KEYS) ||
+    !hasExactKeys(value, new Set([...ENERGY_STORE_KEYS,...(Object.hasOwn(value,'pitChargedEnergyThisLapMJ')?['pitChargedEnergyThisLapMJ']:[])])) ||
+    (value.pitChargedEnergyThisLapMJ !== undefined && !isFiniteInRange(value.pitChargedEnergyThisLapMJ,0,100)) ||
     !ENERGY_STORE_NUMERIC_FIELDS.every((field) =>
       isFiniteNumber(value[field]),
     ) ||
@@ -654,7 +655,7 @@ function isCompatibleEnergyStoreState(
     !approximatelyEqual(
       state.energyBalanceErrorMJ,
       state.currentEnergyMJ -
-        (state.lapStartEnergyMJ +
+        (state.lapStartEnergyMJ + (isFiniteNumber(state.pitChargedEnergyThisLapMJ)?state.pitChargedEnergyThisLapMJ:0) +
           state.storedEnergyThisLapMJ -
           state.energyRemovedThisLapMJ),
     )

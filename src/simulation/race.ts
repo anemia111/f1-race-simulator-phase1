@@ -83,6 +83,7 @@ import { baselineSetupForTrack } from './engineering'
 import {
   advanceEnergyStore,
   createInitialEnergyStore,
+  fullyChargeEnergyStoreInPit,
   INITIAL_ENERGY_STORE_STATE_OF_CHARGE,
   rebaseEnergyStoreAtLapCrossing,
   startNextEnergyLap,
@@ -5482,12 +5483,13 @@ export function advanceRace(
         speedKph: number,
         throttlePercent: number,
         brakePercent: number,
+        fullCharge = false,
       ): F1RuntimePatch => {
         if (!f1Runtime) {
           return {}
         }
 
-        const energyStore = advanceEnergyStore({
+        const integratedEnergyStore = advanceEnergyStore({
           allowLiftCoastRecovery: false,
           ambientTemperatureC: airTemperatureC,
           brakePercent,
@@ -5509,6 +5511,7 @@ export function advanceRace(
           vehicleMassKg:
             operationalVehicleMass.operationalMassKg + car.fuelLoadKg,
         }).state
+        const energyStore = fullCharge ? fullyChargeEnergyStoreInPit(integratedEnergyStore) : integratedEnergyStore
 
         return {
           energyStore,
@@ -5660,12 +5663,15 @@ export function advanceRace(
             : f1Runtime.energyStore.rechargeRule
           : null
         const pitEnergyStore = pitEnergy?.energyStore
+          ? car.pitServiceKind !== 'drive-through' && car.pitServiceKind !== 'stop-go'
+            ? fullyChargeEnergyStoreInPit(pitEnergy.energyStore) : pitEnergy.energyStore
+          : undefined
         const preparedEnergyStore =
           f1Runtime && pitEnergyStore && pitReleaseRechargeRule
             ? isTimedSession
               ? createInitialEnergyStore(
                   team,
-                  preparedStateOfCharge ?? pitEnergyStore.stateOfCharge,
+                  car.pitServiceKind !== 'drive-through' && car.pitServiceKind !== 'stop-go' ? 1 : preparedStateOfCharge ?? pitEnergyStore.stateOfCharge,
                   pitReleaseRechargeRule,
                 )
               : crossedTimingLineOnRelease
@@ -5869,6 +5875,7 @@ export function advanceRace(
                 pitMotion.phase === 'box' ? 0 : pitSpeedLimit,
                 pitMotion.phase === 'box' ? 0 : 12,
                 0,
+                pitMotion.phase === 'box' && car.pitServiceKind !== 'drive-through' && car.pitServiceKind !== 'stop-go',
               ),
               activeAeroMode: 'corner' as const,
               activeAeroState: createInitialActiveAeroState(),

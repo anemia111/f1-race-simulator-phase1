@@ -625,6 +625,14 @@ export function calculateCarTelemetry(options: {
   const phaseManagedThrottlePercent = Math.min(
     requestedThrottlePercent,
     preparationThrottleCeiling,
+    // Preparation laps deliberately lift before braking to harvest. Preserve
+    // the final out-lap launch, flags and the separate traffic-yield controller.
+    hasHybridEnergyStore && isPreparationLap && energyStoreAtFrameStart &&
+      energyStoreAtFrameStart.stateOfCharge < 0.98 && car.pitPhase === 'none' &&
+      !phase && !timedTrafficYield && !(timedRunPhase === 'out-lap' && car.progress > 0.92) &&
+      requestedBrakePercent <= 3 && dynamics.brakingDistanceAheadMeters > 0 &&
+      dynamics.brakingDistanceAheadMeters < car.speedKph / 3.6 * 2.2 + 30
+      ? 35 : 100,
   )
   const throttleTimingScale =
     driverDecision === undefined
@@ -1004,7 +1012,7 @@ export function calculateCarTelemetry(options: {
           gripMultiplier: localGrip,
           rechargeRule: energyStoreAtFrameStart.rechargeRule,
           recoveryRequestScale:
-            qualifyingRecoveryRequestScale *
+            (isPreparationLap ? 1.25 : qualifyingRecoveryRequestScale) *
             (0.65 + energyIntent.harvestPreference * 0.35),
           speedKph: car.speedKph,
           state: energyStoreAtFrameStart,

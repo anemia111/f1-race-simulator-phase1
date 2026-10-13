@@ -162,7 +162,7 @@ export function f1EnergyIntentFor(
       (0.6 + straightOpportunity * 0.4) *
       (0.35 + highSocFreedom * 0.65),
   )
-  const harvestPreference = clamp01(
+  const harvestPreference = preparationLap ? 1 : clamp01(
     0.18 +
       lowSocPressure * (0.56 + skill * 0.12) +
       (paceMode === 'save' ? 0.24 : 0) +
@@ -170,7 +170,7 @@ export function f1EnergyIntentFor(
       (phaseActive ? 0.2 : 0) -
       (qualifyingAttack ? 0.28 : 0),
   )
-  const liftCoastPreference = clamp01(
+  const liftCoastPreference = preparationLap ? 1 : clamp01(
     harvestPreference * (0.55 + skill * 0.28) +
       (1 - straightOpportunity) * 0.08,
   )

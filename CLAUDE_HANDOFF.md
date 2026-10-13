@@ -1,5 +1,20 @@
 # Formula Race Simulator Handoff
 
+## Latest: F1 out/in-lap and pit full charge (2026-10-13)
+
+User requested strong out/in-lap charging and full charge in pits. Read
+docs/F1_PREPARATION_PIT_CHARGE.md. Preparation laps harvest/lift preferences1,
+recovery request1.25 and short pre-braking lift below98% SOC; final out-lap launch
+retained. Physical work/regen/heat/limits and no prep deployment remain.
+Normal F1 pit box service and release now give100%, including FP programs;
+pending BOX/lane/penalty-only visits do not. This is user-selected SIM service.
+Optional pitChargedEnergyThisLapMJ accounts for external charge separately,
+preserving MGU-K lap allowance and energy/loss ledgers. Balance and checkpoints
+include it; next energy lap resets it. Old saves without field remain compatible.
+124 selected tests across5 suites pass, excluding known unrelated populated
+checkpoint size failure. Actual FP/Q/race pit/release, out/in recovery, save and
+continued energy balance pass. No long tests; shortened publication flags.
+
 ## Latest: F1 ERS recharge unavailable in normal SIM (2026-10-13)
 
 User reported no charging, then `9` (interpreted9% SOC; exact reproduction

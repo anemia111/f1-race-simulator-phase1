@@ -1262,6 +1262,8 @@ export type EnergyStoreState = {
   unattributedConversionLossThisLapMJ: number
   conversionLossThisLapMJ: number
   lapStartEnergyMJ: number
+  /** SIM pit service energy, separate from on-track MGU-K recovery. */
+  pitChargedEnergyThisLapMJ?: number
   lastStepBalanceErrorMJ: number
   energyBalanceErrorMJ: number
   thermalDerating: number
