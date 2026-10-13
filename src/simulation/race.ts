@@ -5113,8 +5113,7 @@ export function advanceRace(
         FORMULA_VEHICLE_HALF_WIDTH_M + TRACK_EDGE_SAFETY_MARGIN_M,
       pit: {
         requested:
-          pitEntryDrivingRequested(car) ||
-          Boolean(manualPitRequests?.has(car.driverId)),
+          pitEntryDrivingRequested(car),
         pitLaneLateralOffsetM: lateralBounds.maxOffsetM,
       },
       emergency: emergencyVehicle
@@ -5475,6 +5474,19 @@ export function advanceRace(
     }
 
     if (car.status === 'pit') {
+      // Repair previously scheduled garage-dwell calibration, including saved races.
+      // Closed-exit queue time is independent and must not be discarded.
+      if (!isTimedSession && car.runtimeSystems.kind === 'f1' && car.pitStartedAtSeconds !== null &&
+        car.pitUntilSeconds !== null && car.pitServiceKind !== null &&
+        car.pitUntilSeconds - car.pitStartedAtSeconds - car.pitExitQueueSeconds > 180) {
+        const laneLoss = pitLaneLossSecondsForTrack(config.track)
+        const procedural = car.pitServiceKind === 'drive-through' || car.pitServiceKind === 'stop-go'
+        const work = procedural ? laneLoss + (car.pitServiceKind === 'stop-go' ? 10 : 0)
+          : pitStopLossSeconds(config.seed, driver.id, team, Math.max(1, car.pitStops), car.pitServiceKind === 'repair-stop', laneLoss)
+        const penalties = procedural ? 0 : car.penalties.filter(penalty => penalty.served &&
+          typeof penalty.servedAtSeconds === 'number' && penalty.servedAtSeconds >= car.pitStartedAtSeconds!).reduce((sum,penalty)=>sum+penalty.seconds,0)
+        car = {...car,pitUntilSeconds:car.pitStartedAtSeconds + work + penalties + car.pitExitQueueSeconds}
+      }
       const f1Runtime = f1RuntimeFor(car)
       const pitEnergyRuntimeFields = (
         speedKph: number,

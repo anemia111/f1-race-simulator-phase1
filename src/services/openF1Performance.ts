@@ -1,3 +1,4 @@
+import { validObservedPitLaneTransitSeconds } from '../data/f1PitLaneObservations2026'
 import type {
   DataProvenance,
   Driver,
@@ -305,27 +306,16 @@ export function buildOpenF1TrackCalibration(
         ]
       })()
     : null
-  const pitLaneTransitSeconds = median(
+  // Qualifying/practice visits include garage waiting, not race lane transit.
+  const racePitSession = String(bundle.selectedSession.session_type ?? '').toLowerCase() === 'race'
+  const pitLaneTransitSeconds = racePitSession ? median(
     bundle.pit.flatMap((pit) => {
-      if (
-        pit.lane_duration === null ||
-        !Number.isFinite(pit.lane_duration) ||
-        pit.lane_duration <= 0
-      ) {
-        return []
-      }
-
-      return [
-        Math.max(
-          1,
-          pit.lane_duration -
-            (pit.stop_duration !== null && Number.isFinite(pit.stop_duration)
-              ? Math.max(0, pit.stop_duration)
-              : 0),
-        ),
-      ]
+      if (pit.lane_duration === null || !Number.isFinite(pit.lane_duration) ||
+        pit.stop_duration === null || !Number.isFinite(pit.stop_duration) || pit.stop_duration < 0) return []
+      const transit = pit.lane_duration - pit.stop_duration
+      return validObservedPitLaneTransitSeconds(transit) ? [transit] : []
     }),
-  )
+  ) : null
   const maxSpeedKph = percentile(
     bundle.carData
       .map((sample) => sample.speed)

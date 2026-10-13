@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCachedOpenF1Bundle } from './useOpenF1Data'
+import { parseCachedOpenF1Bundle, openF1StateForStage } from './useOpenF1Data'
 
 const arrayFields = [
   'carData',
@@ -71,4 +71,12 @@ describe('OpenF1 session cache validation', () => {
     ).toBeNull()
     expect(parseCachedOpenF1Bundle('{broken')).toBeNull()
   })
+})
+
+it('hides qualifying data during the immediate transition to race, retaining same-session refreshes', () => {
+  const bundle=parseCachedOpenF1Bundle(cachedBundle({requestedStage:'qualifying'}))!.bundle
+  const state={status:'ready' as const,data:bundle,error:null}
+  expect(openF1StateForStage(state,'race',2026)).toEqual({status:'loading',data:null,error:null})
+  expect(openF1StateForStage(state,'qualifying',2026)).toBe(state)
+  expect(openF1StateForStage(state,'qualifying',2027).data).toBeNull()
 })

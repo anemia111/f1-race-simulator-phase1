@@ -1195,3 +1195,21 @@ box display 8.25 -> 3.5 s; downstream measured loss 16.5 -> 14.5 s. Script:
 node scripts/validate-albert-pit-loss.mjs. Lint/build/diff pass. Preserve shortened
 publish -SkipFullTestSuite -SkipPlaytest, no full races or long tests and the
 separate unfinished team-principal WIP patch.
+
+
+## Pending BOX pace and qualifying-to-race pit inflation, 2026-10-13
+
+Read docs/BOX_INSTRUCTION_AND_STAGE_PIT_FIX.md. Pending manual requests no
+longer trigger pit-entry pedals/lateral intent immediately on the running lap.
+Actual pit phases and entry execution remain. OpenF1 stage/year mismatch data
+is hidden, and uncached transitions clear the previous bundle. Pit transit now
+uses Race-type visits with known stationary duration and a broad valid transit
+screen; runtime rejects corrupt cached transit too. Saved F1 race stops with
+nonqueue duration >180 s are repaired from normal lane/crew/penalty budgets,
+without discarding real exit queue waits or timed-session garage plans.
+
+Do not claim the user's actual OpenF1 browser data was inspected. Code and
+synthetic qualifying garage visits establish the failure path. Bounds are SIM
+quality guards, not FIA rules. 26 focused checks plus short Albert stop pass;
+build/lint/diff pass. Preserve shortened publish -SkipFullTestSuite -SkipPlaytest,
+no long tests and the separate unfinished team-principal WIP patch.
