@@ -7,6 +7,8 @@ export type OfficialTrackAnchor = {
 }
 
 export type OfficialStraightModeZone = {
+  /** Next braking corner identified on the map; its entry projection is SIM. */
+  brakingTurn?: number
   lowGrip: OfficialTrackAnchor | null
   normal: OfficialTrackAnchor
 }
@@ -224,6 +226,61 @@ export const officialTrackOperations2026: Readonly<
       },
       { lowGrip: after(3, 80), normal: after(3, 50) },
       { lowGrip: after(11, 90), normal: after(11, 60) },
+    ],
+  },
+  'zandvoort-approx': {
+    centerlineLengthKm: 4.259,
+    overtake: { activation: at(14, 'entry', 45), detection: after(13, -10) },
+    sectorLengthsKm: [1.483, 1.452, 1.324],
+    sourceUrl: 'https://www.fia.com/system/files/decision-document/2026_dutch_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_and_emergency_exits_map.pdf',
+    straightMode: [
+      { brakingTurn: 1, normal: after(14, 20), lowGrip: after(14, 80) },
+      { brakingTurn: 11, normal: after(10, 50), lowGrip: after(10, 120) },
+    ],
+  },
+  'monza-approx': {
+    centerlineLengthKm: 5.793,
+    overtake: { activation: at(11, 'apex'), detection: at(11, 'entry') },
+    sectorLengthsKm: [1.909, 1.823, 2.061],
+    sourceUrl: 'https://www.fia.com/system/files/decision-document/2026_italian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+    straightMode: [
+      { brakingTurn: 1, normal: after(11, 30), lowGrip: after(11, 100) },
+      { brakingTurn: 4, normal: after(3, 70), lowGrip: after(3, 110) },
+      { brakingTurn: 8, normal: after(7, 170), lowGrip: after(7, 230) },
+      { brakingTurn: 11, normal: after(10, 130), lowGrip: after(10, 180) },
+    ],
+  },
+  'madrid-approx': {
+    centerlineLengthKm: 5.414,
+    overtake: { activation: after(22, 20), detection: at(22, 'entry') },
+    sectorLengthsKm: [1.839, 2.049, 1.526],
+    sourceUrl: 'https://www.fia.com/system/files/decision-document/2026_spanish_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_and_emergency_exits_map.pdf',
+    straightMode: [
+      { brakingTurn: 1, normal: after(22, 100), lowGrip: after(22, 130) },
+      { brakingTurn: 5, normal: after(3, 40), lowGrip: after(3, 90) },
+    ],
+  },
+  'baku-approx': {
+    centerlineLengthKm: 6.003,
+    overtake: { activation: after(17, -20), detection: after(16, 90) },
+    sectorLengthsKm: [2.033, 2.025, 1.945],
+    sourceUrl: 'https://www.fia.com/system/files/decision-document/2026_azerbaijan_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf',
+    straightMode: [
+      { brakingTurn: 1, normal: after(19, 45), lowGrip: after(20, 45) },
+      { brakingTurn: 3, normal: after(2, 110), lowGrip: after(2, 160) },
+    ],
+  },
+  'singapore-approx': {
+    centerlineLengthKm: 4.927,
+    overtake: { activation: after(17, 30), detection: at(17, 'entry') },
+    sectorLengthsKm: [1.639, 1.782, 1.506],
+    sourceUrl: 'https://www.fia.com/system/files/decision-document/2026_singapore_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_and_emergency_exits_map.pdf',
+    straightMode: [
+      { brakingTurn: 1, normal: after(19, 30), lowGrip: after(19, 90) },
+      { brakingTurn: 7, normal: after(5, 50), lowGrip: null },
+      { brakingTurn: 10, normal: after(9, 70), lowGrip: after(9, 120) },
+      { brakingTurn: 14, normal: after(13, 115), lowGrip: after(13, 165) },
+      { brakingTurn: 16, normal: after(15, 70), lowGrip: after(15, 90) },
     ],
   },
 }

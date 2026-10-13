@@ -67,6 +67,8 @@ export type DriverDecisionRole =
 
 export type DriverBattleCue = {
   active: boolean
+  /** An actually active category boost, never merely eligibility. */
+  boostActive?: boolean
   opponentId: string
   opponentLateralOffsetM: number
   /** Perceived longitudinal gap used by the causal observation layer. */
@@ -406,7 +408,8 @@ function chooseBattleIntent(
 
   if (attack && !defend) {
     const tow = context.tow
-    const pullOutGap = 1.05 - 0.45 * towExecutionQuality(context.driver)
+    const pullOutGap = context.attack?.boostActive
+      ? 1.15 : 1.05 - 0.45 * towExecutionQuality(context.driver)
     if (activeWakeCue(tow) && tow!.opponentId === context.attack!.opponentId &&
       Number.isFinite(tow!.gapSeconds) && tow!.gapSeconds! > pullOutGap &&
       Math.abs(context.currentLateralOffsetM - tow!.opponentLateralOffsetM) < 0.9) {
@@ -629,10 +632,13 @@ function nominalLineFor(
       // the attack cue opens at 1.8 s, so the whole train drove two metres off
       // the racing line for the entire lap.
       const commitment = clamp01(
-        intensity * 0.72 + traits.overtakeCommitment * 0.28,
+        intensity * 0.58 + traits.overtakeCommitment * 0.42,
       )
+      const closeCommittedMove = (intensity >= 0.6 && traits.overtakeCommitment >= 0.78) ||
+        (context.attack?.boostActive === true && finiteOr(context.attack.gapSeconds, Infinity) <= 1.1 && traits.overtakeCommitment >= 0.68)
       const separation = clamp(
-        1.25 + commitment * (PASSING_LATERAL_SEPARATION_M + 0.3 - 1.25),
+        closeCommittedMove ? PASSING_LATERAL_SEPARATION_M + 0.3 :
+          1.25 + commitment * (PASSING_LATERAL_SEPARATION_M + 0.3 - 1.25),
         1.25,
         PASSING_LATERAL_SEPARATION_M + 0.3,
       )
@@ -644,6 +650,9 @@ function nominalLineFor(
       )
     }
     case 'defend': {
+      // Once the rival occupies a separate lane, do not chase it sideways.
+      if (finiteOr(context.defend?.gapSeconds, Infinity) < 0.2 &&
+          Math.abs(current - finiteOr(context.defend?.opponentLateralOffsetM, current)) >= 1.6) return current
       const opponent = clamp(
         finiteOr(context.defend?.opponentLateralOffsetM, reference),
         -usableHalfWidthM,
@@ -910,7 +919,8 @@ export function decideDriverBehavior(
     desiredLateralOffsetM,
     lineErrorM,
     brakeOnsetDeltaSeconds: clamp(
-      nominalControl.brakeOnsetDeltaSeconds + controlError * 0.18,
+      nominalControl.brakeOnsetDeltaSeconds + controlError * 0.18 -
+        (chosen.intent === 'attack' ? clamp01(traits.brakingPrecision) * clamp01(traits.overtakeCommitment) * 0.045 : 0),
       -0.2,
       0.5,
     ),

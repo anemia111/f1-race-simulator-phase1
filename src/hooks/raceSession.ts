@@ -1,3 +1,4 @@
+import { validWheelBattle } from '../simulation/wheelBattle'
 import {validEngineeringPlan} from '../domain/raceEngineer'
 import {driverDisplayName, driverDisplayCode} from '../data/reviewedDriverRatings'
 import { repairSafetyCarStartTiming } from '../simulation/startLapTiming'
@@ -1109,6 +1110,8 @@ function isCompatibleCarSnapshot(
       : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id, config.track.id)
 
   return (
+    validWheelBattle(value.wheelBattle, (options.currentObservationTick + 1) * 0.5) &&
+    (value.wheelBattle === undefined || (isRecord(value.wheelBattle) && expectedDriverIds.has(String(value.wheelBattle.opponentId)))) &&
     (value.handlingState === undefined || validVehicleHandling(value.handlingState)) &&
     (value.telemetryHistory === undefined || (Array.isArray(value.telemetryHistory) && value.telemetryHistory.length<=1536 && value.telemetryHistory.every(point=>isRecord(point) && ['lap','progress','seconds','speedKph','throttlePercent','brakePercent','gear','rpm'].every(key=>isFiniteNumber(point[key])) && Number.isInteger(point.lap) && (point.lap as number)>=0 && (point.progress as number)>=0 && (point.progress as number)<1 && (point.speedKph as number)>=0 && (point.throttlePercent as number)>=0 && (point.throttlePercent as number)<=100 && (point.brakePercent as number)>=0 && (point.brakePercent as number)<=100))) &&
     typeof value.code === 'string' &&

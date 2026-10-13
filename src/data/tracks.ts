@@ -7,6 +7,7 @@ import {
   aeroActivationZonesWithOfficialOverride,
   deriveAeroActivationZones,
   pointDistance,
+  straightnessAt,
 } from './aeroZoneGeometry'
 import { realTrackLayouts } from './realTrackLayouts'
 import { sectorBoundaryReferences, sourcedSectorData } from './sectorBoundaries'
@@ -754,6 +755,7 @@ const anchorProgress = (
   corners: NonNullable<TrackDefinition['corners']>,
   lengthKm: number,
   anchor: OfficialTrackAnchor,
+  referenceSpanLimitMeters = 120,
 ) => {
   const corner = corners.filter(({ number }) => number === anchor.turn)[
     anchor.occurrence ?? 0
@@ -763,20 +765,39 @@ const anchorProgress = (
     return null
   }
 
+  // Preserve corner order at nearby parallel/overlapping road sections.
+  // Baku T20 lies beside T6: unconstrained nearest-point projection chose
+  // the earlier branch and put its low-grip marker half a lap away.
   let nearestIndex = 0
-  let nearestDistance = Number.POSITIVE_INFINITY
-
-  centerline.forEach((point, index) => {
-    const distance = pointDistance(point, corner.position)
-
-    if (distance < nearestDistance) {
-      nearestDistance = distance
-      nearestIndex = index
+  const targetCornerIndex = corners.indexOf(corner)
+  for (const orderedCorner of corners.slice(0, targetCornerIndex + 1)) {
+    let nearestDistance = Number.POSITIVE_INFINITY
+    let selectedIndex = nearestIndex
+    for (let index = nearestIndex; index < centerline.length; index += 1) {
+      const distance = pointDistance(centerline[index], orderedCorner.position)
+      if (distance < nearestDistance) {
+        nearestDistance = distance
+        selectedIndex = index
+      }
     }
-  })
+    nearestIndex = selectedIndex
+  }
 
-  const referenceOffsetMeters =
-    anchor.reference === 'entry' ? -15 : anchor.reference === 'exit' ? 15 : 0
+  // Entry/exit are projected from the visible bend, not a fixed 15 m from
+  // the apex. The old 30 m-wide corner made Hungary's detection and its
+  // activation 30 m before exit coincide. This remains a SIM projection.
+  let referenceOffsetMeters = 0
+  if (anchor.reference !== 'apex') {
+    const direction = anchor.reference === 'entry' ? -1 : 1
+    const metersPerSample = lengthKm * 1000 / centerline.length
+    let spanMeters = 30
+    for (let step = 1; step * metersPerSample <= referenceSpanLimitMeters; step += 1) {
+      spanMeters = Math.max(30, step * metersPerSample)
+      const index = (nearestIndex + direction * step + centerline.length) % centerline.length
+      if (spanMeters >= 30 && straightnessAt(centerline, index) >= 0.97) break
+    }
+    referenceOffsetMeters = direction * spanMeters
+  }
 
   return wrapProgress(
     nearestIndex / centerline.length +
@@ -820,6 +841,9 @@ const officialAeroActivationZones = (
       corners,
       operations.centerlineLengthKm,
       zone.normal,
+      zone.normal.reference === 'exit' && zone.lowGrip?.turn === zone.normal.turn &&
+        zone.lowGrip.reference === 'apex' && zone.lowGrip.offsetMeters > 30
+        ? zone.lowGrip.offsetMeters - 30 : 120,
     )
 
     if (start === null) {
@@ -837,7 +861,10 @@ const officialAeroActivationZones = (
 
     return [
       {
-        end: officialZoneEnd(start, derivedZones),
+        end: zone.brakingTurn === undefined ? officialZoneEnd(start, derivedZones) :
+          anchorProgress(centerline, corners, operations.centerlineLengthKm,
+            { turn: zone.brakingTurn, reference: 'entry', offsetMeters: 0 }) ?? officialZoneEnd(start, derivedZones),
+        endSource: 'derived' as const,
         label: `SM A${index + 1}`,
         ...(lowGripStart === null ? {} : { lowGripStart }),
         lowGripMode: lowGripStart === null ? ('disabled' as const) : ('partial' as const),

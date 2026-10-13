@@ -63,6 +63,7 @@ export type MotorsportCar = {
   strategyReason?: string
   /** Optional for old saves; integrated lateral motion, in source XY metres. */
   lateralVelocityMps?: number
+  wheelBattle?: import('../simulation/wheelBattle').WheelBattleState
   battle?: { opponentId: string; side: -1 | 1; startedAt: number }
   teamInstruction?: import('../simulation/teamDecision').TeamInstruction
   driverIntent?: import('../simulation/driverDecision').DriverDecisionIntent

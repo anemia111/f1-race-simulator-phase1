@@ -1,3 +1,4 @@
+import { advanceWheelBattle, applyWheelBattleDecision, type WheelBattleState } from './wheelBattle'
 import {measuredMiniSectorTimeline,measuredMiniSectorGapSeconds} from '../domain/measuredTimingGap'
 import {settleEngineeringPlan} from '../domain/raceEngineer'
 import {sfPitSimulation} from './sfPitSimulation'
@@ -4888,6 +4889,7 @@ export function advanceRace(
       lateralOffsetM: car.lateralOffsetM,
       totalDistanceM: profileDistanceMAt(config.track, car.totalDistance),
     }))
+  const wheelBattleById = new Map<string, WheelBattleState | undefined>()
   const driverDecisionById = new Map<string, DriverDecision>()
   const driverObservationInboxById = new Map<
     string,
@@ -5022,6 +5024,7 @@ export function advanceRace(
       attackerLastLap === null ||
       defenderLastLap === null ||
       attackerLastLap <= defenderLastLap + 0.25 ||
+      (aheadCar !== undefined && car.speedKph > aheadCar.speedKph + 3) ||
       (attackerF1Tires !== null &&
         defenderF1Tires !== null &&
         attackerF1Tires.tireAgeLaps + 4 <
@@ -5098,6 +5101,7 @@ export function advanceRace(
         aheadCar?.status === 'running'
           ? {
               active: attackIntensity > 0 && hasPaceCase,
+              boostActive: car.overtakeStatus === 'active',
               gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
@@ -5132,7 +5136,7 @@ export function advanceRace(
         aheadCar?.status === 'running'
           ? {
               active:
-                !passingTimedTransit && gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72,
+                !passingTimedTransit && gapAheadSeconds < 1.8 && dynamics.straightness >= 0.72 && aheadCar.brakePercent <= 5,
               gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
               opponentLateralOffsetM: nearestAhead!.lateralOffsetM,
@@ -5292,6 +5296,19 @@ export function advanceRace(
     }
     driverAgentRuntimeById.set(car.driverId, nextDriverAgentRuntime)
 
+    const wheelOpponent = nearby.find(other => car.wheelBattle?.opponentId === other.driverId) ??
+      nearby.filter(other => Math.abs(other.signedLongitudinalDistanceM) <= 6 &&
+        Math.abs(other.lateralOffsetM - car.lateralOffsetM) >= 1.6)
+        .sort((a, b) => Math.abs(a.signedLongitudinalDistanceM) - Math.abs(b.signedLongitudinalDistanceM))[0]
+    const wheelCar = wheelOpponent ? frameCarById.get(wheelOpponent.driverId) : undefined
+    const wheelBattle = advanceWheelBattle({ previous: car.wheelBattle, seconds: elapsedSeconds,
+      enabled: isRaceDistance && !localControlPhase && !car.blueFlag && car.pitPhase === 'none' && wheelCar?.status === 'running',
+      own: driver, opponent: wheelCar ? drivers.get(wheelCar.driverId) : undefined,
+      gapM: wheelOpponent?.signedLongitudinalDistanceM ?? Infinity,
+      lateralSeparationM: Math.abs((wheelOpponent?.lateralOffsetM ?? car.lateralOffsetM) - car.lateralOffsetM),
+      speedDeltaMps: (car.speedKph - (wheelCar?.speedKph ?? car.speedKph)) / 3.6 })
+    wheelBattleById.set(car.driverId, wheelBattle)
+    decision = applyWheelBattleDecision(decision, wheelBattle, car.lateralOffsetM)
     driverDecisionById.set(car.driverId, decision)
 
     if (aheadCar && nearestAhead) {
@@ -6817,6 +6834,7 @@ export function advanceRace(
     } = displayTelemetry
     let next: CarSnapshot = {
       ...car,
+      wheelBattle: wheelBattleById.get(car.driverId),
       driverAgentRuntime:
         driverAgentRuntimeById.get(car.driverId) ?? car.driverAgentRuntime,
       driverObservationInbox:

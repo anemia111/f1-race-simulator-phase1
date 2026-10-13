@@ -41,6 +41,12 @@ try {
   const f1Tracks = tracks.map((track) => {
     const official = officialTrackOperations2026[track.id]
     const zones = track.aeroActivationZones ?? []
+    const detectionLines = track.overtakeControlLines ?? []
+    failure(invariantFailures, detectionLines.length > 0, `${track.id}:missing-detection`)
+    failure(invariantFailures, detectionLines.every(line =>
+      Number.isFinite(line.detectionProgress) && line.detectionProgress >= 0 && line.detectionProgress < 1 &&
+      Number.isFinite(line.activationProgress) && line.activationProgress >= 0 && line.activationProgress < 1 &&
+      line.detectionProgress !== line.activationProgress), `${track.id}:detection-geometry`)
     const estimatedZones = zones.filter(isGeometryDerivedAeroActivationZone)
     const sourceClassification = official
       ? 'official-map'
@@ -81,6 +87,7 @@ try {
       activeAeroUnavailable: track.activeAeroUnavailable ?? false,
       sourceClassification,
       sourceUrl: official?.sourceUrl ?? null,
+      detectionLines,
       trackId: track.id,
       zoneCount: zones.length,
       zones,
@@ -170,7 +177,7 @@ try {
       cwd: repoRoot,
       encoding: 'utf8',
     }).trim(),
-    sourceCutoffDate: '2026-08-08',
+    sourceCutoffDate: '2026-10-13',
     command: 'npm run validate:active-aero-zones',
     verdict: invariantFailures.length === 0 ? 'PASS' : 'FAIL',
     calibrationPolicy: {
@@ -179,6 +186,8 @@ try {
     },
     policy: {
       estimatedZonesAreNotOfficial: true,
+      officialMarkersUseProjectedCornerReferences: true,
+      zoneBrakingEndpointsAreDerived: true,
       maximumEstimatedLateralLoadG: MAXIMUM_ESTIMATED_LATERAL_LOAD_G,
       minimumUsableZoneMeters: MINIMUM_USABLE_ZONE_METERS,
       requiredTransitionSeconds: REQUIRED_TRANSITION_SECONDS,

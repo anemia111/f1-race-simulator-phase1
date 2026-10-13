@@ -1,3 +1,4 @@
+import { advanceWheelBattle, applyWheelBattleDecision } from '../simulation/wheelBattle'
 import { decideDriverBehavior, type DriverDecisionContext } from '../simulation/driverDecision'
 import {resolveLateralOccupancy,resolveLongitudinalOccupancy} from '../simulation/lateralDynamics'
 import {engineeringMachine,extraControlSetup,extraSignature,motorsportEngineerSession} from './engineering'
@@ -432,7 +433,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
       // The driver sees speed, public lap times and vehicle identity, not an
       // opponent's hidden fuel/tyre state or its perfect future speed envelope.
       const hasPaceCase=!opponent || car.bestLapSeconds===null || opponent.bestLapSeconds===null ||
-        car.bestLapSeconds<=opponent.bestLapSeconds+0.25 ||
+        car.bestLapSeconds<=opponent.bestLapSeconds+0.25 || car.speedMps>opponent.speedMps+0.8 ||
         (car.tyreSets.at(-1)?.completedLaps??0)+4<(opponent.tyreSets.at(-1)?.completedLaps??0)
       const publicAccelerationAdvantage=opponentEntry?machine.powerKw.value/(machine.massKg.value+machine.driverMassKg.value)-
         opponentEntry.machine.powerKw.value/(opponentEntry.machine.massKg.value+opponentEntry.machine.driverMassKg.value):0
@@ -455,13 +456,26 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
           gapSeconds:Math.max(0,gap)/Math.max(5,car.speedMps),intensity:1}:undefined,
         dirtyAir:ahead?{active:ahead.gap/Math.max(5,car.speedMps)<2.5 && station.radiusM<500,
           opponentId:ahead.car.entryId,opponentLateralOffsetM:ahead.car.lateralM,intensity:0.5}:undefined,
-        tow:ahead?{active:ahead.gap/Math.max(5,car.speedMps)<1.8 && station.radiusM>500,
+        tow:ahead?{active:ahead.gap/Math.max(5,car.speedMps)<1.8 && station.radiusM>500 && (ahead.car.brakePercent??0)<=5,
           opponentId:ahead.car.entryId,opponentLateralOffsetM:ahead.car.lateralM,gapSeconds:ahead.gap/Math.max(5,car.speedMps),intensity:0.5}:undefined,
         yield:car.blueFlag?{active:true,preferredSide:1 as const,approachingLateralOffsetM:-2.2,requiredSeparationM:2.25}:undefined,
       }
       if (config.sessionKind!=='practice' && config.sessionKind!=='qualifying') context=applyTeamInstruction(context,instruction,
         behind?{id:behind.car.entryId,gapSeconds:behind.gap/Math.max(5,behind.car.speedMps),lateralM:behind.car.lateralM}:undefined)
-      const decision=decideDriverBehavior(context)
+      const wheelOpponent = physicalOrder.find(other => {
+        const person = entries.get(other.entryId)!.drivers[other.driverIndex]
+        return car.wheelBattle?.opponentId === person.id && other.entryId !== car.entryId
+      }) ?? physicalOrder.filter(other => other.entryId !== car.entryId &&
+        Math.abs(modulo(other.distanceM-car.distanceM+length/2,length)-length/2) <= 6 &&
+        Math.abs(other.lateralM-car.lateralM) >= 1.6)
+        .sort((a,b)=>Math.abs(modulo(a.distanceM-car.distanceM+length/2,length)-length/2)-Math.abs(modulo(b.distanceM-car.distanceM+length/2,length)-length/2))[0]
+      car.wheelBattle = advanceWheelBattle({previous:car.wheelBattle,seconds:state.raceSeconds,
+        enabled:state.flag==='green' && config.sessionKind!=='practice' && config.sessionKind!=='qualifying' && !car.blueFlag && wheelOpponent?.status==='running',
+        own:context.driver,opponent:wheelOpponent?behaviorDriverFor(entries.get(wheelOpponent.entryId)!.drivers[wheelOpponent.driverIndex]):undefined,
+        gapM:wheelOpponent?modulo(wheelOpponent.distanceM-car.distanceM+length/2,length)-length/2:Infinity,
+        lateralSeparationM:Math.abs((wheelOpponent?.lateralM??car.lateralM)-car.lateralM),
+        speedDeltaMps:car.speedMps-(wheelOpponent?.speedMps??car.speedMps)})
+      const decision=applyWheelBattleDecision(decideDriverBehavior(context),car.wheelBattle,car.lateralM)
       car.driverIntent=decision.intent
       const overtaking=decision.intent==='attack' && candidate
       if (overtaking && !car.battle && opponent) car.battle={opponentId:opponent.entryId,
@@ -515,7 +529,7 @@ function advanceTick(previous: MotorsportRaceState, config: MotorsportRaceConfig
         pickupRateScale:difficulty.pedalRateScale,
         style:signature,
         feedback: { lateralUse: clamp(tyreForces.lateral / Math.max(1, tyreForces.available), 0, 1), driveSlip: handlingSlip(car.handlingState).drive, brakeSlip: handlingSlip(car.handlingState).brake, skill: decision.traits.throttlePrecision,brakeSkill:decision.traits.brakingPrecision },
-        throttle: Math.max(0, Math.min(desiredForce, tyreForces.longitudinal * drivenShare * 0.95)) / Math.max(1, wheelPowerForce) * 100 * decision.throttleOpeningScale,
+        throttle: Math.min(100, Math.max(0, Math.min(desiredForce, tyreForces.longitudinal * drivenShare * 0.95)) / Math.max(1, wheelPowerForce) * 100) * decision.throttleOpeningScale,
         brake: Math.max(0, -desiredForce) / Math.max(1, brakeCapacity) * 100 * decision.brakePressureScale,
         previousThrottle: car.throttlePercent ?? 0, previousBrake: car.brakePercent ?? 0,
         seconds: dt, carbonBrakes: entry.classId === 'hypercar' || entry.classId === 'lmp2' || entry.classId === 'indycar',

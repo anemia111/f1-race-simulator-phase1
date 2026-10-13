@@ -466,6 +466,8 @@ export type DataProvenance = {
 }
 
 export type AeroActivationZone = TrackProgressZone & {
+  /** FIA maps specify activation markers; projected braking endpoints remain SIM. */
+  endSource?: OperationalDataSource
   lowGripStart?: number
   lowGripMode: 'partial' | 'disabled'
   source: OperationalDataSource
@@ -1278,6 +1280,7 @@ export type CarSnapshot = {
   /** Category mileage plus a bounded replay tail of operational decisions. */
   driverAgentRuntime?: DriverAgentRuntimeState
   /** Bounded causal perceptions retained for the category driver agent. */
+  wheelBattle?: import('./simulation/wheelBattle').WheelBattleState
   driverObservationInbox?: DriverObservationInboxState
   teamId: string
   code: string

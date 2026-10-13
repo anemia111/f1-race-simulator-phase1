@@ -1,3 +1,4 @@
+import { validWheelBattle } from '../simulation/wheelBattle'
 import {migrateMotorsportDriverRating} from '../data/reviewedDriverRatings'
 import {validEngineeringPlan} from '../domain/raceEngineer'
 import {normalizeCarSetup} from '../simulation/engineering'
@@ -85,6 +86,7 @@ export function parseMotorsportSave(raw: string): MotorsportSave | null {
       if (car.paceMode !== undefined && !['push','standard','save','defend'].includes(car.paceMode)) return null
       if (car.lapInvalid !== undefined && typeof car.lapInvalid !== 'boolean') return null
       if (car.lapHistory !== undefined && (!Array.isArray(car.lapHistory) || car.lapHistory.length > 1000 || car.lapHistory.some(lap => !Number.isSafeInteger(lap.lap) || lap.lap < 1 || !Number.isFinite(lap.seconds) || lap.seconds <= 0 || !Number.isInteger(lap.driverIndex) || lap.driverIndex < 0 || typeof lap.compound !== 'string' || typeof lap.pit !== 'boolean'))) return null
+      if (!validWheelBattle(car.wheelBattle,save.state.raceSeconds) || (car.wheelBattle && !save.config.entries.some(entry=>entry.drivers.some(driver=>driver.id===car.wheelBattle!.opponentId)))) return null
       if (car.battle !== undefined && (!save.config.entries.some(entry=>entry.id===car.battle!.opponentId) || ![-1,1].includes(car.battle.side) || !Number.isFinite(car.battle.startedAt) || car.battle.startedAt<0 || car.battle.startedAt>save.state.raceSeconds)) return null
       if (car.driverIntent !== undefined && !['controlled-flag','pit-entry','emergency-avoidance','attack','defend','dirty-air-avoidance','tow-alignment','blue-flag-yield','team-order-yield','physical-reference-line'].includes(car.driverIntent)) return null
       if (car.teamInstruction !== undefined && (!['hold-position','let-teammate-through','free-to-fight'].includes(car.teamInstruction.kind) || !['no-team-battle','protect-team-result','faster-teammate'].includes(car.teamInstruction.reason) || (car.teamInstruction.teammateId!==null && !save.config.entries.some(entry=>entry.id===car.teamInstruction!.teammateId)))) return null

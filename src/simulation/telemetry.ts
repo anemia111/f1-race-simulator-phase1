@@ -1,3 +1,4 @@
+import { straightAttackDeployment } from './wheelBattle'
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 import { f1PhysicsForTrack } from './f1CourseCalibration'
 import { advancePedals } from './pedalControl'
@@ -798,6 +799,12 @@ export function calculateCarTelemetry(options: {
       })
     : ('balanced' as const)
   const isQualifyingAttack = timedRunPhase === 'attack-lap'
+  const straightAttackRequest = straightAttackDeployment({
+    intent: driverDecision?.intent, straightness: dynamics.straightness,
+    throttlePercent, brakePercent, stateOfCharge: energyStoreAtFrameStart?.stateOfCharge ?? 0,
+    skill: driver.skills.ersManagement, enabled: sessionType === 'race-distance' && phase === null &&
+      !isPreparationLap && !timedTrafficYield && car.pitPhase === 'none' && !car.wheelBattle?.conceding,
+  })
   const ersMode = !hasHybridEnergyStore || standingStartMguKRestricted
     ? ('balanced' as const)
     : isPreparationLap ||
@@ -806,7 +813,7 @@ export function calculateCarTelemetry(options: {
       ? ('harvest' as const)
       : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
         ? ('deploy' as const)
-      : requestedErsMode
+      : straightAttackRequest > 0 ? ('deploy' as const) : requestedErsMode
   const ersCurve: MguKPowerCurve | null =
     !hasHybridEnergyStore || lowGripConditions
     ? null
@@ -855,7 +862,7 @@ export function calculateCarTelemetry(options: {
     })
   const deploymentRequest = energyStoreAtFrameStart
     ? energyDeploymentRequestFor({
-        battlePhase: car.battlePhase,
+        battlePhase: straightAttackRequest > 0 ? 'attacking' : car.battlePhase,
         isFinalLap,
         lapProgress: car.progress,
         overtakeActive: overtakeStatus === 'active',
@@ -872,8 +879,8 @@ export function calculateCarTelemetry(options: {
       })
     : 0
   const intentScheduledDeploymentRequest =
-    deploymentRequest *
-    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5)
+    Math.max(straightAttackRequest, deploymentRequest *
+    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5))
   const effectiveDeploymentRequest =
     !hasHybridEnergyStore ||
     standingStartMguKRestricted ||

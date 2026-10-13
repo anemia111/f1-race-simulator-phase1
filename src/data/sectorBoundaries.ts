@@ -23,7 +23,7 @@ const historical = (
 
 export const sectorBoundaryReferences: Record<string, SectorBoundaryReference> = {
   ...Object.fromEntries(Object.entries(officialTrackOperations2026).map(([id, data]) => [id, {
-    checkedOn: '2026-09-21', year: 2026, sourceUrl: data.sourceUrl,
+    checkedOn: ['baku-approx', 'singapore-approx'].includes(id) ? '2026-10-13' : '2026-09-21', year: 2026, sourceUrl: data.sourceUrl,
     lengthKm: data.centerlineLengthKm, sectorLengthsKm: data.sectorLengthsKm,
   }])),
   'monza-approx': {
@@ -43,8 +43,6 @@ export const sectorBoundaryReferences: Record<string, SectorBoundaryReference> =
   },
   'bahrain-approx': historical(5.412, [[5, 0], [13, -48]], '2025_bahrain_grand_prix_-_event_notes_-_circuit_map_v4'),
   'jeddah-approx': historical(6.174, [[13, -265], [22, -120]], '2025_saudi_arabian_grand_prix_-_event_notes_-_circuit_map_pit_lane_and_quarantine_zone'),
-  'baku-approx': historical(6.003, [[5, -46], [16, -56]], '2025_baku_event_-_circuit_map_-_baku_2025'),
-  'singapore-approx': historical(4.927, [[7, -150], [14, -140]], '2025_singapore_grand_prix_-_event_notes_-_circuit_map_pit_lane_emergency_exits_map_and_quarantine_zone'),
   'cota-approx': historical(5.513, [[7, -55], [13, -65]], '2025_united_states_grand_prix_-_event_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_quarantine_zone_map_red_zones_map'),
   'mexico-city-approx': historical(4.304, [[4, -136], [12, -242]], '2025_mexico_city_grand_prix_-_event_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_quarantine_zone_area'),
   'interlagos-approx': historical(4.309, [[4, -168], [12, -85]], '2025_sao_paulo_grand_prix_-_event_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_quarantine_zone_and_red_zones_map'),

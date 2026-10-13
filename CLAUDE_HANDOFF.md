@@ -1056,3 +1056,31 @@ Instantaneous physical gaps used for driving remain independent of UI timing.
 lint/types/build pass. No long/full-session tests. Keep shortened publish with
 -SkipFullTestSuite -SkipPlaytest. The separate unfinished team-principal patch
 remains outside this batch.
+
+## Committed straights, finite wheel battles and updated FIA markers, 2026-10-13
+
+User requested aggressive skill-dependent straight passing, ERS use and stronger
+commitment during active Overtake, without endless side-by-side running; then
+requested real course detection/Straight Mode locations. Read
+`docs/COMMITTED_OVERTAKING_AND_FIA_MARKERS.md`. Shared decisions now establish
+passing clearance earlier for capable/boosted attacks, release tow when a rival
+brakes and hold defensive lanes once overlap exists. Both runtime families use
+persisted, validated physical-overlap memory; a six-second unresolved contest
+ends with a controlled lane-preserving lift by the disadvantaged driver until
+clear. F1 live attack requests actual ERS within the existing physical ledger
+and gates. No hardware power, distance or position bonus was added.
+
+FIA PDFs for Zandvoort/Monza/Madrid/Baku/Singapore were downloaded, rendered and
+visually checked; marker counts, offsets and low-grip restrictions are now in
+the operations table. 16 of 24 existing F1 courses use official event markers;
+eight and the Japanese F1 Free Mode circuits still use labelled SIM estimates.
+Do not claim every circuit is official or projected entry/exit/endpoints exact.
+Monaco still has no Straight Mode but has Overtake detection. Projection fixes
+ordered corner branches at Baku and separated coincident Hungary markers.
+Endpoints remain explicitly derived; five new maps use the mapped next braking
+corner as the end of the run. Baku/Singapore sector tables use 2026 sources.
+
+Preserve shortened publishing (-SkipFullTestSuite -SkipPlaytest) and no long
+sessions. The team-principal WIP remains separate and must not be reapplied here.
+
+Validation: 79 focused tests passed (74 shared/data/runtime checks and five selected existing track-system regressions); lint, production build and the enforced short active-aero audit passed. No full-lap, full-weekend or endurance checks were run.
