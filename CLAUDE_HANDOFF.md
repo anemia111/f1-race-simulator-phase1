@@ -1084,3 +1084,21 @@ Preserve shortened publishing (-SkipFullTestSuite -SkipPlaytest) and no long
 sessions. The team-principal WIP remains separate and must not be reapplied here.
 
 Validation: 79 focused tests passed (74 shared/data/runtime checks and five selected existing track-system regressions); lint, production build and the enforced short active-aero audit passed. No full-lap, full-weekend or endurance checks were run.
+
+
+## Wet F1 rolling-start ERS and SF standing starts, 2026-10-13
+
+User confirmed Australia in rain: low-grip ERS was intentionally failed closed
+because FIA-F1-DOC-111 event curves were unavailable, leaving positive ERS at
+zero after rolling release. Official data remains unavailable. Live telemetry
+now uses an explicitly SIM-only half-normal (or specified-sector) envelope,
+maximum 175 kW, with existing pedals/traction/energy/thermal/standing gates.
+Low Grip Overtake remains disabled. Pit-wall Deployment tooltip labels this
+fallback. Do not claim this numeric envelope is an official FIA wet curve.
+User also explicitly requested no SF Safety Car starts: automatic wet SC
+formation is now F1-only; SF rain uses grid/lights. Mid-race SC and manually
+chosen Free Mode rolling starts are retained. Existing sessions need restarting
+to change their already-chosen formation procedure. No persistence schema change.
+Keep shortened publish and no long tests.
+
+Validation: 87 focused checks passed, including 24 short dry rolling releases, the Australian wet F1 release, wet SF grid procedure, standing MGU-K gates, regulations and aero/overtaking regression checks. Lint, production build and diff checks pass. No long/full-session tests.

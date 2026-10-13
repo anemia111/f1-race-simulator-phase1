@@ -74,8 +74,11 @@ v >= 345           0 kW
 ```
 
 The competition-specific low-grip curve in `FIA-F1-DOC-111` is not public.
-The runtime therefore represents it as unavailable and fails closed; it does
-not substitute a guessed 250 kW curve. Low Grip also disables Overtake.
+The official input remains unavailable. As of the 2026-10-13 wet-start fix,
+the driving runtime uses an explicitly SIM-only envelope at 50% of the normal
+(or specified-sector) speed curve, capped at 175 kW. This is not a verified
+FIA wet curve. Pedals, grip, battery and thermal limits still govern actual
+output. Low Grip continues to disable Overtake.
 
 ## Energy and start gates
 

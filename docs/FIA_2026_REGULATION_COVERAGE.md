@@ -22,7 +22,7 @@ FIA when the corresponding competition document is not public or normalized.
 | Low Grip Conditions | B1.5.12 | Stateful Race Director declaration with drying hysteresis. Qualifying cannot return to Normal Grip with five minutes or less remaining in a period. |
 | Active aero | B7.1.1-B7.1.2, C3.10.10/C3.11.6 | Normal Grip permits full activation in mapped zones. Front and rear positions transition continuously within 400 ms. State changes are restricted to stationary cars or Activation Zones, and a failure returns to the Corner-safe state. Low Grip prohibits full activation and permits front-wing-only partial activation in mapped Low Grip zones. |
 | Overtake | B7.2.2-B7.2.3 | Disabled at a race start, under Safety Car, and in Low Grip. Detection-line eligibility is latched and activation-line use is modelled. |
-| ERS-K power | C5.2.7-C5.2.8 | One pure authority applies the exact Normal, Overtake and Race/Sprint power-limited speed curves, then the absolute 350 kW cap. The non-public Low Grip curve fails closed as unavailable rather than using an estimate. |
+| ERS-K power | C5.2.7-C5.2.8 | One pure authority applies the exact Normal, Overtake and Race/Sprint power-limited speed curves, then the absolute 350 kW cap. The non-public Low Grip curve remains unavailable as official data; the driving runtime uses a separately labelled SIM envelope at half normal power (maximum 175 kW). |
 | Energy Store | C5.2.9 | MJ is the runtime truth and UI percentage is derived from the fixed 4 MJ usable window. CU-K DC power, stored power, mechanical power, and battery/inverter/motor losses are separate ledger entries. |
 | Recharge | C5.2.10, B7.2.1 | Recharge is counted before battery loss at the CU-K HV DC Bus. The technical base is 8.5 MJ; event Competition Information supplies context-specific totals and the qualifying floor is 4 MJ. Suzuka document 4 is normalized as 8.5 MJ Race inactive, 9.0 MJ Race active at the Line, 8.0 MJ Qualifying, and 9.0 MJ Free Practice/non-Race out-lap. Missing event contexts fail unavailable. Low Grip behind the Safety Car is unlimited rather than an additive allowance. |
 | Superclip | C5.2, FIA 2026-04-20 refinement | Full-throttle superclip is an actual generator operating mode: ICE wheel power remains positive, generator mechanical power lowers net wheel power, and CU-K recharge increases. The communicated 2–4 s/lap duration is an observational sanity target, never a fixed runtime timer; the current fixed-duration invariant probe leaves the complete-lap comparison unavailable. |
@@ -59,7 +59,8 @@ FIA when the corresponding competition document is not public or normalized.
 
 - `FIA-F1-DOC-111` contains the competition-specific Low Grip ERS curves but is
   not part of the public regulation PDF. The corresponding runtime input is
-  explicitly unavailable; no numeric curve is invented.
+  explicitly unavailable. The driving runtime now uses a labelled SIM-only
+  half-normal envelope; it is not an official curve or verified compliance value.
 - Activation zones, detection lines, recharge values, and specified ERS
   sectors may be amended in event documents. Suzuka recharge values are
   normalized from Power Unit Information document 4; every other missing

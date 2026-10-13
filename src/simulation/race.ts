@@ -2442,7 +2442,7 @@ export function createInitialRace(config: RaceConfig = phaseOneConfig): RaceSnap
       })
     : false
   const formationBehindSafetyCar =
-    isRaceDistance &&
+    f1WeatherRules && isRaceDistance &&
     (weather === 'heavy-rain' || trackGrip < 0.7 || lowGripConditions)
   const wetWeatherTyresMandatory =
     f1WeatherRules &&

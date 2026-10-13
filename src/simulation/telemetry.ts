@@ -814,8 +814,12 @@ export function calculateCarTelemetry(options: {
       : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
         ? ('deploy' as const)
       : straightAttackRequest > 0 ? ('deploy' as const) : requestedErsMode
+  // FIA-F1-DOC-111's event-specific wet curve is unavailable. Use an
+  // explicitly SIM-only, half-normal envelope rather than disabling ERS.
+  // Traction, battery/thermal and race-control gates remain independent.
+  const lowGripDeploymentScale = lowGripConditions ? 0.5 : 1
   const ersCurve: MguKPowerCurve | null =
-    !hasHybridEnergyStore || lowGripConditions
+    !hasHybridEnergyStore
     ? null
     : specifiedErsPowerSector
       ? 'race-sprint-power-limited'
@@ -833,9 +837,9 @@ export function calculateCarTelemetry(options: {
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
         declaredDeploymentPowerKw,
-      )
+      ) * lowGripDeploymentScale
   const standardDeploymentDcLimitKw =
-    !hasHybridEnergyStore || lowGripConditions
+    !hasHybridEnergyStore
     ? 0
     : permittedMguKDcPowerKwForSpeed({
         curve: specifiedErsPowerSector
@@ -848,7 +852,7 @@ export function calculateCarTelemetry(options: {
     : Math.min(
         categoryPhysics.hybridDeploymentPowerLimitKw,
         standardDeploymentDcLimitKw,
-      )
+      ) * lowGripDeploymentScale
   const overtakeCurveActive = ersCurve === 'overtake'
   const regulatoryDeploymentPowerLimitKw =
     overtakeAllowanceBoundedDcPowerLimitKw({

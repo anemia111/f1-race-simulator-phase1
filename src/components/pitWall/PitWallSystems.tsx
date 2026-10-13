@@ -85,6 +85,7 @@ export function PitWallSystems({
             <PitWallMetric
               label="Deployment"
               source="SIM"
+              title={snapshot.lowGripConditions ? 'LOW GRIP: SIM出力制限（通常時の50%、最大175 kW）。大会別FIA専用カーブは未取得。' : undefined}
               value={`${Math.round(f1Runtime.energyStore.actualDeploymentPowerKw)} kW`}
             />
             <PitWallMetric
