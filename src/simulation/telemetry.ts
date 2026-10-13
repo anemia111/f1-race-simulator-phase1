@@ -1,3 +1,4 @@
+import { towEnergyDeployment, type TowEnergyPlan } from './towEnergyTactics'
 import { straightAttackDeployment } from './wheelBattle'
 import { superFormulaPhysicsForTrack } from './superFormulaGripCalibration'
 import { f1PhysicsForTrack } from './f1CourseCalibration'
@@ -180,6 +181,8 @@ export function calculateCarTelemetry(options: {
   car: CarSnapshot
   /** Physical lateral position of the nearest car ahead, when one exists. */
   aheadLateralOffsetM?: number
+  aheadSpeedKph?: number
+  towEnergyPlan?: TowEnergyPlan
   /** Temporary, bounded pace concession from a resolved racing battle. */
   battlePaceScale?: number
   deltaSeconds: number
@@ -799,12 +802,27 @@ export function calculateCarTelemetry(options: {
       })
     : ('balanced' as const)
   const isQualifyingAttack = timedRunPhase === 'attack-lap'
-  const straightAttackRequest = straightAttackDeployment({
+  const towDragReduction = phase || car.gapToAhead <= 0
+    ? 0
+    : towDragReductionFor({
+        dynamics,
+        gapSeconds: car.gapToAhead,
+        lateralSeparationM,
+        team,
+      })
+  const towTactics = towEnergyDeployment({
+    plan: options.towEnergyPlan, towDragReduction,
+    speedDeficitKph: (options.aheadSpeedKph ?? car.speedKph) - car.speedKph,
+    straightness: dynamics.straightness, throttlePercent, brakePercent,
+    enabled: hasHybridEnergyStore && sessionType === 'race-distance' && phase === null && !lowGripConditions &&
+      car.pitPhase === 'none' && !standingStartMguKRestricted && !timedTrafficYield && !car.wheelBattle?.conceding,
+  })
+  const straightAttackRequest = Math.max(towTactics.attack, straightAttackDeployment({
     intent: driverDecision?.intent, straightness: dynamics.straightness,
     throttlePercent, brakePercent, stateOfCharge: energyStoreAtFrameStart?.stateOfCharge ?? 0,
     skill: driver.skills.ersManagement, enabled: sessionType === 'race-distance' && phase === null &&
       !isPreparationLap && !timedTrafficYield && car.pitPhase === 'none' && !car.wheelBattle?.conceding,
-  })
+  })) * towTactics.cap
   const ersMode = !hasHybridEnergyStore || standingStartMguKRestricted
     ? ('balanced' as const)
     : isPreparationLap ||
@@ -813,6 +831,7 @@ export function calculateCarTelemetry(options: {
       ? ('harvest' as const)
       : isQualifyingAttack && brakePercent <= 5 && batteryPercentAtFrameStart > 8
         ? ('deploy' as const)
+      : towTactics.cap < 1 ? ('balanced' as const)
       : straightAttackRequest > 0 ? ('deploy' as const) : requestedErsMode
   // FIA-F1-DOC-111's event-specific wet curve is unavailable. Use an
   // explicitly SIM-only, half-normal envelope rather than disabling ERS.
@@ -883,8 +902,8 @@ export function calculateCarTelemetry(options: {
       })
     : 0
   const intentScheduledDeploymentRequest =
-    Math.max(straightAttackRequest, deploymentRequest *
-    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5))
+    Math.min(towTactics.cap, Math.max(straightAttackRequest, deploymentRequest *
+    (0.5 + (energyIntent?.propulsionAggression ?? 0) * 0.5)))
   const effectiveDeploymentRequest =
     !hasHybridEnergyStore ||
     standingStartMguKRestricted ||
@@ -904,14 +923,6 @@ export function calculateCarTelemetry(options: {
     throttlePercent,
     turboSpoolFraction: car.turboSpoolFraction,
   })
-  const towDragReduction = phase || car.gapToAhead <= 0
-    ? 0
-    : towDragReductionFor({
-        dynamics,
-        gapSeconds: car.gapToAhead,
-        lateralSeparationM,
-        team,
-      })
   const brakeReleaseSpeedKph =
     pitLaneSpeedLimitKph ??
     (brakePercent > 3

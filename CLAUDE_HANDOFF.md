@@ -1140,3 +1140,23 @@ verified event inputs retain precedence. Legacy stricter 8.5 MJ Free Mode ledger
 is accepted for its current lap. No retroactive energy credit or power boost.
 130 focused tests, all-course audit, lint/build/diff pass. No long tests. Preserve
 shortened publish -SkipFullTestSuite -SkipPlaytest and separate principal WIP.
+
+
+## Tow energy banking, attack and escape, 2026-10-13
+
+User requested using slipstream to save ERS, charge through ordinary recovery,
+then burst past and try to deny the passed rival a one-second detection gap.
+Read docs/TOW_ENERGY_TACTICS.md. Optional validated CarSnapshot.towEnergyPlan
+persists save/attack/escape and target identity. Older saves remain supported.
+The race context suppresses voluntary attack while saving, letting normal tow
+alignment operate. Live telemetry caps deployment only while physical tow keeps
+pace; it releases the cap when losing tow or falling >4 km/h behind. It requests
+burst power on an opportunity and follows the passed rival for a bounded escape.
+All physical/thermal/energy/regulatory/control gates retain precedence. No charge,
+speed, gap or eligibility is granted. Detection and pass-time prediction is SIM;
+existing Overtake eligibility cannot be revoked by this tactic. New policy is
+F1 race/sprint only and disabled in low grip; no SF ERS/ledger introduced.
+
+128 focused tests, including live short ticks and actual energy balance, pass;
+lint/build/diff pass. Keep shortened publish -SkipFullTestSuite -SkipPlaytest,
+no long tests and separate unfinished team-principal patch.

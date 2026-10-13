@@ -1281,6 +1281,7 @@ export type CarSnapshot = {
   driverAgentRuntime?: DriverAgentRuntimeState
   /** Bounded causal perceptions retained for the category driver agent. */
   wheelBattle?: import('./simulation/wheelBattle').WheelBattleState
+  towEnergyPlan?: import('./simulation/towEnergyTactics').TowEnergyPlan
   driverObservationInbox?: DriverObservationInboxState
   teamId: string
   code: string

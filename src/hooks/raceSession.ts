@@ -1,3 +1,4 @@
+import { validTowEnergyPlan } from '../simulation/towEnergyTactics'
 import { validWheelBattle } from '../simulation/wheelBattle'
 import {validEngineeringPlan} from '../domain/raceEngineer'
 import {driverDisplayName, driverDisplayCode} from '../data/reviewedDriverRatings'
@@ -1113,6 +1114,9 @@ function isCompatibleCarSnapshot(
       : isCompatibleSuperFormulaRuntimeSystems(value.runtimeSystems, expectedTeam.id, config.track.id)
 
   return (
+    validTowEnergyPlan(value.towEnergyPlan, (options.currentObservationTick + 1) * 0.5) &&
+    (value.towEnergyPlan === undefined || (seriesId === 'f1-custom' && isRecord(value.towEnergyPlan) &&
+      value.towEnergyPlan.opponentId !== value.driverId && expectedDriverIds.has(String(value.towEnergyPlan.opponentId)))) &&
     validWheelBattle(value.wheelBattle, (options.currentObservationTick + 1) * 0.5) &&
     (value.wheelBattle === undefined || (isRecord(value.wheelBattle) && expectedDriverIds.has(String(value.wheelBattle.opponentId)))) &&
     (value.handlingState === undefined || validVehicleHandling(value.handlingState)) &&

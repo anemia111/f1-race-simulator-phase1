@@ -1,3 +1,5 @@
+import { advanceTowEnergyPlan, type TowEnergyPlan } from './towEnergyTactics'
+import { towDragReductionFor } from './vehicleDynamics'
 import { advanceWheelBattle, applyWheelBattleDecision, type WheelBattleState } from './wheelBattle'
 import {measuredMiniSectorTimeline,measuredMiniSectorGapSeconds} from '../domain/measuredTimingGap'
 import {settleEngineeringPlan} from '../domain/raceEngineer'
@@ -4889,6 +4891,7 @@ export function advanceRace(
       lateralOffsetM: car.lateralOffsetM,
       totalDistanceM: profileDistanceMAt(config.track, car.totalDistance),
     }))
+  const towEnergyPlanById = new Map<string, TowEnergyPlan | undefined>()
   const wheelBattleById = new Map<string, WheelBattleState | undefined>()
   const driverDecisionById = new Map<string, DriverDecision>()
   const driverObservationInboxById = new Map<
@@ -5056,6 +5059,33 @@ export function advanceRace(
     const yieldingTo = !localControlPhase
       ? blueFlagTrainApproaches.get(car.driverId)
       : undefined
+    const previousEnergyOpponent = car.towEnergyPlan ? frameCarById.get(car.towEnergyPlan.opponentId) : undefined
+    const energyOpponent = previousEnergyOpponent?.status === 'running' && previousEnergyOpponent.pitPhase === 'none'
+      ? previousEnergyOpponent : aheadCar
+    const energyOpponentDistance = energyOpponent
+      ? profileDistanceMAt(config.track, energyOpponent.totalDistance) - profileDistanceMAt(config.track, car.totalDistance) : Infinity
+    const teamForTow = teams.get(car.teamId)!
+    const towReduction = aheadCar ? towDragReductionFor({ dynamics, gapSeconds: gapAheadSeconds,
+      lateralSeparationM: car.lateralOffsetM - aheadCar.lateralOffsetM, team: teamForTow }) : 0
+    const detectionMeters = (config.track.overtakeControlLines ?? []).map(line => {
+      const next = Math.floor(car.totalDistance) + line.detectionProgress
+      return profileDistanceMAt(config.track, next <= car.totalDistance ? next + 1 : next) - profileDistanceMAt(config.track, car.totalDistance)
+    })
+    const towEnergyPlan = advanceTowEnergyPlan({
+      previous: car.towEnergyPlan, driver, seconds: elapsedSeconds,
+      enabled: isRaceDistance && car.runtimeSystems.kind === 'f1' && !lowGripConditions && !localControlPhase &&
+        car.pitPhase === 'none' && !car.wheelBattle?.conceding && !yieldingTo && !emergencyVehicle &&
+        car.incidentTrackState === 'clear',
+      isFinalLap: car.totalDistance >= raceLaps - 1,
+      stateOfCharge: f1RuntimeFor(car)?.energyStore.stateOfCharge ?? 0,
+      speedKph: car.speedKph, straightness: dynamics.straightness, straightMeters: dynamics.straightLengthAheadMeters,
+      detectionMeters: detectionMeters.length ? Math.min(...detectionMeters) : null,
+      towDragReduction: towReduction, sideBySide: car.battlePhase === 'side-by-side',
+      rearThreat: gapBehindSeconds < 0.35,
+      opponent: energyOpponent ? { id: energyOpponent.driverId, gapSeconds: energyOpponentDistance / representativeSpeedMps,
+        speedKph: energyOpponent.speedKph, braking: energyOpponent.brakePercent > 10 } : undefined,
+    })
+    towEnergyPlanById.set(car.driverId, towEnergyPlan)
     let decisionContext: DriverDecisionContext = {
       seed: config.seed,
       driver,
@@ -5100,7 +5130,7 @@ export function advanceRace(
         isRaceDistance,
         aheadCar?.status === 'running'
           ? {
-              active: attackIntensity > 0 && hasPaceCase,
+              active: attackIntensity > 0 && hasPaceCase && towEnergyPlan?.phase !== 'save',
               boostActive: car.overtakeStatus === 'active',
               gapSeconds: gapAheadSeconds,
               opponentId: aheadCar.driverId,
@@ -6186,6 +6216,8 @@ export function advanceRace(
       following: !standingStartLaunchActive && !avoidingObstructionIds.has(car.driverId) ? followingById.get(car.driverId) : undefined,
       car: telemetryCar,
       aheadLateralOffsetM: physicalAhead?.lateralOffsetM,
+      aheadSpeedKph: physicalAhead?.speedKph,
+      towEnergyPlan: towEnergyPlanById.get(car.driverId),
       battlePaceScale: battleTravel.paceScale,
       categoryPhysics,
       deltaSeconds,
@@ -6835,6 +6867,7 @@ export function advanceRace(
     let next: CarSnapshot = {
       ...car,
       wheelBattle: wheelBattleById.get(car.driverId),
+      towEnergyPlan: towEnergyPlanById.get(car.driverId),
       driverAgentRuntime:
         driverAgentRuntimeById.get(car.driverId) ?? car.driverAgentRuntime,
       driverObservationInbox:
