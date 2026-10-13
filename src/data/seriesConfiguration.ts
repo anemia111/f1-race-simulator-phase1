@@ -644,6 +644,22 @@ function parseConfigurationValue(
           )
           return candidate
         })()
+  const restoredRaceDistanceEventIds: string[] = []
+  if (series.id === 'super-formula') {
+    for (const event of calendar) {
+      const current = series.calendar.find(candidate => candidate.id === event.id)
+      const distance = current?.eventOperations?.raceDistance
+      // Upgrade old saved calendars only when the exact active event still
+      // refers to its original venue. Preserve explicit user operations.
+      if (!event.cancelled && current && !current.cancelled &&
+          event.trackId === current.trackId && event.round === current.round &&
+          event.eventOperations?.raceDistance === undefined &&
+          distance?.availability === 'verified-event-override') {
+        event.eventOperations = { ...event.eventOperations, raceDistance: cloneJson(distance) }
+        restoredRaceDistanceEventIds.push(event.id)
+      }
+    }
+  }
   let removedLegacyBaseLapTimeMultiplier = false
   const rules =
     value.rules === undefined
@@ -676,6 +692,10 @@ function parseConfigurationValue(
 
   if (removedLegacyBaseLapTimeMultiplier) {
     migrationHistory.push('removed legacy baseLapTimeMultiplier')
+  }
+
+  if (restoredRaceDistanceEventIds.length > 0) {
+    migrationHistory.push(`restored missing SF event race distances: ${restoredRaceDistanceEventIds.join(', ')}`)
   }
 
   return { calendar, drivers, migrationHistory, rules, teams }

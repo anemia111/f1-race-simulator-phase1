@@ -7,6 +7,7 @@ import {
   driverPool2026,
   seatedDriverFrom,
   seriesPackageById,
+  resolveSuperFormulaEventOperations,
 } from '../series/seriesRegistry'
 import {
   DRIVER_ABILITY_GROUPS,
@@ -25,6 +26,7 @@ import {
   serializeSeriesConfiguration,
 } from './seriesConfiguration'
 import type { Driver, MachinePerformanceProfile } from '../types'
+import { isSuperFormulaSeriesRules } from '../series/types'
 
 const editableSeries = seriesPackageById.get('super-formula')!
 const f1 = seriesPackageById.get('f1-custom')!
@@ -576,5 +578,62 @@ describe('series configuration import and export', () => {
     expect(restored!.drivers[0].skills.qualifyingPace).toBe(
       stored.drivers[0].skills.qualifyingPace,
     )
+  })
+})
+
+
+describe('saved SF calendar operation migration', () => {
+  const legacyBackup = () => {
+    const saved = serializeSeriesConfiguration(superFormula.id, superFormula.teams,
+      superFormula.drivers, [], superFormula.rules, superFormula.calendar)
+    for (const event of saved.calendar!) {
+      if (event.id !== 'sf-03-replacement' && event.eventOperations) {
+        delete event.eventOperations.raceDistance
+        if (event.round % 2 === 0) delete event.eventOperations
+      }
+    }
+    return saved
+  }
+  it('restores every active race distance from an old saved calendar and preserves edits', () => {
+    const saved = legacyBackup()
+    saved.teams[0].name = 'My SF Team'
+    saved.drivers[0].skills.brakingSkill = 0.731
+    saved.calendar![0].weekendStages = ['fp1', 'qualifying', 'race']
+    const restored = parsePersistedSeriesConfiguration(JSON.stringify(saved), superFormula)!
+    expect(restored).not.toBeNull()
+    const pkg = { ...superFormula, ...restored }
+    for (const event of restored.calendar.filter(event => !event.cancelled)) {
+      expect(resolveSuperFormulaEventOperations(pkg, event.id)!.raceDistance)
+        .toEqual(resolveSuperFormulaEventOperations(superFormula, event.id)!.raceDistance)
+    }
+    expect(restored.teams[0].name).toBe('My SF Team')
+    expect(restored.drivers[0].skills.brakingSkill).toBe(0.731)
+    expect(restored.calendar[0].weekendStages).toEqual(['fp1', 'qualifying', 'race'])
+    expect(restored.migrationHistory.some(entry => entry.startsWith('restored missing SF'))).toBe(true)
+    const again = parsePersistedSeriesConfiguration(JSON.stringify(serializeSeriesConfiguration(
+      superFormula.id, restored.teams, restored.drivers, restored.migrationHistory,
+      restored.rules, restored.calendar)), superFormula)!
+    expect(again.calendar).toEqual(restored.calendar)
+    expect(again.migrationHistory).toEqual(restored.migrationHistory)
+    expect(resolveSuperFormulaEventOperations(pkg, 'sf-03-original')!.raceDistance.availability).toBe('unavailable')
+    expect(resolveSuperFormulaEventOperations(pkg, 'unknown-event')!.raceDistance.availability).toBe('unavailable')
+  })
+  it('preserves explicit distance overrides and unavailable decisions', () => {
+    const saved = legacyBackup()
+    const custom = structuredClone(superFormula.calendar[0].eventOperations!.raceDistance!)
+    custom.value!.laps = 19
+    saved.calendar![0].eventOperations = { raceDistance: custom }
+    saved.calendar![1].eventOperations = { raceDistance: structuredClone(isSuperFormulaSeriesRules(superFormula.rules) ? superFormula.rules.eventOperations.raceDistance : superFormula.calendar[1].eventOperations!.raceDistance!) }
+    const restored = parsePersistedSeriesConfiguration(JSON.stringify(saved), superFormula)!
+    expect(restored.calendar[0].eventOperations!.raceDistance).toEqual(custom)
+    expect(restored.calendar[1].eventOperations!.raceDistance).toEqual(saved.calendar![1].eventOperations!.raceDistance)
+  })
+  it('does not attach official distance to a moved venue or cancelled race', () => {
+    const saved = legacyBackup()
+    saved.calendar![0].trackId = superFormula.tracks.find(track => track.id !== saved.calendar![0].trackId)!.id
+    saved.calendar![1].cancelled = true
+    const restored = parsePersistedSeriesConfiguration(JSON.stringify(saved), superFormula)!
+    expect(restored.calendar[0].eventOperations?.raceDistance).toBeUndefined()
+    expect(restored.calendar[1].eventOperations?.raceDistance).toBeUndefined()
   })
 })

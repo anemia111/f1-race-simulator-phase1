@@ -1102,3 +1102,22 @@ to change their already-chosen formation procedure. No persistence schema change
 Keep shortened publish and no long tests.
 
 Validation: 87 focused checks passed, including 24 short dry rolling releases, the Australian wet F1 release, wet SF grid procedure, standing MGU-K gates, regulations and aero/overtaking regression checks. Lint, production build and diff checks pass. No long/full-session tests.
+
+
+## Restore missing SF races in existing saved calendars, 2026-10-13
+
+Registry distances were already restored on 2026-10-08, but browser-stored
+series configuration retains its older full calendar. Missing event raceDistance
+operations overwrote the registry, and App filtered Race out. Parsing now fills
+only undefined distances from the exact current active event with matching ID,
+round and venue. Explicit custom/unavailable distances, moved/cancelled events,
+teams, drivers, rules and weekend stages are preserved. No data reset needed;
+reload applies the migration, which persists normally and is idempotent.
+Unknown/cancelled event operations remain unavailable. Keep shortened publish.
+
+Validation: 31 focused configuration/registry tests pass, including legacy
+calendar migration, override protection, cancelled/moved events and reload
+idempotence. Short built-browser regression confirms legacy localStorage reload
+restores Race and correct first/final lap counts; all 12 stored distances and
+edited team survive with no JS errors. Build/lint/diff checks pass. No race laps
+or full sessions run. Re-run with node scripts/sf-saved-calendar-playtest.mjs.
