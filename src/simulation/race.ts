@@ -94,7 +94,7 @@ import {
   weakestComponent,
 } from './components'
 import { overtakeForLap, type OvertakeOutcome } from './overtaking'
-import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
+import { pitBoxProgressForTeam, pitLaneMotionAt, pitEntryDrivingRequested } from './pitLane'
 import {
   advanceVscMarshallingSectorTracking,
   distanceRespectingLocalYellowOrder,
@@ -5113,7 +5113,7 @@ export function advanceRace(
         FORMULA_VEHICLE_HALF_WIDTH_M + TRACK_EDGE_SAFETY_MARGIN_M,
       pit: {
         requested:
-          car.pitPhase !== 'none' ||
+          pitEntryDrivingRequested(car) ||
           Boolean(manualPitRequests?.has(car.driverId)),
         pitLaneLateralOffsetM: lateralBounds.maxOffsetM,
       },
@@ -5854,7 +5854,11 @@ export function advanceRace(
       const pitMotion =
         car.pitStartedAtSeconds === null
           ? { phase: 'box' as const, progress: pitBox }
-          : pitLaneMotionAt(pitFraction, pitEntry, pitBox, pitExit)
+          : pitLaneMotionAt(pitFraction, pitEntry, pitBox, pitExit,
+              f1Runtime && !isTimedSession ? {
+                durationSeconds: pitDuration,
+                serviceSeconds: Math.max(0, pitDuration - pitLaneLossSecondsForTrack(config.track)),
+              } : undefined)
       const pitRuntimeSystems = f1Runtime
         ? patchF1Runtime(
             f1Runtime,

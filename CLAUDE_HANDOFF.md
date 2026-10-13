@@ -1178,3 +1178,20 @@ spacing the historical last-car 246.44 km/h becomes 311.77 without saving or
 not a full race forecast. Reproduce: node scripts/validate-train-following.mjs.
 Lint/build/diff pass. Preserve shortened publishing -SkipFullTestSuite
 -SkipPlaytest and the separate unfinished team-principal patch.
+
+
+## F1 Albert Park pit loss and post-release control, 2026-10-13
+
+User confirmed F1 Albert Park. Read docs/ALBERT_PIT_LOSS_FIX.md. Fixed the
+four-second running pit-exit decoration incorrectly requesting pit-entry driving
+(throttle about 55%) after release. Cars still physically in the lane retain
+pit control; shared exit intent correction also applies to SF. For F1 race pit
+motion, box phase now uses scheduled service duration, not 48% of the whole timer.
+Other category/timed timing, pit total timer, speed limits and penalties are not
+retuned. Do not describe current lane geometry or measured SIM loss as official.
+
+18 focused tests and the short Albert single-stop/no-stop comparison pass:
+box display 8.25 -> 3.5 s; downstream measured loss 16.5 -> 14.5 s. Script:
+node scripts/validate-albert-pit-loss.mjs. Lint/build/diff pass. Preserve shortened
+publish -SkipFullTestSuite -SkipPlaytest, no full races or long tests and the
+separate unfinished team-principal WIP patch.
