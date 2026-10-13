@@ -71,10 +71,10 @@ it('applies style to real pedal travel while preserving traction limits and imme
   expect(advancePedals({...input,stop:true,style:signaturePedalControl(entry,1)})).toEqual({throttle:0,brake:100})
   expect(signaturePedalControl(exit,0,.1).throttleRiseScale).toBeLessThan(signaturePedalControl(exit,0,1).throttleRiseScale)
 })
-it('keeps an unconfigured person’s SIM preferences identical across categories without changing ability',()=>{
+it('keeps the requested Nakayama preset identical across categories without changing ability',()=>{
   const formula=phaseOneConfig.drivers.find(d=>d.id==='yuki_nakayama')!,person={id:formula.id,name:formula.name,overall:120,racePace:1.2,consistency:1.2,tyreManagement:1.2,ratingSource:null}
   const a=drivingSignature(formula),b=drivingSignature(behaviorDriverFor(person))
-  expect(a.basis).toBe('simulated')
+  expect(a.basis).toBe('authored')
   expect([a.entry,a.rotation,a.exit]).toEqual([b.entry,b.rotation,b.exit])
   const edited=drivingSignature({...formula,style:{...formula.style,brakingAggression:.9}})
   expect(edited.entry).toBe(.9)

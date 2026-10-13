@@ -9,6 +9,13 @@ export function drivingSignature(driver:Driver):DrivingSignature {
   const cached=cache.get(driver);if(cached)return cached
   const style=driver.style,s=driver.skills
   const neutral=style.brakingAggression===0.5&&style.cornerShapePreference===0&&style.rearStabilityNeed===0
+  // User-authored strongest-driver preset, shared by identity across series.
+  // Explicit style or ability edits continue to take precedence.
+  if(neutral && driver.id==='yuki_nakayama' && Object.values(s).every(value=>value===1.2)) {
+    const signature:DrivingSignature={entry:0.85,rotation:0.85,exit:0.95,preservation:1,correction:1.2,
+      label:'最強・全能力120',basis:'authored',description:'全カテゴリー共通の裕樹120設定。進入・ブレーキリリース・立ち上がりで高い操作精度を使います。'}
+    cache.set(driver,signature);return signature
+  }
   const preference=(axis:string)=>0.2+hashChance(`driving-preference-v1:${driver.id}:${axis}`)*0.6
   const entry=neutral?preference('entry'):clamp(style.brakingAggression,0,1)
   const rotation=neutral?preference('rotation'):clamp((style.cornerShapePreference+1)/2,0,1)
@@ -24,5 +31,7 @@ export function signaturePedalControl(signature:DrivingSignature,lateralUse:numb
   return {brakeReleaseScale:clamp(1+(signature.rotation-0.5)*0.45,0.75,1.25),
     throttleRiseScale:clamp(1+(signature.exit-0.5)*0.35-signature.preservation*Math.max(0,0.6-tyreLife)*0.4,0.65,1.2),
     brakeTimingSeconds:(0.5-signature.entry)*0.07,
-    throttleCeiling:100*(1-loaded*Math.max(0,signature.exit-0.5)*0.10)}
+    // Ordinary <=100 control retains its existing preference reserve. Precision
+    // above100 progressively removes it;120 relies on actual slip/grip feedback.
+    throttleCeiling:100*(1-loaded*Math.max(0,signature.exit-0.5)*0.10*clamp((1.2-signature.correction)/0.2,0,1))}
 }

@@ -1,5 +1,20 @@
 # Formula Race Simulator Handoff
 
+## Latest: Yuki Nakayama strongest execution preset (2026-10-13)
+
+User requested making Yuki strongest. Factory/pool already have all30 skills and
+potential120 across categories. Added an explicitly authored shared neutral-style
+execution preset: entry0.85/rotation0.85/exit0.95, preservation1/correction1.2.
+It improves brake release and throttle pickup through existing pedal controls.
+Above100 control precision now progressively removes the additional style-based
+corner throttle ceiling;120 reaches100% requested throttle. Ordinary <=100
+control keeps its previous reserve; physical tyre/slip/brake/flag limits still
+apply. Preset requires all skills120 and neutral style; manual ability/style/setup
+edits remain intact. No higher ability cap, engine power, result override or save
+migration. Label: 最強・全能力120 in Engineer. 45 focused checks in four suites
+pass, including all-category ability routing and actual pedal response under
+wheelspin/stopping. No long tests; preserve shortened publication flags.
+
 ## Latest: SF race-wide OTS use plan (2026-10-13)
 
 User requested spending roughly all 200 s per race. Isolated standard-pace SF
