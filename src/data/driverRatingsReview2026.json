@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewedOn": "2026-10-13",
-  "method": "shared-absolute-editorial-scale-v2-kyojo-results",
+  "method": "shared-absolute-editorial-scale-v3-f2-review",
   "policy": "Same person, same current ability in every category. Ordinary maximum 100; user-defined yuki_nakayama maximum 120. Category bands are calibration priors, never runtime penalties. Exact scores and inherited axis splits are SIM judgements, not official ratings. The weighted 12-group execution mean is aligned to OVR; inherited relative axis differences remain editorial priors.",
   "drivers": [
     {
@@ -1667,7 +1667,7 @@
     {
       "id": "rafael_camara",
       "name": "Rafael Câmara",
-      "overall": 87.0,
+      "overall": 87,
       "potential": 87.0,
       "ratings": {
         "adaptability": 0.883375,
@@ -1687,11 +1687,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/rafael-camara"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 champion and current F2 leader; retain leading prospect rating. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_robin_frijns",
@@ -1933,7 +1934,7 @@
     {
       "id": "alexander_dunne",
       "name": "Alexander Dunne",
-      "overall": 86.0,
+      "overall": 86,
       "potential": 86.0,
       "ratings": {
         "adaptability": 0.873375,
@@ -1953,11 +1954,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/alexander-dunne"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 fifth and current title contender; retain. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "arvid_lindblad",
@@ -2256,7 +2258,7 @@
     {
       "id": "nikola_tsolov",
       "name": "Nikola Tsolov",
-      "overall": 86.0,
+      "overall": 86,
       "potential": 86.0,
       "ratings": {
         "adaptability": 0.873375,
@@ -2276,11 +2278,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/nikola-tsolov"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 runner-up and current F2 title contender; retain. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "nirei_fukuzumi",
@@ -2813,7 +2816,7 @@
     {
       "id": "gabriele_mini",
       "name": "Gabriele Minì",
-      "overall": 85.0,
+      "overall": 85,
       "potential": 85.0,
       "ratings": {
         "adaptability": 0.863375,
@@ -2833,11 +2836,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/gabriele-mini"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2024 F3 runner-up, 2025 F2 thirteenth and strong 2026 recovery; retain. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_jack_hawksworth",
@@ -3197,31 +3201,32 @@
     {
       "id": "ritomo_miyata",
       "name": "Ritomo Miyata",
-      "overall": 85.0,
+      "overall": 84,
       "potential": 85.0,
       "ratings": {
-        "adaptability": 0.863375,
-        "consistency": 0.843375,
-        "defending": 0.853375,
-        "errorControl": 0.843375,
-        "experience": 0.773375,
-        "overtaking": 0.863375,
-        "qualifyingPace": 0.873375,
-        "racePace": 0.863375,
-        "raceStart": 0.863375,
-        "technicalFeedback": 0.833375,
-        "tyreManagement": 0.843375,
-        "wetSkill": 0.853375
+        "adaptability": 0.853375,
+        "consistency": 0.833375,
+        "defending": 0.843375,
+        "errorControl": 0.833375,
+        "experience": 0.763375,
+        "overtaking": 0.853375,
+        "qualifyingPace": 0.863375,
+        "racePace": 0.853375,
+        "raceStart": 0.853375,
+        "technicalFeedback": 0.823375,
+        "tyreManagement": 0.833375,
+        "wetSkill": 0.843375
       },
       "previousOverall": 85.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/ritomo-miyata"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2024/2025 F2 nineteenth/seventeenth and current twelfth support modest correction; retain substantial weight for 2023 SF and GT500 titles. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_romain_grosjean",
@@ -3431,7 +3436,7 @@
     {
       "id": "colton_herta",
       "name": "Colton Herta",
-      "overall": 84.0,
+      "overall": 84,
       "potential": 84.0,
       "ratings": {
         "adaptability": 0.853375,
@@ -3451,11 +3456,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/colton-herta"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "F2 adaptation has been difficult, but 2024 IndyCar runner-up and 2025 sixth support retaining shared absolute ability; missed Madrid races do not establish pace. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_daniel_harper",
@@ -3489,31 +3495,32 @@
     {
       "id": "dino_beganovic",
       "name": "Dino Beganovic",
-      "overall": 84.0,
-      "potential": 84.0,
+      "overall": 85,
+      "potential": 85,
       "ratings": {
-        "adaptability": 0.853375,
-        "consistency": 0.833375,
-        "defending": 0.843375,
-        "errorControl": 0.833375,
-        "experience": 0.763375,
-        "overtaking": 0.853375,
-        "qualifyingPace": 0.863375,
-        "racePace": 0.853375,
-        "raceStart": 0.853375,
-        "technicalFeedback": 0.823375,
-        "tyreManagement": 0.833375,
-        "wetSkill": 0.843375
+        "adaptability": 0.863375,
+        "consistency": 0.843375,
+        "defending": 0.853375,
+        "errorControl": 0.843375,
+        "experience": 0.773375,
+        "overtaking": 0.863375,
+        "qualifyingPace": 0.873375,
+        "racePace": 0.863375,
+        "raceStart": 0.863375,
+        "technicalFeedback": 0.833375,
+        "tyreManagement": 0.843375,
+        "wetSkill": 0.853375
       },
       "previousOverall": 84.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/dino-beganovic"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 seventh and current fifth with recent Feature Race win; small upward revision. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_ferdinand_habsburg",
@@ -3809,7 +3816,7 @@
     {
       "id": "nicolas_varrone",
       "name": "Nicolás Varrone",
-      "overall": 84.0,
+      "overall": 84,
       "potential": 84.0,
       "ratings": {
         "adaptability": 0.844787,
@@ -3827,13 +3834,15 @@
       },
       "previousOverall": 84.0,
       "seriesIds": [
-        "wec-lmgt3"
+        "wec-lmgt3",
+        "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiawec.com/"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/latest/article/nicolas-varrone-joins-van-amersfoort-racing-for-the-2026-season.24aYiR79lE33QyXWWvQpu9"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "F2 single-seater adaptation is weak; retain endurance-weighted shared prior supported by 2023 WEC LMGTE Am title and Le Mans class win. Category adaptation is not separately fitted. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_niklas_krutten",
@@ -3926,31 +3935,32 @@
     {
       "id": "noel_leon",
       "name": "Noel León",
-      "overall": 84.0,
+      "overall": 83,
       "potential": 84.0,
       "ratings": {
-        "adaptability": 0.853375,
-        "consistency": 0.833375,
-        "defending": 0.843375,
-        "errorControl": 0.833375,
-        "experience": 0.763375,
-        "overtaking": 0.853375,
-        "qualifyingPace": 0.863375,
-        "racePace": 0.853375,
-        "raceStart": 0.853375,
-        "technicalFeedback": 0.823375,
-        "tyreManagement": 0.833375,
-        "wetSkill": 0.843375
+        "adaptability": 0.843375,
+        "consistency": 0.823375,
+        "defending": 0.833375,
+        "errorControl": 0.823375,
+        "experience": 0.753375,
+        "overtaking": 0.843375,
+        "qualifyingPace": 0.853375,
+        "racePace": 0.843375,
+        "raceStart": 0.843375,
+        "technicalFeedback": 0.813375,
+        "tyreManagement": 0.823375,
+        "wetSkill": 0.833375
       },
       "previousOverall": 84.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/noel-leon"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "Strong 2026 rookie season balanced against 2025 F3 seventeenth; modestly below the more established leading group. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "ren_sato",
@@ -4282,7 +4292,7 @@
     {
       "id": "joshua_duerksen",
       "name": "Joshua Dürksen",
-      "overall": 83.0,
+      "overall": 83,
       "potential": 83.0,
       "ratings": {
         "adaptability": 0.843375,
@@ -4302,11 +4312,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/joshua-durksen"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2024/2025 F2 tenth/ninth and 2026 eighth; retain experienced upper-midfield prior. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_kiyoto_fujinami",
@@ -4399,31 +4410,32 @@
     {
       "id": "martinius_stenshorne",
       "name": "Martinius Stenshorne",
-      "overall": 83.0,
-      "potential": 83.0,
+      "overall": 84,
+      "potential": 84,
       "ratings": {
-        "adaptability": 0.843375,
-        "consistency": 0.823375,
-        "defending": 0.833375,
-        "errorControl": 0.823375,
-        "experience": 0.753375,
-        "overtaking": 0.843375,
-        "qualifyingPace": 0.853375,
-        "racePace": 0.843375,
-        "raceStart": 0.843375,
-        "technicalFeedback": 0.813375,
-        "tyreManagement": 0.823375,
-        "wetSkill": 0.833375
+        "adaptability": 0.853375,
+        "consistency": 0.833375,
+        "defending": 0.843375,
+        "errorControl": 0.833375,
+        "experience": 0.763375,
+        "overtaking": 0.853375,
+        "qualifyingPace": 0.863375,
+        "racePace": 0.853375,
+        "raceStart": 0.853375,
+        "technicalFeedback": 0.823375,
+        "tyreManagement": 0.833375,
+        "wetSkill": 0.843375
       },
       "previousOverall": 83.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/martinius-stenshorne"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 fifth and 2026 F2 seventh with a Feature Race win; small upward revision. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_naoya_gamou",
@@ -4980,7 +4992,7 @@
     {
       "id": "kush_maini",
       "name": "Kush Maini",
-      "overall": 82.0,
+      "overall": 82,
       "potential": 82.0,
       "ratings": {
         "adaptability": 0.833375,
@@ -5000,11 +5012,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/kush-maini"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 sixteenth and current ninth; retain with improvement balanced against previous seasons. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_louis_foster",
@@ -5743,31 +5756,32 @@
     {
       "id": "laurens_van_hoepen",
       "name": "Laurens van Hoepen",
-      "overall": 81.0,
-      "potential": 81.0,
+      "overall": 82,
+      "potential": 82,
       "ratings": {
-        "adaptability": 0.823375,
-        "consistency": 0.803375,
-        "defending": 0.813375,
-        "errorControl": 0.803375,
-        "experience": 0.733375,
-        "overtaking": 0.823375,
-        "qualifyingPace": 0.833375,
-        "racePace": 0.823375,
-        "raceStart": 0.823375,
-        "technicalFeedback": 0.793375,
-        "tyreManagement": 0.803375,
-        "wetSkill": 0.813375
+        "adaptability": 0.833375,
+        "consistency": 0.813375,
+        "defending": 0.823375,
+        "errorControl": 0.813375,
+        "experience": 0.743375,
+        "overtaking": 0.833375,
+        "qualifyingPace": 0.843375,
+        "racePace": 0.833375,
+        "raceStart": 0.833375,
+        "technicalFeedback": 0.803375,
+        "tyreManagement": 0.813375,
+        "wetSkill": 0.823375
       },
       "previousOverall": 81.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/laurens-van-hoepen"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 twelfth and current F2 tenth as a full-season rookie; small upward revision. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_manabu_orido",
@@ -5801,31 +5815,32 @@
     {
       "id": "oliver_goethe",
       "name": "Oliver Goethe",
-      "overall": 81.0,
+      "overall": 80,
       "potential": 81.0,
       "ratings": {
-        "adaptability": 0.823375,
-        "consistency": 0.803375,
-        "defending": 0.813375,
-        "errorControl": 0.803375,
-        "experience": 0.733375,
-        "overtaking": 0.823375,
-        "qualifyingPace": 0.833375,
-        "racePace": 0.823375,
-        "raceStart": 0.823375,
-        "technicalFeedback": 0.793375,
-        "tyreManagement": 0.803375,
-        "wetSkill": 0.813375
+        "adaptability": 0.813375,
+        "consistency": 0.793375,
+        "defending": 0.803375,
+        "errorControl": 0.793375,
+        "experience": 0.723375,
+        "overtaking": 0.813375,
+        "qualifyingPace": 0.823375,
+        "racePace": 0.813375,
+        "raceStart": 0.813375,
+        "technicalFeedback": 0.783375,
+        "tyreManagement": 0.793375,
+        "wetSkill": 0.803375
       },
       "previousOverall": 81.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/oliver-goethe"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 and current F2 fifteenth; modest downward correction while retaining F3/Euroformula achievements. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_parker_thompson",
@@ -6329,7 +6344,7 @@
     {
       "id": "sebastian_montoya",
       "name": "Sebastian Montoya",
-      "overall": 80.0,
+      "overall": 80,
       "potential": 80.0,
       "ratings": {
         "adaptability": 0.813375,
@@ -6349,11 +6364,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/sebastian-montoya"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "Current seventeenth weighed alongside 2025 F2 twelfth; retain rather than map points directly to ability. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "taito_kato",
@@ -6387,7 +6403,7 @@
     {
       "id": "tasanapol_inthraphuvasak",
       "name": "Tasanapol Inthraphuvasak",
-      "overall": 80.0,
+      "overall": 80,
       "potential": 80.0,
       "ratings": {
         "adaptability": 0.813375,
@@ -6407,11 +6423,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/tasanapol-inthraphuvasak"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 seventh and current F2 eleventh; retain. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "tuukka_taponen",
@@ -6532,7 +6549,7 @@
     {
       "id": "hiyu_yamakoshi",
       "name": "Hiyu Yamakoshi",
-      "overall": 79.0,
+      "overall": 79,
       "potential": 79.0,
       "ratings": {
         "adaptability": 0.803375,
@@ -6553,11 +6570,12 @@
         "f2",
         "f3"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula3.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/hiyu-yamakoshi"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2026 F3 ninth and only a Baku F2 debut sample; retain and do not punish limited starts. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_kobe_pauwels",
@@ -6649,7 +6667,7 @@
     {
       "id": "rafael_villagomez",
       "name": "Rafael Villagómez",
-      "overall": 79.0,
+      "overall": 79,
       "potential": 79.0,
       "ratings": {
         "adaptability": 0.803375,
@@ -6669,11 +6687,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/rafael-villagomez"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 fourteenth and current thirteenth; retain. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_rin_arakawa",
@@ -7142,7 +7161,7 @@
     {
       "id": "mari_boya",
       "name": "Mari Boya",
-      "overall": 78.0,
+      "overall": 78,
       "potential": 78.0,
       "ratings": {
         "adaptability": 0.793375,
@@ -7162,11 +7181,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/mari-boya"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "Difficult F2 rookie season balanced against 2025 F3 third; retain rather than a large current-points downgrade. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_reiji_hiraki",
@@ -7200,31 +7220,32 @@
     {
       "id": "roman_bilinski",
       "name": "Roman Bilinski",
-      "overall": 78.0,
-      "potential": 78.0,
+      "overall": 79,
+      "potential": 79,
       "ratings": {
-        "adaptability": 0.793375,
-        "consistency": 0.773375,
-        "defending": 0.783375,
-        "errorControl": 0.773375,
-        "experience": 0.703375,
-        "overtaking": 0.793375,
-        "qualifyingPace": 0.803375,
-        "racePace": 0.793375,
-        "raceStart": 0.793375,
-        "technicalFeedback": 0.763375,
-        "tyreManagement": 0.773375,
-        "wetSkill": 0.783375
+        "adaptability": 0.803375,
+        "consistency": 0.783375,
+        "defending": 0.793375,
+        "errorControl": 0.783375,
+        "experience": 0.713375,
+        "overtaking": 0.803375,
+        "qualifyingPace": 0.813375,
+        "racePace": 0.803375,
+        "raceStart": 0.803375,
+        "technicalFeedback": 0.773375,
+        "tyreManagement": 0.783375,
+        "wetSkill": 0.793375
       },
       "previousOverall": 78.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/roman-bilinski"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F3 eleventh and current F2 sixteenth as a rookie; modest upward correction to align the shared midfield range. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_rui_andrade",
@@ -7523,31 +7544,32 @@
     {
       "id": "expansion_emerson_fittipaldi_jr",
       "name": "Emerson Fittipaldi Jr.",
-      "overall": 77.0,
+      "overall": 76,
       "potential": 77.0,
       "ratings": {
-        "adaptability": 0.783375,
-        "consistency": 0.763375,
-        "defending": 0.773375,
-        "errorControl": 0.763375,
-        "experience": 0.693375,
-        "overtaking": 0.783375,
-        "qualifyingPace": 0.793375,
-        "racePace": 0.783375,
-        "raceStart": 0.783375,
-        "technicalFeedback": 0.753375,
-        "tyreManagement": 0.763375,
-        "wetSkill": 0.773375
+        "adaptability": 0.773375,
+        "consistency": 0.753375,
+        "defending": 0.763375,
+        "errorControl": 0.753375,
+        "experience": 0.683375,
+        "overtaking": 0.773375,
+        "qualifyingPace": 0.783375,
+        "racePace": 0.773375,
+        "raceStart": 0.773375,
+        "technicalFeedback": 0.743375,
+        "tyreManagement": 0.753375,
+        "wetSkill": 0.763375
       },
       "previousOverall": 77.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/emerson-fittipaldi-jr"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "Current eighteenth and 2025 Eurocup-3 eleventh support modest correction; this is Emerson, not historical Enzo Fittipaldi. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_jacob_abel",
@@ -7933,31 +7955,32 @@
     {
       "id": "john_bennett",
       "name": "John Bennett",
-      "overall": 76.0,
-      "potential": 76.0,
+      "overall": 77,
+      "potential": 77,
       "ratings": {
-        "adaptability": 0.773375,
-        "consistency": 0.753375,
-        "defending": 0.763375,
-        "errorControl": 0.753375,
-        "experience": 0.683375,
-        "overtaking": 0.773375,
-        "qualifyingPace": 0.783375,
-        "racePace": 0.773375,
-        "raceStart": 0.773375,
-        "technicalFeedback": 0.743375,
-        "tyreManagement": 0.753375,
-        "wetSkill": 0.763375
+        "adaptability": 0.783375,
+        "consistency": 0.763375,
+        "defending": 0.773375,
+        "errorControl": 0.763375,
+        "experience": 0.693375,
+        "overtaking": 0.783375,
+        "qualifyingPace": 0.793375,
+        "racePace": 0.783375,
+        "raceStart": 0.783375,
+        "technicalFeedback": 0.753375,
+        "tyreManagement": 0.763375,
+        "wetSkill": 0.773375
       },
       "previousOverall": 76.0,
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/john-bennett"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 twenty-second to current fourteenth, with prior GB3 runner-up record; small upward revision. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "expansion_katherine_legge",
@@ -8293,7 +8316,7 @@
     {
       "id": "cian_shields",
       "name": "Cian Shields",
-      "overall": 74.0,
+      "overall": 74,
       "potential": 74.0,
       "ratings": {
         "adaptability": 0.753375,
@@ -8313,11 +8336,12 @@
       "seriesIds": [
         "f2"
       ],
-      "status": "retained-unverified",
+      "status": "evidence-reviewed",
       "sources": [
-        "https://www.fiaformula2.com/en/standings/2026/drivers"
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/cian-shields"
       ],
-      "reason": "Retained supplied cross-category prior: insufficient new individual evidence for a revision. Not independently validated. All axes receive a common offset to align the 12-group runtime mean with OVR, with identity-specific limits."
+      "reason": "2025 F2 twenty-fourth and current twenty-second support retaining lower shared prior; avoid treating one points finish as a measured skill axis. Exact absolute score and inherited relative skill splits remain editorial SIM priors; no car-adjusted pace or measured individual axis fit."
     },
     {
       "id": "gerrard_xie",

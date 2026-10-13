@@ -1,13 +1,15 @@
 import imported from './importedDriverRatings2026.json'
 import review from './driverRatingsReview2026.json'
 import previousReview from './driverRatingsReviewPrevious20261013.json'
+import beforeF2Review from './driverRatingsReviewBeforeF220261013.json'
+import historicalF2DefaultsSnapshot from './driverRatingsF2HistoricalDefaults.json'
 import {expandedDriverSkills, type CompactDriverRatings} from './driverProfiles'
 import type {Driver} from '../types'
 import type {DriverPoolRecord} from '../series/driverPool'
 import type {MotorsportDriver} from '../motorsport/types'
 import {clampPersonAbility,driverAbilityCeiling} from '../simulation/driverAbility'
 
-export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.2'
+export const DRIVER_RATING_REVIEW_VERSION = '2026-10-13.3'
 export const driverRatingReview = review
 export const DRIVER_DISPLAY_NAME_OVERRIDES: Readonly<Record<string, string>> = {
   yuki_nakayama: 'Yuki Nakayama',
@@ -18,7 +20,8 @@ export const driverDisplayCode = (id: string, fallback: string) =>
   id === 'yuki_nakayama' ? 'NAK' : fallback
 const authored = new Map(imported.drivers.map(row => [row.id, row]))
 const revised = new Map(review.drivers.map(row => [row.id, row]))
-const previousReviewed = new Map(previousReview.drivers.map(row => [row.id, row]))
+const previousReviewed = new Map([...previousReview.drivers, ...beforeF2Review.drivers].map(row => [row.id, row]))
+const historicalF2Defaults = new Map(historicalF2DefaultsSnapshot.drivers.map(row=>[row.id,row]))
 const previousNative = new Map<string, Driver[]>()
 const columns: Record<keyof CompactDriverRatings, string> = {qualifyingPace:'Qualifying pace',racePace:'Race pace',consistency:'Consistency',tyreManagement:'Tyre management',wetSkill:'Wet skill',raceStart:'Race start',overtaking:'Overtaking',defending:'Defending',technicalFeedback:'Technical feedback',adaptability:'Adaptability',experience:'Experience',errorControl:'Error control'}
 function performanceSource(row: NonNullable<ReturnType<typeof reviewedRating>>) {
@@ -66,7 +69,8 @@ export function migrateFactoryDriverRating(driver: Driver): Driver {
   const old = previousNative.get(driver.id)
   const source = authored.get(driver.id)
   const prior = previousReviewed.get(driver.id)
-  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings))) && !(prior && same(expandedDriverSkills(prior.ratings)))) return name === driver.name ? driver : {...driver, name}
+  const historical = historicalF2Defaults.get(driver.id)
+  if (!old?.some(d=>same(d.skills)) && !(source && same(expandedDriverSkills(source.ratings))) && !(prior && same(expandedDriverSkills(prior.ratings))) && !(historical && same(expandedDriverSkills(historical.ratings)))) return name === driver.name ? driver : {...driver, name}
   const defaultPotential=old?.some(d=>d.potential===driver.potential) || driver.potential===(source?.potential??source?.overall??NaN)/100 || driver.potential===(prior?.potential??NaN)/100
   return {...driver, name, skills: expandedDriverSkills(row.ratings), potential: defaultPotential?(row.potential ?? row.overall) / 100:driver.potential,
     performanceSource: performanceSource(row)}
@@ -85,14 +89,19 @@ export function migrateMotorsportDriverRating(driver:MotorsportDriver):Motorspor
   const row=reviewedRating(driver.id)
   const source=authored.get(driver.id)
   const prior=previousReviewed.get(driver.id)
+  const historical=historicalF2Defaults.get(driver.id)
   const keys=['racePace','consistency','tyreManagement','qualifyingPace'] as const
-  const previous=[...(source?[{overall:source.overall,...source.ratings}]:[]),...(prior?[{overall:prior.overall,...prior.ratings}]:[]),...(previousNative.get(driver.id)??[]).map(d=>({
+  const previous=[...[source,prior,historical].flatMap(old=>old?[{overall:old.overall,...old.ratings,skills:expandedDriverSkills(old.ratings)}]:[]),...(previousNative.get(driver.id)??[]).map(d=>({
     overall:d.performanceSource?.overall,racePace:d.skills.racePace,qualifyingPace:d.skills.qualifyingPace,
-    consistency:d.skills.consistency,tyreManagement:d.skills.tireManagement,
+    consistency:d.skills.consistency,tyreManagement:d.skills.tireManagement,skills:d.skills,
   }))]
-  const factory=!driver.skills&&row&&previous.some(old=>driver.overall===old.overall && keys.every(key=>driver[key]!==undefined&&driver[key]!==null&&Math.abs(driver[key]!-old[key])<1e-9))
+  const factory=row&&previous.some(old=>driver.overall===old.overall &&
+    keys.every(key=>driver[key]!==undefined&&driver[key]!==null&&Math.abs(driver[key]!-old[key])<1e-9) &&
+    (!driver.skills || (Object.keys(driver.skills).length===Object.keys(old.skills).length &&
+      Object.entries(old.skills).every(([key,value])=>Math.abs(driver.skills![key as keyof Driver['skills']]-value)<1e-9))))
   if(factory)return {...driver,overall:row.overall,racePace:row.ratings.racePace,consistency:row.ratings.consistency,
-    tyreManagement:row.ratings.tyreManagement,qualifyingPace:row.ratings.qualifyingPace,ratingSource:'src/data/driverRatingsReview2026.json'}
+    tyreManagement:row.ratings.tyreManagement,qualifyingPace:row.ratings.qualifyingPace,
+    ...(driver.skills?{skills:expandedDriverSkills(row.ratings)}:{}),ratingSource:'src/data/driverRatingsReview2026.json'}
   return {...driver,overall:driver.overall===null?null:Math.min(driverAbilityCeiling(driver.id),driver.overall),
     racePace:driver.racePace===null?null:clampPersonAbility(driver.id,driver.racePace),
     consistency:driver.consistency===null?null:clampPersonAbility(driver.id,driver.consistency),

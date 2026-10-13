@@ -1,0 +1,306 @@
+{
+  "reviewedOn": "2026-10-13",
+  "scope": "23 participants in the 2026 official standings through Baku; pool-only F2 history remains intact",
+  "method": "Editorial absolute ability, current results balanced with career and cross-category records. Detailed axis differences retained as unmeasured SIM priors. Not a points-to-rating formula.",
+  "drivers": [
+    {
+      "id": "rafael_camara",
+      "name": "Rafael Câmara",
+      "officialPosition": 1,
+      "officialPoints": 207,
+      "previousOverall": 87.0,
+      "reviewedOverall": 87,
+      "reason": "2025 F3 champion and current F2 leader; retain leading prospect rating.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/rafael-camara"
+      ]
+    },
+    {
+      "id": "nikola_tsolov",
+      "name": "Nikola Tsolov",
+      "officialPosition": 2,
+      "officialPoints": 200,
+      "previousOverall": 86.0,
+      "reviewedOverall": 86,
+      "reason": "2025 F3 runner-up and current F2 title contender; retain.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/nikola-tsolov"
+      ]
+    },
+    {
+      "id": "alexander_dunne",
+      "name": "Alexander Dunne",
+      "officialPosition": 3,
+      "officialPoints": 189,
+      "previousOverall": 86.0,
+      "reviewedOverall": 86,
+      "reason": "2025 F2 fifth and current title contender; retain.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/alexander-dunne"
+      ]
+    },
+    {
+      "id": "gabriele_mini",
+      "name": "Gabriele Minì",
+      "officialPosition": 4,
+      "officialPoints": 163,
+      "previousOverall": 85.0,
+      "reviewedOverall": 85,
+      "reason": "2024 F3 runner-up, 2025 F2 thirteenth and strong 2026 recovery; retain.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/gabriele-mini"
+      ]
+    },
+    {
+      "id": "dino_beganovic",
+      "name": "Dino Beganovic",
+      "officialPosition": 5,
+      "officialPoints": 137,
+      "previousOverall": 84.0,
+      "reviewedOverall": 85,
+      "reason": "2025 F2 seventh and current fifth with recent Feature Race win; small upward revision.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/dino-beganovic"
+      ]
+    },
+    {
+      "id": "noel_leon",
+      "name": "Noel León",
+      "officialPosition": 6,
+      "officialPoints": 133,
+      "previousOverall": 84.0,
+      "reviewedOverall": 83,
+      "reason": "Strong 2026 rookie season balanced against 2025 F3 seventeenth; modestly below the more established leading group.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/noel-leon"
+      ]
+    },
+    {
+      "id": "martinius_stenshorne",
+      "name": "Martinius Stenshorne",
+      "officialPosition": 7,
+      "officialPoints": 107,
+      "previousOverall": 83.0,
+      "reviewedOverall": 84,
+      "reason": "2025 F3 fifth and 2026 F2 seventh with a Feature Race win; small upward revision.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/martinius-stenshorne"
+      ]
+    },
+    {
+      "id": "joshua_duerksen",
+      "name": "Joshua Dürksen",
+      "officialPosition": 8,
+      "officialPoints": 90,
+      "previousOverall": 83.0,
+      "reviewedOverall": 83,
+      "reason": "2024/2025 F2 tenth/ninth and 2026 eighth; retain experienced upper-midfield prior.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/joshua-durksen"
+      ]
+    },
+    {
+      "id": "kush_maini",
+      "name": "Kush Maini",
+      "officialPosition": 9,
+      "officialPoints": 90,
+      "previousOverall": 82.0,
+      "reviewedOverall": 82,
+      "reason": "2025 F2 sixteenth and current ninth; retain with improvement balanced against previous seasons.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/kush-maini"
+      ]
+    },
+    {
+      "id": "laurens_van_hoepen",
+      "name": "Laurens van Hoepen",
+      "officialPosition": 10,
+      "officialPoints": 90,
+      "previousOverall": 81.0,
+      "reviewedOverall": 82,
+      "reason": "2025 F3 twelfth and current F2 tenth as a full-season rookie; small upward revision.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/laurens-van-hoepen"
+      ]
+    },
+    {
+      "id": "tasanapol_inthraphuvasak",
+      "name": "Tasanapol Inthraphuvasak",
+      "officialPosition": 11,
+      "officialPoints": 71,
+      "previousOverall": 80.0,
+      "reviewedOverall": 80,
+      "reason": "2025 F3 seventh and current F2 eleventh; retain.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/tasanapol-inthraphuvasak"
+      ]
+    },
+    {
+      "id": "ritomo_miyata",
+      "name": "Ritomo Miyata",
+      "officialPosition": 12,
+      "officialPoints": 70,
+      "previousOverall": 85.0,
+      "reviewedOverall": 84,
+      "reason": "2024/2025 F2 nineteenth/seventeenth and current twelfth support modest correction; retain substantial weight for 2023 SF and GT500 titles.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/ritomo-miyata"
+      ]
+    },
+    {
+      "id": "rafael_villagomez",
+      "name": "Rafael Villagómez",
+      "officialPosition": 13,
+      "officialPoints": 42,
+      "previousOverall": 79.0,
+      "reviewedOverall": 79,
+      "reason": "2025 F2 fourteenth and current thirteenth; retain.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/rafael-villagomez"
+      ]
+    },
+    {
+      "id": "john_bennett",
+      "name": "John Bennett",
+      "officialPosition": 14,
+      "officialPoints": 38,
+      "previousOverall": 76.0,
+      "reviewedOverall": 77,
+      "reason": "2025 F2 twenty-second to current fourteenth, with prior GB3 runner-up record; small upward revision.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/john-bennett"
+      ]
+    },
+    {
+      "id": "oliver_goethe",
+      "name": "Oliver Goethe",
+      "officialPosition": 15,
+      "officialPoints": 37,
+      "previousOverall": 81.0,
+      "reviewedOverall": 80,
+      "reason": "2025 and current F2 fifteenth; modest downward correction while retaining F3/Euroformula achievements.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/oliver-goethe"
+      ]
+    },
+    {
+      "id": "roman_bilinski",
+      "name": "Roman Bilinski",
+      "officialPosition": 16,
+      "officialPoints": 36,
+      "previousOverall": 78.0,
+      "reviewedOverall": 79,
+      "reason": "2025 F3 eleventh and current F2 sixteenth as a rookie; modest upward correction to align the shared midfield range.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/roman-bilinski"
+      ]
+    },
+    {
+      "id": "sebastian_montoya",
+      "name": "Sebastian Montoya",
+      "officialPosition": 17,
+      "officialPoints": 30,
+      "previousOverall": 80.0,
+      "reviewedOverall": 80,
+      "reason": "Current seventeenth weighed alongside 2025 F2 twelfth; retain rather than map points directly to ability.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/sebastian-montoya"
+      ]
+    },
+    {
+      "id": "expansion_emerson_fittipaldi_jr",
+      "name": "Emerson Fittipaldi Jr.",
+      "officialPosition": 18,
+      "officialPoints": 28,
+      "previousOverall": 77.0,
+      "reviewedOverall": 76,
+      "reason": "Current eighteenth and 2025 Eurocup-3 eleventh support modest correction; this is Emerson, not historical Enzo Fittipaldi.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/emerson-fittipaldi-jr"
+      ]
+    },
+    {
+      "id": "colton_herta",
+      "name": "Colton Herta",
+      "officialPosition": 19,
+      "officialPoints": 26,
+      "previousOverall": 84.0,
+      "reviewedOverall": 84,
+      "reason": "F2 adaptation has been difficult, but 2024 IndyCar runner-up and 2025 sixth support retaining shared absolute ability; missed Madrid races do not establish pace.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/colton-herta"
+      ]
+    },
+    {
+      "id": "mari_boya",
+      "name": "Mari Boya",
+      "officialPosition": 20,
+      "officialPoints": 21,
+      "previousOverall": 78.0,
+      "reviewedOverall": 78,
+      "reason": "Difficult F2 rookie season balanced against 2025 F3 third; retain rather than a large current-points downgrade.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/mari-boya"
+      ]
+    },
+    {
+      "id": "nicolas_varrone",
+      "name": "Nicolás Varrone",
+      "officialPosition": 21,
+      "officialPoints": 15,
+      "previousOverall": 84.0,
+      "reviewedOverall": 84,
+      "reason": "F2 single-seater adaptation is weak; retain endurance-weighted shared prior supported by 2023 WEC LMGTE Am title and Le Mans class win. Category adaptation is not separately fitted.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/latest/article/nicolas-varrone-joins-van-amersfoort-racing-for-the-2026-season.24aYiR79lE33QyXWWvQpu9"
+      ]
+    },
+    {
+      "id": "cian_shields",
+      "name": "Cian Shields",
+      "officialPosition": 22,
+      "officialPoints": 10,
+      "previousOverall": 74.0,
+      "reviewedOverall": 74,
+      "reason": "2025 F2 twenty-fourth and current twenty-second support retaining lower shared prior; avoid treating one points finish as a measured skill axis.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/cian-shields"
+      ]
+    },
+    {
+      "id": "hiyu_yamakoshi",
+      "name": "Hiyu Yamakoshi",
+      "officialPosition": 23,
+      "officialPoints": 2,
+      "previousOverall": 79.0,
+      "reviewedOverall": 79,
+      "reason": "2026 F3 ninth and only a Baku F2 debut sample; retain and do not punish limited starts.",
+      "sources": [
+        "https://www.fiaformula2.com/en/standings/2026/drivers",
+        "https://www.fiaformula2.com/en/drivers/hiyu-yamakoshi"
+      ]
+    }
+  ]
+}

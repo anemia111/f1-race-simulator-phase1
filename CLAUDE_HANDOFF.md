@@ -1,5 +1,25 @@
 # Formula Race Simulator Handoff
 
+## Latest: F2 driver rating and propagation audit (2026-10-13)
+
+User clarified F2 means driver pool evaluation/propagation, not adding a live
+category. Reviewed23 participants through Baku using official standings and
+individual career profiles. Read docs/F2_DRIVER_RATING_REVIEW.md and the explicit
+src/data/f2DriverRatingAudit20261013.json. Nine modest OVR revisions: Beganovic85,
+Leon83, Stenshorne84, van Hoepen82, Miyata84, Bennett77, Goethe80, Bilinski79,
+Emerson76. Herta84/Varrone84 retain broader career weighting. Exact OVR/relative
+axis splits remain editorial SIM priors, not measured or car-adjusted skill.
+No new driver identities/category or rewritten historical source. Enzo/Emerson
+are distinct. Nakayama120/Juju67/ordinary100 remain.
+Review version .3 stores23 previous .2 defaults for native/extra save migration.
+Fixed extra-category detailed default profiles being excluded from migration:
+require whole compact+30-axis match; a single manual edit preserves the profile.
+Explicit historical F2 default skill profiles also migrate when recognizable.
+96 focused checks across7 suites pass, including actual extra-category saves,
+23-person native propagation, existing all-category force routing and configuration/
+native/extra persistence regression checks. No long
+tests; use shortened publish -SkipFullTestSuite -SkipPlaytest.
+
 ## Latest: Yuki Nakayama strongest execution preset (2026-10-13)
 
 User requested making Yuki strongest. Factory/pool already have all30 skills and

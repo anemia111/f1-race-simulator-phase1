@@ -1,5 +1,16 @@
 # Shared driver rating review — 2026-10-13
 
+## F2 follow-up review v3
+
+See [F2 driver review](F2_DRIVER_RATING_REVIEW.md) for the subsequent explicit
+23-person review through Baku. Nine OVRs are revised; the ordinary100 and Yuki120
+limits remain. Version .3 retains snapshots of the23 pre-review profiles for
+safe native/extra save migration. Extra-category whole detailed defaults can
+now migrate too; any single edited compact or detailed axis retains the custom
+profile. All current scores and inherited relative axis splits are SIM editorial
+judgments, not official ratings or a car-adjusted pace fit. Original F2 history
+and Enzo/Emerson identities remain distinct.
+
 All six visible categories use one absolute current-ability scale. Ordinary people are capped at 100 in editors, saved inputs and named runtime abilities; user-defined yuki_nakayama alone retains 120. A move between seats/categories preserves the person's axes. Machine performance remains separate. No category-dependent runtime deduction is applied.
 
 The explicit review overlay covers 338 imported people; 72 target overall scores changed in v1 (see v2 correction below). Ten additional legacy people retain their existing profiles, giving 348 selectable identities. Retained-unverified rows are not independent reassessments. The 12-group expanded execution mean is aligned to the reviewed overall using a common offset to compact axes, with identity-specific limits; inherited relative skill splits are SIM priors. Exact scores are editorial judgments, not official ratings or a statistical separation of car and driver.
