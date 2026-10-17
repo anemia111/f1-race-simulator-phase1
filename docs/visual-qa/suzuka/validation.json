@@ -1,0 +1,92 @@
+{
+  "baseline": "4d8267d",
+  "scope": "Suzuka rendering only; no master merge or production deployment",
+  "focusedTests": {
+    "files": 4,
+    "passed": 17
+  },
+  "lint": true,
+  "productionBuild": true,
+  "legacyPlaytest": {
+    "passed": true,
+    "viewports": [
+      {
+        "name": "desktop",
+        "pitStopApplied": true,
+        "pageErrors": []
+      },
+      {
+        "name": "desktop-compact",
+        "pitStopApplied": true,
+        "pageErrors": []
+      }
+    ],
+    "freeCars": 40,
+    "championshipStorageUnchanged": true
+  },
+  "numericPreservation": {
+    "matches": true,
+    "tracks": 28,
+    "suzukaAndPitSamples": 2048
+  },
+  "renderPreservation": {
+    "beforeRounds": 34,
+    "afterRounds": 34,
+    "beforeErrors": [],
+    "afterErrors": [],
+    "canvasDimensionsUnchanged": true,
+    "note": "Screenshots contain live weather/flag/marker state and are not a pixel-exact visual regression pass. Static track definitions and meshes are checked separately. Existing duplicate-key console warnings occur in the baseline as well."
+  },
+  "cameras": {
+    "errors": [],
+    "results": [
+      {
+        "mode": "tv",
+        "rendered": true
+      },
+      {
+        "mode": "trackside",
+        "rendered": true
+      },
+      {
+        "mode": "chase",
+        "rendered": true
+      },
+      {
+        "mode": "onboard",
+        "rendered": true
+      },
+      {
+        "mode": "helicopter",
+        "rendered": true
+      },
+      {
+        "mode": "free",
+        "rendered": true
+      },
+      {
+        "quality": "high",
+        "rendered": true
+      },
+      {
+        "quality": "medium",
+        "rendered": true
+      },
+      {
+        "quality": "low",
+        "rendered": true
+      },
+      {
+        "returnToOverview": true
+      }
+    ],
+    "note": "Functional camera and quality checks; concurrent UI checks, not an FPS benchmark."
+  },
+  "fullTests": {
+    "command": "npm test -- --bail=1",
+    "passed": false,
+    "firstFailure": "timedSessionPlan.test.ts: FP2 multi-lap long run exceeds default 5000ms",
+    "baselineReproduced": true,
+    "existingTestsModified": false
+  }
+}

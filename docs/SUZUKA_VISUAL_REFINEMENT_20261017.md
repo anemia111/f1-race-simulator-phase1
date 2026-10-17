@@ -63,6 +63,10 @@ Intel Iris Xe / ANGLE D3D11、1440×900の静的な路面・景観検証で、9�
 - lint、TypeScriptを含むproduction build：成功。
 - 既存6カメラ、3品質、Overview復帰：すべて表示成功、pageerror 0。機能試験のためFPS測定とは分離した。
 - `npm test -- --bail=1`：既存の `timedSessionPlan.test.ts` のFP2複数周試験が既定5000msを超え、最初の失敗で停止。49件成功・1件失敗の時点で中止され、全スイート合格ではない。同じ試験の単独実行は公開版基準と改修版の両方でもタイムアウトした。既存テストやエンジンは書き換えていない。
-- F1/SF全選択ラウンドの描画比較と既存 `npm run playtest`：結果を最終のvalidation.jsonへ記録する。
+- F1の22ラウンド・SFの12ラウンドは、変更前後ともpageerror 0で表示でき、CanvasのUI寸法も一致。`npm run playtest` は終了コード0で成功し、2画面サイズのピット指示と40台Free Mode・Championship保存状態の維持も確認した。
 
 全テスト合格という完了条件は未達のため、PRはDraftとして扱う。全施設の実測位置、正確な縁石寸法、実写全画角照合、長時間GPU安定性も未達項目として残す。本番公開・masterへのマージは行わない。
+
+追加の数値比較では、F1と国内サポートを含む28コースの定義・Overviewメッシュ全バッファ、全標高プロファイル、鈴鹿の2048路面／ピット姿勢サンプルのハッシュが公開版基準と完全一致した。`node scripts/verify-suzuka-preservation.mjs <baseline checkout>` で再現できる。[検証結果](visual-qa/suzuka/validation.json)と[全コースの数値照合](visual-qa/suzuka/numeric-preservation.json)を参照。
+
+全ラウンドのスクリーンショットには実行時の気象・フラグ・マーカー状態の違いがあるため、ピクセル完全一致の合格とは扱わない。変更前から存在するReactの重複keyのconsole警告も観測した。これらの既存UI／シミュレーションは今回の許可範囲で修正せず、静的形状の数値照合とpageerrorを区別して記録した。

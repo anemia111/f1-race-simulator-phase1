@@ -1,0 +1,296 @@
+{
+  "matches": true,
+  "before": {
+    "maps": [
+      {
+        "id": "albert-park-approx",
+        "definitionHash": "bf62aec6180cc1e77143d7009f3d91f0b6f158a602ef4cb096a3bfe52f2e563d",
+        "meshHash": "72c326542c2ecbe14909f8bea764d46b06bd204469d9164e854810078a7fc8ab"
+      },
+      {
+        "id": "shanghai-approx",
+        "definitionHash": "48acd1f5578de39c60bd34ef154da6201cd008fe90237382c07619ad87804f92",
+        "meshHash": "b7c489f08f46648b0f373dff06b93fba2c6ff23126e531c6d5e6f47f13105a35"
+      },
+      {
+        "id": "suzuka-approx",
+        "definitionHash": "b187c6cbe8fd17b17f459347de957225935b79d74ad59aec5056de832709d38c",
+        "meshHash": "9718be50bf08ca4ac7d99bebdaa5fa90bee5daef6bedc908ee307bfe46480799"
+      },
+      {
+        "id": "bahrain-approx",
+        "definitionHash": "1e33d657d8bee62a9c361a003b1435e00c3e92ec05a243c9cb1fdd2eab8ddca8",
+        "meshHash": "ca3bc91120e0a4a0d32f675800b2ab89d67c727c636998c671baa1d8681a39b5"
+      },
+      {
+        "id": "jeddah-approx",
+        "definitionHash": "cee18b05e76cbfd0555d82df220cb2f241bb2abaa6a393f02aafbeb852f949b5",
+        "meshHash": "86a538cce96651fa992469123bb45a2e5641c4df510d3de48b97073eefd6dd2f"
+      },
+      {
+        "id": "miami-approx",
+        "definitionHash": "c05d0f8a314c63c33d9b0d8fe5300392f192b81dacf0694a2e9d7fe5ef193e9e",
+        "meshHash": "93a71c04869061af2b45c886640607f4f42a4b7741388ee1b62dc6c09be04245"
+      },
+      {
+        "id": "montreal-approx",
+        "definitionHash": "0426a4bb35d214202f5fb029a0a467de20c649d6685055666e82733963f77789",
+        "meshHash": "fddcdb22a998c7f2522c91baeb4f310305c0f8ee7f9361fd030ab4ab5b3569fc"
+      },
+      {
+        "id": "monaco-approx",
+        "definitionHash": "f468eb13a6a618bcca1ce0e0878deaae28d25858cc0e6e318b11413af1529be1",
+        "meshHash": "309e92f55a5a1639cf5c9278021af08a6c7029ef30223a5b4455346e0b1262da"
+      },
+      {
+        "id": "barcelona-approx",
+        "definitionHash": "6b04a0fa2661c385b65ef8f4c626fe871f14e10f11b85a5e8c7518f4d4497f6f",
+        "meshHash": "0622304e11c95a72af5ac10481c0924b6362240d8bd54b5fa47375ddec90c45c"
+      },
+      {
+        "id": "red-bull-ring-approx",
+        "definitionHash": "c58ac49d89e1bb5cbd08daf9f5ac4d79ae2dee714b10447b86b02ba1f8a54a35",
+        "meshHash": "b57cf348810531bf0fa575d20ac698e7738e8dca8fd49b283d3d1ddc38a0f7b5"
+      },
+      {
+        "id": "silverstone-approx",
+        "definitionHash": "080674a094d96937f4c2b53dd1894b68c762be1341fb234eb018f4b2a5b26cde",
+        "meshHash": "f3a18f444d819f88a41e0012f2dbb8b0b15c6a21f13d2e4cfe3e1d85b6e06c1c"
+      },
+      {
+        "id": "spa-approx",
+        "definitionHash": "4077ae5cc283c5e4666540fbb7a091d6a0c0423747b243fa2a2843fae7275f0b",
+        "meshHash": "9fcd8172775d78b5c9954f49a60fc0077a54f8b010402acea9455dd1cdfe028d"
+      },
+      {
+        "id": "hungaroring-approx",
+        "definitionHash": "86f0efbb5b69d5fb97700aae6200b88abbdf270dcdcd2ba55e657f0fc1cce16d",
+        "meshHash": "2e7f8c014897863a8b8cf33570e0fb771430224b586ef625463131ce0aa6f30c"
+      },
+      {
+        "id": "zandvoort-approx",
+        "definitionHash": "ffc43ed432e83221be4ead890cd32a34807035d04afc7010a0c0c8f2e5c195df",
+        "meshHash": "908a129dfd7cbea1813ef94356697765bac938e8d551a9fd620b8bfe41ea4b1a"
+      },
+      {
+        "id": "monza-approx",
+        "definitionHash": "d8a84d800e2a3f6e146995c0823ecb29ca126fdc7a8e3239e481c0fd61478465",
+        "meshHash": "8ddebd9376013860cd5ddc269fa01ce9403c034a375e584253a08d3cf378c018"
+      },
+      {
+        "id": "madrid-approx",
+        "definitionHash": "3af6f7ea5c10afaa8414eac1eba2da0201fb68f238b5389189d8605e23e379a8",
+        "meshHash": "66cd9fdba4f5f6dd4fe11159b2240e2fe6e310f4f544f49a5bad811fcf72b353"
+      },
+      {
+        "id": "baku-approx",
+        "definitionHash": "ed6148003415181dd18ef3e6607882700dbcc505fe3cd304b97e202866948e96",
+        "meshHash": "6728e5f64a00d4a012b119cda850d71397eb0f452fd561495981e6bddc4aadb7"
+      },
+      {
+        "id": "singapore-approx",
+        "definitionHash": "8f6354e50004cd332e1736b14ddc0227476d8bbfb62c74beef954e2e9aee20e6",
+        "meshHash": "0bd73a5efcdefa7a50e6b4b638a48b1111cea4e6d8cbf1b6d6dc1afed179638e"
+      },
+      {
+        "id": "cota-approx",
+        "definitionHash": "fa1d65084317dc3908978a526d24c90b6dab966cafebb62b92d790ea49b4a0cd",
+        "meshHash": "f407a5a797694e4b382840bc4299f52e5492efdab9609edbdd4bbd5324d32579"
+      },
+      {
+        "id": "mexico-city-approx",
+        "definitionHash": "9c7e04054a089c3a42a589c3540961e1709f354045305d61c1b2003808e944d9",
+        "meshHash": "9195181a00e8405e661807b00a826ee1dbd63aad8e077f1f169261142bfc50e0"
+      },
+      {
+        "id": "interlagos-approx",
+        "definitionHash": "e762e3222eb30fe61458b09928d10bc478386076533af710a7afc3f0b0d839fc",
+        "meshHash": "0e16bdc94f7fa4d5aae871aec7784d02641715b6fc739fd1b153ca36f5e88287"
+      },
+      {
+        "id": "las-vegas-approx",
+        "definitionHash": "e4672d188c78b6196f7a439547a90d233a5c46704265e41205be3ba9f8c4a3ae",
+        "meshHash": "fee953ad68dbdd9699a8aa1f5f7e49fa4cadc4d4506d92536739527cddfb3ec8"
+      },
+      {
+        "id": "lusail-approx",
+        "definitionHash": "15a43e1458ac16ad7a0793670bf6e1973d7ab8909ddb979984350cd5e983d93c",
+        "meshHash": "b89590f599a855d6b0c9576cd5f9952d690d828824443e59909966f75638e3d7"
+      },
+      {
+        "id": "yas-marina-approx",
+        "definitionHash": "4424293d30513ae5bf0ba911cd24b87eb4fe32ea8c05ecc275829a878a825293",
+        "meshHash": "113f82bfc9cb274b41f415df0e100def5cfe9dec6b2e19dec7e50e723d3cc73e"
+      },
+      {
+        "id": "motegi-sf",
+        "definitionHash": "cf2de37834480619dde7bc57003205344129d8d3abb8c27ec2134ef84ae01d95",
+        "meshHash": "a6cb2918c7674e4744224face07b70ff96b1dda8df7622f835f159befa3f4e46"
+      },
+      {
+        "id": "autopolis-sf",
+        "definitionHash": "caa3eec8733b8ddc1128b7f0287491cfb5661b7337dd68e614fa6350868bc741",
+        "meshHash": "0e9641a26793dc88e782b5bbcc7b076bd645f9df11b4d2f04c1e02dac9a75fba"
+      },
+      {
+        "id": "fuji-sf",
+        "definitionHash": "2af41db23c0bca69bcae9bf735c8e994769536d65d1eba213591433de2340c73",
+        "meshHash": "4d2392a287c1e36a772065517ff07e20725eac106f312b2ddba15d854d283ab3"
+      },
+      {
+        "id": "sugo-sf",
+        "definitionHash": "8563031e3f87991b6993f3f5508d7929d9eb0cfff1b4e6e378e3e0bcc1335885",
+        "meshHash": "c97951e1b4fab18d50ee49b12b0d00f040c40464f88d05c3fd6e3f1e89788468"
+      }
+    ],
+    "profilesHash": "6dab83ff4a1992a660268c63e6921bfa9e85da8e47ca2b264663bbfb56c3ed35",
+    "suzukaPoseAndPitHash": "822474cfc6b62c2769d698471d938029e96f1b5318ed5225381e74bae6a116db"
+  },
+  "after": {
+    "maps": [
+      {
+        "id": "albert-park-approx",
+        "definitionHash": "bf62aec6180cc1e77143d7009f3d91f0b6f158a602ef4cb096a3bfe52f2e563d",
+        "meshHash": "72c326542c2ecbe14909f8bea764d46b06bd204469d9164e854810078a7fc8ab"
+      },
+      {
+        "id": "shanghai-approx",
+        "definitionHash": "48acd1f5578de39c60bd34ef154da6201cd008fe90237382c07619ad87804f92",
+        "meshHash": "b7c489f08f46648b0f373dff06b93fba2c6ff23126e531c6d5e6f47f13105a35"
+      },
+      {
+        "id": "suzuka-approx",
+        "definitionHash": "b187c6cbe8fd17b17f459347de957225935b79d74ad59aec5056de832709d38c",
+        "meshHash": "9718be50bf08ca4ac7d99bebdaa5fa90bee5daef6bedc908ee307bfe46480799"
+      },
+      {
+        "id": "bahrain-approx",
+        "definitionHash": "1e33d657d8bee62a9c361a003b1435e00c3e92ec05a243c9cb1fdd2eab8ddca8",
+        "meshHash": "ca3bc91120e0a4a0d32f675800b2ab89d67c727c636998c671baa1d8681a39b5"
+      },
+      {
+        "id": "jeddah-approx",
+        "definitionHash": "cee18b05e76cbfd0555d82df220cb2f241bb2abaa6a393f02aafbeb852f949b5",
+        "meshHash": "86a538cce96651fa992469123bb45a2e5641c4df510d3de48b97073eefd6dd2f"
+      },
+      {
+        "id": "miami-approx",
+        "definitionHash": "c05d0f8a314c63c33d9b0d8fe5300392f192b81dacf0694a2e9d7fe5ef193e9e",
+        "meshHash": "93a71c04869061af2b45c886640607f4f42a4b7741388ee1b62dc6c09be04245"
+      },
+      {
+        "id": "montreal-approx",
+        "definitionHash": "0426a4bb35d214202f5fb029a0a467de20c649d6685055666e82733963f77789",
+        "meshHash": "fddcdb22a998c7f2522c91baeb4f310305c0f8ee7f9361fd030ab4ab5b3569fc"
+      },
+      {
+        "id": "monaco-approx",
+        "definitionHash": "f468eb13a6a618bcca1ce0e0878deaae28d25858cc0e6e318b11413af1529be1",
+        "meshHash": "309e92f55a5a1639cf5c9278021af08a6c7029ef30223a5b4455346e0b1262da"
+      },
+      {
+        "id": "barcelona-approx",
+        "definitionHash": "6b04a0fa2661c385b65ef8f4c626fe871f14e10f11b85a5e8c7518f4d4497f6f",
+        "meshHash": "0622304e11c95a72af5ac10481c0924b6362240d8bd54b5fa47375ddec90c45c"
+      },
+      {
+        "id": "red-bull-ring-approx",
+        "definitionHash": "c58ac49d89e1bb5cbd08daf9f5ac4d79ae2dee714b10447b86b02ba1f8a54a35",
+        "meshHash": "b57cf348810531bf0fa575d20ac698e7738e8dca8fd49b283d3d1ddc38a0f7b5"
+      },
+      {
+        "id": "silverstone-approx",
+        "definitionHash": "080674a094d96937f4c2b53dd1894b68c762be1341fb234eb018f4b2a5b26cde",
+        "meshHash": "f3a18f444d819f88a41e0012f2dbb8b0b15c6a21f13d2e4cfe3e1d85b6e06c1c"
+      },
+      {
+        "id": "spa-approx",
+        "definitionHash": "4077ae5cc283c5e4666540fbb7a091d6a0c0423747b243fa2a2843fae7275f0b",
+        "meshHash": "9fcd8172775d78b5c9954f49a60fc0077a54f8b010402acea9455dd1cdfe028d"
+      },
+      {
+        "id": "hungaroring-approx",
+        "definitionHash": "86f0efbb5b69d5fb97700aae6200b88abbdf270dcdcd2ba55e657f0fc1cce16d",
+        "meshHash": "2e7f8c014897863a8b8cf33570e0fb771430224b586ef625463131ce0aa6f30c"
+      },
+      {
+        "id": "zandvoort-approx",
+        "definitionHash": "ffc43ed432e83221be4ead890cd32a34807035d04afc7010a0c0c8f2e5c195df",
+        "meshHash": "908a129dfd7cbea1813ef94356697765bac938e8d551a9fd620b8bfe41ea4b1a"
+      },
+      {
+        "id": "monza-approx",
+        "definitionHash": "d8a84d800e2a3f6e146995c0823ecb29ca126fdc7a8e3239e481c0fd61478465",
+        "meshHash": "8ddebd9376013860cd5ddc269fa01ce9403c034a375e584253a08d3cf378c018"
+      },
+      {
+        "id": "madrid-approx",
+        "definitionHash": "3af6f7ea5c10afaa8414eac1eba2da0201fb68f238b5389189d8605e23e379a8",
+        "meshHash": "66cd9fdba4f5f6dd4fe11159b2240e2fe6e310f4f544f49a5bad811fcf72b353"
+      },
+      {
+        "id": "baku-approx",
+        "definitionHash": "ed6148003415181dd18ef3e6607882700dbcc505fe3cd304b97e202866948e96",
+        "meshHash": "6728e5f64a00d4a012b119cda850d71397eb0f452fd561495981e6bddc4aadb7"
+      },
+      {
+        "id": "singapore-approx",
+        "definitionHash": "8f6354e50004cd332e1736b14ddc0227476d8bbfb62c74beef954e2e9aee20e6",
+        "meshHash": "0bd73a5efcdefa7a50e6b4b638a48b1111cea4e6d8cbf1b6d6dc1afed179638e"
+      },
+      {
+        "id": "cota-approx",
+        "definitionHash": "fa1d65084317dc3908978a526d24c90b6dab966cafebb62b92d790ea49b4a0cd",
+        "meshHash": "f407a5a797694e4b382840bc4299f52e5492efdab9609edbdd4bbd5324d32579"
+      },
+      {
+        "id": "mexico-city-approx",
+        "definitionHash": "9c7e04054a089c3a42a589c3540961e1709f354045305d61c1b2003808e944d9",
+        "meshHash": "9195181a00e8405e661807b00a826ee1dbd63aad8e077f1f169261142bfc50e0"
+      },
+      {
+        "id": "interlagos-approx",
+        "definitionHash": "e762e3222eb30fe61458b09928d10bc478386076533af710a7afc3f0b0d839fc",
+        "meshHash": "0e16bdc94f7fa4d5aae871aec7784d02641715b6fc739fd1b153ca36f5e88287"
+      },
+      {
+        "id": "las-vegas-approx",
+        "definitionHash": "e4672d188c78b6196f7a439547a90d233a5c46704265e41205be3ba9f8c4a3ae",
+        "meshHash": "fee953ad68dbdd9699a8aa1f5f7e49fa4cadc4d4506d92536739527cddfb3ec8"
+      },
+      {
+        "id": "lusail-approx",
+        "definitionHash": "15a43e1458ac16ad7a0793670bf6e1973d7ab8909ddb979984350cd5e983d93c",
+        "meshHash": "b89590f599a855d6b0c9576cd5f9952d690d828824443e59909966f75638e3d7"
+      },
+      {
+        "id": "yas-marina-approx",
+        "definitionHash": "4424293d30513ae5bf0ba911cd24b87eb4fe32ea8c05ecc275829a878a825293",
+        "meshHash": "113f82bfc9cb274b41f415df0e100def5cfe9dec6b2e19dec7e50e723d3cc73e"
+      },
+      {
+        "id": "motegi-sf",
+        "definitionHash": "cf2de37834480619dde7bc57003205344129d8d3abb8c27ec2134ef84ae01d95",
+        "meshHash": "a6cb2918c7674e4744224face07b70ff96b1dda8df7622f835f159befa3f4e46"
+      },
+      {
+        "id": "autopolis-sf",
+        "definitionHash": "caa3eec8733b8ddc1128b7f0287491cfb5661b7337dd68e614fa6350868bc741",
+        "meshHash": "0e9641a26793dc88e782b5bbcc7b076bd645f9df11b4d2f04c1e02dac9a75fba"
+      },
+      {
+        "id": "fuji-sf",
+        "definitionHash": "2af41db23c0bca69bcae9bf735c8e994769536d65d1eba213591433de2340c73",
+        "meshHash": "4d2392a287c1e36a772065517ff07e20725eac106f312b2ddba15d854d283ab3"
+      },
+      {
+        "id": "sugo-sf",
+        "definitionHash": "8563031e3f87991b6993f3f5508d7929d9eb0cfff1b4e6e378e3e0bcc1335885",
+        "meshHash": "c97951e1b4fab18d50ee49b12b0d00f040c40464f88d05c3fd6e3f1e89788468"
+      }
+    ],
+    "profilesHash": "6dab83ff4a1992a660268c63e6921bfa9e85da8e47ca2b264663bbfb56c3ed35",
+    "suzukaPoseAndPitHash": "822474cfc6b62c2769d698471d938029e96f1b5318ed5225381e74bae6a116db"
+  },
+  "note": "Exact hashes of track definitions, Overview mesh buffers, all road profiles and 2048 unchanged Suzuka road/pit poses. Does not compare live weather/flags or camera settling."
+}
