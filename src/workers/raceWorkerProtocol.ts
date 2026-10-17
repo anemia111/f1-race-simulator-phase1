@@ -10,6 +10,8 @@ export const RACE_WORKER_TICK_MS = 50
 export const RACE_WORKER_PUBLISH_MS = 100
 
 export function raceWorkerPublishMsFor(speed: SpeedMultiplier): number {
+  // Large snapshots include the canonical surface. Keep high-speed UI work
+  // throttled; cooperative worker tasks make controls responsive independently.
   if (speed >= 60) return 500
   if (speed >= 20) return 250
   if (speed >= 5) return 150

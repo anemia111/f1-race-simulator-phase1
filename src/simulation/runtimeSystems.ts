@@ -72,6 +72,7 @@ export type F1RuntimeSystems = {
   readonly ersMode: ErsMode
   readonly ersPowerKw: number
   readonly overtakeEligibility: OvertakeEligibility | null
+  /** @deprecated Legacy checkpoint field, not a physical/legal discharge cap. */
   readonly overtakeEnergyRemainingMj: number
   readonly overtakeRechargeAllowanceActiveThisLap: boolean
   readonly standingStartMguKReleaseLatched: boolean

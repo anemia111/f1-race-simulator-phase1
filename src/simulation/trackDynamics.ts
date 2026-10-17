@@ -342,11 +342,19 @@ export function progressForProfileSpeed(
   speedKph: number,
   deltaSeconds: number,
 ) {
+  return progressForProfileDistance(track, progress, Math.max(0, speedKph) * deltaSeconds / 3.6)
+}
+
+/** Convert physical arc distance to the stored, non-uniform vertex progress. */
+export function progressForProfileDistance(
+  track: TrackDefinition,
+  progress: number,
+  distanceM: number,
+) {
   const geometry = geometryFor(track)
   const normalizedProgress = ((progress % 1) + 1) % 1
   const startArc = profileArcProgressAt(geometry, normalizedProgress)
-  const distanceFraction =
-    Math.max(0, speedKph) * (deltaSeconds / 3600) / track.lengthKm
+  const distanceFraction = Math.max(0, distanceM) / (track.lengthKm * 1000)
   const unwrappedEndArc = startArc + distanceFraction
   const completedLaps = Math.floor(unwrappedEndArc)
   const endArc = unwrappedEndArc - completedLaps

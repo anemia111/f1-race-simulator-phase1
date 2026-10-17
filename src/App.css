@@ -13,6 +13,22 @@
   --radius: 8px;
 }
 
+.race-view { position: absolute; inset: 0; }
+.cinematic-toolbar { position: absolute; z-index: 30; top: 12px; left: 14px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 28px); align-items: center; }
+.race-view:not(.cinematic-view) .cinematic-toolbar { left: 130px; max-width: calc(100% - 144px); }
+.cinematic-toolbar button, .cinematic-toolbar select { border: 1px solid #52616b; border-radius: 3px; background: #0a141de8; color: #e8eeed; padding: 7px 9px; font: 600 11px Arial, sans-serif; }
+.cinematic-toolbar button[aria-pressed="true"] { border-color: #a9c6bd; background: #314b48; }
+.cinematic-toolbar button:disabled { opacity: .4; cursor: not-allowed; }
+.view-choice { display: flex; gap: 3px; }
+.cinematic-view { background: #9ab8ca; }
+.cinematic-view canvas { width: 100%; height: 100%; }
+.broadcast-track-stage:has(.cinematic-view) .track-map-status, .broadcast-track-stage:has(.cinematic-view) .track-map-legend, .broadcast-track-stage:has(.cinematic-view) .map-grid-texture, .broadcast-track-stage:has(.cinematic-view) .start-signal { display: none; }
+.cinematic-caption { position: absolute; bottom: 24px; left: 20px; display: grid; gap: 5px; background: #081219c9; border-left: 3px solid #c2d4c6; color: white; padding: 13px 18px; pointer-events: none; font: 11px Arial, sans-serif; }
+.cinematic-caption strong { font-size: 16px; letter-spacing: 2px; }
+.cinematic-caption small { color: #c7cdc7; font-size: 10px; }
+.cinematic-metrics { position: absolute; top: 58px; left: 15px; max-width: 90%; white-space: pre-wrap; color: #e9f9ec; padding: 10px; background: #071218d9; font: 11px/1.6 monospace; }
+.race-view:fullscreen { background: #9ab8ca; width: 100vw; height: 100vh; }
+
 .race-shell {
   position: relative;
   min-height: 100svh;
@@ -4033,3 +4049,45 @@
 .data-editor-title span { font-size: 10px; }
 .data-editor-title strong { font-size: 17px; }
 .data-editor-title > b { font-size: 27px; }
+.physics-telemetry{position:absolute;z-index:16;right:12px;top:56px;width:min(460px,calc(100% - 24px));max-height:calc(100% - 76px);overflow:auto;padding:16px;background:rgba(15,26,30,.96);color:#dce9e7;border:1px solid #526965;border-radius:5px;font:12px/1.45 ui-monospace,monospace;box-shadow:0 8px 30px #0005}
+.physics-telemetry strong,.physics-telemetry small{display:block}.physics-telemetry small{margin-top:6px;color:#a8c0b9}.physics-telemetry dl{margin:12px 0}.physics-telemetry dl>div{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;padding:4px 0;border-bottom:1px solid #ffffff12}.physics-telemetry dt{color:#afc1bd}.physics-telemetry dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Restored observer data screens scroll independently of the race transport. */
+.broadcast-sidebar nav { overflow-y: auto; }
+.race-data-scroll { min-height: 0; height: 100%; overflow: auto; padding: 0 12px 12px; }
+.race-data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; white-space: nowrap; }
+.race-data-table th { position: sticky; top: 0; z-index: 1; padding: 12px 10px; background: #0b1824; color: #93abc0; font-size: 10px; }
+.race-data-table td { padding: 12px 10px; border-bottom: 1px solid #1a2b3a; }
+.race-data-table tbody tr:hover { background: #102334; }
+.race-data-driver { border: 0; background: transparent; cursor: pointer; padding: 0; font-weight: 700 !important; }
+.race-data-empty { padding: 20px; color: #a7b6c3; }
+.race-data-season { height: 100%; min-height: 0; overflow: auto; }
+.race-data-season > p { margin: 12px 22px; color: #a7b6c3; font-size: 12px; }
+.race-data-season .race-data-scroll { height: auto; overflow: visible; }
+
+.broadcast-sidebar nav { grid-template-rows: repeat(9, minmax(42px, 1fr)); }
+.category-catalog { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100%; min-height: 0; }
+.category-catalog-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid #203244; }
+.category-catalog-toolbar label { font-size: 12px; }
+.category-catalog-toolbar input, .category-catalog-toolbar select { padding: 8px; border: 1px solid #385269; border-radius: 3px; color: #eff5fa; background: #0b1824; }
+.category-catalog-toolbar input { width: min(320px, 100%); }
+.category-catalog-toolbar strong { color: #98b4ca; font-size: 12px; }
+.category-catalog-note { margin: 10px 22px; color: #acbdcc; font-size: 12px; line-height: 1.7; }
+.category-catalog a { color: #6dcfff; }
+.category-catalog td:nth-child(2), .category-catalog td:nth-child(4) { white-space: normal; min-width: 160px; }
+@media (max-height: 780px) { .broadcast-sidebar nav { grid-template-rows: repeat(9, minmax(36px, 1fr)); } }
+
+.category-catalog { grid-template-rows: auto auto auto minmax(0, 1fr); }
+.category-catalog-tabs { display: flex; gap: 8px; padding: 4px 22px 12px; }
+.category-catalog-tabs button { border: 1px solid #385269; border-radius: 3px; padding: 8px 12px; background: #0b1824; color: #c4d4e2; cursor: pointer; }
+.category-catalog-tabs button[aria-pressed='true'] { background: #173e58; border-color: #59c6ff; color: #fff; }
+.machine-info { padding: 0 22px 20px; font-size: 12px; line-height: 1.6; }
+.machine-info > p { color: #a9bdce; }
+.machine-info dl { margin: 12px 0; }
+.machine-info dd { margin: 0 0 8px; }
+.machine-info dt { color: #90aabc; }
+.machine-spec-card { padding: 16px; margin: 14px 0; border: 1px solid #294359; border-radius: 4px; background: #0a1722; }
+.machine-spec-card h3 { margin: 0 0 8px; font-size: 16px; }
+.machine-spec-card dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.machine-spec-card small { display: block; color: #8eafc5; }
+.machine-spec-card a { margin-right: 16px; }

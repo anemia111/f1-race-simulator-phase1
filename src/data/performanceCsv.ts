@@ -461,6 +461,7 @@ export function loadPerformanceCsv(
     const code = requiredText(record, 'Code', fileName).toUpperCase()
     const id = requiredText(record, 'Driver ID', fileName)
     const carNumber = requiredNumber(record, 'Car Number', fileName, 0, 999)
+    const isFielded = requiredText(record, 'Seat Role', fileName) !== 'reserve'
 
     if (driverIds.has(id)) {
       validationError(fileName, record.lineNumber, 'Driver ID', id, 'a unique driver ID')
@@ -468,12 +469,14 @@ export function loadPerformanceCsv(
     if (driverCodes.has(code)) {
       validationError(fileName, record.lineNumber, 'Code', code, 'a unique driver code')
     }
-    if (carNumbers.has(carNumber)) {
+    if (isFielded && carNumbers.has(carNumber)) {
       validationError(fileName, record.lineNumber, 'Car Number', carNumber, 'a unique car number')
     }
     driverIds.add(id)
     driverCodes.add(code)
-    carNumbers.add(carNumber)
+    // Unseated pool profiles can retain their original number. Only the
+    // active grid must have unique numbers; signing inherits a seat number.
+    if (isFielded) carNumbers.add(carNumber)
 
     const rawRatings = rawNumericRatings(
       record,

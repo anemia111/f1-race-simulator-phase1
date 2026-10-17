@@ -1,5 +1,34 @@
 # Formula Race Simulator
 
+## Suzuka Cinematic reconstruction preview
+
+Select F1 → Suzuka in Settings, use SIM / 1x, then choose **Cinematic** in the
+map stage. TV, Trackside, Chase, Onboard, Helicopter and Free Camera are available
+with High/Medium/Low presets, fullscreen and render metrics. Other tracks and data
+modes retain the original Map. The scene reads existing snapshots and does not
+modify the race engine.
+
+This is **not a completed photoreal Phase 1**: the CC BY 4.0 Qvist_designs independent 2026 concept vehicle
+is not team CAD, and local road widths, facilities, surrounding terrain and vehicle
+attitude include explicitly labelled estimates. See
+[implementation status and remaining acceptance work](docs/cinematic/PHASE1_STATUS.md)
+and [production vehicle asset contract](docs/cinematic/ASSET_SPEC.md).
+
+The 2026-10-17 update adds generated branch/alpha-leaf vegetation (EZ-Tree, MIT),
+near/mid instanced meshes and far baked impostors, photo-referenced main-straight
+fence details, steel rail profiles, facility detail and rotating wheel spokes.
+Placement remains estimated. See [quality update and measurements](docs/cinematic/QUALITY_UPDATE_20261017.md).
+`npm run generate:cinematic-vegetation` rebuilds the checked-in vegetation assets;
+normal application use requires no generator or external asset requests.
+
+Build before `npm run playtest:cinematic`. `CINEMATIC_HARDWARE=1` requests an
+isolated headed Chromium/D3D11 test; verify the reported renderer before interpreting
+GPU results. `npm run validate:cinematic-assets` checks hashes, glTF structure and
+Meshopt decoding. The licensed concept model can be rebuilt with `npm run prepare:cinematic-car`
+(pinned source and SHA-256 verification). Original wheel/brake helpers can be rebuilt
+with `npm run generate:cinematic-car` on a Node runtime supporting TypeScript stripping.
+Vehicle attribution and modifications are recorded in `public/cinematic/qvist-attribution.txt`.
+
 PC-first F1 and SUPER FORMULA race-control and timing simulator built with
 React, TypeScript, Vite, Three.js, and React Three Fiber. Formula 2 and Formula
 3 identities remain available in the historical driver pool, but those series

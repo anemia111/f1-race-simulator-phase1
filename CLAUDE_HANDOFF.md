@@ -1,4 +1,133 @@
+## Published integrated preview — 2026-10-17
+
+The user explicitly authorized publication. Deployment a5ead34 / release
+20261017T060437Z is live at https://anemia111.github.io/?release=a5ead34.
+Read docs/PUBLISHED_INTEGRATED_20261017.md for validation and known limitations.
+The final npm run publish -- -SkipFullTestSuite succeeded with browser playtest
+ENABLED. Fixed two stale harness assumptions: 21-second pit deadline and only
+2 category options. Both viewport pit-stop checks and 40-car Free Mode passed.
+Live public category/telemetry/CSV/Suzuka Onboard checks passed with no page errors.
+Source repository is still uncommitted/unpushed; generated deployment only.
+This authorization covers this release, not arbitrary future deployments.
+## Publication authorization — 2026-10-17
+
+The user explicitly requested "公開して" after reviewing the integrated runtime,
+telemetry and motion fixes. This authorizes deploying the current working source
+as a preview to anemia111.github.io and updating the existing desktop shortcut.
+It supersedes the local-only publication restriction below for this release.
+Do not automatically commit or push the source repository. The known failed and
+incomplete full-suite baseline is recorded in outputs/physics-full-tests-status.json;
+the current full-suite attempt was interrupted, not passed. Publish uses the
+existing SkipFullTestSuite option, keeping lint/build/browser playtest enabled.
+See the latest publication report for the actual released revision and checks.
+## Latest update: integrated category runtimes, telemetry and continuous motion, 2026-10-17
+
+The user's later "あわせて" explicitly supersedes the earlier data-only scope
+for WEC/SUPER GT/KYOJO/INDYCAR. Their original runtime dependency closure is now
+under src/restored20261010 (198 recovered source files, source HEAD recorded in
+recovery-manifest.json). AppShell routes current F1/SF and these actual runtimes
+inside the same application. Namespaced CSS and separate worker implementations
+preserve current F1 physics and Cinematic. F2/F3 remain catalog-only as requested.
+
+Telemetry comparison (driver/lap/distance cursor/channel groups/CSV) is restored.
+Current F1/SF traces record received SIM snapshots, last 3 laps/1536 points;
+original motorsport traces use physics ticks. Missing current F1 steering/body
+angles/four-wheel temperatures and HIST/LIVE trace history remain unavailable.
+Do not fabricate these channels. Session history is in memory.
+
+Both map implementations now use shared ReceivedMotionBuffer, observed positions
+and a common marker/camera playback clock. Valid hardware measurements are in
+outputs/map-motion-f1-qa and non-F1 entries of outputs/map-motion-qa. Earlier F1
+entries in map-motion-qa have zero moving samples and are INVALID; exclude them.
+See docs/INTEGRATED_RUNTIME_MOTION_20261017.md for final evidence and limitations.
+This batch remains local-only. Do not run publish, commit or push automatically.
+The historical notes below describe their dates, not the latest runtime scope.
+## Latest update: recovered original machine data, 2026-10-17
+
+IMPORTANT: The user's WEC/GT/KYOJO/INDYCAR implementation DID exist in a separate
+workspace: C:/Users/yuuki/Documents/Codex/2026-10-10/https-github-com-anemia111-f1-race/work/repo.
+It has full src/motorsport engines/UI and expansion machine/catalog/ratings/event
+data. Earlier searches limited to this checkout missed it; do not say no original
+data exists. Read docs/MACHINE_DATA_RECOVERY_20261017.md for the correction.
+Copied 7 source JSON files byte-identically into src/data/recovered20261010/ with
+SHA-256 manifest; original authored ratings are preserved. Categories now has
+Machines tab showing all 43 recovered specs + current F1/SF settings and archived
+F2/F3 inputs. Original runtime restoration was NOT requested (user chose data
+browsing), so the older motorsport engine remains intact in its source workspace.
+18 targeted tests + lint/build/browser verification passed. Local only.
+
+## Latest update: observer data screens and category catalog, 2026-10-17
+
+Restored Telemetry/Track/Tyres/Messages/Drivers/Season/Map navigation removed by
+baseline b213aaa. Added read-only Categories for F1, SF, archived F2/F3, official
+2026 WEC, GT500, GT300, KYOJO and INDYCAR. User explicitly chose data browsing,
+not restoring F2/F3 race execution. Runtime series remain F1/SF; do not invent
+hybrid rules or add catalog ids to executable series. External facts are in
+categoryCatalog2026.json with per-entry official URLs. No image/logo reuse.
+52 relevant tests, lint, build and full browser menu/catalog checks pass.
+See docs/OBSERVER_DATA_RESTORATION_20261017.md; outputs/sidebar-restoration/ has
+screenshots and machine-readable results. No deployment or source push.
+
+## Latest update: official F1 race lineup, 2026-10-17
+
+Default F1 seats now match all 22 official 2026 drivers/numbers. Leclerc→Ferrari,
+Hadjar→Red Bull, Lindblad→Racing Bulls, Stroll→Aston Martin, Ocon→#31. NAK and
+Tsunoda remain in the unseated pool; NAK's custom 120 abilities are retained.
+Only active-grid car numbers must be unique. Exact old shipped saved seat sets
+migrate in parsePersistedSeriesConfiguration, retaining ratings for returning
+drivers, teams, rules and calendar. Deliberate custom lineups are preserved.
+The stutter harness now selects LEC; historical NAK evidence is unchanged.
+See docs/REAL_F1_GRID_20261017.md and outputs/real-grid-* in the task workspace.
+No deployment or source push was performed.
+
 # Formula Race Simulator Handoff
+
+## Cinematic motion continuity — 2026-10-17 continuation
+
+The user supplied a 4.23-second TV recording and prioritized intermittent
+stop/go animation. Receipt-time buffered interpolation now retains observed
+frames (default 200 ms), never extrapolates, and resets on pause/status/session
+changes. Shadows follow the same buffered car. Worker tasks yield after 8 ms
+at 1x / 16 ms at higher speeds while physics remains 50 ms; accelerated
+snapshot publication retains its original 150/250/500 ms cadence to avoid
+40-car UI overhead. Fixed-step distance now drives unrestricted race movement;
+terminal velocity is separate from mean travel pace. Occupancy/control clamps
+remain explicit external limits and are not credited as ERS regeneration.
+Read `docs/physics/STUTTER_FIX_20261017_JA.md` for hardware before/after video
+and motion-probe results. No new publication is authorized. Motor demand
+feedback/Boost and the broader B-F physical/photoreal acceptance remain open.
+
+## Current physics work — 2026-10-17
+
+The latest user attachment explicitly authorizes an ERS/AI/battle overhaul.
+The old engine-freeze and single-line constraints no longer apply to this work.
+Local implementation fixes accepted MGU-K power being throttled twice, adds
+the 500 Nm F1 torque limit, removes the mistaken 0.5 MJ deployment purse,
+fixes steady following throttle, and removes stochastic clean-pass timing
+concessions from live races. The legacy incident kernel remains stochastic.
+New SIM diagnostics show force/energy limits and force-vs-resolved distance.
+See docs/physics/ERS_AUDIT_JA.md. Phases B–F are not completed; no actual F1
+telemetry validation is claimed. Engine changes are local only. Do not apply
+the prior preview publication exception or run publish without new authorization.
+
+## Current visual work — 2026-10-16
+
+2026-10-17 continuation: replace ellipsoid trees with generated EZ-Tree (MIT)
+branch/alpha-leaf meshes and distant baked impostors. Photo-referenced black
+main-straight fence heads, separate wave-profile outer rails, facade/stand detail
+and wheel-spoke rotation are added. See docs/cinematic/QUALITY_UPDATE_20261017.md.
+Engine, Worker, data and service sources remain unchanged. Full-suite release
+exception continues from the user's provisional-publication instruction; lint,
+build, legacy desktop playtest and public cinematic smoke checks remain required.
+
+The latest user instruction supersedes the old no-GLB/no-Onboard direction below
+for a separate Suzuka Cinematic View. A read-only SIM/1x/F1 reconstruction has been
+added beside the original Map, with Meshopt GLB, DEM road height, PBR materials,
+six cameras, presets and render metrics. Simulation/data/Worker sources are unchanged.
+Photoreal acceptance remains open: team-quality assets, surveyed local widths/bank/
+facilities, photo calibration and endurance are incomplete. Read
+`docs/cinematic/PHASE1_STATUS.md` and `docs/cinematic/ASSET_SPEC.md` before extending it.
+Do not mistake the category model or estimated facilities for measured real assets.
 
 ## Project
 
@@ -461,3 +590,6 @@ the latest decision record, and retains `legacy-direct` as rollback. Local
 yellow order is explicitly enforced while passable obstructions remain
 exempt. No known implementation phase remains open; the numbered limits above
 are source/discretion/bundle boundaries, not hidden completion claims.
+
+
+

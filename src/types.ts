@@ -1251,7 +1251,55 @@ export type EnergyStoreState = {
   rechargeRule: RechargeRuleState
 }
 
+export type PhysicsTelemetry = {
+  mguKTorqueNm: number
+  mguKMechanicalPowerKw: number
+  source: 'SIM'
+  sampledAtSeconds: number
+  deltaSeconds: number
+  forceApplied: boolean
+  forceEndSpeedKph: number
+  forceDistanceM: number
+  resolvedDistanceM?: number
+  meanTravelSpeedKph?: number
+  motionConstrained?: boolean
+  accelerationMps2: number
+  massKg: number
+  requestedDriveForceN: number
+  driveForceN: number
+  brakeForceN: number
+  dragForceN: number
+  gradeForceN: number
+  rollingResistanceForceN: number
+  downforceN: number
+  lateralTyreDemandN: number
+  tractionLimitN: number
+  wheelDrivePowerKw: number
+  generatorMechanicalPowerKw: number
+  combustionAvailableKw: number
+  deployment: null | {
+    requestFraction: number
+    regulatoryDcLimitKw: number
+    hardwareDcLimitKw: number
+    socDcLimitKw: number
+    thermalDcLimitKw: number
+    availableEnergyDcLimitKw: number
+    requestedDcKw: number
+    actualDcKw: number
+    mechanicalKw: number
+    stateOfCharge: number
+    balanceErrorMJ: number
+  }
+  curvature: number
+  referenceLineOffsetM: number
+  towDragReduction: number
+  dirtyAirDownforceMultiplier: number
+  followingDecelerationMps2: number
+}
+
 export type CarSnapshot = {
+  /** Values from the live force solve; unavailable on older/observed snapshots. */
+  physicsTelemetry?: PhysicsTelemetry | null
   driverId: string
   /** Category mileage plus a bounded replay tail of operational decisions. */
   driverAgentRuntime?: DriverAgentRuntimeState

@@ -81,7 +81,8 @@ import {
   normalizeCarComponents,
   weakestComponent,
 } from './components'
-import { overtakeForLap, type OvertakeOutcome } from './overtaking'
+import { physicalBattleIncidentForLap, type OvertakeOutcome } from './overtaking'
+import { vehiclesAreAlongside } from './vehicleGeometry'
 import { pitBoxProgressForTeam, pitLaneMotionAt } from './pitLane'
 import {
   advanceVscMarshallingSectorTracking,
@@ -166,10 +167,13 @@ import {
 import { timedSessionStateAt } from './timedSessionPlan'
 import {
   progressForProfileSpeed,
+  progressForProfileDistance,
+  profileDistanceKmBetween,
   referenceProfileLapTimeSeconds,
   speedForProfileTravelKph,
   trackDynamicsAt,
 } from './trackDynamics'
+import { resolvedTerminalSpeedKph } from './longitudinalTravel'
 import { trackWidthMeters } from './physicalLap'
 import {
   advanceLateralState,
@@ -6297,15 +6301,19 @@ export function advanceRace(
     }
     const effectiveLapTime = baselineEffectiveLapTime
     const battleDeltaSecondsRemaining = battleTravel.nextRemainingSeconds
+    const integratedTravelDistanceM = waitingForSafeRejoin ? 0 :
+      displayTelemetry.physicsTelemetry.forceDistanceM *
+      Math.min(1, Math.max(0, battleTravel.travelSeconds / Math.max(1e-9, deltaSeconds))) *
+      (displayTelemetry.speedKph < displayTelemetry.physicsTelemetry.forceEndSpeedKph - 0.01
+        ? displayTelemetry.speedKph / Math.max(1e-9, displayTelemetry.physicsTelemetry.forceEndSpeedKph) : 1)
     let totalDistance =
       waitingForSafeRejoin
         ? car.totalDistance
         : car.totalDistance +
-          progressForProfileSpeed(
+          progressForProfileDistance(
             config.track,
             car.progress,
-            displayTelemetry.speedKph,
-            battleTravel.travelSeconds,
+            integratedTravelDistanceM,
           )
     const pitEntryProgress = config.track.pitLane?.entryProgress ?? 0.965
     const pitExitProgress = config.track.pitLane?.exitProgress ?? 0.13
@@ -6393,7 +6401,8 @@ export function advanceRace(
       !localControlPhase &&
       hasCrossedRestartLine &&
       !blueFlag
-    const sideBySide = attacking && car.gapToAhead < 0.34
+    const sideBySide = physicalAhead!==null&&physicalAhead!==undefined&&
+      vehiclesAreAlongside((physicalGapSeconds??Infinity)*Math.max(5,car.speedKph/3.6),car.lateralOffsetM-physicalAhead.lateralOffsetM)
     const hasCommittedBattleWindow =
       car.battlePhaseUntilSeconds !== null &&
       car.battlePhaseUntilSeconds > elapsedSeconds &&
@@ -6593,8 +6602,16 @@ export function advanceRace(
       totalDistance,
       deltaSeconds,
     )
+    const resolvedDistanceM = profileDistanceKmBetween(config.track, car.totalDistance, totalDistance) * 1000
+    const terminalSpeedKph = Number(resolvedTerminalSpeedKph({
+      requestedDistanceM: integratedTravelDistanceM,
+      resolvedDistanceM,
+      forceEndSpeedKph: displayTelemetry.speedKph,
+      startSpeedKph: car.speedKph,
+      deltaSeconds,
+    }).toFixed(2))
     // Queue, pit and incident constraints can shorten the distance after the
-    // force step. Reconcile the displayed driveline at that actual road speed
+    // force step. Reconcile the driveline at terminal speed (not mean travel)
     // with the same PU model, without advancing turbo or clutch state twice.
     const reconciledCombustionPowerKw =
       combustionPowerKwFor(team, categoryPhysics) +
@@ -6612,7 +6629,7 @@ export function advanceRace(
             combustionPowerKw: reconciledCombustionPowerKw,
             deploymentPowerKw: displayF1Runtime?.ersPowerKw ?? 0,
             physics: categoryPhysics,
-            speedMps: actualTravelSpeedKph / 3.6,
+            speedMps: terminalSpeedKph / 3.6,
             transmissionEfficiency: categoryPhysics.drivetrainEfficiency,
             turboSpoolFraction: displayTelemetry.turboSpoolFraction,
           })
@@ -6808,8 +6825,14 @@ export function advanceRace(
       battlePhaseUntilSeconds,
       battleDeltaSecondsRemaining,
       ...snapshotTelemetry,
+      physicsTelemetry: {
+        ...displayTelemetry.physicsTelemetry,
+        resolvedDistanceM,
+        meanTravelSpeedKph: actualTravelSpeedKph,
+        motionConstrained: resolvedDistanceM + 1e-6 < displayTelemetry.physicsTelemetry.forceDistanceM,
+      },
       runtimeSystems: runtimeSystemsAfterTravel,
-      speedKph: Number(actualTravelSpeedKph.toFixed(2)),
+      speedKph: Number(terminalSpeedKph.toFixed(2)),
       gear: actualTravelGear,
       rpm: actualTravelRpm,
       throttlePercent: scPitLaneTransit
@@ -6956,7 +6979,7 @@ export function advanceRace(
           driverDecisionRequestsFormalBattle(driverDecision)
         ) {
           const battleLap = Math.max(1, Math.floor(next.totalDistance))
-          const battle = overtakeForLap({
+          const battle = physicalBattleIncidentForLap({
             seed: config.seed,
             attacker: driver,
             defender,
@@ -7059,22 +7082,6 @@ export function advanceRace(
                       'Contact recorded; official event decision required',
                   }
                 }
-              }
-            }
-
-            if (battle.kind === 'pass' || battle.kind === 'defended') {
-              next = {
-                ...next,
-                // A corner attempt or a defended move costs the attacker time.
-                // A successful move's relative gain is applied to the defender
-                // below so this car never exceeds its physical speed ceiling.
-                battleDeltaSecondsRemaining:
-                  next.battleDeltaSecondsRemaining -
-                  battle.attackerTimeLossSeconds,
-                battlePhase:
-                  battle.kind === 'pass' ? 'side-by-side' : 'attacking',
-                battleOpponentId: defender.id,
-                battlePhaseUntilSeconds: elapsedSeconds + 1.6,
               }
             }
 

@@ -3066,7 +3066,15 @@ describe('start procedure and persisted weekend', () => {
       0.25,
     )
 
-    expect(nextFollower.speedKph).toBeCloseTo(actualTravelSpeedKph, 2)
+    // Distance over the whole batch is mean travel speed. The next tick and
+    // gearbox must use terminal velocity, including the final queue constraint.
+    expect(Number.isFinite(actualTravelSpeedKph)).toBe(true)
+    expect(nextFollower.speedKph).toBeLessThanOrEqual(
+      nextFollower.physicsTelemetry!.forceEndSpeedKph + 0.005,
+    )
+    if (!nextFollower.physicsTelemetry!.motionConstrained) {
+      expect(nextFollower.speedKph).toBeCloseTo(nextFollower.physicsTelemetry!.forceEndSpeedKph, 2)
+    }
     expect(Number.isFinite(nextFollower.speedKph)).toBe(true)
     expect(nextFollower.speedKph).toBeGreaterThanOrEqual(0)
 
@@ -3086,7 +3094,7 @@ describe('start procedure and persisted weekend', () => {
           : 0),
       deploymentPowerKw: f1Runtime(nextFollower).ersPowerKw,
       physics,
-      speedMps: actualTravelSpeedKph / 3.6,
+      speedMps: nextFollower.speedKph / 3.6,
       transmissionEfficiency: physics.drivetrainEfficiency,
       turboSpoolFraction: nextFollower.turboSpoolFraction,
     })

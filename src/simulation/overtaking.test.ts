@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialDrivers } from '../data/grid2026'
 import type { CarSnapshot } from '../types'
 import type { F1RuntimeTireState } from './runtimeSystems'
-import { battleDynamicsFor, overtakeForLap } from './overtaking'
+import { battleDynamicsFor, overtakeForLap, physicalBattleIncidentForLap } from './overtaking'
 
 const f1Car = (tires: Partial<F1RuntimeTireState>): CarSnapshot =>
   ({
@@ -36,6 +36,16 @@ const superFormulaCar = (): CarSnapshot =>
   }) as unknown as CarSnapshot
 
 describe('overtaking category boundary', () => {
+  it('never converts a random clean-pass outcome into a live time concession',()=>{
+    let legacyPasses=0
+    for(let seed=0;seed<200;seed++) {
+      const context={attacker:initialDrivers[0],defender:initialDrivers[1],attackerCar:f1Car({}),defenderCar:f1Car({}),gapToAheadSeconds:.25,lap:4,seed:`physical-clean-${seed}`,trackGrip:1,weather:'clear' as const,isOpeningLap:false,inRestartWindow:false,lateralSeparationM:0,longitudinalSeparationM:20}
+      if(overtakeForLap(context)?.kind==='pass')legacyPasses++
+      expect(physicalBattleIncidentForLap(context)).toBeNull()
+      expect(physicalBattleIncidentForLap({...context,longitudinalSeparationM:undefined})).toBeNull()
+    }
+    expect(legacyPasses).toBeGreaterThan(0)
+  })
   it('omits direct tyre edges and keeps F1 ERS out of SUPER FORMULA', () => {
     const f1Dynamics = battleDynamicsFor({
       attacker: initialDrivers[0],

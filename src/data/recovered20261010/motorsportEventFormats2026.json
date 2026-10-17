@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-07",
+  "indycar": [
+    {
+      "courseId": "st-petersburg",
+      "laps": 100,
+      "lengthMiles": 1.8,
+      "url": "https://www.indycar.com/Schedule/2026/St-Petersburg",
+      "sha256": "fd71be61f899cbe771d024ce38a92270dd864c0dcb75a8aae238a57a04536626",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/StPete_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "phoenix",
+      "laps": 250,
+      "lengthMiles": 1.0,
+      "url": "https://www.indycar.com/Schedule/2026/Phoenix",
+      "sha256": "e8fa65c4fd191f8c4a54f5cd9b8eb3647fc0189c21ebb22c440d3e673f6982ff",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Phoenix-TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "arlington",
+      "laps": 70,
+      "lengthMiles": 2.73,
+      "url": "https://www.indycar.com/Schedule/2026/Arlington",
+      "sha256": "8108cfb72e73a8a7638a42531c183effe5384d8c9f35f857d4bff001e9fd77af",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Arlington_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "barber",
+      "laps": 90,
+      "lengthMiles": 2.3,
+      "url": "https://www.indycar.com/Schedule/2026/Barber",
+      "sha256": "1b3ea3424f14f5e58e1a51a97a470c50c6456558c237997e29749add69a42b48",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Barber_TrackMap.png"
+      ]
+    },
+    {
+      "courseId": "long-beach",
+      "laps": 90,
+      "lengthMiles": 1.968,
+      "url": "https://www.indycar.com/Schedule/2026/Long-Beach",
+      "sha256": "b0b4cd164b98edd6e8c4b9682d07af679eafd14a16da2a18cf10fe1cb56d2056",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/LongBeach_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "indianapolis",
+      "laps": 85,
+      "lengthMiles": 2.439,
+      "url": "https://www.indycar.com/Schedule/2026/Indianapolis",
+      "sha256": "b840d0e2832b38d1e6c53f2bbcd75cb692c3d96efc4dfc391f6b15c6ed1dd03d",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Indianapolis-RC-Track-Map.png"
+      ]
+    },
+    {
+      "courseId": "indianapolis-500",
+      "laps": 200,
+      "lengthMiles": 2.5,
+      "url": "https://www.indycar.com/Schedule/2026/Indianapolis-500",
+      "sha256": "a057092dfaba738daa2724a96d2f04f7cebe780108df788a7e9e1bf8f93c045b",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Indianapolis_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "detroit",
+      "laps": 100,
+      "lengthMiles": 1.645,
+      "url": "https://www.indycar.com/Schedule/2026/Detroit",
+      "sha256": "9616112a70d3f5d2b58f1d79bab4e796d85856e8b7b127b85a28f4aa7f134be7",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Detroit_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "wwtr",
+      "laps": 260,
+      "lengthMiles": 1.25,
+      "url": "https://www.indycar.com/Schedule/2026/WWTR",
+      "sha256": "3a382fc0bb32e5a1548a2570fc001270aa9b9a8d6a3d0e0a7375c8e55b5cb636",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Gateway_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "road-america",
+      "laps": 55,
+      "lengthMiles": 4.014,
+      "url": "https://www.indycar.com/Schedule/2026/Road-America",
+      "sha256": "76dca52c8d59a3e3cae74a65fb01ef66f687341e9cedebdd8a2ac57c93c1cf10",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/RoadAmerica-TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "mid-ohio",
+      "laps": 90,
+      "lengthMiles": 2.258,
+      "url": "https://www.indycar.com/Schedule/2026/Mid-Ohio",
+      "sha256": "e1bb2cd8fbff67a43c9900d0fdbb3a33f608926e6ef973a804010f1f46ca0eb0",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/MidOhio_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "nashville",
+      "laps": 225,
+      "lengthMiles": 1.33,
+      "url": "https://www.indycar.com/Schedule/2026/Nashville",
+      "sha256": "8b93c9380f0abb9f918745088d75982f6139700634658be8e7dec02a230cd51e",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/NashvilleSS_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "portland",
+      "laps": 110,
+      "lengthMiles": 1.967,
+      "url": "https://www.indycar.com/Schedule/2026/Portland",
+      "sha256": "15f90c5a9cf356e57e97b433fe6fe25aeb477b1dea4ad597bdc0574059a33005",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Portland_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "markham",
+      "laps": 90,
+      "lengthMiles": 2.19,
+      "url": "https://www.indycar.com/Schedule/2026/Markham",
+      "sha256": "072426deedb0c02642f937ad3dea0bc3925b9e82efad90c9dde74b36fee24b8b",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Markham-TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "washington-dc",
+      "laps": 147,
+      "lengthMiles": 1.7,
+      "url": "https://www.indycar.com/Schedule/2026/Washington-DC",
+      "sha256": "a12458a87db85a01dd45f6d880a5683a2481fd658e0835ecbe99f4fdac855380",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/WashingtonDC-TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "milwaukee-race2",
+      "laps": 250,
+      "lengthMiles": 1.015,
+      "url": "https://www.indycar.com/Schedule/2026/Milwaukee-Race2",
+      "sha256": "1159d288685c5643944e45cf5efcea1a5ed55c0aa6ea4a4adc82376552c4bdfe",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Milwaukee_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "milwaukee-race1",
+      "laps": 250,
+      "lengthMiles": 1.015,
+      "url": "https://www.indycar.com/Schedule/2026/Milwaukee-Race1",
+      "sha256": "3cf2823c68089167830c990cb68698dfed427349a2332ed350a8e6e7543e93e1",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/Milwaukee_TrackMap.jpg"
+      ]
+    },
+    {
+      "courseId": "laguna-seca",
+      "laps": 95,
+      "lengthMiles": 2.238,
+      "url": "https://www.indycar.com/Schedule/2026/Laguna-Seca",
+      "sha256": "2a3e9817bec6511d5ea9cbbf565ff50969d371bebbc0e0f95ca93ee544676870",
+      "maps": [
+        "/-/media/IndyCar/Schedules/TrackMaps/LagunaSeca_TrackMap.jpg"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+F1 2026 concept (polygon model) by Qvist_designs. CC BY 4.0.
+Original: https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42
+License: https://creativecommons.org/licenses/by/4.0/
+APEX/filan214 adapted the original into 16 illustrative display assemblies, cut fused surfaces and assigned study finishes. Source revision: 71fafa72b34bfbed07a01d8bc93b969246e7b4e2.
+Further changes for this simulator: mesh simplification, metric axis/size normalization, static surface merging, wheel pivots, estimated aero surface separation, Meshopt compression, team palette materials at runtime. Neither original nor derivative represents team CAD, verified manufacturing joints, or final 2026 regulation compliance. No endorsement is implied.

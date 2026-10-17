@@ -65,6 +65,7 @@ import { trackDynamicsAt } from './trackDynamics'
 import { gripForSurfaceWater } from './trackWater'
 import {
   airDensityKgM3,
+  combustionPowerKwFor,
   combustionWheelPowerKwAt,
   dirtyAirDownforceMultiplier,
   fuelMassEffects,
@@ -148,6 +149,7 @@ export function overtakeAllowanceBoundedDcPowerLimitKw(options: {
 }
 
 type CalculatedTelemetry = {
+  physicsTelemetry: NonNullable<CarSnapshot['physicsTelemetry']>
   brakePercent: number
   /** Frame-averaged contact-patch work dissipated by service-brake friction. */
   frictionServiceBrakePowerKw: number
@@ -800,16 +802,9 @@ export function calculateCarTelemetry(options: {
         standardDeploymentDcLimitKw,
       )
   const overtakeCurveActive = ersCurve === 'overtake'
-  const regulatoryDeploymentPowerLimitKw =
-    overtakeAllowanceBoundedDcPowerLimitKw({
-      active: overtakeCurveActive,
-      declaredDeploymentDcPowerLimitKw:
-        uncappedRegulatoryDeploymentPowerLimitKw,
-      deltaSeconds,
-      normalDeploymentDcPowerLimitKw:
-        normalRegulatoryDeploymentPowerLimitKw,
-      remainingAllowanceMj: f1Runtime?.overtakeEnergyRemainingMj ?? 0,
-    })
+  // C5.2.10(iii) permits additional harvesting, not a separate 0.5MJ
+  // discharge purse. The selected DC curve and actual ES state own propulsion.
+  const regulatoryDeploymentPowerLimitKw = uncappedRegulatoryDeploymentPowerLimitKw
   const deploymentRequest = energyStoreAtFrameStart
     ? energyDeploymentRequestFor({
         battlePhase: car.battlePhase,
@@ -1088,6 +1083,33 @@ export function calculateCarTelemetry(options: {
 
   return {
     brakePercent,
+    physicsTelemetry: {
+      source:'SIM',sampledAtSeconds:elapsedSeconds,deltaSeconds,forceApplied:!powerUnitStopped,
+      mguKTorqueNm:longitudinalStep.mguKTorqueNm,mguKMechanicalPowerKw:longitudinalStep.mguKMechanicalPowerKw,
+      forceEndSpeedKph:longitudinalStep.speedKph,forceDistanceM:longitudinalStep.distanceTravelledM,
+      accelerationMps2:longitudinalStep.accelerationMps2,massKg:longitudinalStep.massKg,
+      requestedDriveForceN:longitudinalStep.requestedDriveForceN,driveForceN:longitudinalStep.driveForceN,
+      brakeForceN:longitudinalStep.brakeForceN,dragForceN:longitudinalStep.dragForceN,
+      gradeForceN:longitudinalStep.gradeForceN,rollingResistanceForceN:longitudinalStep.rollingResistanceForceN,
+      downforceN:longitudinalStep.downforceN,lateralTyreDemandN:longitudinalStep.lateralTyreDemandN,
+      tractionLimitN:longitudinalStep.tractionLimitN,wheelDrivePowerKw:longitudinalStep.wheelDrivePowerKw,
+      generatorMechanicalPowerKw:longitudinalStep.generatorMechanicalPowerKw,
+      combustionAvailableKw:combustionPowerKwFor(team,categoryPhysics)+extraCombustionPowerKw,
+      deployment:energyStore&&energyStep?{
+        requestFraction:effectiveDeploymentRequest,
+        regulatoryDcLimitKw:regulatoryDeploymentPowerLimitKw,
+        hardwareDcLimitKw:energyStep.audit.deploymentSamples.at(-1)?.hardwareDcLimitKw??0,
+        socDcLimitKw:energyStep.audit.deploymentSamples.at(-1)?.socDcLimitKw??0,
+        thermalDcLimitKw:energyStep.audit.deploymentSamples.at(-1)?.thermalDcLimitKw??0,
+        availableEnergyDcLimitKw:energyStep.audit.deploymentSamples.at(-1)?.availableEnergyDcLimitKw??0,
+        requestedDcKw:energyStore.requestedDeploymentDcPowerKw,actualDcKw:energyStore.actualDeploymentDcPowerKw,
+        mechanicalKw:ersPowerKw,stateOfCharge:energyStore.stateOfCharge,
+        balanceErrorMJ:energyStore.lastStepBalanceErrorMJ,
+      }:null,
+      curvature:dynamics.curvature,referenceLineOffsetM:dynamics.referenceLineOffsetM,
+      towDragReduction,dirtyAirDownforceMultiplier:dirtyAirDownforce,
+      followingDecelerationMps2:options.following?.decelerationMps2??0,
+    },
     frictionServiceBrakePowerKw,
     gear,
     rpm,

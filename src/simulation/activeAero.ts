@@ -10,7 +10,6 @@ import type {
   OvertakeStatus,
   TrackDefinition,
 } from '../types'
-import { FIA_2026_REGULATION_PROFILE } from './regulations'
 import type { F1ElectricalOvertakeRequestAction } from './driverEnergyIntent'
 
 export type {
@@ -610,6 +609,7 @@ export function overtakeStatusFor(options: {
   phase: ActiveFlagPhase | null
   raceControlEnabled?: boolean
   raceLap: number
+  /** @deprecated Old checkpoint field; 0.5MJ is a recharge allowance, not a deployment cap. */
   overtakeEnergyRemainingMj?: number
   /** Ephemeral intent only; every effective-status gate remains below. */
   requestedAction: F1ElectricalOvertakeRequestAction
@@ -623,8 +623,6 @@ export function overtakeStatusFor(options: {
     phase,
     raceControlEnabled = true,
     raceLap,
-    overtakeEnergyRemainingMj =
-      FIA_2026_REGULATION_PROFILE.energy.overtakeAdditionalEnergyPerLapMj,
     requestedAction,
     sessionType = 'race-distance',
     track,
@@ -648,8 +646,7 @@ export function overtakeStatusFor(options: {
     !phase &&
     raceControlEnabled &&
     !lowGripConditions &&
-    batteryPercent > 24 &&
-    overtakeEnergyRemainingMj > 0.01
+    batteryPercent > 24
 
   if (!systemEnabled) {
     return 'disabled'

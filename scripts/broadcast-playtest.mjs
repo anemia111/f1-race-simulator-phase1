@@ -547,7 +547,10 @@ async function runViewport(browser, name, viewport, screenshotPath) {
   await enabledBoxCommand.click()
   await page.getByRole('button', { name: '60x' }).click()
   let pitWallBoxApplied = false
-  for (let sample = 0; sample < 140; sample += 1) {
+  // 60x is a requested multiplier, not a wall-clock guarantee. The fixed-step
+  // engine may need longer than 21 seconds to reach the next safe lap crossing
+  // on software WebGL. Keep the actual completed-stop assertion.
+  for (let sample = 0; sample < 800; sample += 1) {
     await page.waitForTimeout(150)
     const stops = Number(
       await page
@@ -1342,7 +1345,9 @@ try {
 
   const expectedCars = { 'f1-custom': 22, 'super-formula': 24 }
   const seriesFailures = []
-  if (seriesModes.seriesOptions.join(',') !== 'f1-custom,super-formula') {
+  const expectedSeriesOptions = ['f1-custom', 'super-formula', 'motorsport:wec',
+    'motorsport:super-gt', 'motorsport:kyojo', 'motorsport:indycar']
+  if (seriesModes.seriesOptions.join(',') !== expectedSeriesOptions.join(',')) {
     seriesFailures.push(`series selector is incomplete: ${seriesModes.seriesOptions.join(', ')}`)
   }
   for (const [seriesId, carCount] of Object.entries(expectedCars)) {

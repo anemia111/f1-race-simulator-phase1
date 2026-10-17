@@ -130,6 +130,8 @@ export type CategoryPhysicsProfile = {
   drivetrainEfficiency: number
   gearCount: number
   hybridDeploymentPowerLimitKw: number
+  /** FIA C5.2.11 crankshaft-referenced mechanical torque limit for F1. */
+  hybridDeploymentTorqueLimitNm?: number
   id: ExecutableSeriesId
   maximumBrakeDecelerationMps2: number
   /**
@@ -215,6 +217,7 @@ const CATEGORY_PHYSICS: Record<ExecutableSeriesId, CategoryPhysicsProfile> = {
     drivetrainEfficiency: 0.94,
     gearCount: 8,
     hybridDeploymentPowerLimitKw: 350,
+    hybridDeploymentTorqueLimitNm: 500,
     id: 'f1-custom',
     maximumBrakeDecelerationMps2: 49.05,
     liftAreaM2: 5.0,

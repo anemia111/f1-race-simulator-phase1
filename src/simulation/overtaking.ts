@@ -1,6 +1,6 @@
-// Wheel-to-wheel model: deterministic close-battle rolls for passing,
-// defending, and contact. The race loop owns state mutation; this module
-// only describes what happened during a lap-crossing battle.
+// Legacy seeded outcome table. Live races use only its incident kernel via
+// physicalBattleIncidentForLap; clean passes follow actual integrated order.
+// Offline historical acceptance tests still exercise the legacy table.
 
 import type {
   CarSnapshot,
@@ -67,6 +67,17 @@ export type OvertakeContext = {
   sector?: number
   /** Number of battle checks made per lap; scales a lap-level attempt chance. */
   evaluationsPerLap?: number
+}
+
+/** Live clean battles are decided by integrated positions, not this legacy
+ * stochastic outcome table. Retain its seeded incident kernel for compatibility;
+ * a clean "pass" or "defended" result must never impose a time concession.
+ * Missing physical separation is not evidence of contact proximity.
+ */
+export function physicalBattleIncidentForLap(context: OvertakeContext): OvertakeOutcome | null {
+  if(!Number.isFinite(context.lateralSeparationM)||!Number.isFinite(context.longitudinalSeparationM))return null
+  const outcome=overtakeForLap(context)
+  return outcome&&(outcome.kind==='contact'||outcome.kind==='crash')?outcome:null
 }
 
 export type BattleDynamics = {

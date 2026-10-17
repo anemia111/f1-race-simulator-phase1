@@ -125,7 +125,19 @@ export type AdvanceEnergyStoreOptions = {
  * Independent audit for one public integration call. Values are integrated
  * from instantaneous powers and are not reconstructed from displayed SOC.
  */
+export type DeploymentPowerSample = {
+  durationSeconds: number
+  regulatoryDcLimitKw: number
+  hardwareDcLimitKw: number
+  socDcLimitKw: number
+  thermalDcLimitKw: number
+  availableEnergyDcLimitKw: number
+  requestedDcKw: number
+  actualDcKw: number
+  mechanicalKw: number
+}
 export type EnergyFlowAudit = {
+  deploymentSamples: readonly DeploymentPowerSample[]
   deltaSeconds: number
   initialStoredEnergyMJ: number
   finalStoredEnergyMJ: number
@@ -916,6 +928,7 @@ function remainingRechargeAtCuKBusMJ(state: EnergyStoreState) {
 }
 
 type EnergyStoreSubstep = {
+  deploymentSample: DeploymentPowerSample
   state: EnergyStoreState
   actualBrakeRecoveryPowerKw: number
   actualLiftRecoveryPowerKw: number
@@ -1349,6 +1362,17 @@ function advanceEnergyStoreSubstep(
       operatingMode,
       rechargeRule,
     },
+    deploymentSample: {
+      durationSeconds: deltaSeconds,
+      regulatoryDcLimitKw: Math.max(0,finite(options.deploymentDcPowerLimitKw)),
+      hardwareDcLimitKw: parameters.maximumDeploymentDcPowerKw,
+      socDcLimitKw: socDischargeDcPowerLimitKw,
+      thermalDcLimitKw: parameters.maximumDeploymentDcPowerKw * deploymentThermalFactor,
+      availableEnergyDcLimitKw: energyLimitedDcPowerKw,
+      requestedDcKw: requestedDeploymentDcPowerKw,
+      actualDcKw: actualDeploymentDcPowerKw,
+      mechanicalKw: actualDeploymentPowerKw,
+    } satisfies DeploymentPowerSample,
     actualBrakeRecoveryPowerKw,
     actualLiftRecoveryPowerKw,
     actualSuperclipGeneratorPowerKw,
@@ -1360,6 +1384,7 @@ function advanceEnergyStoreSubstep(
 
 function emptyEnergyFlowAudit(storedEnergyMJ: number): EnergyFlowAudit {
   return {
+    deploymentSamples: [],
     deltaSeconds: 0,
     initialStoredEnergyMJ: storedEnergyMJ,
     finalStoredEnergyMJ: storedEnergyMJ,
@@ -1475,6 +1500,7 @@ export function advanceEnergyStore(
   let superclipRechargedAtCuKBusMJ = 0
   let exactProfileIndex = 0
   const acceptedBrakeRecoveryMechanicalEnergyProfileMJ: number[] = []
+  const deploymentSamples: DeploymentPowerSample[] = []
 
   while (
     exactBrakeMechanicalEnergyProfileMJ === null
@@ -1498,6 +1524,7 @@ export function advanceEnergyStore(
       exactBrakingOwnsGenerator,
     )
     state = substep.state
+    deploymentSamples.push(substep.deploymentSample)
     requestedDeploymentIntegral +=
       state.requestedDeploymentDcPowerKw * stepSeconds
     requestedRecoveryIntegral += state.requestedRecoveryPowerKw * stepSeconds
@@ -1631,6 +1658,7 @@ export function advanceEnergyStore(
     inverterLossEnergyMJ -
     motorLossEnergyMJ
   const audit: EnergyFlowAudit = {
+    deploymentSamples,
     deltaSeconds: totalSeconds,
     initialStoredEnergyMJ,
     finalStoredEnergyMJ: state.currentEnergyMJ,

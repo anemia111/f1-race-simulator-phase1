@@ -19,6 +19,28 @@ import {
 } from './performanceCsv'
 
 describe('CSV performance source of truth', () => {
+  it('matches every official 2026 race seat and car number', () => {
+    const expected: Record<string, [string, number][]> = {
+      mclaren: [['NOR', 1], ['PIA', 81]],
+      mercedes: [['RUS', 63], ['ANT', 12]],
+      ferrari: [['LEC', 16], ['HAM', 44]],
+      'red-bull-racing': [['VER', 3], ['HAD', 6]],
+      'racing-bulls': [['LAW', 30], ['LIN', 41]],
+      'aston-martin': [['ALO', 14], ['STR', 18]],
+      alpine: [['GAS', 10], ['COL', 43]],
+      'haas-f1-team': [['OCO', 31], ['BEA', 87]],
+      williams: [['SAI', 55], ['ALB', 23]],
+      audi: [['HUL', 27], ['BOR', 5]],
+      cadillac: [['PER', 11], ['BOT', 77]],
+    }
+    for (const [teamId, seats] of Object.entries(expected)) {
+      expect(initialDrivers.filter(driver => driver.teamId === teamId)
+        .map(driver => [driver.code, driver.carNumber]).sort()).toEqual(seats.sort())
+    }
+    expect(new Set(initialDrivers.map(driver => driver.carNumber)).size).toBe(22)
+    expect(initialDrivers.some(driver => ['NAK', 'TSU'].includes(driver.code))).toBe(false)
+  })
+
   it('CSV-1/2/3: loads the specified 11-team, 22-car field', () => {
     expect(performanceCsvAudit.fileName).toBe(PERFORMANCE_CSV_FILE)
     expect(initialTeams).toHaveLength(11)
@@ -53,11 +75,11 @@ describe('CSV performance source of truth', () => {
     }
   })
 
-  it('keeps Nakayama distinct from Tsunoda and fixed to Ferrari number 31', () => {
-    const nakayama = initialDrivers.find(
+  it('keeps Nakayama distinct from Tsunoda and in the custom pool with number 31', () => {
+    const nakayama = reserveDrivers.find(
       (driver) => driver.id === 'yuki_nakayama',
     )
-    const tsunoda = initialDrivers.find(
+    const tsunoda = reserveDrivers.find(
       (driver) => driver.id === 'yuki_tsunoda',
     )
 
@@ -65,7 +87,7 @@ describe('CSV performance source of truth', () => {
       carNumber: 31,
       code: 'NAK',
       name: '\u4e2d\u5c71 \u88d5\u6a39',
-      seatRole: 'regular',
+      seatRole: 'reserve',
       teamId: 'ferrari',
     })
     expect(tsunoda?.id).not.toBe(nakayama?.id)
@@ -85,7 +107,7 @@ describe('CSV performance source of truth', () => {
   })
 
   it('uses the common 0-100 scale without a hidden category subtraction', () => {
-    const nakayama = initialDrivers.find((driver) => driver.code === 'NAK')!
+    const nakayama = reserveDrivers.find((driver) => driver.code === 'NAK')!
     const verstappen = initialDrivers.find((driver) => driver.code === 'VER')!
 
     // 中山裕樹 is deliberately placed past the published scale; see
@@ -106,7 +128,7 @@ describe('CSV performance source of truth', () => {
     // The scale still holds for the field. Exactly one profile is authored
     // past it, and even that one is bounded by the limit-break ceiling, so a
     // typo cannot ride in behind the exception.
-    const beyondScale = initialDrivers.filter((driver) =>
+    const beyondScale = [...initialDrivers, ...reserveDrivers].filter((driver) =>
       Object.values(driver.performanceSource?.rawRatings ?? {}).some(
         (rating) => rating > 100,
       ),
@@ -183,7 +205,7 @@ describe('CSV performance source of truth', () => {
     ).toEqual([97, 94, 92, 90, 84, 82, 79, 77, 74, 71, 68])
     expect(initialTeams.some((team) => team.id === 'cadillac')).toBe(true)
     expect(initialDrivers.find((driver) => driver.code === 'OCO')?.carNumber).toBe(
-      67,
+      31,
     )
   })
 
@@ -247,13 +269,13 @@ describe('CSV performance source of truth', () => {
 
   it('rejects duplicate IDs, codes, car numbers, and invalid ratings', () => {
     const duplicateId = performanceCsv.replace(
-      'charles_leclerc,Aston Martin,',
-      'yuki_nakayama,Aston Martin,',
+      'charles_leclerc,Ferrari,',
+      'yuki_nakayama,Ferrari,',
     )
     const duplicateCode = performanceCsv.replace(',LEC,16,', ',NAK,16,')
     const duplicateNumber = performanceCsv.replace(',LEC,16,', ',LEC,31,')
     const invalid = performanceCsv.replace(
-      /^(yuki_nakayama,[^\r\n]*?,regular,)\d+,/mu,
+      /^(yuki_nakayama,[^\r\n]*?,reserve,)\d+,/mu,
       '$1not-a-number,',
     )
 

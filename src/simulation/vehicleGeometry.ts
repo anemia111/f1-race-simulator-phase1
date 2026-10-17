@@ -14,6 +14,13 @@ export const FORMULA_VEHICLE_WIDTH_M = 1.9
 export const FORMULA_VEHICLE_HALF_WIDTH_M = FORMULA_VEHICLE_WIDTH_M / 2
 export const FORMULA_VEHICLE_LENGTH_M = 5.2
 
+/** Longitudinal envelopes overlap while body widths remain separated. */
+export function vehiclesAreAlongside(longitudinalSeparationM:number,lateralSeparationM:number) {
+  return Number.isFinite(longitudinalSeparationM)&&Number.isFinite(lateralSeparationM)&&
+    Math.abs(longitudinalSeparationM)<FORMULA_VEHICLE_LENGTH_M&&
+    Math.abs(lateralSeparationM)>=FORMULA_VEHICLE_WIDTH_M
+}
+
 /** Space deliberately left between the tyre envelope and the track edge. */
 export const TRACK_EDGE_SAFETY_MARGIN_M = 0.25
 /** Side-to-side clearance between rectangular vehicle envelopes. */

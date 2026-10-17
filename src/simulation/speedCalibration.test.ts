@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { initialDrivers, initialTeams } from '../data/grid2026'
+import { reserveDrivers } from '../data/performanceCsv'
 import { tracks } from '../data/tracks'
 import type { CarSetup, CarSnapshot, TrackDefinition } from '../types'
 import { calculateCarTelemetry } from './telemetry'
@@ -52,7 +53,7 @@ function runSpeedTrace(
   } = {},
 ) {
   const baseDriver = options.driverId
-    ? initialDrivers.find(
+    ? [...initialDrivers, ...reserveDrivers].find(
         (candidate) => candidate.id === options.driverId,
       )!
     : initialDrivers.find(

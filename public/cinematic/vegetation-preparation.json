@@ -1,0 +1,37 @@
+{
+  "generator": "@dgreenheck/ez-tree@1.1.0",
+  "license": "MIT",
+  "author": "Daniel Greenheck",
+  "source": "https://github.com/dgreenheck/ez-tree",
+  "textureLicenseEvidence": "https://github.com/dgreenheck/ez-tree/blob/dcf309bd86bd521083d9c70f01f2de45fdc7c457/src/app/public/textures/LICENSE.md",
+  "sourceCounts": {
+    "ash": {
+      "bark": 5596,
+      "leaf": 12160
+    },
+    "oak": {
+      "bark": 5596,
+      "leaf": 12160
+    },
+    "pine": {
+      "bark": 4000,
+      "leaf": 6144
+    }
+  },
+  "lodCounts": {
+    "ash_bark_near": 5596,
+    "ash_leaf_near": 12160,
+    "oak_bark_near": 5596,
+    "oak_leaf_near": 12160,
+    "pine_bark_near": 4000,
+    "pine_leaf_near": 6144,
+    "ash_bark_mid": 1587,
+    "ash_leaf_mid": 4244,
+    "oak_bark_mid": 1782,
+    "oak_leaf_mid": 4384,
+    "pine_bark_mid": 1249,
+    "pine_leaf_mid": 2048
+  },
+  "heightM": 14,
+  "changes": "Deterministic branching, web geometry budgets, 3 LODs, metric height normalization, Meshopt compression. Runtime uses original alpha leaf textures and PBR materials. Generic botanical analogues; not a surveyed Suzuka species inventory."
+}

@@ -23,6 +23,9 @@ export function followingDemand(options: {
   )
   return {
     decelerationMps2,
-    throttleScale: Math.min(1, Math.max(0, (gap - desiredGap) / Math.max(3, desiredGap))),
+    // Equal speed at the desired clearance is an equilibrium, not a request
+    // to coast. The former gap-only multiplier was exactly zero there and
+    // created avoidable accordion motion even with no closing speed.
+    throttleScale: Math.min(1, Math.max(0, 1-decelerationMps2/2)),
   }
 }

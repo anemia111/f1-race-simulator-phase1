@@ -1,0 +1,1391 @@
+[
+  {
+    "id": "gt500",
+    "label": "SUPER GT GT500",
+    "season": 2026,
+    "checkedAt": "2026-10-17",
+    "sourceUrl": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026",
+    "note": "2026シリーズエントリー掲載情報。大会ごとの追加・交代は公式ページで確認。",
+    "entries": [
+      {
+        "number": "8",
+        "team": "Team HRC ARTA MUGEN",
+        "car": "#8 ARTA MUGEN HRC PRELUDE-GT",
+        "drivers": [
+          "太田　格之進",
+          "大津　弘樹"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "12",
+        "team": "TEAM IMPUL",
+        "car": "TRS IMPUL with SDG Z",
+        "drivers": [
+          "平峰　一貴",
+          "ベルトラン・バゲット"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "14",
+        "team": "TGR TEAM ENEOS ROOKIE",
+        "car": "ENEOS X PRIME GR Supra",
+        "drivers": [
+          "福住　仁嶺",
+          "大嶋　和也"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "16",
+        "team": "ARTA MUGEN",
+        "car": "#16 ARTA MUGEN HRC PRELUDE-GT",
+        "drivers": [
+          "野尻　智紀",
+          "佐藤　蓮"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "17",
+        "team": "Astemo REAL RACING",
+        "car": "Astemo HRC PRELUDE-GT",
+        "drivers": [
+          "塚越　広大",
+          "野村　勇斗"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "19",
+        "team": "TGR TEAM WedsSport BANDOH",
+        "car": "WedsSport BANDOH GR Supra",
+        "drivers": [
+          "国本　雄資",
+          "阪口　晴南"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "23",
+        "team": "NISMO",
+        "car": "MOTUL Niterra Z",
+        "drivers": [
+          "千代　勝正",
+          "高星　明誠",
+          "佐々木　大樹"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "24",
+        "team": "KONDO RACING",
+        "car": "リアライズコーポレーション Z",
+        "drivers": [
+          "名取　鉄平",
+          "三宅　淳詞"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "36",
+        "team": "TGR TEAM au TOM’S",
+        "car": "au TOM'S GR Supra",
+        "drivers": [
+          "坪井　翔",
+          "山下　健太"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "37",
+        "team": "TGR TEAM Deloitte TOM’S",
+        "car": "Deloitte TOM'S GR Supra",
+        "drivers": [
+          "笹原　右京",
+          "ジュリアーノ・アレジ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "38",
+        "team": "TGR TEAM KeePer CERUMO",
+        "car": "KeePer CERUMO GR Supra",
+        "drivers": [
+          "大湯　都史樹",
+          "小林　利徠斗"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "39",
+        "team": "TGR TEAM SARD",
+        "car": "DENSO KOBELCO SARD GR Supra",
+        "drivers": [
+          "関口　雄飛",
+          "サッシャ・フェネストラズ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "64",
+        "team": "Modulo Nakajima Racing",
+        "car": "Modulo HRC PRELUDE-GT",
+        "drivers": [
+          "大草　りき",
+          "イゴール・オオムラ・フラガ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      },
+      {
+        "number": "100",
+        "team": "STANLEY TEAM KUNIMITSU",
+        "car": "STANLEY HRC PRELUDE-GT",
+        "drivers": [
+          "山本　尚貴",
+          "牧野　任祐"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt500&series=2026"
+      }
+    ]
+  },
+  {
+    "id": "gt300",
+    "label": "SUPER GT GT300",
+    "season": 2026,
+    "checkedAt": "2026-10-17",
+    "sourceUrl": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026",
+    "note": "2026シリーズエントリー掲載情報。大会ごとの追加・交代は公式ページで確認。",
+    "entries": [
+      {
+        "number": "2",
+        "team": "HYPER WATER Racing INGING",
+        "car": "HYPER WATER INGING GR86 GT",
+        "drivers": [
+          "堤　優威",
+          "卜部　和久"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "4",
+        "team": "GOODSMILE RACING & TeamUKYO",
+        "car": "グッドスマイル 初音ミク AMG",
+        "drivers": [
+          "谷口　信輝",
+          "片岡　龍也"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "5",
+        "team": "TEAM MACH",
+        "car": "マッハ車検 エアバスター MC86 マッハ号",
+        "drivers": [
+          "塩津　佑介",
+          "荒尾　創大"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "6",
+        "team": "VELOREX",
+        "car": "UNI-ROBO BLUEGRASS FERRARI",
+        "drivers": [
+          "片山　義章",
+          "ニクラス・クルッテン"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "7",
+        "team": "CARGUY MKS RACING",
+        "car": "CARGUY Ferrari 296 GT3 EVO",
+        "drivers": [
+          "ザック・オサリバン",
+          "梅垣　清",
+          "伊東　黎明"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "9",
+        "team": "PACIFIC RACING TEAM",
+        "car": "PACIFIC ウマ娘 NAC BMW",
+        "drivers": [
+          "冨林　勇佑",
+          "藤原　優汰",
+          "久保　凜太郎"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "11",
+        "team": "GAINER",
+        "car": "GAINER TANAX Z",
+        "drivers": [
+          "富田　竜一郎",
+          "大木　一輝"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "18",
+        "team": "TEAM UPGARAGE",
+        "car": "UPGARAGE AMG GT3",
+        "drivers": [
+          "小林　崇志",
+          "新原　光太郎"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "20",
+        "team": "SHADE RACING",
+        "car": "シェイドレーシング  RC F GT3",
+        "drivers": [
+          "平中　克幸",
+          "清水　英志郎"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "22",
+        "team": "R’Qs MOTOR SPORTS",
+        "car": "アールキューズ AMG GT3",
+        "drivers": [
+          "和田　久",
+          "加納　政樹",
+          "城内　政樹"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "25",
+        "team": "HOPPY team TSUCHIYA",
+        "car": "HOPPY Schatz GR Supra GT",
+        "drivers": [
+          "松井　孝允",
+          "洞地　遼大"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "26",
+        "team": "ANEST IWATA Racing",
+        "car": "ANEST IWATA GAINER Z",
+        "drivers": [
+          "安田　裕信",
+          "リ・ジョンウ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "30",
+        "team": "apr",
+        "car": "apr GR86 GT",
+        "drivers": [
+          "永井　宏明",
+          "平良　響",
+          "織戸　学"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "31",
+        "team": "apr",
+        "car": "apr LC500h GT",
+        "drivers": [
+          "小高　一斗",
+          "小山　美姫",
+          "チャーリー・ブルツ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "32",
+        "team": "TEAM ENEOS ROOKIE",
+        "car": "ENEOS X PRIME AMG GT3",
+        "drivers": [
+          "石浦　宏明",
+          "鈴木　斗輝哉",
+          "小林　可夢偉"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "45",
+        "team": "PONOS RACING",
+        "car": "PONOS FERRARI 296 EVO",
+        "drivers": [
+          "篠原　拓朗",
+          "川端　伸太朗"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "48",
+        "team": "NILZZ Racing",
+        "car": "健康ケーズフロンティアWMニルズGT-R",
+        "drivers": [
+          "井田　太陽",
+          "ジェームス・プル",
+          "藤原　大暉"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "52",
+        "team": "埼玉Green Brave",
+        "car": "Green Brave GR Supra GT",
+        "drivers": [
+          "吉田　広樹",
+          "野中　誠太"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "56",
+        "team": "KONDO RACING",
+        "car": "リアライズ日産メカニックチャレンジGT-R",
+        "drivers": [
+          "ジョアオ・パオロ・デ・オリベイラ",
+          "木村　偉織"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "60",
+        "team": "LM corsa",
+        "car": "Syntium LMcorsa LC500 GT",
+        "drivers": [
+          "吉本　大樹",
+          "河野　駿佑"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "61",
+        "team": "R&D SPORT",
+        "car": "SUBARU BRZ R&D SPORT",
+        "drivers": [
+          "井口　卓人",
+          "山内　英輝"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "62",
+        "team": "HELM MOTORSPORTS",
+        "car": "HELM MOTORSPORTS GT-R",
+        "drivers": [
+          "平木　湧也",
+          "平木　玲次"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "65",
+        "team": "K2 R&D LEON RACING",
+        "car": "LEON PYRAMID AMG",
+        "drivers": [
+          "蒲生　尚弥",
+          "菅波　冬悟"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "87",
+        "team": "JLOC",
+        "car": "OPEN HOUSE Lamborghini GT3",
+        "drivers": [
+          "元嶋　佑弥",
+          "松浦　孝亮",
+          "川合　孝汰"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "88",
+        "team": "JLOC",
+        "car": "VENTENY Lamborghini GT3",
+        "drivers": [
+          "小暮　卓史",
+          "ダニール・クビアト",
+          "坂口　夏月"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "96",
+        "team": "K-tunes Racing",
+        "car": "K-tunes RC F GT3",
+        "drivers": [
+          "新田　守男",
+          "高木　真一"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "360",
+        "team": "TOMEI SPORTS",
+        "car": "RUNUP × SOL  GT-R",
+        "drivers": [
+          "荒川　麟",
+          "金丸　ユウ",
+          "田中　篤"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "666",
+        "team": "seven x seven Racing",
+        "car": "seven x seven PORSCHE GT3R EVO",
+        "drivers": [
+          "スヴェン・ミューラー",
+          "藤波　清斗",
+          "渡会　太一"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      },
+      {
+        "number": "777",
+        "team": "D’station Racing",
+        "car": "D'station Vantage GT3",
+        "drivers": [
+          "藤井　誠暢",
+          "チャーリー・ファグ"
+        ],
+        "url": "https://supergt.net/teams_and_drivers?gt_class=gt300&series=2026"
+      }
+    ]
+  },
+  {
+    "id": "indycar",
+    "label": "INDYCAR",
+    "season": 2026,
+    "checkedAt": "2026-10-17",
+    "sourceUrl": "https://www.indycar.com/Drivers",
+    "note": "2026公式ドライバー一覧。スポット参戦を含み、全員が全戦出走する意味ではありません。",
+    "entries": [
+      {
+        "number": "10",
+        "team": "Chip Ganassi Racing",
+        "car": "",
+        "drivers": [
+          "Alex Palou"
+        ],
+        "url": "https://www.indycar.com/Drivers/Alex-Palou"
+      },
+      {
+        "number": "27",
+        "team": "Andretti Global",
+        "car": "",
+        "drivers": [
+          "Kyle Kirkwood"
+        ],
+        "url": "https://www.indycar.com/Drivers/Kyle-Kirkwood"
+      },
+      {
+        "number": "7",
+        "team": "Arrow McLaren",
+        "car": "",
+        "drivers": [
+          "Christian Lundgaard"
+        ],
+        "url": "https://www.indycar.com/Drivers/Christian-Lundgaard"
+      },
+      {
+        "number": "5",
+        "team": "Arrow McLaren",
+        "car": "",
+        "drivers": [
+          "Pato O'Ward"
+        ],
+        "url": "https://www.indycar.com/Drivers/Pato-OWard"
+      },
+      {
+        "number": "12",
+        "team": "Team Penske",
+        "car": "",
+        "drivers": [
+          "David Malukas"
+        ],
+        "url": "https://www.indycar.com/Drivers/David-Malukas"
+      },
+      {
+        "number": "3",
+        "team": "Team Penske",
+        "car": "",
+        "drivers": [
+          "Scott McLaughlin"
+        ],
+        "url": "https://www.indycar.com/Drivers/Scott-McLaughlin"
+      },
+      {
+        "number": "28",
+        "team": "Andretti Global",
+        "car": "",
+        "drivers": [
+          "Marcus Ericsson"
+        ],
+        "url": "https://www.indycar.com/Drivers/Marcus-Ericsson"
+      },
+      {
+        "number": "2",
+        "team": "Team Penske",
+        "car": "",
+        "drivers": [
+          "Josef Newgarden"
+        ],
+        "url": "https://www.indycar.com/Drivers/Josef-Newgarden"
+      },
+      {
+        "number": "60",
+        "team": "Meyer Shank Racing",
+        "car": "",
+        "drivers": [
+          "Felix Rosenqvist"
+        ],
+        "url": "https://www.indycar.com/Drivers/Felix-Rosenqvist"
+      },
+      {
+        "number": "76",
+        "team": "Juncos Hollinger Racing",
+        "car": "",
+        "drivers": [
+          "Rinus VeeKay"
+        ],
+        "url": "https://www.indycar.com/Drivers/Rinus-VeeKay"
+      },
+      {
+        "number": "26",
+        "team": "Andretti Global",
+        "car": "",
+        "drivers": [
+          "Will Power"
+        ],
+        "url": "https://www.indycar.com/Drivers/Will-Power"
+      },
+      {
+        "number": "9",
+        "team": "Chip Ganassi Racing",
+        "car": "",
+        "drivers": [
+          "Scott Dixon"
+        ],
+        "url": "https://www.indycar.com/Drivers/Scott-Dixon"
+      },
+      {
+        "number": "8",
+        "team": "Chip Ganassi Racing",
+        "car": "",
+        "drivers": [
+          "Kyffin Simpson"
+        ],
+        "url": "https://www.indycar.com/Drivers/Kyffin-Simpson"
+      },
+      {
+        "number": "66",
+        "team": "Meyer Shank Racing",
+        "car": "",
+        "drivers": [
+          "Marcus Armstrong"
+        ],
+        "url": "https://www.indycar.com/Drivers/Marcus-Armstrong"
+      },
+      {
+        "number": "20",
+        "team": "ECR",
+        "car": "",
+        "drivers": [
+          "Alexander Rossi"
+        ],
+        "url": "https://www.indycar.com/Drivers/Alexander-Rossi"
+      },
+      {
+        "number": "15",
+        "team": "Rahal Letterman Lanigan Racing",
+        "car": "",
+        "drivers": [
+          "Graham Rahal"
+        ],
+        "url": "https://www.indycar.com/Drivers/Graham-Rahal"
+      },
+      {
+        "number": "14",
+        "team": "A.J. Foyt Enterprises",
+        "car": "",
+        "drivers": [
+          "Santino Ferrucci"
+        ],
+        "url": "https://www.indycar.com/Drivers/Santino-Ferrucci"
+      },
+      {
+        "number": "45",
+        "team": "Rahal Letterman Lanigan Racing",
+        "car": "",
+        "drivers": [
+          "Louis Foster"
+        ],
+        "url": "https://www.indycar.com/Drivers/Louis-Foster"
+      },
+      {
+        "number": "18",
+        "team": "Dale Coyne Racing",
+        "car": "",
+        "drivers": [
+          "Romain Grosjean"
+        ],
+        "url": "https://www.indycar.com/Drivers/Romain-Grosjean"
+      },
+      {
+        "number": "6",
+        "team": "Arrow McLaren",
+        "car": "",
+        "drivers": [
+          "Nolan Siegel"
+        ],
+        "url": "https://www.indycar.com/Drivers/Nolan-Siegel"
+      },
+      {
+        "number": "21",
+        "team": "ECR",
+        "car": "",
+        "drivers": [
+          "Christian Rasmussen"
+        ],
+        "url": "https://www.indycar.com/Drivers/Christian-Rasmussen"
+      },
+      {
+        "number": "19",
+        "team": "Dale Coyne Racing",
+        "car": "",
+        "drivers": [
+          "Dennis Hauger"
+        ],
+        "url": "https://www.indycar.com/Drivers/Dennis-Hauger"
+      },
+      {
+        "number": "47",
+        "team": "Rahal Letterman Lanigan Racing",
+        "car": "",
+        "drivers": [
+          "Mick Schumacher"
+        ],
+        "url": "https://www.indycar.com/Drivers/Mick-Schumacher"
+      },
+      {
+        "number": "4",
+        "team": "A.J. Foyt Enterprises",
+        "car": "",
+        "drivers": [
+          "Caio Collet"
+        ],
+        "url": "https://www.indycar.com/Drivers/Caio-Collet"
+      },
+      {
+        "number": "77",
+        "team": "Juncos Hollinger Racing",
+        "car": "",
+        "drivers": [
+          "Sting Ray Robb"
+        ],
+        "url": "https://www.indycar.com/Drivers/Sting-Ray-Robb"
+      },
+      {
+        "number": "23",
+        "team": "Dreyer & Reinbold Racing",
+        "car": "",
+        "drivers": [
+          "Conor Daly"
+        ],
+        "url": "https://www.indycar.com/Drivers/Conor-Daly"
+      },
+      {
+        "number": "75",
+        "team": "Rahal Letterman Lanigan Racing",
+        "car": "",
+        "drivers": [
+          "Takuma Sato"
+        ],
+        "url": "https://www.indycar.com/Drivers/Takuma-Sato"
+      },
+      {
+        "number": "24",
+        "team": "Dreyer & Reinbold Racing",
+        "car": "",
+        "drivers": [
+          "Jack Harvey"
+        ],
+        "url": "https://www.indycar.com/Drivers/Jack-Harvey"
+      },
+      {
+        "number": "51",
+        "team": "Abel Motorsports",
+        "car": "",
+        "drivers": [
+          "Jacob Abel"
+        ],
+        "url": "https://www.indycar.com/Drivers/Jacob-Abel"
+      },
+      {
+        "number": "06",
+        "team": "Meyer Shank Racing",
+        "car": "",
+        "drivers": [
+          "Helio Castroneves"
+        ],
+        "url": "https://www.indycar.com/Drivers/Helio-Castroneves"
+      },
+      {
+        "number": "33",
+        "team": "ECR",
+        "car": "",
+        "drivers": [
+          "Ed Carpenter"
+        ],
+        "url": "https://www.indycar.com/Drivers/Ed-Carpenter"
+      },
+      {
+        "number": "31",
+        "team": "Arrow McLaren",
+        "car": "",
+        "drivers": [
+          "Ryan Hunter-Reay"
+        ],
+        "url": "https://www.indycar.com/Drivers/Ryan-Hunter-Reay"
+      },
+      {
+        "number": "11",
+        "team": "HMD Motorsports w/ AJ Foyt Racing",
+        "car": "",
+        "drivers": [
+          "Katherine Legge"
+        ],
+        "url": "https://www.indycar.com/Drivers/Katherine-Legge"
+      }
+    ]
+  },
+  {
+    "id": "kyojo",
+    "label": "KYOJO CUP",
+    "season": 2026,
+    "checkedAt": "2026-10-17",
+    "sourceUrl": "https://kyojocup.jp/profile/",
+    "note": "2026公式プロフィール掲載者。マシン名は各プロフィールの掲載表記。",
+    "entries": [
+      {
+        "number": "3",
+        "team": "",
+        "car": "KeePer KONDO RACING KC-MG01",
+        "drivers": [
+          "Sara Matsui"
+        ],
+        "url": "https://kyojocup.jp/profile/87.html"
+      },
+      {
+        "number": "4",
+        "team": "",
+        "car": "NTT docomo Business ROOKIE KC-MG01",
+        "drivers": [
+          "Mako Hirakawa"
+        ],
+        "url": "https://kyojocup.jp/profile/86.html"
+      },
+      {
+        "number": "7",
+        "team": "",
+        "car": "nat KDDP KC-MG01",
+        "drivers": [
+          "Miki Onaga"
+        ],
+        "url": "https://kyojocup.jp/profile/85.html"
+      },
+      {
+        "number": "8",
+        "team": "",
+        "car": "nat KDDP KC-MG01",
+        "drivers": [
+          "Rami Sasaki"
+        ],
+        "url": "https://kyojocup.jp/profile/84.html"
+      },
+      {
+        "number": "9",
+        "team": "",
+        "car": "VINIA KDDP KC-MG01",
+        "drivers": [
+          "Kelsey Pinkowski"
+        ],
+        "url": "https://kyojocup.jp/profile/83.html"
+      },
+      {
+        "number": "10",
+        "team": "",
+        "car": "FLEET KDDP KC-MG01",
+        "drivers": [
+          "Joanne Ciconte"
+        ],
+        "url": "https://kyojocup.jp/profile/82.html"
+      },
+      {
+        "number": "11",
+        "team": "",
+        "car": "富士山静岡レーシングKC-MG01",
+        "drivers": [
+          "Paige Raddatz"
+        ],
+        "url": "https://kyojocup.jp/profile/81.html"
+      },
+      {
+        "number": "12",
+        "team": "",
+        "car": "富士山静岡レーシングKC-MG01",
+        "drivers": [
+          "RINA ITO"
+        ],
+        "url": "https://kyojocup.jp/profile/80.html"
+      },
+      {
+        "number": "17",
+        "team": "",
+        "car": "Team ReFa Aira KC-MG01",
+        "drivers": [
+          "Itsumo Shiraishi"
+        ],
+        "url": "https://kyojocup.jp/profile/79.html"
+      },
+      {
+        "number": "18",
+        "team": "",
+        "car": "Team ReFa KC-MG01",
+        "drivers": [
+          "Ai Miura"
+        ],
+        "url": "https://kyojocup.jp/profile/78.html"
+      },
+      {
+        "number": "32",
+        "team": "",
+        "car": "ミハラ自動車エムクラフトKC-MG01",
+        "drivers": [
+          "Kilei Kanemoto"
+        ],
+        "url": "https://kyojocup.jp/profile/77.html"
+      },
+      {
+        "number": "33",
+        "team": "",
+        "car": "FUKUDA racing KC-MG01",
+        "drivers": [
+          "Marie Iwaoka"
+        ],
+        "url": "https://kyojocup.jp/profile/76.html"
+      },
+      {
+        "number": "35",
+        "team": "",
+        "car": "INGING 2W Singha Sittipol Nexzter KC-MG01",
+        "drivers": [
+          "Sitarvee  Limnantharak"
+        ],
+        "url": "https://kyojocup.jp/profile/75.html"
+      },
+      {
+        "number": "36",
+        "team": "",
+        "car": "SCS TOM'S KYOJO KC-MG01",
+        "drivers": [
+          "Aimi Saito"
+        ],
+        "url": "https://kyojocup.jp/profile/74.html"
+      },
+      {
+        "number": "37",
+        "team": "",
+        "car": "SCS TOM'S KYOJO KC-MG01",
+        "drivers": [
+          "Hana Burton"
+        ],
+        "url": "https://kyojocup.jp/profile/73.html"
+      },
+      {
+        "number": "38",
+        "team": "",
+        "car": "OPTIMUS CERUMO・INGING　KC-MG01",
+        "drivers": [
+          "Kokoro Sato"
+        ],
+        "url": "https://kyojocup.jp/profile/72.html"
+      },
+      {
+        "number": "39",
+        "team": "",
+        "car": "OPTIMUS CERUMO ・INGING KC-MG01",
+        "drivers": [
+          "Riona Tomishita"
+        ],
+        "url": "https://kyojocup.jp/profile/71.html"
+      },
+      {
+        "number": "57",
+        "team": "",
+        "car": "ATEAM Buzz Racing KC-MG01",
+        "drivers": [
+          "Zhao Yun Qing"
+        ],
+        "url": "https://kyojocup.jp/profile/69.html"
+      },
+      {
+        "number": "86",
+        "team": "",
+        "car": "Dr.Dry with Team IMPUL KC-MG01",
+        "drivers": [
+          "Rio Shimono"
+        ],
+        "url": "https://kyojocup.jp/profile/68.html"
+      },
+      {
+        "number": "87",
+        "team": "",
+        "car": "ARF⭐︎お先にどうぞ⭐︎KC-MG01",
+        "drivers": [
+          "Ryu Yamamoto"
+        ],
+        "url": "https://kyojocup.jp/profile/67.html"
+      }
+    ]
+  },
+  {
+    "id": "wec",
+    "label": "FIA WEC",
+    "season": 2026,
+    "checkedAt": "2026-10-17",
+    "sourceUrl": "https://www.fiawec.com/en/page/grid",
+    "note": "2026公式グリッドのHypercar / LMGT3。ドライバーは各車両詳細ページ掲載者。",
+    "entries": [
+      {
+        "number": "35",
+        "team": "ALPINE ENDURANCE TEAM",
+        "car": "ALPINE - A424",
+        "drivers": [
+          "Félix da Costa António",
+          "Milesi Charles",
+          "Habsburg Ferdinand"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/35",
+        "className": "Hypercar"
+      },
+      {
+        "number": "36",
+        "team": "ALPINE ENDURANCE TEAM",
+        "car": "ALPINE - A424",
+        "drivers": [
+          "Makowiecki Frédéric",
+          "Gounon Jules",
+          "Martins Victor"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/36",
+        "className": "Hypercar"
+      },
+      {
+        "number": "007",
+        "team": "ASTON MARTIN THOR TEAM",
+        "car": "ASTON MARTIN - Valkyrie",
+        "drivers": [
+          "Tincknell Harry",
+          "Gamble Tom",
+          "Gunn Ross"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/007",
+        "className": "Hypercar"
+      },
+      {
+        "number": "009",
+        "team": "ASTON MARTIN THOR TEAM",
+        "car": "ASTON MARTIN - Valkyrie",
+        "drivers": [
+          "Riberas Alex",
+          "Sørensen Marco",
+          "De Angelis Roman"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/009",
+        "className": "Hypercar"
+      },
+      {
+        "number": "23",
+        "team": "HEART OF RACING TEAM",
+        "car": "ASTON MARTIN - Vantage AMR LMGT3",
+        "drivers": [
+          "Newell Gray",
+          "Barrichello Eduardo",
+          "Adam Jonny"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/23",
+        "className": "LMGT3"
+      },
+      {
+        "number": "27",
+        "team": "HEART OF RACING TEAM",
+        "car": "ASTON MARTIN - Vantage AMR LMGT3",
+        "drivers": [
+          "James Ian",
+          "Robichon Zacharie",
+          "Drudi Mattia"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/27",
+        "className": "LMGT3"
+      },
+      {
+        "number": "15",
+        "team": "BMW M TEAM WRT",
+        "car": "BMW - M HYBRID V8",
+        "drivers": [
+          "MAGNUSSEN Kevin",
+          "Marciello Raffaele",
+          "Vanthoor Dries"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/15",
+        "className": "Hypercar"
+      },
+      {
+        "number": "20",
+        "team": "BMW M TEAM WRT",
+        "car": "BMW - M HYBRID V8",
+        "drivers": [
+          "Frijns Robin",
+          "Rast René",
+          "Van Der Linde Sheldon"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/20",
+        "className": "Hypercar"
+      },
+      {
+        "number": "32",
+        "team": "TEAM WRT",
+        "car": "BMW - M4 LMGT3 Evo",
+        "drivers": [
+          "Leung Darren",
+          "GELAEL Sean",
+          "Farfus Augusto"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/32",
+        "className": "LMGT3"
+      },
+      {
+        "number": "69",
+        "team": "TEAM WRT",
+        "car": "BMW - M4 LMGT3 Evo",
+        "drivers": [
+          "McIntosh Anthony",
+          "Thompson Parker",
+          "Harper Daniel"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/69",
+        "className": "LMGT3"
+      },
+      {
+        "number": "12",
+        "team": "CADILLAC HERTZ TEAM JOTA",
+        "car": "CADILLAC - V-Series.R",
+        "drivers": [
+          "Lynn Alex",
+          "Stevens Will",
+          "Nato Norman"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/12",
+        "className": "Hypercar"
+      },
+      {
+        "number": "38",
+        "team": "CADILLAC HERTZ TEAM JOTA",
+        "car": "CADILLAC - V-Series.R",
+        "drivers": [
+          "Bamber Earl",
+          "Bourdais Sébastien",
+          "Aitken Jack"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/38",
+        "className": "Hypercar"
+      },
+      {
+        "number": "33",
+        "team": "TF SPORT",
+        "car": "CORVETTE - Z06 LMGT3.R",
+        "drivers": [
+          "Keating Ben",
+          "Edgar Jonny",
+          "Catsburg Nicky"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/33",
+        "className": "LMGT3"
+      },
+      {
+        "number": "34",
+        "team": "RACING TEAM TURKEY BY TF",
+        "car": "CORVETTE - Z06 LMGT3.R",
+        "drivers": [
+          "Dempsey Peter",
+          "Yoluç Salih",
+          "Eastwood Charlie"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/34",
+        "className": "LMGT3"
+      },
+      {
+        "number": "50",
+        "team": "FERRARI AF CORSE",
+        "car": "FERRARI - 499P",
+        "drivers": [
+          "Fuoco Antonio",
+          "Molina Miguel",
+          "Nielsen Nicklas"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/50",
+        "className": "Hypercar"
+      },
+      {
+        "number": "51",
+        "team": "FERRARI AF CORSE",
+        "car": "FERRARI - 499P",
+        "drivers": [
+          "Pier Guidi Alessandro",
+          "Calado James",
+          "Giovinazzi Antonio"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/51",
+        "className": "Hypercar"
+      },
+      {
+        "number": "83",
+        "team": "AF CORSE",
+        "car": "FERRARI - 499P",
+        "drivers": [
+          "Ye Yifei",
+          "Kubica Robert",
+          "Hanson Philip"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/83",
+        "className": "Hypercar"
+      },
+      {
+        "number": "21",
+        "team": "VISTA AF CORSE",
+        "car": "FERRARI - 296 LMGT3 Evo",
+        "drivers": [
+          "Hériau François",
+          "Mann Simon",
+          "Rovera Alessio"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/21",
+        "className": "LMGT3"
+      },
+      {
+        "number": "54",
+        "team": "VISTA AF CORSE",
+        "car": "FERRARI - 296 LMGT3 Evo",
+        "drivers": [
+          "Flohr Thomas",
+          "Castellacci Francesco",
+          "Rigon Davide"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/54",
+        "className": "LMGT3"
+      },
+      {
+        "number": "77",
+        "team": "PROTON COMPETITION",
+        "car": "FORD - Mustang LMGT3",
+        "drivers": [
+          "Powell Eric",
+          "Tuck Ben",
+          "Priaulx Sebastian"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/77",
+        "className": "LMGT3"
+      },
+      {
+        "number": "88",
+        "team": "PROTON COMPETITION",
+        "car": "FORD - Mustang LMGT3",
+        "drivers": [
+          "Gattuso Stefano",
+          "Levorato Giammarco",
+          "Sargeant Logan"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/88",
+        "className": "LMGT3"
+      },
+      {
+        "number": "17",
+        "team": "GENESIS MAGMA RACING",
+        "car": "GENESIS - GMR-001-Hypercar",
+        "drivers": [
+          "Lotterer André",
+          "Derani Luis Felipe",
+          "Jaubert Mathys"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/17",
+        "className": "Hypercar"
+      },
+      {
+        "number": "19",
+        "team": "GENESIS MAGMA RACING",
+        "car": "GENESIS - GMR-001-Hypercar",
+        "drivers": [
+          "Jaminet Mathieu",
+          "Chatin Paul-Loup",
+          "Juncadella Daniel"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/19",
+        "className": "Hypercar"
+      },
+      {
+        "number": "78",
+        "team": "AKKODIS ASP TEAM",
+        "car": "LEXUS - RC F LMGT3",
+        "drivers": [
+          "Van Rompuy Tom",
+          "David Hadrien",
+          "Masson Esteban"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/78",
+        "className": "LMGT3"
+      },
+      {
+        "number": "87",
+        "team": "AKKODIS ASP TEAM",
+        "car": "LEXUS - RC F LMGT3",
+        "drivers": [
+          "Umbrărescu Petru",
+          "Schmid Clemens",
+          "López José María"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/87",
+        "className": "LMGT3"
+      },
+      {
+        "number": "10",
+        "team": "GARAGE 59",
+        "car": "McLAREN - 720S LMGT3 Evo",
+        "drivers": [
+          "Au Antares",
+          "Fleming Thomas",
+          "Kirchhöfer Marvin"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/10",
+        "className": "LMGT3"
+      },
+      {
+        "number": "58",
+        "team": "GARAGE 59",
+        "car": "McLAREN - 720S LMGT3 Evo",
+        "drivers": [
+          "West Alexander",
+          "Gehrsitz Finn",
+          "Goethe Benjamin"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/58",
+        "className": "LMGT3"
+      },
+      {
+        "number": "61",
+        "team": "IRON LYNX",
+        "car": "MERCEDES - AMG LMGT3",
+        "drivers": [
+          "Berry Martin",
+          "Andrade Rui",
+          "Martin Maxime"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/61",
+        "className": "LMGT3"
+      },
+      {
+        "number": "79",
+        "team": "IRON LYNX",
+        "car": "MERCEDES - AMG LMGT3",
+        "drivers": [
+          "Zelger Johannes",
+          "CRESSONI Matteo",
+          "Hodenius Lin"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/79",
+        "className": "LMGT3"
+      },
+      {
+        "number": "93",
+        "team": "PEUGEOT TOTALENERGIES",
+        "car": "PEUGEOT - 9X8",
+        "drivers": [
+          "Di Resta Paul",
+          "Vandoorne Stoffel",
+          "Cassidy Nick"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/93",
+        "className": "Hypercar"
+      },
+      {
+        "number": "94",
+        "team": "PEUGEOT TOTALENERGIES",
+        "car": "PEUGEOT - 9X8",
+        "drivers": [
+          "Duval Loïc",
+          "Jakobsen Malthe",
+          "Pourchaire Théo"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/94",
+        "className": "Hypercar"
+      },
+      {
+        "number": "91",
+        "team": "MANTHEY DK ENGINEERING",
+        "car": "PORSCHE - 911 GT3 R LMGT3",
+        "drivers": [
+          "Cottingham James",
+          "Boguslavskiy Timur",
+          "Güven Ayhancan"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/91",
+        "className": "LMGT3"
+      },
+      {
+        "number": "92",
+        "team": "THE BEND MANTHEY",
+        "car": "PORSCHE - 911 GT3 R LMGT3",
+        "drivers": [
+          "Shahin Yasser",
+          "Pera Riccardo",
+          "Lietz Richard"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/92",
+        "className": "LMGT3"
+      },
+      {
+        "number": "7",
+        "team": "TOYOTA RACING",
+        "car": "TOYOTA - TR010 Hybrid",
+        "drivers": [
+          "Conway Mike",
+          "Kobayashi Kamui",
+          "de Vries Nyck"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/7",
+        "className": "Hypercar"
+      },
+      {
+        "number": "8",
+        "team": "TOYOTA RACING",
+        "car": "TOYOTA - TR010 Hybrid",
+        "drivers": [
+          "Buemi Sébastien",
+          "Hartley Brendon",
+          "Hirakawa Ryō"
+        ],
+        "url": "https://www.fiawec.com/en/car/2026/8",
+        "className": "Hypercar"
+      }
+    ]
+  }
+]

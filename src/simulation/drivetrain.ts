@@ -295,7 +295,10 @@ export function mguKTorqueNm(options: {
   const flatTorqueNm = powerW / baseAngularSpeed
   const angularSpeed = (rpm * 2 * Math.PI) / 60
 
-  return rpm <= baseSpeedRpm ? flatTorqueNm : powerW / angularSpeed
+  return Math.min(
+    physics.hybridDeploymentTorqueLimitNm??Number.POSITIVE_INFINITY,
+    rpm <= baseSpeedRpm ? flatTorqueNm : powerW / angularSpeed,
+  )
 }
 
 export type GearSelection = {
@@ -653,10 +656,13 @@ export function selectGear(options: PowerUnitInput): GearSelection {
 export function powerUnitDriveForceN(
   options: PowerUnitInput & { throttleFraction: number },
 ) {
-  const selection = selectGear(options)
-
-  return (
-    selection.driveForceN *
-    clamp(finiteOr(options.throttleFraction, 0), 0, 1)
-  )
+  // The pedal controls available combustion torque. Deployment is already
+  // accepted mechanical MGU-K output, not a second pedal demand.
+  const selection = selectGear({
+    ...options,
+    combustionPowerKw:
+      (options.combustionPowerKw ?? options.physics.combustionPowerKw) *
+      clamp(finiteOr(options.throttleFraction, 0), 0, 1),
+  })
+  return selection.driveForceN
 }

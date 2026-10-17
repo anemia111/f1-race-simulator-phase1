@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { reserveDrivers } from './performanceCsv'
 import {
   expandedDriverSkills,
   type CompactDriverRatings,
@@ -201,6 +202,36 @@ const legacyVerstappenSkills = expandedDriverSkills({
 })
 
 describe('series configuration import and export', () => {
+  it('migrates the former default F1 lineup while keeping ratings and other configuration', () => {
+    const former = f1.drivers.map(driver => {
+      if (driver.code === 'LEC') return { ...reserveDrivers.find(d => d.code === 'NAK')!, seatRole: 'regular' as const }
+      if (driver.code === 'STR') return { ...f1.drivers.find(d => d.code === 'LEC')!, teamId: 'aston-martin' }
+      if (driver.code === 'HAD') return { ...reserveDrivers.find(d => d.code === 'TSU')!, seatRole: 'regular' as const }
+      if (driver.code === 'LIN') return { ...f1.drivers.find(d => d.code === 'HAD')!, teamId: 'racing-bulls' }
+      return { ...driver, carNumber: driver.code === 'OCO' ? 67 : driver.carNumber }
+    })
+    const saved = serializeSeriesConfiguration('f1-custom', f1.teams, former)
+    const hamilton = saved.drivers.find(driver => driver.code === 'HAM')!
+    hamilton.skills.qualifyingPace = 0.73
+    saved.teams[0].pitCrewSpeed = 0.77
+    const restored = parsePersistedSeriesConfiguration(JSON.stringify(saved), f1)!
+    expect(restored.drivers.map(driver => [driver.id, driver.teamId, driver.carNumber]))
+      .toEqual(f1.drivers.map(driver => [driver.id, driver.teamId, driver.carNumber]))
+    expect(restored.drivers.find(driver => driver.code === 'HAM')?.skills.qualifyingPace).toBe(0.73)
+    expect(restored.teams[0].pitCrewSpeed).toBe(0.77)
+    expect(restored.migrationHistory).toContain('2026 official F1 race lineup restored; retained driver ratings')
+    const second = parsePersistedSeriesConfiguration(JSON.stringify(serializeSeriesConfiguration(
+      'f1-custom', restored.teams, restored.drivers, restored.migrationHistory,
+    )), f1)!
+    expect(second.migrationHistory).toEqual(restored.migrationHistory)
+
+    // A deliberate seat change makes this a user lineup, not the old default.
+    saved.drivers.find(driver => driver.code === 'HAM')!.carNumber = 45
+    const custom = parsePersistedSeriesConfiguration(JSON.stringify(saved), f1)!
+    expect(custom.drivers.some(driver => driver.code === 'NAK')).toBe(true)
+    expect(custom.drivers.find(driver => driver.code === 'HAM')?.carNumber).toBe(45)
+  })
+
   it('round-trips a validated versioned JSON backup', () => {
     const teams = editableSeries.teams.map((team, index) => ({
       ...team,

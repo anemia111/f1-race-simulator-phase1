@@ -1,0 +1,41 @@
+{
+  "recoveredOn": "2026-10-17",
+  "sourceWorkspace": "C:\\Users\\yuuki\\Documents\\Codex\\2026-10-10\\https-github-com-anemia111-f1-race\\work\\repo",
+  "files": [
+    {
+      "file": "expansionCatalog2026.json",
+      "sha256": "aee2726f2f0f36b0a6f4915a313dadec49c41dcfd2f8880d472194bf55b242c2",
+      "byteIdentical": true
+    },
+    {
+      "file": "expansionMachineSpecs2026.json",
+      "sha256": "94d2b8f881bea5162e4484e0101e018719d9d1c35916badf0d5f237dfe9d1855",
+      "byteIdentical": true
+    },
+    {
+      "file": "importedDriverRatings2026.json",
+      "sha256": "71bb7b1403828cfa2890e31a8cacb6544ddf982145884906780ab743d633cfac",
+      "byteIdentical": true
+    },
+    {
+      "file": "motorsportEventFormats2026.json",
+      "sha256": "5eff4632f92a6305a5eb5eab5ca940a8f895b967d581157cee975afc332c612d",
+      "byteIdentical": true
+    },
+    {
+      "file": "lemansEntries2026.json",
+      "sha256": "bacba46dd051836f880701a4016124d559d735252dae7d9009f34fb9c032d5a5",
+      "byteIdentical": true
+    },
+    {
+      "file": "wecEventEntries2026.json",
+      "sha256": "ace4ae3eebae055a464a2a45c8c51f32a5681d8e00a8e084e6ca990450452175",
+      "byteIdentical": true
+    },
+    {
+      "file": "indyEventEntries2026.json",
+      "sha256": "a371791e7e9235a6fee71858e270be9baa22af5312a9c4b0e46c43e865cbd252",
+      "byteIdentical": true
+    }
+  ]
+}

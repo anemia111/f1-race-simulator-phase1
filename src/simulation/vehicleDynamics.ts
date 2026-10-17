@@ -23,6 +23,7 @@ import {
   advanceClutchState,
   advanceTurboState,
   selectGear,
+  mguKTorqueNm,
   type GearSelection,
 } from './drivetrain'
 import { trackDynamicsAt, type TrackDynamicPoint } from './trackDynamics'
@@ -143,6 +144,14 @@ export type LongitudinalStepInput = {
 }
 
 export type LongitudinalStepResult = {
+  /** Motor output at the final force-solver crankshaft RPM, before clutch/tyres. */
+  mguKTorqueNm: number
+  mguKMechanicalPowerKw: number
+  massKg: number
+  distanceTravelledM: number
+  requestedDriveForceN: number
+  downforceN: number
+  lateralTyreDemandN: number
   accelerationMps2: number
   /** Service-brake hardware availability applied before tyre-force limiting. */
   brakeHardwareCapacityMultiplier: number
@@ -1237,7 +1246,7 @@ function integrateVehicleLongitudinalStepWithBudget(
           combustionPowerKwFor(input.team, categoryPhysics),
         categoryPhysics.combustionPowerKw,
       ) + extraCombustionPowerKw,
-    )
+    ) * clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1)
   // Energy-system output is already mechanical MGU-K power. It passes through
   // the driveline once below and must not receive a second electrical-efficiency
   // multiplier here.
@@ -1336,6 +1345,7 @@ function integrateVehicleLongitudinalStepWithBudget(
   let lastDriveForceN = 0
   let lastRegenerativeResistanceForceN = 0
   let lastTractionLimitN = 0
+  let distanceTravelledM = 0
   const serviceBrakeMechanicalEnergyProfileMJ: number[] = []
   const brakingRegenerativeMechanicalEnergyProfileMJ: number[] = []
   const frictionBrakeMechanicalEnergyProfileMJ: number[] = []
@@ -1360,9 +1370,10 @@ function integrateVehicleLongitudinalStepWithBudget(
     serviceBrakeRegenerativeFraction: number | undefined,
   ) => {
     const speedKph = speedMps * 3.6
-    const requestedDriveForceN =
-      selection.driveForceN *
-      clamp(finiteOr(input.throttlePercent, 0) / 100, 0, 1)
+    // ICE demand has already been applied above. ersPowerKw is accepted shaft
+    // power from the energy ledger, so scaling it by the pedal again discards
+    // energy that the store has already delivered.
+    const requestedDriveForceN = selection.driveForceN
     const airSpeedMps = Math.max(
       0,
       speedMps + finiteOr(input.headwindMps ?? 0, 0),
@@ -1507,6 +1518,9 @@ function integrateVehicleLongitudinalStepWithBudget(
 
     return {
       accelerationMps2: finiteOr(accelerationMps2, 0),
+      requestedDriveForceN,
+      downforceN: aeroForces.totalDownforceN,
+      lateralTyreDemandN: lateralForceN,
       brakeForceN,
       brakingRegenerativeForceN,
       dragForceN,
@@ -1605,6 +1619,7 @@ function integrateVehicleLongitudinalStepWithBudget(
       0,
       finiteOr(travelledDistanceM, 0),
     )
+    distanceTravelledM += finiteTravelledDistanceM
     serviceBrakeMechanicalEnergyProfileMJ.push(
       mechanicalEnergyMJForForceAndDistance(
         forces.serviceBrakeForceN,
@@ -1693,6 +1708,13 @@ function integrateVehicleLongitudinalStepWithBudget(
   )
 
   const result: LongitudinalStepResult = {
+    mguKTorqueNm: mguKTorqueNm({ deploymentPowerKw, physics: categoryPhysics, rpm: lastSelection.rpm }),
+    mguKMechanicalPowerKw: mguKTorqueNm({ deploymentPowerKw, physics: categoryPhysics, rpm: lastSelection.rpm }) * lastSelection.rpm * 2 * Math.PI / 60000,
+    massKg,
+    distanceTravelledM,
+    requestedDriveForceN: finalForces.requestedDriveForceN,
+    downforceN: finalForces.downforceN,
+    lateralTyreDemandN: finalForces.lateralTyreDemandN,
     accelerationMps2: finiteOr(lastAccelerationMps2, 0),
     brakeHardwareCapacityMultiplier: brakeHardwareCapacity.capacityMultiplier,
     brakeForceN: Math.max(0, finiteOr(lastBrakeForceN, 0)),

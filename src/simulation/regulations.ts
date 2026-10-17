@@ -15,6 +15,17 @@ import { raceLapsFor } from './raceEvents'
 import { isDryCompound } from './tires'
 
 export const FIA_2026_REGULATION_PROFILE = {
+  // The frozen baseline authorities below also support non-energy systems.
+  // Only C5.2/B7.2 were re-reviewed for this batch; this is not a claim that
+  // every Operational/Driving Standards change has been migrated.
+  energyAudit: {
+    reviewedAt: '2026-10-17',
+    sportingIssue: '09',
+    sportingUrl: 'https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_09_-_2026-10-01.pdf',
+    technicalIssue: '20',
+    additionalOvertakeRechargeMaximumMj: 0.5,
+    maximumMguKCrankshaftTorqueNm: 500,
+  },
   asOf: '2026-08-05',
   sporting: {
     approvedAt: '2026-08-03',
@@ -75,8 +86,10 @@ export const FIA_2026_REGULATION_PROFILE = {
     referenceAttackRechargePolicyMj: 7,
     normalCompetitionReducedLimitMj: 7,
     qualifyingMinimumLimitMj: 4,
-    /** C5.2.9 additional electrical deployment available to Overtake per lap. */
+    /** @deprecated Legacy checkpoint bookkeeping; never gates deployment. */
     overtakeAdditionalEnergyPerLapMj: 0.5,
+    /** C5.2.10(iii): additional harvesting, subject to B7.2/event conditions. */
+    overtakeAdditionalRechargeMaximumMj: 0.5,
     standingStartDeploymentMinKph: 50,
     normalCurveTransitionKph: 340,
     raceSprintPowerLimitedTransitionKph: 310,

@@ -1,46 +1,99 @@
 import { registerSW } from 'virtual:pwa-register'
 
-const UPDATE_INTERVAL_MS = 60_000
-
-export function registerAppUpdater() {
-  if (import.meta.env.DEV || !('serviceWorker' in navigator)) {
-    return
+export type AppUpdateState = {
+  currentBuild: string
+  latestBuild: string | null
+  status: 'idle' | 'checking' | 'current' | 'available' | 'offline' | 'applying' | 'error'
+}
+export const currentBuild = import.meta.env.VITE_APP_BUILD_ID ?? 'development'
+let state: AppUpdateState = { currentBuild, latestBuild: null, status: 'idle' }
+const listeners = new Set<() => void>()
+let registration: ServiceWorkerRegistration | undefined
+let pendingCheck: Promise<void> | undefined
+let started = false
+export const appUpdateSnapshot = () => state
+export const subscribeAppUpdate = (listener: () => void) => {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+const publish = (patch: Partial<AppUpdateState>) => {
+  state = { ...state, ...patch }
+  listeners.forEach(listener => listener())
+}
+async function readServerBuild() {
+  const url = new URL(`${import.meta.env.BASE_URL}build-info.json`, window.location.origin)
+  url.searchParams.set('check', String(Date.now()))
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+  if (!response.ok) throw new Error('Build manifest unavailable')
+  const manifest = await response.json() as { buildId?: unknown }
+  if (typeof manifest.buildId !== 'string' || !manifest.buildId || manifest.buildId.length > 200) {
+    throw new Error('Invalid build manifest')
   }
-
-  const checkForUpdate = (registration: ServiceWorkerRegistration) => {
-    if (!navigator.onLine) {
-      return
+  return manifest.buildId
+}
+export function checkAppUpdate(): Promise<void> {
+  if (pendingCheck) return pendingCheck
+  if (state.status === 'applying') return Promise.resolve()
+  publish({ status: 'checking' })
+  pendingCheck = (async () => {
+    try {
+      const latestBuild = await readServerBuild()
+      publish({ latestBuild, status: latestBuild === currentBuild ? 'current' : 'available' })
+      void registration?.update().catch(() => undefined)
+    } catch {
+      publish({ status: 'offline' })
+    } finally {
+      pendingCheck = undefined
     }
-
-    void registration.update().catch((error: unknown) => {
-      console.warn('F1 app update check failed.', error)
+  })()
+  return pendingCheck
+}
+async function activateWorker() {
+  if (!registration) return
+  await registration.update()
+  const worker = registration.installing ?? registration.waiting
+  if (!worker) return
+  if (worker.state === 'installed') worker.postMessage({ type: 'SKIP_WAITING' })
+  await new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => { cleanup(); reject(new Error('Update activation timed out')) }, 10000)
+    const cleanup = () => { clearTimeout(timeout); worker.removeEventListener('statechange', changed) }
+    const changed = () => {
+      if (worker.state === 'installed') worker.postMessage({ type: 'SKIP_WAITING' })
+      if (worker.state === 'activated') { cleanup(); resolve() }
+      if (worker.state === 'redundant') { cleanup(); reject(new Error('Update worker failed')) }
+    }
+    worker.addEventListener('statechange', changed)
+    changed()
+  })
+}
+export async function applyAppUpdate() {
+  if (state.status === 'applying') return
+  publish({ status: 'applying' })
+  try {
+    const latestBuild = await readServerBuild()
+    await activateWorker()
+    publish({ latestBuild })
+    window.location.reload()
+  } catch {
+    publish({ status: 'error' })
+  }
+}
+export function registerAppUpdater() {
+  if (started || import.meta.env.DEV) return
+  started = true
+  document.documentElement.dataset.buildId = currentBuild
+  if ('serviceWorker' in navigator) {
+    registerSW({
+      immediate: true,
+      onNeedReload: () => { void checkAppUpdate() },
+      onRegisteredSW: (_url, registered) => { registration = registered; void checkAppUpdate() },
+      onRegisterError: () => { void checkAppUpdate() },
     })
   }
-
-  registerSW({
-    immediate: true,
-    // Let the new worker take control without interrupting a live race. The
-    // updated app is loaded on the next normal navigation or desktop launch.
-    onNeedReload: () => undefined,
-    onRegisteredSW: (_scriptUrl, registration) => {
-      if (!registration) {
-        return
-      }
-
-      checkForUpdate(registration)
-      window.setInterval(
-        () => checkForUpdate(registration),
-        UPDATE_INTERVAL_MS,
-      )
-      window.addEventListener('online', () => checkForUpdate(registration))
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          checkForUpdate(registration)
-        }
-      })
-    },
-    onRegisterError: (error: unknown) => {
-      console.warn('F1 app service worker registration failed.', error)
-    },
+  void checkAppUpdate()
+  window.setInterval(() => { void checkAppUpdate() }, 60000)
+  window.addEventListener('online', () => { void checkAppUpdate() })
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void checkAppUpdate()
   })
 }

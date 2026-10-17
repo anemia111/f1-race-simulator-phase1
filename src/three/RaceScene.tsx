@@ -1,3 +1,5 @@
+import { ReceivedMotionBuffer } from './core/receivedMotion'
+import { recordSelectedMapMotion } from './optimization/mapMotionProbe'
 import { Line, OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { memo, Suspense, useEffect, useMemo, useRef } from 'react'
@@ -34,7 +36,8 @@ import {
   poseOnTrack,
 } from './trackGeometry'
 
-type RaceSceneProps = {
+export type RaceSceneProps = {
+  isPaused?: boolean
   cameraMode: CameraMode
   config: RaceConfig
   onSelectDriver: (driverId: string) => void
@@ -1058,6 +1061,8 @@ function TrackSurface({
 }
 
 function CarMarker({
+  motionBuffer,
+  isPaused = false,
   car,
   curve,
   garageBayIndex,
@@ -1069,6 +1074,8 @@ function CarMarker({
   snapshotElapsedSeconds,
   track,
 }: {
+  motionBuffer: ReceivedMotionBuffer
+  isPaused?: boolean
   car: CarSnapshot
   curve: THREE.CatmullRomCurve3
   garageBayIndex: number
@@ -1081,7 +1088,6 @@ function CarMarker({
   track: TrackDefinition
 }) {
   const groupRef = useRef<THREE.Group>(null)
-  const markerPlacedRef = useRef(false)
   const invalidate = useThree((state) => state.invalidate)
   const markerColor =
     car.status === 'retired' ||
@@ -1142,18 +1148,21 @@ function CarMarker({
       return
     }
 
-    const distanceToTarget = group.position.distanceToSquared(markerTarget)
+    const motion = motionBuffer.sample(car.driverId, performance.now(), isPaused)
+    if (!showStartingGridSlots && motion) {
+      const visualCar = { ...car, ...motion }
+      const lane = displayLaneOffset(track, visualCar, false)
+      group.position.copy(displayPoseForCar(curve, visualCar, lane, track, index, pitBoxCount, garageBayIndex, motion.elapsedSeconds).position)
+      group.position.y += 0.54
+      if (!isPaused && car.status === 'running') invalidate()
+    } else group.position.copy(markerTarget)
 
-    if (!markerPlacedRef.current || distanceToTarget > 2.25) {
-      group.position.copy(markerTarget)
-      markerPlacedRef.current = true
-      invalidate()
-    } else if (distanceToTarget > 0.0004) {
-      group.position.lerp(markerTarget, 0.28)
-      invalidate()
-    } else {
-      group.position.copy(markerTarget)
-    }
+  })
+
+  useFrame(() => {
+    if (isSelected && groupRef.current) recordSelectedMapMotion({ driverId: car.driverId,
+      x: groupRef.current.position.x, z: groupRef.current.position.z, speedKph: car.speedKph,
+      moving: !showStartingGridSlots && car.status === 'running' && car.speedKph > 50, renderedAt: performance.now() })
   })
 
   return (
@@ -1396,6 +1405,8 @@ function OpenF1CarOverlay({
 }
 
 function CameraRig({
+  motionBuffer,
+  isPaused = false,
   cameraMode,
   curve,
   selectedCar,
@@ -1406,6 +1417,8 @@ function CameraRig({
   snapshotElapsedSeconds,
   track,
 }: {
+  motionBuffer: ReceivedMotionBuffer
+  isPaused?: boolean
   cameraMode: CameraMode
   curve: THREE.CatmullRomCurve3
   selectedCar: CarSnapshot
@@ -1495,7 +1508,16 @@ function CameraRig({
   ])
 
   useFrame(() => {
-    const target = selectedCameraFrame.target
+    const motion = motionBuffer.sample(selectedCar.driverId, performance.now(), isPaused)
+    let sampledCameraFrame = selectedCameraFrame
+    if (!showStartingGridSlots && motion) {
+      const visualCar = { ...selectedCar, ...motion }
+      const lane = displayLaneOffset(track, visualCar, false)
+      const pose = displayPoseForCar(curve, visualCar, lane, track, selectedPitSlot, pitBoxCount, selectedGarageBayIndex, motion.elapsedSeconds)
+      const point = pose.position.clone().add(new THREE.Vector3(0, 0.5, 0))
+      sampledCameraFrame = { target: point, chasePosition: point.clone().add(pose.tangent.clone().multiplyScalar(-12)).add(new THREE.Vector3(0, 7.2, 0)) }
+    }
+    const target = sampledCameraFrame.target
 
     if (cameraMode === 'overview') {
       camera.position.lerp(overviewCamera.position, 0.12)
@@ -1511,7 +1533,7 @@ function CameraRig({
     }
 
     if (cameraMode === 'chase') {
-      const chasePosition = selectedCameraFrame.chasePosition
+      const chasePosition = sampledCameraFrame.chasePosition
 
       camera.position.lerp(chasePosition, 0.28)
       targetRef.current.lerp(target, 0.4)
@@ -1547,6 +1569,7 @@ function CameraRig({
 }
 
 function SceneContents({
+  isPaused = false,
   cameraMode,
   config,
   curve,
@@ -1560,6 +1583,8 @@ function SceneContents({
   showSimulationCars = true,
   snapshot,
 }: SceneContentsProps) {
+  const motionBuffer = useMemo(() => { void config.seed; void config.track.id; return new ReceivedMotionBuffer() }, [config.seed, config.track.id])
+  motionBuffer.push(snapshot, performance.now())
   const selectedCar =
     snapshot.cars.find((car) => car.driverId === selectedDriverId) ?? snapshot.cars[0]
   const pitSlotByTeam = useMemo(
@@ -1665,6 +1690,7 @@ function SceneContents({
         // Retired cars stay on track (grayed out) until marshals clear them.
         car.hiddenFromTrack ? null : (
           <CarMarker
+            motionBuffer={motionBuffer} isPaused={isPaused}
             car={car}
             curve={curve}
             garageBayIndex={garageBayByDriver.get(car.driverId) ?? 0}
@@ -1695,6 +1721,7 @@ function SceneContents({
         />
       ) : null}
       <CameraRig
+        motionBuffer={motionBuffer} isPaused={isPaused}
         cameraMode={cameraMode}
         curve={curve}
         selectedCar={selectedCar}

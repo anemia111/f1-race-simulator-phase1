@@ -1,0 +1,442 @@
+{
+  "version": "2026-10-13.2",
+  "drivers": [
+    {
+      "id": "rafael_camara",
+      "overall": 87.0,
+      "potential": 87.0,
+      "ratings": {
+        "adaptability": 0.883375,
+        "consistency": 0.863375,
+        "defending": 0.873375,
+        "errorControl": 0.863375,
+        "experience": 0.793375,
+        "overtaking": 0.883375,
+        "qualifyingPace": 0.893375,
+        "racePace": 0.883375,
+        "raceStart": 0.883375,
+        "technicalFeedback": 0.853375,
+        "tyreManagement": 0.863375,
+        "wetSkill": 0.873375
+      }
+    },
+    {
+      "id": "nikola_tsolov",
+      "overall": 86.0,
+      "potential": 86.0,
+      "ratings": {
+        "adaptability": 0.873375,
+        "consistency": 0.853375,
+        "defending": 0.863375,
+        "errorControl": 0.853375,
+        "experience": 0.783375,
+        "overtaking": 0.873375,
+        "qualifyingPace": 0.883375,
+        "racePace": 0.873375,
+        "raceStart": 0.873375,
+        "technicalFeedback": 0.843375,
+        "tyreManagement": 0.853375,
+        "wetSkill": 0.863375
+      }
+    },
+    {
+      "id": "alexander_dunne",
+      "overall": 86.0,
+      "potential": 86.0,
+      "ratings": {
+        "adaptability": 0.873375,
+        "consistency": 0.853375,
+        "defending": 0.863375,
+        "errorControl": 0.853375,
+        "experience": 0.783375,
+        "overtaking": 0.873375,
+        "qualifyingPace": 0.883375,
+        "racePace": 0.873375,
+        "raceStart": 0.873375,
+        "technicalFeedback": 0.843375,
+        "tyreManagement": 0.853375,
+        "wetSkill": 0.863375
+      }
+    },
+    {
+      "id": "gabriele_mini",
+      "overall": 85.0,
+      "potential": 85.0,
+      "ratings": {
+        "adaptability": 0.863375,
+        "consistency": 0.843375,
+        "defending": 0.853375,
+        "errorControl": 0.843375,
+        "experience": 0.773375,
+        "overtaking": 0.863375,
+        "qualifyingPace": 0.873375,
+        "racePace": 0.863375,
+        "raceStart": 0.863375,
+        "technicalFeedback": 0.833375,
+        "tyreManagement": 0.843375,
+        "wetSkill": 0.853375
+      }
+    },
+    {
+      "id": "dino_beganovic",
+      "overall": 84.0,
+      "potential": 84.0,
+      "ratings": {
+        "adaptability": 0.853375,
+        "consistency": 0.833375,
+        "defending": 0.843375,
+        "errorControl": 0.833375,
+        "experience": 0.763375,
+        "overtaking": 0.853375,
+        "qualifyingPace": 0.863375,
+        "racePace": 0.853375,
+        "raceStart": 0.853375,
+        "technicalFeedback": 0.823375,
+        "tyreManagement": 0.833375,
+        "wetSkill": 0.843375
+      }
+    },
+    {
+      "id": "noel_leon",
+      "overall": 84.0,
+      "potential": 84.0,
+      "ratings": {
+        "adaptability": 0.853375,
+        "consistency": 0.833375,
+        "defending": 0.843375,
+        "errorControl": 0.833375,
+        "experience": 0.763375,
+        "overtaking": 0.853375,
+        "qualifyingPace": 0.863375,
+        "racePace": 0.853375,
+        "raceStart": 0.853375,
+        "technicalFeedback": 0.823375,
+        "tyreManagement": 0.833375,
+        "wetSkill": 0.843375
+      }
+    },
+    {
+      "id": "martinius_stenshorne",
+      "overall": 83.0,
+      "potential": 83.0,
+      "ratings": {
+        "adaptability": 0.843375,
+        "consistency": 0.823375,
+        "defending": 0.833375,
+        "errorControl": 0.823375,
+        "experience": 0.753375,
+        "overtaking": 0.843375,
+        "qualifyingPace": 0.853375,
+        "racePace": 0.843375,
+        "raceStart": 0.843375,
+        "technicalFeedback": 0.813375,
+        "tyreManagement": 0.823375,
+        "wetSkill": 0.833375
+      }
+    },
+    {
+      "id": "joshua_duerksen",
+      "overall": 83.0,
+      "potential": 83.0,
+      "ratings": {
+        "adaptability": 0.843375,
+        "consistency": 0.823375,
+        "defending": 0.833375,
+        "errorControl": 0.823375,
+        "experience": 0.753375,
+        "overtaking": 0.843375,
+        "qualifyingPace": 0.853375,
+        "racePace": 0.843375,
+        "raceStart": 0.843375,
+        "technicalFeedback": 0.813375,
+        "tyreManagement": 0.823375,
+        "wetSkill": 0.833375
+      }
+    },
+    {
+      "id": "kush_maini",
+      "overall": 82.0,
+      "potential": 82.0,
+      "ratings": {
+        "adaptability": 0.833375,
+        "consistency": 0.813375,
+        "defending": 0.823375,
+        "errorControl": 0.813375,
+        "experience": 0.743375,
+        "overtaking": 0.833375,
+        "qualifyingPace": 0.843375,
+        "racePace": 0.833375,
+        "raceStart": 0.833375,
+        "technicalFeedback": 0.803375,
+        "tyreManagement": 0.813375,
+        "wetSkill": 0.823375
+      }
+    },
+    {
+      "id": "laurens_van_hoepen",
+      "overall": 81.0,
+      "potential": 81.0,
+      "ratings": {
+        "adaptability": 0.823375,
+        "consistency": 0.803375,
+        "defending": 0.813375,
+        "errorControl": 0.803375,
+        "experience": 0.733375,
+        "overtaking": 0.823375,
+        "qualifyingPace": 0.833375,
+        "racePace": 0.823375,
+        "raceStart": 0.823375,
+        "technicalFeedback": 0.793375,
+        "tyreManagement": 0.803375,
+        "wetSkill": 0.813375
+      }
+    },
+    {
+      "id": "tasanapol_inthraphuvasak",
+      "overall": 80.0,
+      "potential": 80.0,
+      "ratings": {
+        "adaptability": 0.813375,
+        "consistency": 0.793375,
+        "defending": 0.803375,
+        "errorControl": 0.793375,
+        "experience": 0.723375,
+        "overtaking": 0.813375,
+        "qualifyingPace": 0.823375,
+        "racePace": 0.813375,
+        "raceStart": 0.813375,
+        "technicalFeedback": 0.783375,
+        "tyreManagement": 0.793375,
+        "wetSkill": 0.803375
+      }
+    },
+    {
+      "id": "ritomo_miyata",
+      "overall": 85.0,
+      "potential": 85.0,
+      "ratings": {
+        "adaptability": 0.863375,
+        "consistency": 0.843375,
+        "defending": 0.853375,
+        "errorControl": 0.843375,
+        "experience": 0.773375,
+        "overtaking": 0.863375,
+        "qualifyingPace": 0.873375,
+        "racePace": 0.863375,
+        "raceStart": 0.863375,
+        "technicalFeedback": 0.833375,
+        "tyreManagement": 0.843375,
+        "wetSkill": 0.853375
+      }
+    },
+    {
+      "id": "rafael_villagomez",
+      "overall": 79.0,
+      "potential": 79.0,
+      "ratings": {
+        "adaptability": 0.803375,
+        "consistency": 0.783375,
+        "defending": 0.793375,
+        "errorControl": 0.783375,
+        "experience": 0.713375,
+        "overtaking": 0.803375,
+        "qualifyingPace": 0.813375,
+        "racePace": 0.803375,
+        "raceStart": 0.803375,
+        "technicalFeedback": 0.773375,
+        "tyreManagement": 0.783375,
+        "wetSkill": 0.793375
+      }
+    },
+    {
+      "id": "john_bennett",
+      "overall": 76.0,
+      "potential": 76.0,
+      "ratings": {
+        "adaptability": 0.773375,
+        "consistency": 0.753375,
+        "defending": 0.763375,
+        "errorControl": 0.753375,
+        "experience": 0.683375,
+        "overtaking": 0.773375,
+        "qualifyingPace": 0.783375,
+        "racePace": 0.773375,
+        "raceStart": 0.773375,
+        "technicalFeedback": 0.743375,
+        "tyreManagement": 0.753375,
+        "wetSkill": 0.763375
+      }
+    },
+    {
+      "id": "oliver_goethe",
+      "overall": 81.0,
+      "potential": 81.0,
+      "ratings": {
+        "adaptability": 0.823375,
+        "consistency": 0.803375,
+        "defending": 0.813375,
+        "errorControl": 0.803375,
+        "experience": 0.733375,
+        "overtaking": 0.823375,
+        "qualifyingPace": 0.833375,
+        "racePace": 0.823375,
+        "raceStart": 0.823375,
+        "technicalFeedback": 0.793375,
+        "tyreManagement": 0.803375,
+        "wetSkill": 0.813375
+      }
+    },
+    {
+      "id": "roman_bilinski",
+      "overall": 78.0,
+      "potential": 78.0,
+      "ratings": {
+        "adaptability": 0.793375,
+        "consistency": 0.773375,
+        "defending": 0.783375,
+        "errorControl": 0.773375,
+        "experience": 0.703375,
+        "overtaking": 0.793375,
+        "qualifyingPace": 0.803375,
+        "racePace": 0.793375,
+        "raceStart": 0.793375,
+        "technicalFeedback": 0.763375,
+        "tyreManagement": 0.773375,
+        "wetSkill": 0.783375
+      }
+    },
+    {
+      "id": "sebastian_montoya",
+      "overall": 80.0,
+      "potential": 80.0,
+      "ratings": {
+        "adaptability": 0.813375,
+        "consistency": 0.793375,
+        "defending": 0.803375,
+        "errorControl": 0.793375,
+        "experience": 0.723375,
+        "overtaking": 0.813375,
+        "qualifyingPace": 0.823375,
+        "racePace": 0.813375,
+        "raceStart": 0.813375,
+        "technicalFeedback": 0.783375,
+        "tyreManagement": 0.793375,
+        "wetSkill": 0.803375
+      }
+    },
+    {
+      "id": "expansion_emerson_fittipaldi_jr",
+      "overall": 77.0,
+      "potential": 77.0,
+      "ratings": {
+        "adaptability": 0.783375,
+        "consistency": 0.763375,
+        "defending": 0.773375,
+        "errorControl": 0.763375,
+        "experience": 0.693375,
+        "overtaking": 0.783375,
+        "qualifyingPace": 0.793375,
+        "racePace": 0.783375,
+        "raceStart": 0.783375,
+        "technicalFeedback": 0.753375,
+        "tyreManagement": 0.763375,
+        "wetSkill": 0.773375
+      }
+    },
+    {
+      "id": "colton_herta",
+      "overall": 84.0,
+      "potential": 84.0,
+      "ratings": {
+        "adaptability": 0.853375,
+        "consistency": 0.833375,
+        "defending": 0.843375,
+        "errorControl": 0.833375,
+        "experience": 0.763375,
+        "overtaking": 0.853375,
+        "qualifyingPace": 0.863375,
+        "racePace": 0.853375,
+        "raceStart": 0.853375,
+        "technicalFeedback": 0.823375,
+        "tyreManagement": 0.833375,
+        "wetSkill": 0.843375
+      }
+    },
+    {
+      "id": "mari_boya",
+      "overall": 78.0,
+      "potential": 78.0,
+      "ratings": {
+        "adaptability": 0.793375,
+        "consistency": 0.773375,
+        "defending": 0.783375,
+        "errorControl": 0.773375,
+        "experience": 0.703375,
+        "overtaking": 0.793375,
+        "qualifyingPace": 0.803375,
+        "racePace": 0.793375,
+        "raceStart": 0.793375,
+        "technicalFeedback": 0.763375,
+        "tyreManagement": 0.773375,
+        "wetSkill": 0.783375
+      }
+    },
+    {
+      "id": "nicolas_varrone",
+      "overall": 84.0,
+      "potential": 84.0,
+      "ratings": {
+        "adaptability": 0.844787,
+        "consistency": 0.844787,
+        "defending": 0.834787,
+        "errorControl": 0.844787,
+        "experience": 0.854787,
+        "overtaking": 0.834787,
+        "qualifyingPace": 0.824787,
+        "racePace": 0.844787,
+        "raceStart": 0.824787,
+        "technicalFeedback": 0.844787,
+        "tyreManagement": 0.844787,
+        "wetSkill": 0.834787
+      }
+    },
+    {
+      "id": "cian_shields",
+      "overall": 74.0,
+      "potential": 74.0,
+      "ratings": {
+        "adaptability": 0.753375,
+        "consistency": 0.733375,
+        "defending": 0.743375,
+        "errorControl": 0.733375,
+        "experience": 0.663375,
+        "overtaking": 0.753375,
+        "qualifyingPace": 0.763375,
+        "racePace": 0.753375,
+        "raceStart": 0.753375,
+        "technicalFeedback": 0.723375,
+        "tyreManagement": 0.733375,
+        "wetSkill": 0.743375
+      }
+    },
+    {
+      "id": "hiyu_yamakoshi",
+      "overall": 79.0,
+      "potential": 79.0,
+      "ratings": {
+        "adaptability": 0.803375,
+        "consistency": 0.783375,
+        "defending": 0.793375,
+        "errorControl": 0.783375,
+        "experience": 0.713375,
+        "overtaking": 0.803375,
+        "qualifyingPace": 0.813375,
+        "racePace": 0.803375,
+        "raceStart": 0.803375,
+        "technicalFeedback": 0.773375,
+        "tyreManagement": 0.783375,
+        "wetSkill": 0.793375
+      }
+    }
+  ]
+}

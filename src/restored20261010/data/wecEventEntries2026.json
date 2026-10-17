@@ -1,0 +1,6201 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-07",
+  "events": [
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/6-hours-of-fuji-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/1601",
+      "sha256": "9e82570248dc03685f887f5435ae7552dfc1e6546be1b346e5e6c02dff83ba7d",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Eduardo BARRICHELLO",
+              "nationality": "BRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ben KEATING",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": "RUS",
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/6-hours-of-imola-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2322",
+      "sha256": "29474dc7783c4409f6a2175e13fd86eaa3cc85aff506b470c27afcc158cfc3bc",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "António FÉLIX DA COSTA",
+              "nationality": "POR",
+              "grade": "P"
+            },
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Frédéric MAKOWIECKI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Kobe PAUWELLS",
+              "nationality": "BEL",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Blake MCDONALD",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": null,
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/totalenergies-6-hours-of-spa-francorchamps-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2342",
+      "sha256": "37b95724f6f9215e1eb6057234b1b8847f5870b5eef49d15906302b90dc2744e",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Louis DELÉTRAZ",
+              "nationality": "SUI",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "António FÉLIX DA COSTA",
+              "nationality": "POR",
+              "grade": "P"
+            },
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Frédéric MAKOWIECKI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Eduardo BARRICHELLO",
+              "nationality": "BRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Blake MCDONALD",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": null,
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/24-hours-of-le-mans-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2355",
+      "sha256": "9ed45a87885fdf8931e44be0edc02501711129141964ae22fa9c541679ea3ac2",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            },
+            {
+              "name": "Ross GUNN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Roman DE ANGELIS",
+              "nationality": "CAN",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Louis DELÉTRAZ",
+              "nationality": "SUI",
+              "grade": "G"
+            },
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "António FÉLIX DA COSTA",
+              "nationality": "POR",
+              "grade": "P"
+            },
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Frédéric MAKOWIECKI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "101",
+          "team": "CADILLAC WTR",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Ricky TAYLOR",
+              "nationality": "USA",
+              "grade": "P"
+            },
+            {
+              "name": "Jordan TAYLOR",
+              "nationality": "USA",
+              "grade": "P"
+            },
+            {
+              "name": "Filipe ALBUQUERQUE",
+              "nationality": "POR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "3",
+          "team": "DKR ENGINEERING",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "John FARANO",
+              "nationality": "CAN",
+              "grade": "B"
+            },
+            {
+              "name": "Sebastian ALVAREZ",
+              "nationality": "MEX",
+              "grade": "S"
+            },
+            {
+              "name": "Renger VAN DER ZANDE",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "4",
+          "team": "CROWDSTRIKE RACING BY APR",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "George KURTZ",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Alexander QUINN",
+              "nationality": "GBR",
+              "grade": "G"
+            },
+            {
+              "name": "Laurin HEINRICH",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "9",
+          "team": "PROTON COMPETITION",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Jonas RIED",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Kakunoshin OHTA",
+              "nationality": "JPN",
+              "grade": "G"
+            },
+            {
+              "name": "Harry KING",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "14",
+          "team": "TDS RACING",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Tobias LUTKE",
+              "nationality": "CAN",
+              "grade": "B"
+            },
+            {
+              "name": "Mathias BECHE",
+              "nationality": "SUI",
+              "grade": "G"
+            },
+            {
+              "name": "Kevin ESTRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "22",
+          "team": "UNITED AUTOSPORTS",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Rasmus LINDH",
+              "nationality": "SWE",
+              "grade": "S"
+            },
+            {
+              "name": "Grégoire SAUCY",
+              "nationality": "SUI",
+              "grade": "G"
+            },
+            {
+              "name": "Mikkel JENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "24",
+          "team": "NIELSEN RACING",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "David HEINEMEIER HANSSON",
+              "nationality": "DEN",
+              "grade": "S"
+            },
+            {
+              "name": "Edward PEARSON",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Jack DOOHAN",
+              "nationality": "AUS",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "25",
+          "team": "ALGARVE PRO RACING",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Michael JENSEN",
+              "nationality": "DEN",
+              "grade": "B"
+            },
+            {
+              "name": "Enzo TRULLI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Jake HUGHES",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "26",
+          "team": "VECTOR SPORT",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Ryan CULLEN",
+              "nationality": "IRL",
+              "grade": "S"
+            },
+            {
+              "name": "Vladislav LOMKO",
+              "nationality": "GRN",
+              "grade": "G"
+            },
+            {
+              "name": "Pietro FITTIPALDI",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "28",
+          "team": "IDEC SPORT",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Paul LAFARGUE",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Valerio RINICELLA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Job VAN UITERT",
+              "nationality": "NED",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "29",
+          "team": "FORESTIER RACING BY PANIS",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Louis ROUSSET",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Oliver GRAY",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "30",
+          "team": "DUQUEINE TEAM",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Doriane PIN",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Julien ANDLAUER",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Richard VERSCHOOR",
+              "nationality": "NED",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "37",
+          "team": "CLX MOTORSPORT",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Adrien CLOSMENIL",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Ian AGUILERA",
+              "nationality": "MEX",
+              "grade": "S"
+            },
+            {
+              "name": "Theodor JENSEN",
+              "nationality": "DEN",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "43",
+          "team": "INTER EUROPOL COMPETITION",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Jakub SMIECHOWSKI",
+              "nationality": "POL",
+              "grade": "S"
+            },
+            {
+              "name": "Tom DILLMANN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Nicholas YELLOLY",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "44",
+          "team": "PROTON COMPETITION",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Horst Jr FELBERMAYR",
+              "nationality": "AUT",
+              "grade": "B"
+            },
+            {
+              "name": "Horst Felix FELBERMAYR",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "Lorenzo FLUXÀ",
+              "nationality": "ESP",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "48",
+          "team": "RD LIMITED",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Fred POORDAD",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Tristan VAUTIER",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Romain DUMAS",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "99",
+          "team": "AO BY TF",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "PJ HYETT",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "James ALLEN",
+              "nationality": "AUS",
+              "grade": "G"
+            },
+            {
+              "name": "Dane CAMERON",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "183",
+          "team": "AF CORSE",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "François PERRODO",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Matthieu VAXIVIERE",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ben BARNICOAT",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "222",
+          "team": "UNITED AUTOSPORTS",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Daniel SCHNEIDER",
+              "nationality": "BRA",
+              "grade": "B"
+            },
+            {
+              "name": "Benjamin HANLEY",
+              "nationality": "GBR",
+              "grade": "G"
+            },
+            {
+              "name": "Oliver JARVIS",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "343",
+          "team": "INTER EUROPOL COMPETITION",
+          "machine": "Oreca 07 - Gibson",
+          "classId": "lmp2",
+          "drivers": [
+            {
+              "name": "Bijoy GARG",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Reshad DE GÉRUS",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Nico MÜLLER",
+              "nationality": "SUI",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "2",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Prince JEFRI IBRAHIM",
+              "nationality": "MAS",
+              "grade": "B"
+            },
+            {
+              "name": "Afiq IKHWAN",
+              "nationality": "MAS",
+              "grade": "S"
+            },
+            {
+              "name": "Ben GREEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "13",
+          "team": "13 AUTOSPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Orey FIDANI",
+              "nationality": "CAN",
+              "grade": "B"
+            },
+            {
+              "name": "Lars KERN",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Matthew BELL",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Eduardo BARRICHELLO",
+              "nationality": "BRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ben KEATING",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "57",
+          "team": "KESSEL RACING",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Takeshi KIMURA",
+              "nationality": "JPN",
+              "grade": "B"
+            },
+            {
+              "name": "Conrad LAURSEN",
+              "nationality": "DNK",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel SERRA",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "DEN",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "59",
+          "team": "RACING SPIRIT OF LEMAN",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Clément MATEU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Marius FOSSARD",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Valentin HASSE CLOT",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "62",
+          "team": "TEAM QATAR BY IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Abdulla AL-KHELAIFI",
+              "nationality": "QAT",
+              "grade": "B"
+            },
+            {
+              "name": "Julian HANSES",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Giuliano ALESI",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "74",
+          "team": "KESSEL RACING",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Dustin BLATTNER",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Lorenzo PATRESE",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Dennis MARSCHALL",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jack HAWKSWORTH",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": null,
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "150",
+          "team": "RICHARD MILLE AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Custodio TOLEDO",
+              "nationality": "BRA",
+              "grade": "B"
+            },
+            {
+              "name": "Lilou WADOUX",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Riccardo AGOSTINI",
+              "nationality": "ITA",
+              "grade": "G"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/rolex-6-hours-of-sao-paulo-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2378",
+      "sha256": "86dc5c1a0ad14c4018eedf9e5106cc110f9f86e5fb8518722736fe88df1f8641",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "António FÉLIX DA COSTA",
+              "nationality": "POR",
+              "grade": "P"
+            },
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Frédéric MAKOWIECKI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Kobe PAUWELS",
+              "nationality": "BEL",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ben KEATING",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicolás VARRONE",
+              "nationality": "ARG",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": null,
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/lone-star-le-mans-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2410",
+      "sha256": "ed076b3b612c300aa0a506956323303f66f52cd90ac4d409b7a7bdd5357edb85",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ricky TAYLOR",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "António FÉLIX DA COSTA",
+              "nationality": "POR",
+              "grade": "P"
+            },
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Frédéric MAKOWIECKI",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Stoffel VANDOORNE",
+              "nationality": "BEL",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Eduardo BARRICHELLO",
+              "nationality": "BRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ben KEATING",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": "RUS",
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventUrl": "https://www.fiawec.com/en/race/6-hours-of-barcelona-2026",
+      "sourceUrl": "https://www.fiawec.com/en/race/document/download/2528",
+      "sha256": "94bf404b677fb9a7e4a3e88a42d436c7308726172f592cac17fd773fee17c972",
+      "entries": [
+        {
+          "number": "007",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Harry TINCKNELL",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Tom GAMBLE",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "009",
+          "team": "ASTON MARTIN THOR TEAM",
+          "machine": "Aston Martin Valkyrie",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alex RIBERAS",
+              "nationality": "ESP",
+              "grade": "G"
+            },
+            {
+              "name": "Marco SØRENSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "7",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mike CONWAY",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Kamui KOBAYASHI",
+              "nationality": "JPN",
+              "grade": "P"
+            },
+            {
+              "name": "Nyck DE VRIES",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "8",
+          "team": "TOYOTA RACING",
+          "machine": "Toyota TR010 Hybrid",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Sébastien BUEMI",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Brendon HARTLEY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Ryō HIRAKAWA",
+              "nationality": "JPN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "12",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Will STEVENS",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Norman NATO",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Alex LYNN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "15",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Kevin MAGNUSSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            },
+            {
+              "name": "Raffaele MARCIELLO",
+              "nationality": "SUI",
+              "grade": "P"
+            },
+            {
+              "name": "Dries VANTHOOR",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "17",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "André LOTTERER",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Luis Felipe DERANI",
+              "nationality": "BRA",
+              "grade": "P"
+            },
+            {
+              "name": "Mathys JAUBERT",
+              "nationality": "FRA",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "19",
+          "team": "GENESIS MAGMA RACING",
+          "machine": "Genesis GMR-001-Hypercar",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Mathieu JAMINET",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Paul-Loup CHATIN",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Daniel JUNCADELLA",
+              "nationality": "ESP",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "20",
+          "team": "BMW M TEAM WRT",
+          "machine": "BMW M Hybrid V8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Robin FRIJNS",
+              "nationality": "NED",
+              "grade": "P"
+            },
+            {
+              "name": "René RAST",
+              "nationality": "GER",
+              "grade": "P"
+            },
+            {
+              "name": "Sheldon VAN DER LINDE",
+              "nationality": "RSA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "35",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Charles MILESI",
+              "nationality": "FRA",
+              "grade": "G"
+            },
+            {
+              "name": "Ferdinand HABSBURG",
+              "nationality": "AUT",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "36",
+          "team": "ALPINE ENDURANCE TEAM",
+          "machine": "Alpine A424",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Jules GOUNON",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Victor MARTINS",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "38",
+          "team": "CADILLAC HERTZ TEAM JOTA",
+          "machine": "Cadillac V-Series.R",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Earl BAMBER",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "Sébastien BOURDAIS",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Jack AITKEN",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "50",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Antonio FUOCO",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "Miguel MOLINA",
+              "nationality": "ESP",
+              "grade": "P"
+            },
+            {
+              "name": "Nicklas NIELSEN",
+              "nationality": "DEN",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "51",
+          "team": "FERRARI AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Alessandro PIER GUIDI",
+              "nationality": "ITA",
+              "grade": "P"
+            },
+            {
+              "name": "James CALADO",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Antonio GIOVINAZZI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "83",
+          "team": "AF CORSE",
+          "machine": "Ferrari 499P",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Yifei YE",
+              "nationality": "CHN",
+              "grade": "G"
+            },
+            {
+              "name": "Robert KUBICA",
+              "nationality": "POL",
+              "grade": "P"
+            },
+            {
+              "name": "Philip HANSON",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "93",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Paul DI RESTA",
+              "nationality": "GBR",
+              "grade": "P"
+            },
+            {
+              "name": "Nick CASSIDY",
+              "nationality": "NZL",
+              "grade": "P"
+            },
+            {
+              "name": "TBA",
+              "nationality": null,
+              "grade": ""
+            }
+          ]
+        },
+        {
+          "number": "94",
+          "team": "PEUGEOT TOTALENERGIES",
+          "machine": "Peugeot 9X8",
+          "classId": "hypercar",
+          "drivers": [
+            {
+              "name": "Loïc DUVAL",
+              "nationality": "FRA",
+              "grade": "P"
+            },
+            {
+              "name": "Malthe JAKOBSEN",
+              "nationality": "DEN",
+              "grade": "G"
+            },
+            {
+              "name": "Théo POURCHAIRE",
+              "nationality": "FRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "10",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Antares AU",
+              "nationality": "HKG",
+              "grade": "B"
+            },
+            {
+              "name": "Thomas FLEMING",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Marvin KIRCHHÖFER",
+              "nationality": "GER",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "21",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "François HÉRIAU",
+              "nationality": "FRA",
+              "grade": "B"
+            },
+            {
+              "name": "Simon MANN",
+              "nationality": "USA",
+              "grade": "S"
+            },
+            {
+              "name": "Alessio ROVERA",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "23",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Gray NEWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Eduardo BARRICHELLO",
+              "nationality": "BRA",
+              "grade": "S"
+            },
+            {
+              "name": "Jonny ADAM",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "27",
+          "team": "HEART OF RACING TEAM",
+          "machine": "Aston Martin Vantage AMR LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ian JAMES",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Zacharie ROBICHON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Mattia DRUDI",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "32",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Darren LEUNG",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Sean GELAEL",
+              "nationality": "INA",
+              "grade": "S"
+            },
+            {
+              "name": "Augusto FARFUS",
+              "nationality": "BRA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "33",
+          "team": "TF SPORT",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Ben KEATING",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Jonny EDGAR",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Nicky CATSBURG",
+              "nationality": "NED",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "34",
+          "team": "RACING TEAM TURKEY BY TF",
+          "machine": "Corvette Z06 LMGT3.R",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Peter DEMPSEY",
+              "nationality": "IRL",
+              "grade": "B"
+            },
+            {
+              "name": "Salih YOLUÇ",
+              "nationality": "TUR",
+              "grade": "S"
+            },
+            {
+              "name": "Charlie EASTWOOD",
+              "nationality": "IRL",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "54",
+          "team": "VISTA AF CORSE",
+          "machine": "Ferrari 296 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Thomas FLOHR",
+              "nationality": "SUI",
+              "grade": "B"
+            },
+            {
+              "name": "Francesco CASTELLACCI",
+              "nationality": "MON",
+              "grade": "S"
+            },
+            {
+              "name": "Davide RIGON",
+              "nationality": "ITA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "58",
+          "team": "GARAGE 59",
+          "machine": "McLaren 720S LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Alexander WEST",
+              "nationality": "SWE",
+              "grade": "B"
+            },
+            {
+              "name": "Finn GEHRSITZ",
+              "nationality": "GER",
+              "grade": "S"
+            },
+            {
+              "name": "Benjamin GOETHE",
+              "nationality": "GER",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "61",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Martin BERRY",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Rui ANDRADE",
+              "nationality": "ANG",
+              "grade": "S"
+            },
+            {
+              "name": "Maxime MARTIN",
+              "nationality": "BEL",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "69",
+          "team": "TEAM WRT",
+          "machine": "BMW M4 LMGT3 Evo",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Anthony MCINTOSH",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Parker THOMPSON",
+              "nationality": "CAN",
+              "grade": "S"
+            },
+            {
+              "name": "Daniel HARPER",
+              "nationality": "GBR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "77",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Eric POWELL",
+              "nationality": "USA",
+              "grade": "B"
+            },
+            {
+              "name": "Ben TUCK",
+              "nationality": "GBR",
+              "grade": "S"
+            },
+            {
+              "name": "Sebastian PRIAULX",
+              "nationality": "GBR",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "78",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Tom VAN ROMPUY",
+              "nationality": "BEL",
+              "grade": "B"
+            },
+            {
+              "name": "Hadrien DAVID",
+              "nationality": "FRA",
+              "grade": "S"
+            },
+            {
+              "name": "Esteban MASSON",
+              "nationality": "FRA",
+              "grade": "G"
+            }
+          ]
+        },
+        {
+          "number": "79",
+          "team": "IRON LYNX",
+          "machine": "Mercedes-AMG LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Johannes ZELGER",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Matteo CRESSONI",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Lin HODENIUS",
+              "nationality": "NED",
+              "grade": "S"
+            }
+          ]
+        },
+        {
+          "number": "87",
+          "team": "AKKODIS ASP TEAM",
+          "machine": "Lexus RC F LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Petru UMBRĂRESCU",
+              "nationality": "ROU",
+              "grade": "B"
+            },
+            {
+              "name": "Clemens SCHMID",
+              "nationality": "AUT",
+              "grade": "S"
+            },
+            {
+              "name": "José María LÓPEZ",
+              "nationality": "ARG",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "88",
+          "team": "PROTON COMPETITION",
+          "machine": "Ford Mustang LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Stefano GATTUSO",
+              "nationality": "ITA",
+              "grade": "B"
+            },
+            {
+              "name": "Giammarco LEVORATO",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Logan SARGEANT",
+              "nationality": "USA",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "91",
+          "team": "MANTHEY DK ENGINEERING",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "James COTTINGHAM",
+              "nationality": "GBR",
+              "grade": "B"
+            },
+            {
+              "name": "Timur BOGUSLAVSKIY",
+              "nationality": "RUS",
+              "grade": "S"
+            },
+            {
+              "name": "Ayhancan GÜVEN",
+              "nationality": "TUR",
+              "grade": "P"
+            }
+          ]
+        },
+        {
+          "number": "92",
+          "team": "THE BEND MANTHEY",
+          "machine": "Porsche 911 GT3 R LMGT3",
+          "classId": "lmgt3",
+          "drivers": [
+            {
+              "name": "Yasser SHAHIN",
+              "nationality": "AUS",
+              "grade": "B"
+            },
+            {
+              "name": "Riccardo PERA",
+              "nationality": "ITA",
+              "grade": "S"
+            },
+            {
+              "name": "Richard LIETZ",
+              "nationality": "AUT",
+              "grade": "P"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

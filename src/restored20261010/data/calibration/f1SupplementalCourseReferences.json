@@ -1,0 +1,20 @@
+{
+  "bahrain-approx": {
+    "targetSeconds": 93.159,
+    "status": "estimated",
+    "method": "2025 Q3 fastest-three median 90.009 s times an explicit SIM 2026 generation allowance of 1.035; not a 2026 observation. The October 2026 Bahrain-named event ran at Sepang and is ineligible for Sakhir.",
+    "sourceUrl": "https://www.formula1.com/en/results/2025/races/1257/bahrain/qualifying"
+  },
+  "jeddah-approx": {
+    "targetSeconds": 90.36,
+    "status": "estimated",
+    "method": "2025 Q3 fastest-three median 87.304 s times an explicit SIM generation allowance of 1.035; not a 2026 observation.",
+    "sourceUrl": "https://www.formula1.com/en/results/2025/races/1258/saudi-arabia/qualifying"
+  },
+  "imola": {
+    "targetSeconds": 77.319,
+    "status": "estimated",
+    "method": "2025 Q3 fastest-three median 74.704 s times an explicit SIM generation allowance of 1.035; not a 2026 observation.",
+    "sourceUrl": "https://www.formula1.com/en/results/2025/races/1260/emilia-romagna/qualifying"
+  }
+}

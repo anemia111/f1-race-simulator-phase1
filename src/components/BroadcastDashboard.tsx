@@ -1,6 +1,9 @@
 import {
   Activity,
   Database,
+  CircleGauge,
+  MessageSquare,
+  Users,
   Flag,
   Gauge,
   Map as MapIcon,
@@ -25,6 +28,11 @@ import {
   START_LIGHT_COUNT,
   startSignalStateFor,
 } from '../domain/startSignal'
+import { CategoryCatalog } from './CategoryCatalog'
+import { useTelemetryTraces } from '../hooks/useTelemetryTraces'
+import { IntegratedTelemetry } from './IntegratedTelemetry'
+import { BroadcastRaceData, type RaceDataView } from './BroadcastRaceData'
+import type { SeasonState } from '../simulation/season'
 import { MiniSectorStrip } from './MiniSectorStrip'
 import type {
   CameraMode,
@@ -42,7 +50,7 @@ import type { SeriesId } from '../series/types'
 import type { ApplicationMode } from '../freeMode/types'
 
 type DataMode = 'SIM' | 'HIST' | 'LIVE'
-type DashboardView = 'map' | 'data'
+type DashboardView = 'map' | 'data' | 'catalog' | RaceDataView
 
 const practiceProgramLabels: Record<
   NonNullable<CarSnapshot['practiceProgram']>,
@@ -113,6 +121,9 @@ export type BroadcastDataDetail = {
 
 
 type BroadcastDashboardProps = {
+  onOpenMotorsport?: (id: import('../restored20261010/motorsport/types').ChampionshipId) => void
+  season?: SeasonState
+  cinematicActive?: boolean
   applicationMode: ApplicationMode
   cameraMode: CameraMode
   dataControl: ReactNode
@@ -202,6 +213,14 @@ const dashboardViews: Array<{
   label: string
 }> = [
   { Icon: Database, id: 'data', label: 'Data' },
+  { Icon: Users, id: 'catalog', label: 'Categories' },
+  { Icon: Activity, id: 'telemetry', label: 'Telemetry' },
+  { Icon: Route, id: 'track', label: 'Track' },
+  { Icon: CircleGauge, id: 'tyres', label: 'Tyres' },
+  { Icon: MessageSquare, id: 'messages', label: 'Messages' },
+  { Icon: Users, id: 'drivers', label: 'Drivers' },
+  { Icon: Trophy, id: 'season', label: 'Season' },
+  { Icon: MapIcon, id: 'map', label: 'Map' },
 ]
 
 const defaultTireLabels: Record<TireCompound, string> = {
@@ -654,6 +673,9 @@ function CenterView({
 }
 
 export function BroadcastDashboard({
+  onOpenMotorsport,
+  season,
+  cinematicActive = false,
   applicationMode,
   cameraMode,
   dataControl,
@@ -695,6 +717,7 @@ export function BroadcastDashboard({
   trackScene,
   weekendStages,
 }: BroadcastDashboardProps) {
+  const telemetryTraces = useTelemetryTraces({ snapshot, rows: timingRows, track, dataMode })
   const [activeView, setActiveView] = useState<DashboardView>('map')
   const [leaderboardMode, setLeaderboardMode] = useState<'live' | 'gap'>('live')
   const [showLiveTiming, setShowLiveTiming] = useState(true)
@@ -775,12 +798,22 @@ export function BroadcastDashboard({
             aria-label="Racing series"
             className="broadcast-series-select"
             disabled={applicationMode === 'free'}
-            onChange={(event) => onSeriesChange(event.target.value as SeriesId)}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value.startsWith('motorsport:')) onOpenMotorsport?.(value.slice(11) as import('../restored20261010/motorsport/types').ChampionshipId)
+              else onSeriesChange(value as SeriesId)
+            }}
             value={seriesId}
           >
             {seriesOptions.map((series) => (
               <option key={series.id} value={series.id}>{series.label}</option>
             ))}
+            {onOpenMotorsport && <>
+              <option value="motorsport:wec">FIA WEC</option>
+              <option value="motorsport:super-gt">SUPER GT</option>
+              <option value="motorsport:kyojo">KYOJO CUP</option>
+              <option value="motorsport:indycar">INDYCAR</option>
+            </>}
           </select>
         </div>
         <div className="broadcast-session-core">
@@ -857,6 +890,7 @@ export function BroadcastDashboard({
               key={id}
               onClick={() => {
                 setActiveView((current) => (current === id ? 'map' : id))
+                setShowLiveTiming(true)
               }}
               title={label}
               type="button"
@@ -899,7 +933,7 @@ export function BroadcastDashboard({
             <PanelHeader
               action={<div className="camera-switch">{(['overview', 'chase', 'orbit'] as const).map((mode) => <button aria-pressed={cameraMode === mode} disabled={dataMode !== 'SIM' && mode !== 'overview'} key={mode} onClick={() => onCameraModeChange(mode)} title={`${mode} camera`} type="button">{mode === 'overview' ? <MapIcon size={12} /> : mode === 'chase' ? <Gauge size={12} /> : <Route size={12} />}</button>)}</div>}
               eyebrow={`${track.lengthKm.toFixed(3)} KM / ${trackOvertakeStatus}`}
-              title={`Track Map - ${track.name}`}
+              title={`${cinematicActive ? 'Cinematic' : 'Track Map'} - ${track.name}`}
             />
             <div className="broadcast-track-stage">
               <div className="map-grid-texture" aria-hidden="true" />
@@ -932,7 +966,11 @@ export function BroadcastDashboard({
               title={dashboardViews.find((item) => item.id === activeView)?.label ?? 'Timing'}
             />
             {showLiveTiming ? (
-              <CenterView dataControl={dataControl} dataDetails={dataDetails} />
+              activeView === 'telemetry' ? <IntegratedTelemetry traces={telemetryTraces} track={track} selectedId={selectedCar.driverId} dataMode={dataMode} onFocusDriver={onFocusDriver} /> :
+              activeView === 'catalog' ? <CategoryCatalog /> : activeView === 'data' ? <CenterView dataControl={dataControl} dataDetails={dataDetails} /> :
+                <BroadcastRaceData view={activeView} rows={timingRows} snapshot={snapshot} track={track}
+                  environment={environment} messages={raceControlLog} season={applicationMode === 'championship' ? season : undefined}
+                  dataMode={dataMode} onFocusDriver={onFocusDriver} />
             ) : <button className="restore-panel" onClick={() => setShowLiveTiming(true)} type="button"><Timer size={14} /> Restore live timing</button>}
           </section>
           )}

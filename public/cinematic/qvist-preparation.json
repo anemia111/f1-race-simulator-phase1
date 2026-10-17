@@ -1,0 +1,40 @@
+{
+  "sourceUrl": "https://raw.githubusercontent.com/filan214/F1---2026-Car-Details/71fafa72b34bfbed07a01d8bc93b969246e7b4e2/dist/models/qvist-2026-assemblies.glb",
+  "sourceSha256": "bff9c92fe22e1c80c855e24e95b09eca62f579640fe63be200aff83769d059d3",
+  "parts": {
+    "paint": 17449,
+    "carbon": 47311,
+    "front": 1364,
+    "rear": 4706,
+    "wheel0": 5430,
+    "wheel1": 5476,
+    "wheel2": 5668,
+    "wheel3": 5668,
+    "paint_medium": 3487,
+    "carbon_medium": 10044,
+    "front_medium": 264,
+    "rear_medium": 898,
+    "wheel0_medium": 3470,
+    "wheel1_medium": 3412,
+    "wheel2_medium": 2948,
+    "wheel3_medium": 2930,
+    "paint_low": 2100,
+    "carbon_low": 4695,
+    "front_low": 86,
+    "rear_low": 403,
+    "wheel0_low": 48,
+    "wheel1_low": 48,
+    "wheel2_low": 48,
+    "wheel3_low": 48
+  },
+  "frontPivot": [
+    0,
+    0.27,
+    2.45
+  ],
+  "rearPivot": [
+    0,
+    0.77,
+    -2.15
+  ]
+}

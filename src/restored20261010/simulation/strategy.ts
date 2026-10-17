@@ -1,0 +1,1249 @@
+// Deterministic pit-strategy model. It compares the short-horizon cost of
+// stopping now with staying out, and only runs at lap boundaries.
+
+import type {
+  CarSnapshot,
+  Driver,
+  Team,
+  TireCompound,
+  TireNomination,
+  TrackDefinition,
+  TrackObservedCalibration,
+  WeatherState,
+} from '../types'
+import {
+  F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS,
+  observedPitLaneTransitSeconds,
+  validObservedPitLaneTransitSeconds,
+} from '../data/f1PitLaneObservations2026'
+import { averageTrackWidthMeters } from './physicalLap'
+import { hashChance } from './random'
+import { driverPerformanceAbility, driverSkillBlend } from './driverAbility'
+import {
+  chooseCompound,
+  compoundMatchesWeather,
+  compoundStillViable,
+  effectiveCliffLaps,
+  isDryCompound,
+  preferredTireCategoryFor,
+  type TireTrackCondition,
+} from './tires'
+import type { WeatherForecast } from './weather'
+import type { F1RuntimeTireState } from './runtimeSystems'
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+export type PitDecision = {
+  compound: TireCompound
+  reason:
+    | 'wear'
+    | 'damage'
+    | 'safety-car'
+    | 'compound-rule'
+    | 'mandatory-stop'
+    | 'weather'
+    | 'forecast'
+    | 'undercut'
+    | 'overcut'
+    | 'traffic'
+    | 'tire-condition'
+    | 'brake-cooling'
+    | 'manual'
+}
+
+export type StrategyOutlook = {
+  compound: TireCompound
+  estimatedStopLap: number
+  reason: string
+  urgency: 'box' | 'window' | 'extend'
+  expectedNetGainSeconds: number
+  estimatedPitLossSeconds: number
+  confidence: 'low' | 'medium' | 'high'
+}
+
+export type PitOpportunityEstimate = {
+  /** Positive means pitting now is preferable to extending the stint. */
+  netGainSeconds: number
+  degradationAvoidedSeconds: number
+  controlPhaseSavingSeconds: number
+  undercutOpportunitySeconds: number
+  /** Positive means staying out is worth time; it subtracts from the net gain. */
+  overcutOpportunitySeconds: number
+  rejoinTrafficCostSeconds: number
+  doubleStackCostSeconds: number
+  estimatedPitLossSeconds: number
+}
+
+export type PitControlPhase = 'green' | 'safety-car' | 'vsc' | 'red-flag'
+
+export type RedFlagTireDecision = {
+  compound: TireCompound
+  reason: 'weather' | 'wear' | 'strategic-reset'
+}
+
+/**
+ * F1's Pirelli compound model is deliberately reached through the F1 runtime
+ * branch.  A SUPER FORMULA snapshot has no compatible compound family, so it
+ * returns `null` instead of receiving a made-up S/M/H/I/W value.
+ */
+type F1TireRuntimeCarrier = Pick<CarSnapshot, 'runtimeSystems'>
+
+function f1TiresFor(
+  car: F1TireRuntimeCarrier,
+): F1RuntimeTireState | null {
+  return car.runtimeSystems.kind === 'f1'
+    ? car.runtimeSystems.tires
+    : null
+}
+
+export function overtakeDifficultyForTrack(track: TrackDefinition) {
+  const streetPremium = track.kind === 'street' ? 0.17 : 0
+  const zoneRelief = Math.min(0.2, (track.overtakeControlLines?.length ?? 0) * 0.055)
+  // Retained simulator-policy road-width assumption, not
+  // `TrackDefinition.width` or a surveyed carriageway measurement. Against
+  // the old formula's metre thresholds every circuit scored 2.2 to 2.85 and
+  // the relief was flat zero for all of them, so width never separated Monaco
+  // from Monza.
+  const widthRelief = clamp(
+    (averageTrackWidthMeters(track) - 9) * 0.02,
+    0,
+    0.12,
+  )
+
+  return clamp(0.6 + streetPremium - zoneRelief - widthRelief, 0.25, 0.9)
+}
+
+function normalizedPitControlPhase(options: {
+  controlPhase?: PitControlPhase
+  underSafetyCar?: boolean
+}): PitControlPhase {
+  return options.controlPhase ??
+    (options.underSafetyCar ? 'safety-car' : 'green')
+}
+
+export function effectivePitLaneLossSecondsForControlPhase(options: {
+  controlPhase: PitControlPhase
+  pitLaneLossSeconds: number
+  neutralisationSecondsRemaining?: number | null
+  pitEntrySecondsAway?: number
+}) {
+  const {
+    controlPhase,
+    pitLaneLossSeconds,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway = 0,
+  } = options
+  const savingShare =
+    controlPhase === 'safety-car' ? 0.55 : controlPhase === 'vsc' ? 0.4 : 0
+  const endingConfidence =
+    controlPhase !== 'vsc' || neutralisationSecondsRemaining == null
+      ? 1
+      : clamp(
+          (neutralisationSecondsRemaining - pitEntrySecondsAway) / 8,
+          0,
+          1,
+        )
+
+  return Math.max(
+    5,
+    pitLaneLossSeconds * (1 - savingShare * endingConfidence),
+  )
+}
+
+/**
+ * Time lost in the pit lane against staying on track, before the crew touches
+ * the car.
+ *
+ * A Formula 1 pit lane runs about 400 m under the limit. At 80 km/h that is
+ * 18.0 s, against roughly 7.2 s to cover the same ground on track at the
+ * ~200 km/h the section is taken at, so the lane itself costs about 10.8 s.
+ * Braking from racing speed to the limit before the entry line and rebuilding
+ * it after the exit adds a little under 6 s. That puts the transit near 16.5 s,
+ * and a stop with an average crew near 21.4 s, which is where published dry
+ * pit losses sit for most permanent circuits.
+ *
+ * This is the calendar-wide level. It used to be the whole model, because the
+ * only per-circuit input available was the pit lane geometry, and every track
+ * in this repository carries the same placeholder for it (entry 0.940, exit
+ * 0.055); deriving a per-circuit loss from that would have dressed a
+ * placeholder up as a measurement. `F1_PIT_LANE_TRANSIT_OBSERVATIONS` now
+ * supplies measured lane times instead, and a circuit is positioned against
+ * their mean by `pitLaneLossSecondsForTrack`, so the level here is untouched
+ * and only the differences between circuits are observed.
+ */
+export const PIT_LANE_TRANSIT_BASE_SECONDS = 16.5
+
+/**
+ * How much of a difference in lane time becomes a difference in loss.
+ *
+ * A longer pit lane costs more time in the lane, but it also replaces a longer
+ * stretch of track, and the loss is the difference between the two. Extra
+ * length adds distance/limit in the lane against distance/racing speed on
+ * track, so the loss keeps 1 - limit/racing of it: at an 80 km/h limit and the
+ * ~200 km/h the section is taken at, three fifths.
+ *
+ * Applying the raw lane-time difference instead would overstate the spread by
+ * about two thirds.
+ */
+export const PIT_LANE_LOSS_PER_TRANSIT_SECOND = 1 - 80 / 200
+
+/**
+ * Time lost in the pit lane for a circuit, before the crew touches the car.
+ *
+ * Live telemetry wins over the checked-in observation, which wins over the
+ * speed-limit and street-circuit heuristic. Both observed paths carry a lane
+ * transit time, which is longer than a loss, so both go through the same
+ * conversion; feeding one straight in as a loss put the pit wall and the race
+ * about three and a half seconds apart whenever a session had been fetched.
+ */
+export function pitLaneLossSecondsForTrack(track: {
+  id: string
+  kind?: TrackDefinition['kind']
+  observedCalibration?: { pitLaneTransitSeconds?: number | null }
+  pitLane?: { speedLimitKph?: number }
+}) {
+  const observedTransitSeconds =
+    validObservedPitLaneTransitSeconds(track.observedCalibration?.pitLaneTransitSeconds)
+      ? track.observedCalibration.pitLaneTransitSeconds
+      : observedPitLaneTransitSeconds(track.id)
+
+  if (observedTransitSeconds !== null && observedTransitSeconds !== undefined) {
+    return (
+      PIT_LANE_TRANSIT_BASE_SECONDS +
+      PIT_LANE_LOSS_PER_TRANSIT_SECOND *
+        (observedTransitSeconds - F1_REFERENCE_PIT_LANE_TRANSIT_SECONDS)
+    )
+  }
+
+  return (
+    PIT_LANE_TRANSIT_BASE_SECONDS +
+    (80 - (track.pitLane?.speedLimitKph ?? 80)) * 0.1 +
+    (track.kind === 'street' ? 2.5 : 0)
+  )
+}
+
+export const pitTuning = {
+  /** Fixed pit-lane transit loss vs staying out (seconds). */
+  pitLaneLossSeconds: PIT_LANE_TRANSIT_BASE_SECONDS,
+  /** Base stationary time for the crew (seconds). */
+  crewBaseSeconds: 2.0,
+  /** Extra stationary time for the slowest crews. */
+  crewSpreadSeconds: 4,
+  /**
+   * Mean of the per-stop variance, in seconds.
+   *
+   * This used to be the width of a uniform band, which cannot describe a pit
+   * stop. A uniform draw adds half its width to every single stop, so the
+   * crew's own capability stopped being the floor: the quickest stop the model
+   * could produce was 2.16 s against an observed 2.00, and its tenth
+   * percentile sat at 2.74 against an observed 2.40. Real stop times are a
+   * hard floor with a tail off it, so the draw is exponential and its median
+   * is 0.69 of this figure rather than half a band.
+   *
+   * Set so the modelled median matches the observed 3.2 s in
+   * `F1_PIT_STOP_STATIONARY_POOLED_2026`. That target is itself lengthened by
+   * penalties served in the box, so matching it leaves the model, if anything,
+   * a little slow.
+   */
+  stopVarianceScaleSeconds: 0.78,
+  /** Chance of a slow stop (stuck wheel nut). */
+  slowStopChance: 0.06,
+  slowStopExtraSeconds: 6,
+  /** Extra time to repair accumulated damage at a stop. */
+  damageRepairSeconds: 3,
+  /** Damage level above which the car pits for repairs. */
+  damagePitThreshold: 0.25,
+  /** Don't pit with fewer laps than this remaining. */
+  minRemainingLaps: 4,
+  /** Normal green-flag pit-lane capacity used to stagger routine stops. */
+  normalPitLaneCapacity: 2,
+  /** A peak brake temperature is normal; only sustained heat triggers a stop. */
+  brakeOverheatPitSeconds: 35,
+} as const
+
+/**
+ * Short-horizon expected-loss model. The normal pit-lane loss is reported for
+ * the UI, but only its safety-car reduction enters the now-vs-later decision:
+ * an eventual scheduled stop would pay the base loss either way.
+ */
+export function estimatePitOpportunity(options: {
+  tireAgeLaps: number
+  tireWearPercent: number
+  cliffLaps: number
+  remainingLaps: number
+  pitLaneLossSeconds?: number
+  underSafetyCar?: boolean
+  controlPhase?: PitControlPhase
+  neutralisationSecondsRemaining?: number | null
+  pitEntrySecondsAway?: number
+  overtakeDifficulty?: number
+  gapToAheadSeconds?: number | null
+  /** True while the car ahead is in the pit lane or has just rejoined. */
+  carAheadHasPitted?: boolean
+  /** 0-1 grip left in hand; a car with life left can extend and jump back. */
+  tireLifeRemaining?: number
+  projectedRejoinPositionLoss?: number
+  teammateInPit?: boolean
+}): PitOpportunityEstimate {
+  const {
+    tireAgeLaps,
+    tireWearPercent,
+    cliffLaps,
+    remainingLaps,
+    pitLaneLossSeconds = pitTuning.pitLaneLossSeconds,
+    underSafetyCar: legacyUnderSafetyCar,
+    controlPhase: requestedControlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway = 0,
+    overtakeDifficulty = 0.5,
+    gapToAheadSeconds,
+    projectedRejoinPositionLoss = 0,
+    teammateInPit = false,
+    carAheadHasPitted = false,
+    tireLifeRemaining = 1,
+  } = options
+  const controlPhase = normalizedPitControlPhase({
+    controlPhase: requestedControlPhase,
+    underSafetyCar: legacyUnderSafetyCar,
+  })
+  const underNeutralisation =
+    controlPhase === 'safety-car' || controlPhase === 'vsc'
+  const horizonLaps = Math.max(1, Math.min(5, remainingLaps))
+  const lapsIntoWindow = Math.max(0, tireAgeLaps - (cliffLaps - 4))
+  const wearRisk = Math.max(0, tireWearPercent - 68) / 10
+  const degradationAvoidedSeconds =
+    (lapsIntoWindow * 0.34 + wearRisk * 0.48) * horizonLaps
+  const effectivePitLossSeconds = effectivePitLaneLossSecondsForControlPhase({
+    controlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway,
+    pitLaneLossSeconds,
+  })
+  const controlPhaseSavingSeconds = Math.max(
+    0,
+    pitLaneLossSeconds - effectivePitLossSeconds,
+  )
+  const undercutOpportunitySeconds =
+    !underNeutralisation &&
+    typeof gapToAheadSeconds === 'number' &&
+    gapToAheadSeconds > 0 &&
+    gapToAheadSeconds < 1.6
+      ? (1.6 - gapToAheadSeconds) * 0.9
+      : 0
+  // The mirror of the undercut. When the car ahead has already stopped and
+  // this one still has grip in hand, the laps it can run on an empty road are
+  // worth more than the position it would concede by following them in. It
+  // subtracts from the net gain, so a strong overcut case delays the stop
+  // rather than adding a reason to take it.
+  const overcutOpportunitySeconds =
+    !underNeutralisation &&
+    carAheadHasPitted &&
+    clamp(tireLifeRemaining, 0, 1) > 0.35
+      ? clamp(tireLifeRemaining, 0, 1) * 1.9 +
+        (typeof gapToAheadSeconds === 'number' &&
+        gapToAheadSeconds > 0 &&
+        gapToAheadSeconds < 4
+          ? (4 - gapToAheadSeconds) * 0.35
+          : 0)
+      : 0
+  const rejoinTrafficCostSeconds =
+    Math.max(0, projectedRejoinPositionLoss) *
+    (0.48 + clamp(overtakeDifficulty, 0, 1) * 0.58)
+  const doubleStackCostSeconds = teammateInPit ? 3.4 : 0
+  const netGainSeconds =
+    degradationAvoidedSeconds +
+    controlPhaseSavingSeconds +
+    undercutOpportunitySeconds -
+    overcutOpportunitySeconds -
+    rejoinTrafficCostSeconds -
+    doubleStackCostSeconds
+
+  return {
+    netGainSeconds,
+    degradationAvoidedSeconds,
+    controlPhaseSavingSeconds,
+    undercutOpportunitySeconds,
+    overcutOpportunitySeconds,
+    rejoinTrafficCostSeconds,
+    doubleStackCostSeconds,
+    estimatedPitLossSeconds:
+      effectivePitLossSeconds + doubleStackCostSeconds,
+  }
+}
+
+/** Distinct compounds used, for the two-dry-compound rule. */
+function usedDistinct(compoundsUsed: TireCompound[]): Set<TireCompound> {
+  return new Set(compoundsUsed)
+}
+
+function observedStopTarget(options: {
+  calibration?: Pick<
+    TrackObservedCalibration,
+    'medianPitStopsPerDriver' | 'strategySampleCount'
+  >
+  driver: Driver
+  seed: string
+}) {
+  const { calibration, driver, seed } = options
+  const observed = calibration?.medianPitStopsPerDriver
+
+  if (
+    observed === null ||
+    observed === undefined ||
+    (calibration?.strategySampleCount ?? 0) < 6
+  ) {
+    return null
+  }
+
+  const variation =
+    (hashChance(`${seed}:observed-stop-target:${driver.id}`) - 0.5) * 0.7 +
+    (0.8 - driverPerformanceAbility(driver, 'tireManagement')) * 0.45
+
+  return Math.max(0, Math.min(4, Math.round(observed + variation)))
+}
+
+export function decideRedFlagTireChange(options: {
+  availableCompounds?: Partial<Record<TireCompound, number>>
+  car: F1TireRuntimeCarrier
+  driver: Driver
+  lap: number
+  mandatoryTwoDryCompounds?: boolean
+  raceLaps: number
+  seed: string
+  tireNomination?: TireNomination
+  trackCondition?: TireTrackCondition
+  trackGrip: number
+  weather: WeatherState
+}): RedFlagTireDecision | null {
+  const {
+    availableCompounds,
+    car,
+    driver,
+    lap,
+    mandatoryTwoDryCompounds = true,
+    raceLaps,
+    seed,
+    tireNomination,
+    trackCondition,
+    trackGrip,
+    weather,
+  } = options
+  const tires = f1TiresFor(car)
+
+  // The red-flag Pirelli choice is not an SF control-tyre rule.  Do not turn
+  // its dry/wet inventory into an S/M/H/I/W selection while event tyre rules
+  // are unavailable.
+  if (!tires) {
+    return null
+  }
+
+  const remainingLaps = Math.max(0, raceLaps - lap)
+  const usedDryCompounds = new Set(tires.compoundsUsed.filter(isDryCompound))
+  const mustFitSecondDryCompound =
+    mandatoryTwoDryCompounds &&
+    !tires.compoundsUsed.some((compound) => !isDryCompound(compound)) &&
+    usedDryCompounds.size < 2 &&
+    remainingLaps <= 14
+  const preferred = chooseCompound(
+    remainingLaps,
+    mustFitSecondDryCompound ? tires.tire : null,
+    hashChance(`${seed}:red-flag-compound:${driver.id}:${lap}`),
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const compound =
+    availableCompounds && (availableCompounds[preferred] ?? 0) <= 0
+      ? (['S', 'M', 'H', 'I', 'W'] as TireCompound[]).find(
+          (candidate) =>
+            (availableCompounds[candidate] ?? 0) > 0 &&
+            compoundMatchesWeather(candidate, weather, trackGrip, trackCondition),
+        )
+      : preferred
+
+  if (!compound || (availableCompounds && (availableCompounds[compound] ?? 0) <= 0)) {
+    return null
+  }
+
+  const weatherMismatch = !compoundMatchesWeather(
+    tires.tire,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const effectiveWear = Math.min(
+    100,
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
+  )
+  const cliff = effectiveCliffLaps(
+    tires.tire,
+    driverPerformanceAbility(driver, 'tireManagement'),
+    tireNomination,
+  )
+  const recentlyFitted =
+    tires.tireAgeLaps < 3 && effectiveWear < 18 && !weatherMismatch
+
+  if (recentlyFitted && !mustFitSecondDryCompound) {
+    return null
+  }
+
+  const setScarcity = (availableCompounds?.[compound] ?? 2) <= 1 ? 1 : 0
+  const strategyAggression = hashChance(
+    `${seed}:strategy-profile:${driver.teamId}`,
+  )
+  const changeScore =
+    (weatherMismatch ? 20 : 0) +
+    effectiveWear * 0.075 +
+    (tires.tireAgeLaps / Math.max(1, cliff)) * 4.2 +
+    (mustFitSecondDryCompound ? 4 : 0) +
+    strategyAggression * 1.6 -
+    setScarcity * 1.8
+  const threshold =
+    4.2 + hashChance(`${seed}:red-flag-call:${driver.id}:${lap}`) * 3.4
+
+  if (changeScore < threshold) {
+    return null
+  }
+
+  return {
+    compound,
+    reason: weatherMismatch
+      ? 'weather'
+      : effectiveWear >= 45
+        ? 'wear'
+        : 'strategic-reset',
+  }
+}
+
+/**
+ * Decide whether this car pits at the end of `lap`. Deterministic for
+ * (seed, driver, lap). Returns null to stay out.
+ */
+export function decidePitStop(options: {
+  seed: string
+  driver: Driver
+  car: Pick<
+    CarSnapshot,
+    | 'runtimeSystems'
+    | 'brakeTemperatureC'
+    | 'damage'
+    | 'pitStops'
+  > & { brakeOverheatSeconds?: number }
+  lap: number
+  raceLaps: number
+  underSafetyCar?: boolean
+  controlPhase?: PitControlPhase
+  neutralisationSecondsRemaining?: number | null
+  /** Time since the current neutralisation was declared. */
+  neutralisationElapsedSeconds?: number | null
+  /** Reference duration of one lap run behind the Safety Car. */
+  neutralisedLapSeconds?: number
+  /** Cars still classified, used to spot the tail of the field. */
+  fieldSize?: number
+  pitEntrySecondsAway?: number
+  overtakeDifficulty?: number
+  weather: WeatherState
+  trackGrip: number
+  forecast?: WeatherForecast
+  gapToAheadSeconds?: number | null
+  gapBehindSeconds?: number | null
+  position?: number
+  availableCompounds?: Partial<Record<TireCompound, number>>
+  pitLaneOpen?: boolean
+  projectedRejoinPosition?: number | null
+  teammateInPit?: boolean
+  /** The car ahead has already stopped, which is what an overcut plays on. */
+  carAheadHasPitted?: boolean
+  pitLaneOccupancy?: number
+  tireNomination?: TireNomination
+  mandatoryTwoDryCompounds?: boolean
+  mandatoryPitStop?: boolean
+  trackCondition?: TireTrackCondition
+  observedCalibration?: Pick<
+    TrackObservedCalibration,
+    | 'medianPitStopsPerDriver'
+    | 'medianStintLapsByCompound'
+    | 'strategySampleCount'
+  >
+}): PitDecision | null {
+  const {
+    seed,
+    driver,
+    car,
+    lap,
+    raceLaps,
+    underSafetyCar: legacyUnderSafetyCar,
+    controlPhase: requestedControlPhase,
+    neutralisationSecondsRemaining,
+    neutralisationElapsedSeconds,
+    neutralisedLapSeconds,
+    fieldSize,
+    pitEntrySecondsAway = 0,
+    overtakeDifficulty = 0.5,
+    weather,
+    trackGrip,
+    forecast,
+    gapToAheadSeconds,
+    gapBehindSeconds,
+    position,
+    availableCompounds,
+    pitLaneOpen = true,
+    projectedRejoinPosition,
+    teammateInPit = false,
+    carAheadHasPitted = false,
+    pitLaneOccupancy = 0,
+    tireNomination,
+    mandatoryTwoDryCompounds = true,
+    mandatoryPitStop = false,
+    trackCondition,
+    observedCalibration,
+  } = options
+  const tires = f1TiresFor(car)
+
+  // F1 strategy calls have no category-neutral Pirelli substitute.  SUPER
+  // FORMULA refuelling and control-tyre decisions are resolved by their own
+  // sourced runtime domains, not by this fallback.
+  if (!tires) {
+    return null
+  }
+
+  const controlPhase = normalizedPitControlPhase({
+    controlPhase: requestedControlPhase,
+    underSafetyCar: legacyUnderSafetyCar,
+  })
+  const underSafetyCar =
+    controlPhase === 'safety-car' || controlPhase === 'vsc'
+  const remaining = raceLaps - lap
+
+  if (!pitLaneOpen || remaining < pitTuning.minRemainingLaps) {
+    return null
+  }
+
+  const cliff = effectiveCliffLaps(
+    tires.tire,
+    driverPerformanceAbility(driver, 'tireManagement'),
+    tireNomination,
+  )
+  const observedStintLaps =
+    observedCalibration?.medianStintLapsByCompound[tires.tire]
+  const observedWeight = Math.min(
+    0.55,
+    (observedCalibration?.strategySampleCount ?? 0) / 30,
+  )
+  const strategicCliff =
+    observedStintLaps === undefined
+      ? cliff
+      : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
+  const effectiveWearPercent = Math.min(
+    100,
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
+  )
+  const targetStops = observedStopTarget({
+    calibration: observedCalibration,
+    driver,
+    seed,
+  })
+  const age = tires.tireAgeLaps
+  const usedDryCompounds = [...usedDistinct(tires.compoundsUsed)].filter(isDryCompound)
+  const wetRaceExemption = tires.compoundsUsed.some(
+    (compound) => !isDryCompound(compound),
+  )
+  const needsSecondCompound =
+    mandatoryTwoDryCompounds &&
+    !wetRaceExemption &&
+    usedDryCompounds.length < 2
+  const compoundRoll = hashChance(`${seed}:compound:${driver.id}:${lap}`)
+  const avoid = needsSecondCompound ? tires.tire : null
+  // What the surface itself is asking for right now, independent of any
+  // forecast. This is the authority on wet versus dry.
+  const measuredCategory = trackCondition
+    ? preferredTireCategoryFor(trackCondition)
+    : null
+  const rainFalling = (trackCondition?.rainIntensityMmH ?? 0) > 0.15
+  const dryRacingLine = measuredCategory === 'M' && !rainFalling
+  // A forecast may bring a stop forward, but only once the track has actually
+  // started to go: rain falling, or water already standing on the line. Acting
+  // on a dry line fits intermediates to a dry track and throws the race away.
+  const forecastIsActionable =
+    forecast?.willChange === true &&
+    forecast.secondsAhead <= 180 &&
+    forecast.confidence >= 0.65 &&
+    !dryRacingLine
+  const strategicWeather = forecastIsActionable ? forecast.weather : weather
+  const strategicGrip = forecastIsActionable ? forecast.trackGrip : trackGrip
+  const preferredCompound = chooseCompound(
+    remaining,
+    avoid,
+    compoundRoll,
+    strategicWeather,
+    strategicGrip,
+    forecastIsActionable ? undefined : trackCondition,
+  )
+  const availableCompound =
+    availableCompounds && (availableCompounds[preferredCompound] ?? 0) <= 0
+      ? (['S', 'M', 'H', 'I', 'W'] as TireCompound[]).find(
+          (candidate) =>
+            (availableCompounds[candidate] ?? 0) > 0 &&
+            compoundMatchesWeather(
+              candidate,
+              strategicWeather,
+              strategicGrip,
+              forecastIsActionable ? undefined : trackCondition,
+            ),
+        ) ?? preferredCompound
+      : preferredCompound
+  // A forecast may bring a car forward onto a wet tyre, but the track still has
+  // the final say on how wet. Full wets are for standing water: taking them off
+  // a heavy-rain label while the line holds a millimetre wastes the stop and
+  // leaves the car on far too much tread. Anticipation can still reach for
+  // intermediates early.
+  const wetCategoryCompound =
+    availableCompound === 'W' &&
+    trackCondition &&
+    preferredTireCategoryFor(trackCondition) !== 'W'
+      ? 'I'
+      : availableCompound
+  // Final surface check: a dry racing line never receives a wet-weather tyre,
+  // whatever the forecast or the grip estimate said. If the anticipation model
+  // reached for one anyway, fall back to the dry compound the stint needs.
+  const compound =
+    dryRacingLine && !isDryCompound(wetCategoryCompound)
+      ? chooseCompound(
+          remaining,
+          avoid,
+          compoundRoll,
+          'clear',
+          1,
+          trackCondition,
+        )
+      : wetCategoryCompound
+  const closeAhead =
+    typeof gapToAheadSeconds === 'number' &&
+    gapToAheadSeconds > 0 &&
+    gapToAheadSeconds < 1.35
+  const closeBehind =
+    typeof gapBehindSeconds === 'number' &&
+    gapBehindSeconds > 0 &&
+    gapBehindSeconds < 1.25
+  const frontRunner = (position ?? 99) <= 6
+  const inPitWindow = age >= strategicCliff - 4
+  // Judge the fitted tyre with a margin so a car is not called in every time
+  // the water drifts across the crossover; only pick a fresh compound on the
+  // exact preference.
+  const weatherMismatch = trackCondition
+    ? !compoundStillViable(tires.tire, trackCondition)
+    : !compoundMatchesWeather(tires.tire, weather, trackGrip, trackCondition)
+  const preferredTrackCategory = trackCondition
+    ? preferredTireCategoryFor(trackCondition)
+    : weather === 'heavy-rain' || trackGrip < 0.74
+      ? 'W'
+      : weather === 'light-rain' || trackGrip < 0.93
+        ? 'I'
+        : 'M'
+  const criticalWeatherMismatch =
+    (preferredTrackCategory === 'W' && isDryCompound(tires.tire)) ||
+    (preferredTrackCategory === 'M' && tires.tire === 'W')
+  const repairServiceAllowed = controlPhase !== 'vsc'
+
+  // Damage repair takes priority.
+  if (repairServiceAllowed && car.damage >= pitTuning.damagePitThreshold) {
+    return { compound, reason: 'damage' }
+  }
+
+  // Sensor state is authoritative over the age-only tire model. A badly
+  // overheated brake assembly also needs a safety stop before fade escalates.
+  const sustainedBrakeOverheat =
+    car.brakeTemperatureC >= 1090 &&
+    (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
+
+  if (repairServiceAllowed && sustainedBrakeOverheat) {
+    return { compound, reason: 'brake-cooling' }
+  }
+
+  if (effectiveWearPercent >= 88) {
+    return { compound, reason: 'tire-condition' }
+  }
+
+  const emergencyStop =
+    (repairServiceAllowed && car.damage >= pitTuning.damagePitThreshold) ||
+    (repairServiceAllowed && sustainedBrakeOverheat) ||
+    effectiveWearPercent >= 88 ||
+    criticalWeatherMismatch
+
+  if (teammateInPit && !emergencyStop) {
+    const acceptsDoubleStack =
+      underSafetyCar &&
+      effectiveWearPercent >= 76 &&
+      hashChance(`${seed}:double-stack-call:${driver.teamId}:${driver.id}:${lap}`) <
+        0.14
+
+    if (!acceptsDoubleStack) {
+      return null
+    }
+  }
+
+  // A green-flag pit lane can physically take more cars, but routine stops
+  // are normally staggered to avoid release risk and a compressed pit queue.
+  // Neutralised pit lanes still have release and double-stack constraints.
+  if (
+    !underSafetyCar &&
+    pitLaneOccupancy >= pitTuning.normalPitLaneCapacity &&
+    !emergencyStop
+  ) {
+    return null
+  }
+
+  if (
+    underSafetyCar &&
+    pitLaneOccupancy >= 5 &&
+    !emergencyStop &&
+    hashChance(`${seed}:neutralised-pit-traffic:${driver.id}:${lap}`) > 0.2
+  ) {
+    return null
+  }
+
+  if (weatherMismatch) {
+    const responseCycle = 3
+    const responseSlot = Math.floor(
+      hashChance(`${seed}:weather-response:${driver.id}`) * responseCycle,
+    )
+
+    // Non-critical crossover calls are deliberately split across several
+    // laps. Teams still react immediately to slicks in heavy rain, while an
+    // inter-to-slick transition leaves room for traffic and crossover judgement.
+    if (
+      !criticalWeatherMismatch &&
+      !underSafetyCar &&
+      lap % responseCycle !== responseSlot
+    ) {
+      return null
+    }
+
+    return { compound, reason: 'weather' }
+  }
+
+  const rejoinLoss =
+    projectedRejoinPosition === null || projectedRejoinPosition === undefined
+      ? 0
+      : projectedRejoinPosition - (position ?? projectedRejoinPosition)
+  const opportunity = estimatePitOpportunity({
+    tireAgeLaps: age,
+    tireWearPercent: effectiveWearPercent,
+    cliffLaps: strategicCliff,
+    remainingLaps: remaining,
+    underSafetyCar,
+    controlPhase,
+    neutralisationSecondsRemaining,
+    pitEntrySecondsAway,
+    overtakeDifficulty,
+    gapToAheadSeconds,
+    projectedRejoinPositionLoss: rejoinLoss,
+    teammateInPit,
+    carAheadHasPitted,
+    tireLifeRemaining: clamp(1 - age / Math.max(1, strategicCliff), 0, 1),
+  })
+
+  if (
+    !underSafetyCar &&
+    rejoinLoss >= 5 &&
+    age < strategicCliff &&
+    !emergencyStop
+  ) {
+    return null
+  }
+
+  // Deadline for the mandatory second compound.
+  if (needsSecondCompound && remaining <= 10) {
+    return { compound, reason: 'compound-rule' }
+  }
+
+  if (mandatoryPitStop && car.pitStops === 0 && remaining <= 10) {
+    return { compound, reason: 'mandatory-stop' }
+  }
+
+  const targetStopsSatisfied =
+    targetStops !== null && car.pitStops >= targetStops
+
+  if (
+    targetStopsSatisfied &&
+    !underSafetyCar &&
+    age < strategicCliff + 2 &&
+    effectiveWearPercent < 88
+  ) {
+    return null
+  }
+
+  if (
+    targetStops !== null &&
+    car.pitStops < targetStops &&
+    age >= Math.max(4, strategicCliff - 4) &&
+    remaining <=
+      (targetStops - car.pitStops) * Math.max(6, strategicCliff * 0.72)
+  ) {
+    return { compound, reason: 'wear' }
+  }
+
+  if (
+    forecastIsActionable &&
+    underSafetyCar &&
+    !compoundMatchesWeather(tires.tire, strategicWeather, strategicGrip) &&
+    age >= strategicCliff * 0.35
+  ) {
+    return { compound, reason: 'forecast' }
+  }
+
+  const teamStrategyAggression = hashChance(
+    `${seed}:strategy-profile:${driver.teamId}`,
+  )
+  const callVariation =
+    (hashChance(`${seed}:neutralisation-call:${driver.id}:${lap}`) - 0.5) * 3.2
+  const trackPositionPremium =
+    (frontRunner ? 1.2 : 0) +
+    (frontRunner && remaining <= 10 ? 2.8 : 0) +
+    Math.max(0, rejoinLoss) * clamp(overtakeDifficulty, 0, 1) * 0.45
+  const neutralisationThreshold =
+    (controlPhase === 'safety-car' ? 1.6 : 2.4) +
+    (1 - teamStrategyAggression) * 2.8 +
+    trackPositionPremium +
+    callVariation
+  const minimumNeutralisationAgeShare =
+    controlPhase === 'safety-car'
+      ? 0.32 + (1 - teamStrategyAggression) * 0.16
+      : 0.4 + (1 - teamStrategyAggression) * 0.14
+  const vscEndingBeforeEntry =
+    controlPhase === 'vsc' &&
+    neutralisationSecondsRemaining !== null &&
+    neutralisationSecondsRemaining !== undefined &&
+    neutralisationSecondsRemaining <= pitEntrySecondsAway + 5
+
+  // A Safety Car stop is only cheap while the field is still strung out. Once
+  // the queue has formed behind the Safety Car, the cars that stayed out are
+  // nose to tail, and a stop a lap later rejoins behind all of them: the pit
+  // loss is paid in full against a compressed field. So the stop is taken on
+  // the lap the Safety Car is called, and after that only by cars near the
+  // tail of the field, who have little track position left to lose.
+  const safetyCarQueueFormed =
+    controlPhase === 'safety-car' &&
+    neutralisationElapsedSeconds !== null &&
+    neutralisationElapsedSeconds !== undefined &&
+    neutralisationElapsedSeconds > (neutralisedLapSeconds ?? 130)
+  const nearBackOfField =
+    fieldSize !== undefined &&
+    position !== undefined &&
+    position >= fieldSize - 4
+  const missedSafetyCarWindow = safetyCarQueueFormed && !nearBackOfField
+
+  // Neutralisation creates an opportunity, not a command. Stable team traits,
+  // track position and this driver's rejoin traffic split the field's calls.
+  if (
+    underSafetyCar &&
+    !vscEndingBeforeEntry &&
+    !missedSafetyCarWindow &&
+    age >= strategicCliff * minimumNeutralisationAgeShare &&
+    opportunity.netGainSeconds >= neutralisationThreshold
+  ) {
+    return { compound, reason: 'safety-car' }
+  }
+
+  if (
+    !underSafetyCar &&
+    closeAhead &&
+    inPitWindow &&
+    remaining > 8 &&
+    rejoinLoss <= 3 &&
+    opportunity.netGainSeconds > 0.45
+  ) {
+    const roll =
+      hashChance(`${seed}:undercut:${driver.id}:${lap}`) +
+      driverSkillBlend(driver, {
+        overtakingSkill: 0.65,
+        raceAwareness: 0.2,
+        trafficManagement: 0.15,
+      }) * 0.18
+
+    if (roll > 0.58) {
+      return { compound, reason: 'undercut' }
+    }
+  }
+
+  // Leading/front-running cars with tire life can deliberately stay out to
+  // overcut a rival that is boxed in traffic.
+  if (
+    !underSafetyCar &&
+    frontRunner &&
+    closeBehind &&
+    age >= strategicCliff - 2 &&
+    age <= strategicCliff + 2 &&
+    driverPerformanceAbility(driver, 'tireManagement') > 0.8 &&
+    hashChance(`${seed}:overcut-hold:${driver.id}:${lap}`) < 0.64
+  ) {
+    return null
+  }
+
+  if (!underSafetyCar && closeAhead && closeBehind && inPitWindow && remaining > 6) {
+    if (
+      opportunity.netGainSeconds > 0.2 &&
+      hashChance(`${seed}:traffic:${driver.id}:${lap}`) < 0.42
+    ) {
+      return { compound, reason: 'traffic' }
+    }
+  }
+
+  // Past the cliff: box now.
+  if (age >= strategicCliff + 2) {
+    return {
+      compound,
+      reason:
+        frontRunner &&
+        driverPerformanceAbility(driver, 'tireManagement') > 0.84
+          ? 'overcut'
+          : 'wear',
+    }
+  }
+
+  // If a reliable weather change is close, stretch marginal tire wear to
+  // avoid paying for an extra stop right before the crossover.
+  if (forecastIsActionable && age >= strategicCliff - 3) {
+    return null
+  }
+
+  // Inside the pit window: staggered entries via a per-lap roll.
+  if (
+    age >= strategicCliff - 3 &&
+    hashChance(`${seed}:pit:${driver.id}:${lap}`) < 0.3
+  ) {
+    return { compound, reason: 'wear' }
+  }
+
+  return null
+}
+
+/**
+ * Read-only companion for the timing UI. It shares the strategy model but
+ * never commits a pit stop or consumes a tire set.
+ */
+export function strategyOutlookFor(options: {
+  seed: string
+  driver: Driver
+  car: Pick<
+    CarSnapshot,
+    | 'runtimeSystems'
+    | 'brakeTemperatureC'
+    | 'damage'
+  > & { brakeOverheatSeconds?: number }
+  lap: number
+  raceLaps: number
+  underSafetyCar: boolean
+  weather: WeatherState
+  trackGrip: number
+  tireNomination?: TireNomination
+  pitLaneLossSeconds?: number
+  gapToAheadSeconds?: number | null
+  projectedRejoinPositionLoss?: number
+  teammateInPit?: boolean
+  /** The car ahead has already stopped, which is what an overcut plays on. */
+  carAheadHasPitted?: boolean
+  observedCalibration?: Pick<
+    TrackObservedCalibration,
+    'medianStintLapsByCompound' | 'strategySampleCount'
+  >
+  trackCondition?: TireTrackCondition
+}): StrategyOutlook | null {
+  const {
+    car,
+    driver,
+    lap,
+    raceLaps,
+    seed,
+    trackGrip,
+    underSafetyCar,
+    weather,
+    tireNomination,
+    pitLaneLossSeconds,
+    gapToAheadSeconds,
+    projectedRejoinPositionLoss,
+    teammateInPit,
+    carAheadHasPitted,
+    observedCalibration,
+    trackCondition,
+  } = options
+  const tires = f1TiresFor(car)
+
+  // The UI must show SF control-tyre information from the SF runtime rather
+  // than styling a Pirelli recommendation as a universal strategy outlook.
+  if (!tires) {
+    return null
+  }
+
+  const cliff = effectiveCliffLaps(
+    tires.tire,
+    driverPerformanceAbility(driver, 'tireManagement'),
+    tireNomination,
+  )
+  const observedStintLaps =
+    observedCalibration?.medianStintLapsByCompound[tires.tire]
+  const observedWeight = Math.min(
+    0.55,
+    (observedCalibration?.strategySampleCount ?? 0) / 30,
+  )
+  const strategicCliff =
+    observedStintLaps === undefined
+      ? cliff
+      : cliff * (1 - observedWeight) + observedStintLaps * observedWeight
+  const effectiveWearPercent = Math.min(
+    100,
+    tires.tireWearPercent + (tires.tireThermalStressPercent ?? 0),
+  )
+  const remaining = Math.max(0, raceLaps - lap)
+  const compound = chooseCompound(
+    remaining,
+    // The two-compound rule is dry-only; in changing weather, retaining the
+    // correct wet compound is a valid and often preferred prediction.
+    weather === 'clear' ? tires.tire : null,
+    hashChance(`${seed}:outlook:${driver.id}:${lap}`),
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const weatherMismatch = !compoundMatchesWeather(
+    tires.tire,
+    weather,
+    trackGrip,
+    trackCondition,
+  )
+  const estimatedStopLap = Math.min(
+    raceLaps,
+    Math.max(
+      lap,
+      lap + Math.max(0, Math.ceil(strategicCliff - tires.tireAgeLaps)),
+    ),
+  )
+  const opportunity = estimatePitOpportunity({
+    tireAgeLaps: tires.tireAgeLaps,
+    tireWearPercent: effectiveWearPercent,
+    cliffLaps: strategicCliff,
+    remainingLaps: remaining,
+    pitLaneLossSeconds,
+    underSafetyCar,
+    gapToAheadSeconds,
+    projectedRejoinPositionLoss,
+    teammateInPit,
+    carAheadHasPitted,
+    tireLifeRemaining: clamp(
+      1 - tires.tireAgeLaps / Math.max(1, strategicCliff),
+      0,
+      1,
+    ),
+  })
+  const confidence: StrategyOutlook['confidence'] =
+    weatherMismatch || underSafetyCar || effectiveWearPercent >= 82
+      ? 'high'
+      : tires.tireAgeLaps >= strategicCliff - 4
+        ? 'medium'
+        : 'low'
+  const shared = {
+    expectedNetGainSeconds: opportunity.netGainSeconds,
+    estimatedPitLossSeconds: opportunity.estimatedPitLossSeconds,
+    confidence,
+  }
+
+  if (weatherMismatch || car.damage >= pitTuning.damagePitThreshold) {
+    return {
+      compound,
+      estimatedStopLap: lap,
+      reason: weatherMismatch ? 'weather crossover' : 'damage repair',
+      urgency: 'box',
+      ...shared,
+    }
+  }
+
+  const sustainedBrakeOverheat =
+    car.brakeTemperatureC >= 1090 &&
+    (car.brakeOverheatSeconds ?? 0) >= pitTuning.brakeOverheatPitSeconds
+
+  if (sustainedBrakeOverheat || effectiveWearPercent >= 88) {
+    return {
+      compound,
+      estimatedStopLap: lap,
+      reason: sustainedBrakeOverheat ? 'sustained brake overheating' : 'measured tire wear',
+      urgency: 'box',
+      ...shared,
+    }
+  }
+
+  if (underSafetyCar && tires.tireAgeLaps >= strategicCliff * 0.38) {
+    return {
+      compound,
+      estimatedStopLap: lap,
+      reason: 'SC/VSC opportunity',
+      urgency: 'box',
+      ...shared,
+    }
+  }
+
+  if (tires.tireAgeLaps >= strategicCliff - 3) {
+    return {
+      compound,
+      estimatedStopLap,
+      reason: 'wear window',
+      urgency: opportunity.netGainSeconds > 0.5 ? 'box' : 'window',
+      ...shared,
+    }
+  }
+
+  return {
+    compound,
+    estimatedStopLap,
+    reason: 'protect tire life',
+    urgency: 'extend',
+    ...shared,
+  }
+}
+
+/**
+ * Per-stop variance drawn from an exponential distribution, in seconds.
+ *
+ * A pit stop has a floor and a tail: the crew cannot beat its own best, but
+ * anything from a reluctant wheel nut to a driver stopping half a metre long
+ * costs time off that floor. An exponential draw is the simplest shape with
+ * that property, and unlike the uniform band it replaces it leaves the fast
+ * stops fast.
+ *
+ * Truncated at the far tail so a hash landing next to 1 cannot return an
+ * unbounded time. Genuine failures are the separate slow-stop draw.
+ */
+export function stopVarianceSecondsFor(uniform: number) {
+  const bounded = clamp(uniform, 0, 0.999)
+
+  return -Math.log(1 - bounded) * pitTuning.stopVarianceScaleSeconds
+}
+
+/** Total time lost for a pit stop (lane transit + stationary + variance). */
+export function pitStopLossSeconds(
+  seed: string,
+  driverId: string,
+  team: Team,
+  stopIndex: number,
+  repairsDamage: boolean,
+  modeledPitLaneLossSeconds: number = pitTuning.pitLaneLossSeconds,
+): number {
+  const variance = stopVarianceSecondsFor(
+    hashChance(`${seed}:stop-var:${driverId}:${stopIndex}`),
+  )
+  const slowStop =
+    hashChance(`${seed}:slow-stop:${driverId}:${stopIndex}`) <
+    pitTuning.slowStopChance
+      ? pitTuning.slowStopExtraSeconds *
+        (0.5 + hashChance(`${seed}:slow-stop-size:${driverId}:${stopIndex}`) * 0.5)
+      : 0
+
+  return (
+    modeledPitLaneLossSeconds +
+    pitTuning.crewBaseSeconds +
+    (1 - team.pitCrewSpeed) * pitTuning.crewSpreadSeconds +
+    variance +
+    slowStop +
+    (repairsDamage ? pitTuning.damageRepairSeconds : 0)
+  )
+}

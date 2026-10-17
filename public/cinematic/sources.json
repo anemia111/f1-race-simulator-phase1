@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "file": "asphalt-color.jpg",
+      "source": "https://polyhaven.com/a/aerial_asphalt_01",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "28bfd71288b364f825e0feb750e487410422d80bf3c31d32da01cae3bf085b58",
+      "bytes": 635143,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "asphalt-normal.jpg",
+      "source": "https://polyhaven.com/a/aerial_asphalt_01",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "7a58cb4460f75b66359b8e19bc92585554a79c2b0009e2b9e21eccac0a58d3f6",
+      "bytes": 560227,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "asphalt-rough.jpg",
+      "source": "https://polyhaven.com/a/aerial_asphalt_01",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "19ca745417e36a1cd1114411801933b3144a351d1409d0d9caa1046b9a20c0ec",
+      "bytes": 312445,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "daylight.hdr",
+      "source": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "fd94c84997b8a3c353b62c2125a9b44e19509956986a126e472684432a02d798",
+      "bytes": 1435119,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "formula-2026-original.glb",
+      "source": "original:scripts/generate-cinematic-car.mjs",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "8a72b95c1074371ae845100fb77e915c0617d98b7bbacd8be8db00bdf22fbfa5",
+      "bytes": 198056,
+      "confidence": "category reconstruction; not team CAD"
+    },
+    {
+      "file": "grass-color.jpg",
+      "source": "https://polyhaven.com/a/aerial_grass_rock",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "57b8041bfe0d0f01430e4dbaad45e7ddddf0a9fc97317f90dbc51f7b0d9e1b5d",
+      "bytes": 666655,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "grass-normal.jpg",
+      "source": "https://polyhaven.com/a/aerial_grass_rock",
+      "license": "CC0-1.0",
+      "acquiredAt": "2026-10-16",
+      "sha256": "1aa3e23bff453f152e089b9f83aa36b4901651e019f7e2ca01d5331a9bbbda78",
+      "bytes": 904956,
+      "confidence": "generic material; not Suzuka capture"
+    },
+    {
+      "file": "qvist-2026-near.glb",
+      "source": "https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42",
+      "creator": "Qvist_designs",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "metadataSource": "https://api.sketchfab.com/v3/models/ea3bde709b1e4dc9b0ec8557d106ed42",
+      "sourcePublishedAt": "2025-04-15",
+      "preparedSourceRevision": "71fafa72b34bfbed07a01d8bc93b969246e7b4e2",
+      "acquiredAt": "2026-10-16",
+      "sha256": "3723c5f29917a37c449bd56e7ca9ba6d81d5ec355db7832f0095d555605dc5e5",
+      "bytes": 732312,
+      "confidence": "independent 2026 concept; not team CAD or final-regulation certification",
+      "changes": "LOD simplification, metre/axis normalization, aero separation, rig pivots, static merging, runtime palette, Meshopt compression; see qvist-attribution.txt"
+    },
+    {
+      "file": "vegetation.glb",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "generator": "@dgreenheck/ez-tree@1.1.0",
+      "license": "MIT",
+      "creator": "Daniel Greenheck",
+      "acquiredAt": "2026-10-17",
+      "sha256": "cba639f495845f4bbf754d6674192d442b08c3e03139fd183058839dba8908e0",
+      "bytes": 794996,
+      "confidence": "Generic generated vegetation; estimated placement, not measured Suzuka trees",
+      "changes": "Metric normalization, geometry budget, LOD simplification and Meshopt compression"
+    },
+    {
+      "file": "leaf-ash.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "generator": "@dgreenheck/ez-tree@1.1.0",
+      "license": "MIT",
+      "creator": "Daniel Greenheck",
+      "acquiredAt": "2026-10-17",
+      "sha256": "5ec987db3829a839856c32c79b18a33a78f209e911cad55c65abfb77f30e2d29",
+      "bytes": 181423,
+      "confidence": "Generic generated vegetation; estimated placement, not measured Suzuka trees",
+      "changes": "Original bundled leaf RGBA texture; unmodified"
+    },
+    {
+      "file": "leaf-oak.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "generator": "@dgreenheck/ez-tree@1.1.0",
+      "license": "MIT",
+      "creator": "Daniel Greenheck",
+      "acquiredAt": "2026-10-17",
+      "sha256": "24451223cf396d22910a4932b8bb996a7274e63d81e24128c96a430ab67822b1",
+      "bytes": 238115,
+      "confidence": "Generic generated vegetation; estimated placement, not measured Suzuka trees",
+      "changes": "Original bundled leaf RGBA texture; unmodified"
+    },
+    {
+      "file": "leaf-pine.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "generator": "@dgreenheck/ez-tree@1.1.0",
+      "license": "MIT",
+      "creator": "Daniel Greenheck",
+      "acquiredAt": "2026-10-17",
+      "sha256": "88be36a2387554ac4b7c7d1549eae454a37ad896e8e33a7d6ae5956bd169ab08",
+      "bytes": 303684,
+      "confidence": "Generic generated vegetation; estimated placement, not measured Suzuka trees",
+      "changes": "Original bundled leaf RGBA texture; unmodified"
+    },
+    {
+      "file": "tree-ash-impostor.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "license": "MIT",
+      "creator": "Daniel Greenheck; render derived by this project",
+      "acquiredAt": "2026-10-17",
+      "sha256": "1050cd08775532e2852c9a470bd0c5837b16d8e087d38240e3786a59ca879fa3",
+      "bytes": 132066,
+      "confidence": "Generic generated tree, not Suzuka survey",
+      "changes": "512px neutral-light orthographic render of near tree for distant camera-facing impostor. 20m square framing; billboard centre 7m above root."
+    },
+    {
+      "file": "tree-oak-impostor.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "license": "MIT",
+      "creator": "Daniel Greenheck; render derived by this project",
+      "acquiredAt": "2026-10-17",
+      "sha256": "bf698a81cd74699a5e1e76c91ecb2b02bf28cbcc5e739c9ee89bd4ab71232f45",
+      "bytes": 140541,
+      "confidence": "Generic generated tree, not Suzuka survey",
+      "changes": "512px neutral-light orthographic render of near tree for distant camera-facing impostor. 20m square framing; billboard centre 7m above root."
+    },
+    {
+      "file": "tree-pine-impostor.png",
+      "source": "https://github.com/dgreenheck/ez-tree",
+      "license": "MIT",
+      "creator": "Daniel Greenheck; render derived by this project",
+      "acquiredAt": "2026-10-17",
+      "sha256": "2b388a3c6fe9c3ce702bf9d05be37f82d49e84e9832cac18f344035333f253be",
+      "bytes": 62030,
+      "confidence": "Generic generated tree, not Suzuka survey",
+      "changes": "512px neutral-light orthographic render of near tree for distant camera-facing impostor. 20m square framing; billboard centre 7m above root."
+    }
+  ],
+  "road": {
+    "banking": "unavailable; neutral",
+    "centerline": "src/data/realTrackLayouts.ts; MultiViewer/OpenF1-derived; uniform metric scaling",
+    "elevation": "src/data/measuredRoadProfiles.ts; GSI DEM; 96 stations",
+    "sources": [
+      "https://www.openstreetmap.org/copyright",
+      "https://maps.gsi.go.jp/development/elevation_s.html",
+      "https://www.suzukacircuit.jp/eng/course_s/"
+    ],
+    "facilities": "estimated relative layout",
+    "terrain": "artistic nearest-road infill",
+    "width": "estimated local sections constrained to official 10-16m range",
+    "osmAttribution": "© OpenStreetMap contributors, ODbL; existing road profile alignment"
+  }
+}

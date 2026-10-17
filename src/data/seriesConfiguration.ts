@@ -723,7 +723,32 @@ export function parsePersistedSeriesConfiguration(
     if (new TextEncoder().encode(raw).byteLength > MAX_CONFIGURATION_FILE_BYTES) {
       return null
     }
-    return parseConfigurationValue(JSON.parse(raw) as unknown, series)
+    const configured = parseConfigurationValue(JSON.parse(raw) as unknown, series)
+    // Migrate only the former shipped custom grid. User-created lineups and
+    // imported backups remain explicit choices and are not silently replaced.
+    if (series.id === 'f1-custom') {
+      const formerSeats = series.drivers.map(driver => {
+        if (driver.id === 'lance_stroll') return ['charles_leclerc', 'aston-martin', 16]
+        if (driver.id === 'charles_leclerc') return ['yuki_nakayama', 'ferrari', 31]
+        if (driver.id === 'isack_hadjar') return ['yuki_tsunoda', 'red-bull-racing', 22]
+        if (driver.id === 'arvid_lindblad') return ['isack_hadjar', 'racing-bulls', 6]
+        return [driver.id, driver.teamId, driver.id === 'esteban_ocon' ? 67 : driver.carNumber]
+      })
+      const matchesFormerGrid = configured.drivers.length === formerSeats.length &&
+        formerSeats.every(([id, teamId, carNumber]) => configured.drivers.some(
+          driver => driver.id === id && driver.teamId === teamId && driver.carNumber === carNumber,
+        ))
+      if (matchesFormerGrid) {
+        const oldById = new Map(configured.drivers.map(driver => [driver.id, driver]))
+        configured.drivers = series.drivers.map(driver => {
+          const old = oldById.get(driver.id)
+          return { ...driver, skills: { ...(old?.skills ?? driver.skills) },
+            potential: old?.potential ?? driver.potential }
+        })
+        configured.migrationHistory.push('2026 official F1 race lineup restored; retained driver ratings')
+      }
+    }
+    return configured
   } catch {
     return null
   }

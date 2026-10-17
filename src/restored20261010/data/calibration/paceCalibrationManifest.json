@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "calibrationVersion": "2026.10.11.1",
+  "generatedAt": "2026-10-11T03:55:00.000Z",
+  "season": 2026,
+  "eventCount": 31,
+  "series": [
+    {
+      "id": "f1-custom",
+      "eventCount": 26,
+      "latestObservedEventDate": "2026-10-11",
+      "speedReferenceCount": 11
+    },
+    {
+      "id": "super-formula",
+      "eventCount": 5,
+      "latestObservedEventDate": "2026-07-19",
+      "speedReferenceCount": 0
+    }
+  ],
+  "generator": "scripts/update-pace-calibration.mjs + scripts/refresh-f1-qualifying-references.mjs",
+  "sourcePolicy": "Official result classifications establish outcomes; OpenF1 timing, control, stint, pit, interval, and weather feeds establish observed lap distributions; OpenF1 car telemetry and FIA speed-trap records establish observed straight-line speed."
+}

@@ -49,6 +49,7 @@ import type { SeriesId } from '../series/types'
 import { createSeededRandom, normalizeSimulationSeed } from '../simulation/random'
 
 type FreeModeBuilderProps = {
+  onOpenMotorsport?: (id: import('../restored20261010/motorsport/types').ChampionshipId, free?: boolean) => void
   context: FreeModeBuildContext
   initialConfiguration: FreeModeConfiguration
   isOpen: boolean
@@ -219,6 +220,7 @@ function fieldMeanOverall(
 }
 
 export function FreeModeBuilder({
+  onOpenMotorsport,
   context,
   initialConfiguration,
   isOpen,
@@ -722,11 +724,13 @@ export function FreeModeBuilder({
           <label>
             <span>Category</span>
             <select
-              onChange={(event) =>
-                setCategory(
-                  event.target.value as FreeModeConfiguration['categoryId'],
-                )
-              }
+              onChange={(event) => {
+                const value = event.target.value
+                if (value.startsWith('motorsport:')) {
+                  onClose()
+                  onOpenMotorsport?.(value.slice(11) as import('../restored20261010/motorsport/types').ChampionshipId, true)
+                } else setCategory(value as FreeModeConfiguration['categoryId'])
+              }}
               value={configuration.categoryId}
             >
               {Object.entries(freeModeCategoryLabels).map(([id, label]) => (
@@ -734,6 +738,12 @@ export function FreeModeBuilder({
                   {label}
                 </option>
               ))}
+              {onOpenMotorsport && <>
+                <option value="motorsport:wec">FIA WEC</option>
+                <option value="motorsport:super-gt">SUPER GT</option>
+                <option value="motorsport:kyojo">KYOJO CUP</option>
+                <option value="motorsport:indycar">INDYCAR</option>
+              </>}
             </select>
           </label>
           <label className="free-mode-track-select">

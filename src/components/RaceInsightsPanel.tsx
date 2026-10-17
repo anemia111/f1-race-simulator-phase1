@@ -295,7 +295,7 @@ export function RaceInsightsPanel({
             <span>Battery</span><strong>{Math.round(f1Runtime.ersBatteryPercent)}% / {f1Runtime.ersMode}</strong>
             <span>MGU-K output</span><strong>{f1Runtime.ersPowerKw} kW / SIM model</strong>
             <span>Detection result</span><strong>{f1Runtime.overtakeEligibility ? `${f1Runtime.overtakeEligibility.eligible ? 'IN GAP' : 'OUT OF GAP'} ${f1Runtime.overtakeEligibility.detectedGapSeconds.toFixed(3)}s / Z${f1Runtime.overtakeEligibility.controlLineIndex + 1}` : 'NO SAMPLE'}</strong>
-            <span>Overtake energy</span><strong>{f1Runtime.overtakeEnergyRemainingMj.toFixed(2)} MJ / 0.50</strong>
+            <span>Extra recharge allowance</span><strong>{(f1Runtime.energyStore?.rechargeRule.additionalAllowanceMJ ?? 0).toFixed(2)} MJ / lap</strong>
             <span>Harvested</span><strong>{f1Runtime.energyHarvestedThisLapMj.toFixed(2)} MJ / lap</strong>
             <span>Deployed</span><strong>{f1Runtime.energyDeployedThisLapMj.toFixed(2)} MJ / lap</strong>
             <span>Super clipping</span><strong className={f1Runtime.superClippingIntensity >= 0.63 ? 'flag-yellow' : undefined}>{f1Runtime.superClippingIntensity < 0.04 ? 'OFF' : `${Math.round(f1Runtime.superClippingIntensity * 100)}% / ${f1Runtime.superClippingDurationSeconds.toFixed(1)}s`}</strong>

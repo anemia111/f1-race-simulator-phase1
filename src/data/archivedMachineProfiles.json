@@ -1,0 +1,62 @@
+{
+  "f2": {
+    "sourceRevision": "3c1f971^",
+    "sourceFile": "src/simulation/categoryPhysics.ts",
+    "status": "archived-simulation-inputs",
+    "values": {
+      "combustionPowerKw": 456.3,
+      "dragAreaScale": 1.08,
+      "drivetrainEfficiency": 0.93,
+      "gearCount": 6.0,
+      "hybridDeploymentPowerLimitKw": 0.0,
+      "maximumBrakeDecelerationMps2": 34.34,
+      "liftAreaM2": 3.05,
+      "peakTyreFrictionCoefficient": 1.62,
+      "wheelRadiusM": 0.34,
+      "gearSpread": 4.2,
+      "peakTorqueRevFraction": 0.66,
+      "tyreLoadSensitivity": 0.13,
+      "wheelbaseM": 3.135,
+      "trackWidthM": 1.9,
+      "centreOfGravityHeightM": 0.31,
+      "maximumEngineRpm": 8750.0,
+      "minimumEngineRpm": 3600.0,
+      "minimumMassKg": 795.0,
+      "overtakeBoostPowerKw": 0.0,
+      "partialAeroDragMultiplier": 0.91,
+      "rollingResistanceCoefficient": 0.013,
+      "straightAeroDragMultiplier": 0.8,
+      "topGearDesignSpeedKph": 326.0
+    }
+  },
+  "f3": {
+    "sourceRevision": "3c1f971^",
+    "sourceFile": "src/simulation/categoryPhysics.ts",
+    "status": "archived-simulation-inputs",
+    "values": {
+      "combustionPowerKw": 279.4,
+      "dragAreaScale": 0.76,
+      "drivetrainEfficiency": 0.92,
+      "gearCount": 6.0,
+      "hybridDeploymentPowerLimitKw": 0.0,
+      "maximumBrakeDecelerationMps2": 18.64,
+      "liftAreaM2": 2.25,
+      "peakTyreFrictionCoefficient": 1.52,
+      "wheelRadiusM": 0.33,
+      "gearSpread": 4.3,
+      "peakTorqueRevFraction": 0.64,
+      "tyreLoadSensitivity": 0.14,
+      "wheelbaseM": 3.09,
+      "trackWidthM": 1.83,
+      "centreOfGravityHeightM": 0.31,
+      "maximumEngineRpm": 8000.0,
+      "minimumEngineRpm": 3400.0,
+      "minimumMassKg": 699.0,
+      "overtakeBoostPowerKw": 0.0,
+      "partialAeroDragMultiplier": 0.92,
+      "rollingResistanceCoefficient": 0.0135,
+      "straightAeroDragMultiplier": 0.83,
+      "topGearDesignSpeedKph": 288.0
+    }
+  }
+}

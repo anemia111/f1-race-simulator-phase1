@@ -1,0 +1,432 @@
+[
+  {
+    "schemaVersion": 1,
+    "calibrationVersion": "2026.07.26.1",
+    "series": "super-formula",
+    "season": 2026,
+    "eventId": "super-formula-motegi-round-2-2026",
+    "eventName": "SUPER FORMULA Motegi Round 2",
+    "trackId": "motegi-sf",
+    "round": 2,
+    "eventDate": "2026-04-05",
+    "qualifying": {
+      "poleSeconds": 90.369,
+      "top3MedianSeconds": null,
+      "top5MedianSeconds": null,
+      "theoreticalBestSeconds": null,
+      "selectedReferenceSeconds": 90.369,
+      "selectedMethod": "Official pole fallback; complete per-lap Q3 distribution unavailable",
+      "fieldP10DeltaSeconds": null,
+      "fieldMedianDeltaSeconds": null,
+      "fieldP90DeltaSeconds": null,
+      "validLapCount": 0,
+      "deletedOrInvalidRate": null,
+      "status": "official",
+      "confidence": 0.66
+    },
+    "race": {
+      "cleanLapReferenceSeconds": null,
+      "earlyStintMedianSeconds": null,
+      "middleStintMedianSeconds": null,
+      "lateStintMedianSeconds": null,
+      "greenLapP10Seconds": null,
+      "greenLapMedianSeconds": null,
+      "greenLapP90Seconds": null,
+      "winnerAverageSeconds": null,
+      "pitLaneLossSeconds": null,
+      "inLapLossSeconds": null,
+      "outLapLossSeconds": null,
+      "clearAirTrafficDeltaSeconds": null,
+      "cleanLapCount": 0,
+      "totalLapCount": 0,
+      "compoundMedianSeconds": {},
+      "stintMedianSeconds": [],
+      "fuelGainPerLapSeconds": null,
+      "tireDegradationPerLapSeconds": null,
+      "status": "unverified",
+      "confidence": 0.2
+    },
+    "simulation": {
+      "neutralBaseLapSeconds": 89.773,
+      "qualifyingOffsetSeconds": -0.596,
+      "expectedGreenRaceDeltaSeconds": 7.5,
+      "raceModelCorrectionSeconds": 0,
+      "residualSigmaSeconds": 0.72,
+      "calibrationSeedCount": 100,
+      "validation": {
+        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "qualifyingSeedCount": 100,
+        "raceSeedCount": 0,
+        "poleMedianSeconds": 90.293,
+        "top3MedianSeconds": 90.369,
+        "fieldMedianDeltaSeconds": 0.398,
+        "raceGreenMedianSeconds": null,
+        "qualifyingReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": null
+      }
+    },
+    "sources": [
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA Motegi Round 2 official result",
+        "url": "https://superformula.net/sf3/race/24415/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA 2026 official calendar and results",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      }
+    ],
+    "notes": [
+      "Round 1 was heavily affected by rain, safety cars, and a red flag; the drier Round 2 qualifying result is selected.",
+      "No public machine-readable all-lap feed was available, so no race-clear median is asserted as observed."
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "calibrationVersion": "2026.07.26.1",
+    "series": "super-formula",
+    "season": 2026,
+    "eventId": "super-formula-autopolis-round-3-2026",
+    "eventName": "SUPER FORMULA Autopolis Round 3",
+    "trackId": "autopolis-sf",
+    "round": 3,
+    "eventDate": "2026-04-25",
+    "qualifying": {
+      "poleSeconds": 85.866,
+      "top3MedianSeconds": 86.139,
+      "top5MedianSeconds": null,
+      "theoreticalBestSeconds": null,
+      "selectedReferenceSeconds": 86.139,
+      "selectedMethod": "Derived top-three reference from official classification",
+      "fieldP10DeltaSeconds": null,
+      "fieldMedianDeltaSeconds": null,
+      "fieldP90DeltaSeconds": null,
+      "validLapCount": 0,
+      "deletedOrInvalidRate": null,
+      "status": "official",
+      "confidence": 0.82
+    },
+    "race": {
+      "cleanLapReferenceSeconds": null,
+      "earlyStintMedianSeconds": null,
+      "middleStintMedianSeconds": null,
+      "lateStintMedianSeconds": null,
+      "greenLapP10Seconds": null,
+      "greenLapMedianSeconds": null,
+      "greenLapP90Seconds": null,
+      "winnerAverageSeconds": null,
+      "pitLaneLossSeconds": null,
+      "inLapLossSeconds": null,
+      "outLapLossSeconds": null,
+      "clearAirTrafficDeltaSeconds": null,
+      "cleanLapCount": 0,
+      "totalLapCount": 0,
+      "compoundMedianSeconds": {},
+      "stintMedianSeconds": [],
+      "fuelGainPerLapSeconds": null,
+      "tireDegradationPerLapSeconds": null,
+      "status": "unverified",
+      "confidence": 0.2
+    },
+    "simulation": {
+      "neutralBaseLapSeconds": 85.478,
+      "qualifyingOffsetSeconds": -0.661,
+      "expectedGreenRaceDeltaSeconds": 7.5,
+      "raceModelCorrectionSeconds": 0,
+      "residualSigmaSeconds": 0.72,
+      "calibrationSeedCount": 100,
+      "validation": {
+        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "qualifyingSeedCount": 100,
+        "raceSeedCount": 0,
+        "poleMedianSeconds": 86.064,
+        "top3MedianSeconds": 86.139,
+        "fieldMedianDeltaSeconds": 0.397,
+        "raceGreenMedianSeconds": null,
+        "qualifyingReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": null
+      }
+    },
+    "sources": [
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA Autopolis Round 3 official result",
+        "url": "https://superformula.net/sf3/race/24419/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA 2026 official calendar and results",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "Official Autopolis Round 3 replacement procedure",
+        "url": "https://superformula.net/sf3/release/27021/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      }
+    ],
+    "notes": [
+      "Official dry Q3 top-three median is retained from Autopolis.",
+      "The Autopolis race was cancelled; no race pace is asserted. The official qualifying classification supplied the grid for the replacement Round 3 race at Fuji."
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "calibrationVersion": "2026.07.26.1",
+    "series": "super-formula",
+    "season": 2026,
+    "eventId": "super-formula-suzuka-round-5-2026",
+    "eventName": "SUPER FORMULA Suzuka Round 5",
+    "trackId": "suzuka-approx",
+    "round": 5,
+    "eventDate": "2026-04-26",
+    "qualifying": {
+      "poleSeconds": 97.605,
+      "top3MedianSeconds": null,
+      "top5MedianSeconds": null,
+      "theoreticalBestSeconds": null,
+      "selectedReferenceSeconds": 97.605,
+      "selectedMethod": "Official pole fallback; complete per-lap Q3 distribution unavailable",
+      "fieldP10DeltaSeconds": null,
+      "fieldMedianDeltaSeconds": null,
+      "fieldP90DeltaSeconds": null,
+      "validLapCount": 0,
+      "deletedOrInvalidRate": null,
+      "status": "official",
+      "confidence": 0.72
+    },
+    "race": {
+      "cleanLapReferenceSeconds": 100.6,
+      "earlyStintMedianSeconds": null,
+      "middleStintMedianSeconds": null,
+      "lateStintMedianSeconds": null,
+      "greenLapP10Seconds": null,
+      "greenLapMedianSeconds": 100.6,
+      "greenLapP90Seconds": null,
+      "winnerAverageSeconds": 108.347,
+      "pitLaneLossSeconds": null,
+      "inLapLossSeconds": null,
+      "outLapLossSeconds": null,
+      "clearAirTrafficDeltaSeconds": null,
+      "cleanLapCount": 0,
+      "totalLapCount": 0,
+      "compoundMedianSeconds": {},
+      "stintMedianSeconds": [],
+      "fuelGainPerLapSeconds": null,
+      "tireDegradationPerLapSeconds": null,
+      "status": "derived",
+      "confidence": 0.54
+    },
+    "simulation": {
+      "neutralBaseLapSeconds": 96.781,
+      "qualifyingOffsetSeconds": -0.824,
+      "expectedGreenRaceDeltaSeconds": 2.995,
+      "raceModelCorrectionSeconds": 0,
+      "residualSigmaSeconds": 0.72,
+      "calibrationSeedCount": 100,
+      "validation": {
+        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "qualifyingSeedCount": 100,
+        "raceSeedCount": 0,
+        "poleMedianSeconds": 97.507,
+        "top3MedianSeconds": 97.605,
+        "fieldMedianDeltaSeconds": 0.431,
+        "raceGreenMedianSeconds": null,
+        "qualifyingReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": null
+      }
+    },
+    "sources": [
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA Suzuka Round 5 official result",
+        "url": "https://superformula.net/sf3/race/24422/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA 2026 official calendar and results",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      }
+    ],
+    "notes": [
+      "Race winner average includes the opening safety-car period and is not used as the normal green-lap target.",
+      "The clean-race reference is derived from official fastest-lap and race classification summaries, not a complete timing feed."
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "calibrationVersion": "2026.07.26.1",
+    "series": "super-formula",
+    "season": 2026,
+    "eventId": "super-formula-fuji-round-7-2026",
+    "eventName": "SUPER FORMULA Fuji Round 7",
+    "trackId": "fuji-sf",
+    "round": 7,
+    "eventDate": "2026-07-19",
+    "qualifying": {
+      "poleSeconds": 82.815,
+      "top3MedianSeconds": null,
+      "top5MedianSeconds": null,
+      "theoreticalBestSeconds": null,
+      "selectedReferenceSeconds": 82.815,
+      "selectedMethod": "Official pole fallback; complete per-lap Q3 distribution unavailable",
+      "fieldP10DeltaSeconds": null,
+      "fieldMedianDeltaSeconds": null,
+      "fieldP90DeltaSeconds": null,
+      "validLapCount": 0,
+      "deletedOrInvalidRate": null,
+      "status": "official",
+      "confidence": 0.7
+    },
+    "race": {
+      "cleanLapReferenceSeconds": 85.45,
+      "earlyStintMedianSeconds": null,
+      "middleStintMedianSeconds": null,
+      "lateStintMedianSeconds": null,
+      "greenLapP10Seconds": null,
+      "greenLapMedianSeconds": 85.45,
+      "greenLapP90Seconds": null,
+      "winnerAverageSeconds": null,
+      "pitLaneLossSeconds": null,
+      "inLapLossSeconds": null,
+      "outLapLossSeconds": null,
+      "clearAirTrafficDeltaSeconds": null,
+      "cleanLapCount": 0,
+      "totalLapCount": 0,
+      "compoundMedianSeconds": {},
+      "stintMedianSeconds": [],
+      "fuelGainPerLapSeconds": null,
+      "tireDegradationPerLapSeconds": null,
+      "status": "derived",
+      "confidence": 0.52
+    },
+    "simulation": {
+      "neutralBaseLapSeconds": 82.009,
+      "qualifyingOffsetSeconds": -0.806,
+      "expectedGreenRaceDeltaSeconds": 2.635,
+      "raceModelCorrectionSeconds": 0,
+      "residualSigmaSeconds": 0.72,
+      "calibrationSeedCount": 100,
+      "validation": {
+        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "qualifyingSeedCount": 100,
+        "raceSeedCount": 0,
+        "poleMedianSeconds": 82.746,
+        "top3MedianSeconds": 82.815,
+        "fieldMedianDeltaSeconds": 0.371,
+        "raceGreenMedianSeconds": null,
+        "qualifyingReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": null
+      }
+    },
+    "sources": [
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA Fuji Round 7 official result",
+        "url": "https://superformula.net/sf3/race/24425/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA 2026 official calendar and results",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      }
+    ],
+    "notes": [
+      "Round 7 is selected over the wet Round 6 qualifying session.",
+      "The clean-race reference is a derived event benchmark because complete public all-lap timing was unavailable."
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "calibrationVersion": "2026.07.26.1",
+    "series": "super-formula",
+    "season": 2026,
+    "eventId": "super-formula-sugo-2026-estimate",
+    "eventName": "SUPER FORMULA Sportsland SUGO",
+    "trackId": "sugo-sf",
+    "round": 8,
+    "eventDate": "2026-08-09",
+    "qualifying": {
+      "poleSeconds": null,
+      "top3MedianSeconds": 64.5,
+      "top5MedianSeconds": null,
+      "theoreticalBestSeconds": null,
+      "selectedReferenceSeconds": 64.5,
+      "selectedMethod": "Same-circuit historical estimate with 2026 category trend",
+      "fieldP10DeltaSeconds": null,
+      "fieldMedianDeltaSeconds": null,
+      "fieldP90DeltaSeconds": null,
+      "validLapCount": 0,
+      "deletedOrInvalidRate": null,
+      "status": "estimated",
+      "confidence": 0.34
+    },
+    "race": {
+      "cleanLapReferenceSeconds": 68.8,
+      "earlyStintMedianSeconds": null,
+      "middleStintMedianSeconds": null,
+      "lateStintMedianSeconds": null,
+      "greenLapP10Seconds": null,
+      "greenLapMedianSeconds": 68.8,
+      "greenLapP90Seconds": null,
+      "winnerAverageSeconds": 72.5,
+      "pitLaneLossSeconds": null,
+      "inLapLossSeconds": null,
+      "outLapLossSeconds": null,
+      "clearAirTrafficDeltaSeconds": null,
+      "cleanLapCount": 0,
+      "totalLapCount": 0,
+      "compoundMedianSeconds": {},
+      "stintMedianSeconds": [],
+      "fuelGainPerLapSeconds": null,
+      "tireDegradationPerLapSeconds": null,
+      "status": "estimated",
+      "confidence": 0.16000000000000003
+    },
+    "simulation": {
+      "neutralBaseLapSeconds": 64.017,
+      "qualifyingOffsetSeconds": -0.483,
+      "expectedGreenRaceDeltaSeconds": 4.3,
+      "raceModelCorrectionSeconds": 0,
+      "residualSigmaSeconds": 0.72,
+      "calibrationSeedCount": 100,
+      "validation": {
+        "validatedAt": "2026-07-26T12:17:21.045Z",
+        "qualifyingSeedCount": 100,
+        "raceSeedCount": 0,
+        "poleMedianSeconds": 64.422,
+        "top3MedianSeconds": 64.5,
+        "fieldMedianDeltaSeconds": 0.331,
+        "raceGreenMedianSeconds": null,
+        "qualifyingReferenceErrorSeconds": 0,
+        "raceReferenceErrorSeconds": null
+      }
+    },
+    "sources": [
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA Sportsland SUGO official result",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      },
+      {
+        "provider": "SUPER FORMULA",
+        "label": "SUPER FORMULA 2026 official calendar and results",
+        "url": "https://superformula.net/sf3/race_taxonomy/2026/",
+        "retrievedAt": "2026-07-26T12:22:08.191Z"
+      }
+    ],
+    "notes": [
+      "Future event estimate based on recent same-circuit results and the 2026 category trend."
+    ]
+  }
+]

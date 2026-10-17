@@ -1,0 +1,2974 @@
+{
+  "schemaVersion": 1,
+  "generationType": "derived",
+  "ratingSourceType": "synthetic",
+  "sourceFile": "src/data/motorsportSeries2026.json",
+  "sourceDate": "2026-07-29",
+  "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+  "drivers": [
+    {
+      "id": "rafael_camara",
+      "code": "CAM",
+      "name": "Rafael Camara",
+      "nationality": "BRA",
+      "overall": 75,
+      "ratings": {
+        "adaptability": 0.774593419721102,
+        "consistency": 0.7486960322477474,
+        "defending": 0.7352233984525232,
+        "errorControl": 0.748072114486809,
+        "experience": 0.7043950261778048,
+        "overtaking": 0.7491043676485877,
+        "qualifyingPace": 0.7657316302200947,
+        "racePace": 0.7487821557421988,
+        "raceStart": 0.7436999404188339,
+        "technicalFeedback": 0.7318991026683337,
+        "tyreManagement": 0.7639579571402395,
+        "wetSkill": 0.7348334032965763
+      },
+      "potential": 97,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:rafael_camara",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:rafael_camara",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-invicta",
+            "name": "Invicta Racing"
+          },
+          "sourceCarNumber": 1,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-invicta/drivers/rafael_camara"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-invicta",
+          "sourceTeamName": "Invicta Racing",
+          "sourceCarNumber": 1,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-invicta/drivers/rafael_camara"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "joshua_duerksen",
+      "code": "DUE",
+      "name": "Joshua Duerksen",
+      "nationality": "PRY",
+      "overall": 70,
+      "ratings": {
+        "adaptability": 0.7267161850502368,
+        "consistency": 0.6732807747021355,
+        "defending": 0.699719522408595,
+        "errorControl": 0.6953051250365657,
+        "experience": 0.6397295689204858,
+        "overtaking": 0.6833049716384245,
+        "qualifyingPace": 0.720794597754425,
+        "racePace": 0.7126956742654161,
+        "raceStart": 0.7074284859852317,
+        "technicalFeedback": 0.6732284033790148,
+        "tyreManagement": 0.6839594077742414,
+        "wetSkill": 0.7120944523182767
+      },
+      "potential": 90,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:joshua_duerksen",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:joshua_duerksen",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-invicta",
+            "name": "Invicta Racing"
+          },
+          "sourceCarNumber": 2,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-invicta/drivers/joshua_duerksen"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-invicta",
+          "sourceTeamName": "Invicta Racing",
+          "sourceCarNumber": 2,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-invicta/drivers/joshua_duerksen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ritomo_miyata",
+      "code": "MIY",
+      "name": "Ritomo Miyata",
+      "nationality": "JPN",
+      "overall": 71,
+      "ratings": {
+        "adaptability": 0.724429383239881,
+        "consistency": 0.6966342279186809,
+        "defending": 0.7262989187954481,
+        "errorControl": 0.7140749687513768,
+        "experience": 0.6647966391900804,
+        "overtaking": 0.7179618718424514,
+        "qualifyingPace": 0.7339881808274189,
+        "racePace": 0.7264772319762938,
+        "raceStart": 0.6970497268059663,
+        "technicalFeedback": 0.6846524915688119,
+        "tyreManagement": 0.6973615725333038,
+        "wetSkill": 0.699060689695033
+      },
+      "potential": 88,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:ritomo_miyata",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:ritomo_miyata",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-hitech",
+            "name": "Hitech"
+          },
+          "sourceCarNumber": 3,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-hitech/drivers/ritomo_miyata"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-hitech",
+          "sourceTeamName": "Hitech",
+          "sourceCarNumber": 3,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-hitech/drivers/ritomo_miyata"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "colton_herta",
+      "code": "HER",
+      "name": "Colton Herta",
+      "nationality": "USA",
+      "overall": 74,
+      "ratings": {
+        "adaptability": 0.7635501086421984,
+        "consistency": 0.7140566950947967,
+        "defending": 0.7258861432191509,
+        "errorControl": 0.7095153007457159,
+        "experience": 0.7154164789296583,
+        "overtaking": 0.736599283143072,
+        "qualifyingPace": 0.7573738075064759,
+        "racePace": 0.7476929783838876,
+        "raceStart": 0.7580858957530058,
+        "technicalFeedback": 0.7355404601207653,
+        "tyreManagement": 0.7385683031469834,
+        "wetSkill": 0.7269438066023595
+      },
+      "potential": 91,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:colton_herta",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:colton_herta",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-hitech",
+            "name": "Hitech"
+          },
+          "sourceCarNumber": 4,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-hitech/drivers/colton_herta"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-hitech",
+          "sourceTeamName": "Hitech",
+          "sourceCarNumber": 4,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-hitech/drivers/colton_herta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noel_leon",
+      "code": "LEO",
+      "name": "Noel Leon",
+      "nationality": "MEX",
+      "overall": 68,
+      "ratings": {
+        "adaptability": 0.6999898327687762,
+        "consistency": 0.6560859442070356,
+        "defending": 0.671487656379561,
+        "errorControl": 0.6612213471863964,
+        "experience": 0.6343409533271923,
+        "overtaking": 0.6947570846791309,
+        "qualifyingPace": 0.6860086886730096,
+        "racePace": 0.6941560507380796,
+        "raceStart": 0.6906290469591138,
+        "technicalFeedback": 0.651480453379893,
+        "tyreManagement": 0.6946971907562367,
+        "wetSkill": 0.6875140273277477
+      },
+      "potential": 91,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:noel_leon",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:noel_leon",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-campos",
+            "name": "Campos Racing"
+          },
+          "sourceCarNumber": 5,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-campos/drivers/noel_leon"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-campos",
+          "sourceTeamName": "Campos Racing",
+          "sourceCarNumber": 5,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-campos/drivers/noel_leon"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nikola_tsolov",
+      "code": "TSO",
+      "name": "Nikola Tsolov",
+      "nationality": "BGR",
+      "overall": 72,
+      "ratings": {
+        "adaptability": 0.7287040529056824,
+        "consistency": 0.7179354221825001,
+        "defending": 0.7296916618453215,
+        "errorControl": 0.7171087896490851,
+        "experience": 0.6874389555145275,
+        "overtaking": 0.7276391163718641,
+        "qualifyingPace": 0.7299684472614489,
+        "racePace": 0.7348203564702244,
+        "raceStart": 0.7057984676132103,
+        "technicalFeedback": 0.7057496852850553,
+        "tyreManagement": 0.7104010006343611,
+        "wetSkill": 0.7362583688637506
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:nikola_tsolov",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:nikola_tsolov",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-campos",
+            "name": "Campos Racing"
+          },
+          "sourceCarNumber": 6,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-campos/drivers/nikola_tsolov"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-campos",
+          "sourceTeamName": "Campos Racing",
+          "sourceCarNumber": 6,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-campos/drivers/nikola_tsolov"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dino_beganovic",
+      "code": "BEG",
+      "name": "Dino Beganovic",
+      "nationality": "SWE",
+      "overall": 71,
+      "ratings": {
+        "adaptability": 0.7360080739771379,
+        "consistency": 0.6844651668537903,
+        "defending": 0.7220320575213477,
+        "errorControl": 0.7072173985589679,
+        "experience": 0.6470994108740349,
+        "overtaking": 0.7020646856766688,
+        "qualifyingPace": 0.7099634507707578,
+        "racePace": 0.729634024883942,
+        "raceStart": 0.725456515234244,
+        "technicalFeedback": 0.6767649206147791,
+        "tyreManagement": 0.7084670100696884,
+        "wetSkill": 0.7121585699887728
+      },
+      "potential": 93,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:dino_beganovic",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:dino_beganovic",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-dams",
+            "name": "DAMS Lucas Oil"
+          },
+          "sourceCarNumber": 7,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-dams/drivers/dino_beganovic"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-dams",
+          "sourceTeamName": "DAMS Lucas Oil",
+          "sourceCarNumber": 7,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-dams/drivers/dino_beganovic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roman_bilinski",
+      "code": "BIL",
+      "name": "Roman Bilinski",
+      "nationality": "POL",
+      "overall": 66,
+      "ratings": {
+        "adaptability": 0.6822383323811407,
+        "consistency": 0.6401536602798131,
+        "defending": 0.6561407826748861,
+        "errorControl": 0.6481023845373283,
+        "experience": 0.6125974489166253,
+        "overtaking": 0.6409716025426309,
+        "qualifyingPace": 0.6633824143646567,
+        "racePace": 0.6778439749549569,
+        "raceStart": 0.6736547510554067,
+        "technicalFeedback": 0.6487297470041244,
+        "tyreManagement": 0.6666066134001466,
+        "wetSkill": 0.6485783585517009
+      },
+      "potential": 89,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:roman_bilinski",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:roman_bilinski",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-dams",
+            "name": "DAMS Lucas Oil"
+          },
+          "sourceCarNumber": 8,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-dams/drivers/roman_bilinski"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-dams",
+          "sourceTeamName": "DAMS Lucas Oil",
+          "sourceCarNumber": 8,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-dams/drivers/roman_bilinski"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gabriele_mini",
+      "code": "MIN",
+      "name": "Gabriele Mini",
+      "nationality": "ITA",
+      "overall": 72,
+      "ratings": {
+        "adaptability": 0.7487927373823656,
+        "consistency": 0.7143134360483608,
+        "defending": 0.7444925336500807,
+        "errorControl": 0.7218081065431684,
+        "experience": 0.6581834631643647,
+        "overtaking": 0.7402098737421897,
+        "qualifyingPace": 0.7346945253115795,
+        "racePace": 0.7139304504247183,
+        "raceStart": 0.7100391408216262,
+        "technicalFeedback": 0.7005064126167656,
+        "tyreManagement": 0.7114390347130185,
+        "wetSkill": 0.7231179555882471
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:gabriele_mini",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:gabriele_mini",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-mp",
+            "name": "MP Motorsport"
+          },
+          "sourceCarNumber": 9,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-mp/drivers/gabriele_mini"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-mp",
+          "sourceTeamName": "MP Motorsport",
+          "sourceCarNumber": 9,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-mp/drivers/gabriele_mini"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oliver_goethe",
+      "code": "GOE",
+      "name": "Oliver Goethe",
+      "nationality": "DEU",
+      "overall": 70,
+      "ratings": {
+        "adaptability": 0.7130620305639317,
+        "consistency": 0.6694085951856767,
+        "defending": 0.711267038569237,
+        "errorControl": 0.6884679429663448,
+        "experience": 0.6667471763154313,
+        "overtaking": 0.7015982873197586,
+        "qualifyingPace": 0.7164683993376896,
+        "racePace": 0.6922189089466341,
+        "raceStart": 0.6969557014394859,
+        "technicalFeedback": 0.7055408389167668,
+        "tyreManagement": 0.7025667169245293,
+        "wetSkill": 0.7155796435805867
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:oliver_goethe",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:oliver_goethe",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-mp",
+            "name": "MP Motorsport"
+          },
+          "sourceCarNumber": 10,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-mp/drivers/oliver_goethe"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-mp",
+          "sourceTeamName": "MP Motorsport",
+          "sourceCarNumber": 10,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-mp/drivers/oliver_goethe"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sebastian_montoya",
+      "code": "MON",
+      "name": "Sebastian Montoya",
+      "nationality": "COL",
+      "overall": 69,
+      "ratings": {
+        "adaptability": 0.7134230402735178,
+        "consistency": 0.67254661625502,
+        "defending": 0.6798528936333208,
+        "errorControl": 0.6881103160859405,
+        "experience": 0.6278191123406974,
+        "overtaking": 0.7037899542856069,
+        "qualifyingPace": 0.70528881939629,
+        "racePace": 0.6788642760936848,
+        "raceStart": 0.6951730691225733,
+        "technicalFeedback": 0.6714513902947488,
+        "tyreManagement": 0.7050844199562705,
+        "wetSkill": 0.6983730581739451
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:sebastian_montoya",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:sebastian_montoya",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-prema",
+            "name": "PREMA Racing"
+          },
+          "sourceCarNumber": 11,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-prema/drivers/sebastian_montoya"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-prema",
+          "sourceTeamName": "PREMA Racing",
+          "sourceCarNumber": 11,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-prema/drivers/sebastian_montoya"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mari_boya",
+      "code": "BOY",
+      "name": "Mari Boya",
+      "nationality": "ESP",
+      "overall": 70,
+      "ratings": {
+        "adaptability": 0.7270622807855155,
+        "consistency": 0.6676594000508903,
+        "defending": 0.713522564071095,
+        "errorControl": 0.6742414107811955,
+        "experience": 0.6580969780753348,
+        "overtaking": 0.7070391230557426,
+        "qualifyingPace": 0.7199122751410603,
+        "racePace": 0.7031087626034869,
+        "raceStart": 0.7174698174016935,
+        "technicalFeedback": 0.6862543374169966,
+        "tyreManagement": 0.6896503992144823,
+        "wetSkill": 0.6965821352755831
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:mari_boya",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:mari_boya",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-prema",
+            "name": "PREMA Racing"
+          },
+          "sourceCarNumber": 12,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-prema/drivers/mari_boya"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-prema",
+          "sourceTeamName": "PREMA Racing",
+          "sourceCarNumber": 12,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-prema/drivers/mari_boya"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "martinius_stenshorne",
+      "code": "STE",
+      "name": "Martinius Stenshorne",
+      "nationality": "NOR",
+      "overall": 69,
+      "ratings": {
+        "adaptability": 0.7063722581870833,
+        "consistency": 0.6862443985527064,
+        "defending": 0.6864344357958188,
+        "errorControl": 0.6667805550646966,
+        "experience": 0.6251579185374958,
+        "overtaking": 0.6796138788257802,
+        "qualifyingPace": 0.7216850468089114,
+        "racePace": 0.7046105857494821,
+        "raceStart": 0.6904488892842242,
+        "technicalFeedback": 0.6822469722952381,
+        "tyreManagement": 0.6857533970825775,
+        "wetSkill": 0.7052097211056455
+      },
+      "potential": 93,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:martinius_stenshorne",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:martinius_stenshorne",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-rodin",
+            "name": "Rodin Motorsport"
+          },
+          "sourceCarNumber": 14,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-rodin/drivers/martinius_stenshorne"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-rodin",
+          "sourceTeamName": "Rodin Motorsport",
+          "sourceCarNumber": 14,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-rodin/drivers/martinius_stenshorne"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alexander_dunne",
+      "code": "DUN",
+      "name": "Alexander Dunne",
+      "nationality": "IRL",
+      "overall": 74,
+      "ratings": {
+        "adaptability": 0.7616623569995997,
+        "consistency": 0.7122289590989527,
+        "defending": 0.7266743534339054,
+        "errorControl": 0.7077205577985418,
+        "experience": 0.7097936283018644,
+        "overtaking": 0.7348096445688754,
+        "qualifyingPace": 0.7653034794491711,
+        "racePace": 0.7587577447464346,
+        "raceStart": 0.7453173867471544,
+        "technicalFeedback": 0.7246816420663558,
+        "tyreManagement": 0.7456239125178006,
+        "wetSkill": 0.727315568924232
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:alexander_dunne",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:alexander_dunne",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-rodin",
+            "name": "Rodin Motorsport"
+          },
+          "sourceCarNumber": 15,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-rodin/drivers/alexander_dunne"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-rodin",
+          "sourceTeamName": "Rodin Motorsport",
+          "sourceCarNumber": 15,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-rodin/drivers/alexander_dunne"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kush_maini",
+      "code": "MAI",
+      "name": "Kush Maini",
+      "nationality": "IND",
+      "overall": 71,
+      "ratings": {
+        "adaptability": 0.745392950267393,
+        "consistency": 0.6954784940149386,
+        "defending": 0.7064747659704856,
+        "errorControl": 0.7167188091908426,
+        "experience": 0.6627699047664145,
+        "overtaking": 0.727080460999416,
+        "qualifyingPace": 0.712815625874519,
+        "racePace": 0.6979015371026277,
+        "raceStart": 0.7052114009417654,
+        "technicalFeedback": 0.6966614107756588,
+        "tyreManagement": 0.7096929058376019,
+        "wetSkill": 0.7027414822133157
+      },
+      "potential": 87,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:kush_maini",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:kush_maini",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-art",
+            "name": "ART Grand Prix"
+          },
+          "sourceCarNumber": 16,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-art/drivers/kush_maini"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-art",
+          "sourceTeamName": "ART Grand Prix",
+          "sourceCarNumber": 16,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-art/drivers/kush_maini"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tasanapol_inthraphuvasak",
+      "code": "INT",
+      "name": "Tasanapol Inthraphuvasak",
+      "nationality": "THA",
+      "overall": 67,
+      "ratings": {
+        "adaptability": 0.6913609923660504,
+        "consistency": 0.6718836718115058,
+        "defending": 0.6675735553751011,
+        "errorControl": 0.6445604898041326,
+        "experience": 0.6346207570216039,
+        "overtaking": 0.6782658995923578,
+        "qualifyingPace": 0.6712430669935825,
+        "racePace": 0.6685629134838222,
+        "raceStart": 0.6824165245856502,
+        "technicalFeedback": 0.6797223876869894,
+        "tyreManagement": 0.6733294014391163,
+        "wetSkill": 0.6708251727497567
+      },
+      "potential": 90,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:tasanapol_inthraphuvasak",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:tasanapol_inthraphuvasak",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-art",
+            "name": "ART Grand Prix"
+          },
+          "sourceCarNumber": 17,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-art/drivers/tasanapol_inthraphuvasak"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-art",
+          "sourceTeamName": "ART Grand Prix",
+          "sourceCarNumber": 17,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-art/drivers/tasanapol_inthraphuvasak"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "enzo_fittipaldi",
+      "code": "FIT",
+      "name": "Enzo Fittipaldi",
+      "nationality": "BRA",
+      "overall": 72,
+      "ratings": {
+        "adaptability": 0.7191963797672971,
+        "consistency": 0.7033396163150388,
+        "defending": 0.7319544430679862,
+        "errorControl": 0.7165461807612998,
+        "experience": 0.6897463712265451,
+        "overtaking": 0.7198941218868911,
+        "qualifyingPace": 0.7380684522946852,
+        "racePace": 0.7322454413443771,
+        "raceStart": 0.7060605932848997,
+        "technicalFeedback": 0.7083556050759033,
+        "tyreManagement": 0.7243394131519086,
+        "wetSkill": 0.7355093675438431
+      },
+      "potential": 88,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:enzo_fittipaldi",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:enzo_fittipaldi",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-aix",
+            "name": "AIX Racing"
+          },
+          "sourceCarNumber": 20,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-aix/drivers/enzo_fittipaldi"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-aix",
+          "sourceTeamName": "AIX Racing",
+          "sourceCarNumber": 20,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-aix/drivers/enzo_fittipaldi"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cian_shields",
+      "code": "SHI",
+      "name": "Cian Shields",
+      "nationality": "GBR",
+      "overall": 65,
+      "ratings": {
+        "adaptability": 0.6865608106193555,
+        "consistency": 0.6400621796732029,
+        "defending": 0.6335810450754131,
+        "errorControl": 0.6339201078889287,
+        "experience": 0.5953560531882514,
+        "overtaking": 0.6571044056089419,
+        "qualifyingPace": 0.6465635948552246,
+        "racePace": 0.6401263641125863,
+        "raceStart": 0.6646994146042317,
+        "technicalFeedback": 0.6481018530183755,
+        "tyreManagement": 0.6652097137356247,
+        "wetSkill": 0.6488530990527182
+      },
+      "potential": 88,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:cian_shields",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:cian_shields",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-aix",
+            "name": "AIX Racing"
+          },
+          "sourceCarNumber": 21,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-aix/drivers/cian_shields"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-aix",
+          "sourceTeamName": "AIX Racing",
+          "sourceCarNumber": 21,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-aix/drivers/cian_shields"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nicolas_varrone",
+      "code": "VAR",
+      "name": "Nicolas Varrone",
+      "nationality": "ARG",
+      "overall": 69,
+      "ratings": {
+        "adaptability": 0.7087371174521091,
+        "consistency": 0.6585041156718243,
+        "defending": 0.67687253756408,
+        "errorControl": 0.6894158122178162,
+        "experience": 0.6520841626756514,
+        "overtaking": 0.6879935041464342,
+        "qualifyingPace": 0.7099107027848467,
+        "racePace": 0.6912321881606743,
+        "raceStart": 0.6853490795303907,
+        "technicalFeedback": 0.6691708415706067,
+        "tyreManagement": 0.7081370297049915,
+        "wetSkill": 0.6772834357150517
+      },
+      "potential": 87,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:nicolas_varrone",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:nicolas_varrone",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-var",
+            "name": "Van Amersfoort Racing"
+          },
+          "sourceCarNumber": 22,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-var/drivers/nicolas_varrone"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-var",
+          "sourceTeamName": "Van Amersfoort Racing",
+          "sourceCarNumber": 22,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-var/drivers/nicolas_varrone"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rafael_villagomez",
+      "code": "VIL",
+      "name": "Rafael Villagomez",
+      "nationality": "MEX",
+      "overall": 66,
+      "ratings": {
+        "adaptability": 0.6713745497341592,
+        "consistency": 0.6589991318952675,
+        "defending": 0.6575086227760356,
+        "errorControl": 0.6364873054111497,
+        "experience": 0.6299238268317395,
+        "overtaking": 0.6610104254969804,
+        "qualifyingPace": 0.6920871155349659,
+        "racePace": 0.6570122228517609,
+        "raceStart": 0.6457621284223457,
+        "technicalFeedback": 0.6551523587616901,
+        "tyreManagement": 0.6654423065178579,
+        "wetSkill": 0.674831276805698
+      },
+      "potential": 86,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:rafael_villagomez",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:rafael_villagomez",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-var",
+            "name": "Van Amersfoort Racing"
+          },
+          "sourceCarNumber": 23,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-var/drivers/rafael_villagomez"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-var",
+          "sourceTeamName": "Van Amersfoort Racing",
+          "sourceCarNumber": 23,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-var/drivers/rafael_villagomez"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "laurens_van_hoepen",
+      "code": "VHO",
+      "name": "Laurens van Hoepen",
+      "nationality": "NLD",
+      "overall": 69,
+      "ratings": {
+        "adaptability": 0.7166016645506746,
+        "consistency": 0.6677307891192472,
+        "defending": 0.6956297992671231,
+        "errorControl": 0.6753275234741243,
+        "experience": 0.647982109505844,
+        "overtaking": 0.6876926657295324,
+        "qualifyingPace": 0.7165441712518811,
+        "racePace": 0.7035045674962953,
+        "raceStart": 0.6943664342384028,
+        "technicalFeedback": 0.674425962503565,
+        "tyreManagement": 0.6734214512056508,
+        "wetSkill": 0.6683445125976701
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:laurens_van_hoepen",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:laurens_van_hoepen",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-trident",
+            "name": "TRIDENT"
+          },
+          "sourceCarNumber": 24,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-trident/drivers/laurens_van_hoepen"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-trident",
+          "sourceTeamName": "TRIDENT",
+          "sourceCarNumber": 24,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-trident/drivers/laurens_van_hoepen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "john_bennett",
+      "code": "BEN",
+      "name": "John Bennett",
+      "nationality": "GBR",
+      "overall": 66,
+      "ratings": {
+        "adaptability": 0.7008113420106546,
+        "consistency": 0.64478768021092,
+        "defending": 0.6580536693359899,
+        "errorControl": 0.6366740506897901,
+        "experience": 0.6175992431965236,
+        "overtaking": 0.6715456837844956,
+        "qualifyingPace": 0.6719129337032171,
+        "racePace": 0.6631005425043222,
+        "raceStart": 0.6726812259632866,
+        "technicalFeedback": 0.6281145400537492,
+        "tyreManagement": 0.6492221275442379,
+        "wetSkill": 0.6564061956594761
+      },
+      "potential": 89,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f2:john_bennett",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f2:john_bennett",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f2",
+          "sourceTeam": {
+            "sourceId": "f2-trident",
+            "name": "TRIDENT"
+          },
+          "sourceCarNumber": 25,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-trident/drivers/john_bennett"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f2",
+          "sourceTeamId": "f2-trident",
+          "sourceTeamName": "TRIDENT",
+          "sourceCarNumber": 25,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f2/teams/f2-trident/drivers/john_bennett"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "theophile_nael",
+      "code": "NAE",
+      "name": "Theophile Nael",
+      "nationality": "FRA",
+      "overall": 64,
+      "ratings": {
+        "adaptability": 0.6864427154243777,
+        "consistency": 0.6072058273828357,
+        "defending": 0.6486275951888697,
+        "errorControl": 0.6271346410323935,
+        "experience": 0.5805762224770782,
+        "overtaking": 0.6630090435393395,
+        "qualifyingPace": 0.6369690606085732,
+        "racePace": 0.6397629019735515,
+        "raceStart": 0.6307138857807518,
+        "technicalFeedback": 0.6071967493346639,
+        "tyreManagement": 0.6509634444167973,
+        "wetSkill": 0.6563695430073571
+      },
+      "potential": 97,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:theophile_nael",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:theophile_nael",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-campos",
+            "name": "Campos Racing"
+          },
+          "sourceCarNumber": 1,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/theophile_nael"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-campos",
+          "sourceTeamName": "Campos Racing",
+          "sourceCarNumber": 1,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/theophile_nael"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ugo_ugochukwu",
+      "code": "UGO",
+      "name": "Ugo Ugochukwu",
+      "nationality": "USA",
+      "overall": 63,
+      "ratings": {
+        "adaptability": 0.6763475112009165,
+        "consistency": 0.6244855719709462,
+        "defending": 0.6361191406461182,
+        "errorControl": 0.5852262168083827,
+        "experience": 0.559922807759723,
+        "overtaking": 0.6260192502254159,
+        "qualifyingPace": 0.6623693969871272,
+        "racePace": 0.6412256440147311,
+        "raceStart": 0.6223625539291988,
+        "technicalFeedback": 0.624943430861348,
+        "tyreManagement": 0.6262735623924193,
+        "wetSkill": 0.6206388655349663
+      },
+      "potential": 97,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:ugo_ugochukwu",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:ugo_ugochukwu",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-campos",
+            "name": "Campos Racing"
+          },
+          "sourceCarNumber": 2,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/ugo_ugochukwu"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-campos",
+          "sourceTeamName": "Campos Racing",
+          "sourceCarNumber": 2,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/ugo_ugochukwu"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ernesto_rivera",
+      "code": "RIV",
+      "name": "Ernesto Rivera",
+      "nationality": "MEX",
+      "overall": 58,
+      "ratings": {
+        "adaptability": 0.6180365929450138,
+        "consistency": 0.5729559390863912,
+        "defending": 0.5900677785794554,
+        "errorControl": 0.5379133858543298,
+        "experience": 0.50791979404748,
+        "overtaking": 0.5802528096857283,
+        "qualifyingPace": 0.5876162845757041,
+        "racePace": 0.5938189060021846,
+        "raceStart": 0.5782105591358321,
+        "technicalFeedback": 0.5498685372439052,
+        "tyreManagement": 0.6084560792428716,
+        "wetSkill": 0.5987728522230953
+      },
+      "potential": 93,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:ernesto_rivera",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:ernesto_rivera",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-campos",
+            "name": "Campos Racing"
+          },
+          "sourceCarNumber": 3,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/ernesto_rivera"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-campos",
+          "sourceTeamName": "Campos Racing",
+          "sourceCarNumber": 3,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-campos/drivers/ernesto_rivera"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noah_stromsted",
+      "code": "STR",
+      "name": "Noah Stromsted",
+      "nationality": "DNK",
+      "overall": 62,
+      "ratings": {
+        "adaptability": 0.6413095479697186,
+        "consistency": 0.6199676561060229,
+        "defending": 0.610235764581573,
+        "errorControl": 0.5982776274451643,
+        "experience": 0.5407648335751006,
+        "overtaking": 0.6236361691869822,
+        "qualifyingPace": 0.6235842207564878,
+        "racePace": 0.634465730318716,
+        "raceStart": 0.6386305397273521,
+        "technicalFeedback": 0.5969888341823043,
+        "tyreManagement": 0.645970009705784,
+        "wetSkill": 0.6322241494314278
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:noah_stromsted",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:noah_stromsted",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-trident",
+            "name": "TRIDENT"
+          },
+          "sourceCarNumber": 4,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/noah_stromsted"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-trident",
+          "sourceTeamName": "TRIDENT",
+          "sourceCarNumber": 4,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/noah_stromsted"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "freddie_slater",
+      "code": "SLA",
+      "name": "Freddie Slater",
+      "nationality": "GBR",
+      "overall": 66,
+      "ratings": {
+        "adaptability": 0.6952724440713783,
+        "consistency": 0.6358398195982738,
+        "defending": 0.6507350967796569,
+        "errorControl": 0.6171573987334137,
+        "experience": 0.5957901197362403,
+        "overtaking": 0.6639647973890536,
+        "qualifyingPace": 0.6696507315516791,
+        "racePace": 0.6570015901872627,
+        "raceStart": 0.6710270224065317,
+        "technicalFeedback": 0.6521171263152276,
+        "tyreManagement": 0.6862078746556058,
+        "wetSkill": 0.6880437394756196
+      },
+      "potential": 100,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:freddie_slater",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:freddie_slater",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-trident",
+            "name": "TRIDENT"
+          },
+          "sourceCarNumber": 5,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/freddie_slater"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-trident",
+          "sourceTeamName": "TRIDENT",
+          "sourceCarNumber": 5,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/freddie_slater"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "matteo_de_palo",
+      "code": "DEP",
+      "name": "Matteo De Palo",
+      "nationality": "ITA",
+      "overall": 62,
+      "ratings": {
+        "adaptability": 0.6648922871161771,
+        "consistency": 0.600210199322072,
+        "defending": 0.6281391574223222,
+        "errorControl": 0.5870162367342847,
+        "experience": 0.5415557357094452,
+        "overtaking": 0.6170320801005612,
+        "qualifyingPace": 0.6369436193966945,
+        "racePace": 0.6191772023162124,
+        "raceStart": 0.6280096287340252,
+        "technicalFeedback": 0.6179841709210804,
+        "tyreManagement": 0.6201732878987454,
+        "wetSkill": 0.6283456342914319
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:matteo_de_palo",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:matteo_de_palo",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-trident",
+            "name": "TRIDENT"
+          },
+          "sourceCarNumber": 6,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/matteo_de_palo"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-trident",
+          "sourceTeamName": "TRIDENT",
+          "sourceCarNumber": 6,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-trident/drivers/matteo_de_palo"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mattia_colnaghi",
+      "code": "COL",
+      "name": "Mattia Colnaghi",
+      "nationality": "ITA",
+      "overall": 61,
+      "ratings": {
+        "adaptability": 0.6431445139147115,
+        "consistency": 0.5789130561801772,
+        "defending": 0.6182786716103175,
+        "errorControl": 0.5887648614370551,
+        "experience": 0.531133246202602,
+        "overtaking": 0.6179771088390461,
+        "qualifyingPace": 0.6242092030068319,
+        "racePace": 0.615884638982416,
+        "raceStart": 0.6207632472419929,
+        "technicalFeedback": 0.5999166207812436,
+        "tyreManagement": 0.6143931877279541,
+        "wetSkill": 0.6193930485150199
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:mattia_colnaghi",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:mattia_colnaghi",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-mp",
+            "name": "MP Motorsport"
+          },
+          "sourceCarNumber": 7,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/mattia_colnaghi"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-mp",
+          "sourceTeamName": "MP Motorsport",
+          "sourceCarNumber": 7,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/mattia_colnaghi"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tuukka_taponen",
+      "code": "TAP",
+      "name": "Tuukka Taponen",
+      "nationality": "FIN",
+      "overall": 64,
+      "ratings": {
+        "adaptability": 0.6829978433420546,
+        "consistency": 0.6198566342968296,
+        "defending": 0.6334666486073111,
+        "errorControl": 0.6067021568476596,
+        "experience": 0.57667755348639,
+        "overtaking": 0.6415335584998112,
+        "qualifyingPace": 0.6557390025461551,
+        "racePace": 0.6369274989325986,
+        "raceStart": 0.6391202523840541,
+        "technicalFeedback": 0.6340937264747339,
+        "tyreManagement": 0.639006674075654,
+        "wetSkill": 0.668544886687352
+      },
+      "potential": 97,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:tuukka_taponen",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:tuukka_taponen",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-mp",
+            "name": "MP Motorsport"
+          },
+          "sourceCarNumber": 8,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/tuukka_taponen"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-mp",
+          "sourceTeamName": "MP Motorsport",
+          "sourceCarNumber": 8,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/tuukka_taponen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alessandro_giusti",
+      "code": "GIU",
+      "name": "Alessandro Giusti",
+      "nationality": "FRA",
+      "overall": 61,
+      "ratings": {
+        "adaptability": 0.6519526916009725,
+        "consistency": 0.5860143893331783,
+        "defending": 0.6000388389288999,
+        "errorControl": 0.6030914380826263,
+        "experience": 0.5576633975797008,
+        "overtaking": 0.6332814795064458,
+        "qualifyingPace": 0.6095631633906068,
+        "racePace": 0.6081881634373184,
+        "raceStart": 0.6132453160692571,
+        "technicalFeedback": 0.593928068219527,
+        "tyreManagement": 0.6012986123121101,
+        "wetSkill": 0.6164369363304774
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:alessandro_giusti",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:alessandro_giusti",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-mp",
+            "name": "MP Motorsport"
+          },
+          "sourceCarNumber": 9,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/alessandro_giusti"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-mp",
+          "sourceTeamName": "MP Motorsport",
+          "sourceCarNumber": 9,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-mp/drivers/alessandro_giusti"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "taito_kato",
+      "code": "KAT",
+      "name": "Taito Kato",
+      "nationality": "JPN",
+      "overall": 60,
+      "ratings": {
+        "adaptability": 0.6442898637131934,
+        "consistency": 0.5811844636894199,
+        "defending": 0.6155618199295679,
+        "errorControl": 0.5660168385713338,
+        "experience": 0.5475955893007965,
+        "overtaking": 0.616810459472468,
+        "qualifyingPace": 0.6067434462264452,
+        "racePace": 0.607196345118659,
+        "raceStart": 0.5996849500964997,
+        "technicalFeedback": 0.5765973436098477,
+        "tyreManagement": 0.604129724132899,
+        "wetSkill": 0.5994139742868922
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:taito_kato",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:taito_kato",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-art",
+            "name": "ART Grand Prix"
+          },
+          "sourceCarNumber": 10,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/taito_kato"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-art",
+          "sourceTeamName": "ART Grand Prix",
+          "sourceCarNumber": 10,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/taito_kato"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tim_tramnitz_gladysz",
+      "code": "GLA",
+      "name": "Tymek Gladysz",
+      "nationality": "POL",
+      "overall": 59,
+      "ratings": {
+        "adaptability": 0.6412364213048934,
+        "consistency": 0.5742999940183151,
+        "defending": 0.6031541904179643,
+        "errorControl": 0.5508517904563831,
+        "experience": 0.5064919637513465,
+        "overtaking": 0.6171183743291714,
+        "qualifyingPace": 0.6167283577784167,
+        "racePace": 0.5788991869860929,
+        "raceStart": 0.6087007975988229,
+        "technicalFeedback": 0.560079753042068,
+        "tyreManagement": 0.5934728671798556,
+        "wetSkill": 0.5880866921496217
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:tim_tramnitz_gladysz",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:tim_tramnitz_gladysz",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-art",
+            "name": "ART Grand Prix"
+          },
+          "sourceCarNumber": 11,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/tim_tramnitz_gladysz"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-art",
+          "sourceTeamName": "ART Grand Prix",
+          "sourceCarNumber": 11,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/tim_tramnitz_gladysz"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kanato_le",
+      "code": "LEK",
+      "name": "Kanato Le",
+      "nationality": "JPN",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.5871420340170018,
+        "consistency": 0.5340684253472994,
+        "defending": 0.5630708831208457,
+        "errorControl": 0.533644472758622,
+        "experience": 0.4968818718881071,
+        "overtaking": 0.5791572696412814,
+        "qualifyingPace": 0.6041408269584507,
+        "racePace": 0.5896580503602648,
+        "raceStart": 0.5670614337310804,
+        "technicalFeedback": 0.5591248500901099,
+        "tyreManagement": 0.5933623868050432,
+        "wetSkill": 0.5853816092936746
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:kanato_le",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:kanato_le",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-art",
+            "name": "ART Grand Prix"
+          },
+          "sourceCarNumber": 12,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/kanato_le"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-art",
+          "sourceTeamName": "ART Grand Prix",
+          "sourceCarNumber": 12,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-art/drivers/kanato_le"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hiyu_yamakoshi",
+      "code": "YAM",
+      "name": "Hiyu Yamakoshi",
+      "nationality": "JPN",
+      "overall": 63,
+      "ratings": {
+        "adaptability": 0.6516367815011177,
+        "consistency": 0.6271926782041681,
+        "defending": 0.6356153513523697,
+        "errorControl": 0.6191524621896712,
+        "experience": 0.5752821344175943,
+        "overtaking": 0.6262045064206622,
+        "qualifyingPace": 0.6257914561392165,
+        "racePace": 0.6531967975272701,
+        "raceStart": 0.6460421075449335,
+        "technicalFeedback": 0.6095274930167686,
+        "tyreManagement": 0.6165889675624088,
+        "wetSkill": 0.6433350514391663
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:hiyu_yamakoshi",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:hiyu_yamakoshi",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-var",
+            "name": "Van Amersfoort Racing"
+          },
+          "sourceCarNumber": 14,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/hiyu_yamakoshi"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-var",
+          "sourceTeamName": "Van Amersfoort Racing",
+          "sourceCarNumber": 14,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/hiyu_yamakoshi"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "enzo_deligny",
+      "code": "DEL",
+      "name": "Enzo Deligny",
+      "nationality": "FRA",
+      "overall": 61,
+      "ratings": {
+        "adaptability": 0.6403486343301772,
+        "consistency": 0.578881863780531,
+        "defending": 0.6273351422821545,
+        "errorControl": 0.5791010370850858,
+        "experience": 0.5514946437306981,
+        "overtaking": 0.6134623312855809,
+        "qualifyingPace": 0.6254640521391969,
+        "racePace": 0.6126401261144004,
+        "raceStart": 0.6098196979974967,
+        "technicalFeedback": 0.5767249659594964,
+        "tyreManagement": 0.6380878714714463,
+        "wetSkill": 0.6250685503173372
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:enzo_deligny",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:enzo_deligny",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-var",
+            "name": "Van Amersfoort Racing"
+          },
+          "sourceCarNumber": 15,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/enzo_deligny"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-var",
+          "sourceTeamName": "Van Amersfoort Racing",
+          "sourceCarNumber": 15,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/enzo_deligny"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bruno_del_pino",
+      "code": "DPI",
+      "name": "Bruno del Pino",
+      "nationality": "ESP",
+      "overall": 59,
+      "ratings": {
+        "adaptability": 0.6287840571651843,
+        "consistency": 0.552478377999355,
+        "defending": 0.5763020999585696,
+        "errorControl": 0.574757785259661,
+        "experience": 0.5350347654013689,
+        "overtaking": 0.6002725568884401,
+        "qualifyingPace": 0.5907323446177434,
+        "racePace": 0.6050199506913537,
+        "raceStart": 0.5838408795152135,
+        "technicalFeedback": 0.5687682507910405,
+        "tyreManagement": 0.5979306052624732,
+        "wetSkill": 0.602356348597499
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:bruno_del_pino",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:bruno_del_pino",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-var",
+            "name": "Van Amersfoort Racing"
+          },
+          "sourceCarNumber": 16,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/bruno_del_pino"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-var",
+          "sourceTeamName": "Van Amersfoort Racing",
+          "sourceCarNumber": 16,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-var/drivers/bruno_del_pino"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pedro_clerot",
+      "code": "CLE",
+      "name": "Pedro Clerot",
+      "nationality": "BRA",
+      "overall": 62,
+      "ratings": {
+        "adaptability": 0.65127136448776,
+        "consistency": 0.5839561890002596,
+        "defending": 0.610739598783593,
+        "errorControl": 0.5916507080089312,
+        "experience": 0.5467657249296828,
+        "overtaking": 0.6088340157889267,
+        "qualifyingPace": 0.6411840573624098,
+        "racePace": 0.6344214023583046,
+        "raceStart": 0.6342046630035989,
+        "technicalFeedback": 0.6118992521615823,
+        "tyreManagement": 0.6164943571373467,
+        "wetSkill": 0.6400498408491266
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:pedro_clerot",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:pedro_clerot",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-rodin",
+            "name": "Rodin Motorsport"
+          },
+          "sourceCarNumber": 17,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/pedro_clerot"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-rodin",
+          "sourceTeamName": "Rodin Motorsport",
+          "sourceCarNumber": 17,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/pedro_clerot"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "brando_badoer",
+      "code": "BAD",
+      "name": "Brando Badoer",
+      "nationality": "ITA",
+      "overall": 61,
+      "ratings": {
+        "adaptability": 0.6616670638889961,
+        "consistency": 0.5962887831726584,
+        "defending": 0.6005685891030548,
+        "errorControl": 0.5638902491426105,
+        "experience": 0.5273666843339523,
+        "overtaking": 0.6037280340692126,
+        "qualifyingPace": 0.6434697901726197,
+        "racePace": 0.631192380700518,
+        "raceStart": 0.6059130093007877,
+        "technicalFeedback": 0.5776185145879938,
+        "tyreManagement": 0.6151075436493897,
+        "wetSkill": 0.6102063799212035
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:brando_badoer",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:brando_badoer",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-rodin",
+            "name": "Rodin Motorsport"
+          },
+          "sourceCarNumber": 18,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/brando_badoer"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-rodin",
+          "sourceTeamName": "Rodin Motorsport",
+          "sourceCarNumber": 18,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/brando_badoer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "christian_ho",
+      "code": "CHO",
+      "name": "Christian Ho",
+      "nationality": "SGP",
+      "overall": 62,
+      "ratings": {
+        "adaptability": 0.645810980572276,
+        "consistency": 0.6038908860407995,
+        "defending": 0.6359982980689509,
+        "errorControl": 0.5807581111992626,
+        "experience": 0.5507590738347651,
+        "overtaking": 0.6385583179538055,
+        "qualifyingPace": 0.6441286483863217,
+        "racePace": 0.6193089195017505,
+        "raceStart": 0.6513819099434623,
+        "technicalFeedback": 0.5866716881004342,
+        "tyreManagement": 0.6184982031910458,
+        "wetSkill": 0.6473788600063848
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:christian_ho",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:christian_ho",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-rodin",
+            "name": "Rodin Motorsport"
+          },
+          "sourceCarNumber": 19,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/christian_ho"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-rodin",
+          "sourceTeamName": "Rodin Motorsport",
+          "sourceCarNumber": 19,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-rodin/drivers/christian_ho"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "louis_sharp",
+      "code": "SHA",
+      "name": "Louis Sharp",
+      "nationality": "NZL",
+      "overall": 62,
+      "ratings": {
+        "adaptability": 0.6403663864655956,
+        "consistency": 0.5944042556624554,
+        "defending": 0.6264440236635292,
+        "errorControl": 0.6090203016442444,
+        "experience": 0.5432310134219692,
+        "overtaking": 0.6161694939246479,
+        "qualifyingPace": 0.6421598250640611,
+        "racePace": 0.641695518741561,
+        "raceStart": 0.6074041686836789,
+        "technicalFeedback": 0.6132561319629476,
+        "tyreManagement": 0.6266599560644766,
+        "wetSkill": 0.6266738362726145
+      },
+      "potential": 96,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:louis_sharp",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:louis_sharp",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-prema",
+            "name": "PREMA Racing"
+          },
+          "sourceCarNumber": 20,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/louis_sharp"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-prema",
+          "sourceTeamName": "PREMA Racing",
+          "sourceCarNumber": 20,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/louis_sharp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "james_wharton",
+      "code": "WHA",
+      "name": "James Wharton",
+      "nationality": "AUS",
+      "overall": 61,
+      "ratings": {
+        "adaptability": 0.6258735525265225,
+        "consistency": 0.6063122916094007,
+        "defending": 0.6082526159219285,
+        "errorControl": 0.5692624925128514,
+        "experience": 0.550422312004329,
+        "overtaking": 0.6247977147222675,
+        "qualifyingPace": 0.6219369418115392,
+        "racePace": 0.6302784956975741,
+        "raceStart": 0.615961579498565,
+        "technicalFeedback": 0.606039058851292,
+        "tyreManagement": 0.6251017518406689,
+        "wetSkill": 0.6296772737504347
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:james_wharton",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:james_wharton",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-prema",
+            "name": "PREMA Racing"
+          },
+          "sourceCarNumber": 21,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/james_wharton"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-prema",
+          "sourceTeamName": "PREMA Racing",
+          "sourceCarNumber": 21,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/james_wharton"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jose_garfias",
+      "code": "GAR",
+      "name": "Jose Garfias",
+      "nationality": "MEX",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.5943719122375906,
+        "consistency": 0.5592597050793287,
+        "defending": 0.5898781781031146,
+        "errorControl": 0.5318619286254803,
+        "experience": 0.5145430460261659,
+        "overtaking": 0.5695104594427562,
+        "qualifyingPace": 0.5684160910792365,
+        "racePace": 0.592150180409479,
+        "raceStart": 0.5840882698845002,
+        "technicalFeedback": 0.5289921118449545,
+        "tyreManagement": 0.5940195598688632,
+        "wetSkill": 0.5895813730211564
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:jose_garfias",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:jose_garfias",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-prema",
+            "name": "PREMA Racing"
+          },
+          "sourceCarNumber": 22,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/jose_garfias"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-prema",
+          "sourceTeamName": "PREMA Racing",
+          "sourceCarNumber": 22,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-prema/drivers/jose_garfias"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "woohyun_shin",
+      "code": "WSH",
+      "name": "Woohyun Shin",
+      "nationality": "KOR",
+      "overall": 59,
+      "ratings": {
+        "adaptability": 0.624749742619796,
+        "consistency": 0.558723812846098,
+        "defending": 0.6227313986780176,
+        "errorControl": 0.5663386826061249,
+        "experience": 0.5170048886569442,
+        "overtaking": 0.5935802913748827,
+        "qualifyingPace": 0.6064773080796397,
+        "racePace": 0.5909748868929843,
+        "raceStart": 0.5904403622453409,
+        "technicalFeedback": 0.5655621866875453,
+        "tyreManagement": 0.6096421181087693,
+        "wetSkill": 0.5903736649458449
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:woohyun_shin",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:woohyun_shin",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-hitech",
+            "name": "Hitech"
+          },
+          "sourceCarNumber": 23,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/woohyun_shin"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-hitech",
+          "sourceTeamName": "Hitech",
+          "sourceCarNumber": 23,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/woohyun_shin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fionn_mclaughlin",
+      "code": "MCL",
+      "name": "Fionn McLaughlin",
+      "nationality": "IRL",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.5956613881500151,
+        "consistency": 0.555922253842125,
+        "defending": 0.5703637625549406,
+        "errorControl": 0.5507465339969755,
+        "experience": 0.5123169368146762,
+        "overtaking": 0.5697107772613703,
+        "qualifyingPace": 0.5776721542035899,
+        "racePace": 0.5648156703336702,
+        "raceStart": 0.5882510791567309,
+        "technicalFeedback": 0.5579515056341343,
+        "tyreManagement": 0.5808242681267298,
+        "wetSkill": 0.5827104353926438
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:fionn_mclaughlin",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:fionn_mclaughlin",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-hitech",
+            "name": "Hitech"
+          },
+          "sourceCarNumber": 24,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/fionn_mclaughlin"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-hitech",
+          "sourceTeamName": "Hitech",
+          "sourceCarNumber": 24,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/fionn_mclaughlin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jin_nakamura",
+      "code": "JIN",
+      "name": "Jin Nakamura",
+      "nationality": "JPN",
+      "overall": 60,
+      "ratings": {
+        "adaptability": 0.6368781097635955,
+        "consistency": 0.577269705700067,
+        "defending": 0.6195701978112648,
+        "errorControl": 0.5564579060644659,
+        "experience": 0.544129860276634,
+        "overtaking": 0.6124499962964357,
+        "qualifyingPace": 0.6172469985213386,
+        "racePace": 0.6118807726092506,
+        "raceStart": 0.6128984207122031,
+        "technicalFeedback": 0.573641832934158,
+        "tyreManagement": 0.5951170188726811,
+        "wetSkill": 0.6108549188279822
+      },
+      "potential": 95,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:jin_nakamura",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:jin_nakamura",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-hitech",
+            "name": "Hitech"
+          },
+          "sourceCarNumber": 25,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/jin_nakamura"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-hitech",
+          "sourceTeamName": "Hitech",
+          "sourceCarNumber": 25,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-hitech/drivers/jin_nakamura"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ricardo_escotto",
+      "code": "ESC",
+      "name": "Ricardo Escotto",
+      "nationality": "MEX",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.592190188420961,
+        "consistency": 0.5511041764987213,
+        "defending": 0.591642376318471,
+        "errorControl": 0.5460472235781986,
+        "experience": 0.520555924595909,
+        "overtaking": 0.5729271530538897,
+        "qualifyingPace": 0.5799542756550643,
+        "racePace": 0.5745227815020919,
+        "raceStart": 0.5721921208771197,
+        "technicalFeedback": 0.5579957756488378,
+        "tyreManagement": 0.5903643059298117,
+        "wetSkill": 0.5656732423858691
+      },
+      "potential": 91,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:ricardo_escotto",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:ricardo_escotto",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-aix",
+            "name": "AIX Racing"
+          },
+          "sourceCarNumber": 26,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/ricardo_escotto"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-aix",
+          "sourceTeamName": "AIX Racing",
+          "sourceCarNumber": 26,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/ricardo_escotto"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "yevan_david",
+      "code": "DAV",
+      "name": "Yevan David",
+      "nationality": "LKA",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.606233020028875,
+        "consistency": 0.5477252609955201,
+        "defending": 0.585947071207465,
+        "errorControl": 0.553771766510529,
+        "experience": 0.49268005222216676,
+        "overtaking": 0.5726981341489117,
+        "qualifyingPace": 0.5822388092822715,
+        "racePace": 0.5625492284073605,
+        "raceStart": 0.5991535483478224,
+        "technicalFeedback": 0.5428384657120184,
+        "tyreManagement": 0.5739742582037748,
+        "wetSkill": 0.5707980013005194
+      },
+      "potential": 93,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:yevan_david",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:yevan_david",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-aix",
+            "name": "AIX Racing"
+          },
+          "sourceCarNumber": 27,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/yevan_david"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-aix",
+          "sourceTeamName": "AIX Racing",
+          "sourceCarNumber": 27,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/yevan_david"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fernando_barrichello",
+      "code": "BAR",
+      "name": "Fernando Barrichello",
+      "nationality": "BRA",
+      "overall": 58,
+      "ratings": {
+        "adaptability": 0.6330097550125268,
+        "consistency": 0.5599164487707152,
+        "defending": 0.598564578596812,
+        "errorControl": 0.5331817923514047,
+        "experience": 0.5069436612170442,
+        "overtaking": 0.5720743309498856,
+        "qualifyingPace": 0.5987614349479615,
+        "racePace": 0.5941696202598824,
+        "raceStart": 0.5760881011455442,
+        "technicalFeedback": 0.5533949558334796,
+        "tyreManagement": 0.5969102180133748,
+        "wetSkill": 0.570383846282295
+      },
+      "potential": 94,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:fernando_barrichello",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:fernando_barrichello",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-aix",
+            "name": "AIX Racing"
+          },
+          "sourceCarNumber": 28,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/fernando_barrichello"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-aix",
+          "sourceTeamName": "AIX Racing",
+          "sourceCarNumber": 28,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-aix/drivers/fernando_barrichello"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nicola_lacorte",
+      "code": "LAC",
+      "name": "Nicola Lacorte",
+      "nationality": "ITA",
+      "overall": 57,
+      "ratings": {
+        "adaptability": 0.6229575863415938,
+        "consistency": 0.5511937470968064,
+        "defending": 0.562938533139467,
+        "errorControl": 0.5370327971180242,
+        "experience": 0.4813190530649394,
+        "overtaking": 0.5612005610322777,
+        "qualifyingPace": 0.5826265393900477,
+        "racePace": 0.5851733533280105,
+        "raceStart": 0.5704838999779356,
+        "technicalFeedback": 0.564596233357182,
+        "tyreManagement": 0.5645464088613704,
+        "wetSkill": 0.583959761921606
+      },
+      "potential": 92,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:nicola_lacorte",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:nicola_lacorte",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-dams",
+            "name": "DAMS Lucas Oil"
+          },
+          "sourceCarNumber": 29,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/nicola_lacorte"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-dams",
+          "sourceTeamName": "DAMS Lucas Oil",
+          "sourceCarNumber": 29,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/nicola_lacorte"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nandhavud_bhirombhakdi",
+      "code": "BHI",
+      "name": "Nandhavud Bhirombhakdi",
+      "nationality": "THA",
+      "overall": 54,
+      "ratings": {
+        "adaptability": 0.5722290642713013,
+        "consistency": 0.5335730223328027,
+        "defending": 0.5526649358371173,
+        "errorControl": 0.4911897895205491,
+        "experience": 0.4672259975191946,
+        "overtaking": 0.5638368145650087,
+        "qualifyingPace": 0.5670577671636711,
+        "racePace": 0.5500219793859203,
+        "raceStart": 0.5577220751325167,
+        "technicalFeedback": 0.5227222859059494,
+        "tyreManagement": 0.5285360732959183,
+        "wetSkill": 0.5608866883056655
+      },
+      "potential": 89,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:nandhavud_bhirombhakdi",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:nandhavud_bhirombhakdi",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-dams",
+            "name": "DAMS Lucas Oil"
+          },
+          "sourceCarNumber": 30,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/nandhavud_bhirombhakdi"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-dams",
+          "sourceTeamName": "DAMS Lucas Oil",
+          "sourceCarNumber": 30,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/nandhavud_bhirombhakdi"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gerrard_xie",
+      "code": "XIE",
+      "name": "Gerrard Xie",
+      "nationality": "CHN",
+      "overall": 56,
+      "ratings": {
+        "adaptability": 0.595993071962368,
+        "consistency": 0.5397190395334436,
+        "defending": 0.5771086319820166,
+        "errorControl": 0.5342638368704858,
+        "experience": 0.5091888610318165,
+        "overtaking": 0.5786012533222217,
+        "qualifyingPace": 0.5859985364137568,
+        "racePace": 0.554627888821899,
+        "raceStart": 0.556470927964296,
+        "technicalFeedback": 0.5262352077223331,
+        "tyreManagement": 0.5696355882274423,
+        "wetSkill": 0.5544957949173283
+      },
+      "potential": 91,
+      "ratingSourceProvenanceId": "motorsport-series-2026:f3:gerrard_xie",
+      "provenance": [
+        {
+          "id": "motorsport-series-2026:f3:gerrard_xie",
+          "sourceType": "synthetic",
+          "sourceSeason": 2026,
+          "sourceSeriesId": "f3",
+          "sourceTeam": {
+            "sourceId": "f3-dams",
+            "name": "DAMS Lucas Oil"
+          },
+          "sourceCarNumber": 31,
+          "sourceRole": "regular",
+          "sourceFile": "src/data/motorsportSeries2026.json",
+          "sourceDate": "2026-07-29",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/gerrard_xie"
+          ],
+          "methodVersion": "seriesRegistry.compactRatingsFor.v1",
+          "confidence": "low"
+        }
+      ],
+      "careerHistory": [
+        {
+          "season": 2026,
+          "seriesId": "f3",
+          "sourceTeamId": "f3-dams",
+          "sourceTeamName": "DAMS Lucas Oil",
+          "sourceCarNumber": 31,
+          "role": "regular",
+          "sourceIds": [
+            "src/data/motorsportSeries2026.json#series/f3/teams/f3-dams/drivers/gerrard_xie"
+          ]
+        }
+      ]
+    }
+  ]
+}

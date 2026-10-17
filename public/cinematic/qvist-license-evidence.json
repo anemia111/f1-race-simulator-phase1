@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-16T11:49:21.594Z",
+  "source": "https://api.sketchfab.com/v3/models/ea3bde709b1e4dc9b0ec8557d106ed42",
+  "name": "F1 2026 concept (polygon model)",
+  "author": "Qvist_designs",
+  "publishedAt": "2025-04-15T15:25:46.173963",
+  "updatedAt": "2026-04-17T08:26:22.442836",
+  "license": {
+    "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution",
+    "fullName": "Creative Commons Attribution",
+    "requirements": "Author must be credited. Commercial use is allowed.",
+    "url": "http://creativecommons.org/licenses/by/4.0/",
+    "slug": "by"
+  },
+  "isDownloadable": true,
+  "originalFaces": 1164174,
+  "viewerUrl": "https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42",
+  "caveat": "Independent concept, not actual team CAD. Model attribution does not authorize team trademarks."
+}

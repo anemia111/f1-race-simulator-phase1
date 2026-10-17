@@ -116,9 +116,9 @@ export function PitWallSystems({
               value={car.overtakeStatus.toUpperCase()}
             />
             <PitWallMetric
-              label="Overtake energy"
+              label="Extra recharge allowance"
               source="SIM"
-              value={`${f1Runtime.overtakeEnergyRemainingMj.toFixed(2)} MJ`}
+              value={`${(f1Runtime.energyStore?.rechargeRule.additionalAllowanceMJ ?? 0).toFixed(2)} MJ / lap`}
             />
             <PitWallMetric
               label="Battle state"

@@ -18,6 +18,7 @@ import {
   type RaceWorkerInboundMessage,
   type RaceWorkerOutboundMessage,
 } from './raceWorkerProtocol'
+import { PhysicsWorkQueue } from './physicsWorkQueue'
 
 const workerScope: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope
 
@@ -26,6 +27,8 @@ let snapshot: RaceSnapshot | null = null
 let isPaused = true
 let speed: SpeedMultiplier = 1
 let lastPublishedAt = 0
+let lastRequestedAt = performance.now()
+const workQueue = new PhysicsWorkQueue()
 const manualPitRequests = new Map<string, TireCompound>()
 const manualPaceModes = new Map<string, RacePaceMode>()
 
@@ -42,6 +45,8 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
     isPaused = message.isPaused
     speed = message.speed
     lastPublishedAt = performance.now()
+    lastRequestedAt = lastPublishedAt
+    workQueue.clear()
     manualPitRequests.clear()
     manualPaceModes.clear()
     publish({ type: 'ready', snapshot })
@@ -49,6 +54,10 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
   }
 
   if (message.type === 'control') {
+    if (isPaused !== message.isPaused || speed !== message.speed) {
+      workQueue.clear()
+      lastRequestedAt = performance.now()
+    }
     isPaused = message.isPaused
     speed = message.speed
     return
@@ -70,25 +79,30 @@ workerScope.addEventListener('message', (event: MessageEvent<RaceWorkerInboundMe
   manualPaceModes.set(message.driverId, message.mode)
 })
 
-setInterval(() => {
+function pump() {
   if (!config || !snapshot || isPaused || snapshot.sessionStatus === 'finished') {
+    workQueue.clear()
+    lastRequestedAt = performance.now()
+    setTimeout(pump, RACE_WORKER_TICK_MS)
     return
   }
 
   try {
-    snapshot = advanceRace(
-      snapshot,
-      (RACE_WORKER_TICK_MS / 1000) * speed,
-      config,
-      manualPitRequests,
-      manualPaceModes,
-    )
+    const requestedFrames = Math.floor((performance.now() - lastRequestedAt) / RACE_WORKER_TICK_MS)
+    if (requestedFrames > 0) {
+      workQueue.request(speed, requestedFrames)
+      lastRequestedAt += requestedFrames * RACE_WORKER_TICK_MS
+    }
+    workQueue.run(() => {
+      snapshot = advanceRace(snapshot!, RACE_WORKER_TICK_MS / 1000, config!, manualPitRequests, manualPaceModes)
+      return snapshot.sessionStatus !== 'finished'
+    }, () => performance.now(), speed > 1 ? 16 : 8)
 
     const now = performance.now()
 
     if (
       now - lastPublishedAt >= raceWorkerPublishMsFor(speed) ||
-      snapshot.sessionStatus === 'finished'
+      (snapshot as RaceSnapshot).sessionStatus === 'finished'
     ) {
       lastPublishedAt = now
       publish({ type: 'snapshot', snapshot })
@@ -100,4 +114,6 @@ setInterval(() => {
     })
     isPaused = true
   }
-}, RACE_WORKER_TICK_MS)
+  setTimeout(pump, workQueue.hasPending ? 0 : Math.max(1, RACE_WORKER_TICK_MS - (performance.now() - lastRequestedAt)))
+}
+setTimeout(pump, RACE_WORKER_TICK_MS)

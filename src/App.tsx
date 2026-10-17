@@ -177,7 +177,7 @@ import {
 } from './series/types'
 
 const RaceScene = lazy(() =>
-  import('./three/RaceScene').then((module) => ({ default: module.RaceScene })),
+  import('./three/RaceView').then((module) => ({ default: module.RaceView })),
 )
 const SeriesDataManager = lazy(() =>
   import('./components/SeriesDataManager').then((module) => ({
@@ -1275,14 +1275,18 @@ const openF1GridResultsFor = (
     )
 }
 
-export default function App() {
+export default function App({ onOpenMotorsport, requestedSeriesId, requestedFreeMode = false }: {
+  onOpenMotorsport?: (id: import('./restored20261010/motorsport/types').ChampionshipId, free?: boolean) => void
+  requestedSeriesId?: SeriesId
+  requestedFreeMode?: boolean
+}) {
   const [applicationMode, setApplicationMode] =
     useState<ApplicationMode>('championship')
   const [activeFreeModeRuntime, setActiveFreeModeRuntime] =
     useState<FreeModeRuntime | null>(null)
   const [freeModeStoredState, setFreeModeStoredState] =
     useState<FreeModeStoredState>(initialFreeModeStoredState)
-  const [isFreeModeBuilderOpen, setIsFreeModeBuilderOpen] = useState(false)
+  const [isFreeModeBuilderOpen, setIsFreeModeBuilderOpen] = useState(requestedFreeMode)
   const [championshipReturnSeriesId, setChampionshipReturnSeriesId] =
     useState<SeriesId>(initialSeriesId)
   const [selectedSeriesId, setSelectedSeriesId] =
@@ -1346,6 +1350,7 @@ export default function App() {
     ? seriesPackage.rules
     : null
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview')
+  const [cinematicActive, setCinematicActive] = useState(false)
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [isPaused, setIsPaused] = useState(false)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
@@ -3160,6 +3165,13 @@ export default function App() {
     activateChampionshipSeries(seriesId)
   }
 
+  useEffect(() => {
+    if (requestedSeriesId && requestedSeriesId !== selectedSeriesId) activateChampionshipSeries(requestedSeriesId)
+    if (requestedFreeMode) setIsFreeModeBuilderOpen(true)
+    // A request is applied only when returning from another category.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedSeriesId, requestedFreeMode])
+
   const startFreeMode = (configuration: FreeModeConfiguration) => {
     const runtime = buildFreeModeRuntime(configuration, {
       ...freeModeBuildContext,
@@ -4187,6 +4199,9 @@ export default function App() {
   return (
     <div className="race-shell broadcast-race-shell">
       <BroadcastDashboard
+        onOpenMotorsport={onOpenMotorsport}
+        season={season}
+        cinematicActive={cinematicActive}
         applicationMode={applicationMode}
         cameraMode={cameraMode}
         dataControl={broadcastDataControl}
@@ -4274,6 +4289,10 @@ export default function App() {
             }
           >
             <RaceScene
+              onCinematicChange={setCinematicActive}
+              isPaused={isPaused}
+              speed={speed}
+              dataMode={dataMode}
               cameraMode={cameraMode}
               config={raceConfig}
               onSelectDriver={focusDriver}
@@ -4359,6 +4378,7 @@ export default function App() {
       ) : null}
 
       <FreeModeBuilder
+        onOpenMotorsport={onOpenMotorsport}
         context={freeModeBuildContext}
         initialConfiguration={freeModeStoredState.configuration}
         isOpen={isFreeModeBuilderOpen}
