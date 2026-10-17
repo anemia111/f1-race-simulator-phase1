@@ -1,3 +1,14 @@
+## Suzuka visual-only scope — 2026-10-17
+
+The latest user request freezes all simulation, settings, UI, camera operations,
+original track data, saved formats and dependencies. Work only in Suzuka rendering.
+Do not use earlier ERS/AI authorization for this batch. The user approved preserving
+published a5ead34 as codex/published-a5ead34-baseline and creating a Suzuka-only PR
+against it. No master changes, merges or production deployment are authorized here.
+The active implementation is codex/suzuka-visual-refinement in this checkout.
+Read docs/SUZUKA_VISUAL_REFINEMENT_20261017.md for audit, evidence and limitations.
+The full test invocation stops on the existing FP2 timeout, reproduced on baseline;
+never rewrite simulation tests or claim the full completion gate passed.
 ## Published integrated preview — 2026-10-17
 
 The user explicitly authorized publication. Deployment a5ead34 / release
@@ -187,6 +198,7 @@ remain intentional, separate steps so unrelated work is never swept in.
 - Add numeric realism tests for model changes, not only snapshot tests.
 - Run lint, build, tests, and playtest after behavior or UI changes.
 - Do not commit `node_modules`, `dist`, logs, or QA screenshots.
+
 
 
 

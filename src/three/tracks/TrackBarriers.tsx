@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as T from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { roadPose, widthAt } from './suzukaSurface'
+import { roadPose, barrierOffsetAt } from './suzukaSurface'
 
 function postGeometry(main: boolean) {
   if (!main) return new T.BoxGeometry(0.07, 3.8, 0.07).translate(0, 1.9, 0)
@@ -128,7 +128,7 @@ function BarrierSection({
   useEffect(() => {
     const object = new T.Object3D()
     placements.forEach(({ p, side }, i) => {
-      const pose = roadPose(p, side * (widthAt(p) / 2 + (main ? 5 : 15)))
+      const pose = roadPose(p, side * barrierOffsetAt(p, main, side))
       object.position.copy(pose.position)
       object.rotation.set(
         0,

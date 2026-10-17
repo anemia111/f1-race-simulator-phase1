@@ -1,0 +1,105 @@
+{
+  "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x000046A8) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "note": "Static track/scenery fixture, 1440x900; 1.2-second samples, no race cars. Background throttling disabled for both. Not a full-race FPS acceptance.",
+  "rows": [
+    {
+      "view": "overview",
+      "beforeCalls": 35,
+      "afterCalls": 33,
+      "beforeTriangles": 232182,
+      "afterTriangles": 281464,
+      "beforeP95": 16.90000000000009,
+      "afterP95": 17.100000000000364,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "approach",
+      "beforeCalls": 25,
+      "afterCalls": 25,
+      "beforeTriangles": 231828,
+      "afterTriangles": 281366,
+      "beforeP95": 16.90000000000009,
+      "afterP95": 17,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "under",
+      "beforeCalls": 26,
+      "afterCalls": 26,
+      "beforeTriangles": 255732,
+      "afterTriangles": 305270,
+      "beforeP95": 17,
+      "afterP95": 16.90000000000009,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-1",
+      "beforeCalls": 24,
+      "afterCalls": 23,
+      "beforeTriangles": 272364,
+      "afterTriangles": 321678,
+      "beforeP95": 17.200000000000045,
+      "afterP95": 16.90000000000009,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-3",
+      "beforeCalls": 39,
+      "afterCalls": 39,
+      "beforeTriangles": 231042,
+      "afterTriangles": 281364,
+      "beforeP95": 17.200000000000045,
+      "afterP95": 16.90000000000009,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-9",
+      "beforeCalls": 21,
+      "afterCalls": 22,
+      "beforeTriangles": 206374,
+      "afterTriangles": 256040,
+      "beforeP95": 17.199999999999818,
+      "afterP95": 16.90000000000009,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-11",
+      "beforeCalls": 27,
+      "afterCalls": 25,
+      "beforeTriangles": 213186,
+      "afterTriangles": 262372,
+      "beforeP95": 16.799999999999955,
+      "afterP95": 17,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-14",
+      "beforeCalls": 35,
+      "afterCalls": 34,
+      "beforeTriangles": 226344,
+      "afterTriangles": 276538,
+      "beforeP95": 16.90000000000009,
+      "afterP95": 17,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    },
+    {
+      "view": "corner-16",
+      "beforeCalls": 126,
+      "afterCalls": 130,
+      "beforeTriangles": 258512,
+      "afterTriangles": 309346,
+      "beforeP95": 16.800000000000182,
+      "afterP95": 16.800000000000182,
+      "beforeFrames": 73,
+      "afterFrames": 73
+    }
+  ]
+}

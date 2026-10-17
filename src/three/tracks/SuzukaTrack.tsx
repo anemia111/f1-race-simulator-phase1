@@ -2,14 +2,14 @@ import { TrackBarriers } from './TrackBarriers'
 import { useTexture } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
 import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { buildSuzukaDetails } from './suzukaDetails'
 import {
-  cornerStations,
   ribbon,
   roadPose,
   widthAt,
   terrainGeometry,
   pitOffset,
+  shoulderExtentAt,
 } from './suzukaSurface'
 
 const base = import.meta.env.BASE_URL + 'cinematic/'
@@ -44,8 +44,8 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
     const shoulders = ribbon(
       0,
       1,
-      (p) => -widthAt(p) / 2 - 8,
-      (p) => widthAt(p) / 2 + 8,
+      (p) => -shoulderExtentAt(p),
+      (p) => shoulderExtentAt(p),
       1452,
       -0.09,
     )
@@ -81,46 +81,11 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
       260,
       0.025,
     )
-    const kerbs = cornerStations.flatMap((c) => {
-      const next = roadPose(c.progress + 0.002),
-        prev = roadPose(c.progress - 0.002)
-      const bend = prev.tangent.clone().cross(next.tangent).y
-      const side = bend > 0 ? -1 : 1
-      return Array.from({ length: 32 }, (_, i) => {
-        const a = c.progress - 0.004 + i * 0.00025
-        return {
-          g: ribbon(
-            a,
-            a + 0.00025,
-            (p) => side * (widthAt(p) / 2),
-            (p) => side * (widthAt(p) / 2 + 1.05),
-            2,
-            0.065,
-          ),
-          color: i % 2 ? '#e4dfd6' : '#b82820',
-        }
-      })
-    })
-    const gravel = cornerStations
-      .filter((c) => [1, 2, 8, 9, 11, 13, 14].includes(c.number))
-      .map((c) =>
-        ribbon(
-          c.progress - 0.007,
-          c.progress + 0.009,
-          (p) => widthAt(p) / 2 + 2,
-          (p) => widthAt(p) / 2 + 23,
-          64,
-          -0.04,
-        ),
-      )
+    const { kerbRed, kerbWhite, gravel, paved } = buildSuzukaDetails()
+    const pitLines = [-1, 1].map(side => ribbon(.94, 1.055,
+      p => pitOffset(p) + side * 2.9 - .07,
+      p => pitOffset(p) + side * 2.9 + .07, 260, .04))
     const start = roadPose(0)
-    const kerbRed = mergeGeometries(
-      kerbs.filter((k) => k.color === '#b82820').map((k) => k.g),
-    )!
-    const kerbWhite = mergeGeometries(
-      kerbs.filter((k) => k.color !== '#b82820').map((k) => k.g),
-    )!
-    kerbs.forEach((k) => k.g.dispose())
     return {
       asphalt,
       shoulders,
@@ -128,9 +93,11 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
       lineR,
       rubber,
       pit,
+      pitLines,
       kerbRed,
       kerbWhite,
       gravel,
+      paved,
       start,
       terrain: terrainGeometry(),
     }
@@ -168,7 +135,7 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
           roughnessMap={textures[2]}
           roughness={wet ? 0.3 : 0.92}
           metalness={wet ? 0.15 : 0}
-          color={wet ? '#737a7b' : '#a3a5a4'}
+          color={wet ? '#626a70' : '#7e8388'}
         />
       </mesh>
       <mesh geometry={geometry.pit} receiveShadow>
@@ -178,7 +145,7 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
           roughness={0.87}
         />
       </mesh>
-      {[geometry.lineL, geometry.lineR].map((g, i) => (
+      {[geometry.lineL, geometry.lineR, ...geometry.pitLines].map((g, i) => (
         <mesh geometry={g} key={i}>
           <meshStandardMaterial color="#ebe7d8" roughness={0.85} />
         </mesh>
@@ -198,7 +165,7 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
       <mesh geometry={geometry.kerbWhite} receiveShadow>
         <meshStandardMaterial color="#e4dfd6" roughness={0.85} />
       </mesh>
-      {geometry.gravel.map((g, i) => (
+      {[geometry.gravel].map((g, i) => (
         <mesh geometry={g} key={i} receiveShadow>
           <meshStandardMaterial
             color="#b3a68b"
@@ -208,6 +175,9 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
           />
         </mesh>
       ))}
+      <mesh geometry={geometry.paved} receiveShadow>
+        <meshStandardMaterial map={textures[0]} normalMap={textures[1]} color="#646c71" roughness={.94} />
+      </mesh>
       <group
         position={geometry.start.position}
         rotation={[
@@ -240,3 +210,4 @@ export function SuzukaTrack({ wet }: { wet: boolean }) {
     </group>
   )
 }
+
